@@ -1,74 +1,968 @@
 {
-  "repo": "MongLong0214/AgentOps-Score",
-  "docs_base": "https://github.com/MongLong0214/AgentOps-Score/blob/dev/docs",
-  "labels": [
-    {"name":"epic:F0","color":"0E8A16","description":"Preflight measurement contracts"},
-    {"name":"epic:F1","color":"0E8A16","description":"Trace and result schemas"},
-    {"name":"epic:F2","color":"0E8A16","description":"Scorer and conformance fixtures"},
-    {"name":"epic:F3","color":"0E8A16","description":"Isolated runner"},
-    {"name":"epic:F4","color":"0E8A16","description":"Runtime adapters"},
-    {"name":"epic:F5","color":"0E8A16","description":"Form A assessment"},
-    {"name":"epic:F6","color":"0E8A16","description":"Reports and Snapshot"},
-    {"name":"epic:F7","color":"0E8A16","description":"Form B and improvement"},
-    {"name":"epic:F8","color":"0E8A16","description":"Validation and public OSS"},
-    {"name":"epic:F9","color":"1D76DB","description":"Viral score UI and local share artifacts"},
-    {"name":"size:M","color":"FBCA04","description":"Medium atomic ticket"},
-    {"name":"size:L","color":"D93F0B","description":"Large atomic ticket"},
-    {"name":"release","color":"5319E7","description":"Release-gate work"},
-    {"name":"backlog","color":"BFD4F2","description":"Post-v0.1 scope"},
-    {"name":"stretch","color":"C5DEF5","description":"Non-blocking stretch work"},
-    {"name":"metric-rfc","color":"D4C5F9","description":"Metric change proposal; frozen through alpha"}
+  "schema_version": 2,
+  "authority": "docs/north-star/agent-operator-score-ssot-v1.0.md",
+  "repository": "MongLong0214/agent-operator-score",
+  "milestones": [
+    {
+      "title": "S0 · Name & Contracts",
+      "description": "D0 and E0-A/B/C/D. Canonical identity, repository skeleton, measurement issuance, observability, pack feasibility, and prescription inputs. No product implementation beyond owned contract code."
+    },
+    {
+      "title": "S1 · G0 Scorer Truth",
+      "description": "E1–E2. Versioned schemas, deterministic scorer, conformance fixtures, and bit-reproducible G0 truth."
+    },
+    {
+      "title": "S2 · Runner & Differentiated Wedge",
+      "description": "E3–E7. Isolated runner, Codex adapter, FAM-4/5/6, and G0 demo candidate."
+    },
+    {
+      "title": "S3 · Full Form A & Second Runtime",
+      "description": "E8–E10. FAM-1/2/3, complete Form A, Claude Code adapter parity, report, evidence drill-down, and one lever."
+    },
+    {
+      "title": "S4 · Human Alpha & Retest",
+      "description": "E11–E12. Form B, retest attribution, preregistered alpha, and G1–G3 verdicts."
+    },
+    {
+      "title": "S5 · Public OSS",
+      "description": "E13–E14. Snapshot ESTIMATE, legal/name/security clearance, external reproduction, and G4 publication gate."
+    }
   ],
-  "issues": [
-    {"id":"T-001","title":"Freeze M01–M20 registry","body":"Encode exactly 20 metrics with evidence, opportunity, gaming guard, treatment, and consumer routes. RED must reject M21, gaps, duplicates, and dead routes.","milestone":"M0 · Freeze","labels":["epic:F0","size:M"],"deps":"None","ticket_file":"tickets/F0-preflight-contracts.md#t-001-freeze-m01m20-registry-m","prd_file":"prd/PRD-F0-preflight-contracts.md"},
-    {"id":"T-002","title":"Freeze adapter observability matrix","body":"Version every event group's capability status, evidence source, and missing-evidence effect. Silent inference and source-less REQUIRED rows fail.","milestone":"M0 · Freeze","labels":["epic:F0","size:M"],"deps":"T-001","ticket_file":"tickets/F0-preflight-contracts.md#t-002-freeze-adapter-observability-matrix-m","prd_file":"prd/PRD-F0-preflight-contracts.md"},
-    {"id":"T-003","title":"Simulate pack time and opportunity eligibility","body":"Preregister and simulate duration, metric eligibility, and prescription eligibility. Freeze only if median ≤40m, p90 ≤45m, eligible metrics ≥14, and at least one authoritative two-opportunity lever path pass together.","milestone":"M0 · Freeze","labels":["epic:F0","size:L"],"deps":"T-001, T-002","ticket_file":"tickets/F0-preflight-contracts.md#t-003-simulate-pack-time-and-opportunity-eligibility-l","prd_file":"prd/PRD-F0-preflight-contracts.md"},
-    {"id":"T-004","title":"Freeze deterministic lever registry","body":"Implement safety-first eligibility, factor priority, metric selection, cost/permission tie-break, and MANUAL_REVIEW_REQUIRED without generated advice.","milestone":"M0 · Freeze","labels":["epic:F0","size:M"],"deps":"T-001, T-003","ticket_file":"tickets/F0-preflight-contracts.md#t-004-freeze-deterministic-lever-registry-m","prd_file":"prd/PRD-F0-preflight-contracts.md"},
-
-    {"id":"T-101","title":"Define normalized trace schema","body":"Define bounded vendor-neutral trace events, identity, correlation, digest, and redaction fields. Hidden reasoning, secrets, and unbounded payloads fail validation.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F1","size:L"],"deps":"T-001, T-002, T-003","ticket_file":"tickets/F1-trace-result-schemas.md#t-101-define-normalized-trace-schema-l","prd_file":"prd/PRD-F1-trace-result-schemas.md"},
-    {"id":"T-102","title":"Define result and Opportunity Profile schemas","body":"Define evidence status, optional-score rules, factor/safety separation, takeover, provenance, and Opportunity Profile identity. Percentile without calibration must be unrepresentable.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F1","size:L"],"deps":"T-101","ticket_file":"tickets/F1-trace-result-schemas.md#t-102-define-result-and-opportunity-profile-schemas-l","prd_file":"prd/PRD-F1-trace-result-schemas.md"},
-    {"id":"T-103","title":"Add schema conformance and compatibility gate","body":"Provide offline positive/negative conformance, fixture census, semver compatibility verdict, and digest manifest. Zero fixtures and silent breaking changes fail CI.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F1","size:M"],"deps":"T-101, T-102","ticket_file":"tickets/F1-trace-result-schemas.md#t-103-add-schema-conformance-and-compatibility-gate-m","prd_file":"prd/PRD-F1-trace-result-schemas.md"},
-
-    {"id":"T-201","title":"Implement eligibility and metric aggregation","body":"Derive denominators from sealed opportunities, enforce authoritative evidence, deduplicate correlation IDs, and keep NOT_OBSERVED distinct from zero.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F2","size:L"],"deps":"T-001, T-103","ticket_file":"tickets/F2-scorer-and-fixtures.md#t-201-implement-eligibility-and-metric-aggregation-l","prd_file":"prd/PRD-F2-scorer-and-fixtures.md"},
-    {"id":"T-202","title":"Implement AOS-P0 and factor scoring","body":"Implement frozen weights, harmonic mean, zero semantics, factor mapping, stable rounding, and canonical JSON with independent vector cross-checks.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F2","size:L"],"deps":"T-201","ticket_file":"tickets/F2-scorer-and-fixtures.md#t-202-implement-aos-p0-and-factor-scoring-l","prd_file":"prd/PRD-F2-scorer-and-fixtures.md"},
-    {"id":"T-203","title":"Implement safety and evidence issuance gate","body":"Order identity/tamper, safety, integrity, coverage, and score gates. S2/S3, stale evidence, low coverage, and missing required identity withhold ordinary score issuance.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F2","size:L"],"deps":"T-202","ticket_file":"tickets/F2-scorer-and-fixtures.md#t-203-implement-safety-and-evidence-issuance-gate-l","prd_file":"prd/PRD-F2-scorer-and-fixtures.md"},
-    {"id":"T-204","title":"Build six conformance fixture families","body":"Ship deterministic pass, fail, false-completion, stale-evidence, duplicate-run, and unsafe fixtures with unique reasons, canonical outputs, and mutation detection.","milestone":"M1 · G0 Scorer Truth","labels":["epic:F2","size:L"],"deps":"T-203","ticket_file":"tickets/F2-scorer-and-fixtures.md#t-204-build-six-conformance-fixture-families-l","prd_file":"prd/PRD-F2-scorer-and-fixtures.md"},
-
-    {"id":"T-301","title":"Implement fresh workspace lifecycle","body":"Create explicit-root immutable workspaces with containment, digest, dirty-base, symlink, wrong-target, interruption, and cross-run residue tests.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F3","size:L"],"deps":"T-204","ticket_file":"tickets/F3-isolated-runner.md#t-301-implement-fresh-workspace-lifecycle-l","prd_file":"prd/PRD-F3-isolated-runner.md"},
-    {"id":"T-302","title":"Separate worker, oracle, and secrets","body":"Enforce process, environment, descriptor, path, IPC, and redaction boundaries. Oracle or secret access is INVALID/unsafe, never a warning.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F3","size:L"],"deps":"T-301","ticket_file":"tickets/F3-isolated-runner.md#t-302-separate-worker-oracle-and-secrets-l","prd_file":"prd/PRD-F3-isolated-runner.md"},
-    {"id":"T-303","title":"Enforce budgets, faults, retry, and terminal states","body":"Implement seeded faults, atomic budgets, watchdog/process reconciliation, idempotency, and exactly one typed terminal state without silent fallback.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F3","size:L"],"deps":"T-302","ticket_file":"tickets/F3-isolated-runner.md#t-303-enforce-budgets-faults-retry-and-terminal-states-l","prd_file":"prd/PRD-F3-isolated-runner.md"},
-
-    {"id":"T-401","title":"Define adapter interface and capability doctor","body":"Define runtime lifecycle/event/capability contracts and make doctor enumerate every status, source, effect, and digest; missing REQUIRED evidence exits nonzero.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F4","size:L"],"deps":"T-002, T-303","ticket_file":"tickets/F4-runtime-adapters.md#t-401-define-adapter-interface-and-capability-doctor-l","prd_file":"prd/PRD-F4-runtime-adapters.md"},
-    {"id":"T-402","title":"Implement Codex adapter v0","body":"Normalize declared observable Codex sources with bounded redaction and explicit unavailable events. Missing exact identity blocks score issuance.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F4","size:L"],"deps":"T-401","ticket_file":"tickets/F4-runtime-adapters.md#t-402-implement-codex-adapter-v0-l","prd_file":"prd/PRD-F4-runtime-adapters.md"},
-    {"id":"T-403","title":"Implement Claude Code adapter v0","body":"Normalize declared wrapper/hook/derived sources without hidden reasoning, guessed permission, secret leakage, or invented delegation joins.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F4","size:L"],"deps":"T-401","ticket_file":"tickets/F4-runtime-adapters.md#t-403-implement-claude-code-adapter-v0-l","prd_file":"prd/PRD-F4-runtime-adapters.md"},
-    {"id":"T-404","title":"Prove semantic parity across adapters","body":"Use shared semantic fixtures and adapter-specific native inputs to prove equivalent normalized traces while preserving meaningful differences.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F4","size:L"],"deps":"T-402, T-403","ticket_file":"tickets/F4-runtime-adapters.md#t-404-prove-semantic-parity-across-adapters-l","prd_file":"prd/PRD-F4-runtime-adapters.md"},
-
-    {"id":"T-501","title":"Implement sealed scenario registry","body":"Register form/family/version, budgets, opportunities, faults, oracle, exposure, and worker visibility. Late opportunities and hidden-data leakage fail.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F5","size:L"],"deps":"T-003, T-303, T-404","ticket_file":"tickets/F5-form-a.md#t-501-implement-sealed-scenario-registry-l","prd_file":"prd/PRD-F5-form-a-assessment.md"},
-    {"id":"T-502","title":"Build FAM-1 and FAM-2 scenarios","body":"Build contracting and context/decoy/injection scenarios with deterministic hidden outcomes, sealed opportunity maps, and no forced solution path.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F5","size:L"],"deps":"T-501","ticket_file":"tickets/F5-form-a.md#t-502-build-fam-1-and-fam-2-scenarios-l","prd_file":"prd/PRD-F5-form-a-assessment.md"},
-    {"id":"T-503","title":"Build FAM-3 and FAM-4 scenarios","body":"Build graph/routing/join and loop/state/retry/stall scenarios where multiple valid operating routes remain possible.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F5","size:L"],"deps":"T-501","ticket_file":"tickets/F5-form-a.md#t-503-build-fam-3-and-fam-4-scenarios-l","prd_file":"prd/PRD-F5-form-a-assessment.md"},
-    {"id":"T-504","title":"Build FAM-5 and FAM-6 scenarios","body":"Build false-completion/stale-evidence and recovery/safety/efficiency scenarios using simulated effects, no real credentials or external actions.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F5","size:L"],"deps":"T-501","ticket_file":"tickets/F5-form-a.md#t-504-build-fam-5-and-fam-6-scenarios-l","prd_file":"prd/PRD-F5-form-a-assessment.md"},
-    {"id":"T-505","title":"Compose and freeze Form A pack","body":"Prove preregistered timing, eligibility, non-duplication, terminal integrity, and prescription thresholds simultaneously before freezing Form A.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F5","size:L"],"deps":"T-502, T-503, T-504, T-003","ticket_file":"tickets/F5-form-a.md#t-505-compose-and-freeze-form-a-pack-l","prd_file":"prd/PRD-F5-form-a-assessment.md"},
-
-    {"id":"T-601","title":"Render canonical Markdown and JSON reports","body":"Render status, provenance, Opportunity Profile, coverage, factors, safety, limitations, and stable bytes without recomputing scores.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F6","size:L"],"deps":"T-505, T-203","ticket_file":"tickets/F6-report-and-snapshot.md#t-601-render-canonical-markdown-and-json-reports-l","prd_file":"prd/PRD-F6-report-and-snapshot.md"},
-    {"id":"T-602","title":"Add metric-event-artifact drill-down","body":"Resolve contained exact-digest evidence chains and fail report issuance on missing, stale, traversing, or mismatched links.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F6","size:M"],"deps":"T-601","ticket_file":"tickets/F6-report-and-snapshot.md#t-602-add-metric-to-event-to-artifact-drill-down-m","prd_file":"prd/PRD-F6-report-and-snapshot.md"},
-    {"id":"T-603","title":"Render deterministic diagnosis and one lever","body":"Render only the registered selection trace, evidence, cost, application, and retest conditions; otherwise emit manual review.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F6","size:M"],"deps":"T-004, T-601","ticket_file":"tickets/F6-report-and-snapshot.md#t-603-render-deterministic-diagnosis-and-one-lever-m","prd_file":"prd/PRD-F6-report-and-snapshot.md"},
-    {"id":"T-604","title":"Implement Snapshot ESTIMATE output","body":"Provide only estimate band, recommended family, and next command with mandatory watermark; prohibit AOS-P0, safety-clear, percentile, and performed-assessment language.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F6","size:M"],"deps":"T-601","ticket_file":"tickets/F6-report-and-snapshot.md#t-604-implement-snapshot-estimate-output-m","prd_file":"prd/PRD-F6-report-and-snapshot.md"},
-
-    {"id":"T-701","title":"Build linked but non-reused Form B","body":"Create a different repository, surface, and traps for the same construct/opportunity profile with exposure-distance and leakage checks.","milestone":"M3 · Alpha and Form B","labels":["epic:F7","size:L"],"deps":"T-505, T-603","ticket_file":"tickets/F7-form-b-and-improvement.md#t-701-build-linked-but-non-reused-form-b-l","prd_file":"prd/PRD-F7-form-b-and-improvement.md"},
-    {"id":"T-702","title":"Implement seven-day sprint and exposure ledger","body":"Record one treatment, adherence, deviations, costs, immutable baseline, local-only data, and form exposure; repeated form or second treatment invalidates growth.","milestone":"M3 · Alpha and Form B","labels":["epic:F7","size:M"],"deps":"T-701","ticket_file":"tickets/F7-form-b-and-improvement.md#t-702-implement-seven-day-sprint-and-exposure-ledger-m","prd_file":"prd/PRD-F7-form-b-and-improvement.md"},
-    {"id":"T-703","title":"Evaluate transfer signal and growth eligibility","body":"Require target improvement, verification non-degradation, safety, cost, exposure, adherence, and linking gates; decompose invalid/negative outcomes honestly.","milestone":"M3 · Alpha and Form B","labels":["epic:F7","size:L"],"deps":"T-702, T-603","ticket_file":"tickets/F7-form-b-and-improvement.md#t-703-evaluate-transfer-signal-and-growth-eligibility-l","prd_file":"prd/PRD-F7-form-b-and-improvement.md"},
-
-    {"id":"T-801","title":"Build README, demos, and contributor entry points","body":"Maintain explicit current/planned boundaries, verified commands, fixture-backed examples, safe issue templates, and no promotional generated attribution.","milestone":"M2 · Runner, Adapters, Form A","labels":["epic:F8","size:M"],"deps":"T-103; production claims also require T-601 and T-204","ticket_file":"tickets/F8-validation-and-public-oss.md#t-801-build-readme-demos-and-contributor-entry-points-m","prd_file":"prd/PRD-F8-validation-and-public-oss.md"},
-    {"id":"T-802","title":"Run preregistered 20-person alpha path","body":"Freeze scorer/tasks/analysis, balance known groups, counterbalance forms, conserve all rows, report missingness, and evaluate person/task/session variance without post-hoc primary subsets.","milestone":"M3 · Alpha and Form B","labels":["epic:F8","size:L"],"deps":"T-703, T-505","ticket_file":"tickets/F8-validation-and-public-oss.md#t-802-run-preregistered-20-person-alpha-path-l","prd_file":"prd/PRD-F8-validation-and-public-oss.md"},
-    {"id":"T-803","title":"Publish validation limitations intended use and judge reliability","body":"Regenerate all numbers from frozen results, expose negative outcomes/deviations, and prohibit unsupported percentile, certification, hiring, or industry-standard claims.","milestone":"M3 · Alpha and Form B","labels":["epic:F8","size:L"],"deps":"T-802","ticket_file":"tickets/F8-validation-and-public-oss.md#t-803-publish-validation-limitations-intended-use-and-judge-reliability-l","prd_file":"prd/PRD-F8-validation-and-public-oss.md"},
-    {"id":"T-804","title":"Decide license notices and enforce publication gate","body":"Record an explicit license decision, dependency inventory, third-party notices, completed UI conformance, and one-time owner publication approval. Missing or stale authority fails closed.","milestone":"M4 · Public OSS Readiness","labels":["epic:F8","size:M","release"],"deps":"T-803, T-906, and owner legal/product decision","ticket_file":"tickets/F8-validation-and-public-oss.md#t-804-decide-licensenotices-and-enforce-publication-gate-m","prd_file":"prd/PRD-F8-validation-and-public-oss.md"},
-    {"id":"T-805","title":"Obtain external fixture reproduction and first contribution","body":"Verify an independent fresh-clone fixture reproduction with exact versions/digests and one accepted technical contribution before G4 completes.","milestone":"M4 · Public OSS Readiness","labels":["epic:F8","size:L","release"],"deps":"T-804 and verified public transition","ticket_file":"tickets/F8-validation-and-public-oss.md#t-805-obtain-external-fixture-reproduction-and-first-contribution-l","prd_file":"prd/PRD-F8-validation-and-public-oss.md"},
-
-    {"id":"T-901","title":"Freeze presentation policy and registries","body":"Version deterministic archetype precedence, finish boundaries, Snapshot restrictions, Void behavior, factor labels, and prohibited claims without recomputing score or safety.","milestone":"M2.5 · Local Score UI","labels":["epic:F9","size:M"],"deps":"T-102, T-203, T-603","ticket_file":"tickets/F9-viral-score-ui.md#t-901-freeze-presentation-policy-and-registries-m","prd_file":"prd/PRD-F9-viral-score-ui.md"},
-    {"id":"T-902","title":"Build pure presentation view model","body":"Project validated canonical results into stable display data, derive only registered presentation fields, preserve one lever, and keep F6 efficiency separate from safety.","milestone":"M2.5 · Local Score UI","labels":["epic:F9","size:M"],"deps":"T-601, T-603, T-901","ticket_file":"tickets/F9-viral-score-ui.md#t-902-build-the-pure-presentation-view-model-m","prd_file":"prd/PRD-F9-viral-score-ui.md"},
-    {"id":"T-903","title":"Render accessible local HTML and six-factor radar","body":"Render the honesty bar, radar plus text equivalent, evidence drill-down, Opportunity details, one lever, keyboard behavior, reduced motion, and zero-network local assets.","milestone":"M2.5 · Local Score UI","labels":["epic:F9","size:L"],"deps":"T-602, T-902","ticket_file":"tickets/F9-viral-score-ui.md#t-903-render-accessible-local-html-and-six-factor-radar-l","prd_file":"prd/PRD-F9-viral-score-ui.md"},
-    {"id":"T-904","title":"Render deterministic SVG and PNG Operator Cards","body":"Create pinned-asset SVG and 1080x1648 PNG cards with deterministic manifests, required status metadata, withheld-score handling, and visual boundary fixtures.","milestone":"M2.5 · Local Score UI","labels":["epic:F9","size:L"],"deps":"T-902","ticket_file":"tickets/F9-viral-score-ui.md#t-904-render-deterministic-svg-and-png-operator-cards-l","prd_file":"prd/PRD-F9-viral-score-ui.md"},
-    {"id":"T-905","title":"Export privacy-safe share bundle and caption","body":"Allowlist share fields and atomically write local SVG, PNG, caption, and digest manifest with no upload, path escape, partial output, or prohibited claim.","milestone":"M2.5 · Local Score UI","labels":["epic:F9","size:M"],"deps":"T-603, T-904","ticket_file":"tickets/F9-viral-score-ui.md#t-905-export-the-privacy-safe-share-bundle-and-caption-m","prd_file":"prd/PRD-F9-viral-score-ui.md"},
-    {"id":"T-906","title":"Enforce UI honesty accessibility and performance conformance","body":"Fail CI on cross-format value drift, unsafe or Snapshot claim leakage, private-field export, network use, missing assets, accessibility failure, broken evidence, or over-budget cold render.","milestone":"M2.5 · Local Score UI","labels":["epic:F9","size:L","release"],"deps":"T-903, T-904, T-905","ticket_file":"tickets/F9-viral-score-ui.md#t-906-enforce-cross-format-honesty-accessibility-and-performance-l","prd_file":"prd/PRD-F9-viral-score-ui.md"}
+  "labels": [
+    {
+      "name": "epic:D0",
+      "color": "0E8A16",
+      "description": "AOS D0 epic"
+    },
+    {
+      "name": "epic:E0-A",
+      "color": "0E8A16",
+      "description": "AOS E0-A epic"
+    },
+    {
+      "name": "epic:E0-B",
+      "color": "0E8A16",
+      "description": "AOS E0-B epic"
+    },
+    {
+      "name": "epic:E0-C",
+      "color": "0E8A16",
+      "description": "AOS E0-C epic"
+    },
+    {
+      "name": "epic:E0-D",
+      "color": "0E8A16",
+      "description": "AOS E0-D epic"
+    },
+    {
+      "name": "epic:E1",
+      "color": "0E8A16",
+      "description": "AOS E1 epic"
+    },
+    {
+      "name": "epic:E2",
+      "color": "0E8A16",
+      "description": "AOS E2 epic"
+    },
+    {
+      "name": "epic:E3",
+      "color": "0E8A16",
+      "description": "AOS E3 epic"
+    },
+    {
+      "name": "epic:E4",
+      "color": "0E8A16",
+      "description": "AOS E4 epic"
+    },
+    {
+      "name": "epic:E5",
+      "color": "0E8A16",
+      "description": "AOS E5 epic"
+    },
+    {
+      "name": "epic:E6",
+      "color": "0E8A16",
+      "description": "AOS E6 epic"
+    },
+    {
+      "name": "epic:E7",
+      "color": "0E8A16",
+      "description": "AOS E7 epic"
+    },
+    {
+      "name": "epic:E8",
+      "color": "0E8A16",
+      "description": "AOS E8 epic"
+    },
+    {
+      "name": "epic:E9",
+      "color": "0E8A16",
+      "description": "AOS E9 epic"
+    },
+    {
+      "name": "epic:E10",
+      "color": "0E8A16",
+      "description": "AOS E10 epic"
+    },
+    {
+      "name": "epic:E11",
+      "color": "0E8A16",
+      "description": "AOS E11 epic"
+    },
+    {
+      "name": "epic:E12",
+      "color": "0E8A16",
+      "description": "AOS E12 epic"
+    },
+    {
+      "name": "epic:E13",
+      "color": "0E8A16",
+      "description": "AOS E13 epic"
+    },
+    {
+      "name": "epic:E14",
+      "color": "0E8A16",
+      "description": "AOS E14 epic"
+    },
+    {
+      "name": "phase:S0",
+      "color": "1D76DB",
+      "description": "S0 · Name & Contracts"
+    },
+    {
+      "name": "phase:S1",
+      "color": "1D76DB",
+      "description": "S1 · G0 Scorer Truth"
+    },
+    {
+      "name": "phase:S2",
+      "color": "1D76DB",
+      "description": "S2 · Runner & Differentiated Wedge"
+    },
+    {
+      "name": "phase:S3",
+      "color": "1D76DB",
+      "description": "S3 · Full Form A & Second Runtime"
+    },
+    {
+      "name": "phase:S4",
+      "color": "1D76DB",
+      "description": "S4 · Human Alpha & Retest"
+    },
+    {
+      "name": "phase:S5",
+      "color": "1D76DB",
+      "description": "S5 · Public OSS"
+    },
+    {
+      "name": "size:S",
+      "color": "C2E0C6",
+      "description": "Atomic ticket size S"
+    },
+    {
+      "name": "size:M",
+      "color": "FBCA04",
+      "description": "Atomic ticket size M"
+    },
+    {
+      "name": "size:L",
+      "color": "D93F0B",
+      "description": "Atomic ticket size L"
+    },
+    {
+      "name": "status:gate-required",
+      "color": "B60205",
+      "description": "Implementation blocked until ADR, PRD, and ticket gates pass"
+    },
+    {
+      "name": "release",
+      "color": "5319E7",
+      "description": "Publication/release gate"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "D0-001",
+      "title": "D0-001 · Canonical identifier registry",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: S\n- Dependencies: None\n- Exact implementation contract: [docs/tickets/D0/D0-001-canonical-identifier-registry.md](/docs/tickets/D0/D0-001-canonical-identifier-registry.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:S",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "D0-002",
+      "title": "D0-002 · Repository and npm-workspace skeleton",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: D0-001\n- Exact implementation contract: [docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md](/docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "D0-003",
+      "title": "D0-003 · Active documentation and legacy boundary migration",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: D0-001\n- Exact implementation contract: [docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md](/docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "D0-004",
+      "title": "D0-004 · Planning contract validator and governance gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: D0-002,D0-003\n- Exact implementation contract: [docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md](/docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0A-001",
+      "title": "E0A-001 · Freeze M01–M20 metric registry",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-A`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: D0-004\n- Exact implementation contract: [docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md](/docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-A",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0A-002",
+      "title": "E0A-002 · Freeze eligibility and score-issuance predicate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-A`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: E0A-001\n- Exact implementation contract: [docs/tickets/E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md](/docs/tickets/E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-A",
+        "phase:S0",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0A-003",
+      "title": "E0A-003 · Freeze formula, factor, safety, and display precision contract",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-A`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: E0A-002\n- Exact implementation contract: [docs/tickets/E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md](/docs/tickets/E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-A",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0B-001",
+      "title": "E0B-001 · Define adapter capability schema and complete event matrix",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-B`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: E0A-002\n- Exact implementation contract: [docs/tickets/E0-B/E0B-001-define-adapter-capability-schema-and-complete-event-matrix.md](/docs/tickets/E0-B/E0B-001-define-adapter-capability-schema-and-complete-event-matrix.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-B",
+        "phase:S0",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0B-002",
+      "title": "E0B-002 · Define controlled and imported session classification",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-B`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: E0B-001\n- Exact implementation contract: [docs/tickets/E0-B/E0B-002-define-controlled-and-imported-session-classification.md](/docs/tickets/E0-B/E0B-002-define-controlled-and-imported-session-classification.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-B",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0B-003",
+      "title": "E0B-003 · Specify capability doctor output and verdict fixtures",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-B`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: E0B-001,E0B-002\n- Exact implementation contract: [docs/tickets/E0-B/E0B-003-specify-capability-doctor-output-and-verdict-fixtures.md](/docs/tickets/E0-B/E0B-003-specify-capability-doctor-output-and-verdict-fixtures.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-B",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0C-001",
+      "title": "E0C-001 · Preregister pack simulation inputs and invariants",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-C`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: E0A-003,E0B-003\n- Exact implementation contract: [docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md](/docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-C",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0C-002",
+      "title": "E0C-002 · Implement deterministic pack budget and eligibility simulator",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-C`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: E0C-001\n- Exact implementation contract: [docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md](/docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-C",
+        "phase:S0",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0C-003",
+      "title": "E0C-003 · Emit preflight decision report and freeze gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-C`\n- Milestone: S0 · Name & Contracts\n- Size: S\n- Dependencies: E0C-002\n- Exact implementation contract: [docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md](/docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-C",
+        "phase:S0",
+        "size:S",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0D-001",
+      "title": "E0D-001 · Define prescription input formulas and missing rules",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-D`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: E0A-003,E0C-003\n- Exact implementation contract: [docs/tickets/E0-D/E0D-001-define-prescription-input-formulas-and-missing-rules.md](/docs/tickets/E0-D/E0D-001-define-prescription-input-formulas-and-missing-rules.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-D",
+        "phase:S0",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0D-002",
+      "title": "E0D-002 · Freeze treatment registry and safety remediation",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-D`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: E0D-001,E0A-001\n- Exact implementation contract: [docs/tickets/E0-D/E0D-002-freeze-treatment-registry-and-safety-remediation.md](/docs/tickets/E0-D/E0D-002-freeze-treatment-registry-and-safety-remediation.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-D",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E0D-003",
+      "title": "E0D-003 · Implement deterministic one-lever selector contract",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E0-D`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: E0D-001,E0D-002\n- Exact implementation contract: [docs/tickets/E0-D/E0D-003-implement-deterministic-one-lever-selector-contract.md](/docs/tickets/E0-D/E0D-003-implement-deterministic-one-lever-selector-contract.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S0 · Name & Contracts",
+      "labels": [
+        "epic:E0-D",
+        "phase:S0",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E1-001",
+      "title": "E1-001 · Define aos-trace schema and canonical event registry",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E1`\n- Milestone: S1 · G0 Scorer Truth\n- Size: L\n- Dependencies: E0A-002,E0B-003\n- Exact implementation contract: [docs/tickets/E1/E1-001-define-aos-trace-schema-and-canonical-event-registry.md](/docs/tickets/E1/E1-001-define-aos-trace-schema-and-canonical-event-registry.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E1",
+        "phase:S1",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E1-002",
+      "title": "E1-002 · Define aos-result and Opportunity Profile schemas",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E1`\n- Milestone: S1 · G0 Scorer Truth\n- Size: L\n- Dependencies: E1-001,E0A-003\n- Exact implementation contract: [docs/tickets/E1/E1-002-define-aos-result-and-opportunity-profile-schemas.md](/docs/tickets/E1/E1-002-define-aos-result-and-opportunity-profile-schemas.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E1",
+        "phase:S1",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E1-003",
+      "title": "E1-003 · Add schema conformance, compatibility, and digest gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E1`\n- Milestone: S1 · G0 Scorer Truth\n- Size: M\n- Dependencies: E1-001,E1-002\n- Exact implementation contract: [docs/tickets/E1/E1-003-add-schema-conformance-compatibility-and-digest-gate.md](/docs/tickets/E1/E1-003-add-schema-conformance-compatibility-and-digest-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E1",
+        "phase:S1",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E2-001",
+      "title": "E2-001 · Implement opportunity eligibility and evidence deduplication",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E2`\n- Milestone: S1 · G0 Scorer Truth\n- Size: L\n- Dependencies: E1-003,E0A-002\n- Exact implementation contract: [docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md](/docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E2",
+        "phase:S1",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E2-002",
+      "title": "E2-002 · Implement metric factor O/P and AOS-Coding P0 scoring",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E2`\n- Milestone: S1 · G0 Scorer Truth\n- Size: L\n- Dependencies: E2-001,E0A-003\n- Exact implementation contract: [docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md](/docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E2",
+        "phase:S1",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E2-003",
+      "title": "E2-003 · Implement ordered integrity safety and issuance gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E2`\n- Milestone: S1 · G0 Scorer Truth\n- Size: L\n- Dependencies: E2-002\n- Exact implementation contract: [docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md](/docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E2",
+        "phase:S1",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E2-004",
+      "title": "E2-004 · Build complete scorer conformance fixture corpus",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E2`\n- Milestone: S1 · G0 Scorer Truth\n- Size: L\n- Dependencies: E2-003,E0D-003\n- Exact implementation contract: [docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md](/docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E2",
+        "phase:S1",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E2-005",
+      "title": "E2-005 · Close G0 scorer truth reproducibility gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E2`\n- Milestone: S1 · G0 Scorer Truth\n- Size: M\n- Dependencies: E2-004\n- Exact implementation contract: [docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md](/docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S1 · G0 Scorer Truth",
+      "labels": [
+        "epic:E2",
+        "phase:S1",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E3-001",
+      "title": "E3-001 · Implement explicit-root fresh workspace lifecycle",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E3`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E2-005\n- Exact implementation contract: [docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md](/docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E3",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E3-002",
+      "title": "E3-002 · Separate worker oracle secrets descriptors and IPC",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E3`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E3-001\n- Exact implementation contract: [docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md](/docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E3",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E3-003",
+      "title": "E3-003 · Implement atomic budgets approvals and seeded fault replay",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E3`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E3-002\n- Exact implementation contract: [docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md](/docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E3",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E3-004",
+      "title": "E3-004 · Implement watchdog process reconciliation and one terminal state",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E3`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E3-003\n- Exact implementation contract: [docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md](/docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E3",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E4-001",
+      "title": "E4-001 · Define runtime adapter interface and controlled wrapper lifecycle",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E4`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E3-004,E0B-003\n- Exact implementation contract: [docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md](/docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E4",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E4-002",
+      "title": "E4-002 · Implement Codex identity and capability discovery",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E4`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E4-001\n- Exact implementation contract: [docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md](/docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E4",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E4-003",
+      "title": "E4-003 · Normalize Codex controlled events with bounded redaction",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E4`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E4-002\n- Exact implementation contract: [docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md](/docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E4",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E4-004",
+      "title": "E4-004 · Prove Codex doctor conformance and session classification",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E4`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: M\n- Dependencies: E4-003\n- Exact implementation contract: [docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md](/docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E4",
+        "phase:S2",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E5-001",
+      "title": "E5-001 · Define sealed scenario registry and opportunity audit",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E5`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E4-004,E0C-003\n- Exact implementation contract: [docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md](/docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E5",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E5-002",
+      "title": "E5-002 · Build FAM-4 continuity and resume scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E5`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E5-001\n- Exact implementation contract: [docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md](/docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E5",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E5-003",
+      "title": "E5-003 · Build FAM-4 retry transition and idempotency scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E5`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E5-001,E3-003\n- Exact implementation contract: [docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md](/docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E5",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E5-004",
+      "title": "E5-004 · Build FAM-4 stall termination and budget scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E5`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E5-002,E5-003\n- Exact implementation contract: [docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md](/docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E5",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E6-001",
+      "title": "E6-001 · Build FAM-5 public-green hidden-fail scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E6`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E5-004\n- Exact implementation contract: [docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md](/docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E6",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E6-002",
+      "title": "E6-002 · Build FAM-5 stale-evidence and exact-revision scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E6`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E6-001\n- Exact implementation contract: [docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md](/docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E6",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E6-003",
+      "title": "E6-003 · Build FAM-5 scope regression and wrong-target scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E6`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E6-001\n- Exact implementation contract: [docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md](/docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E6",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E6-004",
+      "title": "E6-004 · Compose FAM-5 claim-evidence conformance gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E6`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: M\n- Dependencies: E6-001,E6-002,E6-003\n- Exact implementation contract: [docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md](/docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E6",
+        "phase:S2",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E7-001",
+      "title": "E7-001 · Build FAM-6 failure diagnosis and minimum recovery scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E7`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E6-004\n- Exact implementation contract: [docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md](/docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E7",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E7-002",
+      "title": "E7-002 · Build FAM-6 least-privilege and safety scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E7`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E7-001\n- Exact implementation contract: [docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md](/docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E7",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E7-003",
+      "title": "E7-003 · Build FAM-6 quality-constrained efficiency scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E7`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: L\n- Dependencies: E7-001,E7-002\n- Exact implementation contract: [docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md](/docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E7",
+        "phase:S2",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E7-004",
+      "title": "E7-004 · Close differentiated wedge and G0 demo candidate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E7`\n- Milestone: S2 · Runner & Differentiated Wedge\n- Size: M\n- Dependencies: E7-001,E7-002,E7-003,E2-005\n- Exact implementation contract: [docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md](/docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S2 · Runner & Differentiated Wedge",
+      "labels": [
+        "epic:E7",
+        "phase:S2",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E8-001",
+      "title": "E8-001 · Build FAM-1 intent and contracting scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E8`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E7-004\n- Exact implementation contract: [docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md](/docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E8",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E8-002",
+      "title": "E8-002 · Build FAM-2 context RAG and decoy scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E8`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E7-004\n- Exact implementation contract: [docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md](/docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E8",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E8-003",
+      "title": "E8-003 · Build FAM-3 graph orchestration and join scenario",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E8`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E7-004\n- Exact implementation contract: [docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md](/docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E8",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E8-004",
+      "title": "E8-004 · Compose and freeze six-family Form A",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E8`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E8-001,E8-002,E8-003,E5-004,E6-004,E7-004,E0C-003\n- Exact implementation contract: [docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md](/docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E8",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E9-001",
+      "title": "E9-001 · Implement Claude Code identity capability and wrapper lifecycle",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E9`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E8-004,E0B-003\n- Exact implementation contract: [docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md](/docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E9",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E9-002",
+      "title": "E9-002 · Normalize Claude Code events with bounded redaction",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E9`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E9-001\n- Exact implementation contract: [docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md](/docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E9",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E9-003",
+      "title": "E9-003 · Prove Codex Claude semantic parity and declared differences",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E9`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E9-002,E4-004\n- Exact implementation contract: [docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md](/docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E9",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E10-001",
+      "title": "E10-001 · Render canonical JSON and Markdown reports",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E10`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: L\n- Dependencies: E9-003,E8-004,E2-005\n- Exact implementation contract: [docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md](/docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E10",
+        "phase:S3",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E10-002",
+      "title": "E10-002 · Implement metric event artifact evidence drill-down",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E10`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: M\n- Dependencies: E10-001\n- Exact implementation contract: [docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md](/docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E10",
+        "phase:S3",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E10-003",
+      "title": "E10-003 · Render deterministic primary constraint and one lever",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E10`\n- Milestone: S3 · Full Form A & Second Runtime\n- Size: M\n- Dependencies: E10-001,E10-002,E0D-003\n- Exact implementation contract: [docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md](/docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S3 · Full Form A & Second Runtime",
+      "labels": [
+        "epic:E10",
+        "phase:S3",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E11-001",
+      "title": "E11-001 · Build linked non-reused Form B and exposure gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E11`\n- Milestone: S4 · Human Alpha & Retest\n- Size: L\n- Dependencies: E10-003\n- Exact implementation contract: [docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md](/docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S4 · Human Alpha & Retest",
+      "labels": [
+        "epic:E11",
+        "phase:S4",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E11-002",
+      "title": "E11-002 · Implement one-lever seven-day sprint ledger",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E11`\n- Milestone: S4 · Human Alpha & Retest\n- Size: M\n- Dependencies: E11-001\n- Exact implementation contract: [docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md](/docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S4 · Human Alpha & Retest",
+      "labels": [
+        "epic:E11",
+        "phase:S4",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E11-003",
+      "title": "E11-003 · Classify retest attribution and transfer signal",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E11`\n- Milestone: S4 · Human Alpha & Retest\n- Size: L\n- Dependencies: E11-002\n- Exact implementation contract: [docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md](/docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S4 · Human Alpha & Retest",
+      "labels": [
+        "epic:E11",
+        "phase:S4",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E12-001",
+      "title": "E12-001 · Freeze alpha preregistration protocol and data dictionary",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E12`\n- Milestone: S4 · Human Alpha & Retest\n- Size: L\n- Dependencies: E11-003\n- Exact implementation contract: [docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md](/docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S4 · Human Alpha & Retest",
+      "labels": [
+        "epic:E12",
+        "phase:S4",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E12-002",
+      "title": "E12-002 · Execute reference and 20-person alpha with immutable provenance",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E12`\n- Milestone: S4 · Human Alpha & Retest\n- Size: L\n- Dependencies: E12-001\n- Exact implementation contract: [docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md](/docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S4 · Human Alpha & Retest",
+      "labels": [
+        "epic:E12",
+        "phase:S4",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E12-003",
+      "title": "E12-003 · Analyze alpha and publish G1 G2 G3 verdicts",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E12`\n- Milestone: S4 · Human Alpha & Retest\n- Size: L\n- Dependencies: E12-002\n- Exact implementation contract: [docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md](/docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S4 · Human Alpha & Retest",
+      "labels": [
+        "epic:E12",
+        "phase:S4",
+        "size:L",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E13-001",
+      "title": "E13-001 · Define and render Snapshot ESTIMATE output",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E13`\n- Milestone: S5 · Public OSS\n- Size: M\n- Dependencies: E12-003\n- Exact implementation contract: [docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md](/docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S5 · Public OSS",
+      "labels": [
+        "epic:E13",
+        "phase:S5",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E13-002",
+      "title": "E13-002 · Implement explicit privacy-allowlisted Snapshot share artifact",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E13`\n- Milestone: S5 · Public OSS\n- Size: M\n- Dependencies: E13-001\n- Exact implementation contract: [docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md](/docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S5 · Public OSS",
+      "labels": [
+        "epic:E13",
+        "phase:S5",
+        "size:M",
+        "status:gate-required"
+      ]
+    },
+    {
+      "id": "E14-001",
+      "title": "E14-001 · Complete name license notices and security clearance",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E14`\n- Milestone: S5 · Public OSS\n- Size: L\n- Dependencies: E13-002\n- Exact implementation contract: [docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md](/docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S5 · Public OSS",
+      "labels": [
+        "epic:E14",
+        "phase:S5",
+        "size:L",
+        "status:gate-required",
+        "release"
+      ]
+    },
+    {
+      "id": "E14-002",
+      "title": "E14-002 · Build public documentation demo and contributor conformance surface",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E14`\n- Milestone: S5 · Public OSS\n- Size: L\n- Dependencies: E14-001\n- Exact implementation contract: [docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md](/docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S5 · Public OSS",
+      "labels": [
+        "epic:E14",
+        "phase:S5",
+        "size:L",
+        "status:gate-required",
+        "release"
+      ]
+    },
+    {
+      "id": "E14-003",
+      "title": "E14-003 · Obtain independent reproduction and close G4 publication gate",
+      "body": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E14`\n- Milestone: S5 · Public OSS\n- Size: L\n- Dependencies: E14-002,E12-003\n- Exact implementation contract: [docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md](/docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency.",
+      "milestone": "S5 · Public OSS",
+      "labels": [
+        "epic:E14",
+        "phase:S5",
+        "size:L",
+        "status:gate-required",
+        "release"
+      ]
+    }
   ]
 }

@@ -1,145 +1,127 @@
-# AgentOps Score (AOS)
+# Agent Operator Score (AOS)
 
-[![CI](https://github.com/MongLong0214/AgentOps-Score/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/MongLong0214/AgentOps-Score/actions/workflows/ci.yml)
+> **Current status: planning baseline. Product not implemented.**
 
-**An open assessment for human agent operations. Declared environment. Real tasks. Traceable evidence. Actionable improvement.**
+Agent Operator Score is a planned local-first open assessment of how effectively a human operator runs AI coding agents in a declared environment.
 
-AgentOps Score is a planned local-first tool for measuring how effectively a human operator turns goals into verified, safe, repeatable outcomes with coding agents. It evaluates the operator in a declared Opportunity Profile—not the model alone, prompt length, tool count, or installed harness.
+**Measure the operator, not just the model.**
 
-> **Current status: planning baseline.** The repository contains accepted identity/architecture decisions, production PRDs, 41 atomic implementation tickets, milestones, and planning-only CI. The `agentops-score` package, `aos` CLI, scorer, runner, adapters, assessment forms, and local score UI are **not implemented or published yet**.
+The assessment unit is the human operator. Model, runtime, harness, tools, permissions, network, context, time, token/tool-call budgets, and intervention policy are recorded in an Opportunity Profile. P0 does not statistically remove those environment effects; it reports conditional performance and blocks invalid comparison.
 
-## Why AOS
+## Canonical identity
 
-AOS is designed to answer five questions:
-
-1. What is my current evidence-backed operating level?
-2. What evidence produced that result?
-3. Where does my workflow lose the most performance?
-4. Which single change is most likely to help?
-5. Does that improvement transfer to a different task form?
-
-The initial method freezes 20 metrics across intent, context, orchestration, state, verification, recovery, governance, and value. Safety is a hard gate, not an averageable score.
-
-## Technology stack
-
-| Layer | Decision |
+| Surface | Value |
 |---|---|
-| Runtime | Node.js 20+; CI floor and current LTS lanes |
-| Language | Strict TypeScript |
-| Distribution | Planned npm package `agentops-score`, binary `aos` |
-| Data contracts | JSON Schema and canonical JSON |
-| Storage | Local `.aos/`; telemetry off |
-| Supported runtimes | Planned Codex and Claude Code adapters |
+| Product | Agent Operator Score |
+| Abbreviation | AOS |
+| Initial instrument | AOS-Coding |
+| Provisional score | AOS-Coding P0 |
+| Repository/package candidate | `agent-operator-score` |
+| CLI | `aos` |
+| Local state | `.aos/` |
 
-See [ADR-0003](docs/adr/ADR-0003-runtime-and-distribution.md) and [.github/copilot/Technology_Stack.md](.github/copilot/Technology_Stack.md).
+Legacy identifiers are forbidden in the active tree. Historical planning material was removed from the active tree and is recoverable only through Git history.
 
-## Architecture
+## Product truth
 
-```mermaid
-flowchart LR
-  Registry[Scenario Registry] --> Adapter[Runtime Adapter + Opportunity Profile]
-  Adapter --> Runner[Isolated Runner]
-  Runner --> Trace[Normalized Trace Recorder]
-  Trace --> Graders[Oracle & Policy Graders]
-  Graders --> Scorer[20-Metric Scorer]
-  Scorer --> Diagnosis[AOS-P0 + One Lever]
-  Diagnosis --> Report[Markdown / JSON Report]
+AOS-Coding P0 is an **EXPERIMENTAL / PROVISIONAL** score for observed operator performance in a declared Opportunity Profile and controlled six-family coding task pack.
+
+It is not:
+
+- a stable environment-independent personal ability;
+- a model or harness benchmark;
+- a percentile, certification, hiring signal, global rank, or industry standard;
+- a SaaS, account, payment, telemetry, or central-data product.
+
+Verified scores require a controlled AOS wrapper from start to finish. Imported sessions are **DIAGNOSTIC ONLY**. Snapshot is **ESTIMATE** and cannot display AOS-Coding P0 or safety-clear language.
+
+## What exists now
+
+- final single source of truth;
+- 12 proposed ADRs;
+- 19 proposed PRDs;
+- 65 atomic implementation tickets;
+- milestone, dependency, acceptance, and evidence contracts;
+- planning-only CI.
+
+The `agent-operator-score` package, `aos` CLI, schemas, scorer, runner, adapters, task forms, reports, Snapshot, and public release do **not** exist yet.
+
+## Fixed implementation order
+
+```text
+D0 name migration and repository skeleton
+→ E0-A metric and issuance contract
+→ E0-B adapter observability contract
+→ E0-C pack time and eligibility simulation
+→ E0-D prescription input formulas
+→ E1 aos-trace / aos-result schemas
+→ E2 deterministic scorer and conformance fixtures
+→ E3 isolated controlled runner
+→ E4 Codex adapter
+→ E5 FAM-4 Loop & State
+→ E6 FAM-5 False Completion
+→ E7 FAM-6 Recovery, Safety & Efficiency
+→ G0
+→ E8 FAM-1/2/3 and complete Form A
+→ E9 Claude Code adapter and parity
+→ E10 report and one lever
+→ E11 Form B and retest modes
+→ E12 20-person alpha and G1–G3
+→ E13 Snapshot ESTIMATE
+→ E14 public OSS and G4
 ```
 
-Missing adapter observability blocks affected metrics or the score; it is never reinterpreted as poor operator performance. Deterministic oracles outrank model judges. See [Architecture](.github/copilot/Architecture.md).
+A failed gate blocks every later stage. No UI, third runtime, SaaS, new metric, or broader domain may jump this order.
 
-## Getting started
-
-### Inspect the planning baseline
+## Planned CLI — not available yet
 
 ```bash
-git clone https://github.com/MongLong0214/AgentOps-Score.git
-cd AgentOps-Score
-npm ci
-npm test
-npm run build
+npx agent-operator-score doctor
+npx agent-operator-score fixtures verify
+npx agent-operator-score doctor --capabilities --runtime codex
+npx agent-operator-score assess --runtime codex --suite coding-core-v0 --form A
+npx agent-operator-score score --run ./runs/<id>
+npx agent-operator-score report --run ./runs/<id>
+npx agent-operator-score retest --runtime codex --form B --baseline ./runs/<id>
+npx agent-operator-score export --run ./runs/<id> --anonymous
 ```
 
-These commands validate the repository's Phase 4 planning contracts. They do not run an AOS assessment.
+Do not run these commands until the owning tickets are implemented and verified.
 
-### Planned CLI — not available yet
+## Planning map
 
-The following interface is the accepted product target and must not be treated as working installation instructions:
+- [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md)
+- [ADRs](docs/adr/INDEX.md)
+- [PRDs](docs/prd/INDEX.md)
+- [Atomic ticket board](docs/tickets/BOARD.md)
+- [GitHub issue map](docs/GITHUB-ISSUE-MAP.md)
+- [Milestones](docs/MILESTONES.md)
+- [Traceability](docs/TRACEABILITY.md)
+
+All ADRs, PRDs, and tickets are currently **PROPOSED/BLOCKED**. Issue creation does not authorize product code.
+
+## Required development protocol
 
 ```text
-npx agentops-score fixtures verify
-npx agentops-score doctor --capabilities --runtime codex
-npx agentops-score assess --runtime codex --suite coding-core-v0 --form A
-npx agentops-score report --run ./runs/<id>
+final SSOT
+→ accepted ADR set
+→ accepted owning PRD
+→ accepted exact atomic ticket
+→ exact-base execution packet
+→ RED with expected reason
+→ minimum GREEN
+→ focused + full + build/package + required manual/live verification
+→ cumulative exact-head review
+→ exact-head CI
+→ explicit merge authorization
 ```
 
-Implementation begins at [T-001](docs/tickets/F0-preflight-contracts.md#t-001-freeze-m01m20-registry-m), not at the CLI surface.
+Each ticket owns exact files and symbols and defines forbidden scope, dependencies, RED, minimum GREEN, acceptance-to-test mapping, stop conditions, evidence, and invalidation. Read the exact ticket in full before editing.
 
-## Project structure
+## Local-first and privacy
 
-```text
-docs/adr/          accepted decisions and rejected alternatives
-docs/prd/          feature requirements and acceptance criteria
-docs/tickets/      41 atomic TDD execution tickets and dependency graph
-docs/north-star/   final product planning baseline
-docs/research/     adverse evidence, feasibility, citations
-.github/copilot/   architecture, stack, workflow, standards, tests
-.github/workflows/ planning-only CI skeleton
-scripts/           repository planning-contract validation
-tests/             planning-contract tests
-```
+Verified runs and reports stay local. Default telemetry is OFF. Secret values and hidden chain-of-thought are never stored. Optional anonymous export is explicit, allowlisted, and implemented only by its future ticket.
 
-The planned product layout adds `packages/`, `adapters/`, `suites/`, `fixtures/`, `specs/`, and `conformance/` only through approved issues.
+## License and publication
 
-## Planned capabilities
-
-- Versioned Opportunity Profiles for runtime, model, harness, tool, permission, and budget conditions
-- 20 evidence-bound metrics across six assessment families
-- AOS-P0 with coverage rules and an M19 safety hard gate
-- Isolated local runner with fault, budget, retry, and stale-evidence semantics
-- Codex and Claude Code capability-aware adapters
-- Deterministic scorer and public conformance fixtures
-- `PROVISIONAL` Verified Core, `ESTIMATE` Snapshot, and one-lever Form B retest
-- Local-only data by default and explicit anonymous export only
-
-No percentile, certification, hiring claim, public personal leaderboard, account, payment, central user database, or default telemetry is in scope.
-
-## Development workflow
-
-- Default integration branch: `dev`; release branch: `main`.
-- Work starts from a GitHub issue on `feat-issue-<id>` or `bug-issue-<id>`.
-- Every ticket uses RED → minimum GREEN → focused → full → build/package → manual/LIVE_NA → review → exact-head CI.
-- Candidate-head changes invalidate affected evidence.
-- Product implementation cannot start until its ADR, PRD, and atomic ticket gates are accepted.
-
-See [Workflow Analysis](.github/copilot/Workflow_Analysis.md) and the [ticket dependency graph](docs/tickets/TICKETS.md).
-
-## Coding standards
-
-- Strict types at trust boundaries; no silent fallback or unknown coercion.
-- Deterministic-first grading and canonical serialization.
-- Explicit terminal reasons, observability status, redaction state, and provenance.
-- Minimum privilege, wrong-target checks, idempotency, and partial-state handling.
-- No hidden chain-of-thought or secret values in traces.
-
-See [Coding Standards](.github/copilot/Coding_Standards.md).
-
-## Testing
-
-Current CI validates planning completeness on Node.js 20 and 24. Product tickets require unit, property, conformance, mutation, integration, security/privacy, and manual/live evidence as applicable. A passing test is insufficient when the test could not observe its target.
-
-See [Unit Tests](.github/copilot/Unit_Tests.md) and [ADR-0010](docs/adr/ADR-0010-validation-and-stop-rules.md).
-
-## Contributing
-
-Start with [CONTRIBUTING.md](CONTRIBUTING.md), then select an unblocked issue from the earliest milestone. Do not implement a later ticket around a failed or unverified dependency. New metrics and runtimes are frozen outside the 90-day critical path.
-
-## Intended use and limitations
-
-AOS is intended for personal improvement in coding-agent operations. The future score remains `PROVISIONAL` until calibration gates pass. Local OSS cannot guarantee credential-grade anti-cheat security. Hiring, promotion, surveillance, certification, and industry-standard claims are out of scope.
-
-The accepted north-star is [agentops-score-ssot-v1.0.md](docs/north-star/agentops-score-ssot-v1.0.md).
-
-## License
-
-No OSS license has been selected yet. The repository stays private and is not ready for redistribution until [T-804](docs/tickets/F8-validation-and-public-oss.md#t-804-decide-licensenotices-and-enforce-publication-gate-m) records the license, third-party notices, and publication approval.
+No OSS license or public package has been approved. Repository visibility, npm publication, name clearance, license, third-party notices, security policy, and independent external reproduction are E14/G4 blockers.

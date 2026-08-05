@@ -1,31 +1,43 @@
-# Contributing to AgentOps Score
+# Contributing to Agent Operator Score
 
-## Start here
+AOS is not yet a public product. The repository currently contains a gated development specification, not an implemented assessment.
 
-1. Read the relevant ADR and PRD.
-2. Select the earliest unblocked GitHub issue.
-3. Pin the exact base SHA and use `feat-issue-<id>` or `bug-issue-<id>` from `dev`.
-4. Follow the atomic ticket's ownership, RED, minimum GREEN, and verification commands.
+## Read first
 
-## Review rejection conditions
+1. [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md)
+2. [ADR index](docs/adr/INDEX.md)
+3. [Owning PRD](docs/prd/INDEX.md)
+4. [Exact atomic ticket](docs/tickets/BOARD.md)
+5. [AGENTS.md](AGENTS.md)
 
-A change is rejected when it lacks a recorded RED, modifies unowned files, weakens an assertion to make CI green, uses stale evidence, hides a fallback, guesses unavailable observability, expands frozen scope, or leaves security/privacy/wrong-target/timeout/partial-state behavior unverified.
+## Do not start from an issue title
 
-When dogfooding fails, exactly one of two things is wrong: the artifact or the rule. Fix and record one of those. Weakening the assertion to obtain green is neither.
+The exact ticket file is the implementation contract. It states owned files/symbols, dependencies, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, evidence, and invalidation.
 
-## Commit and merge rules
+All tickets are currently blocked pending separate ADR, PRD, and exact-ticket gates.
 
-- Use focused conventional commits and stage explicit paths; do not use blanket staging.
-- Merge issue branches to `dev` with review and `--no-ff`.
-- `main` accepts release and hotfix merges only.
-- Never force-push or delete protected branches.
-- Do not add generated-by footers, generator labels, or internal execution metadata to public artifacts.
+## Change protocol
 
-## Evidence receipt
+- Use `feat-issue-<number>` or `bug-issue-<number>`.
+- Pin exact base SHA and keep ownership disjoint.
+- Capture RED before GREEN.
+- Implement minimum scope.
+- Run focused, full, build/package, and required controlled manual/live verification.
+- Re-run affected evidence after every head, fixture, oracle, lockfile, runtime, or permission change.
+- Never direct-push protected branches.
 
-Every completed issue reports exact head, changed paths, RED and GREEN logs, full/build results, artifact hash when applicable, manual/live or approved `LIVE_NA`, security/privacy result, review verdict, and exact-head CI URL.
+## Measurement changes
 
-## Frozen boundaries
+M01–M20, factor mapping, issuance, formula, safety, Opportunity Profile, task opportunity, treatment, and comparison changes require the owning ADR/PRD to be reopened before code. Do not submit a casual metric change.
 
-Until alpha completes, do not add a 21st metric, third runtime, SaaS/account/payment surface, percentile, certification, hiring interpretation, or central telemetry.
+## Safety and privacy
 
+Never include secret values, hidden reasoning, raw private project content, uncontrolled external actions, or destructive commands. Local-only and telemetry-OFF are defaults.
+
+## Public claim boundary
+
+Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an industry standard, or environment-independent. Snapshot is ESTIMATE; controlled full results are EXPERIMENTAL / PROVISIONAL; imported sessions are DIAGNOSTIC ONLY.
+
+## License
+
+No OSS license has been selected. Contribution acceptance and redistribution remain blocked until E14/G4 clearance.

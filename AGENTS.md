@@ -1,18 +1,50 @@
 # AGENTS.md
 
-## Authority
+## Authority order
 
-Read `docs/adr/`, the owning `docs/prd/` file, and the exact atomic ticket before editing. The ticket owns the listed files and symbols only.
+1. `docs/north-star/agent-operator-score-ssot-v1.0.md`
+2. accepted ADRs required by the owning PRD
+3. accepted owning PRD
+4. accepted exact atomic ticket
+5. exact-base execution packet
 
-## Workflow
+If any item is missing, proposed, stale, ambiguous, or conflicts with a higher authority, stop. GitHub issue state alone is not authorization.
 
-1. Pin exact base SHA.
-2. Capture the ticket's RED and expected reason.
-3. Make the minimum GREEN change.
-4. Run focused, full, build/package, and manual/live lanes required by the ticket.
-5. Record exact-head evidence; a head change invalidates affected lanes.
+## Current gate state
 
-## Commands
+The repository is a planning baseline. All active ADRs, PRDs, and 65 tickets are PROPOSED/BLOCKED. Product implementation is forbidden until each required gate is explicitly accepted.
+
+## Per-ticket workflow
+
+1. Read the final SSOT, required ADRs, owning PRD, and exact ticket in full.
+2. Pin base SHA, branch, runtime/toolchain identity, permission profile, and owned paths/symbols.
+3. Verify every dependency is completed and its evidence is current.
+4. Add the ticket's named RED test and capture the exact expected failure before production edits.
+5. Implement only the minimum GREEN within owned files/symbols.
+6. Run focused, full, build/package, and required manual/live lanes.
+7. Audit diff ownership, security, privacy, fail-closed behavior, wrong target, ambiguity, timeout, partial state, and stale evidence.
+8. Record evidence tied to exact candidate head.
+9. Obtain cumulative exact-head review and exact-head CI.
+10. Merge only with explicit authorization and reverify post-merge state.
+
+## Hard stops
+
+Stop immediately on ownership overlap, unknown dependency state, wrong target, missing required observability, unsafe permission, secret exposure, hidden-reasoning capture, silent fallback, nondeterminism, unregistered terminal state, timeout without reconciliation, partial state, stale evidence, or a RED failure different from the ticket contract.
+
+Do not broaden scope or weaken a gate to work around a blocker.
+
+## Repository rules
+
+- Default branch: `dev`; production branch: `main`.
+- Issue branches: `feat-issue-<number>` or `bug-issue-<number>`.
+- No direct push to protected branches.
+- No product code before the applicable step gates.
+- No generated attribution or internal agent/model/session/routing metadata in public GitHub surfaces.
+- No secret value, hidden chain-of-thought, unbounded raw terminal output, or raw project upload in traces.
+- No destructive cleanup outside an explicit verified run temp root.
+- Legacy identifiers are forbidden in the active tree. Historical planning material was removed from the active tree and is recoverable only through Git history.
+
+## Baseline commands
 
 ```bash
 npm ci
@@ -20,13 +52,4 @@ npm test
 npm run build
 ```
 
-## Stop conditions
-
-Stop on ownership overlap, ambiguous acceptance, wrong target, missing required observability, unsafe permission, silent fallback, timeout without terminal state, partial state, or stale evidence. Do not broaden scope to work around a failed dependency.
-
-## Repository rules
-
-- Default branch `dev`; production branch `main`.
-- Issue branches: `feat-issue-<id>` and `bug-issue-<id>`.
-- No direct push to protected branches, generated attribution, hidden reasoning capture, secrets in traces, or destructive cleanup outside an explicit test temp root.
-
+Ticket-specific commands and expected results override generic examples but never replace the full/build lanes.
