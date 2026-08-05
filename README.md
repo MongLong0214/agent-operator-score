@@ -94,6 +94,7 @@ Do not run these commands until the owning tickets are implemented and verified.
 - [ADRs](docs/adr/INDEX.md)
 - [PRDs](docs/prd/INDEX.md)
 - [Atomic ticket board](docs/tickets/BOARD.md)
+- [GitHub issue map](docs/GITHUB-ISSUE-MAP.md)
 - [Milestones](docs/MILESTONES.md)
 - [Traceability](docs/TRACEABILITY.md)
 - [Legacy planning](docs/north-star/legacy/)

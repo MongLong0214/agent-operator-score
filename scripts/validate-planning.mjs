@@ -11,6 +11,7 @@ const required = [
   "docs/adr/INDEX.md",
   "docs/prd/INDEX.md",
   "docs/tickets/BOARD.md",
+  "docs/GITHUB-ISSUE-MAP.md",
   "docs/MILESTONES.md",
   "docs/TRACEABILITY.md",
   "docs/issues.json",
