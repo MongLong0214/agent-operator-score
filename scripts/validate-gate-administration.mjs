@@ -225,8 +225,9 @@ const verifyBatch = (root, batch, errors) => {
   }
   const requiredPairs = new Set();
   for (const [index, artifact] of batch.required_artifacts.entries()) {
-    if (!checkKeys(artifact, ["path", "kind"], ["path", "kind"], `${label}.required_artifacts[${index}]`, errors)) continue;
-    if (!safeRelativePath(artifact.path) || !expectedPathForKind(artifact.path, artifact.kind)) {
+    if (!checkKeys(artifact, ["path", "sha256", "kind"], ["path", "kind"], `${label}.required_artifacts[${index}]`, errors)) continue;
+    if (!safeRelativePath(artifact.path) || !expectedPathForKind(artifact.path, artifact.kind) ||
+      (own(artifact, "sha256") && !hash64(artifact.sha256))) {
       errors.push(`${label} has wrong required artifact target ${artifact.path}`);
     }
     const key = pair(artifact);
@@ -252,6 +253,14 @@ const verifyBatch = (root, batch, errors) => {
     if (batch.artifacts.length || batch.transitions.length || own(batch, "preparation") || own(batch, "approval") ||
       own(batch, "invalidation") || own(batch.target, "reviewed_head")) {
       errors.push(`${label} pending state contains acceptance or invalidation evidence`);
+    }
+    for (const artifact of batch.required_artifacts) {
+      const artifactPath = resolve(root, artifact.path);
+      if (!artifactPath.startsWith(`${root}/`) || !existsSync(artifactPath)) {
+        errors.push(`${label} pending required artifact has wrong target ${artifact.path}`);
+      } else if (hash64(artifact.sha256) && sha256(readFileSync(artifactPath)) !== artifact.sha256) {
+        errors.push(`${label} pending required artifact digest is stale ${artifact.path}`);
+      }
     }
     return;
   }
