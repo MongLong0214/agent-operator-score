@@ -1,0 +1,33 @@
+name: Metric RFC
+description: Propose a metric change after the alpha freeze permits it
+title: "Metric RFC: "
+labels: ["metric-rfc"]
+body:
+  - type: markdown
+    attributes:
+      value: Metrics M01–M20 are frozen through alpha. This template records evidence for a later change; it does not authorize implementation.
+  - type: input
+    id: construct
+    attributes:
+      label: Construct gap
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and counterevidence
+    validations:
+      required: true
+  - type: textarea
+    id: opportunity
+    attributes:
+      label: Observable opportunity and oracle
+    validations:
+      required: true
+  - type: textarea
+    id: treatment
+    attributes:
+      label: Improvement treatment and validation path
+    validations:
+      required: true
+

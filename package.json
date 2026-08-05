@@ -1,0 +1,16 @@
+{
+  "name": "agentops-score-repository",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Planning baseline for AgentOps Score; the public package is not implemented.",
+  "type": "module",
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "scripts": {
+    "test": "node --test tests/planning-contract.test.mjs",
+    "build": "node scripts/validate-planning.mjs --build",
+    "docs:check": "node scripts/validate-planning.mjs"
+  }
+}
+
