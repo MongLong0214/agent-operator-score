@@ -96,7 +96,7 @@ No issue closure, RED test, production edit, or implementation evidence is recor
 ## Reconciliation sources
 
 - `docs/decisions/MAINTAINER-GATE-STATUS.md`
-- `docs/decisions/maintainer-gate-registry.v1.json`
+- `docs/decisions/maintainer-gate-registry.v2.json`
 - `docs/tickets/BOARD.md`
 - `docs/GITHUB-ISSUE-MAP.md`
 - GitHub open-issue inventory for `MongLong0214/agent-operator-score`
