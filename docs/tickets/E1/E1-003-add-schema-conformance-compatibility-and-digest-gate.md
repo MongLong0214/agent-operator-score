@@ -1,6 +1,6 @@
 # E1-003 · Add schema conformance, compatibility, and digest gate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E1
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E1](../../prd/PRD-E1-trace-and-result-schemas.md)

@@ -1,6 +1,6 @@
 # E3-002 · Separate worker oracle secrets descriptors and IPC
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E3
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E3](../../prd/PRD-E3-isolated-controlled-runner.md)
@@ -25,7 +25,7 @@ Separate worker oracle secrets descriptors and IPC. Deliver only the bounded con
 
 ## Forbidden scope
 
-- real secrets; relying on path obscurity; warning-only oracle access
+- real secrets; relying on path obscurity; warning-only oracle access; oracle materialization before worker termination
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -33,12 +33,12 @@ Separate worker oracle secrets descriptors and IPC. Deliver only the bounded con
 
 - Test file: `packages/runner/test/isolation.test.ts`
 - Focused command: `npm test -w @aos/runner -- isolation`
-- Expected pre-GREEN failure: worker inherits oracle paths, secret env, descriptors or IPC handles.
+- Expected pre-GREEN failure: worker can reach an oracle file, environment canary, inherited descriptor, temporary location, symlink, `/proc` file descriptor, or a post-run oracle before termination.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
 ## Minimum GREEN
 
-- construct allowlisted environment/descriptors/paths/IPC; deny oracle and canaries; classify violation INVALID/UNSAFE.
+- construct an allowlisted worker environment/descriptors/paths/IPC; materialize the oracle only after the worker has terminated; deny oracle and canaries without relying on path obscurity; classify every violation `INVALID`/`UNSAFE`.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -49,6 +49,10 @@ Separate worker oracle secrets descriptors and IPC. Deliver only the bounded con
 - AC-E3-002-4 ↔ `packages/runner/test/isolation.test.ts` case `ipc-leak`.
 - AC-E3-002-5 ↔ `packages/runner/test/isolation.test.ts` case `child-inherit`.
 - AC-E3-002-6 ↔ `packages/runner/test/isolation.test.ts` case `redaction`.
+- AC-E3-002-7 ↔ `packages/runner/test/isolation.test.ts` case `temp-oracle`.
+- AC-E3-002-8 ↔ `packages/runner/test/isolation.test.ts` case `symlink-oracle`.
+- AC-E3-002-9 ↔ `packages/runner/test/isolation.test.ts` case `proc-fd-oracle`.
+- AC-E3-002-10 ↔ `packages/runner/test/isolation.test.ts` case `post-run-materialization`.
 
 ## Verification
 

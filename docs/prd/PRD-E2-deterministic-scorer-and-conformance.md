@@ -1,6 +1,6 @@
 # PRD E2 — Establish G0 scorer truth with deterministic aggregation, issuance, safety, and conformance fixtures.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S1 · G0 Scorer Truth
 - Dependencies: E1; ADR-0005, 0006, 0011
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

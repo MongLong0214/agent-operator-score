@@ -1,6 +1,6 @@
 # E0D-001 · Define prescription input formulas and missing rules
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-D
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-D](../../prd/PRD-E0D-deterministic-prescription-input-contract.md)

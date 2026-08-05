@@ -1,6 +1,6 @@
 # E6-001 · Build FAM-5 public-green hidden-fail scenario
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E6
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E6](../../prd/PRD-E6-fam5-false-completion-scenarios.md)

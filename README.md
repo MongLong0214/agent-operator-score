@@ -66,7 +66,7 @@ D0 name migration and repository skeleton
 → E9 Claude Code adapter and parity
 → E10 report and one lever
 → E11 Form B and retest modes
-→ E12 20-person alpha and G1–G3
+→ E12 20-person feasibility alpha and decision
 → E13 Snapshot ESTIMATE
 → E14 public OSS and G4
 ```
@@ -124,4 +124,4 @@ Verified runs and reports stay local. Default telemetry is OFF. Secret values an
 
 ## License and publication
 
-No OSS license or public package has been approved. Repository visibility, npm publication, name clearance, license, third-party notices, security policy, and independent external reproduction are E14/G4 blockers.
+This is a public, source-visible planning repository. D0 minimum name clearance is a separate canonical-identity decision. No OSS license or public package has been approved, so external contribution acceptance and redistribution are blocked; LICENSE, contribution acceptance, redistribution, npm publication, third-party notices, security policy, formal publication clearance, and independent external reproduction are E14/G4 decisions.

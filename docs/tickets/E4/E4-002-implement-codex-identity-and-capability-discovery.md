@@ -1,6 +1,6 @@
 # E4-002 · Implement Codex identity and capability discovery
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E4
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E4](../../prd/PRD-E4-codex-adapter.md)
@@ -25,7 +25,7 @@ Implement Codex identity and capability discovery. Deliver only the bounded cont
 
 ## Forbidden scope
 
-- invented revision; reading private unrelated config; treating unknown as success
+- invented revision; reading private unrelated config; experimental websocket; private database; undocumented logs; treating unknown as success
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -33,12 +33,12 @@ Implement Codex identity and capability discovery. Deliver only the bounded cont
 
 - Test file: `adapters/codex/test/capabilities.test.ts`
 - Focused command: `npm test -w @aos/adapter-codex -- capabilities`
-- Expected pre-GREEN failure: unknown/missing identity and source-less capability rows appear complete.
+- Expected pre-GREEN failure: unknown/missing identity, missing installed generated-schema digest, or a forbidden-source capability row appears complete.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
 ## Minimum GREEN
 
-- query allowed runtime/config sources, hash harness/tool profile, emit exact/limited/unknown identity and every capability source/effect.
+- query only Codex app-server stdio JSON-RPC plus the exact installed generated schema, hash the permitted runtime/harness/tool profile, emit exact/limited/unknown identity, and persist the six-field capability digest with every capability source/effect.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -49,6 +49,8 @@ Implement Codex identity and capability discovery. Deliver only the bounded cont
 - AC-E4-002-4 ↔ `adapters/codex/test/capabilities.test.ts` case `missing-required`.
 - AC-E4-002-5 ↔ `adapters/codex/test/capabilities.test.ts` case `config-redaction`.
 - AC-E4-002-6 ↔ `adapters/codex/test/capabilities.test.ts` case `stable-digest`.
+- AC-E4-002-7 ↔ `adapters/codex/test/capabilities.test.ts` case `installed-schema-digest`.
+- AC-E4-002-8 ↔ `adapters/codex/test/capabilities.test.ts` case `forbidden-source`.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 # E12-001 · Freeze alpha preregistration protocol and data dictionary
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E12
 - Milestone: S4 · Human Alpha & Retest
 - Owning PRD: [E12](../../prd/PRD-E12-human-alpha-and-validation.md)
@@ -25,7 +25,7 @@ Freeze alpha preregistration protocol and data dictionary. Deliver only the boun
 
 ## Forbidden scope
 
-- collecting participants before freeze; percentile; post-hoc primary subset; PII beyond protocol
+- collecting participants before freeze; calibration/certification/population claims; percentile; post-hoc primary subset; PII beyond protocol
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -38,7 +38,7 @@ Freeze alpha preregistration protocol and data dictionary. Deliver only the boun
 
 ## Minimum GREEN
 
-- preregister n≥20 known groups, counterbalance, 48–96 reference runs, blind review, consent/privacy, all-row analysis, G1–G3 criteria and pivot.
+- preregister an n=20 feasibility protocol, counterbalance, 48–96 reference runs, blind review, consent/privacy, all-row analysis, and the only allowed verdicts `PASS_TO_CONTINUE`, `INCONCLUSIVE`, and `PIVOT_REQUIRED` with their deterministic stop/pivot criteria. The protocol must prohibit calibration, certification, and population-performance claims.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -50,6 +50,7 @@ Freeze alpha preregistration protocol and data dictionary. Deliver only the boun
 - AC-E12-001-5 ↔ `tests/validation/alpha-protocol.test.mjs` case `blind-review`.
 - AC-E12-001-6 ↔ `tests/validation/alpha-protocol.test.mjs` case `stop-rules`.
 - AC-E12-001-7 ↔ `tests/validation/alpha-protocol.test.mjs` case `no-percentile`.
+- AC-E12-001-8 ↔ `tests/validation/alpha-protocol.test.mjs` case `feasibility-only-verdicts`.
 
 ## Verification
 

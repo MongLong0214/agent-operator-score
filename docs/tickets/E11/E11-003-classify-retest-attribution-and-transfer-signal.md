@@ -1,6 +1,6 @@
 # E11-003 · Classify retest attribution and transfer signal
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E11
 - Milestone: S4 · Human Alpha & Retest
 - Owning PRD: [E11](../../prd/PRD-E11-form-b-and-retest-modes.md)

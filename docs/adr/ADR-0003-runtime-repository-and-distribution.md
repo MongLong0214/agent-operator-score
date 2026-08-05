@@ -1,6 +1,6 @@
 # ADR-0003: Use strict TypeScript, Node.js, npm workspaces, and local CLI distribution
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Date: 2026-08-05
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
 
@@ -10,9 +10,9 @@ The product needs cross-platform schemas, deterministic scoring, subprocess cont
 
 ## Decision
 
-- Use strict TypeScript with Node.js 20 as the runtime floor and Node.js 20/24 CI lanes.
-- Use npm workspaces for schema, scorer, runner, reporter, adapters, suites, fixtures, and conformance.
-- Publish candidate package `agent-operator-score` with binary `aos`; publishing remains blocked until G4.
+- Use strict TypeScript with Node.js 20 as the runtime floor and Node.js 20/22/24 CI lanes; engines remain `>=20 <25`.
+- Use npm workspaces for schema, scorer, runner, reporter, adapters, suites, fixtures, and conformance. Every internal `@aos/*` workspace is `private: true`.
+- Only root `agent-operator-score` is the future publish candidate with binary `aos`; it remains non-publishable until E14/G4.
 - No dependency enters production without engine, license, and third-party notice review.
 
 ## Rejected alternatives
@@ -27,4 +27,4 @@ The product needs cross-platform schemas, deterministic scoring, subprocess cont
 
 ## Implementation gate
 
-No product code may rely on ADR-0003 until the CEO records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0003 until a Maintainer Gate records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

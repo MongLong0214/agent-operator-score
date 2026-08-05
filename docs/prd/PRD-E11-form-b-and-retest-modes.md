@@ -1,6 +1,6 @@
 # PRD E11 — Implement linked but non-reused Form B, one-lever sprint records, and explicit retest attribution modes.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S4 · Human Alpha & Retest
 - Dependencies: E10; ADR-0009, 0010
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

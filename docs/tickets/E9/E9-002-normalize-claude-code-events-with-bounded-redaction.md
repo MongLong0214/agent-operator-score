@@ -1,6 +1,6 @@
 # E9-002 · Normalize Claude Code events with bounded redaction
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E9
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E9](../../prd/PRD-E9-claude-code-adapter-and-parity.md)
@@ -38,7 +38,7 @@ Normalize Claude Code events with bounded redaction. Deliver only the bounded co
 
 ## Minimum GREEN
 
-- normalize declared lifecycle/user/tool/context/retrieval/delegation/evidence/approval/intervention events and emit UNAVAILABLE where proof is absent.
+- normalize declared lifecycle/user/tool/context/retrieval/delegation/evidence/approval/intervention events and all four actor-attribution events from permitted sources only; emit `UNAVAILABLE` where proof is absent and never synthesize attribution.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -49,6 +49,7 @@ Normalize Claude Code events with bounded redaction. Deliver only the bounded co
 - AC-E9-002-4 ↔ `adapters/claude-code/test/normalize.test.ts` case `oversized`.
 - AC-E9-002-5 ↔ `adapters/claude-code/test/normalize.test.ts` case `missing-parent`.
 - AC-E9-002-6 ↔ `adapters/claude-code/test/normalize.test.ts` case `tool-error`.
+- AC-E9-002-7 ↔ `adapters/claude-code/test/normalize.test.ts` case `actor-attribution-events`.
 
 ## Verification
 

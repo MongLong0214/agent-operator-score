@@ -1,6 +1,6 @@
 # Product Requirement Documents
 
-Status: **PROPOSED — each PRD requires a separate CEO gate before its ticket set can be approved.**
+Status: **PROPOSED — each PRD requires a separate Maintainer Gate before its ticket set can be approved.**
 
 The execution order is fixed: D0 → E0-A → E0-B → E0-C → E0-D → E1 → E2 → E3 → E4 → E5 → E6 → E7 → G0 → E8 → E9 → E10 → E11 → E12 → E13 → E14/G4.
 

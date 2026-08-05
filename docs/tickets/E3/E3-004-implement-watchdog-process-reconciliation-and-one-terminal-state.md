@@ -1,6 +1,6 @@
 # E3-004 · Implement watchdog process reconciliation and one terminal state
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E3
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E3](../../prd/PRD-E3-isolated-controlled-runner.md)
@@ -38,7 +38,7 @@ Implement watchdog process reconciliation and one terminal state. Deliver only t
 
 ## Minimum GREEN
 
-- enforce legal transitions, heartbeat-free progress watchdog, scoped process-group reconciliation, final checkpoint and exactly one terminal reason.
+- enforce legal transitions, heartbeat-free progress watchdog, scoped process-group reconciliation, final checkpoint and exactly one terminal reason; persist the deterministic actor-attribution outcome and withhold score/mark `DIAGNOSTIC ONLY` when attribution is unknown.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -50,6 +50,7 @@ Implement watchdog process reconciliation and one terminal state. Deliver only t
 - AC-E3-004-5 ↔ `packages/runner/test/lifecycle.test.ts` case `cancel-race`.
 - AC-E3-004-6 ↔ `packages/runner/test/lifecycle.test.ts` case `orphan`.
 - AC-E3-004-7 ↔ `packages/runner/test/lifecycle.test.ts` case `final-checkpoint`.
+- AC-E3-004-8 ↔ `packages/runner/test/lifecycle.test.ts` case `unknown-attribution-terminal-outcome`.
 
 ## Verification
 

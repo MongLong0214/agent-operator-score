@@ -1,6 +1,6 @@
 # Contributing to Agent Operator Score
 
-AOS is not yet a public product. The repository currently contains a gated development specification, not an implemented assessment.
+AOS is not yet a public product. This public, source-visible repository currently contains a gated development specification, not an implemented assessment. Until a LICENSE and E14/G4 clearance exist, external contribution acceptance and redistribution are blocked.
 
 ## Read first
 
@@ -14,7 +14,7 @@ AOS is not yet a public product. The repository currently contains a gated devel
 
 The exact ticket file is the implementation contract. It states owned files/symbols, dependencies, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, evidence, and invalidation.
 
-All tickets are currently blocked pending separate ADR, PRD, and exact-ticket gates.
+All tickets are currently blocked pending separate ADR, PRD, and exact-ticket Maintainer Gates. The pending registry cannot approve itself.
 
 ## Change protocol
 
@@ -40,4 +40,4 @@ Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an indust
 
 ## License
 
-No OSS license has been selected. Contribution acceptance and redistribution remain blocked until E14/G4 clearance.
+No OSS license has been selected. D0 minimum name clearance is a separate canonical-identity decision and does not authorize contribution acceptance, redistribution, or publication. Contribution acceptance and redistribution remain blocked until the E14/G4 LICENSE and publication gate clears.

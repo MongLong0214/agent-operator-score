@@ -12,18 +12,20 @@ Agent Operator Score (AOS)
 • 초기 런타임: OpenAI Codex, Claude Code
 • 평가 단위: 모델이나 하네스가 아니라 인간 사용자(operator)
 • 평가 환경: 선언된 model·runtime·harness·tool·permission·budget의 Opportunity Profile
-• 배포 원칙: 100% OSS, local-first, 계정·결제·중앙 수집 없음
+• 현재 공개 상태: public source-visible planning repository; LICENSE 전 외부 contribution acceptance·redistribution은 차단
+• 목표 배포 원칙: 100% OSS, local-first, 계정·결제·중앙 수집 없음
 • 점수 해석: 선언된 환경과 과제 묶음에서 관찰된 실험적 조건부 수행 점수
 • 개발 판정: 기획 PASS / 제품 NOT YET / 개발 CONDITIONAL GO
 • 현재 증거 상태: 측정 설계는 존재하지만 사람 대상 calibration evidence는 아직 없음
 • 대외 라벨: Open assessment method / PROVISIONAL
 • 금지 표현: 업계 표준, 공식 인증, 전 세계 순위, 채용 적합성, 검증된 백분위
 • 개정 근거: 2026-08-05 객관 리뷰에서 지적된 시간·관측성·처방·표시 계약을 반영
-• 기준본 관계: 이전 기획서와 별도 리뷰문서는 활성 트리에서 제거되었으며 Git history에서만 복구할 수 있다. 개발자는 이 파일 하나만 따른다.
+• 기준본 관계: 이전 기획서와 별도 리뷰문서는 활성 트리에서 제거되었으며 Git history에서만 복구할 수 있다. 이 SSOT는 제품 수준 방향의 유일한 기준본이며, 구현에는 아래의 accepted ADR·PRD·exact ticket 권한 체인이 추가로 필요하다.
 
-> **이 파일 하나가 Agent Operator Score의 제품 기획·측정 계약·개발 착수 리뷰를 통합한 최종 기준본이다.**
-> 다른 문서를 선택하거나 함께 읽을 필요가 없다. 별도 상품 기획, 유료화 문서, 엔터프라이즈 판매 계획은 존재하지 않는다.
+> **이 파일 하나가 Agent Operator Score의 제품 방향·20개 metric·6개 family·AOS-Coding P0 가설·architecture·순서를 정하는 유일한 제품 수준 기준본이다.**
+> 구현 권한 체인은 반드시 `accepted ADR → accepted owning PRD → accepted exact ticket`이며, 개발자는 그 세 문서를 해당 exact digest에서 함께 읽어야 한다. 별도 상품 기획, 유료화 문서, 엔터프라이즈 판매 계획은 존재하지 않는다.
 > 구현의 우선순위는 문서 확장이 아니라 `name migration → measurement contracts → schema → fixtures → scorer → controlled runner → adapters → task pack → report`다.
+> ADR·PRD·exact ticket은 accepted digest에서 구현을 제한하고 증거를 요구하지만, 이 SSOT의 제품 방향·20개 metric·6개 family·AOS-Coding P0 가설·architecture·순서를 재정의하거나 override할 수 없다.
 
 ────────
 
@@ -39,7 +41,7 @@ Agent Operator Score (AOS)
 |기획을 더 확장해야 하는가                 |**NO** — 다음 판단은 코드와 사람 데이터에서 나온다.                     |
 |현재 0~100을 고유한 개인 능력으로 주장할 수 있는가|**NO** — `EXPERIMENTAL / PROVISIONAL` 조건부 수행 점수만 가능하다.|
 |scorer·fixture 개발을 시작할 수 있는가   |**GO** — 아래 P0 계약을 코드와 fixture로 닫는다.                  |
-|공개 제품으로 바로 출시할 수 있는가           |**NO** — 최소 G0, 외부 점수 주장은 G1 증거가 필요하다.                |
+|공개 제품으로 바로 출시할 수 있는가           |**NO** — 최소 G0와 정식 공개 gate가 필요하며, n=20 feasibility alpha는 외부 점수 주장을 허용하지 않는다.|
 |업계 표준·인증·채용 점수라고 말할 수 있는가      |**NO** — 명시적으로 금지한다.                                  |
 
 AOS의 현재 제품 진실은 다음과 같다.
@@ -138,7 +140,7 @@ Slim은 지표를 장난감 수준으로 줄이는 것이 아니다.
 
 신규 코드·README·패키지에서는 이전 제품 식별자를 포함한 legacy 문자열을 사용하지 않는다.
 
-이름은 개발용으로 고정하되, G4 공개 전 GitHub·npm·도메인·주요 시장 상표의 정식 name clearance를 완료한다.
+이름은 개발용으로 고정한다. D0에서 GitHub·npm·domain·basic trademark 최소 name-clearance evidence와 한계를 기록하며, unresolved result는 canonical name adoption을 차단한다. 이 D0 확인은 `LICENSE`, contribution acceptance, redistribution, 또는 publication을 결정하지 않는다. 그 네 가지 E14/G4 결정을 위한 formal legal/publication/notices clearance는 별도로 완료한다.
 
 1. 제품 위치
 
@@ -210,8 +212,8 @@ AOS가 측정하는 것은 주어진 에이전트 환경을 인간이 얼마나 
 |**Demo Fixtures**     |5분 이내 |없음                          |scorer 재현과 failure demo      |G0 필수  |
 |**Snapshot**          |3~5분  |`ESTIMATE`                  |대략적 band, 추천 family, 다음 명령   |G4 전후  |
 |**Verified Core**     |35~45분|`EXPERIMENTAL / PROVISIONAL`|AOS-Coding P0, 6요인, 근거, 레버 1개|핵심     |
-|**Improvement Sprint**|7일    |없음                          |treatment log와 적용 지침         |G3 필수  |
-|**Retest Form B**     |35~45분|`TRANSFER / UPLIFT SIGNAL`  |사람·환경·통합 개선을 구분한 전이 신호       |G3 필수  |
+|**Improvement Sprint**|7일    |없음                          |treatment log와 적용 지침         |E11 선행 |
+|**Retest Form B**     |35~45분|`TRANSFER / UPLIFT SIGNAL`  |사람·환경·통합 개선을 구분한 전이 신호       |E11 선행 |
 |**Live Diagnostics**  |수일    |`DIAGNOSTIC ONLY`           |실제 업무 습관 분석                  |90일 비목표|
 
 모든 모드는 무료이고 로컬에서 실행한다. 계정이나 업로드를 요구하지 않는다.
@@ -439,6 +441,7 @@ Opportunity Profile은 현재 보정 모형이 아니라 조건 기록과 비교
 • 점수를 위한 형식적 행동을 hidden trap으로 차단한다.
 • 개선 처방으로 연결되지 않는 지표는 공식 점수에 추가하지 않는다.
 • 20개 지표는 alpha가 끝날 때까지 추가하지 않는다. 삭제·병합은 데이터 근거가 있을 때만 한다.
+• [Metric Scoring Contract v1](../contracts/metric-scoring-contract-v1.md)은 각 M01–M20의 deterministic observation·formula·state·vector expansion이다. 이것은 SSOT를 구현 가능하게 구체화할 뿐, metric set·가중치·가설을 변경하지 않는다.
 
 4.3 핵심 지표
 
@@ -551,7 +554,7 @@ Pack 시간·기회 예산 v0
 • pack-level eligible metrics: 최소 14개
 • scenario당 primary opportunity: 최대 4개
 • 실패 시 지표를 삭제하지 않고 scenario의 기회 배치·표면 복잡도·오버헤드를 조정한다
-• 위 조건이 동시에 성립하지 않으면 G1 전에 Form A를 동결하지 않는다
+• 위 조건이 동시에 성립하지 않으면 E0-C에서 Form A를 동결하지 않는다
 
 Retest Form B
 
@@ -580,7 +583,7 @@ Retest Form B
 
 로컬 OSS 평가에서 machine owner는 패키지와 코드를 조사할 수 있다. 따라서 초기 AOS는 다음만 보장한다.
 
-• hidden oracle가 worker process에 노출되지 않음
+• hidden oracle는 worker termination 뒤 grader process에만 materialize되며 worker process에는 노출되지 않음
 • accidental leakage와 일반적인 agent access 차단
 • run·trace·artifact tampering 탐지
 • task·scorer version과 digest 기록
@@ -679,7 +682,7 @@ AOS-Coding P0
 
 6.6 표시 정밀도와 비교 계약
 
-G1 이전에는 숫자의 정밀도가 증거보다 앞서지 않게 한다.
+calibration evidence 이전에는 숫자의 정밀도가 증거보다 앞서지 않게 한다.
 
 • 내부 JSON: reproducibility를 위한 raw float 보존
 • 사용자 기본 표시: 가장 가까운 5점 단위
@@ -714,6 +717,8 @@ Evidence coverage          86%
 • 안전을 위한 takeover는 M18에서 긍정적일 수 있다.
 • 사람이 직접 만든 부분은 agent-mediated outcome으로 귀속하지 않는다.
 • report에 human-authored share와 takeover reason을 별도로 표시한다.
+• agent-correlated mutation은 `agent`, declared AOS manual edit은 `human/takeover`, uncorrelated mutation은 `external_mutation`으로 분류한다.
+• attribution을 결정할 수 없으면 `actor.attribution_unknown`을 기록하고 confidence를 낮추며 점수는 withheld/DIAGNOSTIC ONLY다.
 
 6.8 Form B 개선 신호
 
@@ -773,16 +778,16 @@ LLM judge는 다음에만 사용한다.
 |Gate  |이름                   |통과 조건                                                        |실패 시             |
 |------|---------------------|-------------------------------------------------------------|-----------------|
 |**G0**|Scorer Truth         |fixture bit-repro, false completion·stale·duplicate·unsafe 탐지|공개 평가 금지         |
-|**G1**|Measurement Exists   |n≥20 alpha, person signal > task/session noise, median ≤45m  |construct·task 수정|
-|**G2**|Facet Sanity         |model/harness 변경 뒤에도 사용자 귀속이 합리적                             |점수 주장 축소         |
-|**G3**|Prescription Transfer|한 레버가 Form B에서 개선 신호                                         |처방 엔진 재설계        |
+|**G1**|Feasibility decision |n=20 preregistered protocol/data-integrity/duration evidence only; output is exactly `PASS_TO_CONTINUE`, `INCONCLUSIVE`, or `PIVOT_REQUIRED` |continue, hold, or pivot without a performance claim|
+|**G2**|Future facet validation|deferred calibration study; the n=20 feasibility alpha cannot satisfy it|do not make facet/attribution claims|
+|**G3**|Future transfer validation|deferred calibration study; the n=20 feasibility alpha cannot satisfy it|do not make treatment-transfer claims|
 |**G4**|Open Surface         |public schema·fixtures·scorer, 외부 재현 1건 이상                   |설치·문서·계약 수정      |
 
 G5 이후의 multi-runtime calibration·norm·공개 표준화는 증거가 생겼을 때만 검토한다. 일정에 넣지 않는다.
 
 7.4 Alpha 기준
 
-• 20명 known groups
+• 20명 known groups feasibility sample; 결과는 validated personal score, precise reliability, runtime fairness, generalized treatment claim을 만들지 않는다.
 • novice / intermediate / expert 균형
 • 일부 Form A/B counterbalance
 • blind expert review
@@ -927,7 +932,11 @@ Markdown / JSON Report
 
 9.2 Adapter Observability Contract
 
-AOS는 Codex나 Claude Code가 “완전한 공식 trace export”를 제공한다고 가정하지 않는다. 각 adapter는 native event, wrapper instrumentation, workspace-derived evidence를 조합해 capability를 선언한다.
+AOS는 Codex나 Claude Code가 “완전한 공식 trace export”를 제공한다고 가정하지 않는다. 각 adapter는 허용된 source class만 사용해 capability를 선언하며 raw secret과 hidden reasoning은 어떤 source에서도 저장하지 않는다.
+
+• Codex v0 primary는 app-server stdio JSON-RPC와 exact installed generated schema/digest다. experimental websocket, private DB, undocumented log는 금지한다.
+• Claude Code v0 primary는 official TypeScript SDK `query()`/`SDKMessage`, `stream-json`, official permission/tool surface다. bounded wrapper/workspace artifact는 secondary이며 internal transcript/cache/log는 금지한다.
+• capability digest는 `runtime_version`, `protocol_or_schema_version`, `adapter_version`, `source_class`, `supported_event_groups`, `known_missing_events`를 반드시 포함한다.
 
 상태 정의
 
@@ -943,8 +952,8 @@ v0 event coverage matrix
 |---------------------------------------------|--------------------|-----------------------------------|-----------------------------------|---------------------------------------------------|
 |run/task lifecycle, timestamps               |REQUIRED            |wrapper capture                    |wrapper capture                    |run invalid                                        |
 |runtime·model·harness identity               |REQUIRED            |runtime query + config digest      |runtime query + config digest      |score blocked                                      |
-|user instruction·clarification               |REQUIRED            |wrapper/session log                |wrapper/session log                |M01–M04 blocked                                    |
-|tool call·result·error                       |REQUIRED            |supported event/log 또는 wrapper     |hook/log 또는 wrapper                |affected metrics blocked                           |
+|user instruction·clarification               |REQUIRED            |wrapper/app-server event           |SDK/stream-json event              |M01–M04 blocked                                    |
+|tool call·result·error                       |REQUIRED            |supported app-server event/wrapper |official SDK event/wrapper          |affected metrics blocked                           |
 |workspace diff·artifact digest               |DERIVED             |runner filesystem                  |runner filesystem                  |run invalid if derivation fails                    |
 |evidence created·invalidated·completion claim|REQUIRED            |wrapper + scorer events            |wrapper + scorer events            |M15–M17 blocked                                    |
 |approval·permission·safety event             |REQUIRED            |sandbox/approval wrapper           |permission hook/wrapper            |M19 blocked; score may be withheld                 |
@@ -954,6 +963,7 @@ v0 event coverage matrix
 |plan·state·checkpoint·stall                  |DERIVED/CONDITIONAL |state artifacts + runner watchdog  |state artifacts + runner watchdog  |M12–M14 blocked or NOT OBSERVED                    |
 |token usage·provider cost                    |BEST_EFFORT         |provider/runtime metadata          |provider/runtime metadata          |M20 uses calls·wall·human time only or NOT OBSERVED|
 |human active time·takeover                   |REQUIRED for M18/M20|explicit intervention event + timer|explicit intervention event + timer|M18/M20 NOT OBSERVED                               |
+|actor attribution change                     |REQUIRED            |wrapper + workspace correlation    |SDK/wrapper + workspace correlation|unknown withholds score                            |
 
 Verified Assessment와 Imported Session
 
@@ -1031,7 +1041,7 @@ agent-operator-score/
 ├─ conformance/
 ├─ examples/
 ├─ .aos/                    # local runs; gitignored
-├─ docs/
+ ├─ docs/
 │  ├─ VALIDATION.md
 │  ├─ LIMITATIONS.md
 │  ├─ INTENDED_USE.md
@@ -1040,6 +1050,8 @@ agent-operator-score/
 ├─ CODEOWNERS
 └─ README.md
 ```
+
+Root `agent-operator-score` is the sole future publish candidate. The six internal workspaces are `@aos/*` and must be `private: true`; Node support/CI is 20/22/24 within engines `>=20 <25`.
 
 구체적 OSS 라이선스는 S4 공개 전 결정한다. 특정 라이선스는 현재 근거만으로 임의 고정하지 않지만, 라이선스·기여자 계약·third-party notice가 결정되지 않으면 G4 공개를 차단한다.
 
@@ -1270,7 +1282,7 @@ D0 name migration + repository skeleton
 → E10 report + one lever
 → E11 Form B + retest modes
 → E12 20-person alpha
-→ G1–G3 decision
+→ E12 feasibility decision
 → E13 Snapshot
 → G4 public release
 ```
@@ -1297,9 +1309,9 @@ D0 name migration + repository skeleton
 |**E9**  |Claude Code adapter              |capability report + parity fixture                                  |
 |**E10** |Markdown/JSON report             |rounded P0, raw score, factors, Safety, one lever                   |
 |**E11** |Form B + retest modes            |Operator/Environment/Combined signals                               |
-|**E12** |20명 alpha + `VALIDATION.md`      |G1·G2·G3 decision                                                   |
+|**E12** |20명 feasibility alpha + `VALIDATION.md`|PASS_TO_CONTINUE / INCONCLUSIVE / PIVOT_REQUIRED feasibility verdict |
 |**E13** |Snapshot                         |`ESTIMATE` contract                                                 |
-|**E14** |Public OSS                       |name·license clearance, external reproduction, G4                   |
+|**E14** |Public OSS                       |license/notices/legal, external reproduction, G4                    |
 
 E0–E14 사이에 새 metric·새 도메인·SaaS 에픽을 삽입하지 않는다.
 
@@ -1312,6 +1324,7 @@ E0–E14 사이에 새 metric·새 도메인·SaaS 에픽을 삽입하지 않는
 S0 — Name & Contracts
 
 • 프로젝트·repo·package를 **Agent Operator Score / agent-operator-score**로 전환
+• GitHub·npm·domain·basic trademark minimum name-clearance evidence를 D0에서 기록; unresolved면 later publication을 차단
 • M01–M20·AOS-Coding P0 계약 동결
 • score issuance required core 동결
 • adapter observability matrix v0
@@ -1347,7 +1360,7 @@ S3 — Full Form A & Second Runtime
 
 S4 — Human Alpha & Retest
 
-• known-groups 20명
+• known-groups 20명 feasibility sample
 • blind expert review
 • 일부 model/harness crossover
 • Form B subset
@@ -1356,10 +1369,10 @@ S4 — Human Alpha & Retest
 
 S5 — Public OSS, 증거가 있을 때만
 
-• GitHub 공개
+• GitHub release/publication authorization
 • one-command demo
 • operator-gap·false-completion demo
-• OSS 라이선스·third-party notice·name clearance
+• OSS license·third-party notice·formal publication/legal clearance
 • 외부 fixture 재현 1건 이상
 
 이후, 증거가 있을 때만
@@ -1378,13 +1391,13 @@ S5 — Public OSS, 증거가 있을 때만
 1. 같은 fixture에서 누구나 같은 scorer 결과를 얻는다.
 2. false completion·stale evidence·unsafe action을 놓치지 않는다.
 3. 기본 평가 median ≤40분, p90 ≤45분이며 required core가 관찰된다.
-4. 사용자 간 차이가 task·session noise보다 크다.
+4. feasibility data가 task·session noise와 attribution limits를 정직하게 드러내며, 과장된 reliability/fairness claim을 만들지 않는다.
 5. 점수가 model strength나 token spend만 반영하지 않는다.
 6. expert와 novice가 단순 사용량이 아닌 운영 행동으로 구분된다.
 7. 자동 metric과 blind expert 판단이 설명 가능한 수준으로 합의한다.
 8. 사용자가 낮은 점수에서도 다음 행동을 이해한다.
 9. 한 가지 처방이 Form B에서 개선 신호를 만든다.
-10. 외부 사용자가 adapter·fixture·scenario를 기여한다.
+10. LICENSE 이후 외부 사용자가 adapter·fixture·scenario를 기여한다.
 
 14.2 중단 또는 재설계
 
@@ -1448,20 +1461,20 @@ S5 — Public OSS, 증거가 있을 때만
 1. 프로젝트명은 Agent Operator Score, 약칭은 AOS다.
 2. repository·npm 후보는 agent-operator-score, CLI는 aos, 로컬 경로는 .aos/다.
 3. 이 문서 하나가 제품 기획·측정 계약·개발 리뷰를 통합한 유일한 기준본이다.
-4. 제품은 100% OSS·local-first이며 유료화·SaaS·중앙 DB 계획이 없다.
+4. 목표 제품은 100% OSS·local-first이며 유료화·SaaS·중앙 DB 계획이 없다. 현재 repository는 LICENSE 전 public source-visible planning repository다.
 5. 평가 단위는 인간 operator이며 초기 도메인은 AOS-Coding 하나다.
 6. AI FOMO는 진입 동기이며 점수 입력이 아니다.
 7. AOS-Coding P0는 선언된 환경과 과제 묶음에서 관찰된 실험적 조건부 수행 점수다.
 8. Opportunity Profile은 조건 기록·비교 제한 계약이며 환경 효과를 제거하는 보정 모형이 아니다.
 9. Verified 점수는 AOS controlled wrapper session에만 발급한다. Imported session은 DIAGNOSTIC ONLY다.
 10. Snapshot은 ESTIMATE, Verified Core는 EXPERIMENTAL / PROVISIONAL이다.
-11. 사용자 표시 점수는 G1 전 5점 단위로 반올림하며 raw float는 내부 JSON에만 보존한다.
+11. 사용자 표시 점수는 calibration evidence 전 5점 단위로 반올림하며 raw float는 내부 JSON에만 보존한다.
 12. M01–M20과 FAM-1–FAM-6는 alpha 전까지 추가하지 않는다.
 13. 최소 14개 eligible metric 외에 M15–M20·factor minimum opportunity·required events를 점수 발급 조건으로 둔다.
 14. 관찰 기회가 없으면 NOT OBSERVED이며 점수가 아니다.
 15. M19 S2 이상은 hard fail이며 품질 점수로 상쇄하지 않는다.
 16. 기술 사용량·프롬프트 길이·RAG 문서 수·에이전트 수·고가 모델은 가점하지 않는다.
-17. 사람이 직접 구현한 부분은 agent-mediated outcome으로 귀속하지 않는다.
+17. 사람 직접 구현은 agent-mediated outcome으로 귀속하지 않는다. uncorrelated mutation은 external, unknown attribution은 confidence drop과 score withheld/DIAGNOSTIC ONLY다.
 18. Operator Retest, Environment Retest, Combined Retest를 분리한다.
 19. Form linking 전에는 AOS-G나 정확한 성장 점수를 사용하지 않는다.
 20. 처방은 one-lever이며 P0에서는 코드로 고정된 입력 공식·treatment map·tie-break를 사용한다.
@@ -1471,8 +1484,8 @@ S5 — Public OSS, 증거가 있을 때만
 24. 현재 업계 표준이라고 주장하지 않는다.
 25. 구현은 FAM-4·5·6 scorer·fixture·controlled Codex run부터 시작한다.
 26. G0 실패 시 task pack과 공개 범위를 확장하지 않는다.
-27. G1 실패 시 개인 0~100 주장을 축소하고 diagnostics·regression suite로 피벗한다.
-28. G4 공개 전 name·license·third-party notice clearance를 완료한다.
+27. E12 feasibility verdict가 `PIVOT_REQUIRED`이면 개인 0~100 주장을 추가하지 않고 diagnostics·regression suite로 피벗한다.
+28. D0 minimum name-clearance input과 G4 license·third-party notice·formal publication clearance를 모두 완료한다.
 29. 다음 작업은 추가 기획서가 아니라 D0 → E0 → E1 → E2 코드다.
 
 ────────

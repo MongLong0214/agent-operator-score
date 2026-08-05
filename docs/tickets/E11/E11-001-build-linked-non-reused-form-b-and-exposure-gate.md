@@ -1,6 +1,6 @@
 # E11-001 · Build linked non-reused Form B and exposure gate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E11
 - Milestone: S4 · Human Alpha & Retest
 - Owning PRD: [E11](../../prd/PRD-E11-form-b-and-retest-modes.md)
