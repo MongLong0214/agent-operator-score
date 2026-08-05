@@ -1,20 +1,21 @@
 # Pre-implementation Gate Administration Control Plane
 
-- Status: **PROPOSED — CEO EXACT-HEAD ACCEPTANCE REQUIRED**
+- Status: **ACTIVE CONTROL PLANE — D0-001 BATCH INVALIDATED / RENEWED EXTERNAL REVIEW REQUIRED**
 - Dependencies: None
 - Authority: ADR-0012; this decision is a planning/control-plane correction only.
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket; the registry committed with this correction remains `PENDING` with no recorded artifact or transition.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The current canonical v2 D0-001 history is `PENDING → ACCEPTED → INVALIDATED`: the historical accepted digest record is invalidated after its ticket changed, there is no current acceptance, and renewed external review is required.
 
 It owns only the administration record and its independent fail-closed checker:
 
 | Owner | Paths/symbols |
 |---|---|
-| Pre-implementation Gate Administration | This decision; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v2.json`; `scripts/validate-gate-administration.mjs` (`validateGateAdministration`); `tests/gate-administration-contract.test.mjs` |
-| Pre-implementation compatibility migration | `package.json` `scripts.test` only; `scripts/validate-planning.mjs` only to require, delegate to, and allowlist the independently owned administration checker; and `tests/planning-contract.test.mjs` only for that delegation. This is a non-circular bootstrap allowance: it depends on no D0 ticket, permits no semantic-validator expansion, and grants no product authority. |
-| D0-004, after its own gates and D0-002 complete | The semantic-validator portions of `scripts/validate-planning.mjs`, `tests/planning-contract.test.mjs`, and `docs/TRACEABILITY.md`; it may consume an independently valid gate record but must not own, write, or approve the administration surfaces above. |
+| Pre-implementation Gate Administration | This decision; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v2.json`; `scripts/validate-gate-administration.mjs` (`validateGateAdministration`); `tests/gate-administration-contract.test.mjs`; only the `gates=<status>` portion of `acceptedValidatorOutput` and `pendingValidatorOutput` in `tests/planning-contract.test.mjs` for Gate Administration lifecycle truth |
+| Pre-implementation compatibility migration | `package.json` `scripts.test` only; `scripts/validate-planning.mjs` only to require, delegate to, and allowlist the independently owned administration checker; and only the `planning validator delegates gate records to the independent administration checker` test case with its direct delegation plumbing in `tests/planning-contract.test.mjs`. It explicitly excludes `acceptedValidatorOutput` and `pendingValidatorOutput`. This is a non-circular bootstrap allowance: it depends on no D0 ticket, permits no semantic-validator expansion, and grants no product authority. |
+| D0-001, after its renewed gate | Only the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput` for its future 4→5 census change when `tests/planning/identity.test.mjs` is introduced; it does not own the `gates=<status>` portion or any remaining symbol. |
+| D0-004, after its own gates and D0-002 complete | The semantic-validator portions of `scripts/validate-planning.mjs`, the remainder of `tests/planning-contract.test.mjs` outside the D0-001 numeric literal, Gate Administration `gates=<status>` portion, and the compatibility migration's exact delegation test case/plumbing, and `docs/TRACEABILITY.md`; it may consume an independently valid gate record but must not own, write, or approve the administration surfaces above. |
 
 No product path, workspace layout, product test, or implementation ticket ownership is granted here. The named `package.json` test-discovery migration is the sole package-manifest exception. D0-004 continues to own its future semantic validator work; the separation prevents its dependency from becoming a prerequisite for recording the gates that precede it.
 
@@ -47,13 +48,13 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. CEO reviews and accepts this correction's final exact head; that is a control-plane activation, not a product gate.
-2. A Gate Administrator creates an accepted-batch candidate from the declared pending scope, with exact SHA-256 digests and a resolvable reviewed head, then runs `node scripts/validate-gate-administration.mjs`.
-3. A different Maintainer performs external cumulative exact-head review and CI of that candidate. Only the reviewed final head may be merged as the acceptance record.
-4. The execution packet independently verifies the accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
+1. The historical D0-001 batch remains invalidated; it is not a current acceptance or a product gate.
+2. A Gate Administrator creates a fresh `PENDING` renewal batch from the declared scope, then a candidate with current SHA-256 digests and a resolvable reviewed head, and runs `node scripts/validate-gate-administration.mjs`.
+3. A different Maintainer performs external cumulative exact-head review and CI of that final renewal candidate. Only the reviewed final head may be merged as the renewed acceptance record.
+4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
 
 ## Non-authorizations and invalidation
 
-This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The current registry is deliberately still `PENDING`; all ADRs/PRDs/tickets remain proposed or blocked.
+This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The current registry records `PENDING → ACCEPTED → INVALIDATED`; it has no current accepted batch, and all ADRs/PRDs/tickets remain proposed or blocked.
 
-There are no accepted digest references to recompute in this correction. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. CEO review of this candidate is the next required action.
+The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh external review of a renewed candidate is the next required action.

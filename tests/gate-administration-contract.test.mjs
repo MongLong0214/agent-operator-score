@@ -459,28 +459,56 @@ test("a structural-only approval spoof is explicitly external gate evidence, nev
   }
 });
 
-test("current registry structurally closes the exact D0-001 batch but still requires external authorization", () => {
+test("current registry invalidates the stale D0-001 batch and requires renewed external review", () => {
   const registry = JSON.parse(readFileSync(resolve(root, "docs/decisions/maintainer-gate-registry.v2.json"), "utf8"));
   const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-001-canonical-identifier-registry.md"), "utf8");
+  const d0004Ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"), "utf8");
+  const gateStatus = readFileSync(resolve(root, "docs/decisions/MAINTAINER-GATE-STATUS.md"), "utf8");
+  const gateDecision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
+  const d0004Ownership = d0004Ticket.match(/^## Exact ownership\n\n([\s\S]*?)\n\n## Preconditions/m)?.[1];
   const batch = registry.batches[0];
   const result = validateGateAdministration();
   assert.equal(registry.version, 2);
-  assert.equal(registry.status, "ACCEPTED");
-  assert.equal(batch.status, "ACCEPTED");
+  assert.equal(registry.status, "INVALIDATED");
+  assert.equal(batch.status, "INVALIDATED");
   assert.equal(batch.target.repository, "github.com/MongLong0214/agent-operator-score");
   assert.equal(batch.target.branch, "dev");
   assert.equal(batch.target.reviewed_head, "dde8c29a592c35a37515645511e6da275ffb50f0");
   assert.deepEqual(batch.artifacts.map(({ path, kind }) => ({ path, kind })), batch.required_artifacts);
-  assert.ok(batch.artifacts.every(({ path, sha256: digest }) => digest === sha256(resolve(root, path))));
+  const ticketArtifact = batch.artifacts.find(({ path }) => path === "docs/tickets/D0/D0-001-canonical-identifier-registry.md");
+  assert.ok(batch.artifacts
+    .filter(({ path }) => path !== ticketArtifact.path)
+    .every(({ path, sha256: digest }) => digest === sha256(resolve(root, path))));
+  assert.notEqual(ticketArtifact.sha256, sha256(resolve(root, ticketArtifact.path)));
   assert.deepEqual(batch.transitions, [
     { type: "ADR_ACCEPTED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
     { type: "PRD_ACCEPTED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
     { type: "TICKET_READY_FOR_RED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
   ]);
-  assert.deepEqual(batch.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
+  assert.deepEqual(batch.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
+  assert.match(batch.invalidation.reason, /renewed independent external gate review/);
   assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
   assert.equal(batch.approval.role, "MAINTAINER");
-  assert.equal(result.status, "accepted");
-  assert.equal(result.externalGateEvidence, "required");
+  assert.equal(result.status, "invalidated");
+  assert.equal(result.externalGateEvidence, "not_applicable");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
+  assert.match(gateStatus, /PENDING → ACCEPTED → INVALIDATED/);
+  assert.match(gateStatus, /no current acceptance and renewed external review is required/);
+  assert.match(gateDecision, /PENDING → ACCEPTED → INVALIDATED/);
+  assert.match(gateDecision, /there is no current acceptance, and renewed external review is required/);
+  assert.match(ticket, /only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`/);
+  assert.match(ticket, /Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion/);
+  assert.match(d0004Ticket, /except the numeric `control_plane_code_files` literal/);
+  assert.match(d0004Ticket, /the `gates=<status>` portion, which Gate Administration owns/);
+  assert.match(gateDecision, /Only the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput`/);
+  assert.match(gateDecision, /only the `gates=<status>` portion of `acceptedValidatorOutput` and `pendingValidatorOutput`/);
+  assert.ok(d0004Ownership);
+  assert.doesNotMatch(d0004Ownership, /MAINTAINER-GATE-STATUS\.md|maintainer-gate\.schema\.json/);
+  assert.match(d0004Ownership, /historical v1 boundary only/);
+  assert.match(d0004Ownership, /not an active control-plane ownership grant and must not be restored/);
+  assert.match(gateDecision, /`docs\/decisions\/MAINTAINER-GATE-STATUS\.md`; `docs\/decisions\/maintainer-gate\.schema\.json`/);
+  assert.match(gateDecision, /compatibility migration's exact delegation test case\/plumbing/);
 });

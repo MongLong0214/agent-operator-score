@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "status": "ACCEPTED",
+  "status": "INVALIDATED",
   "batches": [
     {
       "id": "d0-001-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "D0-001 requires an exact ADR-0001/0003/0012 batch, PRD-D0, and its exact ticket before RED.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -78,6 +78,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-05T20:50:19Z",
           "recorded_by": "independent-maintainer-external-review-required"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-05T21:37:03Z",
+          "recorded_by": "gate-administrator-invalidation-candidate"
         }
       ],
       "preparation": {
@@ -87,6 +93,11 @@
         "approved_by": "independent-maintainer-external-review-required",
         "approved_at": "2026-08-05T20:50:19Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-05T21:37:03Z",
+        "invalidated_by": "gate-administrator-invalidation-candidate",
+        "reason": "D0-001 ownership amendment changes its accepted artifact digest; renewed independent external gate review is required."
       }
     }
   ],
