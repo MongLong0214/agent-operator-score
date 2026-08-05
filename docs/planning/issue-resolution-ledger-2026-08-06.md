@@ -7,10 +7,10 @@ This is a planning/control-plane ledger, not a product gate, execution packet, o
 ## Verified baseline
 
 - Repository: `MongLong0214/agent-operator-score`
-- Default branch/base: `dev` at `711367324afa528322061785f51bc5bcff9f606e`
+- Default branch/base: `dev` at `abc73bae310d6469c810614ff787adebde3972a5`
 - GitHub inventory: 64 open executable issues, #54–#55 and #57–#118. #56 / D0-003 is the documented superseded planning-migration record and is not executable.
 - Authority state on the base: final SSOT present; 12 ADRs are `PROPOSED`; 19 PRDs are `PROPOSED`; 64 executable tickets are `BLOCKED`; the committed Maintainer Gate registry is `PENDING`.
-- Control-plane review history: [PR #120](https://github.com/MongLong0214/agent-operator-score/pull/120) at `d1df2a93e98a3780ee4a0abbd721a39f1bcce308` received an independent exact-head `FAIL`; the required correction is recorded in [the review finding](https://github.com/MongLong0214/agent-operator-score/pull/120#issuecomment-5196709533). The corrected candidate is `bc72d5d4c23e989a634d0d6d230d84616ec6e7b7`: its fresh focused/full/build/diff evidence and 3/3 exact-head CI checks pass, but its new independent verdict is still pending. It does not accept an ADR, PRD, or ticket and grants no product execution authority.
+- Control-plane review history: [PR #120](https://github.com/MongLong0214/agent-operator-score/pull/120) at `d1df2a93e98a3780ee4a0abbd721a39f1bcce308` received an independent exact-head `FAIL`; the required correction is recorded in [the review finding](https://github.com/MongLong0214/agent-operator-score/pull/120#issuecomment-5196709533). Its corrected candidate `bc72d5d4c23e989a634d0d6d230d84616ec6e7b7` received CEO exact-head `PASS` and merged as `abc73bae310d6469c810614ff787adebde3972a5`; post-merge `dev` CI [run 31044444400](https://github.com/MongLong0214/agent-operator-score/actions/runs/31044444400) passed 3/3. That control-plane merge does not accept an ADR, PRD, or ticket and grants no product execution authority.
 
 ## Blocking rule and next lawful action
 
@@ -18,8 +18,8 @@ Every row below is blocked by the same authority chain: accepted required ADR se
 
 The next external actions are:
 
-1. Obtain a new independent exact-head production-readiness verdict for PR #120 at `bc72d5d4c23e989a634d0d6d230d84616ec6e7b7`; no merge is permitted unless the CEO makes and executes an explicit merge decision.
-2. Only after that authorized merge and post-merge revalidation, record distinct Maintainer Gate acceptance for the exact ADR batch, owning PRD, and D0-001 ticket at their exact digests.
+1. Obtain an independent exact-head production-readiness verdict for the current ledger candidate; no merge is permitted unless the CEO makes and executes an explicit merge decision.
+2. After the control-plane merge and current evidence revalidation, record distinct Maintainer Gate acceptance for the exact ADR batch, owning PRD, and D0-001 ticket at their exact digests.
 3. Only after those gates, create a clean exact-base execution packet for D0-001, capture its named RED failure, and proceed only while all gates remain current.
 
 No issue closure, RED test, production edit, or implementation evidence is recorded in this ledger.
