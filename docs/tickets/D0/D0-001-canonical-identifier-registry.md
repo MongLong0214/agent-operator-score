@@ -21,7 +21,6 @@ Create the single, versioned identity registry and fail-closed active-tree valid
 
 ## Preconditions
 
-0. The proposed pre-implementation Gate Administration Control Plane has separately received CEO exact-head acceptance; that administrative activation does not satisfy any prerequisite below or authorize RED.
 1. ADR-0001, ADR-0003, ADR-0012, and the owning PRD are explicitly accepted at their exact digests.
 2. This exact ticket is explicitly accepted and an execution packet pins the base SHA.
 3. Every dependency above is verified complete on the target branch; active/partial work does not count.
@@ -31,7 +30,6 @@ Create the single, versioned identity registry and fail-closed active-tree valid
 ## Forbidden scope
 
 - Package publish; product behavior; workspace/package-manifest changes other than `package.json` `scripts.test`; edits to the planning validator owned by D0-004.
-- Any write to or approval of the Gate Administration Control Plane; only its separately authorized Gate Administrator may record a future exact-digest batch.
 - Any legacy root, allowed-legacy-root, allowlist, path exception, environment override, alternate registry, default-target fallback, or silent success after an invalid target/registry.
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.

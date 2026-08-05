@@ -20,7 +20,24 @@ const canonicalTargetBranch = "dev";
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const plainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const dateTime = (value) => typeof value === "string" && value.includes("T") && !Number.isNaN(Date.parse(value));
+const rfc3339DateTime = (value) => {
+  if (typeof value !== "string") return false;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, zone] = match;
+  const [year, month, day, hour, minute, second] = [yearText, monthText, dayText, hourText, minuteText, secondText].map(Number);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthLengths = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > monthLengths[month - 1] || hour > 23 || minute > 59 || second > 59) {
+    return false;
+  }
+  if (zone !== "Z") {
+    const offsetHour = Number(zone.slice(1, 3));
+    const offsetMinute = Number(zone.slice(4, 6));
+    if (offsetHour > 23 || offsetMinute > 59) return false;
+  }
+  return true;
+};
 const hash40 = (value) => typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 const hash64 = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const statusName = (value) => typeof value === "string" ? value.toLowerCase() : "invalid";
@@ -180,7 +197,7 @@ const verifyEvents = (batch, errors, label) => {
     if (!checkKeys(event, ["from", "to", "recorded_at", "recorded_by"], ["from", "to", "recorded_at", "recorded_by"], `${label}.events[${index}]`, errors)) return;
     const [from, to] = expected[index];
     if (event.from !== from || event.to !== to) errors.push(`${label} has an invalid lifecycle transition`);
-    if (!dateTime(event.recorded_at) || typeof event.recorded_by !== "string" || !event.recorded_by) {
+    if (!rfc3339DateTime(event.recorded_at) || typeof event.recorded_by !== "string" || !event.recorded_by) {
       errors.push(`${label} has malformed lifecycle evidence`);
     }
   });
@@ -243,7 +260,7 @@ const verifyBatch = (root, batch, errors) => {
     !checkKeys(batch.approval, ["approved_by", "approved_at", "role"], ["approved_by", "approved_at", "role"], `${label}.approval`, errors)) return;
   if (typeof batch.preparation.prepared_by !== "string" || !batch.preparation.prepared_by ||
     typeof batch.approval.approved_by !== "string" || !batch.approval.approved_by ||
-    !dateTime(batch.approval.approved_at) || batch.approval.role !== "MAINTAINER") {
+    !rfc3339DateTime(batch.approval.approved_at) || batch.approval.role !== "MAINTAINER") {
     errors.push(`${label} has malformed preparation or Maintainer approval`);
   }
   if (batch.preparation.prepared_by === batch.approval.approved_by) errors.push(`${label} is self-approved`);
@@ -310,7 +327,7 @@ const verifyBatch = (root, batch, errors) => {
 
   if (batch.status === "INVALIDATED") {
     if (!checkKeys(batch.invalidation, ["invalidated_at", "invalidated_by", "reason"], ["invalidated_at", "invalidated_by", "reason"], `${label}.invalidation`, errors) ||
-      !dateTime(batch.invalidation.invalidated_at) || typeof batch.invalidation.invalidated_by !== "string" || !batch.invalidation.invalidated_by ||
+      !rfc3339DateTime(batch.invalidation.invalidated_at) || typeof batch.invalidation.invalidated_by !== "string" || !batch.invalidation.invalidated_by ||
       typeof batch.invalidation.reason !== "string" || !batch.invalidation.reason) {
       errors.push(`${label} has malformed invalidation evidence`);
     }
@@ -385,13 +402,11 @@ const verifyExactHeadSurfaces = (root, errors) => {
   return candidateHead;
 };
 
-export const validateGateAdministration = ({ root, registryPath } = {}) => {
-  const resolvedRoot = root ? resolve(root) : resolve(fileURLToPath(new URL("..", import.meta.url)));
+export const validateGateAdministration = (...args) => {
   const errors = [];
+  if (args.length) errors.push("Gate Administration does not accept programmatic overrides");
+  const resolvedRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
   const schemaPath = resolve(resolvedRoot, canonicalSchemaRelativePath);
-  if (registryPath !== undefined) {
-    errors.push("Gate Administration registry override escapes repository root; canonical registry only");
-  }
   const resolvedRegistryPath = verifyCanonicalRegistry(resolvedRoot, errors);
   const schema = readJson(schemaPath, "Gate Administration schema", errors);
   const registry = errors.length ? null : readJson(resolvedRegistryPath, "Gate Administration registry", errors);
@@ -427,7 +442,7 @@ export const validateGateAdministration = ({ root, registryPath } = {}) => {
     Array.isArray(registry.batches) ? registry.batches.filter((batch) => batch.status === status).length : 0]));
   return {
     errors,
-    status: statusName(registry.status),
+    status: errors.length ? "invalid" : statusName(registry.status),
     counts,
     batches: registry.batches?.length ?? 0,
     externalGateEvidence: counts.accepted ? "required" : "not_applicable",

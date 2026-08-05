@@ -94,7 +94,7 @@
               "properties": {
                 "from": { "enum": ["PENDING", "ACCEPTED"] },
                 "to": { "enum": ["ACCEPTED", "REJECTED", "INVALIDATED"] },
-                "recorded_at": { "type": "string", "format": "date-time" },
+                "recorded_at": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$" },
                 "recorded_by": { "type": "string", "minLength": 1 }
               }
             }
@@ -113,7 +113,7 @@
             "additionalProperties": false,
             "properties": {
               "approved_by": { "type": "string", "minLength": 1 },
-              "approved_at": { "type": "string", "format": "date-time" },
+              "approved_at": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$" },
               "role": { "const": "MAINTAINER" }
             }
           },
@@ -122,7 +122,7 @@
             "required": ["invalidated_at", "invalidated_by", "reason"],
             "additionalProperties": false,
             "properties": {
-              "invalidated_at": { "type": "string", "format": "date-time" },
+              "invalidated_at": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$" },
               "invalidated_by": { "type": "string", "minLength": 1 },
               "reason": { "type": "string", "minLength": 1 }
             }
