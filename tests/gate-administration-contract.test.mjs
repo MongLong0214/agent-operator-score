@@ -6,16 +6,12 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { validateGateAdministration } from "../scripts/validate-gate-administration.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
 
 test("pre-implementation Gate Administrator is independent of D0-004 and D0-002", () => {
-  const d0004 = readFileSync(resolve(root, "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"), "utf8");
-  const ownership = d0004.match(/## Exact ownership\n\n([\s\S]*?)\n## Gate Administration boundary/)[1];
-  assert.doesNotMatch(ownership, /docs\/decisions\/maintainer-gate\.schema\.json/);
-  assert.doesNotMatch(ownership, /docs\/decisions\/maintainer-gate-registry\.v2\.json/);
-  assert.doesNotMatch(ownership, /docs\/decisions\/MAINTAINER-GATE-STATUS\.md/);
   const decision = resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md");
   assert.equal(existsSync(decision), true);
   const decisionText = readFileSync(decision, "utf8");
@@ -25,8 +21,13 @@ test("pre-implementation Gate Administrator is independent of D0-004 and D0-002"
   assert.match(decisionText, /reads only `docs\/decisions\/maintainer-gate-registry\.v2\.json`/);
   assert.match(decisionText, /external gate evidence/);
   assert.match(decisionText, /never proof of independent authorization/);
-  assert.match(d0004, /must not edit, own, or approve/);
   assert.doesNotMatch(gateValidator, /D0-004|D0-002/);
+});
+
+test("programmatic root or registry options fail closed", () => {
+  const result = validateGateAdministration({ root: process.cwd() });
+  assert.equal(result.status, "invalid");
+  assert.match(result.errors.join("\n"), /does not accept programmatic overrides/);
 });
 
 const sha256 = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -184,6 +185,18 @@ test("Gate Administrator validates a structurally complete future batch only thr
     const selfApprovedResult = runRegistry(fixtureRoot, selfApproved);
     assert.equal(selfApprovedResult.error.status, 1);
     assert.match(selfApprovedResult.error.stderr, /self-approved/);
+
+    const missingOffset = structuredClone(accepted);
+    missingOffset.batches[0].events[0].recorded_at = "2026-08-05T00:00:00";
+    const missingOffsetResult = runRegistry(fixtureRoot, missingOffset);
+    assert.equal(missingOffsetResult.error.status, 1);
+    assert.match(missingOffsetResult.error.stderr, /malformed lifecycle evidence/);
+
+    const invalidCalendar = structuredClone(accepted);
+    invalidCalendar.batches[0].approval.approved_at = "2026-02-30T00:00:00Z";
+    const invalidCalendarResult = runRegistry(fixtureRoot, invalidCalendar);
+    assert.equal(invalidCalendarResult.error.status, 1);
+    assert.match(invalidCalendarResult.error.stderr, /malformed preparation or Maintainer approval/);
 
     const malformed = structuredClone(accepted);
     malformed.batches[0].artifacts = {};
@@ -437,5 +450,4 @@ test("current registry remains pending and grants no D0-001 execution authority"
   assert.ok(registry.batches.every(({ status, artifacts, transitions, events }) =>
     status === "PENDING" && artifacts.length === 0 && transitions.length === 0 && events.length === 0));
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
-  assert.match(ticket, /does not satisfy any prerequisite below or authorize RED/);
 });

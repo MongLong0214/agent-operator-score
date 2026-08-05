@@ -13,11 +13,12 @@ It owns only the administration record and its independent fail-closed checker:
 | Owner | Paths/symbols |
 |---|---|
 | Pre-implementation Gate Administration | This decision; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v2.json`; `scripts/validate-gate-administration.mjs` (`validateGateAdministration`); `tests/gate-administration-contract.test.mjs` |
-| D0-004, after its own gates and D0-002 complete | `scripts/validate-planning.mjs`, `tests/planning-contract.test.mjs`, and the semantic-validator portions of `docs/TRACEABILITY.md`; it may consume an independently valid gate record but must not own, write, or approve the administration surfaces above. |
+| Pre-implementation compatibility migration | `package.json` `scripts.test` only; `scripts/validate-planning.mjs` only to require, delegate to, and allowlist the independently owned administration checker; and `tests/planning-contract.test.mjs` only for that delegation. This is a non-circular bootstrap allowance: it depends on no D0 ticket, permits no semantic-validator expansion, and grants no product authority. |
+| D0-004, after its own gates and D0-002 complete | The semantic-validator portions of `scripts/validate-planning.mjs`, `tests/planning-contract.test.mjs`, and `docs/TRACEABILITY.md`; it may consume an independently valid gate record but must not own, write, or approve the administration surfaces above. |
 
-No product path, package/workspace manifest, product test, or implementation ticket ownership is granted here. D0-004 continues to own its future semantic validator work; the separation prevents its dependency from becoming a prerequisite for recording the gates that precede it.
+No product path, workspace layout, product test, or implementation ticket ownership is granted here. The named `package.json` test-discovery migration is the sole package-manifest exception. D0-004 continues to own its future semantic validator work; the separation prevents its dependency from becoming a prerequisite for recording the gates that precede it.
 
-The production checker reads only `docs/decisions/maintainer-gate-registry.v2.json`; it accepts no registry-path flag or programmatic override. That canonical path must be a regular non-symlink file and its real path must remain inside the repository. Isolated tests construct that same canonical relative path rather than substituting a sibling fixture.
+The production checker reads only `docs/decisions/maintainer-gate-registry.v2.json`; it accepts no registry-path flag or programmatic root override. Lifecycle timestamps must be strict RFC 3339 values with a UTC designator or numeric offset and a valid calendar date. That canonical path must be a regular non-symlink file and its real path must remain inside the repository. Isolated tests construct that same canonical relative path rather than substituting a sibling fixture.
 
 ## Roles and separate acceptance
 

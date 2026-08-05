@@ -132,8 +132,8 @@ if (manifest) {
 }
 
 const gateRegistryArgument = process.argv.find((argument) => argument.startsWith("--gate-registry="));
-const requestedGateRegistryPath = gateRegistryArgument?.slice("--gate-registry=".length);
-const gateAdministration = validateGateAdministration({ root, registryPath: requestedGateRegistryPath });
+if (gateRegistryArgument) errors.push("Gate Administration registry override is not supported; canonical registry only");
+const gateAdministration = validateGateAdministration();
 for (const error of gateAdministration.errors) errors.push(`Gate Administration ${error}`);
 
 const forbidden = [

@@ -81,7 +81,7 @@ test("planning validator delegates gate records to the independent administratio
   }
   assert.ok(escapedOverride);
   assert.equal(escapedOverride.status, 1);
-  assert.match(escapedOverride.stderr, /override escapes repository root/);
+  assert.match(escapedOverride.stderr, /registry override is not supported; canonical registry only/);
 });
 
 test("SSOT makes accepted ADR, PRD, and exact ticket mandatory implementation authority", () => {

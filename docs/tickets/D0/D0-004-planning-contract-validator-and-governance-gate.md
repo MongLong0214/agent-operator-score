@@ -13,12 +13,8 @@ Replace the structural planning validator with semantic planning validator v2. I
 
 ## Exact ownership
 
-- `scripts/validate-planning.mjs`; `tests/planning-contract.test.mjs`; and the semantic-validator portions of `docs/TRACEABILITY.md`.
+- `scripts/validate-planning.mjs`; `tests/planning-contract.test.mjs`; `docs/TRACEABILITY.md`; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v1.json`
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
-
-## Gate Administration boundary
-
-`docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md`, `docs/decisions/MAINTAINER-GATE-STATUS.md`, `docs/decisions/maintainer-gate.schema.json`, `docs/decisions/maintainer-gate-registry.v2.json`, `scripts/validate-gate-administration.mjs`, and `tests/gate-administration-contract.test.mjs` are exclusively pre-implementation Gate Administration surfaces. D0-004 may consume their verified output but must not edit, own, or approve them.
 
 ## Preconditions
 
@@ -29,7 +25,7 @@ Replace the structural planning validator with semantic planning validator v2. I
 
 ## Forbidden scope
 
-- Marking any gate accepted; product source; GitHub mutation; self-approval; ownership or approval of the pre-implementation Gate Administration surfaces; permissive fallback on malformed traceability, independently validated registry output, digest, or source census.
+- Marking any gate accepted; product source; GitHub mutation; self-approval; permissive fallback on malformed traceability, registry, digest, or source census.
 
 ## RED contract
 
@@ -41,7 +37,7 @@ Replace the structural planning validator with semantic planning validator v2. I
 ## Minimum GREEN
 
 - validate the graph `SSOT → owning ADR/PRD → PRD requirement → PRD AC → ticket → ticket AC → test file → named test case`, with orphan count zero and exact owning ADR/PRD links.
-- validate issue-map and `docs/issues.json` agreement, dependency DAG, and semantic consumption of independently validated gate records, including exact digest binding and invalidation after a material edit; it must not duplicate or take ownership of gate-administration validation.
+- validate issue-map and `docs/issues.json` agreement, dependency DAG, current gate-registry schema/data, exact digest bindings, and digest invalidation after a material edit.
 - compute the actual product-code census from an explicit control-plane allowlist; emit the paths and count, never a fixed `product_code=0` literal.
 - validate canonical identity consistency across the registry, root manifest, README, and active planning surfaces; reject legacy/path exceptions and unresolved/malformed inputs fail closed.
 - use `fileURLToPath()` for repository paths and preserve encoded/space-containing paths with a focused regression.
