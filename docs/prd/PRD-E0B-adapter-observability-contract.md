@@ -1,6 +1,6 @@
 # PRD E0-B — Freeze vendor-neutral capability semantics and the exact information required from Codex and Claude Code adapters.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S0 · Name & Contracts
 - Dependencies: D0, E0-A; ADR-0007
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

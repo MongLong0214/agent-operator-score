@@ -1,6 +1,6 @@
 # E3-001 · Implement explicit-root fresh workspace lifecycle
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E3
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E3](../../prd/PRD-E3-isolated-controlled-runner.md)
@@ -13,7 +13,7 @@ Implement explicit-root fresh workspace lifecycle. Deliver only the bounded cont
 
 ## Exact ownership
 
-- packages/runner/src/workspace.ts — createRunWorkspace,verifyWorkspace,sealWorkspace; packages/runner/test/workspace.test.ts
+- packages/runner/src/workspace.ts — createRunWorkspace,verifyWorkspace,sealWorkspace,classifyWorkspaceMutation; packages/runner/test/workspace.test.ts
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
@@ -38,7 +38,7 @@ Implement explicit-root fresh workspace lifecycle. Deliver only the bounded cont
 
 ## Minimum GREEN
 
-- create unique run root, verify base/environment digest, materialize allowed source, block symlink escape, seal initial/final manifests.
+- create unique run root, verify base/environment digest, materialize allowed source, block symlink escape, seal initial/final manifests, and classify workspace changes by trace correlation: correlated agent, declared human/takeover, uncorrelated `workspace.external_mutation`, or explicit unknown.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -49,6 +49,7 @@ Implement explicit-root fresh workspace lifecycle. Deliver only the bounded cont
 - AC-E3-001-4 ↔ `packages/runner/test/workspace.test.ts` case `symlink-escape`.
 - AC-E3-001-5 ↔ `packages/runner/test/workspace.test.ts` case `source-mutation`.
 - AC-E3-001-6 ↔ `packages/runner/test/workspace.test.ts` case `residue`.
+- AC-E3-001-7 ↔ `packages/runner/test/workspace.test.ts` case `actor-attribution-classification`.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 # E8-004 · Compose and freeze six-family Form A
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E8
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E8](../../prd/PRD-E8-fam1-3-and-form-a.md)

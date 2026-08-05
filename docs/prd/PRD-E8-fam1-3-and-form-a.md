@@ -1,6 +1,6 @@
 # PRD E8 — Add FAM-1 Intent, FAM-2 Context, FAM-3 Graph and freeze a complete Form A only when timing and eligibility pass.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S3 · Full Form A & Second Runtime
 - Dependencies: G0 PASS via E7; ADR-0009
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

@@ -1,6 +1,6 @@
 # PRD E6 — Build executable FAM-5 scenarios that expose false completion, stale evidence, scope regression, and dishonest claims.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S2 · Runner & Differentiated Wedge
 - Dependencies: E5; ADR-0005, 0006, 0009
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

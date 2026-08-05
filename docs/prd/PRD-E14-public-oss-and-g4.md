@@ -1,13 +1,13 @@
-# PRD E14 — Open the OSS surface only after identity, legal, documentation, reproducibility, and external-reproduction gates pass.
+# PRD E14 — Publish the OSS surface only after legal, documentation, reproducibility, and external-reproduction gates pass.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S5 · Public OSS
 - Dependencies: E13, G0–G3 verdicts; ADR-0001–0012
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
 
 ## Goal
 
-Open the OSS surface only after identity, legal, documentation, reproducibility, and external-reproduction gates pass.
+Publish the OSS surface only after formal legal, documentation, reproducibility, and external-reproduction gates pass. D0 minimum name clearance is a separate canonical-identity decision and is not an E14 substitute; LICENSE, contribution acceptance, redistribution, and publication are E14/G4 decisions.
 
 ## Non-goals
 
@@ -15,15 +15,14 @@ Open the OSS surface only after identity, legal, documentation, reproducibility,
 
 ## Functional and contract requirements
 
-1. Complete GitHub/npm/domain/trademark name clearance and document outcome.
-2. Select OSS license, contributor terms, third-party notices, security policy, intended use, limitations, and provenance.
-3. Provide one-command demo, public schema/fixtures/scorer, contributor adapter/scenario paths, and no-generated-attribution hygiene.
-4. Obtain at least one independent external fixture reproduction and record exact artifact/scorer digests.
-5. Run G4 fail-closed checklist before changing visibility or publishing npm.
+1. Resolve formal license, contributor terms, third-party notices, security policy, intended use, limitations, and provenance; unresolved items block publication.
+2. Provide one-command demo, public schema/fixtures/scorer, contributor adapter/scenario paths, and no-generated-attribution hygiene.
+3. Obtain at least one independent external fixture reproduction and record exact artifact/scorer digests.
+4. Run G4 fail-closed checklist before changing visibility or publishing npm.
 
 ## Acceptance criteria
 
-- AC-E14-1: unresolved name/license/notice/security item blocks publication.
+- AC-E14-1: unresolved license, contributor terms, notice, security, or formal-publication item blocks E14/G4 publication.
 - AC-E14-2: external environment reproduces canonical fixture bytes.
 - AC-E14-3: public docs make provisional/no-percentile/no-certification limits unavoidable.
 - AC-E14-4: repo/package publication is separately authorized and post-verified.

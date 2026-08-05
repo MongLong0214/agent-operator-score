@@ -1,6 +1,6 @@
 # E0A-002 · Freeze eligibility and score-issuance predicate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-A
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-A](../../prd/PRD-E0A-metric-and-score-issuance-contract.md)

@@ -1,6 +1,6 @@
 # E4-003 · Normalize Codex controlled events with bounded redaction
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E4
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E4](../../prd/PRD-E4-codex-adapter.md)
@@ -38,7 +38,7 @@ Normalize Codex controlled events with bounded redaction. Deliver only the bound
 
 ## Minimum GREEN
 
-- map declared lifecycle/user/tool/evidence/approval/intervention events, bound excerpts, redact values, preserve errors and correlations.
+- map declared lifecycle/user/tool/evidence/approval/intervention events and all four actor-attribution events, bound excerpts, redact values, preserve errors and correlations, and never synthesize attribution from an unsupported source.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -49,6 +49,7 @@ Normalize Codex controlled events with bounded redaction. Deliver only the bound
 - AC-E4-003-4 ↔ `adapters/codex/test/normalize.test.ts` case `unknown-native`.
 - AC-E4-003-5 ↔ `adapters/codex/test/normalize.test.ts` case `missing-parent`.
 - AC-E4-003-6 ↔ `adapters/codex/test/normalize.test.ts` case `tool-error`.
+- AC-E4-003-7 ↔ `adapters/codex/test/normalize.test.ts` case `actor-attribution-events`.
 
 ## Verification
 

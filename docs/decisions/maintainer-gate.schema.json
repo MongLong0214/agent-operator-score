@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AOS Maintainer Gate Registry v1",
+  "type": "object",
+  "required": ["version", "status", "batches", "invalidation"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "status": { "enum": ["PENDING", "ACCEPTED", "REJECTED", "INVALIDATED"] },
+    "verdict": { "enum": ["ACCEPTED", "REJECTED", "INVALIDATED"] },
+    "approved_at": { "type": "string", "format": "date-time" },
+    "approved_by": { "type": "string", "minLength": 1 },
+    "batches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "scope", "artifacts", "transitions"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["PENDING", "ACCEPTED", "REJECTED", "INVALIDATED"] },
+          "scope": { "type": "string", "minLength": 1 },
+          "verdict": { "enum": ["ACCEPTED", "REJECTED", "INVALIDATED"] },
+          "approved_at": { "type": "string", "format": "date-time" },
+          "approved_by": { "type": "string", "minLength": 1 },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "sha256", "kind"],
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "kind": { "enum": ["ADR_BATCH", "EPIC_PRD", "EXACT_TICKET"] }
+              }
+            }
+          },
+          "transitions": {
+            "type": "array",
+            "items": { "enum": ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"] }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "const": "PENDING" } }, "required": ["status"] },
+            "then": {
+              "not": { "anyOf": [{ "required": ["verdict"] }, { "required": ["approved_at"] }, { "required": ["approved_by"] }] },
+              "properties": { "transitions": { "const": [] } }
+            }
+          },
+          {
+            "if": { "properties": { "status": { "const": "ACCEPTED" } }, "required": ["status"] },
+            "then": {
+              "required": ["verdict", "approved_at", "approved_by"],
+              "properties": {
+                "verdict": { "const": "ACCEPTED" },
+                "artifacts": { "minItems": 1 },
+                "transitions": { "minItems": 1 }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "transitions": { "contains": { "const": "ADR_ACCEPTED" } } }, "required": ["transitions"] },
+                  "then": { "properties": { "artifacts": { "contains": { "properties": { "kind": { "const": "ADR_BATCH" } }, "required": ["kind"] } } } }
+                },
+                {
+                  "if": { "properties": { "transitions": { "contains": { "const": "PRD_ACCEPTED" } } }, "required": ["transitions"] },
+                  "then": { "properties": { "artifacts": { "contains": { "properties": { "kind": { "const": "EPIC_PRD" } }, "required": ["kind"] } } } }
+                },
+                {
+                  "if": { "properties": { "transitions": { "contains": { "const": "TICKET_READY_FOR_RED" } } }, "required": ["transitions"] },
+                  "then": { "properties": { "artifacts": { "contains": { "properties": { "kind": { "const": "EXACT_TICKET" } }, "required": ["kind"] } } } }
+                }
+              ]
+            }
+          },
+          {
+            "if": { "properties": { "status": { "const": "REJECTED" } }, "required": ["status"] },
+            "then": { "required": ["verdict", "approved_at", "approved_by"], "properties": { "verdict": { "const": "REJECTED" } } }
+          },
+          {
+            "if": { "properties": { "status": { "const": "INVALIDATED" } }, "required": ["status"] },
+            "then": { "required": ["verdict", "approved_at", "approved_by"], "properties": { "verdict": { "const": "INVALIDATED" } } }
+          }
+        ]
+      }
+    },
+    "invalidation": {
+      "type": "object",
+      "required": ["on_sha_or_digest_change", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "on_sha_or_digest_change": { "const": true },
+        "effect": { "const": "return_to_pending_and_invalidate_affected_evidence" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "PENDING" } }, "required": ["status"] },
+      "then": { "not": { "anyOf": [{ "required": ["verdict"] }, { "required": ["approved_at"] }, { "required": ["approved_by"] }] } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "ACCEPTED" } }, "required": ["status"] },
+      "then": {
+        "required": ["verdict", "approved_at", "approved_by"],
+        "properties": {
+          "verdict": { "const": "ACCEPTED" },
+          "batches": {
+            "minItems": 1,
+            "items": {
+              "required": ["status"],
+              "properties": { "status": { "const": "ACCEPTED" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "REJECTED" } }, "required": ["status"] },
+      "then": { "required": ["verdict", "approved_at", "approved_by"], "properties": { "verdict": { "const": "REJECTED" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "INVALIDATED" } }, "required": ["status"] },
+      "then": { "required": ["verdict", "approved_at", "approved_by"], "properties": { "verdict": { "const": "INVALIDATED" } } }
+    }
+  ]
+}

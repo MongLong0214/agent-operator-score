@@ -1,6 +1,6 @@
 # ADR-0001: Freeze Agent Operator Score identity and isolate legacy names
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Date: 2026-08-05
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
 
@@ -14,7 +14,7 @@ The final baseline replaces all earlier product identities. Mixed identifiers wo
 - Repository and package identifier is `agent-operator-score`; executable is `aos`; local state root is `.aos/`.
 - The scored instrument is `AOS-Coding`; the provisional score is `AOS-Coding P0`.
 - Earlier product identifiers are forbidden anywhere in the active tree.
-- Name clearance is a G4 publication gate, not an assumption.
+- D0 records minimum GitHub/npm/domain/basic-trademark name-clearance evidence and its limits; an unresolved result blocks canonical-name adoption. LICENSE, contribution acceptance, redistribution, and publication are separate E14/G4 decisions.
 
 ## Rejected alternatives
 
@@ -28,4 +28,4 @@ The final baseline replaces all earlier product identities. Mixed identifiers wo
 
 ## Implementation gate
 
-No product code may rely on ADR-0001 until the CEO records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0001 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

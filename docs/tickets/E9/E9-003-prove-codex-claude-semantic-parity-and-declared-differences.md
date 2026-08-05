@@ -1,6 +1,6 @@
 # E9-003 · Prove Codex Claude semantic parity and declared differences
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E9
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E9](../../prd/PRD-E9-claude-code-adapter-and-parity.md)

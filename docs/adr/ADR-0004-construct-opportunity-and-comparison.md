@@ -1,6 +1,6 @@
 # ADR-0004: Bind every score to an Opportunity Profile without pretending to deconfound it
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Date: 2026-08-05
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
 
@@ -27,4 +27,4 @@ Observed results combine operator decisions, model/runtime/harness/tool effects,
 
 ## Implementation gate
 
-No product code may rely on ADR-0004 until the CEO records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0004 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

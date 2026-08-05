@@ -1,75 +1,73 @@
-# D0-004 · Planning contract validator and governance gate
+# D0-004 · Semantic planning validator v2 and governance gate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: D0
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [D0](../../prd/PRD-D0-name-migration-and-repository-skeleton.md)
 - Size: M
-- Dependencies: D0-002,D0-003
+- Dependencies: D0-002
 
 ## Goal
 
-Planning contract validator and governance gate. Deliver only the bounded contract below; do not infer adjacent scope.
+Replace the structural planning validator with semantic planning validator v2. It must prove the required authority, traceability, gate, identity, issue-map, and product-code contracts instead of reporting an unverified scaffold claim.
 
 ## Exact ownership
 
-- scripts/validate-planning.mjs; tests/planning-contract.test.mjs; docs/TRACEABILITY.md; docs/decisions/CEO-GATE-STATUS.md
+- `scripts/validate-planning.mjs`; `tests/planning-contract.test.mjs`; `docs/TRACEABILITY.md`; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v1.json`
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
 
 1. Required ADRs and owning PRD are explicitly accepted at their exact digests.
 2. This exact ticket is explicitly accepted and an execution packet pins the base SHA.
-3. Every dependency above is verified complete on the target branch; active/partial work does not count.
+3. D0-002 is complete and D0-003 is verified superseded by PR #53.
 4. Worktree is clean or unrelated owner changes are identified and protected.
 
 ## Forbidden scope
 
-- marking ADR/PRD/tickets accepted; product source; GitHub mutation
-- No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
-- No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
+- Marking any gate accepted; product source; GitHub mutation; self-approval; permissive fallback on malformed traceability, registry, digest, or source census.
 
 ## RED contract
 
 - Test file: `tests/planning-contract.test.mjs`
 - Focused command: `npm test -- tests/planning-contract.test.mjs`
-- Expected pre-GREEN failure: validator expects legacy census and cannot enforce new dependency/gate contracts.
-- Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
+- Expected pre-GREEN failure: a fixture that removes a PRD requirement/AC edge, ticket AC/test-case edge, gate digest, issue-map record, identity value, or product-code allowlist entry is currently not rejected by the structural validator.
+- Capture each named mutant and its unexpected PASS before editing the validator. If a mutant already fails for an unrelated reason, stop and correct the mutant rather than claiming RED.
 
 ## Minimum GREEN
 
-- validate canonical SSOT, 12 ADRs, 19 PRDs, 65 tickets, unique IDs, dependency DAG, required ticket fields, active legacy lint, and zero product code.
-- Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
+- validate the graph `SSOT → owning ADR/PRD → PRD requirement → PRD AC → ticket → ticket AC → test file → named test case`, with orphan count zero and exact owning ADR/PRD links.
+- validate issue-map and `docs/issues.json` agreement, dependency DAG, current gate-registry schema/data, exact digest bindings, and digest invalidation after a material edit.
+- compute the actual product-code census from an explicit control-plane allowlist; emit the paths and count, never a fixed `product_code=0` literal.
+- validate canonical identity consistency across the registry, root manifest, README, and active planning surfaces; reject legacy/path exceptions and unresolved/malformed inputs fail closed.
+- use `fileURLToPath()` for repository paths and preserve encoded/space-containing paths with a focused regression.
 
 ## Acceptance ↔ tests
 
-- AC-D0-004-1 ↔ `tests/planning-contract.test.mjs` case `census`.
-- AC-D0-004-2 ↔ `tests/planning-contract.test.mjs` case `dag-acyclic`.
-- AC-D0-004-3 ↔ `tests/planning-contract.test.mjs` case `field-complete`.
-- AC-D0-004-4 ↔ `tests/planning-contract.test.mjs` case `traceability-total`.
-- AC-D0-004-5 ↔ `tests/planning-contract.test.mjs` case `gate-blocked`.
+- AC-D0-004-1 ↔ `tests/planning-contract.test.mjs` case `semantic-traceability-graph`.
+- AC-D0-004-2 ↔ `tests/planning-contract.test.mjs` case `orphan-requirement-ac-ticket-test-mutants`.
+- AC-D0-004-3 ↔ `tests/planning-contract.test.mjs` case `issue-map-and-manifest-agreement`.
+- AC-D0-004-4 ↔ `tests/planning-contract.test.mjs` case `maintainer-gate-digest-invalidation`.
+- AC-D0-004-5 ↔ `tests/planning-contract.test.mjs` case `computed-product-code-census`.
+- AC-D0-004-6 ↔ `tests/planning-contract.test.mjs` case `identity-consistency-and-no-exception`.
+- AC-D0-004-7 ↔ `tests/planning-contract.test.mjs` case `encoded-path-root-resolution`.
 
 ## Verification
 
-1. Focused: `npm test -- tests/planning-contract.test.mjs`; every named case above passes.
-2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
-3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
-4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario surface; for runtime/scenario tickets run only the controlled local fixture named by the PRD, never a production target.
+1. Focused: `npm test -- tests/planning-contract.test.mjs`; each semantic mutant fails for its expected reason and canonical corpus passes.
+2. Full: `npm test`; zero failure and no unregistered skip.
+3. Build/package: `npm run build`; emitted census/digests match disk.
+4. Manual/live: `LIVE_NA`.
 5. Ownership: inspect `git diff --name-only <base>...<head>` and reject every unowned path.
 
 ## Stop and escalation
 
-- Stop on ambiguity, wrong target, ownership overlap, missing required observability, unsafe permission, secret exposure, silent fallback, timeout without a registered terminal state, partial state, nondeterminism, or evidence not tied to exact head.
-- A dependency or contract defect is escalated to its owning ADR/PRD/ticket; do not broaden this ticket.
+- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, unallowlisted product code, unsafe path handling, timeout without a terminal state, or partial state.
 
 ## Completion evidence
 
-- Exact base/head SHA and diff manifest.
-- RED receipt with expected reason; GREEN focused/full/build receipts.
-- Acceptance-to-test result table, artifact/schema/scorer digests where produced, and manual/LIVE_NA rationale.
-- Security/privacy/fail-closed/wrong-target/timeout/partial-state review and stale-evidence invalidation statement.
-- Exact-head cumulative reviewer verdict and CI receipt before merge eligibility.
+- Exact base/head SHA, mutant RED receipts, canonical focused/full/build receipts, computed census, gate-registry/digest report, and exact-head review/CI evidence.
 
 ## Invalidation
 
-Any change to this ticket, its PRD/ADR dependencies, owned sources, test oracle, fixture manifest, package lock, runtime identity, or candidate head invalidates the affected evidence and returns the lane to the earliest changed gate.
+Any change to the SSOT, ADR/PRD/ticket graph, gate registry, identity source, control-plane allowlist, runtime identity, or candidate head invalidates affected semantic evidence and returns this lane to RED.

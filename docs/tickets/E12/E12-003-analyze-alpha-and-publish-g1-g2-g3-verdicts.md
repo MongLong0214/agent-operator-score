@@ -1,6 +1,6 @@
-# E12-003 · Analyze alpha and publish G1 G2 G3 verdicts
+# E12-003 · Analyze alpha and publish feasibility verdict
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E12
 - Milestone: S4 · Human Alpha & Retest
 - Owning PRD: [E12](../../prd/PRD-E12-human-alpha-and-validation.md)
@@ -9,11 +9,11 @@
 
 ## Goal
 
-Analyze alpha and publish G1 G2 G3 verdicts. Deliver only the bounded contract below; do not infer adjacent scope.
+Analyze the preregistered n=20 feasibility alpha and publish one deterministic feasibility verdict. Deliver only the bounded contract below; do not infer adjacent scope.
 
 ## Exact ownership
 
-- packages/scorer/src/validation.ts — analyzeAlpha; docs/VALIDATION.md; docs/LIMITATIONS.md; docs/INTENDED_USE.md; docs/decisions/G1-G3-VERDICT.md
+- packages/scorer/src/validation.ts — analyzeAlpha; docs/VALIDATION.md; docs/LIMITATIONS.md; docs/INTENDED_USE.md; docs/decisions/FEASIBILITY-VERDICT.md
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
@@ -25,7 +25,7 @@ Analyze alpha and publish G1 G2 G3 verdicts. Deliver only the bounded contract b
 
 ## Forbidden scope
 
-- percentile; causal claim beyond design; hiding nulls; automatic PASS
+- percentile; calibration/certification/population claim; causal claim beyond design; hiding nulls; automatic PASS
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -38,7 +38,7 @@ Analyze alpha and publish G1 G2 G3 verdicts. Deliver only the bounded contract b
 
 ## Minimum GREEN
 
-- compute person/task/session signal, groups, agreement, duration, profile/crossover, transfer and missingness; render PASS/FAIL/INCONCLUSIVE with claim/pivot effect.
+- compute person/task/session signal, groups, agreement, duration, profile/crossover, transfer and missingness; render exactly `PASS_TO_CONTINUE`, `INCONCLUSIVE`, or `PIVOT_REQUIRED` with its deterministic next action. The output must state that the n=20 alpha is feasibility-only and cannot support calibration, certification, or population claims.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -50,6 +50,7 @@ Analyze alpha and publish G1 G2 G3 verdicts. Deliver only the bounded contract b
 - AC-E12-003-5 ↔ `packages/scorer/test/validation.test.ts` case `agreement-low`.
 - AC-E12-003-6 ↔ `packages/scorer/test/validation.test.ts` case `transfer-fail`.
 - AC-E12-003-7 ↔ `packages/scorer/test/validation.test.ts` case `incomplete`.
+- AC-E12-003-8 ↔ `packages/scorer/test/validation.test.ts` case `feasibility-only-verdicts`.
 
 ## Verification
 

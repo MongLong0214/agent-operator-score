@@ -1,6 +1,6 @@
 # E6-004 · Compose FAM-5 claim-evidence conformance gate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E6
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E6](../../prd/PRD-E6-fam5-false-completion-scenarios.md)

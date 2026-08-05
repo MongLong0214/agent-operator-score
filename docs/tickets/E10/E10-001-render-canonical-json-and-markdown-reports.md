@@ -1,6 +1,6 @@
 # E10-001 · Render canonical JSON and Markdown reports
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E10
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E10](../../prd/PRD-E10-report-and-one-lever.md)

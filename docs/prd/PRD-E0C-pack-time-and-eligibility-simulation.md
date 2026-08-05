@@ -1,6 +1,6 @@
 # PRD E0-C — Prove the 35–45 minute pack and required metric opportunities can coexist before building scenarios.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S0 · Name & Contracts
 - Dependencies: E0-A, E0-B; ADR-0009
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
