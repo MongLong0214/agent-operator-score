@@ -89,6 +89,11 @@ const checkSchemaContract = (schema, errors) => {
   if (targetProperties?.repository?.const !== canonicalRepositoryTarget || targetProperties?.branch?.const !== canonicalTargetBranch) {
     errors.push("Gate Administration schema has wrong canonical target");
   }
+  const pendingDigestRequirement = schema.properties?.batches?.items?.allOf?.find((rule) => rule?.if?.properties?.status?.const === "PENDING");
+  const pendingRequiredArtifactKeys = pendingDigestRequirement?.then?.properties?.required_artifacts?.items?.required;
+  if (!Array.isArray(pendingRequiredArtifactKeys) || !sameSet(new Set(pendingRequiredArtifactKeys), new Set(["path", "sha256", "kind"]))) {
+    errors.push("Gate Administration schema does not require SHA-256 for PENDING required artifacts");
+  }
 };
 
 const readJson = (path, label, errors) => {
@@ -258,7 +263,9 @@ const verifyBatch = (root, batch, errors) => {
       const artifactPath = resolve(root, artifact.path);
       if (!artifactPath.startsWith(`${root}/`) || !existsSync(artifactPath)) {
         errors.push(`${label} pending required artifact has wrong target ${artifact.path}`);
-      } else if (hash64(artifact.sha256) && sha256(readFileSync(artifactPath)) !== artifact.sha256) {
+      } else if (!hash64(artifact.sha256)) {
+        errors.push(`${label} pending required artifact has missing or malformed sha256 ${artifact.path}`);
+      } else if (sha256(readFileSync(artifactPath)) !== artifact.sha256) {
         errors.push(`${label} pending required artifact digest is stale ${artifact.path}`);
       }
     }

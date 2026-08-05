@@ -277,6 +277,26 @@ test("PENDING registry is exact-head bound before structural PASS", () => {
   }
 });
 
+test("PENDING required artifacts require valid SHA-256 digests", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const pending = JSON.parse(readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
+    const missingDigest = structuredClone(pending);
+    delete missingDigest.batches[0].required_artifacts[0].sha256;
+    const missingDigestResult = runRegistry(fixtureRoot, missingDigest);
+    assert.equal(missingDigestResult.error.status, 1);
+    assert.match(missingDigestResult.error.stderr, /pending required artifact has missing or malformed sha256/);
+
+    const malformedDigest = structuredClone(pending);
+    malformedDigest.batches[0].required_artifacts[0].sha256 = "not-a-sha256";
+    const malformedDigestResult = runRegistry(fixtureRoot, malformedDigest);
+    assert.equal(malformedDigestResult.error.status, 1);
+    assert.match(malformedDigestResult.error.stderr, /pending required artifact has missing or malformed sha256/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
 test("REJECTED registry is exact-head bound before structural PASS", () => {
   const rejectedFixture = makeFixture();
   try {

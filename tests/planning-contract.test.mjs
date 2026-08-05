@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { basename, join, resolve } from "node:path";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -53,6 +54,10 @@ test("planning validator preserves encoded paths with spaces", () => {
     for (const batch of registry.batches) {
       batch.status = "PENDING";
       delete batch.target.reviewed_head;
+      batch.required_artifacts = batch.required_artifacts.map((artifact) => ({
+        ...artifact,
+        sha256: createHash("sha256").update(readFileSync(join(fixture, artifact.path))).digest("hex")
+      }));
       batch.artifacts = [];
       batch.transitions = [];
       batch.events = [];
