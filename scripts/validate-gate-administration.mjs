@@ -397,11 +397,11 @@ export const validateGateAdministration = ({ root, registryPath } = {}) => {
   const registry = errors.length ? null : readJson(resolvedRegistryPath, "Gate Administration registry", errors);
   if (schema) checkSchemaContract(schema, errors);
   if (!registry) return { errors, status: "invalid", counts: {} };
-  const requiresExactHeadBinding = registry.status === "ACCEPTED" ||
-    (Array.isArray(registry.batches) && registry.batches.some((batch) => batch?.status === "ACCEPTED"));
-  const candidateHead = requiresExactHeadBinding
-    ? verifyExactHeadSurfaces(resolvedRoot, errors)
-    : resolveCandidateHead(resolvedRoot, errors, false);
+  const allPending = registry.status === "PENDING" && Array.isArray(registry.batches) &&
+    registry.batches.length > 0 && registry.batches.every((batch) => batch?.status === "PENDING");
+  const candidateHead = allPending && !resolveCandidateHead(resolvedRoot, errors, false)
+    ? "unavailable_pending"
+    : verifyExactHeadSurfaces(resolvedRoot, errors);
   if (!checkKeys(registry, ["version", "status", "batches", "invalidation"], ["version", "status", "batches", "invalidation"], "registry", errors)) {
     return { errors, status: "invalid", counts: {} };
   }
@@ -448,5 +448,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     for (const error of result.errors) console.error(`- ${error}`);
     process.exit(1);
   }
-  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization candidate_head=${result.candidateHead ?? "unavailable"}`);
+  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization candidate_head=${result.candidateHead}`);
 }

@@ -49,9 +49,18 @@ const makeFixture = () => {
   return { parent, fixtureRoot };
 };
 
-const makeAcceptedFixture = (fixtureRoot) => {
+const makeNoGitFixture = () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos gate administration no-git "));
+  const fixtureRoot = join(parent, "repository");
+  cpSync(root, fixtureRoot, {
+    recursive: true,
+    filter: (source) => ![".git", "node_modules"].includes(basename(source))
+  });
+  return { parent, fixtureRoot };
+};
+
+const makeAcceptedFixture = (fixtureRoot, reviewedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim()) => {
   const registry = JSON.parse(readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
-  const reviewedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
   const batch = registry.batches[0];
   batch.status = "ACCEPTED";
   batch.target.reviewed_head = reviewedHead;
@@ -78,6 +87,45 @@ const makeAcceptedFixture = (fixtureRoot) => {
     role: "MAINTAINER"
   };
   registry.status = "ACCEPTED";
+  return registry;
+};
+
+const makeRejectedFixture = (fixtureRoot) => {
+  const registry = JSON.parse(readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
+  const batch = registry.batches[0];
+  batch.status = "REJECTED";
+  batch.events = [{
+    from: "PENDING",
+    to: "REJECTED",
+    recorded_at: "2026-08-05T00:00:00.000Z",
+    recorded_by: "maintainer-02"
+  }];
+  batch.preparation = { prepared_by: "gate-admin-01" };
+  batch.approval = {
+    approved_by: "maintainer-02",
+    approved_at: "2026-08-05T00:00:00.000Z",
+    role: "MAINTAINER"
+  };
+  registry.status = "REJECTED";
+  return registry;
+};
+
+const makeInvalidatedFixture = (fixtureRoot, reviewedHead) => {
+  const registry = makeAcceptedFixture(fixtureRoot, reviewedHead);
+  const batch = registry.batches[0];
+  batch.status = "INVALIDATED";
+  batch.events.push({
+    from: "ACCEPTED",
+    to: "INVALIDATED",
+    recorded_at: "2026-08-05T00:01:00.000Z",
+    recorded_by: "gate-admin-01"
+  });
+  batch.invalidation = {
+    invalidated_at: "2026-08-05T00:01:00.000Z",
+    invalidated_by: "gate-admin-01",
+    reason: "artifact changed after reviewed head"
+  };
+  registry.status = "INVALIDATED";
   return registry;
 };
 
@@ -167,23 +215,81 @@ test("Gate Administrator validates a structurally complete future batch only thr
     assert.equal(staleResult.error.status, 1);
     assert.match(staleResult.error.stderr, /artifact digest is stale/);
 
-    const invalidated = structuredClone(accepted);
-    invalidated.status = "INVALIDATED";
-    invalidated.batches[0].status = "INVALIDATED";
-    invalidated.batches[0].events.push({
-      from: "ACCEPTED",
-      to: "INVALIDATED",
-      recorded_at: "2026-08-05T00:01:00.000Z",
-      recorded_by: "gate-admin-01"
-    });
-    invalidated.batches[0].invalidation = {
-      invalidated_at: "2026-08-05T00:01:00.000Z",
-      invalidated_by: "gate-admin-01",
-      reason: "artifact changed after reviewed head"
-    };
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("PENDING registry is exact-head bound before structural PASS", () => {
+  const pendingFixture = makeFixture();
+  try {
+    const pendingPath = join(pendingFixture.fixtureRoot, canonicalRegistry);
+    const pendingBytes = readFileSync(pendingPath, "utf8");
+    writeFileSync(pendingPath, `${pendingBytes}\n`);
+    const uncommittedPending = runCli(pendingFixture.fixtureRoot);
+    assert.equal(uncommittedPending.error.status, 1);
+    assert.match(uncommittedPending.error.stderr, /exact-head mismatch docs\/decisions\/maintainer-gate-registry\.v2\.json/);
+    execFileSync("git", ["add", canonicalRegistry], { cwd: pendingFixture.fixtureRoot });
+    execFileSync("git", ["commit", "-qm", "pending gate candidate"], { cwd: pendingFixture.fixtureRoot });
+    const pendingHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: pendingFixture.fixtureRoot, encoding: "utf8" }).trim();
+    const committedPending = runCli(pendingFixture.fixtureRoot);
+    assert.equal(committedPending.error, undefined);
+    assert.match(committedPending.output, new RegExp(`registry=pending.*candidate_head=${pendingHead}`));
+  } finally {
+    rmSync(pendingFixture.parent, { recursive: true, force: true });
+  }
+});
+
+test("REJECTED registry is exact-head bound before structural PASS", () => {
+  const rejectedFixture = makeFixture();
+  try {
+    const rejected = makeRejectedFixture(rejectedFixture.fixtureRoot);
+    const uncommittedRejected = runRegistry(rejectedFixture.fixtureRoot, rejected);
+    assert.equal(uncommittedRejected.error.status, 1);
+    assert.match(uncommittedRejected.error.stderr, /exact-head mismatch docs\/decisions\/maintainer-gate-registry\.v2\.json/);
+    const rejectedHead = commitRegistryCandidate(rejectedFixture.fixtureRoot, rejected);
+    const committedRejected = runCli(rejectedFixture.fixtureRoot);
+    assert.equal(committedRejected.error, undefined);
+    assert.match(committedRejected.output, new RegExp(`registry=rejected.*candidate_head=${rejectedHead}`));
+  } finally {
+    rmSync(rejectedFixture.parent, { recursive: true, force: true });
+  }
+});
+
+test("INVALIDATED registry is exact-head bound before structural PASS", () => {
+  const invalidatedFixture = makeFixture();
+  try {
+    const invalidated = makeInvalidatedFixture(invalidatedFixture.fixtureRoot);
+    const uncommittedInvalidated = runRegistry(invalidatedFixture.fixtureRoot, invalidated);
+    assert.equal(uncommittedInvalidated.error.status, 1);
+    assert.match(uncommittedInvalidated.error.stderr, /exact-head mismatch docs\/decisions\/maintainer-gate-registry\.v2\.json/);
+    const invalidatedHead = commitRegistryCandidate(invalidatedFixture.fixtureRoot, invalidated);
+    const committedInvalidated = runCli(invalidatedFixture.fixtureRoot);
+    assert.equal(committedInvalidated.error, undefined);
+    assert.match(committedInvalidated.output, new RegExp(`registry=invalidated.*candidate_head=${invalidatedHead}`));
+  } finally {
+    rmSync(invalidatedFixture.parent, { recursive: true, force: true });
+  }
+});
+
+test("no-Git fixture permits only all-PENDING structural output", () => {
+  const { parent, fixtureRoot } = makeNoGitFixture();
+  try {
+    const originalRegistry = readFileSync(join(fixtureRoot, canonicalRegistry), "utf8");
+    const pending = runCli(fixtureRoot);
+    assert.equal(pending.error, undefined);
+    assert.match(pending.output, /registry=pending.*not_authorization candidate_head=unavailable_pending/);
+
+    const rejected = makeRejectedFixture(fixtureRoot);
+    const rejectedResult = runRegistry(fixtureRoot, rejected);
+    assert.equal(rejectedResult.error.status, 1);
+    assert.match(rejectedResult.error.stderr, /cannot resolve exact candidate HEAD/);
+
+    writeFileSync(join(fixtureRoot, canonicalRegistry), originalRegistry);
+    const invalidated = makeInvalidatedFixture(fixtureRoot, "a".repeat(40));
     const invalidatedResult = runRegistry(fixtureRoot, invalidated);
-    assert.equal(invalidatedResult.error, undefined);
-    assert.match(invalidatedResult.output, /GATE_ADMINISTRATION_STRUCTURAL_PASS registry=invalidated batches=1 accepted=0 rejected=0 invalidated=1 external_gate_evidence=not_applicable/);
+    assert.equal(invalidatedResult.error.status, 1);
+    assert.match(invalidatedResult.error.stderr, /cannot resolve exact candidate HEAD/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
