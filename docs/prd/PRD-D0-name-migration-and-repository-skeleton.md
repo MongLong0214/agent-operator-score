@@ -22,6 +22,10 @@ Migrate every active surface to Agent Operator Score and establish a planning-va
 4. Update active operator/developer surfaces, issue metadata mirrors, Maintainer Gate terminology, and planning validation without claiming semantic checks that are not implemented.
 5. Complete minimum name clearance in D0: record GitHub, npm, domain, and basic trademark evidence with search limits; unresolved evidence blocks canonical name adoption and D0 exit. This check does not decide LICENSE, contribution, redistribution, or publication; those are separate E14/G4 decisions.
 
+## Step-gate administration
+
+Before any D0 ticket can execute, its required ADR/PRD/ticket transitions must be recorded through the proposed pre-implementation Gate Administration Control Plane in `docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md`, after its separate CEO exact-head acceptance. That control plane records evidence only: it does not accept this PRD, any D0 ticket, RED, implementation, or product behavior. Every D0 gate remains blocked until its own exact-digest batch and execution packet are independently verified.
+
 ## Acceptance criteria
 
 - AC-D0-1: active-tree legacy lint reports zero forbidden hits.
