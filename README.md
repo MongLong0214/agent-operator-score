@@ -31,7 +31,7 @@ The initial method freezes 20 metrics across intent, context, orchestration, sta
 | Storage | Local `.aos/`; telemetry off |
 | Supported runtimes | Planned Codex and Claude Code adapters |
 
-See [ADR-0003](docs/adr/0003-runtime-and-distribution.md) and [.github/copilot/Technology_Stack.md](.github/copilot/Technology_Stack.md).
+See [ADR-0003](docs/adr/ADR-0003-runtime-and-distribution.md) and [.github/copilot/Technology_Stack.md](.github/copilot/Technology_Stack.md).
 
 ## Architecture
 
@@ -128,7 +128,7 @@ See [Coding Standards](.github/copilot/Coding_Standards.md).
 
 Current CI validates planning completeness on Node.js 20 and 24. Product tickets require unit, property, conformance, mutation, integration, security/privacy, and manual/live evidence as applicable. A passing test is insufficient when the test could not observe its target.
 
-See [Unit Tests](.github/copilot/Unit_Tests.md) and [ADR-0010](docs/adr/0010-validation-and-stop-rules.md).
+See [Unit Tests](.github/copilot/Unit_Tests.md) and [ADR-0010](docs/adr/ADR-0010-validation-and-stop-rules.md).
 
 ## Contributing
 
@@ -143,4 +143,3 @@ The accepted north-star is [agentops-score-ssot-v1.0.md](docs/north-star/agentop
 ## License
 
 No OSS license has been selected yet. The repository stays private and is not ready for redistribution until [T-804](docs/tickets/F8-validation-and-public-oss.md#t-804-decide-licensenotices-and-enforce-publication-gate-m) records the license, third-party notices, and publication approval.
-

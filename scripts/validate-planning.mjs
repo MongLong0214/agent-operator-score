@@ -18,7 +18,7 @@ for (const path of required) {
   if (!existsSync(resolve(root, path))) errors.push(`missing ${path}`);
 }
 
-const adrFiles = readdirSync(resolve(root, "docs/adr")).filter((f) => /^\d{4}-.+\.md$/.test(f));
+const adrFiles = readdirSync(resolve(root, "docs/adr")).filter((f) => /^ADR-\d{4}-.+\.md$/.test(f));
 const prdFiles = readdirSync(resolve(root, "docs/prd")).filter((f) => /^PRD-F\d-.+\.md$/.test(f));
 const ticketFiles = readdirSync(resolve(root, "docs/tickets")).filter((f) => /^F\d-.+\.md$/.test(f));
 const ticketText = ticketFiles.map((f) => readFileSync(resolve(root, "docs/tickets", f), "utf8")).join("\n");
@@ -50,4 +50,3 @@ if (errors.length) {
 
 const mode = process.argv.includes("--build") ? "BUILD_SCAFFOLD" : "PLANNING_CONTRACT";
 console.log(`${mode}_PASS adr=${adrFiles.length} prd=${prdFiles.length} tickets=${ticketIds.length} product_code=0`);
-

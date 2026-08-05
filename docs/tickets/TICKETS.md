@@ -27,7 +27,9 @@ T-701 ─> T-702 ─> T-703
 T-103 ─> T-801
 ```
 
-Critical path: `T-001 → T-003 → T-101 → T-102 → T-103 → T-201 → T-202 → T-203 → T-204 → T-301 → T-302 → T-303 → T-401 → T-402/T-403 → T-404 → T-501 → T-502/T-503/T-504 → T-505 → T-601 → T-603 → T-701 → T-703 → T-802 → T-803 → T-804 → T-805`.
+## Critical path
+
+`T-001 → T-003 → T-101 → T-102 → T-103 → T-201 → T-202 → T-203 → T-204 → T-301 → T-302 → T-303 → T-401 → T-402/T-403 → T-404 → T-501 → T-502/T-503/T-504 → T-505 → T-601 → T-603 → T-701 → T-703 → T-802 → T-803 → T-804 → T-805`.
 
 ## Feature files
 
@@ -41,3 +43,4 @@ Critical path: `T-001 → T-003 → T-101 → T-102 → T-103 → T-201 → T-20
 - [F7 Form B and improvement](F7-form-b-and-improvement.md)
 - [F8 Validation and public OSS](F8-validation-and-public-oss.md)
 
+Exact GitHub issue numbers are recorded in [ISSUE-MAP.md](ISSUE-MAP.md). The stable ticket ID remains the dependency key even if an issue is transferred or recreated.
