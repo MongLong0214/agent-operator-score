@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isAbsolute, relative, resolve } from "node:path";
 
@@ -11,6 +11,7 @@ const transitionKinds = {
   PRD_ACCEPTED: "PRD",
   TICKET_READY_FOR_RED: "TICKET"
 };
+const canonicalRegistryRelativePath = "docs/decisions/maintainer-gate-registry.v2.json";
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const plainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -33,6 +34,10 @@ const expectedPathForKind = (path, kind) => (
 
 const sameSet = (left, right) => left.size === right.size && [...left].every((value) => right.has(value));
 const pair = ({ path, kind }) => `${kind}:${path}`;
+const isWithin = (root, path) => {
+  const value = relative(root, path);
+  return value === "" || (!value.startsWith("..") && !isAbsolute(value));
+};
 
 const checkKeys = (value, allowed, required, label, errors) => {
   if (!plainObject(value)) {
@@ -93,7 +98,32 @@ const verifyReviewedArtifact = (root, reviewedHead, artifact, errors, label, ver
   }
 };
 
-const verifyReviewedHead = (root, reviewedHead, errors, label) => {
+const repositoryName = (remoteUrl) => remoteUrl.trim().replace(/\/+$/, "").split(/[/:]/).pop()?.replace(/\.git$/, "");
+
+const verifyActualTarget = (root, target, errors, label) => {
+  try {
+    const actualRepository = repositoryName(execFileSync("git", ["config", "--get", "remote.origin.url"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }));
+    if (actualRepository !== target.repository) errors.push(`${label} has wrong actual repository target`);
+  } catch {
+    errors.push(`${label} has no verifiable actual repository target`);
+  }
+  try {
+    const actualBranch = execFileSync("git", ["symbolic-ref", "--quiet", "--short", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    if (actualBranch !== target.branch) errors.push(`${label} has wrong actual branch target`);
+  } catch {
+    errors.push(`${label} has no verifiable actual branch target`);
+  }
+};
+
+const verifyReviewedHead = (root, reviewedHead, targetBranch, errors, label, requireReachability) => {
   if (!hash40(reviewedHead)) {
     errors.push(`${label} missing or malformed reviewed_head`);
     return false;
@@ -103,6 +133,17 @@ const verifyReviewedHead = (root, reviewedHead, errors, label) => {
       cwd: root,
       stdio: "ignore"
     });
+    if (requireReachability) {
+      try {
+        execFileSync("git", ["merge-base", "--is-ancestor", reviewedHead, `refs/heads/${targetBranch}`], {
+          cwd: root,
+          stdio: "ignore"
+        });
+      } catch {
+        errors.push(`${label} reviewed_head is not reachable from target branch ${targetBranch}`);
+        return false;
+      }
+    }
     return true;
   } catch {
     errors.push(`${label} reviewed_head is not a resolvable commit`);
@@ -198,7 +239,15 @@ const verifyBatch = (root, batch, errors) => {
     return;
   }
 
-  const reviewedHeadIsValid = verifyReviewedHead(root, batch.target.reviewed_head, errors, label);
+  if (batch.status === "ACCEPTED") verifyActualTarget(root, batch.target, errors, label);
+  const reviewedHeadIsValid = verifyReviewedHead(
+    root,
+    batch.target.reviewed_head,
+    batch.target.branch,
+    errors,
+    label,
+    batch.status === "ACCEPTED"
+  );
   const actualPairs = new Set();
   if (!Array.isArray(batch.artifacts) || batch.artifacts.length !== requiredPairs.size) {
     errors.push(`${label} has partial accepted artifacts`);
@@ -265,15 +314,38 @@ const deriveRegistryStatus = (batches) => {
   return null;
 };
 
+const verifyCanonicalRegistry = (root, errors) => {
+  const registryPath = resolve(root, canonicalRegistryRelativePath);
+  let realRoot;
+  try {
+    realRoot = realpathSync(root);
+  } catch {
+    errors.push("Gate Administration repository root is not resolvable");
+    return registryPath;
+  }
+  try {
+    const registryStat = lstatSync(registryPath);
+    if (!registryStat.isFile() || registryStat.isSymbolicLink()) {
+      errors.push("Gate Administration canonical registry must be a regular non-symlink file");
+      return registryPath;
+    }
+    if (!isWithin(realRoot, realpathSync(registryPath))) {
+      errors.push("Gate Administration canonical registry realpath escapes repository root");
+    }
+  } catch {
+    errors.push("Gate Administration canonical registry must be a regular non-symlink file");
+  }
+  return registryPath;
+};
+
 export const validateGateAdministration = ({ root, registryPath } = {}) => {
   const resolvedRoot = root ? resolve(root) : resolve(fileURLToPath(new URL("..", import.meta.url)));
   const errors = [];
   const schemaPath = resolve(resolvedRoot, "docs/decisions/maintainer-gate.schema.json");
-  const requestedPath = registryPath ?? "docs/decisions/maintainer-gate-registry.v2.json";
-  const resolvedRegistryPath = resolve(resolvedRoot, requestedPath);
-  if (isAbsolute(requestedPath) || relative(resolvedRoot, resolvedRegistryPath).startsWith("..")) {
-    errors.push("Gate Administration registry override escapes repository root");
+  if (registryPath !== undefined) {
+    errors.push("Gate Administration registry override escapes repository root; canonical registry only");
   }
+  const resolvedRegistryPath = verifyCanonicalRegistry(resolvedRoot, errors);
   const schema = readJson(schemaPath, "Gate Administration schema", errors);
   const registry = errors.length ? null : readJson(resolvedRegistryPath, "Gate Administration registry", errors);
   if (schema) checkSchemaContract(schema, errors);
@@ -301,22 +373,27 @@ export const validateGateAdministration = ({ root, registryPath } = {}) => {
   }
   const counts = Object.fromEntries(["ACCEPTED", "REJECTED", "INVALIDATED"].map((status) => [status.toLowerCase(),
     Array.isArray(registry.batches) ? registry.batches.filter((batch) => batch.status === status).length : 0]));
-  return { errors, status: statusName(registry.status), counts, batches: registry.batches?.length ?? 0 };
+  return {
+    errors,
+    status: statusName(registry.status),
+    counts,
+    batches: registry.batches?.length ?? 0,
+    externalGateEvidence: counts.accepted ? "required" : "not_applicable"
+  };
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
-  const registryArgument = args.find((argument) => argument.startsWith("--gate-registry="));
-  if (args.some((argument) => argument !== registryArgument)) {
+  if (args.length) {
     console.error("GATE_ADMINISTRATION_FAIL 1");
-    console.error("- unknown argument");
+    console.error("- canonical registry only; arguments are not supported");
     process.exit(1);
   }
-  const result = validateGateAdministration({ registryPath: registryArgument?.slice("--gate-registry=".length) });
+  const result = validateGateAdministration();
   if (result.errors.length) {
     console.error(`GATE_ADMINISTRATION_FAIL ${result.errors.length}`);
     for (const error of result.errors) console.error(`- ${error}`);
     process.exit(1);
   }
-  console.log(`GATE_ADMINISTRATION_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated}`);
+  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization`);
 }

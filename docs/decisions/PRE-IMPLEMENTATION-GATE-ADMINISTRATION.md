@@ -17,12 +17,16 @@ It owns only the administration record and its independent fail-closed checker:
 
 No product path, package/workspace manifest, product test, or implementation ticket ownership is granted here. D0-004 continues to own its future semantic validator work; the separation prevents its dependency from becoming a prerequisite for recording the gates that precede it.
 
+The production checker reads only `docs/decisions/maintainer-gate-registry.v2.json`; it accepts no registry-path flag or programmatic override. That canonical path must be a regular non-symlink file and its real path must remain inside the repository. Isolated tests construct that same canonical relative path rather than substituting a sibling fixture.
+
 ## Roles and separate acceptance
 
 - A **Gate Administrator** prepares a batch and runs the independent checker. The role may create only a structurally valid *candidate* record.
-- A **Maintainer** is the external reviewer named in an accepted batch. The schema requires `prepared_by` and `approved_by` to differ; a self-labelled JSON record is not proof of authorization.
+- A **Maintainer** is the external reviewer named in an accepted batch. The schema requires `prepared_by` and `approved_by` to differ, but `prepared_by`, `approved_by`, and `recorded_by` are mutable identity strings: their format and distinction are structural checks only, never proof of independent authorization.
 - The **CEO** separately accepts this control-plane correction at its final exact candidate head, after cumulative review and CI. That acceptance is outside the Maintainer Gate registry and precedes any Gate Administrator action. It must not be inferred from this proposed document, a passing checker, or a GitHub issue state.
 - The normal Maintainer exact-head review/CI remains required for every future accepted batch. A Maintainer may not approve their own batch, and D0-004 is never a Gate Administrator or approving authority.
+
+The CEO activation, protected independent review/CI, and final-receipt exact-head facts cannot be authenticated locally. They are **external gate evidence**. A local `GATE_ADMINISTRATION_STRUCTURAL_PASS` therefore reports `external_gate_evidence=required` whenever an accepted batch is structurally complete and always appends `not_authorization`; it neither grants nor emits authorization.
 
 ## Record model and lifecycle
 
@@ -36,7 +40,7 @@ ACCEPTED --(artifact or reviewed-head change)-------------------> INVALIDATED
 
 `INVALIDATED` is terminal for that batch ID. A renewed review uses a new `PENDING` batch ID; no state may silently return to `PENDING`. The registry-level status is a derived summary: `PENDING` for all-pending, `PARTIAL` for pending/accepted, `ACCEPTED` for all-accepted, `REJECTED` when a rejection exists, and `INVALIDATED` when an invalidation exists. The checker rejects any mismatch.
 
-For an accepted batch, every declared required path must appear once in `artifacts` with a SHA-256 digest, every required phase must point to the appropriate artifact paths, and `reviewed_head` must resolve. The checker verifies that each digest matches both the active file and that path at `reviewed_head`; malformed JSON/schema, duplicate paths, unsafe paths, wrong kind/path, missing phase, wrong head, partial evidence, or a same-person approval fails closed. A material artifact edit or an artifact mismatch at the recorded head fails closed until the batch is explicitly invalidated and a fresh batch is reviewed.
+For an accepted batch, every declared required path must appear once in `artifacts` with a SHA-256 digest, every required phase must point to the appropriate artifact paths, and `reviewed_head` must resolve and be reachable from the declared target branch. The checker verifies the actual repository remote name and checked-out branch against the declared target, then verifies that each digest matches both the active file and that path at `reviewed_head`; malformed JSON/schema, duplicate paths, unsafe paths, wrong kind/path, wrong actual target, unresolved or unreachable head, partial evidence, or a same-person approval fails closed. A material artifact edit or an artifact mismatch at the recorded head fails closed until the batch is explicitly invalidated and a fresh batch is reviewed.
 
 The registry entry binds the reviewed artifact head. The reviewable **final receipt commit** is separately approved at its exact head by the Maintainer; if that candidate head changes before approval or merge, the review, CI, and proposed transition are stale and must be recreated. This avoids treating a post-review metadata write as evidence for a different head.
 

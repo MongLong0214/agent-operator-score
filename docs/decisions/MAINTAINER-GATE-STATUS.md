@@ -21,3 +21,5 @@ Date: 2026-08-05
 4. Only after the exact batch and an execution packet are independently verified may RED be authorized for that ticket.
 
 A changed reviewed artifact or reviewed head invalidates the affected accepted batch; a new pending batch and renewed review are required. The machine-readable registry in this correction remains `PENDING`; it records no acceptance or transition and cannot self-approve.
+
+The local checker is structural only: it reads only the canonical regular non-symlink registry inside this repository and emits `GATE_ADMINISTRATION_STRUCTURAL_PASS`, never authorization. CEO activation, protected independent review/CI, and final-receipt exact-head facts remain external gate evidence; mutable identity strings in a registry do not authenticate them.
