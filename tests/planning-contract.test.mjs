@@ -86,6 +86,100 @@ test("Maintainer Gate registry remains pending and self-approval-free", () => {
   assert.equal(registry.invalidation.on_sha_or_digest_change, true);
 });
 
+test("Maintainer Gate schema validates non-vacuous accepted batches", () => {
+  const fixture = resolve(root, ".maintainer-gate-registry.fixture.json");
+  const accepted = {
+    version: 1,
+    status: "ACCEPTED",
+    verdict: "ACCEPTED",
+    approved_at: "2026-08-05T00:00:00.000Z",
+    approved_by: "maintainer",
+    batches: [{
+      id: "accepted-adr-batch",
+      status: "ACCEPTED",
+      scope: "Exact ADR acceptance evidence.",
+      verdict: "ACCEPTED",
+      approved_at: "2026-08-05T00:00:00.000Z",
+      approved_by: "maintainer",
+      artifacts: [{
+        path: "docs/adr/ADR-0001-product-mission-and-claims.md",
+        sha256: "a".repeat(64),
+        kind: "ADR_BATCH"
+      }],
+      transitions: ["ADR_ACCEPTED"]
+    }],
+    invalidation: {
+      on_sha_or_digest_change: true,
+      effect: "return_to_pending_and_invalidate_affected_evidence"
+    }
+  };
+  const runFixture = (candidate) => {
+    writeFileSync(fixture, `${JSON.stringify(candidate, null, 2)}\n`);
+    try {
+      return {
+        output: execFileSync(process.execPath, ["scripts/validate-planning.mjs", "--gate-registry=.maintainer-gate-registry.fixture.json"], {
+          cwd: root,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"]
+        })
+      };
+    } catch (error) {
+      return { error };
+    }
+  };
+  try {
+    for (const [transition, kind] of [
+      ["ADR_ACCEPTED", "ADR_BATCH"],
+      ["PRD_ACCEPTED", "EPIC_PRD"],
+      ["TICKET_READY_FOR_RED", "EXACT_TICKET"]
+    ]) {
+      const positive = structuredClone(accepted);
+      positive.batches[0].transitions = [transition];
+      positive.batches[0].artifacts[0].kind = kind;
+      const result = runFixture(positive);
+      assert.equal(result.error, undefined);
+      assert.match(result.output, /PLANNING_CONTRACT_PASS/);
+    }
+
+    const emptyArtifacts = structuredClone(accepted);
+    emptyArtifacts.batches[0].artifacts = [];
+    const emptyResult = runFixture(emptyArtifacts);
+    assert.ok(emptyResult.error);
+    assert.equal(emptyResult.error.status, 1);
+    assert.match(emptyResult.error.stderr, /minItems/);
+
+    for (const [transition, kind] of [
+      ["ADR_ACCEPTED", "EPIC_PRD"],
+      ["PRD_ACCEPTED", "EXACT_TICKET"],
+      ["TICKET_READY_FOR_RED", "ADR_BATCH"]
+    ]) {
+      const mismatchedKind = structuredClone(accepted);
+      mismatchedKind.batches[0].transitions = [transition];
+      mismatchedKind.batches[0].artifacts[0].kind = kind;
+      const result = runFixture(mismatchedKind);
+      assert.ok(result.error);
+      assert.equal(result.error.status, 1);
+      assert.match(result.error.stderr, /contains/);
+    }
+
+    let escapedOverride;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs", "--gate-registry=../outside-registry.json"], {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (error) {
+      escapedOverride = error;
+    }
+    assert.ok(escapedOverride);
+    assert.equal(escapedOverride.status, 1);
+    assert.match(escapedOverride.stderr, /override escapes repository root/);
+  } finally {
+    if (existsSync(fixture)) unlinkSync(fixture);
+  }
+});
+
 test("SSOT makes accepted ADR, PRD, and exact ticket mandatory implementation authority", () => {
   const ssot = readFileSync(resolve(root, "docs/north-star/agent-operator-score-ssot-v1.0.md"), "utf8");
   assert.match(ssot, /accepted ADR → accepted owning PRD → accepted exact ticket/);
@@ -101,6 +195,10 @@ test("metric contract has concrete deterministic vectors for M01 through M20", (
   assert.match(contract, /maximum_regret=0/);
   assert.match(contract, /maximum_distance=0/);
   assert.match(contract, /eligible=true.*denominator=0.*INVALID/s);
+  assert.match(contract, /M10 route-table derivation.*frozen eligible route table.*route_table_id.*selected_route_id/s);
+  assert.match(contract, /M10 input that contains caller-supplied `selected_regret` or `maximum_regret`.*INVALID/s);
+  assert.match(contract, /M20 frontier derivation.*coordinate bounds.*weighted-L1 norm.*weights.*frontier_id/s);
+  assert.match(contract, /M20 input that contains caller-supplied `distance_to_frontier` or `maximum_distance`.*INVALID/s);
 });
 
 test("D0 identity control-plane paths are allowed while unrelated source is rejected", () => {
