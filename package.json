@@ -1,8 +1,8 @@
 {
-  "name": "agentops-score-repository",
+  "name": "agent-operator-score-repository",
   "version": "0.0.0",
   "private": true,
-  "description": "Planning baseline for AgentOps Score; the public package is not implemented.",
+  "description": "Planning baseline for Agent Operator Score; the public package and CLI are not implemented.",
   "type": "module",
   "engines": {
     "node": ">=20 <25"
@@ -13,4 +13,3 @@
     "docs:check": "node scripts/validate-planning.mjs"
   }
 }
-
