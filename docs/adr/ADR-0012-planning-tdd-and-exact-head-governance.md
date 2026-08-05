@@ -15,7 +15,8 @@ Low-context implementers need bounded ownership and evidence that remains valid 
 - Every ticket names files/symbols, dependencies, forbidden scope, RED and expected failure, minimum GREEN, AC-to-test mapping, focused/full/build/manual lanes, invalidation, stop conditions, and evidence.
 - RED precedes GREEN; implementation is minimal; cumulative review covers all prior obligations.
 - Any candidate-head change invalidates affected tests, artifacts, reviews, and CI until rerun.
-- `docs/decisions/maintainer-gate.schema.json` and its registry are the machine-readable record for ADR-batch acceptance, epic-PRD acceptance, exact-ticket readiness for RED, SHA-256 bindings, and digest invalidation; a pending registry cannot self-approve.
+- The pre-implementation Gate Administration Control Plane in `docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md` owns `docs/decisions/maintainer-gate.schema.json`, its registry, and status record before product-ticket execution. It records ADR-batch acceptance, epic-PRD acceptance, exact-ticket readiness for RED, SHA-256 bindings, and digest invalidation through an independent fail-closed checker; a pending registry cannot self-approve.
+- D0-004 may later semantically consume a valid administration record, but neither D0-004 nor D0-002 is a dependency or owner of the administration surfaces. CEO exact-head acceptance of this control-plane correction is separate from, and grants none of, the Maintainer Gate transitions.
 
 ## Rejected alternatives
 

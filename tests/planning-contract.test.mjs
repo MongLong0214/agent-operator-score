@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const validatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=2 control_plane_allowlist=4 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
+const validatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
 
 test("planning contract validator reports the truthful structural census", () => {
   const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
@@ -65,167 +65,23 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
   assert.doesNotMatch(readme, /docs\/north-star\/legacy/);
 });
 
-test("Maintainer Gate registry remains pending and self-approval-free", () => {
-  const schema = JSON.parse(readFileSync(resolve(root, "docs/decisions/maintainer-gate.schema.json"), "utf8"));
-  const registry = JSON.parse(readFileSync(resolve(root, "docs/decisions/maintainer-gate-registry.v1.json"), "utf8"));
-  const statuses = ["PENDING", "ACCEPTED", "REJECTED", "INVALIDATED"];
-  assert.deepEqual(schema.properties.status.enum, statuses);
-  assert.deepEqual(schema.properties.batches.items.properties.status.enum, statuses);
-  for (const status of statuses.slice(1)) {
-    const topCondition = schema.allOf.find(({ if: condition }) => condition?.properties?.status?.const === status);
-    const batchCondition = schema.properties.batches.items.allOf
-      .find(({ if: condition }) => condition?.properties?.status?.const === status);
-    for (const condition of [topCondition, batchCondition]) {
-      assert.deepEqual(condition.then.required, ["verdict", "approved_at", "approved_by"]);
-      assert.equal(condition.then.properties.verdict.const, status);
-    }
-  }
-  assert.equal(registry.version, 1);
-  assert.equal(registry.status, "PENDING");
-  assert.ok(registry.batches.every(({ status, transitions }) => status === "PENDING" && transitions.length === 0));
-  assert.equal(registry.invalidation.on_sha_or_digest_change, true);
-});
-
-test("Maintainer Gate schema validates non-vacuous accepted batches", () => {
-  const fixture = resolve(root, ".maintainer-gate-registry.fixture.json");
-  const accepted = {
-    version: 1,
-    status: "ACCEPTED",
-    verdict: "ACCEPTED",
-    approved_at: "2026-08-05T00:00:00.000Z",
-    approved_by: "maintainer",
-    batches: [{
-      id: "accepted-adr-batch",
-      status: "ACCEPTED",
-      scope: "Exact ADR acceptance evidence.",
-      verdict: "ACCEPTED",
-      approved_at: "2026-08-05T00:00:00.000Z",
-      approved_by: "maintainer",
-      artifacts: [{
-        path: "docs/adr/ADR-0001-product-mission-and-claims.md",
-        sha256: "a".repeat(64),
-        kind: "ADR_BATCH"
-      }],
-      transitions: ["ADR_ACCEPTED"]
-    }],
-    invalidation: {
-      on_sha_or_digest_change: true,
-      effect: "return_to_pending_and_invalidate_affected_evidence"
-    }
-  };
-  const pending = {
-    version: 1,
-    status: "PENDING",
-    batches: [{
-      id: "pending-batch",
-      status: "PENDING",
-      scope: "No accepted transition is recorded.",
-      artifacts: [],
-      transitions: []
-    }],
-    invalidation: {
-      on_sha_or_digest_change: true,
-      effect: "return_to_pending_and_invalidate_affected_evidence"
-    }
-  };
-  const runFixture = (candidate) => {
-    writeFileSync(fixture, `${JSON.stringify(candidate, null, 2)}\n`);
-    try {
-      return {
-        output: execFileSync(process.execPath, ["scripts/validate-planning.mjs", "--gate-registry=.maintainer-gate-registry.fixture.json"], {
-          cwd: root,
-          encoding: "utf8",
-          stdio: ["ignore", "pipe", "pipe"]
-        })
-      };
-    } catch (error) {
-      return { error };
-    }
-  };
+test("planning validator delegates gate records to the independent administration checker", () => {
+  const validator = readFileSync(resolve(root, "scripts/validate-planning.mjs"), "utf8");
+  assert.match(validator, /validateGateAdministration/);
+  assert.match(validator, /Gate Administration/);
+  let escapedOverride;
   try {
-    for (const [transition, kind] of [
-      ["ADR_ACCEPTED", "ADR_BATCH"],
-      ["PRD_ACCEPTED", "EPIC_PRD"],
-      ["TICKET_READY_FOR_RED", "EXACT_TICKET"]
-    ]) {
-      const positive = structuredClone(accepted);
-      positive.batches[0].transitions = [transition];
-      positive.batches[0].artifacts[0].kind = kind;
-      const result = runFixture(positive);
-      assert.equal(result.error, undefined);
-      assert.match(result.output, /PLANNING_CONTRACT_PASS/);
-    }
-
-    const emptyArtifacts = structuredClone(accepted);
-    emptyArtifacts.batches[0].artifacts = [];
-    const emptyResult = runFixture(emptyArtifacts);
-    assert.ok(emptyResult.error);
-    assert.equal(emptyResult.error.status, 1);
-    assert.match(emptyResult.error.stderr, /minItems/);
-
-    const pendingWithTransition = structuredClone(pending);
-    pendingWithTransition.batches[0].transitions = ["ADR_ACCEPTED"];
-    const pendingTransitionResult = runFixture(pendingWithTransition);
-    assert.ok(pendingTransitionResult.error);
-    assert.equal(pendingTransitionResult.error.status, 1);
-    assert.match(pendingTransitionResult.error.stderr, /must equal const/);
-
-    for (const [transition, kind] of [
-      ["ADR_ACCEPTED", "EPIC_PRD"],
-      ["PRD_ACCEPTED", "EXACT_TICKET"],
-      ["TICKET_READY_FOR_RED", "ADR_BATCH"]
-    ]) {
-      const mismatchedKind = structuredClone(accepted);
-      mismatchedKind.batches[0].transitions = [transition];
-      mismatchedKind.batches[0].artifacts[0].kind = kind;
-      const result = runFixture(mismatchedKind);
-      assert.ok(result.error);
-      assert.equal(result.error.status, 1);
-      assert.match(result.error.stderr, /contains/);
-    }
-
-    const acceptedWithoutBatch = structuredClone(accepted);
-    acceptedWithoutBatch.batches = [];
-    const noBatchResult = runFixture(acceptedWithoutBatch);
-    assert.ok(noBatchResult.error);
-    assert.equal(noBatchResult.error.status, 1);
-    assert.match(noBatchResult.error.stderr, /minItems/);
-
-    for (const status of ["PENDING", "REJECTED", "INVALIDATED"]) {
-      const acceptedWithUnacceptedChild = structuredClone(accepted);
-      const child = acceptedWithUnacceptedChild.batches[0];
-      child.status = status;
-      child.transitions = [];
-      child.artifacts = [];
-      if (status === "PENDING") {
-        delete child.verdict;
-        delete child.approved_at;
-        delete child.approved_by;
-      } else {
-        child.verdict = status;
-      }
-      const result = runFixture(acceptedWithUnacceptedChild);
-      assert.ok(result.error);
-      assert.equal(result.error.status, 1);
-      assert.match(result.error.stderr, /\$\.batches\[0\]\.status must equal const/);
-    }
-
-    let escapedOverride;
-    try {
-      execFileSync(process.execPath, ["scripts/validate-planning.mjs", "--gate-registry=../outside-registry.json"], {
-        cwd: root,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-    } catch (error) {
-      escapedOverride = error;
-    }
-    assert.ok(escapedOverride);
-    assert.equal(escapedOverride.status, 1);
-    assert.match(escapedOverride.stderr, /override escapes repository root/);
-  } finally {
-    if (existsSync(fixture)) unlinkSync(fixture);
+    execFileSync(process.execPath, ["scripts/validate-planning.mjs", "--gate-registry=../outside-registry.json"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+  } catch (error) {
+    escapedOverride = error;
   }
+  assert.ok(escapedOverride);
+  assert.equal(escapedOverride.status, 1);
+  assert.match(escapedOverride.stderr, /override escapes repository root/);
 });
 
 test("SSOT makes accepted ADR, PRD, and exact ticket mandatory implementation authority", () => {

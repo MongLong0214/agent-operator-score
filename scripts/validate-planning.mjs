@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { extname, join, resolve } from "node:path";
+import { validateGateAdministration } from "./validate-gate-administration.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const errors = [];
@@ -19,9 +20,11 @@ const required = [
   "docs/TRACEABILITY.md",
   "docs/issues.json",
   "docs/decisions/SSOT-IMPORT-2026-08-05.md",
+  "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md",
   "docs/decisions/MAINTAINER-GATE-STATUS.md",
   "docs/decisions/maintainer-gate.schema.json",
-  "docs/decisions/maintainer-gate-registry.v1.json"
+  "docs/decisions/maintainer-gate-registry.v2.json",
+  "scripts/validate-gate-administration.mjs"
 ];
 
 for (const path of required) if (!existsSync(resolve(root, path))) errors.push(`missing ${path}`);
@@ -42,48 +45,6 @@ const readJson = (path, label) => {
     errors.push(`invalid JSON ${label}`);
     return null;
   }
-};
-const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
-const equals = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-const validateJsonSchema = (schema, value, path = "$") => {
-  const violations = [];
-  if (schema.type === "object" && !isPlainObject(value)) violations.push(`${path} must be an object`);
-  if (schema.type === "array" && !Array.isArray(value)) violations.push(`${path} must be an array`);
-  if (schema.type === "string" && typeof value !== "string") violations.push(`${path} must be a string`);
-  if (schema.const !== undefined && !equals(value, schema.const)) violations.push(`${path} must equal const`);
-  if (schema.enum && !schema.enum.some((entry) => equals(value, entry))) violations.push(`${path} must match enum`);
-  if (typeof value === "string") {
-    if (schema.minLength !== undefined && value.length < schema.minLength) violations.push(`${path} must satisfy minLength`);
-    if (schema.pattern && !new RegExp(schema.pattern).test(value)) violations.push(`${path} must satisfy pattern`);
-    if (schema.format === "date-time" && (Number.isNaN(Date.parse(value)) || !/T/.test(value))) violations.push(`${path} must satisfy date-time format`);
-  }
-  if (isPlainObject(value)) {
-    for (const key of schema.required ?? []) if (!(key in value)) violations.push(`${path} must include required ${key}`);
-    for (const [key, propertySchema] of Object.entries(schema.properties ?? {})) {
-      if (key in value) violations.push(...validateJsonSchema(propertySchema, value[key], `${path}.${key}`));
-    }
-    if (schema.additionalProperties === false) {
-      for (const key of Object.keys(value)) if (!(key in (schema.properties ?? {}))) violations.push(`${path} has additional property ${key}`);
-    }
-  }
-  if (Array.isArray(value)) {
-    if (schema.minItems !== undefined && value.length < schema.minItems) violations.push(`${path} must satisfy minItems`);
-    if (schema.items) value.forEach((item, index) => violations.push(...validateJsonSchema(schema.items, item, `${path}[${index}]`)));
-    if (schema.contains && !value.some((item) => validateJsonSchema(schema.contains, item, `${path}[*]`).length === 0)) {
-      violations.push(`${path} must satisfy contains`);
-    }
-  }
-  for (const itemSchema of schema.allOf ?? []) violations.push(...validateJsonSchema(itemSchema, value, path));
-  if (schema.anyOf && !schema.anyOf.some((itemSchema) => validateJsonSchema(itemSchema, value, path).length === 0)) {
-    violations.push(`${path} must satisfy anyOf`);
-  }
-  if (schema.not && validateJsonSchema(schema.not, value, path).length === 0) violations.push(`${path} must not satisfy not`);
-  if (schema.if && validateJsonSchema(schema.if, value, path).length === 0) {
-    if (schema.then) violations.push(...validateJsonSchema(schema.then, value, path));
-  } else if (schema.else) {
-    violations.push(...validateJsonSchema(schema.else, value, path));
-  }
-  return violations;
 };
 const metricContract = readFileSync(resolve(root, "docs/contracts/metric-scoring-contract-v1.md"), "utf8");
 const metricIds = Array.from({ length: 20 }, (_, index) => `M${String(index + 1).padStart(2, "0")}`);
@@ -170,33 +131,10 @@ if (manifest) {
   for (const id of tickets.keys()) if (!manifestIds.has(id)) errors.push(`issue manifest missing ${id}`);
 }
 
-const gateSchema = readJson(resolve(root, "docs/decisions/maintainer-gate.schema.json"), "Maintainer Gate schema");
 const gateRegistryArgument = process.argv.find((argument) => argument.startsWith("--gate-registry="));
 const requestedGateRegistryPath = gateRegistryArgument?.slice("--gate-registry=".length);
-const defaultGateRegistryPath = resolve(root, "docs/decisions/maintainer-gate-registry.v1.json");
-const resolvedGateRegistryPath = resolve(root, requestedGateRegistryPath ?? "docs/decisions/maintainer-gate-registry.v1.json");
-const gateRegistryPath = requestedGateRegistryPath && !resolvedGateRegistryPath.startsWith(`${root}/`)
-  ? defaultGateRegistryPath
-  : resolvedGateRegistryPath;
-if (requestedGateRegistryPath && gateRegistryPath !== resolvedGateRegistryPath) errors.push("Maintainer Gate registry override escapes repository root");
-const gateRegistry = readJson(gateRegistryPath, "Maintainer Gate registry");
-const gateStatuses = "PENDING,ACCEPTED,REJECTED,INVALIDATED";
-if (gateSchema && (gateSchema.title !== "AOS Maintainer Gate Registry v1" ||
-  gateSchema.properties?.status?.enum?.join(",") !== gateStatuses ||
-  gateSchema.properties?.batches?.items?.properties?.status?.enum?.join(",") !== gateStatuses)) {
-  errors.push("Maintainer Gate schema lacks the required lifecycle states");
-}
-if (gateSchema && gateRegistry) {
-  for (const violation of validateJsonSchema(gateSchema, gateRegistry)) errors.push(`Maintainer Gate schema ${violation}`);
-}
-if (!gateRegistryArgument && gateRegistry && (gateRegistry.version !== 1 || gateRegistry.status !== "PENDING" ||
-  "verdict" in gateRegistry || "approved_at" in gateRegistry || "approved_by" in gateRegistry ||
-  gateRegistry.invalidation?.on_sha_or_digest_change !== true ||
-  gateRegistry.invalidation?.effect !== "return_to_pending_and_invalidate_affected_evidence" ||
-  !Array.isArray(gateRegistry.batches) || gateRegistry.batches.some((batch) => batch.status !== "PENDING" ||
-    "verdict" in batch || "approved_at" in batch || "approved_by" in batch))) {
-  errors.push("Maintainer Gate registry has an invalid pending state");
-}
+const gateAdministration = validateGateAdministration({ root, registryPath: requestedGateRegistryPath });
+for (const error of gateAdministration.errors) errors.push(`Gate Administration ${error}`);
 
 const forbidden = [
   new RegExp(["Agent", "Ops Score"].join(""), "g"),
@@ -229,6 +167,8 @@ for (const path of activeFiles) {
 const controlPlaneAllowlist = new Set([
   "scripts/validate-planning.mjs",
   "tests/planning-contract.test.mjs",
+  "scripts/validate-gate-administration.mjs",
+  "tests/gate-administration-contract.test.mjs",
   "scripts/validate-identity.mjs",
   "tests/planning/identity.test.mjs"
 ]);
@@ -250,4 +190,4 @@ if (errors.length) {
 }
 
 const mode = process.argv.includes("--build") ? "BUILD_SCAFFOLD" : "PLANNING_CONTRACT";
-console.log(`${mode}_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} canonical_vectors=${metricIds.length} semantic_checks=not_yet_enforced gates=pending`);
+console.log(`${mode}_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} canonical_vectors=${metricIds.length} semantic_checks=not_yet_enforced gates=${gateAdministration.status}`);

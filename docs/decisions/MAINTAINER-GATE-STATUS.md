@@ -5,6 +5,7 @@ Date: 2026-08-05
 | Layer | Census | State | Effect |
 |---|---:|---|---|
 | Final SSOT | 1 | FINAL / owner-supplied | Derived planning may be drafted. |
+| Gate Administration control plane | 1 | PROPOSED / CEO exact-head acceptance required | No gate record may be prepared as accepted until the CEO separately accepts this correction's final exact head. |
 | ADR | 12 | PROPOSED | PRD approval blocked. |
 | PRD | 19 | PROPOSED | Ticket approval blocked. |
 | Atomic tickets | 64 executable | BLOCKED | Product implementation forbidden. |
@@ -14,9 +15,9 @@ Date: 2026-08-05
 
 ## Required next gate order
 
-1. Maintainer reviews and accepts/rejects the exact ADR set.
-2. After ADR acceptance, Maintainer reviews and accepts/rejects each PRD.
-3. After owning PRD acceptance, Maintainer reviews and accepts/rejects each atomic ticket.
-4. Only then may an exact-base execution packet authorize RED for that ticket.
+1. CEO separately accepts the exact final head of the proposed Gate Administration control-plane correction; this does not accept any product gate.
+2. An authorized Gate Administrator prepares a complete exact-digest ADR/PRD/ticket batch and the independent checker rejects malformed, wrong-target, partial, or self-approved records.
+3. A different Maintainer reviews that final record candidate at its exact head and accepts/rejects the batch externally.
+4. Only after the exact batch and an execution packet are independently verified may RED be authorized for that ticket.
 
-A file SHA/digest change returns that layer and every dependent layer to PROPOSED/BLOCKED. The machine-readable registry remains `PENDING`; it records no acceptance and cannot self-approve.
+A changed reviewed artifact or reviewed head invalidates the affected accepted batch; a new pending batch and renewed review are required. The machine-readable registry in this correction remains `PENDING`; it records no acceptance or transition and cannot self-approve.
