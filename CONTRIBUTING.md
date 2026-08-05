@@ -40,4 +40,4 @@ Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an indust
 
 ## License
 
-No OSS license has been selected. Contribution acceptance and redistribution remain blocked until D0 minimum name-clearance input and E14/G4 publication clearance.
+No OSS license has been selected. D0 minimum name clearance is a separate canonical-identity decision and does not authorize contribution acceptance, redistribution, or publication. Contribution acceptance and redistribution remain blocked until the E14/G4 LICENSE and publication gate clears.

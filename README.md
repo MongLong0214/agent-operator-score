@@ -124,4 +124,4 @@ Verified runs and reports stay local. Default telemetry is OFF. Secret values an
 
 ## License and publication
 
-This is a public, source-visible planning repository. No OSS license or public package has been approved, so external contribution acceptance and redistribution are blocked. The target product remains local-first OSS; npm publication, the D0 minimum name-clearance input, license, third-party notices, security policy, formal publication clearance, and independent external reproduction remain E14/G4 blockers.
+This is a public, source-visible planning repository. D0 minimum name clearance is a separate canonical-identity decision. No OSS license or public package has been approved, so external contribution acceptance and redistribution are blocked; LICENSE, contribution acceptance, redistribution, npm publication, third-party notices, security policy, formal publication clearance, and independent external reproduction are E14/G4 decisions.

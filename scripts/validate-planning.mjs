@@ -43,6 +43,15 @@ const readJson = (path, label) => {
     return null;
   }
 };
+const metricContract = readFileSync(resolve(root, "docs/contracts/metric-scoring-contract-v1.md"), "utf8");
+const metricIds = Array.from({ length: 20 }, (_, index) => `M${String(index + 1).padStart(2, "0")}`);
+for (const metricId of metricIds) {
+  for (const state of ["pass", "partial", "fail", "no"]) {
+    if (!metricContract.includes(`${metricId}-v1-${state}`)) errors.push(`missing canonical vector ${metricId}-v1-${state}`);
+  }
+}
+if (!metricContract.includes("maximum_regret=0")) errors.push("missing M10 zero-regret vector");
+if (!metricContract.includes("maximum_distance=0")) errors.push("missing M20 zero-distance vector");
 const adrFiles = walk(resolve(root, "docs/adr")).filter((path) => /ADR-\d{4}-.+\.md$/.test(path));
 const prdFiles = walk(resolve(root, "docs/prd")).filter((path) => /PRD-(?:D0|E0[ABCD]|E\d+)-.+\.md$/.test(path));
 const ticketFiles = walk(resolve(root, "docs/tickets")).filter((path) => /\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(path));
@@ -121,13 +130,18 @@ if (manifest) {
 
 const gateSchema = readJson(resolve(root, "docs/decisions/maintainer-gate.schema.json"), "Maintainer Gate schema");
 const gateRegistry = readJson(resolve(root, "docs/decisions/maintainer-gate-registry.v1.json"), "Maintainer Gate registry");
-if (gateSchema && (gateSchema.title !== "AOS Maintainer Gate Registry v1" || gateSchema.properties?.status?.enum?.join(",") !== "PENDING")) {
-  errors.push("Maintainer Gate schema must remain pending-only");
+const gateStatuses = "PENDING,ACCEPTED,REJECTED,INVALIDATED";
+if (gateSchema && (gateSchema.title !== "AOS Maintainer Gate Registry v1" ||
+  gateSchema.properties?.status?.enum?.join(",") !== gateStatuses ||
+  gateSchema.properties?.batches?.items?.properties?.status?.enum?.join(",") !== gateStatuses)) {
+  errors.push("Maintainer Gate schema lacks the required lifecycle states");
 }
 if (gateRegistry && (gateRegistry.version !== 1 || gateRegistry.status !== "PENDING" ||
+  "verdict" in gateRegistry || "approved_at" in gateRegistry || "approved_by" in gateRegistry ||
   gateRegistry.invalidation?.on_sha_or_digest_change !== true ||
   gateRegistry.invalidation?.effect !== "return_to_pending_and_invalidate_affected_evidence" ||
-  !Array.isArray(gateRegistry.batches) || gateRegistry.batches.some((batch) => batch.status !== "PENDING"))) {
+  !Array.isArray(gateRegistry.batches) || gateRegistry.batches.some((batch) => batch.status !== "PENDING" ||
+    "verdict" in batch || "approved_at" in batch || "approved_by" in batch))) {
   errors.push("Maintainer Gate registry has an invalid pending state");
 }
 
@@ -159,10 +173,16 @@ for (const path of activeFiles) {
   }
 }
 
-const controlPlaneCode = new Set(["scripts/validate-planning.mjs", "tests/planning-contract.test.mjs"]);
+const controlPlaneAllowlist = new Set([
+  "scripts/validate-planning.mjs",
+  "tests/planning-contract.test.mjs",
+  "scripts/validate-identity.mjs",
+  "tests/planning/identity.test.mjs"
+]);
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const codeFiles = activeFiles.filter((path) => sourceExtensions.has(extname(path)));
-const productCodeFiles = codeFiles.filter((path) => !controlPlaneCode.has(rel(path)));
+const controlPlaneCodeFiles = codeFiles.filter((path) => controlPlaneAllowlist.has(rel(path)));
+const productCodeFiles = codeFiles.filter((path) => !controlPlaneAllowlist.has(rel(path)));
 if (productCodeFiles.length) errors.push(`unallowlisted product code: ${productCodeFiles.map(rel).join(", ")}`);
 
 const readme = readFileSync(resolve(root, "README.md"), "utf8");
@@ -177,4 +197,4 @@ if (errors.length) {
 }
 
 const mode = process.argv.includes("--build") ? "BUILD_SCAFFOLD" : "PLANNING_CONTRACT";
-console.log(`${mode}_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCode.size} semantic_checks=not_yet_enforced gates=pending`);
+console.log(`${mode}_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} canonical_vectors=${metricIds.length} semantic_checks=not_yet_enforced gates=pending`);

@@ -7,7 +7,7 @@
 
 ## Goal
 
-Publish the OSS surface only after formal legal, documentation, reproducibility, and external-reproduction gates pass. Minimum name-clearance evidence belongs to D0 and remains an input, not an E14 substitute.
+Publish the OSS surface only after formal legal, documentation, reproducibility, and external-reproduction gates pass. D0 minimum name clearance is a separate canonical-identity decision and is not an E14 substitute; LICENSE, contribution acceptance, redistribution, and publication are E14/G4 decisions.
 
 ## Non-goals
 
@@ -22,7 +22,7 @@ Publish the OSS surface only after formal legal, documentation, reproducibility,
 
 ## Acceptance criteria
 
-- AC-E14-1: unresolved D0 name-clearance input, license, notice, or security item blocks publication.
+- AC-E14-1: unresolved license, contributor terms, notice, security, or formal-publication item blocks E14/G4 publication.
 - AC-E14-2: external environment reproduces canonical fixture bytes.
 - AC-E14-3: public docs make provisional/no-percentile/no-certification limits unavoidable.
 - AC-E14-4: repo/package publication is separately authorized and post-verified.
