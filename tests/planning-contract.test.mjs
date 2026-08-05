@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=accepted/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=invalidated/;
 const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
 
 test("planning contract validator reports the truthful structural census", () => {
@@ -82,8 +82,11 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
 
 test("planning validator delegates gate records to the independent administration checker", () => {
   const validator = readFileSync(resolve(root, "scripts/validate-planning.mjs"), "utf8");
+  const gateDecision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
   assert.match(validator, /validateGateAdministration/);
   assert.match(validator, /Gate Administration/);
+  assert.match(gateDecision, /only the `planning validator delegates gate records to the independent administration checker` test case with its direct delegation plumbing/);
+  assert.match(gateDecision, /It explicitly excludes `acceptedValidatorOutput` and `pendingValidatorOutput`/);
   let escapedOverride;
   try {
     execFileSync(process.execPath, ["scripts/validate-planning.mjs", "--gate-registry=../outside-registry.json"], {
