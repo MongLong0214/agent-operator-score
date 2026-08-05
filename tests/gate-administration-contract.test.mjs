@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
 
 test("pre-implementation Gate Administrator is independent of D0-004 and D0-002", () => {
   const d0004 = readFileSync(resolve(root, "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"), "utf8");
@@ -21,14 +22,34 @@ test("pre-implementation Gate Administrator is independent of D0-004 and D0-002"
   const gateValidator = readFileSync(resolve(root, "scripts/validate-gate-administration.mjs"), "utf8");
   assert.match(decisionText, /- Dependencies: None/);
   assert.match(decisionText, /\*\*CEO\*\* separately accepts this control-plane correction at its final exact candidate head/);
+  assert.match(decisionText, /reads only `docs\/decisions\/maintainer-gate-registry\.v2\.json`/);
+  assert.match(decisionText, /external gate evidence/);
+  assert.match(decisionText, /never proof of independent authorization/);
   assert.match(d0004, /must not edit, own, or approve/);
   assert.doesNotMatch(gateValidator, /D0-004|D0-002/);
 });
 
 const sha256 = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
 
+const makeFixture = () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos gate administration "));
+  const fixtureRoot = join(parent, "repository");
+  cpSync(root, fixtureRoot, {
+    recursive: true,
+    filter: (source) => ![".git", "node_modules"].includes(basename(source))
+  });
+  execFileSync("git", ["init", "-q"], { cwd: fixtureRoot });
+  execFileSync("git", ["config", "user.email", "gate@example.test"], { cwd: fixtureRoot });
+  execFileSync("git", ["config", "user.name", "Gate Test"], { cwd: fixtureRoot });
+  execFileSync("git", ["checkout", "-qb", "dev"], { cwd: fixtureRoot });
+  execFileSync("git", ["remote", "add", "origin", "git@example.test:agent-operator-score.git"], { cwd: fixtureRoot });
+  execFileSync("git", ["add", "."], { cwd: fixtureRoot });
+  execFileSync("git", ["commit", "-qm", "planning control plane fixture"], { cwd: fixtureRoot });
+  return { parent, fixtureRoot };
+};
+
 const makeAcceptedFixture = (fixtureRoot) => {
-  const registry = JSON.parse(readFileSync(join(fixtureRoot, "docs/decisions/maintainer-gate-registry.v2.json"), "utf8"));
+  const registry = JSON.parse(readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
   const reviewedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
   const batch = registry.batches[0];
   batch.status = "ACCEPTED";
@@ -60,11 +81,10 @@ const makeAcceptedFixture = (fixtureRoot) => {
 };
 
 const runRegistry = (fixtureRoot, candidate) => {
-  const name = ".gate-administration.fixture.json";
-  writeFileSync(join(fixtureRoot, name), `${JSON.stringify(candidate, null, 2)}\n`);
+  writeFileSync(join(fixtureRoot, canonicalRegistry), `${JSON.stringify(candidate, null, 2)}\n`);
   try {
     return {
-      output: execFileSync(process.execPath, ["scripts/validate-gate-administration.mjs", `--gate-registry=${name}`], {
+      output: execFileSync(process.execPath, ["scripts/validate-gate-administration.mjs"], {
         cwd: fixtureRoot,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"]
@@ -75,24 +95,28 @@ const runRegistry = (fixtureRoot, candidate) => {
   }
 };
 
-test("Gate Administrator can validate a future complete batch without D0-004 or D0-002", () => {
-  const parent = mkdtempSync(join(tmpdir(), "aos gate administration "));
-  const fixtureRoot = join(parent, "repository");
+const runCli = (fixtureRoot, args = []) => {
   try {
-    cpSync(root, fixtureRoot, {
-      recursive: true,
-      filter: (source) => ![".git", "node_modules"].includes(basename(source))
-    });
-    execFileSync("git", ["init", "-q"], { cwd: fixtureRoot });
-    execFileSync("git", ["config", "user.email", "gate@example.test"], { cwd: fixtureRoot });
-    execFileSync("git", ["config", "user.name", "Gate Test"], { cwd: fixtureRoot });
-    execFileSync("git", ["add", "."], { cwd: fixtureRoot });
-    execFileSync("git", ["commit", "-qm", "planning control plane fixture"], { cwd: fixtureRoot });
+    return {
+      output: execFileSync(process.execPath, ["scripts/validate-gate-administration.mjs", ...args], {
+        cwd: fixtureRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      })
+    };
+  } catch (error) {
+    return { error };
+  }
+};
 
+test("Gate Administrator validates a structurally complete future batch only through the canonical registry", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
     const accepted = makeAcceptedFixture(fixtureRoot);
     const positive = runRegistry(fixtureRoot, accepted);
     assert.equal(positive.error, undefined);
-    assert.match(positive.output, /GATE_ADMINISTRATION_PASS registry=accepted batches=1 accepted=1 rejected=0 invalidated=0/);
+    assert.match(positive.output, /GATE_ADMINISTRATION_STRUCTURAL_PASS registry=accepted batches=1 accepted=1 rejected=0 invalidated=0 external_gate_evidence=required/);
+    assert.doesNotMatch(positive.output, /authorization=granted/);
 
     const selfApproved = structuredClone(accepted);
     selfApproved.batches[0].approval.approved_by = selfApproved.batches[0].preparation.prepared_by;
@@ -146,7 +170,76 @@ test("Gate Administrator can validate a future complete batch without D0-004 or 
     };
     const invalidatedResult = runRegistry(fixtureRoot, invalidated);
     assert.equal(invalidatedResult.error, undefined);
-    assert.match(invalidatedResult.output, /GATE_ADMINISTRATION_PASS registry=invalidated batches=1 accepted=0 rejected=0 invalidated=1/);
+    assert.match(invalidatedResult.output, /GATE_ADMINISTRATION_STRUCTURAL_PASS registry=invalidated batches=1 accepted=0 rejected=0 invalidated=1 external_gate_evidence=not_applicable/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("canonical registry rejects a forged sibling registry and a canonical symlink to outside the repository", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const forgedRegistry = ".forged-gate-registry.json";
+    writeFileSync(join(fixtureRoot, forgedRegistry), readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
+    const forged = runCli(fixtureRoot, [`--gate-registry=${forgedRegistry}`]);
+    assert.equal(forged.error.status, 1);
+    assert.match(forged.error.stderr, /canonical registry only/);
+
+    const outside = join(parent, "outside-registry.json");
+    writeFileSync(outside, readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
+    unlinkSync(join(fixtureRoot, canonicalRegistry));
+    symlinkSync(outside, join(fixtureRoot, canonicalRegistry));
+    const symlinked = runCli(fixtureRoot);
+    assert.equal(symlinked.error.status, 1);
+    assert.match(symlinked.error.stderr, /regular non-symlink file|realpath escapes repository root/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("accepted registry fails closed for the actual repository, branch, and reviewed-head reachability", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const accepted = makeAcceptedFixture(fixtureRoot);
+
+    execFileSync("git", ["remote", "set-url", "origin", "git@example.test:wrong-repository.git"], { cwd: fixtureRoot });
+    const wrongRepository = runRegistry(fixtureRoot, accepted);
+    assert.equal(wrongRepository.error.status, 1);
+    assert.match(wrongRepository.error.stderr, /actual repository/);
+
+    execFileSync("git", ["remote", "set-url", "origin", "git@example.test:agent-operator-score.git"], { cwd: fixtureRoot });
+    execFileSync("git", ["checkout", "-qb", "wrong-target"], { cwd: fixtureRoot });
+    const wrongBranch = runRegistry(fixtureRoot, accepted);
+    assert.equal(wrongBranch.error.status, 1);
+    assert.match(wrongBranch.error.stderr, /actual branch/);
+
+    execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
+    const baseHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+    const unreachableHead = execFileSync("git", ["commit-tree", `${baseHead}^{tree}`, "-p", baseHead], {
+      cwd: fixtureRoot,
+      encoding: "utf8"
+    }).trim();
+    const unreachable = structuredClone(accepted);
+    unreachable.batches[0].target.reviewed_head = unreachableHead;
+    const unreachableResult = runRegistry(fixtureRoot, unreachable);
+    assert.equal(unreachableResult.error.status, 1);
+    assert.match(unreachableResult.error.stderr, /reviewed_head is not reachable from target branch/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("a structural-only approval spoof is explicitly external gate evidence, never authorization", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const spoofed = makeAcceptedFixture(fixtureRoot);
+    spoofed.batches[0].approval.approved_by = "ceo";
+    spoofed.batches[0].events[0].recorded_by = "independent-reviewer";
+    const result = runRegistry(fixtureRoot, spoofed);
+    assert.equal(result.error, undefined);
+    assert.match(result.output, /external_gate_evidence=required/);
+    assert.match(result.output, /not_authorization/);
+    assert.doesNotMatch(result.output, /authorization=granted/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
