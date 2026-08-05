@@ -44,7 +44,10 @@
         "allOf": [
           {
             "if": { "properties": { "status": { "const": "PENDING" } }, "required": ["status"] },
-            "then": { "not": { "anyOf": [{ "required": ["verdict"] }, { "required": ["approved_at"] }, { "required": ["approved_by"] }] } }
+            "then": {
+              "not": { "anyOf": [{ "required": ["verdict"] }, { "required": ["approved_at"] }, { "required": ["approved_by"] }] },
+              "properties": { "transitions": { "const": [] } }
+            }
           },
           {
             "if": { "properties": { "status": { "const": "ACCEPTED" } }, "required": ["status"] },
@@ -99,7 +102,19 @@
     },
     {
       "if": { "properties": { "status": { "const": "ACCEPTED" } }, "required": ["status"] },
-      "then": { "required": ["verdict", "approved_at", "approved_by"], "properties": { "verdict": { "const": "ACCEPTED" } } }
+      "then": {
+        "required": ["verdict", "approved_at", "approved_by"],
+        "properties": {
+          "verdict": { "const": "ACCEPTED" },
+          "batches": {
+            "minItems": 1,
+            "items": {
+              "required": ["status"],
+              "properties": { "status": { "const": "ACCEPTED" } }
+            }
+          }
+        }
+      }
     },
     {
       "if": { "properties": { "status": { "const": "REJECTED" } }, "required": ["status"] },

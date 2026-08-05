@@ -7,7 +7,7 @@
       "status": "PENDING",
       "scope": "Batch ADR acceptance, epic PRD acceptance, and exact-ticket readiness for RED require separately recorded digests.",
       "artifacts": [],
-      "transitions": ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"]
+      "transitions": []
     }
   ],
   "invalidation": {
