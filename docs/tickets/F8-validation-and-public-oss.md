@@ -38,11 +38,11 @@
 ## T-804 Decide license/notices and enforce publication gate (M)
 
 - **Ownership:** `LICENSE`, `THIRD_PARTY_NOTICES.md`, `docs/decisions/LICENSE.md`, `scripts/publication-gate.mjs` — `checkPublicationReadiness`.
-- **Preconditions/dependencies:** T-803, owner legal/product decision.
+- **Preconditions/dependencies:** T-803, T-906, owner legal/product decision.
 - **Forbidden:** inferred license, incompatible dependency, public visibility change without owner gate, package publish, missing copyright/notice.
-- **RED:** publication gate passes with no license/notices or an incompatible fixture dependency.
-- **Minimum GREEN:** recorded license decision, dependency/license inventory, notices, public-surface claim checks, explicit owner approval token consumed once.
-- **AC ↔ tests:** AC-F8-2 ↔ missing license, incompatible license, missing notice, no approval, stale approval, valid set.
+- **RED:** publication gate passes with no license/notices, incomplete T-906 UI conformance, or an incompatible fixture dependency.
+- **Minimum GREEN:** recorded license decision, dependency/license inventory, notices, verified T-906 UI conformance, public-surface claim checks, explicit owner approval token consumed once.
+- **AC ↔ tests:** AC-F8-2 ↔ missing license, incompatible license, missing notice, missing/stale UI conformance, no approval, stale approval, valid set.
 - **Verification:** focused publication-gate mutations; dependency audit; full/build; manual legal/product review. Live external visibility change is a separate owner-authorized action.
 - **Invalidation/stop/evidence:** dependency/license/public-doc change invalidates approval; stop without explicit decision. Evidence includes inventory digest and approval record.
 

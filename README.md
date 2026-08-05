@@ -6,7 +6,7 @@
 
 AgentOps Score is a planned local-first tool for measuring how effectively a human operator turns goals into verified, safe, repeatable outcomes with coding agents. It evaluates the operator in a declared Opportunity Profile—not the model alone, prompt length, tool count, or installed harness.
 
-> **Current status: planning baseline.** The repository contains accepted identity/architecture decisions, production PRDs, 35 atomic implementation tickets, milestones, and planning-only CI. The `agentops-score` package, `aos` CLI, scorer, runner, adapters, and assessment forms are **not implemented or published yet**.
+> **Current status: planning baseline.** The repository contains accepted identity/architecture decisions, production PRDs, 41 atomic implementation tickets, milestones, and planning-only CI. The `agentops-score` package, `aos` CLI, scorer, runner, adapters, assessment forms, and local score UI are **not implemented or published yet**.
 
 ## Why AOS
 
@@ -80,7 +80,7 @@ Implementation begins at [T-001](docs/tickets/F0-preflight-contracts.md#t-001-fr
 ```text
 docs/adr/          accepted decisions and rejected alternatives
 docs/prd/          feature requirements and acceptance criteria
-docs/tickets/      35 atomic TDD execution tickets and dependency graph
+docs/tickets/      41 atomic TDD execution tickets and dependency graph
 docs/north-star/   final product planning baseline
 docs/research/     adverse evidence, feasibility, citations
 .github/copilot/   architecture, stack, workflow, standards, tests

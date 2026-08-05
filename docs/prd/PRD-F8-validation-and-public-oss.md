@@ -19,11 +19,11 @@ No matched percentile, certification, hiring use, public personal leaderboard, t
 
 1. Preregister alpha cohorts, counterbalance, hypotheses, exclusions, and stop rules.
 2. Publish `VALIDATION.md`, `LIMITATIONS.md`, `INTENDED_USE.md`, judge reliability, and privacy threat boundaries.
-3. Decide OSS license and third-party notices before public visibility.
+3. Decide OSS license and third-party notices and pass required F9 UI conformance before public visibility.
 4. Obtain and verify one external reproduction; keep telemetry off.
 
 ## Acceptance
 
 - AC-F8-1: alpha report exposes all preregistered results and deviations.
-- AC-F8-2: publication gate fails on missing license, notices, limitations, or reproduction.
+- AC-F8-2: publication gate fails on missing license, notices, limitations, F9 UI conformance, or reproduction.
 - AC-F8-3: public materials contain no percentile, certification, hiring, or industry-standard claim.

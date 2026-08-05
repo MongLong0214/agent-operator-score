@@ -9,8 +9,11 @@ const required = [
   "docs/north-star/agentops-score-ssot-v1.0.md",
   "docs/tickets/TICKETS.md",
   "docs/decisions/CEO-GATE-ADR-2026-08-05.md",
+  "docs/decisions/CEO-GATE-ADR-UI-2026-08-05.md",
   "docs/decisions/CEO-GATE-PRD-2026-08-05.md",
-  "docs/decisions/CEO-GATE-TICKETS-2026-08-05.md"
+  "docs/decisions/CEO-GATE-PRD-UI-2026-08-05.md",
+  "docs/decisions/CEO-GATE-TICKETS-2026-08-05.md",
+  "docs/decisions/CEO-GATE-TICKETS-UI-2026-08-05.md"
 ];
 
 const errors = [];
@@ -24,9 +27,9 @@ const ticketFiles = readdirSync(resolve(root, "docs/tickets")).filter((f) => /^F
 const ticketText = ticketFiles.map((f) => readFileSync(resolve(root, "docs/tickets", f), "utf8")).join("\n");
 const ticketIds = [...ticketText.matchAll(/^## (T-\d{3}) /gm)].map((m) => m[1]);
 
-if (adrFiles.length !== 10) errors.push(`ADR count ${adrFiles.length}, expected 10`);
-if (prdFiles.length !== 9) errors.push(`PRD count ${prdFiles.length}, expected 9`);
-if (ticketIds.length !== 35) errors.push(`ticket count ${ticketIds.length}, expected 35`);
+if (adrFiles.length !== 12) errors.push(`ADR count ${adrFiles.length}, expected 12`);
+if (prdFiles.length !== 10) errors.push(`PRD count ${prdFiles.length}, expected 10`);
+if (ticketIds.length !== 41) errors.push(`ticket count ${ticketIds.length}, expected 41`);
 if (new Set(ticketIds).size !== ticketIds.length) errors.push("duplicate ticket id");
 
 const fields = [

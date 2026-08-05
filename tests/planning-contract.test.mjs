@@ -11,7 +11,7 @@ test("planning contract validator reports the exact gated census", () => {
     cwd: root,
     encoding: "utf8"
   });
-  assert.match(output, /PLANNING_CONTRACT_PASS adr=10 prd=9 tickets=35 product_code=0/);
+  assert.match(output, /PLANNING_CONTRACT_PASS adr=12 prd=10 tickets=41 product_code=0/);
 });
 
 test("README distinguishes current planning state from the planned CLI", () => {
@@ -19,4 +19,3 @@ test("README distinguishes current planning state from the planned CLI", () => {
   assert.match(readme, /Current status: planning baseline/);
   assert.match(readme, /Planned CLI — not available yet/);
 });
-

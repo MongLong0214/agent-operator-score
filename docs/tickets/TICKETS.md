@@ -25,11 +25,13 @@ T-601 ─> T-602
 T-601 ─> T-604
 T-701 ─> T-702 ─> T-703
 T-103 ─> T-801
+T-603 ─> T-901 ─> T-902 ─┬─> T-903 ────────────┐
+                          └─> T-904 ─> T-905 ─┴─> T-906 ─> T-804
 ```
 
 ## Critical path
 
-`T-001 → T-003 → T-101 → T-102 → T-103 → T-201 → T-202 → T-203 → T-204 → T-301 → T-302 → T-303 → T-401 → T-402/T-403 → T-404 → T-501 → T-502/T-503/T-504 → T-505 → T-601 → T-603 → T-701 → T-703 → T-802 → T-803 → T-804 → T-805`.
+`T-001 → T-003 → T-101 → T-102 → T-103 → T-201 → T-202 → T-203 → T-204 → T-301 → T-302 → T-303 → T-401 → T-402/T-403 → T-404 → T-501 → T-502/T-503/T-504 → T-505 → T-601 → T-603`, then the release joins `T-701 → T-703 → T-802 → T-803` and `T-901 → T-902 → T-904 → T-905 → T-906` at `T-804 → T-805`.
 
 ## Feature files
 
@@ -42,5 +44,6 @@ T-103 ─> T-801
 - [F6 Reports and Snapshot](F6-report-and-snapshot.md)
 - [F7 Form B and improvement](F7-form-b-and-improvement.md)
 - [F8 Validation and public OSS](F8-validation-and-public-oss.md)
+- [F9 Viral score UI and local share artifacts](F9-viral-score-ui.md)
 
 Exact GitHub issue numbers are recorded in [ISSUE-MAP.md](ISSUE-MAP.md). The stable ticket ID remains the dependency key even if an issue is transferred or recreated.
