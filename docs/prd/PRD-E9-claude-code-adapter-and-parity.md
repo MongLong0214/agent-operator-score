@@ -1,6 +1,6 @@
 # PRD E9 — Implement Claude Code controlled-wrapper support and prove semantic parity with Codex for shared events.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S3 · Full Form A & Second Runtime
 - Dependencies: E8, E0-B; ADR-0007
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
@@ -15,10 +15,10 @@ Implement Claude Code controlled-wrapper support and prove semantic parity with 
 
 ## Functional and contract requirements
 
-1. Implement capability discovery, wrapper/hook/derived sources, normalization, redaction, identity limits, and lifecycle.
+1. Implement capability discovery, normalization, redaction, identity limits, attribution events, and lifecycle from official TypeScript SDK `query()`/`SDKMessage`, `stream-json`, and official permission/tool surfaces; bounded wrapper/workspace artifacts are secondary only.
 2. Emit explicit UNAVAILABLE/BEST_EFFORT where native evidence is missing.
 3. Run shared semantic parity fixtures with adapter-specific native inputs.
-4. Prove profile mismatch and imported-session restrictions remain visible.
+4. Forbid internal transcript/cache/log sources; emit the common capability digest fields and prove profile mismatch and imported-session restrictions remain visible.
 
 ## Acceptance criteria
 
@@ -26,6 +26,7 @@ Implement Claude Code controlled-wrapper support and prove semantic parity with 
 - AC-E9-2: shared semantic events canonicalize equivalently across adapters.
 - AC-E9-3: meaningful runtime differences are retained, not erased.
 - AC-E9-4: missing required events block issuance.
+- AC-E9-5: forbidden-source, attribution-event, and capability-digest vectors fail/pass deterministically.
 
 ## Failure and stop semantics
 

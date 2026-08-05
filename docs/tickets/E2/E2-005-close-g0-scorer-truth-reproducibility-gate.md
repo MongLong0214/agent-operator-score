@@ -1,6 +1,6 @@
 # E2-005 · Close G0 scorer truth reproducibility gate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E2
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E2](../../prd/PRD-E2-deterministic-scorer-and-conformance.md)

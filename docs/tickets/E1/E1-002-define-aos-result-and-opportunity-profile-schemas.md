@@ -1,6 +1,6 @@
 # E1-002 · Define aos-result and Opportunity Profile schemas
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E1
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E1](../../prd/PRD-E1-trace-and-result-schemas.md)
@@ -38,7 +38,7 @@ Define aos-result and Opportunity Profile schemas. Deliver only the bounded cont
 
 ## Minimum GREEN
 
-- encode statuses, optional scores, factors, separate safety, coverage, provenance/digests, takeover, retest type, comparison eligibility and profile fields.
+- encode statuses, optional scores, factors, separate safety, coverage, provenance/digests, declared manual takeover, external mutation, attribution confidence, retest type, comparison eligibility and profile fields. `actor.attribution_unknown` must withhold the score and yield `DIAGNOSTIC ONLY`.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -51,6 +51,7 @@ Define aos-result and Opportunity Profile schemas. Deliver only the bounded cont
 - AC-E1-002-6 ↔ `packages/schema/test/result-schema.test.ts` case `missing-profile`.
 - AC-E1-002-7 ↔ `packages/schema/test/result-schema.test.ts` case `percentile-reject`.
 - AC-E1-002-8 ↔ `packages/schema/test/result-schema.test.ts` case `stable-bytes`.
+- AC-E1-002-9 ↔ `packages/schema/test/result-schema.test.ts` case `unknown-attribution-withholds-score`.
 
 ## Verification
 

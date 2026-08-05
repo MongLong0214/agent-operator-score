@@ -1,6 +1,6 @@
-# E14-001 · Complete name license notices and security clearance
+# E14-001 · Complete license notices and security clearance
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E14
 - Milestone: S5 · Public OSS
 - Owning PRD: [E14](../../prd/PRD-E14-public-oss-and-g4.md)
@@ -9,11 +9,11 @@
 
 ## Goal
 
-Complete name license notices and security clearance. Deliver only the bounded contract below; do not infer adjacent scope.
+Complete formal publication, license, notices, and security clearance. Minimum name clearance is a D0 input and cannot be repeated or substituted here. Deliver only the bounded contract below; do not infer adjacent scope.
 
 ## Exact ownership
 
-- docs/clearance/NAME-CLEARANCE.md; LICENSE; THIRD_PARTY_NOTICES.md; SECURITY.md; docs/decisions/PUBLICATION-CLEARANCE.md
+- docs/clearance/PUBLICATION-LEGAL-CLEARANCE.md; LICENSE; THIRD_PARTY_NOTICES.md; SECURITY.md; docs/decisions/PUBLICATION-CLEARANCE.md
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
@@ -25,7 +25,7 @@ Complete name license notices and security clearance. Deliver only the bounded c
 
 ## Forbidden scope
 
-- choosing license without review; treating search as trademark opinion; public visibility change
+- performing or substituting minimum name clearance; choosing license without review; treating search as trademark opinion; public visibility change
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -38,12 +38,12 @@ Complete name license notices and security clearance. Deliver only the bounded c
 
 ## Minimum GREEN
 
-- record GitHub/npm/domain/market trademark search with limits, select license/contributor terms, enumerate dependencies/notices and disclosure policy; emit blocking verdict.
+- verify the D0 minimum-name-clearance input remains unresolved or present without treating it as legal advice; select license/contributor terms, enumerate dependencies/notices and disclosure policy, complete formal publication/legal review, and emit a blocking verdict when any required input is unresolved.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
 
-- AC-E14-001-1 ↔ `tests/publication/clearance.test.mjs` case `name`.
+- AC-E14-001-1 ↔ `tests/publication/clearance.test.mjs` case `d0-name-input`.
 - AC-E14-001-2 ↔ `tests/publication/clearance.test.mjs` case `license`.
 - AC-E14-001-3 ↔ `tests/publication/clearance.test.mjs` case `notices`.
 - AC-E14-001-4 ↔ `tests/publication/clearance.test.mjs` case `contributor`.

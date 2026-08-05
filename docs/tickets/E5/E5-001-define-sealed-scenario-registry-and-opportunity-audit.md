@@ -1,6 +1,6 @@
 # E5-001 · Define sealed scenario registry and opportunity audit
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E5
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E5](../../prd/PRD-E5-fam4-loop-state-scenarios.md)

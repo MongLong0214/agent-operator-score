@@ -1,6 +1,6 @@
 # E0A-003 · Freeze formula, factor, safety, and display precision contract
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-A
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-A](../../prd/PRD-E0A-metric-and-score-issuance-contract.md)

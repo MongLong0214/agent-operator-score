@@ -1,6 +1,6 @@
 # PRD E4 — Implement and prove the Codex controlled-wrapper adapter before scenario expansion.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S2 · Runner & Differentiated Wedge
 - Dependencies: E0-B, E3; ADR-0007
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
@@ -15,10 +15,10 @@ Implement and prove the Codex controlled-wrapper adapter before scenario expansi
 
 ## Functional and contract requirements
 
-1. Implement adapter lifecycle, exact/limited identity capture, capability snapshot, wrapper instrumentation, normalized events, redaction, and bounded payloads.
+1. Implement adapter lifecycle, exact/limited identity capture, capability snapshot, wrapper instrumentation, normalized events (including attribution changes), redaction, and bounded payloads from app-server stdio JSON-RPC and the exact installed generated schema/digest only.
 2. Emit required user/tool/evidence/approval/intervention/lifecycle events or block issuance explicitly.
 3. Implement `aos doctor --capabilities --runtime codex` with source and missing effect.
-4. Conform native/reference inputs to normalized semantic fixtures and persist adapter digest.
+4. Reject experimental websocket, private database, and undocumented logs. Conform native/reference inputs to normalized semantic fixtures and persist capability digest fields `runtime_version`, `protocol_or_schema_version`, `adapter_version`, `source_class`, `supported_event_groups`, and `known_missing_events`.
 
 ## Acceptance criteria
 
@@ -26,6 +26,7 @@ Implement and prove the Codex controlled-wrapper adapter before scenario expansi
 - AC-E4-2: missing required identity/event blocks score issuance without blaming the operator.
 - AC-E4-3: secret/canary and bounded-payload fixtures pass.
 - AC-E4-4: controlled and imported sessions cannot be confused.
+- AC-E4-5: forbidden source fixtures fail and capability/attribution digest vectors are byte-stable.
 
 ## Failure and stop semantics
 

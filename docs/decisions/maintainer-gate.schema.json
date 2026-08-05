@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AOS Maintainer Gate Registry v1",
+  "type": "object",
+  "required": ["version", "status", "batches", "invalidation"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "status": { "enum": ["PENDING"] },
+    "batches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "scope", "artifacts", "transitions"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["PENDING"] },
+          "scope": { "type": "string", "minLength": 1 },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "sha256", "kind"],
+              "additionalProperties": false,
+              "properties": {
+                "path": { "type": "string", "minLength": 1 },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "kind": { "enum": ["ADR_BATCH", "EPIC_PRD", "EXACT_TICKET"] }
+              }
+            }
+          },
+          "transitions": {
+            "type": "array",
+            "items": { "enum": ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"] }
+          }
+        }
+      }
+    },
+    "invalidation": {
+      "type": "object",
+      "required": ["on_sha_or_digest_change", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "on_sha_or_digest_change": { "const": true },
+        "effect": { "const": "return_to_pending_and_invalidate_affected_evidence" }
+      }
+    }
+  }
+}

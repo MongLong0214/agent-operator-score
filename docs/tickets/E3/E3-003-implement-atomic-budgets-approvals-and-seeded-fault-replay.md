@@ -1,6 +1,6 @@
 # E3-003 · Implement atomic budgets approvals and seeded fault replay
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E3
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E3](../../prd/PRD-E3-isolated-controlled-runner.md)

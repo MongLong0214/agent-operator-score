@@ -1,6 +1,6 @@
 # PRD E1 — Publish versioned, strict, runtime-neutral contracts for AOS traces, results, Opportunity Profiles, evidence, and provenance.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S1 · G0 Scorer Truth
 - Dependencies: E0-A, E0-B, E0-C, E0-D; ADR-0004–0007
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
@@ -15,14 +15,14 @@ Publish versioned, strict, runtime-neutral contracts for AOS traces, results, Op
 
 ## Functional and contract requirements
 
-1. Implement JSON Schemas for all standard events, common IDs, correlation, actors, bounded/redacted payloads, evidence/artifact digests, and timestamps.
+1. Implement JSON Schemas for all standard events, common IDs, correlation, actors, bounded/redacted payloads, evidence/artifact digests, and timestamps, including `workspace.external_mutation`, `human.manual_edit_declared`, `actor.attribution_changed`, and `actor.attribution_unknown`.
 2. Implement result states, optional score rules, factor/safety separation, coverage, takeover attribution, retest type, limitations, score/scorer/suite/adapter digests, and Opportunity Profile.
 3. Make prohibited percentile/certification fields impossible before calibrated eligibility.
 4. Provide canonical positive/negative fixtures and semver compatibility/digest tooling.
 
 ## Acceptance criteria
 
-- AC-E1-1: valid fixtures pass on Node 20/24; missing identity, unbounded payload, unknown event, secret value, invalid score-state, and traversal fail.
+- AC-E1-1: valid fixtures pass on Node 20/22/24; missing identity, unbounded payload, unknown event, secret value, invalid score-state, attribution event, and traversal fail.
 - AC-E1-2: result cannot encode a score for insufficient/unsafe/invalid states or percentile for P0.
 - AC-E1-3: repeated canonical serialization is byte-identical.
 

@@ -1,6 +1,6 @@
 # E9-001 · Implement Claude Code identity capability and wrapper lifecycle
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E9
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E9](../../prd/PRD-E9-claude-code-adapter-and-parity.md)
@@ -25,7 +25,7 @@ Implement Claude Code identity capability and wrapper lifecycle. Deliver only th
 
 ## Forbidden scope
 
-- third runtime; hidden reasoning; guessed hooks; provider fallback
+- third runtime; hidden reasoning; guessed hooks; provider fallback; internal transcript/cache/log sources
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -38,7 +38,7 @@ Implement Claude Code identity capability and wrapper lifecycle. Deliver only th
 
 ## Minimum GREEN
 
-- capture allowed identity/config/hook/wrapper sources, explicit limits, start/end correlation, source/effect matrix and adapter digest.
+- capture only official TypeScript SDK `query()`/`SDKMessage`, `stream-json`, and official permission/tool sources; bounded wrapper/workspace artifacts are secondary. Record explicit limits, start/end correlation, source/effect matrix, and the six-field capability digest (`runtime_version`, `protocol_or_schema_version`, `adapter_version`, `source_class`, `supported_event_groups`, `known_missing_events`).
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -49,6 +49,8 @@ Implement Claude Code identity capability and wrapper lifecycle. Deliver only th
 - AC-E9-001-4 ↔ `adapters/claude-code/test/capabilities.test.ts` case `missing-required`.
 - AC-E9-001-5 ↔ `adapters/claude-code/test/capabilities.test.ts` case `lifecycle`.
 - AC-E9-001-6 ↔ `adapters/claude-code/test/capabilities.test.ts` case `config-redaction`.
+- AC-E9-001-7 ↔ `adapters/claude-code/test/capabilities.test.ts` case `official-source-boundary`.
+- AC-E9-001-8 ↔ `adapters/claude-code/test/capabilities.test.ts` case `forbidden-internal-source`.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 # E0B-001 · Define adapter capability schema and complete event matrix
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-B
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-B](../../prd/PRD-E0B-adapter-observability-contract.md)

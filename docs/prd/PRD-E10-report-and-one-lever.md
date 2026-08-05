@@ -1,6 +1,6 @@
 # PRD E10 — Render canonical Markdown/JSON reports with evidence drill-down and one deterministic improvement lever.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S3 · Full Form A & Second Runtime
 - Dependencies: E8, E9, E0-D; ADR-0002, 0004–0006, 0010
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

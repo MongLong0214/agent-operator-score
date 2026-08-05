@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Status: **PROPOSED — derived from the final AOS SSOT; product implementation is blocked until explicit CEO approval of this ADR set.**
+Status: **PROPOSED — derived from the final AOS SSOT; product implementation is blocked until explicit Maintainer approval of this ADR set.**
 
 | ADR | Decision |
 |---|---|

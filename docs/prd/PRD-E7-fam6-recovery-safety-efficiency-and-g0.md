@@ -1,6 +1,6 @@
 # PRD E7 — Build FAM-6 recovery/safety/efficiency scenarios and close the G0 public demo candidate.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S2 · Runner & Differentiated Wedge
 - Dependencies: E6; ADR-0005, 0008–0011
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

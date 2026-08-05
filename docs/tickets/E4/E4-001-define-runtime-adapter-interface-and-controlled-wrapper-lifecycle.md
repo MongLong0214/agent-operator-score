@@ -1,6 +1,6 @@
 # E4-001 · Define runtime adapter interface and controlled wrapper lifecycle
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E4
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E4](../../prd/PRD-E4-codex-adapter.md)
@@ -25,7 +25,7 @@ Define runtime adapter interface and controlled wrapper lifecycle. Deliver only 
 
 ## Forbidden scope
 
-- Claude implementation; scorer coupling; native-specific public schema
+- Claude implementation; scorer coupling; native-specific public schema; any source outside Codex app-server stdio JSON-RPC and the exact installed generated schema/digest
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -38,7 +38,7 @@ Define runtime adapter interface and controlled wrapper lifecycle. Deliver only 
 
 ## Minimum GREEN
 
-- define discover/start/event/stop/cancel/capabilities/digest methods, typed errors, wrapper correlation and bounded event sink.
+- define discover/start/event/stop/cancel/capabilities/digest methods, typed errors, wrapper correlation and bounded event sink. The Codex v0 interface permits only app-server stdio JSON-RPC and the exact installed generated-schema digest; capability digest includes runtime version, protocol/schema version, adapter version, source class, supported event groups, and known missing events.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -48,6 +48,7 @@ Define runtime adapter interface and controlled wrapper lifecycle. Deliver only 
 - AC-E4-001-3 ↔ `adapters/codex/test/interface.test.ts` case `stop-timeout`.
 - AC-E4-001-4 ↔ `adapters/codex/test/interface.test.ts` case `double-stop`.
 - AC-E4-001-5 ↔ `adapters/codex/test/interface.test.ts` case `capability-digest`.
+- AC-E4-001-6 ↔ `adapters/codex/test/interface.test.ts` case `primary-source-boundary`.
 
 ## Verification
 
