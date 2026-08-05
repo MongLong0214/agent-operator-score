@@ -82,7 +82,7 @@ test("Maintainer Gate registry remains pending and self-approval-free", () => {
   }
   assert.equal(registry.version, 1);
   assert.equal(registry.status, "PENDING");
-  assert.ok(registry.batches.every(({ status }) => status === "PENDING"));
+  assert.ok(registry.batches.every(({ status, transitions }) => status === "PENDING" && transitions.length === 0));
   assert.equal(registry.invalidation.on_sha_or_digest_change, true);
 });
 
@@ -107,6 +107,21 @@ test("Maintainer Gate schema validates non-vacuous accepted batches", () => {
         kind: "ADR_BATCH"
       }],
       transitions: ["ADR_ACCEPTED"]
+    }],
+    invalidation: {
+      on_sha_or_digest_change: true,
+      effect: "return_to_pending_and_invalidate_affected_evidence"
+    }
+  };
+  const pending = {
+    version: 1,
+    status: "PENDING",
+    batches: [{
+      id: "pending-batch",
+      status: "PENDING",
+      scope: "No accepted transition is recorded.",
+      artifacts: [],
+      transitions: []
     }],
     invalidation: {
       on_sha_or_digest_change: true,
@@ -148,6 +163,13 @@ test("Maintainer Gate schema validates non-vacuous accepted batches", () => {
     assert.equal(emptyResult.error.status, 1);
     assert.match(emptyResult.error.stderr, /minItems/);
 
+    const pendingWithTransition = structuredClone(pending);
+    pendingWithTransition.batches[0].transitions = ["ADR_ACCEPTED"];
+    const pendingTransitionResult = runFixture(pendingWithTransition);
+    assert.ok(pendingTransitionResult.error);
+    assert.equal(pendingTransitionResult.error.status, 1);
+    assert.match(pendingTransitionResult.error.stderr, /must equal const/);
+
     for (const [transition, kind] of [
       ["ADR_ACCEPTED", "EPIC_PRD"],
       ["PRD_ACCEPTED", "EXACT_TICKET"],
@@ -160,6 +182,32 @@ test("Maintainer Gate schema validates non-vacuous accepted batches", () => {
       assert.ok(result.error);
       assert.equal(result.error.status, 1);
       assert.match(result.error.stderr, /contains/);
+    }
+
+    const acceptedWithoutBatch = structuredClone(accepted);
+    acceptedWithoutBatch.batches = [];
+    const noBatchResult = runFixture(acceptedWithoutBatch);
+    assert.ok(noBatchResult.error);
+    assert.equal(noBatchResult.error.status, 1);
+    assert.match(noBatchResult.error.stderr, /minItems/);
+
+    for (const status of ["PENDING", "REJECTED", "INVALIDATED"]) {
+      const acceptedWithUnacceptedChild = structuredClone(accepted);
+      const child = acceptedWithUnacceptedChild.batches[0];
+      child.status = status;
+      child.transitions = [];
+      child.artifacts = [];
+      if (status === "PENDING") {
+        delete child.verdict;
+        delete child.approved_at;
+        delete child.approved_by;
+      } else {
+        child.verdict = status;
+      }
+      const result = runFixture(acceptedWithUnacceptedChild);
+      assert.ok(result.error);
+      assert.equal(result.error.status, 1);
+      assert.match(result.error.stderr, /\$\.batches\[0\]\.status must equal const/);
     }
 
     let escapedOverride;
