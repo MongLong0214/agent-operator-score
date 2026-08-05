@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "status": "PENDING",
+  "batches": [
+    {
+      "id": "d0-001-prerequisites",
+      "status": "PENDING",
+      "scope": "D0-001 requires an exact ADR-0001/0003/0012 batch, PRD-D0, and its exact ticket before RED.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev"
+      },
+      "required_artifacts": [
+        { "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md", "kind": "ADR" },
+        { "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md", "kind": "ADR" },
+        { "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md", "kind": "ADR" },
+        { "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md", "kind": "PRD" },
+        { "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md", "kind": "TICKET" }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [],
+      "transitions": [],
+      "events": []
+    }
+  ],
+  "invalidation": {
+    "on_artifact_or_reviewed_head_change": true,
+    "effect": "invalidate_affected_batch_and_require_fresh_pending_batch"
+  }
+}
