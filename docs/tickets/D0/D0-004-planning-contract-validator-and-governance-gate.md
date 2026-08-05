@@ -13,7 +13,7 @@ Replace the structural planning validator with semantic planning validator v2. I
 
 ## Exact ownership
 
-- `scripts/validate-planning.mjs`; `tests/planning-contract.test.mjs`; `docs/TRACEABILITY.md`; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v1.json`
+- `scripts/validate-planning.mjs`; every portion of `tests/planning-contract.test.mjs` except the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput`, which D0-001 owns solely for its future `4` to `5` adjustment caused by `tests/planning/identity.test.mjs`, the `gates=<status>` portion, which Gate Administration owns for lifecycle truth, and the compatibility migration's exact delegation test case/plumbing; `docs/TRACEABILITY.md`; historical v1 boundary only: `docs/decisions/maintainer-gate-registry.v1.json` is not an active control-plane ownership grant and must not be restored.
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
