@@ -43,6 +43,48 @@ const readJson = (path, label) => {
     return null;
   }
 };
+const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const equals = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const validateJsonSchema = (schema, value, path = "$") => {
+  const violations = [];
+  if (schema.type === "object" && !isPlainObject(value)) violations.push(`${path} must be an object`);
+  if (schema.type === "array" && !Array.isArray(value)) violations.push(`${path} must be an array`);
+  if (schema.type === "string" && typeof value !== "string") violations.push(`${path} must be a string`);
+  if (schema.const !== undefined && !equals(value, schema.const)) violations.push(`${path} must equal const`);
+  if (schema.enum && !schema.enum.some((entry) => equals(value, entry))) violations.push(`${path} must match enum`);
+  if (typeof value === "string") {
+    if (schema.minLength !== undefined && value.length < schema.minLength) violations.push(`${path} must satisfy minLength`);
+    if (schema.pattern && !new RegExp(schema.pattern).test(value)) violations.push(`${path} must satisfy pattern`);
+    if (schema.format === "date-time" && (Number.isNaN(Date.parse(value)) || !/T/.test(value))) violations.push(`${path} must satisfy date-time format`);
+  }
+  if (isPlainObject(value)) {
+    for (const key of schema.required ?? []) if (!(key in value)) violations.push(`${path} must include required ${key}`);
+    for (const [key, propertySchema] of Object.entries(schema.properties ?? {})) {
+      if (key in value) violations.push(...validateJsonSchema(propertySchema, value[key], `${path}.${key}`));
+    }
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) if (!(key in (schema.properties ?? {}))) violations.push(`${path} has additional property ${key}`);
+    }
+  }
+  if (Array.isArray(value)) {
+    if (schema.minItems !== undefined && value.length < schema.minItems) violations.push(`${path} must satisfy minItems`);
+    if (schema.items) value.forEach((item, index) => violations.push(...validateJsonSchema(schema.items, item, `${path}[${index}]`)));
+    if (schema.contains && !value.some((item) => validateJsonSchema(schema.contains, item, `${path}[*]`).length === 0)) {
+      violations.push(`${path} must satisfy contains`);
+    }
+  }
+  for (const itemSchema of schema.allOf ?? []) violations.push(...validateJsonSchema(itemSchema, value, path));
+  if (schema.anyOf && !schema.anyOf.some((itemSchema) => validateJsonSchema(itemSchema, value, path).length === 0)) {
+    violations.push(`${path} must satisfy anyOf`);
+  }
+  if (schema.not && validateJsonSchema(schema.not, value, path).length === 0) violations.push(`${path} must not satisfy not`);
+  if (schema.if && validateJsonSchema(schema.if, value, path).length === 0) {
+    if (schema.then) violations.push(...validateJsonSchema(schema.then, value, path));
+  } else if (schema.else) {
+    violations.push(...validateJsonSchema(schema.else, value, path));
+  }
+  return violations;
+};
 const metricContract = readFileSync(resolve(root, "docs/contracts/metric-scoring-contract-v1.md"), "utf8");
 const metricIds = Array.from({ length: 20 }, (_, index) => `M${String(index + 1).padStart(2, "0")}`);
 for (const metricId of metricIds) {
@@ -129,14 +171,25 @@ if (manifest) {
 }
 
 const gateSchema = readJson(resolve(root, "docs/decisions/maintainer-gate.schema.json"), "Maintainer Gate schema");
-const gateRegistry = readJson(resolve(root, "docs/decisions/maintainer-gate-registry.v1.json"), "Maintainer Gate registry");
+const gateRegistryArgument = process.argv.find((argument) => argument.startsWith("--gate-registry="));
+const requestedGateRegistryPath = gateRegistryArgument?.slice("--gate-registry=".length);
+const defaultGateRegistryPath = resolve(root, "docs/decisions/maintainer-gate-registry.v1.json");
+const resolvedGateRegistryPath = resolve(root, requestedGateRegistryPath ?? "docs/decisions/maintainer-gate-registry.v1.json");
+const gateRegistryPath = requestedGateRegistryPath && !resolvedGateRegistryPath.startsWith(`${root}/`)
+  ? defaultGateRegistryPath
+  : resolvedGateRegistryPath;
+if (requestedGateRegistryPath && gateRegistryPath !== resolvedGateRegistryPath) errors.push("Maintainer Gate registry override escapes repository root");
+const gateRegistry = readJson(gateRegistryPath, "Maintainer Gate registry");
 const gateStatuses = "PENDING,ACCEPTED,REJECTED,INVALIDATED";
 if (gateSchema && (gateSchema.title !== "AOS Maintainer Gate Registry v1" ||
   gateSchema.properties?.status?.enum?.join(",") !== gateStatuses ||
   gateSchema.properties?.batches?.items?.properties?.status?.enum?.join(",") !== gateStatuses)) {
   errors.push("Maintainer Gate schema lacks the required lifecycle states");
 }
-if (gateRegistry && (gateRegistry.version !== 1 || gateRegistry.status !== "PENDING" ||
+if (gateSchema && gateRegistry) {
+  for (const violation of validateJsonSchema(gateSchema, gateRegistry)) errors.push(`Maintainer Gate schema ${violation}`);
+}
+if (!gateRegistryArgument && gateRegistry && (gateRegistry.version !== 1 || gateRegistry.status !== "PENDING" ||
   "verdict" in gateRegistry || "approved_at" in gateRegistry || "approved_by" in gateRegistry ||
   gateRegistry.invalidation?.on_sha_or_digest_change !== true ||
   gateRegistry.invalidation?.effect !== "return_to_pending_and_invalidate_affected_evidence" ||

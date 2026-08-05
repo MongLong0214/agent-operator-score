@@ -7,7 +7,7 @@
 |---|---|---|
 |P0-1 SSOT authority|SSOT, ADR-0012, D0-004|SSOT states sole product authority; ADR/PRD/ticket are implementation constraints and cannot override it; semantic-v2 test target checks authority chain.|
 |P0-2 D0 truthful state|PRD-D0, D0-001…004, BOARD|D0-001 carries corrected missing-registry RED; D0-002 has real zero-code workspace contract; D0-003 is superseded with PR #53 evidence; D0-004 has current semantic-v2 RED.|
-|P0-3 metric contract|Metric Scoring Contract v1, SSOT, PRD-E0A, E0A-001|M01–M20 each have deterministic observation/formula/state/vector fields; M03 F1 vectors are explicit; E0A-001 freezes machine vectors before E1/E2.|
+|P0-3 metric contract|Metric Scoring Contract v1, SSOT, PRD-E0A, E0A-001|M01–M20 each have deterministic observation/formula/state/vector fields; M03 F1 vectors are explicit; M10 route regret and M20 frontier distance/maximum are derived from frozen named contracts and reject caller-supplied derived values; E0A-001 freezes machine vectors before E1/E2.|
 |P0-4 validation honesty|TRACEABILITY, D0-004, planning validator/tests|Current validator reports computed control-plane/product-code census and explicitly marks semantic traceability/gate digest/identity checks not yet enforced; D0-004 requires the semantic-v2 graph.|
 |P1-5 oracle|ADR-0008, PRD-E3, E3-001…004|Post-termination grader-only materialization is selected; oracle-file/env/fd/temp/symlink/proc-fd/post-run fixtures are named.|
 |P1-6 actor attribution|SSOT, PRD-E1/E3/E4/E9, E1/E3/E4/E9 tickets|Four attribution events and deterministic agent/human/external/unknown rules are trace/schema/adapter acceptance requirements.|

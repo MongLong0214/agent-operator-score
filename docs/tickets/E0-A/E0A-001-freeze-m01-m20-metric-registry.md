@@ -40,6 +40,7 @@ Freeze M01–M20 metric registry. Deliver only the bounded contract below; do no
 
 - encode the exact 20 Metric Scoring Contract v1 records with factor, question, observation type, eligible opportunity, numerator, denominator, partial-credit rule, per-opportunity formula, aggregation, minimum opportunities, evidence precedence, confidence, `NOT_OBSERVED`/`INVALID`, normalization, cap/floor, grader output, canonical vectors, version, gaming guard, treatment, and consumer routes.
 - encode M03 only as the frozen precision/recall/harmonic-mean contract, including all-zero and missed-required-ask edges; no grader-discretion field is permitted.
+- encode M10 from its frozen eligible route table and M20 from its frozen frontier contract. Derive, rather than accept, M10 `selected_regret`/`maximum_regret` and M20 `distance_to_frontier`/`maximum_distance`; reject unknown IDs, inconsistent coordinates, and caller-supplied derived fields as `INVALID`.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -52,6 +53,9 @@ Freeze M01–M20 metric registry. Deliver only the bounded contract below; do no
 - AC-E0A-001-6 ↔ `packages/schema/test/metric-registry.test.ts` case `complete-contract-v1-fields`.
 - AC-E0A-001-7 ↔ `packages/schema/test/metric-registry.test.ts` case `m03-precision-recall-f1-vectors`.
 - AC-E0A-001-8 ↔ `packages/schema/test/metric-registry.test.ts` case `canonical-pass-partial-fail-no-vectors`.
+- AC-E0A-001-9 ↔ `packages/schema/test/metric-registry.test.ts` case `m10-route-table-derived-regret`.
+- AC-E0A-001-10 ↔ `packages/schema/test/metric-registry.test.ts` case `m20-frontier-derived-distance`.
+- AC-E0A-001-11 ↔ `packages/schema/test/metric-registry.test.ts` case `reject-caller-supplied-derived-m10-m20-values`.
 
 ## Verification
 

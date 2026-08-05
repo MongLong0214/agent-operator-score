@@ -48,7 +48,28 @@
           },
           {
             "if": { "properties": { "status": { "const": "ACCEPTED" } }, "required": ["status"] },
-            "then": { "required": ["verdict", "approved_at", "approved_by"], "properties": { "verdict": { "const": "ACCEPTED" } } }
+            "then": {
+              "required": ["verdict", "approved_at", "approved_by"],
+              "properties": {
+                "verdict": { "const": "ACCEPTED" },
+                "artifacts": { "minItems": 1 },
+                "transitions": { "minItems": 1 }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "transitions": { "contains": { "const": "ADR_ACCEPTED" } } }, "required": ["transitions"] },
+                  "then": { "properties": { "artifacts": { "contains": { "properties": { "kind": { "const": "ADR_BATCH" } }, "required": ["kind"] } } } }
+                },
+                {
+                  "if": { "properties": { "transitions": { "contains": { "const": "PRD_ACCEPTED" } } }, "required": ["transitions"] },
+                  "then": { "properties": { "artifacts": { "contains": { "properties": { "kind": { "const": "EPIC_PRD" } }, "required": ["kind"] } } } }
+                },
+                {
+                  "if": { "properties": { "transitions": { "contains": { "const": "TICKET_READY_FOR_RED" } } }, "required": ["transitions"] },
+                  "then": { "properties": { "artifacts": { "contains": { "properties": { "kind": { "const": "EXACT_TICKET" } }, "required": ["kind"] } } } }
+                }
+              ]
+            }
           },
           {
             "if": { "properties": { "status": { "const": "REJECTED" } }, "required": ["status"] },
