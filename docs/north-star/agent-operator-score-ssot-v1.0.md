@@ -20,10 +20,10 @@ Agent Operator Score (AOS)
 • 대외 라벨: Open assessment method / PROVISIONAL
 • 금지 표현: 업계 표준, 공식 인증, 전 세계 순위, 채용 적합성, 검증된 백분위
 • 개정 근거: 2026-08-05 객관 리뷰에서 지적된 시간·관측성·처방·표시 계약을 반영
-• 기준본 관계: 이전 기획서와 별도 리뷰문서는 활성 트리에서 제거되었으며 Git history에서만 복구할 수 있다. 개발자는 이 파일 하나만 따른다.
+• 기준본 관계: 이전 기획서와 별도 리뷰문서는 활성 트리에서 제거되었으며 Git history에서만 복구할 수 있다. 이 SSOT는 제품 수준 방향의 유일한 기준본이며, 구현에는 아래의 accepted ADR·PRD·exact ticket 권한 체인이 추가로 필요하다.
 
-> **이 파일 하나가 Agent Operator Score의 제품 기획·측정 계약·개발 착수 리뷰를 통합한 유일한 제품 수준 기준본이다.**
-> 다른 문서를 선택하거나 함께 읽을 필요가 없다. 별도 상품 기획, 유료화 문서, 엔터프라이즈 판매 계획은 존재하지 않는다.
+> **이 파일 하나가 Agent Operator Score의 제품 방향·20개 metric·6개 family·AOS-Coding P0 가설·architecture·순서를 정하는 유일한 제품 수준 기준본이다.**
+> 구현 권한 체인은 반드시 `accepted ADR → accepted owning PRD → accepted exact ticket`이며, 개발자는 그 세 문서를 해당 exact digest에서 함께 읽어야 한다. 별도 상품 기획, 유료화 문서, 엔터프라이즈 판매 계획은 존재하지 않는다.
 > 구현의 우선순위는 문서 확장이 아니라 `name migration → measurement contracts → schema → fixtures → scorer → controlled runner → adapters → task pack → report`다.
 > ADR·PRD·exact ticket은 accepted digest에서 구현을 제한하고 증거를 요구하지만, 이 SSOT의 제품 방향·20개 metric·6개 family·AOS-Coding P0 가설·architecture·순서를 재정의하거나 override할 수 없다.
 
@@ -140,7 +140,7 @@ Slim은 지표를 장난감 수준으로 줄이는 것이 아니다.
 
 신규 코드·README·패키지에서는 이전 제품 식별자를 포함한 legacy 문자열을 사용하지 않는다.
 
-이름은 개발용으로 고정한다. D0에서 GitHub·npm·domain·basic trademark 최소 name-clearance evidence와 한계를 기록하며, unresolved result는 later publication을 차단한다. G4는 formal legal/publication/notices clearance를 완료한다.
+이름은 개발용으로 고정한다. D0에서 GitHub·npm·domain·basic trademark 최소 name-clearance evidence와 한계를 기록하며, unresolved result는 canonical name adoption을 차단한다. 이 D0 확인은 `LICENSE`, contribution acceptance, redistribution, 또는 publication을 결정하지 않는다. 그 네 가지 E14/G4 결정을 위한 formal legal/publication/notices clearance는 별도로 완료한다.
 
 1. 제품 위치
 

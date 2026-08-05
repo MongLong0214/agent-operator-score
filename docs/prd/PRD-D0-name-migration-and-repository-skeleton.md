@@ -20,7 +20,7 @@ Migrate every active surface to Agent Operator Score and establish a planning-va
 2. Create the zero-code npm workspace skeleton matching SSOT §9.4: root `agent-operator-score` is the sole future publish candidate and every internal `@aos/*` workspace is `private: true`.
 3. Preserve the PR #53 migration result: no active archive/path exception exists and Git history is the sole recovery boundary; D0-003 is superseded and performs no implementation.
 4. Update active operator/developer surfaces, issue metadata mirrors, Maintainer Gate terminology, and planning validation without claiming semantic checks that are not implemented.
-5. Complete minimum name clearance in D0: record GitHub, npm, domain, and basic trademark evidence with search limits; unresolved evidence blocks later work. Formal publication/legal/notices remain E14/G4.
+5. Complete minimum name clearance in D0: record GitHub, npm, domain, and basic trademark evidence with search limits; unresolved evidence blocks canonical name adoption and D0 exit. This check does not decide LICENSE, contribution, redistribution, or publication; those are separate E14/G4 decisions.
 
 ## Acceptance criteria
 
@@ -29,7 +29,7 @@ Migrate every active surface to Agent Operator Score and establish a planning-va
 - AC-D0-3: planning build proves zero product code and every future package path has one owner.
 - AC-D0-4: no active legacy archive remains; superseded material is recoverable only through Git history.
 - AC-D0-5: root is the sole future publish candidate, all internal workspaces are private, and CI declares Node 20/22/24 within the truthful engine range.
-- AC-D0-6: minimum name-clearance evidence is present or remains explicitly blocking; no D0 document implies legal/publication clearance.
+- AC-D0-6: minimum name-clearance evidence is present or explicitly blocks canonical name adoption; no D0 document decides LICENSE, contribution, redistribution, or publication.
 
 ## Failure and stop semantics
 

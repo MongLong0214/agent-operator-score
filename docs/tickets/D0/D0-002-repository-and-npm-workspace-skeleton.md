@@ -42,7 +42,7 @@ Create the real zero-product-code npm workspace skeleton required by the SSOT. D
 - create workspace manifests exactly at `packages/{schema,scorer,runner,reporter}` and `adapters/{codex,claude-code}` named `@aos/*`, each with `private: true`, no executable entrypoint, no dependencies, and no product source.
 - retain engine range `>=20 <25`; reserve `aos` as a documented future CLI name without creating a runnable bin target.
 - add one ownership marker per future package path and make every marker point to exactly one ticket/PRD owner.
-- record the minimum GitHub/npm/domain/basic-trademark name-clearance evidence and explicit search limits; a missing or unresolved item is a publication block, not a legal opinion or a release authorization.
+- record the minimum GitHub/npm/domain/basic-trademark name-clearance evidence and explicit search limits; a missing or unresolved item blocks canonical-name adoption, not a legal opinion, LICENSE, contribution acceptance, redistribution, or publication authorization.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -52,7 +52,7 @@ Create the real zero-product-code npm workspace skeleton required by the SSOT. D
 - AC-D0-002-3 ↔ `tests/planning/workspace-skeleton.test.mjs` case `one-owner-per-path`: each future package path has exactly one owner.
 - AC-D0-002-4 ↔ `tests/planning/workspace-skeleton.test.mjs` case `product-code-zero`: manifest/source census finds no product code or runnable bin target.
 - AC-D0-002-5 ↔ `tests/planning/workspace-skeleton.test.mjs` case `engine-matrix`: root engines remain `>=20 <25` and CI declares Node 20/22/24.
-- AC-D0-002-6 ↔ `tests/planning/workspace-skeleton.test.mjs` case `minimum-name-clearance`: required evidence/search-limit fields are present and any unresolved state blocks publication without asserting formal legal clearance.
+- AC-D0-002-6 ↔ `tests/planning/workspace-skeleton.test.mjs` case `minimum-name-clearance`: required evidence/search-limit fields are present and any unresolved state blocks canonical-name adoption without asserting formal legal, LICENSE, contribution, redistribution, or publication clearance.
 
 ## Verification
 

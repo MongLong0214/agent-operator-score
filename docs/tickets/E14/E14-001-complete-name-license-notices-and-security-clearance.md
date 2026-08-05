@@ -9,7 +9,7 @@
 
 ## Goal
 
-Complete formal publication, license, notices, and security clearance. Minimum name clearance is a D0 input and cannot be repeated or substituted here. Deliver only the bounded contract below; do not infer adjacent scope.
+Complete formal publication, LICENSE, contribution acceptance, redistribution, notices, and security clearance. Minimum name clearance is a separate D0 canonical-identity decision and cannot be repeated or substituted here. Deliver only the bounded contract below; do not infer adjacent scope.
 
 ## Exact ownership
 
@@ -38,12 +38,12 @@ Complete formal publication, license, notices, and security clearance. Minimum n
 
 ## Minimum GREEN
 
-- verify the D0 minimum-name-clearance input remains unresolved or present without treating it as legal advice; select license/contributor terms, enumerate dependencies/notices and disclosure policy, complete formal publication/legal review, and emit a blocking verdict when any required input is unresolved.
+- do not repeat D0 minimum-name clearance; select LICENSE/contributor terms, define redistribution conditions, enumerate dependencies/notices and disclosure policy, complete formal publication/legal review, and emit a blocking verdict when any E14/G4 requirement is unresolved.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
 
-- AC-E14-001-1 ↔ `tests/publication/clearance.test.mjs` case `d0-name-input`.
+- AC-E14-001-1 ↔ `tests/publication/clearance.test.mjs` case `license-contribution-redistribution`.
 - AC-E14-001-2 ↔ `tests/publication/clearance.test.mjs` case `license`.
 - AC-E14-001-3 ↔ `tests/publication/clearance.test.mjs` case `notices`.
 - AC-E14-001-4 ↔ `tests/publication/clearance.test.mjs` case `contributor`.
