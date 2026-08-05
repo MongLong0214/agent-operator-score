@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "canonical": {
+    "productName": "Agent Operator Score",
+    "abbreviation": "AOS",
+    "instrument": "AOS-Coding",
+    "provisionalScore": "AOS-Coding P0",
+    "packageName": "agent-operator-score",
+    "cli": "aos",
+    "stateRoot": ".aos/",
+    "traceSchema": "aos-trace",
+    "resultSchema": "aos-result"
+  },
+  "forbidden": [
+    {
+      "id": "old-agent-ops-score",
+      "parts": ["Agent", "Ops Score"],
+      "caseInsensitive": true,
+      "wordBoundary": false
+    },
+    {
+      "id": "old-agentops-package",
+      "parts": ["agent", "ops-score"],
+      "caseInsensitive": true,
+      "wordBoundary": false
+    },
+    {
+      "id": "old-agent-leverage-index",
+      "parts": ["Agent ", "Leverage Index"],
+      "caseInsensitive": true,
+      "wordBoundary": false
+    },
+    {
+      "id": "old-initialism",
+      "parts": ["A", "LI"],
+      "caseInsensitive": true,
+      "wordBoundary": true
+    },
+    {
+      "id": "old-benchmark-alias",
+      "parts": ["a", "li", "-", "bench"],
+      "caseInsensitive": true,
+      "wordBoundary": true
+    },
+    {
+      "id": "old-provisional-score-label",
+      "parts": ["AOS", "-", "P0"],
+      "caseInsensitive": true,
+      "wordBoundary": true
+    }
+  ]
+}
