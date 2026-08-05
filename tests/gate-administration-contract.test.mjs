@@ -32,6 +32,23 @@ test("programmatic root or registry options fail closed", () => {
 
 const sha256 = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
 
+const writePendingFixtureRegistry = (fixtureRoot) => {
+  const registryPath = join(fixtureRoot, canonicalRegistry);
+  const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+  registry.status = "PENDING";
+  for (const batch of registry.batches) {
+    batch.status = "PENDING";
+    delete batch.target.reviewed_head;
+    batch.artifacts = [];
+    batch.transitions = [];
+    batch.events = [];
+    delete batch.preparation;
+    delete batch.approval;
+    delete batch.invalidation;
+  }
+  writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+};
+
 const makeFixture = () => {
   const parent = mkdtempSync(join(tmpdir(), "aos gate administration "));
   const fixtureRoot = join(parent, "repository");
@@ -39,6 +56,7 @@ const makeFixture = () => {
     recursive: true,
     filter: (source) => ![".git", "node_modules"].includes(basename(source))
   });
+  writePendingFixtureRegistry(fixtureRoot);
   execFileSync("git", ["init", "-q"], { cwd: fixtureRoot });
   execFileSync("git", ["config", "user.email", "gate@example.test"], { cwd: fixtureRoot });
   execFileSync("git", ["config", "user.name", "Gate Test"], { cwd: fixtureRoot });
@@ -57,6 +75,7 @@ const makeNoGitFixture = () => {
     recursive: true,
     filter: (source) => ![".git", "node_modules"].includes(basename(source))
   });
+  writePendingFixtureRegistry(fixtureRoot);
   return { parent, fixtureRoot };
 };
 
@@ -440,14 +459,28 @@ test("a structural-only approval spoof is explicitly external gate evidence, nev
   }
 });
 
-test("current registry remains pending and grants no D0-001 execution authority", () => {
+test("current registry structurally closes the exact D0-001 batch but still requires external authorization", () => {
   const registry = JSON.parse(readFileSync(resolve(root, "docs/decisions/maintainer-gate-registry.v2.json"), "utf8"));
   const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-001-canonical-identifier-registry.md"), "utf8");
+  const batch = registry.batches[0];
+  const result = validateGateAdministration();
   assert.equal(registry.version, 2);
-  assert.equal(registry.status, "PENDING");
-  assert.equal(registry.batches[0].target.repository, "github.com/MongLong0214/agent-operator-score");
-  assert.equal(registry.batches[0].target.branch, "dev");
-  assert.ok(registry.batches.every(({ status, artifacts, transitions, events }) =>
-    status === "PENDING" && artifacts.length === 0 && transitions.length === 0 && events.length === 0));
+  assert.equal(registry.status, "ACCEPTED");
+  assert.equal(batch.status, "ACCEPTED");
+  assert.equal(batch.target.repository, "github.com/MongLong0214/agent-operator-score");
+  assert.equal(batch.target.branch, "dev");
+  assert.equal(batch.target.reviewed_head, "dde8c29a592c35a37515645511e6da275ffb50f0");
+  assert.deepEqual(batch.artifacts.map(({ path, kind }) => ({ path, kind })), batch.required_artifacts);
+  assert.ok(batch.artifacts.every(({ path, sha256: digest }) => digest === sha256(resolve(root, path))));
+  assert.deepEqual(batch.transitions, [
+    { type: "ADR_ACCEPTED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
+    { type: "PRD_ACCEPTED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
+    { type: "TICKET_READY_FOR_RED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
+  ]);
+  assert.deepEqual(batch.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
+  assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
+  assert.equal(batch.approval.role, "MAINTAINER");
+  assert.equal(result.status, "accepted");
+  assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
 });
