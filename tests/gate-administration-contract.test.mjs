@@ -121,10 +121,15 @@ test("Gate Administrator validates a structurally complete future batch only thr
   const { parent, fixtureRoot } = makeFixture();
   try {
     const accepted = makeAcceptedFixture(fixtureRoot);
-    const positive = runRegistry(fixtureRoot, accepted);
-    assert.equal(positive.error, undefined);
-    assert.match(positive.output, /GATE_ADMINISTRATION_STRUCTURAL_PASS registry=accepted batches=1 accepted=1 rejected=0 invalidated=0 external_gate_evidence=required/);
-    assert.doesNotMatch(positive.output, /authorization=granted/);
+    const uncommittedAccepted = runRegistry(fixtureRoot, accepted);
+    assert.equal(uncommittedAccepted.error.status, 1);
+    assert.match(uncommittedAccepted.error.stderr, /exact-head mismatch docs\/decisions\/maintainer-gate-registry\.v2\.json/);
+
+    const candidateHead = commitRegistryCandidate(fixtureRoot, accepted);
+    const committedPositive = runCli(fixtureRoot);
+    assert.equal(committedPositive.error, undefined);
+    assert.match(committedPositive.output, new RegExp(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=accepted batches=1 accepted=1 rejected=0 invalidated=0 external_gate_evidence=required not_authorization candidate_head=${candidateHead}`));
+    assert.doesNotMatch(committedPositive.output, /authorization=granted/);
 
     const selfApproved = structuredClone(accepted);
     selfApproved.batches[0].approval.approved_by = selfApproved.batches[0].preparation.prepared_by;
@@ -210,9 +215,10 @@ test("accepted candidate permits a feature branch and detached CI head based on 
   try {
     execFileSync("git", ["checkout", "-qb", "feature-gate"], { cwd: fixtureRoot });
     const accepted = makeAcceptedFixture(fixtureRoot);
-    commitRegistryCandidate(fixtureRoot, accepted);
+    const featureHead = commitRegistryCandidate(fixtureRoot, accepted);
     const feature = runCli(fixtureRoot);
     assert.equal(feature.error, undefined);
+    assert.match(feature.output, new RegExp(`candidate_head=${featureHead}`));
 
     const detachedFixture = makeFixture();
     try {
@@ -222,9 +228,40 @@ test("accepted candidate permits a feature branch and detached CI head based on 
       execFileSync("git", ["checkout", "-q", "--detach", candidateHead], { cwd: detachedFixture.fixtureRoot });
       const detached = runCli(detachedFixture.fixtureRoot);
       assert.equal(detached.error, undefined);
+      assert.match(detached.output, new RegExp(`candidate_head=${candidateHead}`));
     } finally {
       rmSync(detachedFixture.parent, { recursive: true, force: true });
     }
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("accepted candidate fails closed when canonical schema or executed validator differs from exact HEAD", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    execFileSync("git", ["checkout", "-qb", "feature-exact-head"], { cwd: fixtureRoot });
+    const accepted = makeAcceptedFixture(fixtureRoot);
+    const candidateHead = commitRegistryCandidate(fixtureRoot, accepted);
+    const schemaPath = join(fixtureRoot, "docs/decisions/maintainer-gate.schema.json");
+    const schemaBytes = readFileSync(schemaPath, "utf8");
+    writeFileSync(schemaPath, `${schemaBytes}\n`);
+    const changedSchema = runCli(fixtureRoot);
+    assert.equal(changedSchema.error.status, 1);
+    assert.match(changedSchema.error.stderr, /exact-head mismatch docs\/decisions\/maintainer-gate\.schema\.json/);
+    writeFileSync(schemaPath, schemaBytes);
+
+    const validatorPath = join(fixtureRoot, "scripts/validate-gate-administration.mjs");
+    const validatorBytes = readFileSync(validatorPath, "utf8");
+    writeFileSync(validatorPath, `${validatorBytes}\n// exact-head mutation\n`);
+    const changedValidator = runCli(fixtureRoot);
+    assert.equal(changedValidator.error.status, 1);
+    assert.match(changedValidator.error.stderr, /exact-head mismatch scripts\/validate-gate-administration\.mjs/);
+    writeFileSync(validatorPath, validatorBytes);
+
+    const restored = runCli(fixtureRoot);
+    assert.equal(restored.error, undefined);
+    assert.match(restored.output, new RegExp(`candidate_head=${candidateHead}`));
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
@@ -273,7 +310,8 @@ test("a structural-only approval spoof is explicitly external gate evidence, nev
     const spoofed = makeAcceptedFixture(fixtureRoot);
     spoofed.batches[0].approval.approved_by = "ceo";
     spoofed.batches[0].events[0].recorded_by = "independent-reviewer";
-    const result = runRegistry(fixtureRoot, spoofed);
+    commitRegistryCandidate(fixtureRoot, spoofed);
+    const result = runCli(fixtureRoot);
     assert.equal(result.error, undefined);
     assert.match(result.output, /external_gate_evidence=required/);
     assert.match(result.output, /not_authorization/);
