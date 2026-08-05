@@ -24,6 +24,18 @@
           "events"
         ],
         "additionalProperties": false,
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "const": "PENDING" } } },
+            "then": {
+              "properties": {
+                "required_artifacts": {
+                  "items": { "required": ["path", "sha256", "kind"] }
+                }
+              }
+            }
+          }
+        ],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
           "status": { "enum": ["PENDING", "ACCEPTED", "REJECTED", "INVALIDATED"] },
@@ -47,6 +59,7 @@
               "additionalProperties": false,
               "properties": {
                 "path": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+$" },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
                 "kind": { "enum": ["ADR", "PRD", "TICKET"] }
               }
             }
