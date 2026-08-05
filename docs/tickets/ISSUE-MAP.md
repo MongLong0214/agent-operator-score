@@ -14,5 +14,7 @@
 | T-701 | [#28](https://github.com/MongLong0214/AgentOps-Score/issues/28) | T-702 | [#29](https://github.com/MongLong0214/AgentOps-Score/issues/29) | T-703 | [#30](https://github.com/MongLong0214/AgentOps-Score/issues/30) |
 | T-801 | [#32](https://github.com/MongLong0214/AgentOps-Score/issues/32) | T-802 | [#35](https://github.com/MongLong0214/AgentOps-Score/issues/35) | T-803 | [#37](https://github.com/MongLong0214/AgentOps-Score/issues/37) |
 | T-804 | [#39](https://github.com/MongLong0214/AgentOps-Score/issues/39) | T-805 | [#41](https://github.com/MongLong0214/AgentOps-Score/issues/41) |  |  |
+| T-901 | [#47](https://github.com/MongLong0214/AgentOps-Score/issues/47) | T-902 | [#48](https://github.com/MongLong0214/AgentOps-Score/issues/48) | T-903 | [#49](https://github.com/MongLong0214/AgentOps-Score/issues/49) |
+| T-904 | [#50](https://github.com/MongLong0214/AgentOps-Score/issues/50) | T-905 | [#51](https://github.com/MongLong0214/AgentOps-Score/issues/51) | T-906 | [#52](https://github.com/MongLong0214/AgentOps-Score/issues/52) |
 
 Closed issues #31, #33, #34, #36, #38, #40, and #42–#46 are exact setup-time duplicates and point to the canonical issues above.
