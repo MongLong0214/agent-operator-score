@@ -42,9 +42,10 @@ const makeFixture = () => {
   execFileSync("git", ["config", "user.email", "gate@example.test"], { cwd: fixtureRoot });
   execFileSync("git", ["config", "user.name", "Gate Test"], { cwd: fixtureRoot });
   execFileSync("git", ["checkout", "-qb", "dev"], { cwd: fixtureRoot });
-  execFileSync("git", ["remote", "add", "origin", "git@example.test:agent-operator-score.git"], { cwd: fixtureRoot });
+  execFileSync("git", ["remote", "add", "origin", "git@github.com:MongLong0214/agent-operator-score.git"], { cwd: fixtureRoot });
   execFileSync("git", ["add", "."], { cwd: fixtureRoot });
   execFileSync("git", ["commit", "-qm", "planning control plane fixture"], { cwd: fixtureRoot });
+  execFileSync("git", ["update-ref", "refs/remotes/origin/dev", "HEAD"], { cwd: fixtureRoot });
   return { parent, fixtureRoot };
 };
 
@@ -93,6 +94,13 @@ const runRegistry = (fixtureRoot, candidate) => {
   } catch (error) {
     return { error };
   }
+};
+
+const commitRegistryCandidate = (fixtureRoot, candidate) => {
+  writeFileSync(join(fixtureRoot, canonicalRegistry), `${JSON.stringify(candidate, null, 2)}\n`);
+  execFileSync("git", ["add", canonicalRegistry], { cwd: fixtureRoot });
+  execFileSync("git", ["commit", "-qm", "accepted gate candidate"], { cwd: fixtureRoot });
+  return execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
 };
 
 const runCli = (fixtureRoot, args = []) => {
@@ -197,33 +205,63 @@ test("canonical registry rejects a forged sibling registry and a canonical symli
   }
 });
 
-test("accepted registry fails closed for the actual repository, branch, and reviewed-head reachability", () => {
+test("accepted candidate permits a feature branch and detached CI head based on the target ref", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    execFileSync("git", ["checkout", "-qb", "feature-gate"], { cwd: fixtureRoot });
+    const accepted = makeAcceptedFixture(fixtureRoot);
+    commitRegistryCandidate(fixtureRoot, accepted);
+    const feature = runCli(fixtureRoot);
+    assert.equal(feature.error, undefined);
+
+    const detachedFixture = makeFixture();
+    try {
+      execFileSync("git", ["checkout", "-qb", "feature-ci"], { cwd: detachedFixture.fixtureRoot });
+      const detachedAccepted = makeAcceptedFixture(detachedFixture.fixtureRoot);
+      const candidateHead = commitRegistryCandidate(detachedFixture.fixtureRoot, detachedAccepted);
+      execFileSync("git", ["checkout", "-q", "--detach", candidateHead], { cwd: detachedFixture.fixtureRoot });
+      const detached = runCli(detachedFixture.fixtureRoot);
+      assert.equal(detached.error, undefined);
+    } finally {
+      rmSync(detachedFixture.parent, { recursive: true, force: true });
+    }
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("accepted candidate fails closed for unrelated target ancestry, wrong-owner remote, and reviewed-head candidate ancestry", () => {
   const { parent, fixtureRoot } = makeFixture();
   try {
     const accepted = makeAcceptedFixture(fixtureRoot);
 
-    execFileSync("git", ["remote", "set-url", "origin", "git@example.test:wrong-repository.git"], { cwd: fixtureRoot });
+    execFileSync("git", ["remote", "set-url", "origin", "git@github.com:wrong-owner/agent-operator-score.git"], { cwd: fixtureRoot });
     const wrongRepository = runRegistry(fixtureRoot, accepted);
     assert.equal(wrongRepository.error.status, 1);
     assert.match(wrongRepository.error.stderr, /actual repository/);
 
-    execFileSync("git", ["remote", "set-url", "origin", "git@example.test:agent-operator-score.git"], { cwd: fixtureRoot });
-    execFileSync("git", ["checkout", "-qb", "wrong-target"], { cwd: fixtureRoot });
-    const wrongBranch = runRegistry(fixtureRoot, accepted);
-    assert.equal(wrongBranch.error.status, 1);
-    assert.match(wrongBranch.error.stderr, /actual branch/);
-
-    execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
+    execFileSync("git", ["remote", "set-url", "origin", "git@github.com:MongLong0214/agent-operator-score.git"], { cwd: fixtureRoot });
     const baseHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
-    const unreachableHead = execFileSync("git", ["commit-tree", `${baseHead}^{tree}`, "-p", baseHead], {
+    const unrelatedHead = execFileSync("git", ["commit-tree", `${baseHead}^{tree}`], {
       cwd: fixtureRoot,
       encoding: "utf8"
     }).trim();
-    const unreachable = structuredClone(accepted);
-    unreachable.batches[0].target.reviewed_head = unreachableHead;
-    const unreachableResult = runRegistry(fixtureRoot, unreachable);
-    assert.equal(unreachableResult.error.status, 1);
-    assert.match(unreachableResult.error.stderr, /reviewed_head is not reachable from target branch/);
+    execFileSync("git", ["update-ref", "refs/heads/unrelated", unrelatedHead], { cwd: fixtureRoot });
+    execFileSync("git", ["checkout", "-q", "unrelated"], { cwd: fixtureRoot });
+    const unrelated = runRegistry(fixtureRoot, accepted);
+    assert.equal(unrelated.error.status, 1);
+    assert.match(unrelated.error.stderr, /exact candidate HEAD is not based on target ref/);
+
+    execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
+    const existingButUnreviewedHead = execFileSync("git", ["commit-tree", `${baseHead}^{tree}`, "-p", baseHead], {
+      cwd: fixtureRoot,
+      encoding: "utf8"
+    }).trim();
+    const wrongCandidateAncestry = structuredClone(accepted);
+    wrongCandidateAncestry.batches[0].target.reviewed_head = existingButUnreviewedHead;
+    const wrongCandidateAncestryResult = runRegistry(fixtureRoot, wrongCandidateAncestry);
+    assert.equal(wrongCandidateAncestryResult.error.status, 1);
+    assert.match(wrongCandidateAncestryResult.error.stderr, /reviewed_head is not an ancestor of exact candidate HEAD/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
@@ -250,6 +288,8 @@ test("current registry remains pending and grants no D0-001 execution authority"
   const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-001-canonical-identifier-registry.md"), "utf8");
   assert.equal(registry.version, 2);
   assert.equal(registry.status, "PENDING");
+  assert.equal(registry.batches[0].target.repository, "github.com/MongLong0214/agent-operator-score");
+  assert.equal(registry.batches[0].target.branch, "dev");
   assert.ok(registry.batches.every(({ status, artifacts, transitions, events }) =>
     status === "PENDING" && artifacts.length === 0 && transitions.length === 0 && events.length === 0));
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);

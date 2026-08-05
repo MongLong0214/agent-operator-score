@@ -12,6 +12,8 @@ const transitionKinds = {
   TICKET_READY_FOR_RED: "TICKET"
 };
 const canonicalRegistryRelativePath = "docs/decisions/maintainer-gate-registry.v2.json";
+const canonicalRepositoryTarget = "github.com/MongLong0214/agent-operator-score";
+const canonicalTargetBranch = "dev";
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const plainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -63,6 +65,10 @@ const checkSchemaContract = (schema, errors) => {
   if (!Array.isArray(declaredBatch) || !sameSet(new Set(declaredBatch), batchStatuses)) {
     errors.push("Gate Administration schema lacks batch lifecycle states");
   }
+  const targetProperties = schema.properties?.batches?.items?.properties?.target?.properties;
+  if (targetProperties?.repository?.const !== canonicalRepositoryTarget || targetProperties?.branch?.const !== canonicalTargetBranch) {
+    errors.push("Gate Administration schema has wrong canonical target");
+  }
 };
 
 const readJson = (path, label, errors) => {
@@ -98,11 +104,15 @@ const verifyReviewedArtifact = (root, reviewedHead, artifact, errors, label, ver
   }
 };
 
-const repositoryName = (remoteUrl) => remoteUrl.trim().replace(/\/+$/, "").split(/[/:]/).pop()?.replace(/\.git$/, "");
+const normalizeGitHubRepository = (remoteUrl) => {
+  const value = remoteUrl.trim().replace(/\/+$/, "").replace(/\.git$/, "");
+  const match = value.match(/^(?:(?:https?|ssh):\/\/)?(?:[^@/]+@)?github\.com(?::|\/)([^/]+)\/([^/]+)$/);
+  return match ? `github.com/${match[1]}/${match[2]}` : null;
+};
 
-const verifyActualTarget = (root, target, errors, label) => {
+const verifyCandidateTarget = (root, target, errors, label) => {
   try {
-    const actualRepository = repositoryName(execFileSync("git", ["config", "--get", "remote.origin.url"], {
+    const actualRepository = normalizeGitHubRepository(execFileSync("git", ["config", "--get", "remote.origin.url"], {
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"]
@@ -112,18 +122,21 @@ const verifyActualTarget = (root, target, errors, label) => {
     errors.push(`${label} has no verifiable actual repository target`);
   }
   try {
-    const actualBranch = execFileSync("git", ["symbolic-ref", "--quiet", "--short", "HEAD"], {
+    const targetRef = `refs/remotes/origin/${target.branch}`;
+    execFileSync("git", ["show-ref", "--verify", "--quiet", targetRef], {
       cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-    if (actualBranch !== target.branch) errors.push(`${label} has wrong actual branch target`);
+      stdio: "ignore"
+    });
+    execFileSync("git", ["merge-base", "--is-ancestor", targetRef, "HEAD"], {
+      cwd: root,
+      stdio: "ignore"
+    });
   } catch {
-    errors.push(`${label} has no verifiable actual branch target`);
+    errors.push(`${label} exact candidate HEAD is not based on target ref origin/${target.branch}`);
   }
 };
 
-const verifyReviewedHead = (root, reviewedHead, targetBranch, errors, label, requireReachability) => {
+const verifyReviewedHead = (root, reviewedHead, errors, label, requireCandidateAncestry) => {
   if (!hash40(reviewedHead)) {
     errors.push(`${label} missing or malformed reviewed_head`);
     return false;
@@ -133,14 +146,14 @@ const verifyReviewedHead = (root, reviewedHead, targetBranch, errors, label, req
       cwd: root,
       stdio: "ignore"
     });
-    if (requireReachability) {
+    if (requireCandidateAncestry) {
       try {
-        execFileSync("git", ["merge-base", "--is-ancestor", reviewedHead, `refs/heads/${targetBranch}`], {
+        execFileSync("git", ["merge-base", "--is-ancestor", reviewedHead, "HEAD"], {
           cwd: root,
           stdio: "ignore"
         });
       } catch {
-        errors.push(`${label} reviewed_head is not reachable from target branch ${targetBranch}`);
+        errors.push(`${label} reviewed_head is not an ancestor of exact candidate HEAD`);
         return false;
       }
     }
@@ -182,7 +195,7 @@ const verifyBatch = (root, batch, errors) => {
   if (!batchStatuses.has(batch.status)) errors.push(`${label} has invalid status`);
   if (typeof batch.scope !== "string" || !batch.scope) errors.push(`${label} has invalid scope`);
   if (!checkKeys(batch.target, ["repository", "branch", "reviewed_head"], ["repository", "branch"], `${label}.target`, errors)) return;
-  if (batch.target.repository !== "agent-operator-score" || batch.target.branch !== "dev") {
+  if (batch.target.repository !== canonicalRepositoryTarget || batch.target.branch !== canonicalTargetBranch) {
     errors.push(`${label} has wrong repository target`);
   }
 
@@ -239,11 +252,10 @@ const verifyBatch = (root, batch, errors) => {
     return;
   }
 
-  if (batch.status === "ACCEPTED") verifyActualTarget(root, batch.target, errors, label);
+  if (batch.status === "ACCEPTED") verifyCandidateTarget(root, batch.target, errors, label);
   const reviewedHeadIsValid = verifyReviewedHead(
     root,
     batch.target.reviewed_head,
-    batch.target.branch,
     errors,
     label,
     batch.status === "ACCEPTED"

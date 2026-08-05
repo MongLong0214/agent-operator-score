@@ -7,7 +7,7 @@
       "status": "PENDING",
       "scope": "D0-001 requires an exact ADR-0001/0003/0012 batch, PRD-D0, and its exact ticket before RED.",
       "target": {
-        "repository": "agent-operator-score",
+        "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev"
       },
       "required_artifacts": [
