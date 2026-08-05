@@ -7,14 +7,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const validatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=accepted/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
 
 test("planning contract validator reports the truthful structural census", () => {
   const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
     cwd: root,
     encoding: "utf8"
   });
-  assert.match(output, validatorOutput);
+  assert.match(output, acceptedValidatorOutput);
   assert.equal(existsSync(resolve(root, "docs/north-star/legacy")), false);
 
   const fixture = resolve(root, ".planning-legacy-identifier-fixture.txt");
@@ -46,10 +47,24 @@ test("planning validator preserves encoded paths with spaces", () => {
       recursive: true,
       filter: (source) => ![".git", "node_modules"].includes(basename(source))
     });
+    const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+    registry.status = "PENDING";
+    for (const batch of registry.batches) {
+      batch.status = "PENDING";
+      delete batch.target.reviewed_head;
+      batch.artifacts = [];
+      batch.transitions = [];
+      batch.events = [];
+      delete batch.preparation;
+      delete batch.approval;
+      delete batch.invalidation;
+    }
+    writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
     const script = join(fixture, "scripts/validate-planning.mjs");
     assert.match(pathToFileURL(script).href, /%20/);
     const output = execFileSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
-    assert.match(output, validatorOutput);
+    assert.match(output, pendingValidatorOutput);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
