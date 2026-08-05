@@ -33,7 +33,7 @@
             "required": ["repository", "branch"],
             "additionalProperties": false,
             "properties": {
-              "repository": { "const": "agent-operator-score" },
+              "repository": { "const": "github.com/MongLong0214/agent-operator-score" },
               "branch": { "const": "dev" },
               "reviewed_head": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
             }
