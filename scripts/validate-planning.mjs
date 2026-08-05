@@ -110,24 +110,17 @@ if (existsSync(resolve(root, "docs/issues.json"))) {
 }
 
 const forbidden = [
-  /AgentOps Score/g,
-  /agentops-score/g,
-  /Agent Leverage Index/g,
-  /\bALI\b/g,
-  /ali-bench/g,
-  /\bAOS-P0\b/g
+  new RegExp(["Agent", "Ops Score"].join(""), "g"),
+  new RegExp(["agent", "ops-score"].join(""), "g"),
+  new RegExp(["Agent ", "Leverage Index"].join(""), "g"),
+  new RegExp("\\b" + ["A", "LI"].join("") + "\\b", "g"),
+  new RegExp(["a", "li"].join("") + "-" + "bench", "g"),
+  new RegExp("\\b" + ["AOS", "P0"].join("-") + "\\b", "g")
 ];
 const activeFiles = walk(root).filter((path) => {
   const p = rel(path);
-  const controlDocuments = new Set([
-    "docs/north-star/agent-operator-score-ssot-v1.0.md",
-    "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
-    "scripts/validate-planning.mjs"
-  ]);
   return !p.startsWith(".git/") &&
     !p.startsWith("node_modules/") &&
-    !p.startsWith("docs/north-star/legacy/") &&
-    !controlDocuments.has(p) &&
     !p.startsWith("media/") &&
     !p.startsWith("state/") &&
     !p.includes("package-lock.json") &&

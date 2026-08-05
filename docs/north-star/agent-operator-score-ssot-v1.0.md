@@ -19,7 +19,7 @@ Agent Operator Score (AOS)
 • 대외 라벨: Open assessment method / PROVISIONAL
 • 금지 표현: 업계 표준, 공식 인증, 전 세계 순위, 채용 적합성, 검증된 백분위
 • 개정 근거: 2026-08-05 객관 리뷰에서 지적된 시간·관측성·처방·표시 계약을 반영
-• 기준본 관계: 이전 기획서와 별도 리뷰문서는 docs/north-star/legacy/에 보관한다. 개발자는 이 파일 하나만 따른다.
+• 기준본 관계: 이전 기획서와 별도 리뷰문서는 활성 트리에서 제거되었으며 Git history에서만 복구할 수 있다. 개발자는 이 파일 하나만 따른다.
 
 > **이 파일 하나가 Agent Operator Score의 제품 기획·측정 계약·개발 착수 리뷰를 통합한 최종 기준본이다.**
 > 다른 문서를 선택하거나 함께 읽을 필요가 없다. 별도 상품 기획, 유료화 문서, 엔터프라이즈 판매 계획은 존재하지 않는다.
@@ -136,15 +136,7 @@ Slim은 지표를 장난감 수준으로 줄이는 것이 아니다.
 |핵심 질문              |**How well do you operate AI agents?**       |
 |태그라인               |**Measure the operator, not just the model.**|
 
-신규 코드·README·패키지에서 다음 legacy 문자열을 사용하지 않는다.
-
-```text
-AgentOps Score
-agentops-score
-Agent Leverage Index
-ALI
-ali-bench
-```
+신규 코드·README·패키지에서는 이전 제품 식별자를 포함한 legacy 문자열을 사용하지 않는다.
 
 이름은 개발용으로 고정하되, G4 공개 전 GitHub·npm·도메인·주요 시장 상표의 정식 name clearance를 완료한다.
 

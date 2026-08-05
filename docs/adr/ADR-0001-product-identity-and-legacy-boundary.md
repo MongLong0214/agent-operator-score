@@ -6,25 +6,25 @@
 
 ## Context
 
-The final baseline replaces AgentOps Score and all earlier ALI identities. Mixed identifiers would corrupt package provenance, links, CLI help, score labels, and contributor instructions.
+The final baseline replaces all earlier product identities. Mixed identifiers would corrupt package provenance, links, CLI help, score labels, and contributor instructions.
 
 ## Decision
 
 - Canonical product name is **Agent Operator Score (AOS)**.
 - Repository and package identifier is `agent-operator-score`; executable is `aos`; local state root is `.aos/`.
 - The scored instrument is `AOS-Coding`; the provisional score is `AOS-Coding P0`.
-- `AgentOps Score`, `agentops-score`, `Agent Leverage Index`, `ALI`, and `ali-bench` are forbidden outside `docs/north-star/legacy/**` and explicit migration fixtures.
+- Earlier product identifiers are forbidden anywhere in the active tree.
 - Name clearance is a G4 publication gate, not an assumption.
 
 ## Rejected alternatives
 
 - Keeping the old repository slug and changing display copy only: provenance remains ambiguous.
-- Reusing `AOS-P0`: it hides the domain boundary required by the final baseline.
+- Reusing an obsolete provisional label: it hides the domain boundary required by the final baseline.
 
 ## Consequences
 
 - D0 owns migration and a legacy-string lint.
-- Any legacy hit outside the allowlist blocks build and publication.
+- Any legacy identifier hit in the active tree blocks build and publication.
 
 ## Implementation gate
 

@@ -20,7 +20,7 @@ The assessment unit is the human operator. Model, runtime, harness, tools, permi
 | CLI | `aos` |
 | Local state | `.aos/` |
 
-Legacy names are permitted only under `docs/north-star/legacy/` and explicit migration fixtures.
+Legacy identifiers are forbidden in the active tree. Historical planning material was removed from the active tree and is recoverable only through Git history.
 
 ## Product truth
 
@@ -97,7 +97,6 @@ Do not run these commands until the owning tickets are implemented and verified.
 - [GitHub issue map](docs/GITHUB-ISSUE-MAP.md)
 - [Milestones](docs/MILESTONES.md)
 - [Traceability](docs/TRACEABILITY.md)
-- [Legacy planning](docs/north-star/legacy/)
 
 All ADRs, PRDs, and tickets are currently **PROPOSED/BLOCKED**. Issue creation does not authorize product code.
 

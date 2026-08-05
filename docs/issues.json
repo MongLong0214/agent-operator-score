@@ -175,11 +175,6 @@
       "description": "Implementation blocked until ADR, PRD, and ticket gates pass"
     },
     {
-      "name": "legacy:pre-aos",
-      "color": "6A737D",
-      "description": "Superseded by Agent Operator Score final baseline"
-    },
-    {
       "name": "release",
       "color": "5319E7",
       "description": "Publication/release gate"

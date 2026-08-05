@@ -42,7 +42,7 @@ Do not broaden scope or weaken a gate to work around a blocker.
 - No generated attribution or internal agent/model/session/routing metadata in public GitHub surfaces.
 - No secret value, hidden chain-of-thought, unbounded raw terminal output, or raw project upload in traces.
 - No destructive cleanup outside an explicit verified run temp root.
-- Legacy names are allowed only under `docs/north-star/legacy/**` and registered migration fixtures.
+- Legacy identifiers are forbidden in the active tree. Historical planning material was removed from the active tree and is recoverable only through Git history.
 
 ## Baseline commands
 

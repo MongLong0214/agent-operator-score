@@ -1,8 +1,0 @@
-{
-  "crossref": [],
-  "arxiv": [
-    {"axis": 1, "id": "2306.05685", "label": "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"},
-    {"axis": 2, "id": "2406.07791", "label": "Judging the Judges: position bias"},
-    {"axis": 3, "id": "2310.06770", "label": "SWE-bench"}
-  ]
-}

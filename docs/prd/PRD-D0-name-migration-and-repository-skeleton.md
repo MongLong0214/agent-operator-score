@@ -12,13 +12,13 @@ Migrate every active surface to Agent Operator Score and establish a planning-va
 ## Non-goals
 
 - No scorer, runner, adapter, scenario, report, npm publish, or public release.
-- No deletion of legacy records; archive and lint them.
+- No live legacy archive in the active tree; historical material is recoverable only through Git history.
 
 ## Functional and contract requirements
 
 1. Rename repository/package/display identifiers to `agent-operator-score`, `Agent Operator Score`, `AOS-Coding P0`, `aos`, and `.aos/`.
 2. Create npm-workspace directories matching SSOT §9.4 with placeholder ownership manifests only.
-3. Archive pre-AOS planning under `docs/north-star/legacy/` and forbid legacy tokens elsewhere.
+3. Remove superseded planning material from the active tree and forbid legacy identifiers across active files.
 4. Update README, AGENTS, contribution guidance, copilot context, issue templates, labels, milestones, and planning validation.
 5. Record name-clearance as an unresolved E14/G4 gate.
 
@@ -27,7 +27,7 @@ Migrate every active surface to Agent Operator Score and establish a planning-va
 - AC-D0-1: active-tree legacy lint reports zero forbidden hits.
 - AC-D0-2: package metadata, README, repository slug, issue labels, milestones, and docs use the canonical identifiers.
 - AC-D0-3: planning build proves zero product code and every future package path has one owner.
-- AC-D0-4: all pre-migration planning remains reachable under legacy paths.
+- AC-D0-4: no active legacy archive remains; superseded material is recoverable only through Git history.
 
 ## Failure and stop semantics
 
