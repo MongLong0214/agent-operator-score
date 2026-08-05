@@ -12,6 +12,9 @@ const transitionKinds = {
   TICKET_READY_FOR_RED: "TICKET"
 };
 const canonicalRegistryRelativePath = "docs/decisions/maintainer-gate-registry.v2.json";
+const canonicalSchemaRelativePath = "docs/decisions/maintainer-gate.schema.json";
+const validatorRelativePath = "scripts/validate-gate-administration.mjs";
+const exactHeadSurfaces = [canonicalRegistryRelativePath, canonicalSchemaRelativePath, validatorRelativePath];
 const canonicalRepositoryTarget = "github.com/MongLong0214/agent-operator-score";
 const canonicalTargetBranch = "dev";
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
@@ -350,10 +353,42 @@ const verifyCanonicalRegistry = (root, errors) => {
   return registryPath;
 };
 
+const resolveCandidateHead = (root, errors, required) => {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+  } catch {
+    if (required) errors.push("Gate Administration cannot resolve exact candidate HEAD");
+    return null;
+  }
+};
+
+const verifyExactHeadSurfaces = (root, errors) => {
+  const candidateHead = resolveCandidateHead(root, errors, true);
+  if (!candidateHead) return null;
+  for (const path of exactHeadSurfaces) {
+    try {
+      const liveBytes = readFileSync(resolve(root, path));
+      const headBytes = execFileSync("git", ["show", `${candidateHead}:${path}`], {
+        cwd: root,
+        encoding: "buffer",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      if (!liveBytes.equals(headBytes)) errors.push(`Gate Administration exact-head mismatch ${path}`);
+    } catch {
+      errors.push(`Gate Administration exact-head mismatch ${path}`);
+    }
+  }
+  return candidateHead;
+};
+
 export const validateGateAdministration = ({ root, registryPath } = {}) => {
   const resolvedRoot = root ? resolve(root) : resolve(fileURLToPath(new URL("..", import.meta.url)));
   const errors = [];
-  const schemaPath = resolve(resolvedRoot, "docs/decisions/maintainer-gate.schema.json");
+  const schemaPath = resolve(resolvedRoot, canonicalSchemaRelativePath);
   if (registryPath !== undefined) {
     errors.push("Gate Administration registry override escapes repository root; canonical registry only");
   }
@@ -362,6 +397,11 @@ export const validateGateAdministration = ({ root, registryPath } = {}) => {
   const registry = errors.length ? null : readJson(resolvedRegistryPath, "Gate Administration registry", errors);
   if (schema) checkSchemaContract(schema, errors);
   if (!registry) return { errors, status: "invalid", counts: {} };
+  const requiresExactHeadBinding = registry.status === "ACCEPTED" ||
+    (Array.isArray(registry.batches) && registry.batches.some((batch) => batch?.status === "ACCEPTED"));
+  const candidateHead = requiresExactHeadBinding
+    ? verifyExactHeadSurfaces(resolvedRoot, errors)
+    : resolveCandidateHead(resolvedRoot, errors, false);
   if (!checkKeys(registry, ["version", "status", "batches", "invalidation"], ["version", "status", "batches", "invalidation"], "registry", errors)) {
     return { errors, status: "invalid", counts: {} };
   }
@@ -390,7 +430,8 @@ export const validateGateAdministration = ({ root, registryPath } = {}) => {
     status: statusName(registry.status),
     counts,
     batches: registry.batches?.length ?? 0,
-    externalGateEvidence: counts.accepted ? "required" : "not_applicable"
+    externalGateEvidence: counts.accepted ? "required" : "not_applicable",
+    candidateHead
   };
 };
 
@@ -407,5 +448,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     for (const error of result.errors) console.error(`- ${error}`);
     process.exit(1);
   }
-  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization`);
+  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization candidate_head=${result.candidateHead ?? "unavailable"}`);
 }
