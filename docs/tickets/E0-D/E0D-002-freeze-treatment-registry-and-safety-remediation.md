@@ -1,6 +1,6 @@
 # E0D-002 · Freeze treatment registry and safety remediation
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-D
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-D](../../prd/PRD-E0D-deterministic-prescription-input-contract.md)

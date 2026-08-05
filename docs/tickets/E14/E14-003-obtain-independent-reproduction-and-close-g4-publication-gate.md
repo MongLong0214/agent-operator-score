@@ -1,6 +1,6 @@
 # E14-003 · Obtain independent reproduction and close G4 publication gate
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E14
 - Milestone: S5 · Public OSS
 - Owning PRD: [E14](../../prd/PRD-E14-public-oss-and-g4.md)

@@ -1,6 +1,6 @@
 # E0B-003 · Specify capability doctor output and verdict fixtures
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-B
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-B](../../prd/PRD-E0B-adapter-observability-contract.md)

@@ -1,6 +1,6 @@
 # E13-001 · Define and render Snapshot ESTIMATE output
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E13
 - Milestone: S5 · Public OSS
 - Owning PRD: [E13](../../prd/PRD-E13-snapshot-estimate.md)

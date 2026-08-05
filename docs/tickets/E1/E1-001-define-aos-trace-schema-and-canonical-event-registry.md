@@ -1,6 +1,6 @@
 # E1-001 · Define aos-trace schema and canonical event registry
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E1
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E1](../../prd/PRD-E1-trace-and-result-schemas.md)
@@ -25,7 +25,7 @@ Define aos-trace schema and canonical event registry. Deliver only the bounded c
 
 ## Forbidden scope
 
-- unbounded terminal dumps; secret values; hidden reasoning; vendor-native fields as standard
+- unbounded terminal dumps; secret values; hidden reasoning; vendor-native fields as standard; invented actor attribution
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -39,6 +39,7 @@ Define aos-trace schema and canonical event registry. Deliver only the bounded c
 ## Minimum GREEN
 
 - implement standard events/common fields, bounded payloads, redaction, monotonic sequence, digest references and strict unknown-field policy.
+- define `workspace.external_mutation`, `human.manual_edit_declared`, `actor.attribution_changed`, and `actor.attribution_unknown` with correlation/provenance fields; unknown attribution is explicit rather than inferred.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -50,6 +51,8 @@ Define aos-trace schema and canonical event registry. Deliver only the bounded c
 - AC-E1-001-5 ↔ `packages/schema/test/trace-schema.test.ts` case `secret-canary`.
 - AC-E1-001-6 ↔ `packages/schema/test/trace-schema.test.ts` case `unknown-event`.
 - AC-E1-001-7 ↔ `packages/schema/test/trace-schema.test.ts` case `stable-bytes`.
+- AC-E1-001-8 ↔ `packages/schema/test/trace-schema.test.ts` case `actor-attribution-events`.
+- AC-E1-001-9 ↔ `packages/schema/test/trace-schema.test.ts` case `unknown-attribution-requires-confidence-drop`.
 
 ## Verification
 

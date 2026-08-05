@@ -1,6 +1,6 @@
 # PRD E0-D — Make every input and tie-break in deterministic one-lever selection executable and fixture-backed.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S0 · Name & Contracts
 - Dependencies: E0-A, E0-C; ADR-0010
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

@@ -1,6 +1,6 @@
 # E12-002 · Execute reference and 20-person alpha with immutable provenance
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E12
 - Milestone: S4 · Human Alpha & Retest
 - Owning PRD: [E12](../../prd/PRD-E12-human-alpha-and-validation.md)
@@ -25,7 +25,7 @@ Execute reference and 20-person alpha with immutable provenance. Deliver only th
 
 ## Forbidden scope
 
-- starting without consent/gate; editing raw rows; excluding failures silently; cloud upload
+- starting without consent/gate; calibration/certification/population claim; editing raw rows; excluding failures silently; cloud upload
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -38,7 +38,7 @@ Execute reference and 20-person alpha with immutable provenance. Deliver only th
 
 ## Minimum GREEN
 
-- execute controlled runs only after gate, append signed manifests, conserve invalid/missing rows, blind adjudication packets and verify form/profile balance.
+- execute only the preregistered n=20 feasibility protocol after gate, append signed manifests, conserve invalid/missing rows, blind adjudication packets, verify form/profile balance, and preserve evidence sufficient only for the three E12 feasibility verdicts.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
@@ -50,6 +50,7 @@ Execute reference and 20-person alpha with immutable provenance. Deliver only th
 - AC-E12-002-5 ↔ `packages/runner/test/alpha-orchestrator.test.ts` case `counterbalance`.
 - AC-E12-002-6 ↔ `packages/runner/test/alpha-orchestrator.test.ts` case `blinding`.
 - AC-E12-002-7 ↔ `packages/runner/test/alpha-orchestrator.test.ts` case `deviation`.
+- AC-E12-002-8 ↔ `packages/runner/test/alpha-orchestrator.test.ts` case `feasibility-claim-block`.
 
 ## Verification
 

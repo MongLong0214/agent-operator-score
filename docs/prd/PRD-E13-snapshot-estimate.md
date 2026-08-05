@@ -1,8 +1,8 @@
 # PRD E13 — Implement a clearly non-verified 3–5 minute Snapshot that routes users to the full assessment without impersonating it.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S5 · Public OSS
-- Dependencies: G1–G3 verdicts via E12; ADR-0002
+- Dependencies: E12 feasibility verdict; ADR-0002
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
 
 ## Goal

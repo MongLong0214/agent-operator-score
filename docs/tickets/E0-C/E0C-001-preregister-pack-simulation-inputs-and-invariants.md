@@ -1,6 +1,6 @@
 # E0C-001 · Preregister pack simulation inputs and invariants
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E0-C
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-C](../../prd/PRD-E0C-pack-time-and-eligibility-simulation.md)

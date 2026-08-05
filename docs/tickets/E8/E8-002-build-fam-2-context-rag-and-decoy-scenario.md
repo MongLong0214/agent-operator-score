@@ -1,6 +1,6 @@
 # E8-002 · Build FAM-2 context RAG and decoy scenario
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E8
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E8](../../prd/PRD-E8-fam1-3-and-form-a.md)

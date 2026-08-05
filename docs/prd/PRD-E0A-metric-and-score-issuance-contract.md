@@ -1,6 +1,6 @@
 # PRD E0-A — Encode the frozen M01–M20 registry and the complete score-issuance predicate before scoring code.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S0 · Name & Contracts
 - Dependencies: D0; ADR-0004, 0005, 0006
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
@@ -15,8 +15,8 @@ Encode the frozen M01–M20 registry and the complete score-issuance predicate b
 
 ## Functional and contract requirements
 
-1. Represent factor, question, evidence class, opportunity rule, gaming guard, treatment route, and consumer route for exactly M01–M20.
-2. Represent independent opportunity IDs and NOT_OBSERVED semantics.
+1. Freeze [Metric Scoring Contract v1](../contracts/metric-scoring-contract-v1.md) for exactly M01–M20: observation type, eligible opportunity, numerator, denominator, partial credit, per-opportunity value, aggregation, minimum, precedence, confidence, state, normalization, cap/floor, grader output, canonical vectors, and version.
+2. Encode independent opportunity IDs, NOT_OBSERVED/INVALID semantics, and the deterministic M03 precision/recall harmonic-mean edge rules without grader discretion.
 3. Encode all ten issuance requirements from SSOT §6.1, including required M15–M20 coverage and factor minima.
 4. Pin O/P weights, harmonic mean, zero semantics, F1–F6 presentation mapping, S0–S3 safety gate, raw precision, five-point display rounding, and version identity.
 
@@ -25,6 +25,7 @@ Encode the frozen M01–M20 registry and the complete score-issuance predicate b
 - AC-E0A-1: registry validation rejects M21, gaps, duplicates, dead routes, and unknown evidence classes.
 - AC-E0A-2: issuance truth-table fixtures cover every missing required condition independently.
 - AC-E0A-3: score formula vectors include O=0, P=0, NOT_OBSERVED, safety S2/S3, and rounding boundaries.
+- AC-E0A-4: every M01–M20 record has all Contract v1 fields and pass/partial/fail/no canonical vectors; M03 vectors prove its frozen precision/recall/F1 semantics.
 
 ## Failure and stop semantics
 

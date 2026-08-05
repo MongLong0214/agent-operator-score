@@ -1,6 +1,6 @@
 # PRD E5 — Build executable FAM-4 scenarios for continuity, transition, retry/idempotency, and stall handling.
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Milestone: S2 · Runner & Differentiated Wedge
 - Dependencies: E4; ADR-0009
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`

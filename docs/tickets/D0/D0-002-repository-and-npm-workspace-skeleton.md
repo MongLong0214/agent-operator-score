@@ -1,6 +1,6 @@
 # D0-002 · Repository and npm-workspace skeleton
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: D0
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [D0](../../prd/PRD-D0-name-migration-and-repository-skeleton.md)
@@ -9,11 +9,11 @@
 
 ## Goal
 
-Repository and npm-workspace skeleton. Deliver only the bounded contract below; do not infer adjacent scope.
+Create the real zero-product-code npm workspace skeleton required by the SSOT. Deliver only manifests, ownership markers, and deterministic planning tests; do not infer a CLI or package behavior.
 
 ## Exact ownership
 
-- package.json; packages/{schema,scorer,runner,reporter}/package.json; adapters/{codex,claude-code}/package.json; suites/coding-core-v0/OWNERS.md; fixtures/OWNERS.md; conformance/OWNERS.md
+- `package.json` except `scripts.test` owned by D0-001; `packages/{schema,scorer,runner,reporter}/package.json`; `adapters/{codex,claude-code}/package.json`; `suites/coding-core-v0/OWNERS.md`; `fixtures/OWNERS.md`; `conformance/OWNERS.md`; `docs/clearance/MINIMUM-NAME-CLEARANCE.md`; `tests/planning/workspace-skeleton.test.mjs`
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
@@ -25,7 +25,7 @@ Repository and npm-workspace skeleton. Deliver only the bounded contract below; 
 
 ## Forbidden scope
 
-- feature implementation; dependencies; npm publication; build artifacts
+- feature implementation; package entrypoints; dependencies; npm publication; build artifacts
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -33,20 +33,26 @@ Repository and npm-workspace skeleton. Deliver only the bounded contract below; 
 
 - Test file: `tests/planning/workspace-skeleton.test.mjs`
 - Focused command: `npm test -- tests/planning/workspace-skeleton.test.mjs`
-- Expected pre-GREEN failure: canonical workspace paths and ownership manifests are missing.
+- Expected pre-GREEN failure: the required workspace manifests and ownership markers are missing, so no one-owner/zero-code package census can be proven.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
 ## Minimum GREEN
 
-- add private zero-code workspace manifests, Node engine, `aos` reserved bin target, path owners, and empty-package build contracts.
+- create a root manifest named `agent-operator-score` as the sole future publish candidate; keep it non-publishable until E14.
+- create workspace manifests exactly at `packages/{schema,scorer,runner,reporter}` and `adapters/{codex,claude-code}` named `@aos/*`, each with `private: true`, no executable entrypoint, no dependencies, and no product source.
+- retain engine range `>=20 <25`; reserve `aos` as a documented future CLI name without creating a runnable bin target.
+- add one ownership marker per future package path and make every marker point to exactly one ticket/PRD owner.
+- record the minimum GitHub/npm/domain/basic-trademark name-clearance evidence and explicit search limits; a missing or unresolved item is a publication block, not a legal opinion or a release authorization.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
 
-- AC-D0-002-1 ↔ `tests/planning/workspace-skeleton.test.mjs` case `workspace-census`.
-- AC-D0-002-2 ↔ `tests/planning/workspace-skeleton.test.mjs` case `one-owner-per-path`.
-- AC-D0-002-3 ↔ `tests/planning/workspace-skeleton.test.mjs` case `product-code-zero`.
-- AC-D0-002-4 ↔ `tests/planning/workspace-skeleton.test.mjs` case `engine-matrix`.
+- AC-D0-002-1 ↔ `tests/planning/workspace-skeleton.test.mjs` case `workspace-census`: exact root/internal workspace names and paths exist.
+- AC-D0-002-2 ↔ `tests/planning/workspace-skeleton.test.mjs` case `internal-workspaces-private`: every `@aos/*` manifest has `private: true`; only root is the publish candidate.
+- AC-D0-002-3 ↔ `tests/planning/workspace-skeleton.test.mjs` case `one-owner-per-path`: each future package path has exactly one owner.
+- AC-D0-002-4 ↔ `tests/planning/workspace-skeleton.test.mjs` case `product-code-zero`: manifest/source census finds no product code or runnable bin target.
+- AC-D0-002-5 ↔ `tests/planning/workspace-skeleton.test.mjs` case `engine-matrix`: root engines remain `>=20 <25` and CI declares Node 20/22/24.
+- AC-D0-002-6 ↔ `tests/planning/workspace-skeleton.test.mjs` case `minimum-name-clearance`: required evidence/search-limit fields are present and any unresolved state blocks publication without asserting formal legal clearance.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 # E7-003 · Build FAM-6 quality-constrained efficiency scenario
 
-- Status: **BLOCKED — ADR + PRD + TICKET CEO GATES REQUIRED**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E7
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E7](../../prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md)

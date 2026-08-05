@@ -1,6 +1,6 @@
 # ADR-0002: Limit AOS to local provisional coding-operator assessment
 
-- Status: **PROPOSED — CEO GATE REQUIRED**
+- Status: **PROPOSED — MAINTAINER GATE REQUIRED**
 - Date: 2026-08-05
 - Authority: `docs/north-star/agent-operator-score-ssot-v1.0.md`
 
@@ -27,4 +27,4 @@ AOS has measurement design but no human calibration evidence. Product language m
 
 ## Implementation gate
 
-No product code may rely on ADR-0002 until the CEO records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0002 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
