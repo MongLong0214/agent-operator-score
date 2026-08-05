@@ -47,6 +47,7 @@
               "additionalProperties": false,
               "properties": {
                 "path": { "type": "string", "pattern": "^[A-Za-z0-9._/-]+$" },
+                "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
                 "kind": { "enum": ["ADR", "PRD", "TICKET"] }
               }
             }

@@ -5,7 +5,7 @@ Date: 2026-08-05
 | Layer | Census | State | Effect |
 |---|---:|---|---|
 | Final SSOT | 1 | FINAL / owner-supplied | Derived planning may be drafted. |
-| Gate Administration control plane | 1 | ACTIVE / canonical v2 history `PENDING → ACCEPTED → INVALIDATED` | The historic D0-001 acceptance is invalidated; there is no current acceptance and renewed external review is required. |
+| Gate Administration control plane | 1 | ACTIVE / historic canonical v2 `PENDING → ACCEPTED → INVALIDATED`; fresh renewal `PENDING` | The historic D0-001 acceptance is invalidated; the separate digest-bound renewal is PENDING, and there is no current acceptance and renewed external review is required. |
 | ADR | 12 | PROPOSED | PRD approval blocked. |
 | PRD | 19 | PROPOSED | Ticket approval blocked. |
 | Atomic tickets | 64 executable | BLOCKED | Product implementation forbidden. |
@@ -15,7 +15,7 @@ Date: 2026-08-05
 
 ## Required next gate order
 
-1. An authorized Gate Administrator prepares a fresh `PENDING` renewal batch with current exact digests; the independent checker rejects malformed, wrong-target, partial, or self-approved records.
+1. An authorized Gate Administrator prepares a fresh digest-bound `PENDING` renewal batch; the independent checker rejects malformed, wrong-target, stale-digest, partial, or self-approved records.
 2. A different Maintainer performs external exact-head review and CI of the final renewal candidate and accepts or rejects it externally.
 3. Only after that renewed exact batch and a fresh execution packet are independently verified may RED be authorized for that ticket.
 
