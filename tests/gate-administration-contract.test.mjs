@@ -36,9 +36,14 @@ const writePendingFixtureRegistry = (fixtureRoot) => {
   const registryPath = join(fixtureRoot, canonicalRegistry);
   const registry = JSON.parse(readFileSync(registryPath, "utf8"));
   registry.status = "PENDING";
+  registry.batches = [registry.batches[0]];
   for (const batch of registry.batches) {
     batch.status = "PENDING";
     delete batch.target.reviewed_head;
+    batch.required_artifacts = batch.required_artifacts.map((artifact) => ({
+      ...artifact,
+      sha256: sha256(join(fixtureRoot, artifact.path))
+    }));
     batch.artifacts = [];
     batch.transitions = [];
     batch.events = [];
@@ -269,6 +274,26 @@ test("PENDING registry is exact-head bound before structural PASS", () => {
     assert.match(committedPending.output, new RegExp(`registry=pending.*candidate_head=${pendingHead}`));
   } finally {
     rmSync(pendingFixture.parent, { recursive: true, force: true });
+  }
+});
+
+test("PENDING required artifacts require valid SHA-256 digests", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const pending = JSON.parse(readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
+    const missingDigest = structuredClone(pending);
+    delete missingDigest.batches[0].required_artifacts[0].sha256;
+    const missingDigestResult = runRegistry(fixtureRoot, missingDigest);
+    assert.equal(missingDigestResult.error.status, 1);
+    assert.match(missingDigestResult.error.stderr, /pending required artifact has missing or malformed sha256/);
+
+    const malformedDigest = structuredClone(pending);
+    malformedDigest.batches[0].required_artifacts[0].sha256 = "not-a-sha256";
+    const malformedDigestResult = runRegistry(fixtureRoot, malformedDigest);
+    assert.equal(malformedDigestResult.error.status, 1);
+    assert.match(malformedDigestResult.error.stderr, /pending required artifact has missing or malformed sha256/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
   }
 });
 
@@ -511,4 +536,38 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.match(d0004Ownership, /not an active control-plane ownership grant and must not be restored/);
   assert.match(gateDecision, /`docs\/decisions\/MAINTAINER-GATE-STATUS\.md`; `docs\/decisions\/maintainer-gate\.schema\.json`/);
   assert.match(gateDecision, /compatibility migration's exact delegation test case\/plumbing/);
+});
+
+test("fresh D0-001 renewal remains PENDING and binds the current prerequisite digests", () => {
+  const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
+  const historical = registry.batches.find(({ id }) => id === "d0-001-prerequisites");
+  const renewal = registry.batches.find(({ id }) => id === "d0-001-prerequisites-renewal");
+  const requiredArtifacts = [
+    { path: "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md", kind: "ADR" },
+    { path: "docs/adr/ADR-0003-runtime-repository-and-distribution.md", kind: "ADR" },
+    { path: "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md", kind: "ADR" },
+    { path: "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md", kind: "PRD" },
+    { path: "docs/tickets/D0/D0-001-canonical-identifier-registry.md", kind: "TICKET" }
+  ];
+
+  assert.equal(registry.status, "INVALIDATED");
+  assert.equal(historical.status, "INVALIDATED");
+  assert.ok(renewal);
+  assert.equal(renewal.status, "PENDING");
+  assert.deepEqual(renewal.target, {
+    repository: "github.com/MongLong0214/agent-operator-score",
+    branch: "dev"
+  });
+  assert.deepEqual(renewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), requiredArtifacts);
+  for (const artifact of renewal.required_artifacts) {
+    assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
+  }
+  assert.deepEqual(renewal.required_transitions, ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"]);
+  assert.deepEqual(renewal.artifacts, []);
+  assert.deepEqual(renewal.transitions, []);
+  assert.deepEqual(renewal.events, []);
+  assert.equal("reviewed_head" in renewal.target, false);
+  assert.equal("preparation" in renewal, false);
+  assert.equal("approval" in renewal, false);
+  assert.equal("invalidation" in renewal, false);
 });

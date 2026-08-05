@@ -1,12 +1,12 @@
 # Pre-implementation Gate Administration Control Plane
 
-- Status: **ACTIVE CONTROL PLANE — D0-001 BATCH INVALIDATED / RENEWED EXTERNAL REVIEW REQUIRED**
+- Status: **ACTIVE CONTROL PLANE — D0-001 HISTORIC BATCH INVALIDATED / FRESH PENDING RENEWAL / EXTERNAL REVIEW REQUIRED**
 - Dependencies: None
 - Authority: ADR-0012; this decision is a planning/control-plane correction only.
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The current canonical v2 D0-001 history is `PENDING → ACCEPTED → INVALIDATED`: the historical accepted digest record is invalidated after its ticket changed, there is no current acceptance, and renewed external review is required.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history is `PENDING → ACCEPTED → INVALIDATED`; its separate fresh renewal is `PENDING`. The historical accepted digest record remains invalidated after its ticket changed, there is no current acceptance, and renewed external review is required.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -32,7 +32,7 @@ The CEO activation, protected independent review/CI, and final-receipt exact-hea
 
 ## Record model and lifecycle
 
-The registry starts with a declared D0-001 prerequisite batch. `required_artifacts` and `required_transitions` state what a future record must close, but are not acceptance evidence. A batch may progress only as follows:
+The registry retains the invalidated D0-001 prerequisite batch and carries a separate fresh PENDING renewal batch. `required_artifacts` and `required_transitions` state what a future record must close, but are not acceptance evidence. A digest-bound PENDING renewal binds each required artifact to its current SHA-256 digest; that binding is a review input, not an acceptance, approval, or reviewed-head claim. A batch may progress only as follows:
 
 ```text
 PENDING --(complete exact batch, distinct Maintainer approval)--> ACCEPTED
@@ -48,13 +48,13 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. The historical D0-001 batch remains invalidated; it is not a current acceptance or a product gate.
-2. A Gate Administrator creates a fresh `PENDING` renewal batch from the declared scope, then a candidate with current SHA-256 digests and a resolvable reviewed head, and runs `node scripts/validate-gate-administration.mjs`.
+1. The historical D0-001 batch remains invalidated; it is not a current acceptance or a product gate. The separate renewal batch remains PENDING with current prerequisite digest bindings.
+2. A Gate Administrator creates a fresh `PENDING` renewal batch from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
 3. A different Maintainer performs external cumulative exact-head review and CI of that final renewal candidate. Only the reviewed final head may be merged as the renewed acceptance record.
 4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
 
 ## Non-authorizations and invalidation
 
-This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The current registry records `PENDING → ACCEPTED → INVALIDATED`; it has no current accepted batch, and all ADRs/PRDs/tickets remain proposed or blocked.
+This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains `PENDING → ACCEPTED → INVALIDATED` historic evidence and a separate PENDING renewal; it has no current accepted batch, and all ADRs/PRDs/tickets remain proposed or blocked.
 
 The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh external review of a renewed candidate is the next required action.
