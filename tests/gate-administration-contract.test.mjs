@@ -520,8 +520,8 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.equal(result.status, "invalidated");
   assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
-  assert.match(gateStatus, /historic canonical v2 `PENDING → ACCEPTED → INVALIDATED`; renewal structurally `ACCEPTED`/);
-  assert.match(gateDecision, /The canonical v2 D0-001 history is `PENDING → ACCEPTED → INVALIDATED`; its separate renewal is structurally `ACCEPTED`/);
+  assert.match(gateStatus, /two prior D0-001 batches `INVALIDATED`; corrected renewal structurally `ACCEPTED`/);
+  assert.match(gateDecision, /D0-001 history retains two `PENDING → ACCEPTED → INVALIDATED` batches; the corrected renewal is structurally `ACCEPTED`/);
   assert.match(ticket, /only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`/);
   assert.match(ticket, /Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion/);
   assert.match(d0004Ticket, /except the numeric `control_plane_code_files` literal/);
@@ -536,10 +536,11 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.match(gateDecision, /compatibility migration's exact delegation test case\/plumbing/);
 });
 
-test("renewed D0-001 batch is structurally ACCEPTED at the exact prerequisite head", () => {
+test("corrected D0-001 renewal is structurally ACCEPTED at the exact prerequisite head", () => {
   const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
   const historical = registry.batches.find(({ id }) => id === "d0-001-prerequisites");
-  const renewal = registry.batches.find(({ id }) => id === "d0-001-prerequisites-renewal");
+  const supersededRenewal = registry.batches.find(({ id }) => id === "d0-001-prerequisites-renewal");
+  const correctedRenewal = registry.batches.find(({ id }) => id === "d0-001-prerequisites-contract-correction-renewal");
   const gateStatus = readFileSync(resolve(root, "docs/decisions/MAINTAINER-GATE-STATUS.md"), "utf8");
   const gateDecision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
   const result = validateGateAdministration();
@@ -553,32 +554,38 @@ test("renewed D0-001 batch is structurally ACCEPTED at the exact prerequisite he
 
   assert.equal(registry.status, "INVALIDATED");
   assert.equal(historical.status, "INVALIDATED");
-  assert.ok(renewal);
-  assert.equal(renewal.status, "ACCEPTED");
-  assert.deepEqual(renewal.target, {
+  assert.equal(supersededRenewal.status, "INVALIDATED");
+  assert.deepEqual(supersededRenewal.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
+  assert.match(supersededRenewal.invalidation.reason, /census and planning-test isolation correction/);
+  assert.ok(correctedRenewal);
+  assert.equal(correctedRenewal.status, "ACCEPTED");
+  assert.deepEqual(correctedRenewal.target, {
     repository: "github.com/MongLong0214/agent-operator-score",
     branch: "dev",
-    reviewed_head: "cc23a4b0585f9537dbfd00327c253d17d8ae4387"
+    reviewed_head: "3b6f12b8cc2248573a96085b3ca126f9cbf96f7f"
   });
-  assert.deepEqual(renewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), requiredArtifacts);
-  for (const artifact of renewal.required_artifacts) {
+  assert.deepEqual(correctedRenewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), requiredArtifacts);
+  for (const artifact of correctedRenewal.required_artifacts) {
     assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
   }
-  assert.deepEqual(renewal.required_transitions, ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"]);
-  assert.deepEqual(renewal.artifacts, renewal.required_artifacts);
-  assert.deepEqual(renewal.transitions, [
+  assert.deepEqual(correctedRenewal.required_transitions, ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"]);
+  assert.deepEqual(correctedRenewal.artifacts, correctedRenewal.required_artifacts);
+  assert.deepEqual(correctedRenewal.transitions, [
     { type: "ADR_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
     { type: "PRD_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
     { type: "TICKET_READY_FOR_RED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
   ]);
-  assert.deepEqual(renewal.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
-  assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
-  assert.equal(renewal.approval.role, "MAINTAINER");
-  assert.equal("invalidation" in renewal, false);
+  assert.deepEqual(correctedRenewal.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
+  assert.notEqual(correctedRenewal.preparation.prepared_by, correctedRenewal.approval.approved_by);
+  assert.equal(correctedRenewal.approval.role, "MAINTAINER");
+  assert.equal("invalidation" in correctedRenewal, false);
   assert.equal(result.status, "invalidated");
   assert.equal(result.externalGateEvidence, "required");
-  assert.match(gateStatus, /separate digest-bound renewal is structurally ACCEPTED/);
-  assert.match(gateStatus, /independent external exact-head review and CI are required/);
-  assert.match(gateDecision, /separate renewal is structurally ACCEPTED/);
-  assert.match(gateDecision, /not authorization to execute and requires independent external exact-head review and CI/);
+  assert.match(gateStatus, /corrected digest-bound renewal is structurally ACCEPTED/);
+  assert.match(gateStatus, /exact-head CEO review and CI are required/);
+  assert.match(gateDecision, /corrected renewal is structurally `ACCEPTED`/);
+  assert.match(gateDecision, /not authorization to execute and requires external exact-head CEO review and CI/);
 });
