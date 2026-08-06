@@ -6,7 +6,7 @@
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains three `PENDING → ACCEPTED → INVALIDATED` batches; the bounded-RED renewal is structurally `ACCEPTED` at reviewed artifact head `355332136a5fa6490aadbdfde2f60ab8b7e244e5`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains three `PENDING → ACCEPTED → INVALIDATED` batches; the bounded-RED renewal is structurally `ACCEPTED` at reviewed artifact head `53abf77c724bffc785bc9820ef9bbe5ffece89d3`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -48,7 +48,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. The three prior D0-001 batches remain invalidated; none is a current acceptance or product gate. The bounded-RED renewal is structurally ACCEPTED, binds the current five prerequisite digests at `355332136a5fa6490aadbdfde2f60ab8b7e244e5`, and is not execution authority.
+1. The three prior D0-001 batches remain invalidated; none is a current acceptance or product gate. The bounded-RED renewal is structurally ACCEPTED, binds the current five prerequisite digests at `53abf77c724bffc785bc9820ef9bbe5ffece89d3`, and is not execution authority.
 2. The Gate Administrator records the complete bounded-RED renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
 3. Main performs external cumulative exact-head CEO review and requires exact-head CI of that final candidate. Only the reviewed final head may be merged.
 4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.

@@ -343,7 +343,7 @@
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
-        "reviewed_head": "355332136a5fa6490aadbdfde2f60ab8b7e244e5"
+        "reviewed_head": "53abf77c724bffc785bc9820ef9bbe5ffece89d3"
       },
       "required_artifacts": [
         {
@@ -368,7 +368,7 @@
         },
         {
           "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
-          "sha256": "d116fc431299ea818950bbef93df1f718c8a7710fa2e6a162019d560a084fc05",
+          "sha256": "7546826a3d07c869405129cb9cc8984c61f44ae6d99b2d9f5d2874d6cca4d4b3",
           "kind": "TICKET"
         }
       ],
@@ -400,7 +400,7 @@
         },
         {
           "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
-          "sha256": "d116fc431299ea818950bbef93df1f718c8a7710fa2e6a162019d560a084fc05",
+          "sha256": "7546826a3d07c869405129cb9cc8984c61f44ae6d99b2d9f5d2874d6cca4d4b3",
           "kind": "TICKET"
         }
       ],

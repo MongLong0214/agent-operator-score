@@ -572,7 +572,7 @@ test("bounded-RED D0-001 renewal is structurally ACCEPTED at the exact prerequis
   assert.deepEqual(boundedRedRenewal.target, {
     repository: "github.com/MongLong0214/agent-operator-score",
     branch: "dev",
-    reviewed_head: "355332136a5fa6490aadbdfde2f60ab8b7e244e5"
+    reviewed_head: "53abf77c724bffc785bc9820ef9bbe5ffece89d3"
   });
   assert.deepEqual(boundedRedRenewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), requiredArtifacts);
   for (const artifact of boundedRedRenewal.required_artifacts) {
