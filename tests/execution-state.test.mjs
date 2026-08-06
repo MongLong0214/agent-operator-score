@@ -1433,7 +1433,7 @@ test("candidate-ci-requires-exact-job-check-name-and-one-to-one-check-consumptio
   }
   const reusedCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(reused) });
   assert.equal(reusedCollected.ok, false);
-  assert.match(reusedCollected.reason, /already consumed|one-to-one/i);
+  assert.match(reusedCollected.reason, /already consumed|one-to-one|ambiguous.*required job/i);
 });
 
 test("candidate-ci-requires-mapped-job-and-check-terminals-to-agree-and-succeed", async () => {
@@ -1751,8 +1751,11 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   );
 
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
-  assert.equal(collected.ok, false);
-  assert.match(collected.reason, /terminal state not successful|not successful/i);
+  assert.equal(collected.ok, true, collected.reason);
+  assert.deepEqual(
+    collected.facts.workflowRuns.map((entry) => [entry.run_id, entry.run_attempt, entry.conclusion]),
+    [[4002, 1, "failure"], [4002, 1, "failure"], [4002, 1, "failure"]]
+  );
 
   // A unique name on a single run is still not exact provenance when neither
   // the job nor the check identifies the run/attempt mapping.
@@ -1783,6 +1786,147 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   });
   assert.equal(danglingResult.ok, false);
   assert.match(danglingResult.reason, /declared check-run unavailable/);
+});
+
+test("candidate-ci-selects-only-the-latest-attempt-for-each-required-workflow", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const runsKey = `${repo}/actions/runs?head_sha=${head}&event=pull_request&per_page=30`;
+  const responses = clone(base);
+
+  // An older failed CI run and an unrelated workflow are audit-only; neither
+  // may displace the selected latest CI attempt or its required jobs.
+  responses[runsKey].workflow_runs.unshift({
+    id: 3999,
+    name: "CI",
+    path: ".github/workflows/ci.yml",
+    head_sha: head,
+    status: "completed",
+    conclusion: "failure",
+    run_attempt: 1,
+    event: "pull_request"
+  });
+  responses[runsKey].workflow_runs.push({
+    id: 4999,
+    name: "unrelated",
+    path: ".github/workflows/unrelated.yml",
+    head_sha: head,
+    status: "completed",
+    conclusion: "failure",
+    run_attempt: 1,
+    event: "pull_request"
+  });
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.deepEqual(
+    collected.facts.workflowRuns.map((entry) => entry.run_id),
+    [4001, 4001, 4001]
+  );
+});
+
+test("candidate-ci-preserves-authenticated-terminal-failure-for-resolver-classification", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts, resolveExecutionState } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const responses = clone(base);
+  const jobsKey = `${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`;
+  const checksKey = `${repo}/commits/${head}/check-runs?per_page=50`;
+  for (const job of responses[jobsKey].jobs) job.conclusion = "failure";
+  for (const check of responses[checksKey].check_runs) check.conclusion = "failure";
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const gateMergeSha = "dddddddddddddddddddddddddddddddddddddddd";
+  const ticket = collected.facts.tickets["D0-004"];
+  const ticketPath = Object.keys(collected.facts.liveDigests).find((path) => path.includes("/D0-004-"));
+  const prdPath = "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md";
+  const artifacts = [
+    { path: ticketPath, sha256: ticket.digests.ticket, kind: "TICKET" },
+    { path: prdPath, sha256: ticket.digests.prd, kind: "PRD" },
+    ...Object.entries(ticket.digests.adrs).map(([id, sha256]) => ({
+      path: Object.keys(collected.facts.liveDigests).find((path) => path.includes(`/${id}-`)),
+      sha256,
+      kind: "ADR"
+    }))
+  ];
+  collected.facts.gateBatches = [{ id: "candidate-ci-terminal-fixture", status: "ACCEPTED", required_artifacts: artifacts }];
+  collected.facts.gatePRs = [{
+    number: 901,
+    base: "dev",
+    body: "Gate-Batch: candidate-ci-terminal-fixture\n",
+    merged: true,
+    merged_by: "MongLong0214",
+    merge_commit_sha: gateMergeSha,
+    head_contains_batch: true
+  }];
+  collected.facts.postMergeCI = [{
+    merge_commit_sha: gateMergeSha,
+    head_sha: gateMergeSha,
+    status: "completed",
+    conclusion: "success",
+    run_id: 1,
+    run_attempt: 1
+  }];
+  const state = resolveExecutionState({
+    mode: "online-strict",
+    root,
+    facts: collected.facts,
+    runtimeIdentity: {
+      repository: collected.facts.repository,
+      branch: collected.facts.defaultBranch,
+      head: collected.facts.currentHead
+    }
+  });
+  assert.ok(blockerCodes(ticketState(state, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  assert.ok(!state.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+});
+
+test("candidate-ci-attempt-jobs-outage-is-not-masked-by-generic-jobs-fallback", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const responses = clone(base);
+  const attemptKey = `${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`;
+  const genericKey = `${repo}/actions/runs/4001/jobs?per_page=50`;
+  responses[attemptKey] = null;
+  responses[genericKey] = clone(base[attemptKey]);
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /attempt.*jobs|unavailable|timeout/i);
+});
+
+test("candidate-ci-requires-authenticated-pull-base-sha", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const pullsKey = `${repo}/pulls?state=open&base=dev&per_page=50`;
+  const responses = clone(base);
+  delete responses[pullsKey][0].base.sha;
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /base.*sha/i);
+});
+
+test("online-acquisition-failure-never-relabels-local-feature-head-as-dev", async () => {
+  const { resolveExecutionState } = await importResolver();
+  const state = resolveExecutionState({ mode: "online-strict", root, facts: null });
+  assert.equal(state.target_branch, "dev");
+  assert.equal(state.current_head, null);
+  assert.ok(state.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
 });
 
 test("gate-head-requires-full-identical-accepted-registry-record", async () => {
