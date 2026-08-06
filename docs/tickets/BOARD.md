@@ -2,7 +2,7 @@
 
 **STATIC DAG VIEW — NOT OPERATIONAL AUTHORITY**
 
-Source catalog: [`../issues.json`](../issues.json). Static sequencing: [`../planning/AOS-EXECUTION-ROADMAP.md`](../planning/AOS-EXECUTION-ROADMAP.md). After D0-004 is verified, current state comes only from `npm run ops:status -- --strict`; until then use the interim direct-fact rule in `AGENTS.md`.
+Current static rows are authored from the exact ticket contracts and static sequencing in [`../planning/AOS-EXECUTION-ROADMAP.md`](../planning/AOS-EXECUTION-ROADMAP.md). `docs/issues.json` remains a legacy issue-creation template until D0-004A normalizes it into the canonical static catalog and D0-004C begins rendering this board from that catalog. After D0-004 is verified, current state comes only from `npm run ops:status -- --strict`; until then use the interim direct-fact rule in `AGENTS.md`.
 
 This board owns only ticket IDs, milestone placement, size, and dependency edges. It contains no current ready ticket or blocker verdict. An open or closed GitHub issue is not implementation authorization.
 
