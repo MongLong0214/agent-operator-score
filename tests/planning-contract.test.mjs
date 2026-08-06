@@ -8,8 +8,29 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=7 control_plane_allowlist=7 canonical_vectors=20 semantic_checks=not_yet_enforced gates=invalidated/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=7 control_plane_allowlist=7 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=7 control_plane_allowlist=7 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=7 control_plane_allowlist=7 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none/;
+
+const setPendingGateRegistry = (fixture) => {
+  const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
+  const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+  registry.status = "PENDING";
+  for (const batch of registry.batches) {
+    batch.status = "PENDING";
+    delete batch.target.reviewed_head;
+    batch.required_artifacts = batch.required_artifacts.map((artifact) => ({
+      ...artifact,
+      sha256: createHash("sha256").update(readFileSync(join(fixture, artifact.path))).digest("hex")
+    }));
+    batch.artifacts = [];
+    batch.transitions = [];
+    batch.events = [];
+    delete batch.preparation;
+    delete batch.approval;
+    delete batch.invalidation;
+  }
+  writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+};
 
 test("planning contract validator reports the truthful structural census", () => {
   const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
@@ -48,24 +69,7 @@ test("planning validator preserves encoded paths with spaces", () => {
       recursive: true,
       filter: (source) => ![".git", "node_modules"].includes(basename(source))
     });
-    const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
-    const registry = JSON.parse(readFileSync(registryPath, "utf8"));
-    registry.status = "PENDING";
-    for (const batch of registry.batches) {
-      batch.status = "PENDING";
-      delete batch.target.reviewed_head;
-      batch.required_artifacts = batch.required_artifacts.map((artifact) => ({
-        ...artifact,
-        sha256: createHash("sha256").update(readFileSync(join(fixture, artifact.path))).digest("hex")
-      }));
-      batch.artifacts = [];
-      batch.transitions = [];
-      batch.events = [];
-      delete batch.preparation;
-      delete batch.approval;
-      delete batch.invalidation;
-    }
-    writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+    setPendingGateRegistry(fixture);
     const script = join(fixture, "scripts/validate-planning.mjs");
     assert.match(pathToFileURL(script).href, /%20/);
     const output = execFileSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
@@ -210,10 +214,10 @@ test("D0-004 bootstrap defers checks that D0-004C creates", () => {
   assert.match(ticket, /After D0-004C merges.*Bootstrap.*disabled.*fail closed/s);
 });
 
-test("status ledger separates blocked executable tickets from superseded D0-003", () => {
-  const ledger = readFileSync(resolve(root, "docs/decisions/MAINTAINER-GATE-STATUS.md"), "utf8");
-  assert.match(ledger, /\| Atomic tickets \| 64 executable \| BLOCKED \|/);
-  assert.match(ledger, /\| Superseded record \| 1 \(D0-003\) \| SUPERSEDED \|/);
+test("D0-004A keeps the historical gate status snapshot and schema outside its semantic catalog", () => {
+  const validator = readFileSync(resolve(root, "scripts/validate-planning.mjs"), "utf8");
+  assert.doesNotMatch(validator, /MAINTAINER-GATE-STATUS/);
+  assert.doesNotMatch(validator, /maintainer-gate\.schema/);
 });
 
 test("D0 name availability is separate from the E14 license and publication gate", () => {
@@ -230,15 +234,211 @@ test("superseded D0-003 has no owned implementation", () => {
   assert.match(ticket, /PR #53/);
 });
 
-test("issue registry is total and uses six evidence milestones", () => {
+test("issue-map-and-manifest-agreement preserves the static catalog", () => {
   const issues = JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8"));
   assert.equal(issues.milestones.length, 6);
   assert.equal(issues.tickets.length, 65);
   assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 65);
   const superseded = issues.tickets.find(({ id }) => id === "D0-003");
-  assert.match(superseded.body, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
+  assert.equal(superseded.kind, "superseded");
+  assert.match(superseded.body_template, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
   assert.ok(issues.tickets
     .filter(({ id }) => id !== "D0-003")
-    .every(({ body }) => body.includes("ADR + PRD + TICKET MAINTAINER GATES REQUIRED")));
+    .every(({ kind, body_template }) => kind === "executable" && body_template.includes("ADR + PRD + TICKET MAINTAINER GATES REQUIRED")));
+  assert.ok(issues.tickets.every(({ body, labels, initial_labels }) => body === undefined && labels === undefined && Array.isArray(initial_labels)));
+  assert.ok(issues.tickets.every(({ initial_labels }) => initial_labels.every((label) => !label.startsWith("status:"))));
   assert.equal(issues.labels.some(({ name }) => name === ["legacy", "pre-aos"].join(":")), false);
+});
+
+test("semantic-traceability-graph rejects an orphaned PRD acceptance criterion", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos semantic traceability orphan "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const prdPath = join(fixture, "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md");
+    const original = readFileSync(prdPath, "utf8");
+    writeFileSync(prdPath, original.replace(/- AC-D0-6:.*\n/, ""));
+    setPendingGateRegistry(fixture);
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error, "semantic orphan must fail planning validation");
+    assert.equal(error.status, 1);
+    assert.match(error.stderr, /semantic graph.*AC-D0-6/i);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("issue-map-and-manifest-agreement rejects a catalog dependency mismatch", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos static catalog mismatch "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const manifestPath = join(fixture, "docs/issues.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.tickets.find(({ id }) => id === "D0-004").dependencies = [];
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /issue manifest D0-004 diverges from exact ticket metadata/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("orphan-requirement-ac-ticket-test-mutants reject a catalog ownership orphan", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos catalog ownership orphan "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const tracePath = join(fixture, "docs/TRACEABILITY.md");
+    const traceability = readFileSync(tracePath, "utf8");
+    const catalogMatch = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m);
+    assert.ok(catalogMatch);
+    const catalog = JSON.parse(catalogMatch[1]);
+    catalog.prds.find(({ id }) => id === "D0").ticket_ids = ["D0-001", "D0-002", "D0-003"];
+    writeFileSync(tracePath, traceability.replace(catalogMatch[1], JSON.stringify(catalog, null, 2)));
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /semantic graph D0 ticket ownership diverges from catalog/);
+    assert.match(error.stderr, /semantic graph orphan ticket D0-004/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("operational-authority-schema-and-ticket-agreement rejects a non-identical policy copy", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos operational authority mismatch "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const manifestPath = join(fixture, "docs/issues.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.operational_authority.target_branch = "main";
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /operational_authority diverges from D0-004 ticket/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("identity-consistency-and-no-exception rejects root manifest drift", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos identity consistency drift "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const packagePath = join(fixture, "package.json");
+    const packageManifest = JSON.parse(readFileSync(packagePath, "utf8"));
+    packageManifest.name = "wrong-target-package";
+    writeFileSync(packagePath, `${JSON.stringify(packageManifest, null, 2)}\n`);
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /root package has wrong canonical identity/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("maintainer-gate-digest-invalidation rejects a material accepted artifact edit", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos gate digest invalidation "));
+  const fixture = join(parent, "repository");
+  try {
+    execFileSync("git", ["worktree", "add", "--detach", fixture, "HEAD"], {
+      cwd: root,
+      encoding: "utf8"
+    });
+    for (const path of ["scripts/validate-planning.mjs", "docs/TRACEABILITY.md", "docs/issues.json"]) {
+      writeFileSync(join(fixture, path), readFileSync(resolve(root, path)));
+    }
+    const artifact = join(fixture, "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md");
+    writeFileSync(artifact, `${readFileSync(artifact, "utf8")}\nMaterial semantic edit for digest invalidation.\n`);
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /stale digest d0-004-prerequisites-single-owner-bootstrap docs\/adr\/ADR-0001/);
+  } finally {
+    if (existsSync(join(fixture, ".git"))) {
+      execFileSync("git", ["worktree", "remove", "--force", fixture], { cwd: root, encoding: "utf8" });
+    }
+    rmSync(parent, { recursive: true, force: true });
+  }
 });
