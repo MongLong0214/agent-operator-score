@@ -8,8 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=invalidated/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=4 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=6 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=invalidated/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=6 control_plane_allowlist=6 canonical_vectors=20 semantic_checks=not_yet_enforced gates=pending/;
 
 test("planning contract validator reports the truthful structural census", () => {
   const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
