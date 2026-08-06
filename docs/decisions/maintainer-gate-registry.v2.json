@@ -442,6 +442,50 @@
         "approved_at": "2026-08-06T00:44:30Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "d0-002-prerequisites",
+      "status": "PENDING",
+      "scope": "Review D0-002 prerequisites against the current exact ADR-0001/0003/0012, PRD-D0, and corrected ticket digests before RED.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "65cf7d2be7340cb15b0794239b62ed4211106779a6f79bf2058d4bed094e1b32",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "e76a62eddcf6112e573a293691e3db67047f5452a5a3a8c41a6d6275bf7dfa12",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "ac4480d022fb7b8f3889e9160f0743ceb7a5c06dd756f407dcce46a8e828171e",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+          "sha256": "84f537900f329f26d65c79a1b3d617c0ce091d5f9f5496c5d4b602e455e640ac",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [],
+      "transitions": [],
+      "events": []
     }
   ],
   "invalidation": {
