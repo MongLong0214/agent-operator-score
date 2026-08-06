@@ -237,6 +237,30 @@ export const validateFactsCorpus = (facts) => {
   if (plainObject(facts.liveDigests) && Object.keys(facts.liveDigests).length === 0) {
     failures.push("empty live digest corpus");
   }
+  // activeOwnership canonical field contract: owned_paths + owned_symbols (collector shape).
+  if (Array.isArray(facts.activeOwnership)) {
+    for (let index = 0; index < facts.activeOwnership.length; index += 1) {
+      const entry = facts.activeOwnership[index];
+      const prefix = `activeOwnership[${index}]`;
+      if (!plainObject(entry)) {
+        failures.push(`${prefix} must be an object`);
+        continue;
+      }
+      if (typeof entry.ticket_id !== "string" || entry.ticket_id.length === 0) {
+        failures.push(`${prefix}.ticket_id must be a non-empty string`);
+      }
+      if (!Array.isArray(entry.owned_paths)) {
+        failures.push(`${prefix}.owned_paths must be an array`);
+      } else if (entry.owned_paths.some((path) => typeof path !== "string")) {
+        failures.push(`${prefix}.owned_paths items must be strings`);
+      }
+      if (!Array.isArray(entry.owned_symbols)) {
+        failures.push(`${prefix}.owned_symbols must be an array`);
+      } else if (entry.owned_symbols.some((symbol) => typeof symbol !== "string")) {
+        failures.push(`${prefix}.owned_symbols items must be strings`);
+      }
+    }
+  }
   return { ok: failures.length === 0, failures };
 };
 
@@ -410,19 +434,26 @@ const ticketPathFor = (facts, ticketId) => {
   return Object.keys(digests).find((path) => path.includes(`/${ticketId}-`) || path.endsWith(`/${ticketId}.md`)) ?? null;
 };
 
+const ownershipEntryPaths = (entry) =>
+  Array.isArray(entry?.owned_paths) ? entry.owned_paths : [];
+const ownershipEntrySymbols = (entry) =>
+  Array.isArray(entry?.owned_symbols) ? entry.owned_symbols : [];
+
 const ownershipCollisions = (facts, ticketId) => {
   const active = Array.isArray(facts.activeOwnership) ? facts.activeOwnership : [];
   const self = active.find((entry) => entry.ticket_id === ticketId);
   if (!self) return [];
-  const selfPaths = new Set(self.paths ?? []);
-  const selfSymbols = new Set(self.symbols ?? []);
+  // Canonical live ownership fields match the collector: owned_paths / owned_symbols.
+  // Legacy paths/symbols keys are intentionally ignored (validated as incomplete elsewhere).
+  const selfPaths = new Set(ownershipEntryPaths(self));
+  const selfSymbols = new Set(ownershipEntrySymbols(self));
   const collisions = [];
   for (const other of active) {
     if (other.ticket_id === ticketId) continue;
-    for (const path of other.paths ?? []) {
+    for (const path of ownershipEntryPaths(other)) {
       if (selfPaths.has(path)) collisions.push({ ticket: other.ticket_id, path });
     }
-    for (const symbol of other.symbols ?? []) {
+    for (const symbol of ownershipEntrySymbols(other)) {
       if (selfSymbols.has(symbol)) collisions.push({ ticket: other.ticket_id, symbol });
     }
   }
@@ -431,7 +462,7 @@ const ownershipCollisions = (facts, ticketId) => {
   for (const path of declared) {
     for (const other of active) {
       if (other.ticket_id === ticketId) continue;
-      if ((other.paths ?? []).includes(path)) {
+      if (ownershipEntryPaths(other).includes(path)) {
         collisions.push({ ticket: other.ticket_id, path });
       }
     }
