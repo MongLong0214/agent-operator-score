@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-operator-score.local/specs/execution-state.schema.v1.json",
+  "title": "AOS Execution State Resolver output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "repository",
+    "target_branch",
+    "current_head",
+    "resolved_at",
+    "tickets",
+    "readySet",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "mode": { "enum": ["offline", "online-strict"] },
+    "repository": { "type": "string", "minLength": 1 },
+    "target_branch": { "type": "string", "minLength": 1 },
+    "current_head": { "type": ["string", "null"] },
+    "resolved_at": { "type": "string" },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "d0_004c_merged"],
+      "properties": {
+        "active": { "type": "boolean" },
+        "d0_004c_merged": { "type": "boolean" }
+      }
+    },
+    "tickets": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ticketState"
+      }
+    },
+    "readySet": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "reason"],
+        "properties": {
+          "code": { "$ref": "#/$defs/blockerCode" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "phase": {
+      "enum": [
+        "planned",
+        "gate_preparation",
+        "ready_for_red",
+        "red",
+        "implementing",
+        "review",
+        "ci",
+        "merged_pending_post_ci",
+        "verified",
+        "superseded",
+        "invalidated"
+      ]
+    },
+    "readiness": {
+      "enum": ["ready", "blocked", "active", "terminal", "unknown"]
+    },
+    "blockerCode": {
+      "enum": [
+        "DEPENDENCY_UNVERIFIED",
+        "MILESTONE_GATE_BLOCKED",
+        "ADR_GATE_MISSING",
+        "PRD_GATE_MISSING",
+        "TICKET_GATE_MISSING",
+        "TICKET_CONTRACT_CONFLICT",
+        "TICKET_CONTRACT_INCOMPLETE",
+        "EXECUTION_PACKET_MISSING",
+        "OWNERSHIP_OVERLAP",
+        "RED_CONTRACT_INVALID",
+        "EXACT_HEAD_CI_FAILED",
+        "CUMULATIVE_REVIEW_MISSING",
+        "MERGE_AUTHORIZATION_MISSING",
+        "POST_MERGE_CI_MISSING",
+        "POST_MERGE_CI_FAILED",
+        "EXTERNAL_STATE_UNAVAILABLE",
+        "STALE_DIGEST",
+        "WRONG_TARGET"
+      ]
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "reason"],
+      "properties": {
+        "code": { "$ref": "#/$defs/blockerCode" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "packet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "authority_digests", "owned_paths", "owned_symbols", "red_command"],
+      "properties": {
+        "base": { "type": "string" },
+        "authority_digests": { "type": "object" },
+        "owned_paths": { "type": "array", "items": { "type": "string" } },
+        "owned_symbols": { "type": "array", "items": { "type": "string" } },
+        "red_command": { "type": ["string", "null"] }
+      }
+    },
+    "ticketState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "readiness", "blockers", "packet", "red_authorized", "requires_maintainer_exact_base_packet"],
+      "properties": {
+        "phase": { "$ref": "#/$defs/phase" },
+        "readiness": { "$ref": "#/$defs/readiness" },
+        "blockers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/blocker" }
+        },
+        "packet": {
+          "anyOf": [{ "$ref": "#/$defs/packet" }, { "type": "null" }]
+        },
+        "red_authorized": { "type": "boolean" },
+        "requires_maintainer_exact_base_packet": { "type": "boolean" },
+        "candidate": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}
