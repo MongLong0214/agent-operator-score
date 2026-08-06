@@ -205,22 +205,52 @@ const findAcceptedGate = (facts, artifactPath, expectedSha, kind) => {
     if (pr.merged_by !== ownerLogin) continue;
     // Independently require owner still matches repository owner fact.
     if (facts.owner?.login !== ownerLogin) continue;
+    // Live authority digests must be present and exact; missing or ambiguous fails closed.
     const live = facts.liveDigests?.[artifactPath];
-    if (live && live !== expectedSha) continue;
+    if (typeof live !== "string" || live.length === 0 || live !== expectedSha) continue;
     return { batch, pr };
   }
   return null;
 };
 
+const compareRunAttempts = (left, right) => {
+  const leftId = left?.run_id ?? Number.NEGATIVE_INFINITY;
+  const rightId = right?.run_id ?? Number.NEGATIVE_INFINITY;
+  if (leftId !== rightId) return leftId < rightId ? -1 : 1;
+  const leftAttempt = left?.run_attempt ?? Number.NEGATIVE_INFINITY;
+  const rightAttempt = right?.run_attempt ?? Number.NEGATIVE_INFINITY;
+  if (leftAttempt !== rightAttempt) return leftAttempt < rightAttempt ? -1 : 1;
+  return 0;
+};
+
+const selectLatestRunAttempt = (runs) => {
+  if (!Array.isArray(runs) || runs.length === 0) return { missing: true };
+  if (runs.length === 1) return { run: runs[0] };
+  const ordered = runs.some((run) => run?.run_id != null || run?.run_attempt != null);
+  if (!ordered) {
+    // Multiple runs without unambiguous attempt ordering fail closed.
+    return { ambiguous: true };
+  }
+  const latest = runs.reduce((best, run) => {
+    if (!best) return run;
+    return compareRunAttempts(best, run) < 0 ? run : best;
+  }, null);
+  // Ambiguous when more than one run shares the same latest (run_id, run_attempt).
+  const ties = runs.filter((run) => compareRunAttempts(run, latest) === 0);
+  if (ties.length !== 1) return { ambiguous: true };
+  return { run: latest };
+};
+
 const postMergeStatus = (facts, mergeCommitSha) => {
   const runs = (facts.postMergeCI ?? []).filter((run) => run.merge_commit_sha === mergeCommitSha);
   if (!runs.length) return { missing: true };
-  const success = runs.some(
-    (run) => run.status === "completed" && run.conclusion === "success" && run.head_sha === mergeCommitSha
-  );
-  if (success) return { ok: true };
-  const failed = runs.some((run) => run.conclusion === "failure" || run.conclusion === "cancelled");
-  if (failed) return { failed: true };
+  const selected = selectLatestRunAttempt(runs);
+  if (selected.missing || selected.ambiguous || !selected.run) return { missing: true };
+  const latest = selected.run;
+  if (latest.head_sha !== mergeCommitSha) return { missing: true };
+  if (latest.status !== "completed") return { missing: true };
+  if (latest.conclusion === "success") return { ok: true };
+  if (latest.conclusion === "failure" || latest.conclusion === "cancelled") return { failed: true };
   return { missing: true };
 };
 
@@ -258,30 +288,56 @@ const ownershipCollisions = (facts, ticketId) => {
   return collisions;
 };
 
-const candidatePrFor = (facts, ticketId) => {
-  const prs = Array.isArray(facts.prs) ? facts.prs : [];
-  return (
-    prs.find((pr) => {
-      if (pr.ticket_id === ticketId) return true;
-      if (typeof pr.body === "string" && new RegExp(`^Ticket:\\s*${ticketId}\\s*$`, "m").test(pr.body)) {
-        return true;
-      }
-      return false;
-    }) ?? null
-  );
+const extractExactTicketField = (body) => {
+  if (typeof body !== "string") return { ok: false, reason: "missing body" };
+  const matches = [...body.matchAll(/^Ticket:\s*(\S+)\s*$/gm)];
+  if (matches.length !== 1) {
+    return { ok: false, reason: "exactly one structured Ticket field is required" };
+  }
+  return { ok: true, ticketId: matches[0][1] };
 };
+
+const isValidCandidatePr = (pr, ticketId, targetBranch) => {
+  if (!pr || pr.merged === true) return false;
+  const field = extractExactTicketField(pr.body);
+  if (!field.ok || field.ticketId !== ticketId) return false;
+  if (pr.base !== targetBranch) return false;
+  if (typeof pr.head_sha !== "string" || !/^[0-9a-f]{40}$/i.test(pr.head_sha)) return false;
+  if (typeof pr.number !== "number" || !Number.isFinite(pr.number)) return false;
+  return true;
+};
+
+/**
+ * Link candidates only via exactly one structured Ticket field; never ticket_id alone.
+ * Deterministically select the highest PR number as active; report all others as superseded.
+ * Fact array order must not change the selected active head.
+ */
+const resolveCandidatePrs = (facts, ticketId) => {
+  const targetBranch = facts.operationalAuthority?.target_branch ?? "dev";
+  const linked = (Array.isArray(facts.prs) ? facts.prs : []).filter((pr) =>
+    isValidCandidatePr(pr, ticketId, targetBranch)
+  );
+  if (!linked.length) return { active: null, superseded: [] };
+  const sorted = [...linked].sort((left, right) => {
+    if (left.number !== right.number) return left.number - right.number;
+    return String(left.head_sha).localeCompare(String(right.head_sha));
+  });
+  const active = sorted[sorted.length - 1];
+  const superseded = sorted.slice(0, -1).map((pr) => ({
+    number: pr.number,
+    head_sha: pr.head_sha,
+    base: pr.base
+  }));
+  return { active, superseded };
+};
+
+const candidatePrFor = (facts, ticketId) => resolveCandidatePrs(facts, ticketId).active;
 
 const latestAttempt = (runs, name, headSha) => {
   const matches = runs.filter((run) => run.name === name && run.head_sha === headSha);
-  if (!matches.length) return null;
-  return matches.reduce((best, run) => {
-    if (!best) return run;
-    if ((run.run_id ?? 0) > (best.run_id ?? 0)) return run;
-    if ((run.run_id ?? 0) === (best.run_id ?? 0) && (run.run_attempt ?? 0) > (best.run_attempt ?? 0)) {
-      return run;
-    }
-    return best;
-  }, null);
+  const selected = selectLatestRunAttempt(matches);
+  if (selected.ambiguous || selected.missing || !selected.run) return null;
+  return selected.run;
 };
 
 const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
@@ -294,26 +350,43 @@ const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
   const checks = Array.isArray(facts.checkRuns) ? facts.checkRuns : [];
   const runs = Array.isArray(facts.workflowRuns) ? facts.workflowRuns : [];
   const failures = [];
+  const requiredAppSlug = policy.candidate_ci?.check_creator_app?.slug;
+  const requiredAppId = policy.candidate_ci?.check_creator_app?.id;
+  const requiredEvent = policy.candidate_ci?.required_event;
+  const requiredBase = policy.candidate_ci?.target_branch;
 
   for (const requiredCheck of required) {
     const blobMap = facts.workflowBlobs?.[requiredCheck.workflow_path] ?? {};
     const devBlob = blobMap.dev;
     const headBlob = blobMap.heads?.[head];
-    if (devBlob && headBlob && devBlob !== headBlob) {
+    if (typeof devBlob !== "string" || devBlob.length === 0) {
+      failures.push(`missing live target workflow blob for ${requiredCheck.workflow_path}`);
+      continue;
+    }
+    if (typeof headBlob !== "string" || headBlob.length === 0) {
+      failures.push(`missing candidate head workflow blob for ${requiredCheck.workflow_path}`);
+      continue;
+    }
+    if (devBlob !== headBlob) {
       failures.push(`workflow blob mismatch for ${requiredCheck.workflow_path}`);
       continue;
     }
 
-    const run = latestAttempt(runs, requiredCheck.name, head);
-    const check =
-      checks.find(
-        (entry) =>
-          entry.name === requiredCheck.name &&
-          entry.head_sha === head &&
-          (entry.ticket_id === ticketId || !entry.ticket_id)
-      ) ?? null;
-
-    const subject = run ?? check;
+    const runMatches = runs.filter((entry) => entry.name === requiredCheck.name && entry.head_sha === head);
+    const checkMatches = checks.filter(
+      (entry) =>
+        entry.name === requiredCheck.name &&
+        entry.head_sha === head &&
+        (entry.ticket_id === ticketId || !entry.ticket_id)
+    );
+    // Prefer workflow-run attempts when present; otherwise use check-run facts.
+    const pool = runMatches.length ? runMatches : checkMatches;
+    const selected = selectLatestRunAttempt(pool);
+    if (selected.ambiguous) {
+      failures.push(`ambiguous run attempt for ${requiredCheck.name}`);
+      continue;
+    }
+    const subject = selected.run ?? null;
     if (!subject) {
       failures.push(`missing required check ${requiredCheck.name}`);
       continue;
@@ -322,23 +395,44 @@ const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
       failures.push(`stale or wrong head for ${requiredCheck.name}`);
       continue;
     }
-    if (subject.app_slug && subject.app_slug !== policy.candidate_ci.check_creator_app.slug) {
+    // Every required provenance mapping fact must be present and exact.
+    if (subject.app_slug == null || subject.app_slug === "") {
+      failures.push(`missing app slug for ${requiredCheck.name}`);
+      continue;
+    }
+    if (subject.app_slug !== requiredAppSlug) {
       failures.push(`wrong app for ${requiredCheck.name}`);
       continue;
     }
-    if (subject.app_id && subject.app_id !== policy.candidate_ci.check_creator_app.id) {
+    if (subject.app_id == null || subject.app_id === "") {
+      failures.push(`missing app id for ${requiredCheck.name}`);
+      continue;
+    }
+    if (subject.app_id !== requiredAppId) {
       failures.push(`wrong app id for ${requiredCheck.name}`);
       continue;
     }
-    if (subject.event && subject.event !== policy.candidate_ci.required_event) {
+    if (subject.event == null || subject.event === "") {
+      failures.push(`missing event for ${requiredCheck.name}`);
+      continue;
+    }
+    if (subject.event !== requiredEvent) {
       failures.push(`wrong event for ${requiredCheck.name}`);
       continue;
     }
-    if (subject.base && subject.base !== policy.candidate_ci.target_branch) {
+    if (subject.base == null || subject.base === "") {
+      failures.push(`missing base for ${requiredCheck.name}`);
+      continue;
+    }
+    if (subject.base !== requiredBase) {
       failures.push(`wrong base for ${requiredCheck.name}`);
       continue;
     }
-    if (subject.workflow_path && subject.workflow_path !== requiredCheck.workflow_path) {
+    if (subject.workflow_path == null || subject.workflow_path === "") {
+      failures.push(`missing workflow path for ${requiredCheck.name}`);
+      continue;
+    }
+    if (subject.workflow_path !== requiredCheck.workflow_path) {
       failures.push(`wrong workflow path for ${requiredCheck.name}`);
       continue;
     }
@@ -560,8 +654,11 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
 
   const gateEvaluation = evaluateTicketGates(facts, ticketId, ticket);
 
+  const candidateResolution = resolveCandidatePrs(facts, ticketId);
+  const pr = candidateResolution.active;
+
   // Explicit implementation verification (never from issue state alone).
-  if (isVerified(facts, ticketId, gateEvaluation) && !candidatePrFor(facts, ticketId)) {
+  if (isVerified(facts, ticketId, gateEvaluation) && !pr) {
     return finalize("verified", "terminal", [], null, null);
   }
 
@@ -613,12 +710,13 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
     readyBlockers.push(blocker("RED_CONTRACT_INVALID", `${ticketId} lacks RED command`));
   }
 
-  const pr = candidatePrFor(facts, ticketId);
   if (pr) {
     const candidate = {
       number: pr.number,
       head_sha: pr.head_sha,
-      base: pr.base
+      base: pr.base,
+      // Superseded heads are reported only; their review/CI evidence is never reused.
+      superseded_heads: candidateResolution.superseded
     };
     let phase = "implementing";
     const candidateBlockers = [...readyBlockers];
