@@ -1217,12 +1217,123 @@ const isOwnedSymbolToken = (token) =>
 const PATH_TOKEN_RE =
   /(?<![A-Za-z0-9_./@-])((?:docs|scripts|specs|tests|fixtures|packages|adapters|conformance|apps|\.github|src)\/[A-Za-z0-9_./@{}*+-]+|package\.json|AGENTS\.md|README\.md|CONTRIBUTING\.md)/g;
 
+const extractOwnershipSubtaskBlock = (ownership, subtask) => {
+  if (!subtask) return ownership;
+  const lines = ownership.split("\n");
+  const start = lines.findIndex((line) =>
+    new RegExp(`^-\\s*${subtask.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(line)
+  );
+  if (start === -1) return null;
+  const block = [lines[start]];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    // Stop only at another D0-004A/B/C (or peer ticket-lane) ownership bullet, not prose bullets.
+    if (/^-\s+D0-004[ABC]\b/.test(lines[i])) break;
+    if (/^-\s+No other file or symbol\b/i.test(lines[i])) break;
+    block.push(lines[i]);
+  }
+  return block.join("\n").trim();
+};
+
+const detectTicketSubtask = (ticketId, markdown, options = {}) => {
+  if (typeof options.subtask === "string" && options.subtask) return options.subtask;
+  if (ticketId !== "D0-004" || typeof markdown !== "string") return null;
+  const ownership = extractMarkdownSection(markdown, "Exact ownership") ?? "";
+  const present = [...ownership.matchAll(/^- (D0-004[ABC])\b/gm)].map((match) => match[1]);
+  if (!present.length) return null;
+  // While C is not merged, the active implementation ownership/RED lane is B.
+  if (options.d0_004c_merged === true && present.includes("D0-004C")) return "D0-004C";
+  if (present.includes("D0-004B")) return "D0-004B";
+  return present[0] ?? null;
+};
+
+const extractPathsAndSymbolsFromProse = (text) => {
+  const owned_paths = [];
+  const owned_symbols = [];
+  const pushPath = (token) => {
+    const cleaned = token.replace(/[.,;:]+$/g, "").trim();
+    if (!cleaned) return;
+    if (cleaned.includes("/") || isOwnedPathToken(cleaned)) {
+      if (!owned_paths.includes(cleaned)) owned_paths.push(cleaned);
+    }
+  };
+  const pushSymbol = (token) => {
+    const cleaned = token.trim();
+    if (!cleaned || !isOwnedSymbolToken(cleaned)) return;
+    if (
+      /^(No|none|other|file|symbol|may|be|edited|without|replacement|ticket|and|or|the|only|not|authorize|implementation|change|Exact|ownership|resolver|core|scripts|Narrow|pre|RED|harness|carve|out)$/i.test(
+        cleaned
+      )
+    ) {
+      return;
+    }
+    // Prefer camelCase/PascalCase/snake API identifiers over plain English.
+    if (!/[A-Z]/.test(cleaned) && !cleaned.includes("_") && cleaned === cleaned.toLowerCase()) {
+      return;
+    }
+    if (!owned_symbols.includes(cleaned)) owned_symbols.push(cleaned);
+  };
+
+  for (const match of text.matchAll(/`([^`]+)`/g)) {
+    const token = match[1].trim();
+    if (!token) continue;
+    if (token.includes("/") || isOwnedPathToken(token) || token.endsWith("/**")) {
+      pushPath(token);
+      continue;
+    }
+    pushSymbol(token);
+  }
+  PATH_TOKEN_RE.lastIndex = 0;
+  for (const match of text.matchAll(PATH_TOKEN_RE)) {
+    pushPath(match[1]);
+  }
+  for (const line of text.split("\n")) {
+    const dashSplit = line.split(/—|–|--/).slice(1).join(" ");
+    if (!dashSplit) continue;
+    for (const match of dashSplit.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+      pushSymbol(match[1]);
+    }
+  }
+  return { owned_paths, owned_symbols };
+};
+
+const extractRedCommandFromSection = (redSection, subtask) => {
+  if (typeof redSection !== "string" || !redSection.trim()) return null;
+  if (/Focused command:\s*none\b/i.test(redSection) || /Focused command:\s*`none`/i.test(redSection)) {
+    return null;
+  }
+  if (subtask) {
+    const subtaskLine = redSection
+      .split("\n")
+      .find((line) => new RegExp(`${subtask.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+test\\b`, "i").test(line));
+    if (subtaskLine) {
+      const patterns = [
+        /command:\s*`((?:npm test|npm run|node --test)[^`]*)`/i,
+        /`((?:npm test|npm run|node --test)[^`]*)`/
+      ];
+      for (const pattern of patterns) {
+        const hit = subtaskLine.match(pattern);
+        if (hit?.[1]?.trim()) return hit[1].trim();
+      }
+    }
+  }
+  const patterns = [
+    /Focused command:\s*`([^`]+)`/i,
+    /command:\s*`((?:npm test|npm run|node --test)[^`]*)`/i,
+    /`((?:npm test|npm run|node --test)[^`]*)`/
+  ];
+  for (const pattern of patterns) {
+    const hit = redSection.match(pattern);
+    if (hit?.[1]?.trim()) return hit[1].trim();
+  }
+  return null;
+};
+
 /**
  * Parse Exact ownership + RED contract from a canonical ticket markdown body.
- * Accepts backtick-wrapped tokens and bare path/symbol prose used across the catalog.
+ * Multi-lane tickets (D0-004A/B/C) select one deterministic subtask lane.
  * Missing/ambiguous mappings fail closed for executable tickets.
  */
-export const parseTicketOwnershipAndRed = (markdown) => {
+export const parseTicketOwnershipAndRed = (markdown, options = {}) => {
   if (typeof markdown !== "string" || !markdown.trim()) {
     return { ok: false, reason: "ticket markdown missing" };
   }
@@ -1237,94 +1348,83 @@ export const parseTicketOwnershipAndRed = (markdown) => {
   }
   PATH_TOKEN_RE.lastIndex = 0;
 
-  const owned_paths = [];
-  const owned_symbols = [];
-  const pushPath = (token) => {
-    const cleaned = token.replace(/[.,;:]+$/g, "").trim();
-    if (!cleaned || !isOwnedPathToken(cleaned)) return;
-    if (!owned_paths.includes(cleaned)) owned_paths.push(cleaned);
-  };
-  const pushSymbol = (token) => {
-    const cleaned = token.trim();
-    if (!cleaned || !isOwnedSymbolToken(cleaned)) return;
-    if (!owned_symbols.includes(cleaned)) owned_symbols.push(cleaned);
-  };
-
-  for (const match of ownership.matchAll(/`([^`]+)`/g)) {
-    const token = match[1].trim();
-    if (!token) continue;
-    if (isOwnedPathToken(token) || token.includes("/")) {
-      // Allow fixture globs such as fixtures/operational-state/**
-      const normalized = token.endsWith("/**") ? token.slice(0, -3) : token;
-      if (token.includes("/")) {
-        if (!owned_paths.includes(token)) owned_paths.push(token);
-      } else {
-        pushPath(normalized);
-      }
-      continue;
-    }
-    pushSymbol(token);
+  const ticketId = typeof options.ticketId === "string" ? options.ticketId : null;
+  const subtask = detectTicketSubtask(ticketId, markdown, options);
+  const ownershipText = extractOwnershipSubtaskBlock(ownership, subtask);
+  if (subtask && !ownershipText) {
+    return { ok: false, reason: `ownership subtask ${subtask} missing` };
   }
-
-  for (const match of ownership.matchAll(PATH_TOKEN_RE)) {
-    pushPath(match[1]);
-  }
-
-  // Symbols declared after an em/en dash or as comma-separated identifiers on ownership lines.
-  for (const line of ownership.split("\n")) {
-    const dashSplit = line.split(/—|–|--/).slice(1).join(" ");
-    const symbolSource = dashSplit || line;
-    for (const match of symbolSource.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
-      const token = match[1];
-      if (!isOwnedSymbolToken(token)) continue;
-      // Skip common prose words that are not ownership symbols.
-      if (
-        /^(No|none|other|file|symbol|may|be|edited|without|replacement|ticket|and|or|the|only|not|authorize|implementation|change|Exact|ownership)$/i.test(
-          token
-        )
-      ) {
-        continue;
-      }
-      // Prefer camelCase/PascalCase/snake API identifiers over plain English.
-      if (!/[A-Z]/.test(token) && !token.includes("_") && token === token.toLowerCase()) {
-        continue;
-      }
-      pushSymbol(token);
-    }
-  }
-
+  const { owned_paths, owned_symbols } = extractPathsAndSymbolsFromProse(ownershipText || ownership);
   if (owned_paths.length === 0) {
     return { ok: false, reason: "owned_paths empty or unparseable" };
   }
 
   const redSection = extractMarkdownSection(markdown, "RED contract");
-  let red_command = null;
-  if (redSection) {
-    if (/Focused command:\s*none\b/i.test(redSection) || /Focused command:\s*`none`/i.test(redSection)) {
-      return { ok: false, reason: "red_command missing or unparseable" };
-    }
-    const patterns = [
-      /Focused command:\s*`([^`]+)`/i,
-      /command:\s*`((?:npm test|npm run|node --test)[^`]*)`/i,
-      /`((?:npm test|npm run|node --test)[^`]*)`/
-    ];
-    for (const pattern of patterns) {
-      const hit = redSection.match(pattern);
-      if (hit?.[1]?.trim()) {
-        red_command = hit[1].trim();
-        break;
-      }
-    }
-  }
+  const red_command = extractRedCommandFromSection(redSection, subtask);
   if (!red_command) {
     return { ok: false, reason: "red_command missing or unparseable" };
   }
-  return { ok: true, owned_paths, owned_symbols, red_command };
+  return {
+    ok: true,
+    owned_paths,
+    owned_symbols,
+    red_command,
+    subtask: subtask ?? null
+  };
+};
+
+const normalizeArtifactList = (list) => {
+  if (!Array.isArray(list)) return null;
+  return list
+    .map((artifact) => ({
+      path: artifact?.path ?? null,
+      kind: artifact?.kind ?? null,
+      sha256: artifact?.sha256 ?? null
+    }))
+    .sort((left, right) => stableJson(left).localeCompare(stableJson(right)));
+};
+
+/**
+ * Canonicalize an accepted gate-registry batch for identical-record comparison.
+ * Includes target/reviewed head and transition structure, not only artifact digests.
+ */
+export const canonicalizeAcceptedBatchRecord = (row) => {
+  if (!plainObject(row) || typeof row.id !== "string") return null;
+  const required = normalizeArtifactList(row.required_artifacts);
+  const artifacts = normalizeArtifactList(
+    Array.isArray(row.artifacts) ? row.artifacts : row.required_artifacts
+  );
+  if (!required) return null;
+  const target = plainObject(row.target)
+    ? {
+        repository: row.target.repository ?? null,
+        branch: row.target.branch ?? null,
+        reviewed_head: row.target.reviewed_head ?? null
+      }
+    : null;
+  const required_transitions = Array.isArray(row.required_transitions)
+    ? [...row.required_transitions].map(String).sort()
+    : null;
+  const transitions = Array.isArray(row.transitions)
+    ? row.transitions.map((entry) => (plainObject(entry) ? entry : entry))
+    : row.transitions === undefined
+      ? null
+      : row.transitions;
+  return {
+    id: row.id,
+    status: row.status ?? null,
+    scope: row.scope ?? null,
+    target,
+    required_artifacts: required,
+    artifacts,
+    required_transitions,
+    transitions
+  };
 };
 
 /**
  * Require the gate PR head registry blob to contain the identical ACCEPTED batch
- * record (id, status, required artifact path/kind/sha256), not mere batch-id text.
+ * record (full canonical structure), not mere batch-id or digest-subset presence.
  */
 export const registryHeadBindsAcceptedBatch = (registryText, batch) => {
   if (typeof registryText !== "string" || !plainObject(batch) || typeof batch.id !== "string") {
@@ -1337,26 +1437,14 @@ export const registryHeadBindsAcceptedBatch = (registryText, batch) => {
     return false;
   }
   const rows = Array.isArray(parsed?.batches) ? parsed.batches : [];
-  const row = rows.find((entry) => entry?.id === batch.id);
-  if (!row || row.status !== "ACCEPTED") return false;
-  const actual = Array.isArray(row.required_artifacts)
-    ? row.required_artifacts
-    : Array.isArray(row.artifacts)
-      ? row.artifacts
-      : null;
-  const expected = Array.isArray(batch.required_artifacts) ? batch.required_artifacts : null;
-  if (!actual || !expected) return false;
-  const normalize = (list) =>
-    stableJson(
-      list
-        .map((artifact) => ({
-          path: artifact?.path ?? null,
-          kind: artifact?.kind ?? null,
-          sha256: artifact?.sha256 ?? null
-        }))
-        .sort((left, right) => stableJson(left).localeCompare(stableJson(right)))
-    );
-  return normalize(actual) === normalize(expected);
+  const matches = rows.filter((entry) => entry?.id === batch.id);
+  if (matches.length !== 1) return false;
+  const row = matches[0];
+  if (row.status !== "ACCEPTED" || batch.status !== "ACCEPTED") return false;
+  const expected = canonicalizeAcceptedBatchRecord(batch);
+  const actual = canonicalizeAcceptedBatchRecord(row);
+  if (!expected || !actual) return false;
+  return stableJson(expected) === stableJson(actual);
 };
 
 /**
@@ -1613,56 +1701,72 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       "ADR-0012": liveDigests["docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"]
     };
     const kind = entry.kind === "superseded" ? "superseded" : "executable";
-    let owned_paths = [];
-    let owned_symbols = [];
-    let red_command = null;
-    if (kind === "executable") {
-      const ticketBody = readTipFile(entry.ticket_path);
-      if (ticketBody == null) {
-        return {
-          ok: false,
-          reason: failures.join("; ") || `ticket body unavailable for ${entry.id}`,
-          facts: null
-        };
-      }
-      const ownership = parseTicketOwnershipAndRed(ticketBody);
-      if (!ownership.ok) {
-        return {
-          ok: false,
-          reason: `ambiguous or missing ownership/red mapping for ${entry.id}: ${ownership.reason}`,
-          facts: null
-        };
-      }
-      owned_paths = ownership.owned_paths;
-      owned_symbols = ownership.owned_symbols;
-      red_command = ownership.red_command;
-    }
     tickets[entry.id] = {
       kind,
       dependencies: Array.isArray(entry.dependencies) ? [...entry.dependencies] : [],
-      owned_paths,
-      owned_symbols,
-      red_command,
+      owned_paths: [],
+      owned_symbols: [],
+      red_command: null,
       digests: {
         ticket: ticketDigest,
         prd: liveDigests[prdPath],
         adrs
-      }
+      },
+      ticket_path: entry.ticket_path
     };
+  }
+
+  // Detect D0-004C from tip workflow blob for multi-lane ownership selection (B vs C).
+  const opsWorkflowProbe = transportCall(
+    transport,
+    "getJson",
+    `${repoPath}/contents/.github/workflows/operational-state.yml?ref=${liveTip}`
+  );
+  const d0_004c_merged_early = opsWorkflowProbe.ok === true && typeof opsWorkflowProbe.value?.sha === "string";
+  for (const [ticketId, ticket] of Object.entries(tickets)) {
+    if (ticket.kind !== "executable") continue;
+    const ticketBody = readTipFile(ticket.ticket_path);
+    if (ticketBody == null) {
+      return {
+        ok: false,
+        reason: failures.join("; ") || `ticket body unavailable for ${ticketId}`,
+        facts: null
+      };
+    }
+    const ownership = parseTicketOwnershipAndRed(ticketBody, {
+      ticketId,
+      d0_004c_merged: d0_004c_merged_early
+    });
+    if (!ownership.ok) {
+      return {
+        ok: false,
+        reason: `ambiguous or missing ownership/red mapping for ${ticketId}: ${ownership.reason}`,
+        facts: null
+      };
+    }
+    ticket.owned_paths = ownership.owned_paths;
+    ticket.owned_symbols = ownership.owned_symbols;
+    ticket.red_command = ownership.red_command;
+    delete ticket.ticket_path;
   }
 
   const acceptedBatches = (Array.isArray(registry.batches) ? registry.batches : []).filter(
     (batch) => batch?.status === "ACCEPTED"
   );
-  const gateBatches = acceptedBatches.map((batch) => ({
-    id: batch.id,
-    status: "ACCEPTED",
-    required_artifacts: Array.isArray(batch.required_artifacts)
+  // Preserve full accepted registry records for identical head binding (not a digest subset).
+  const gateBatches = acceptedBatches.map((batch) => {
+    const required_artifacts = Array.isArray(batch.required_artifacts)
       ? batch.required_artifacts
       : Array.isArray(batch.artifacts)
         ? batch.artifacts
-        : []
-  }));
+        : [];
+    return {
+      ...batch,
+      id: batch.id,
+      status: "ACCEPTED",
+      required_artifacts
+    };
+  });
 
   // Collect gate PRs for accepted batches via authenticated search + pull fetch.
   const gatePRs = [];
@@ -1838,12 +1942,39 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!checksPayload || !Array.isArray(checksPayload.check_runs)) {
       return { ok: false, reason: failures.join("; ") || `check runs unavailable for ${head}`, facts: null };
     }
+    const checksById = new Map();
     const checksByName = new Map();
     for (const check of checksPayload.check_runs) {
-      checksByName.set(check.name, check);
+      if (check?.id != null) checksById.set(check.id, check);
+      if (typeof check?.name === "string") {
+        const list = checksByName.get(check.name) ?? [];
+        list.push(check);
+        checksByName.set(check.name, list);
+      }
     }
 
     for (const run of headRuns.workflow_runs) {
+      if (typeof run.id !== "number" || typeof run.run_attempt !== "number") {
+        return {
+          ok: false,
+          reason: `missing live run_id/run_attempt for workflow run on ${head}`,
+          facts: null
+        };
+      }
+      if (typeof run.event !== "string" || !run.event) {
+        return {
+          ok: false,
+          reason: `missing live workflow event for run ${run.id} on ${head}`,
+          facts: null
+        };
+      }
+      if (typeof run.path !== "string" || !run.path) {
+        return {
+          ok: false,
+          reason: `missing live workflow path for run ${run.id} on ${head}`,
+          facts: null
+        };
+      }
       let jobs = null;
       const attemptJobs = transportCall(
         transport,
@@ -1860,13 +1991,54 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         return { ok: false, reason: failures.join("; ") || `jobs unavailable for run ${run.id}`, facts: null };
       }
       for (const job of jobs) {
-        const check = checksByName.get(job.name);
-        // Every app/run/attempt/job/check fact must come from authenticated live mapping.
-        // Do not synthesize GitHub Actions app identity when the check-run is missing.
+        // Bind check-run to this exact run/attempt — never reuse another attempt's check by name alone.
+        let check = null;
+        if (typeof job.check_run_url === "string") {
+          const idMatch = job.check_run_url.match(/\/check-runs\/(\d+)\b/);
+          if (idMatch) {
+            check = checksById.get(Number(idMatch[1])) ?? null;
+          }
+        }
+        if (!check && job.check_run_id != null) {
+          check = checksById.get(Number(job.check_run_id)) ?? null;
+        }
+        if (!check) {
+          const named = checksByName.get(job.name) ?? [];
+          // Only allow name match when it is unique AND explicitly tagged to this run/attempt.
+          const bound = named.filter((entry) => {
+            const entryRunId = entry.run_id ?? entry.details?.run_id ?? entry.external_id_run_id;
+            const entryAttempt = entry.run_attempt ?? entry.details?.run_attempt;
+            if (entryRunId != null && entryAttempt != null) {
+              return Number(entryRunId) === run.id && Number(entryAttempt) === run.run_attempt;
+            }
+            // GitHub check-runs often omit run_id; require job-level terminal authority and
+            // unique name only when a single check exists for the head (no multi-attempt collision).
+            return false;
+          });
+          if (bound.length === 1) {
+            check = bound[0];
+          } else if (bound.length > 1) {
+            return {
+              ok: false,
+              reason: `ambiguous check-run mapping for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+              facts: null
+            };
+          } else if (named.length === 1 && headRuns.workflow_runs.length === 1) {
+            // Single-run head: unique check name may bind for app provenance only.
+            check = named[0];
+          } else if (named.length > 1) {
+            return {
+              ok: false,
+              reason: `ambiguous multi-check name mapping for job ${job.name} on ${head}`,
+              facts: null
+            };
+          }
+        }
+        // App identity must come from authenticated check mapping; do not synthesize constants.
         if (!check || typeof check !== "object") {
           return {
             ok: false,
-            reason: `missing live check-run mapping for job ${job.name} on ${head}`,
+            reason: `missing live check-run mapping for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
             facts: null
           };
         }
@@ -1879,33 +2051,13 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
             facts: null
           };
         }
-        if (typeof run.id !== "number" || typeof run.run_attempt !== "number") {
-          return {
-            ok: false,
-            reason: `missing live run_id/run_attempt for job ${job.name} on ${head}`,
-            facts: null
-          };
-        }
-        if (typeof run.event !== "string" || !run.event) {
-          return {
-            ok: false,
-            reason: `missing live workflow event for job ${job.name} on ${head}`,
-            facts: null
-          };
-        }
-        if (typeof run.path !== "string" || !run.path) {
-          return {
-            ok: false,
-            reason: `missing live workflow path for job ${job.name} on ${head}`,
-            facts: null
-          };
-        }
-        const status = check.status ?? job.status;
-        const conclusion = check.conclusion ?? job.conclusion;
+        // Selected attempt's job terminal state controls — never prefer an older check-run success.
+        const status = job.status;
+        const conclusion = job.conclusion;
         if (typeof status !== "string" || !status) {
           return {
             ok: false,
-            reason: `missing live check/job status for ${job.name} on ${head}`,
+            reason: `missing live job status for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
             facts: null
           };
         }
@@ -1926,7 +2078,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         workflowRuns.push({ ...common });
         checkRuns.push({
           ...common,
-          external_id: Object.hasOwn(check, "external_id") ? check.external_id : null
+          external_id: Object.hasOwn(check, "external_id") ? check.external_id : null,
+          check_run_id: check.id ?? null
         });
       }
     }

@@ -1552,6 +1552,209 @@ test("live-collector-enforces-per-call-and-total-timeouts", async () => {
   assert.match(total.reason, /timeout|unavailable/i);
 });
 
+test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async () => {
+  const {
+    createFixtureTransport,
+    collectLiveExecutionFacts,
+    resolveExecutionState
+  } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const runsKey = `${repo}/actions/runs?head_sha=${head}&event=pull_request&per_page=30`;
+  const checksKey = `${repo}/commits/${head}/check-runs?per_page=50`;
+  const responses = clone(base);
+
+  // Older successful attempt 1 + newer failed attempt 2 for the same job names.
+  responses[runsKey] = {
+    workflow_runs: [
+      {
+        id: 4001,
+        name: "CI",
+        path: ".github/workflows/ci.yml",
+        head_sha: head,
+        status: "completed",
+        conclusion: "success",
+        run_attempt: 1,
+        event: "pull_request"
+      },
+      {
+        id: 4002,
+        name: "CI",
+        path: ".github/workflows/ci.yml",
+        head_sha: head,
+        status: "completed",
+        conclusion: "failure",
+        run_attempt: 1,
+        event: "pull_request"
+      }
+    ]
+  };
+  // Stale successful check-runs (would mask failure if bound only by name).
+  responses[checksKey] = {
+    check_runs: ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map(
+      (name, i) => ({
+        id: 9100 + i,
+        name,
+        status: "completed",
+        conclusion: "success",
+        app: { id: 15368, slug: "github-actions" },
+        run_id: 4001,
+        run_attempt: 1
+      })
+    )
+  };
+  responses[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`] = {
+    jobs: ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map(
+      (name, i) => ({
+        name,
+        status: "completed",
+        conclusion: "success",
+        run_id: 4001,
+        run_attempt: 1,
+        check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${9100 + i}`
+      })
+    )
+  };
+  responses[`${repo}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
+    jobs: ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map(
+      (name, i) => ({
+        name,
+        status: "completed",
+        conclusion: "failure",
+        run_id: 4002,
+        run_attempt: 1,
+        check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${9200 + i}`
+      })
+    )
+  };
+  // Failed attempt has its own check-runs (or missing) — do not let older success win by name.
+  responses[checksKey].check_runs.push(
+    ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+      id: 9200 + i,
+      name,
+      status: "completed",
+      conclusion: "failure",
+      app: { id: 15368, slug: "github-actions" },
+      run_id: 4002,
+      run_attempt: 1
+    }))
+  );
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const latestJobs = collected.facts.checkRuns.filter((entry) => entry.run_id === 4002);
+  assert.equal(latestJobs.length, 3);
+  assert.ok(latestJobs.every((entry) => entry.conclusion === "failure"));
+  assert.ok(latestJobs.every((entry) => entry.status === "completed"));
+
+  // Offline resolver on collected facts must not treat latest failed attempt as success.
+  const result = resolveExecutionState({
+    mode: "offline",
+    root,
+    facts: collected.facts,
+    runtimeIdentity: {
+      repository: collected.facts.repository,
+      branch: collected.facts.defaultBranch,
+      head: collected.facts.currentHead
+    }
+  });
+  const d0004 = ticketState(result, "D0-004");
+  if (d0004.candidate) {
+    assert.ok(
+      blockerCodes(d0004).includes("EXACT_HEAD_CI_FAILED") || d0004.readiness === "blocked",
+      "latest failed CI attempt must not be masked as success"
+    );
+  }
+});
+
+test("gate-head-requires-full-identical-accepted-registry-record", async () => {
+  const { registryHeadBindsAcceptedBatch, canonicalizeAcceptedBatchRecord } = await importResolver();
+  const accepted = {
+    id: "batch-d0-004-fixture",
+    status: "ACCEPTED",
+    scope: "fixture-accepted-batch",
+    target: {
+      repository: "github.com/MongLong0214/agent-operator-score",
+      branch: "dev",
+      reviewed_head: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    required_artifacts: [
+      {
+        path: "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+        sha256: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        kind: "TICKET"
+      }
+    ],
+    required_transitions: ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"],
+    transitions: [{ name: "ADR_ACCEPTED" }, { name: "PRD_ACCEPTED" }, { name: "TICKET_READY_FOR_RED" }],
+    artifacts: [
+      {
+        path: "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+        sha256: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        kind: "TICKET"
+      }
+    ]
+  };
+  assert.ok(canonicalizeAcceptedBatchRecord(accepted));
+  assert.equal(
+    registryHeadBindsAcceptedBatch(JSON.stringify({ version: 2, batches: [accepted] }), accepted),
+    true
+  );
+
+  // Same digests but wrong target/empty transitions must not bind.
+  const mutant = {
+    ...accepted,
+    target: {
+      repository: "github.com/evil/other",
+      branch: "main",
+      reviewed_head: "0000000000000000000000000000000000000000"
+    },
+    required_transitions: [],
+    transitions: []
+  };
+  assert.equal(
+    registryHeadBindsAcceptedBatch(JSON.stringify({ version: 2, batches: [mutant] }), accepted),
+    false
+  );
+
+  // Duplicate batch ids fail closed.
+  assert.equal(
+    registryHeadBindsAcceptedBatch(
+      JSON.stringify({ version: 2, batches: [accepted, { ...accepted, scope: "dup" }] }),
+      accepted
+    ),
+    false
+  );
+});
+
+test("d0-004b-ownership-and-red-from-canonical-ticket", async () => {
+  const { parseTicketOwnershipAndRed } = await importResolver();
+  const ticketPath = resolve(
+    root,
+    "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"
+  );
+  assert.equal(existsSync(ticketPath), true);
+  const body = readFileSync(ticketPath, "utf8");
+  const parsed = parseTicketOwnershipAndRed(body, { ticketId: "D0-004", d0_004c_merged: false });
+  assert.equal(parsed.ok, true, parsed.reason);
+  assert.equal(parsed.subtask, "D0-004B");
+  assert.equal(parsed.red_command, "node --test tests/execution-state.test.mjs");
+  assert.notEqual(parsed.red_command, "npm test -- tests/planning-contract.test.mjs");
+  assert.ok(parsed.owned_paths.includes("scripts/resolve-execution-state.mjs"));
+  assert.ok(parsed.owned_paths.includes("specs/execution-state.schema.v1.json"));
+  assert.ok(parsed.owned_paths.includes("tests/execution-state.test.mjs"));
+  assert.ok(parsed.owned_paths.some((path) => path.startsWith("fixtures/operational-state")));
+  // Must not pull C-only surfaces or whole-ticket A+B+C union blindly.
+  assert.ok(!parsed.owned_paths.includes("scripts/render-execution-views.mjs"));
+  assert.ok(!parsed.owned_paths.includes(".github/workflows/operational-state.yml"));
+  // Must not treat arbitrary prose tokens as owned symbols.
+  assert.ok(!parsed.owned_symbols.includes("Exact"));
+  assert.ok(!parsed.owned_symbols.includes("Narrow"));
+});
+
 // ---------------------------------------------------------------------------
 // Helpers — candidate / ready fact builders
 // ---------------------------------------------------------------------------
