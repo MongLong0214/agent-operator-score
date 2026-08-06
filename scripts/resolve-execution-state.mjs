@@ -1769,9 +1769,9 @@ const rejectPossiblyTruncatedList = (items, perPage, failures, label) => {
 };
 
 /**
- * Fail closed when a GitHub list/search payload's total_count exceeds returned items,
- * or when the page is full (possible omitted next page). Missing total_count is allowed
- * only when the returned page is short (fixture-compatible); a full page still fails.
+ * Authoritative GitHub list payloads require a present, finite, nonnegative integer
+ * total_count that exactly equals the returned array length for non-paginated bounded
+ * collection. Full pages also fail closed (possible omitted next page).
  */
 const rejectPartialCountPayload = (payload, arrayKey, perPage, failures, label) => {
   if (!payload || typeof payload !== "object") {
@@ -1783,17 +1783,19 @@ const rejectPartialCountPayload = (payload, arrayKey, perPage, failures, label) 
     failures.push(`${label} ${arrayKey} missing or not an array`);
     return true;
   }
-  if (typeof payload.total_count === "number") {
-    if (payload.total_count < 0 || !Number.isFinite(payload.total_count)) {
-      failures.push(`${label} invalid total_count`);
-      return true;
-    }
-    if (payload.total_count > items.length) {
-      failures.push(
-        `${label} total_count ${payload.total_count} exceeds returned ${items.length}`
-      );
-      return true;
-    }
+  if (typeof payload.total_count !== "number" || !Number.isFinite(payload.total_count)) {
+    failures.push(`${label} missing total_count`);
+    return true;
+  }
+  if (payload.total_count < 0 || !Number.isInteger(payload.total_count)) {
+    failures.push(`${label} invalid total_count`);
+    return true;
+  }
+  if (payload.total_count !== items.length) {
+    failures.push(
+      `${label} total_count ${payload.total_count} disagrees with returned ${items.length}`
+    );
+    return true;
   }
   if (items.length >= perPage) {
     failures.push(`${label} possibly truncated at ${perPage} items`);
@@ -1811,8 +1813,18 @@ const rejectPossiblyTruncatedSearch = (search, perPage, failures, label) => {
     failures.push(`${label} incomplete_results=true`);
     return true;
   }
-  if (typeof search.total_count === "number" && search.total_count > search.items.length) {
-    failures.push(`${label} total_count ${search.total_count} exceeds returned ${search.items.length}`);
+  if (typeof search.total_count !== "number" || !Number.isFinite(search.total_count)) {
+    failures.push(`${label} missing total_count`);
+    return true;
+  }
+  if (search.total_count < 0 || !Number.isInteger(search.total_count)) {
+    failures.push(`${label} invalid total_count`);
+    return true;
+  }
+  if (search.total_count !== search.items.length) {
+    failures.push(
+      `${label} total_count ${search.total_count} disagrees with returned ${search.items.length}`
+    );
     return true;
   }
   if (search.items.length >= perPage) {
@@ -2153,16 +2165,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!Array.isArray(search.items)) {
       return { ok: false, reason: `ambiguous gate PR search for ${batch.id}`, facts: null };
     }
-    // Honor total_count / incomplete_results even when items.length looks unique.
+    // Require present total_count equal to returned items (authoritative search completeness).
     if (rejectPossiblyTruncatedSearch(search, 10, failures, `gate PR search for ${batch.id}`)) {
       return { ok: false, reason: failures.join("; "), facts: null };
-    }
-    if (typeof search.total_count === "number" && search.total_count !== search.items.length) {
-      return {
-        ok: false,
-        reason: `gate PR search total_count ${search.total_count} disagrees with returned ${search.items.length} for batch ${batch.id}`,
-        facts: null
-      };
     }
     if (search.items.length === 0) {
       // No gate PR for this accepted registry row — leave unmatched (gate acceptance fails closed later).

@@ -1314,7 +1314,11 @@ test("live-adapter-outage-partial-ambiguous-fail-closed", async () => {
     const responses = { ...base };
     const key = Object.keys(responses).find((entry) => entry.startsWith("search/issues?q=") && entry.includes("Gate-Batch"));
     assert.ok(key);
-    responses[key] = { items: [{ number: 200 }, { number: 201 }] };
+    responses[key] = {
+      total_count: 2,
+      incomplete_results: false,
+      items: [{ number: 200 }, { number: 201 }]
+    };
     const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
     assert.equal(collected.ok, false);
     assert.match(collected.reason, /ambiguous/i);
@@ -1387,19 +1391,21 @@ test("live-collector-does-not-synthesize-check-app-provenance", async () => {
   const checkKey = `repos/MongLong0214/agent-operator-score/commits/${head}/check-runs?per_page=50`;
   // Mutant: jobs remain, but check-run app identity is stripped (or check-runs empty).
   const responses = clone(base);
+  const strippedChecks = (base[checkKey].check_runs ?? []).map((check) => {
+    const copy = { ...check };
+    delete copy.app;
+    return copy;
+  });
   responses[checkKey] = {
-    check_runs: (base[checkKey].check_runs ?? []).map((check) => {
-      const copy = { ...check };
-      delete copy.app;
-      return copy;
-    })
+    total_count: strippedChecks.length,
+    check_runs: strippedChecks
   };
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
   assert.equal(collected.ok, false);
   assert.match(collected.reason, /app provenance|check-run mapping|provenance/i);
 
   const emptyChecks = clone(base);
-  emptyChecks[checkKey] = { check_runs: [] };
+  emptyChecks[checkKey] = { total_count: 0, check_runs: [] };
   const collectedEmpty = collectLiveExecutionFacts(root, {
     transport: createFixtureTransport(emptyChecks)
   });
@@ -1675,70 +1681,40 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   const responses = clone(base);
 
   // Older successful attempt 1 + newer failed attempt 2 for the same job names.
-  responses[runsKey] = {
-    workflow_runs: [
-      {
-        id: 4001,
-        name: "CI",
-        path: ".github/workflows/ci.yml",
-        head_sha: head,
-        status: "completed",
-        conclusion: "success",
-        run_attempt: 1,
-        event: "pull_request"
-      },
-      {
-        id: 4002,
-        name: "CI",
-        path: ".github/workflows/ci.yml",
-        head_sha: head,
-        status: "completed",
-        conclusion: "failure",
-        run_attempt: 1,
-        event: "pull_request"
-      }
-    ]
-  };
+  const dualRuns = [
+    {
+      id: 4001,
+      name: "CI",
+      path: ".github/workflows/ci.yml",
+      head_sha: head,
+      status: "completed",
+      conclusion: "success",
+      run_attempt: 1,
+      event: "pull_request"
+    },
+    {
+      id: 4002,
+      name: "CI",
+      path: ".github/workflows/ci.yml",
+      head_sha: head,
+      status: "completed",
+      conclusion: "failure",
+      run_attempt: 1,
+      event: "pull_request"
+    }
+  ];
+  responses[runsKey] = { total_count: dualRuns.length, workflow_runs: dualRuns };
   // Stale successful check-runs (would mask failure if bound only by name).
-  responses[checksKey] = {
-    check_runs: ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map(
-      (name, i) => ({
-        id: 9100 + i,
-        name,
-        status: "completed",
-        conclusion: "success",
-        app: { id: 15368, slug: "github-actions" },
-        run_id: 4001,
-        run_attempt: 1
-      })
-    )
-  };
-  responses[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`] = {
-    jobs: ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map(
-      (name, i) => ({
-        name,
-        status: "completed",
-        conclusion: "success",
-        run_id: 4001,
-        run_attempt: 1,
-        check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${9100 + i}`
-      })
-    )
-  };
-  responses[`${repo}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
-    jobs: ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map(
-      (name, i) => ({
-        name,
-        status: "completed",
-        conclusion: "failure",
-        run_id: 4002,
-        run_attempt: 1,
-        check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${9200 + i}`
-      })
-    )
-  };
-  // Failed attempt has its own check-runs (or missing) — do not let older success win by name.
-  responses[checksKey].check_runs.push(
+  const dualChecks = [
+    ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+      id: 9100 + i,
+      name,
+      status: "completed",
+      conclusion: "success",
+      app: { id: 15368, slug: "github-actions" },
+      run_id: 4001,
+      run_attempt: 1
+    })),
     ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       id: 9200 + i,
       name,
@@ -1748,7 +1724,25 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
       run_id: 4002,
       run_attempt: 1
     }))
-  );
+  ];
+  responses[checksKey] = { total_count: dualChecks.length, check_runs: dualChecks };
+  const dualJobs = (runId, conclusion, checkBase) =>
+    ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+      name,
+      status: "completed",
+      conclusion,
+      run_id: runId,
+      run_attempt: 1,
+      check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${checkBase + i}`
+    }));
+  responses[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`] = {
+    total_count: 3,
+    jobs: dualJobs(4001, "success", 9100)
+  };
+  responses[`${repo}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
+    total_count: 3,
+    jobs: dualJobs(4002, "failure", 9200)
+  };
 
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
   assert.equal(collected.ok, true, collected.reason);
@@ -1820,6 +1814,7 @@ test("candidate-ci-selects-only-the-latest-attempt-for-each-required-workflow", 
     run_attempt: 1,
     event: "pull_request"
   });
+  responses[runsKey].total_count = responses[runsKey].workflow_runs.length;
 
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
   assert.equal(collected.ok, true, collected.reason);
@@ -2021,6 +2016,57 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   const { result } = await resolveOffline(facts);
   const d0004 = ticketState(result, "D0-004");
   assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
+});
+
+test("authoritative-total-count-missing-or-under-reported-fails-closed", async () => {
+  // R13: total_count is required and must equal returned array length (not optional, not under-count).
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const gateKey = Object.keys(responses).find((entry) => entry.includes("search/issues") && entry.includes("Gate-Batch"));
+  const runKey = Object.keys(responses).find(
+    (entry) => entry.includes("actions/runs?head_sha=cafecafe") && entry.includes("pull_request")
+  );
+  const checkKey = Object.keys(responses).find((entry) => entry.includes("check-runs?per_page=50"));
+  const jobsKey = Object.keys(responses).find((entry) => entry.includes("/attempts/") && entry.includes("/jobs"));
+  assert.ok(gateKey && runKey && checkKey && jobsKey);
+
+  const missingGate = clone(responses);
+  delete missingGate[gateKey].total_count;
+  const missingGateResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(missingGate)
+  });
+  assert.equal(missingGateResult.ok, false);
+  assert.match(missingGateResult.reason, /total_count|missing/i);
+
+  const underRun = clone(responses);
+  underRun[runKey] = {
+    ...clone(underRun[runKey]),
+    total_count: Math.max(0, (underRun[runKey].workflow_runs?.length ?? 1) - 1)
+  };
+  const underRunResult = collectLiveExecutionFacts(root, { transport: createFixtureTransport(underRun) });
+  assert.equal(underRunResult.ok, false);
+  assert.match(underRunResult.reason, /total_count|disagrees|workflow runs/i);
+
+  const underCheck = clone(responses);
+  underCheck[checkKey] = {
+    ...clone(underCheck[checkKey]),
+    total_count: Math.max(0, (underCheck[checkKey].check_runs?.length ?? 1) - 1)
+  };
+  const underCheckResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(underCheck)
+  });
+  assert.equal(underCheckResult.ok, false);
+  assert.match(underCheckResult.reason, /total_count|disagrees|check runs/i);
+
+  const missingJobs = clone(responses);
+  delete missingJobs[jobsKey].total_count;
+  const missingJobsResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(missingJobs)
+  });
+  assert.equal(missingJobsResult.ok, false);
+  assert.match(missingJobsResult.reason, /total_count|missing|jobs/i);
 });
 
 test("gate-search-total-count-mismatch-fails-closed", async () => {

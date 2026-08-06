@@ -56,7 +56,9 @@
       {
         "number": 200
       }
-    ]
+    ],
+    "total_count": 1,
+    "incomplete_results": false
   },
   "repos/MongLong0214/agent-operator-score/pulls/200": {
     "number": 200,
@@ -94,7 +96,8 @@
         "run_attempt": 1,
         "event": "push"
       }
-    ]
+    ],
+    "total_count": 1
   },
   "repos/MongLong0214/agent-operator-score/pulls?state=open&base=dev&per_page=50": [
     {
@@ -129,7 +132,8 @@
         "run_attempt": 1,
         "event": "pull_request"
       }
-    ]
+    ],
+    "total_count": 1
   },
   "repos/MongLong0214/agent-operator-score/commits/cafecafecafecafecafecafecafecafecafecafe/check-runs?per_page=50": {
     "check_runs": [
@@ -172,7 +176,8 @@
         "run_id": 4001,
         "run_attempt": 1
       }
-    ]
+    ],
+    "total_count": 3
   },
   "repos/MongLong0214/agent-operator-score/actions/runs/4001/attempts/1/jobs?per_page=50": {
     "jobs": [
@@ -200,7 +205,8 @@
         "run_id": 4001,
         "run_attempt": 1
       }
-    ]
+    ],
+    "total_count": 3
   },
   "repos/MongLong0214/agent-operator-score/pulls/300/reviews": [
     {
@@ -225,7 +231,9 @@
     "__not_found": true
   },
   "search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20is%3Apr%20is%3Amerged%20base%3Adev%20%22Ticket%3A%22&per_page=30": {
-    "items": []
+    "items": [],
+    "total_count": 0,
+    "incomplete_results": false
   },
   "raw:repos/MongLong0214/agent-operator-score/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": "{\n  \"version\": 2,\n  \"status\": \"ACTIVE\",\n  \"batches\": [\n    {\n      \"id\": \"batch-d0-004-fixture\",\n      \"status\": \"ACCEPTED\",\n      \"required_artifacts\": [\n        {\n          \"path\": \"docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md\",\n          \"sha256\": \"fd7189fbb8beb4264b9ef75b2be254d0a13f8aaaa41f5fdc70efa869de222c71\",\n          \"kind\": \"TICKET\"\n        },\n        {\n          \"path\": \"docs/prd/PRD-D0-name-migration-and-repository-skeleton.md\",\n          \"sha256\": \"03c5960476b857916e6bfd78c9ad544a99d9718e980ba8dfa9c401ecc11de723\",\n          \"kind\": \"PRD\"\n        },\n        {\n          \"path\": \"docs/adr/ADR-0001-product-identity-and-legacy-boundary.md\",\n          \"sha256\": \"99e1dd5da119f9d2c565853833965e2630f1ccd0f61c76a5c2097aca19b6c515\",\n          \"kind\": \"ADR\"\n        }\n      ],\n      \"scope\": \"fixture-accepted-batch\",\n      \"target\": {\n        \"repository\": \"github.com/MongLong0214/agent-operator-score\",\n        \"branch\": \"dev\",\n        \"reviewed_head\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"\n      },\n      \"required_transitions\": [\n        \"ADR_ACCEPTED\",\n        \"PRD_ACCEPTED\",\n        \"TICKET_READY_FOR_RED\"\n      ],\n      \"transitions\": [\n        {\n          \"name\": \"ADR_ACCEPTED\"\n        },\n        {\n          \"name\": \"PRD_ACCEPTED\"\n        },\n        {\n          \"name\": \"TICKET_READY_FOR_RED\"\n        }\n      ],\n      \"artifacts\": [\n        {\n          \"path\": \"docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md\",\n          \"sha256\": \"fd7189fbb8beb4264b9ef75b2be254d0a13f8aaaa41f5fdc70efa869de222c71\",\n          \"kind\": \"TICKET\"\n        },\n        {\n          \"path\": \"docs/prd/PRD-D0-name-migration-and-repository-skeleton.md\",\n          \"sha256\": \"03c5960476b857916e6bfd78c9ad544a99d9718e980ba8dfa9c401ecc11de723\",\n          \"kind\": \"PRD\"\n        },\n        {\n          \"path\": \"docs/adr/ADR-0001-product-identity-and-legacy-boundary.md\",\n          \"sha256\": \"99e1dd5da119f9d2c565853833965e2630f1ccd0f61c76a5c2097aca19b6c515\",\n          \"kind\": \"ADR\"\n        }\n      ]\n    }\n  ]\n}\n",
   "repos/MongLong0214/agent-operator-score/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
