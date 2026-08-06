@@ -1929,6 +1929,100 @@ test("online-acquisition-failure-never-relabels-local-feature-head-as-dev", asyn
   assert.ok(state.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
 });
 
+test("ticket-authority-binds-owning-prd-and-adrs-from-traceability-not-hardcoded-d0", async () => {
+  const {
+    buildTicketAuthorityIndex,
+    parseOwningPrdPathFromTicket,
+    createFixtureTransport,
+    collectLiveExecutionFacts
+  } = await importResolver();
+  const trace = readFileSync(resolve(root, "docs/TRACEABILITY.md"), "utf8");
+  const index = buildTicketAuthorityIndex(trace);
+  assert.equal(index.ok, true, index.reason);
+  assert.equal(
+    index.index["E0A-001"].prd_path,
+    "docs/prd/PRD-E0A-metric-and-score-issuance-contract.md"
+  );
+  assert.ok(index.index["E0A-001"].adr_ids.includes("ADR-0005"));
+  assert.notEqual(
+    index.index["E0A-001"].prd_path,
+    "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+  );
+  const e0aBody = readFileSync(
+    resolve(root, "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md"),
+    "utf8"
+  );
+  assert.equal(
+    parseOwningPrdPathFromTicket(e0aBody),
+    "docs/prd/PRD-E0A-metric-and-score-issuance-contract.md"
+  );
+
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const d0004 = collected.facts.tickets["D0-004"];
+  assert.equal(d0004.prd_path, "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md");
+  assert.deepEqual(Object.keys(d0004.digests.adrs).sort(), ["ADR-0001", "ADR-0003", "ADR-0012"]);
+  // Live digests must include non-D0 PRD authority files from TRACEABILITY, not only D0.
+  assert.ok(
+    Object.keys(collected.facts.liveDigests).some((path) =>
+      path.includes("PRD-E0A-metric-and-score-issuance-contract.md")
+    )
+  );
+});
+
+test("implementation-post-merge-failure-emits-post-merge-ci-failed", async () => {
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  const mergeSha = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+  facts.implementationMerges = [
+    { ticket_id: "D0-004", merge_commit_sha: mergeSha, number: 999 }
+  ];
+  // Keep gate post-merge rows; append implementation failure receipt.
+  facts.verifiedTickets = ["D0-001", "D0-002"]; // D0-004 not verified; failure still classifies
+  facts.postMergeCI = [
+    ...facts.postMergeCI,
+    {
+      merge_commit_sha: mergeSha,
+      head_sha: mergeSha,
+      status: "completed",
+      conclusion: "failure",
+      run_id: 77,
+      run_attempt: 1
+    }
+  ];
+  facts.prs = [];
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.equal(d0004.phase, "merged_pending_post_ci");
+  assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_FAILED"));
+});
+
+test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async () => {
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  const mergeSha = "ffffffffffffffffffffffffffffffffffffffff";
+  facts.implementationMerges = [
+    { ticket_id: "D0-004", merge_commit_sha: mergeSha, number: 998 }
+  ];
+  facts.verifiedTickets = ["D0-001", "D0-002"];
+  facts.postMergeCI = [
+    ...facts.postMergeCI,
+    {
+      merge_commit_sha: mergeSha,
+      head_sha: mergeSha,
+      status: "in_progress",
+      conclusion: null,
+      run_id: 78,
+      run_attempt: 1
+    }
+  ];
+  facts.prs = [];
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
+});
+
 test("gate-head-requires-full-identical-accepted-registry-record", async () => {
   const { registryHeadBindsAcceptedBatch, canonicalizeAcceptedBatchRecord } = await importResolver();
   const accepted = {
@@ -2059,14 +2153,20 @@ function acceptGatesFor(facts, ticketId, batchId) {
       kind: "TICKET"
     },
     {
-      path: "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      path:
+        ticket.prd_path ??
+        ticket.digests?.prd_path ??
+        "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
       sha256: ticket.digests.prd,
       kind: "PRD"
     }
   ];
   for (const [adr, sha] of Object.entries(ticket.digests.adrs ?? {})) {
     artifacts.push({
-      path: `docs/adr/${adr}-canonical-identity.md`,
+      path:
+        ticket.adr_paths?.[adr] ??
+        ticket.digests?.adr_paths?.[adr] ??
+        `docs/adr/${adr}-canonical-identity.md`,
       sha256: sha,
       kind: "ADR"
     });
