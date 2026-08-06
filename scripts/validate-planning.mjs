@@ -9,6 +9,12 @@ const errors = [];
 const pushError = (message) => errors.push(message);
 const sameArray = (left, right) => Array.isArray(left) && Array.isArray(right) &&
   left.length === right.length && left.every((value, index) => value === right[index]);
+const sameSet = (left, right) => {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+  const a = [...left].sort();
+  const b = [...right].sort();
+  return a.every((value, index) => value === b[index]);
+};
 const stableJson = (value) => {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -52,11 +58,12 @@ const resolveRepositoryPath = (path, label = path) => {
   }
   return actual;
 };
+const normalizeLf = (text) => text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 const readText = (path, label = path) => {
   const resolved = resolveRepositoryPath(path, label);
   if (!resolved) return "";
   try {
-    return readFileSync(resolved, "utf8");
+    return normalizeLf(readFileSync(resolved, "utf8"));
   } catch {
     pushError(`unreadable ${label}`);
     return "";
@@ -73,7 +80,9 @@ const readJson = (path, label) => {
   }
 };
 const rel = (path) => relative(root, path).split(sep).join("/");
-const ignoredTopLevel = new Set([".git", "node_modules", "media", "state"]);
+// Only skip package/VCS trees. media/ and state/ are walked so source-extension
+// files cannot hide from the product-code census via a top-level ignore.
+const ignoredTopLevel = new Set([".git", "node_modules"]);
 const walk = (directory = root) => {
   let entries;
   try {
@@ -105,6 +114,63 @@ const walk = (directory = root) => {
 };
 const section = (text, heading) => text.match(new RegExp(`^## ${heading}\\n([\\s\\S]*?)\\n## `, "m"))?.[1] ?? "";
 const parseDelimitedList = (value) => value === "None" ? [] : value.split(",").map((entry) => entry.trim()).filter(Boolean);
+
+const parseTicketAcceptanceEdge = (edge) => {
+  if (typeof edge !== "string" || !edge.trim()) {
+    return { ok: false, reason: "malformed ticket acceptance edge" };
+  }
+  const pathMatch = edge.match(/`((?:tests|packages|adapters|suites|conformance)\/[^`]+)`/);
+  const caseMatches = [...edge.matchAll(/\bcase(?:s)?\s+((?:`[^`]+`(?:\s*,\s*|\s+and\s+)?)+)/g)];
+  if (!caseMatches.length) {
+    return { ok: false, reason: "malformed named test case" };
+  }
+  const cases = [];
+  for (const match of caseMatches) {
+    for (const name of match[1].matchAll(/`([^`]+)`/g)) {
+      const value = name[1].trim();
+      if (!value || value.includes("/") || /\.(mjs|cjs|js|ts|tsx|jsx)$/.test(value)) {
+        return { ok: false, reason: "malformed named test case" };
+      }
+      cases.push(value);
+    }
+  }
+  if (!cases.length) return { ok: false, reason: "malformed named test case" };
+  if (new Set(cases).size !== cases.length) return { ok: false, reason: "duplicate named test case" };
+
+  let testPath = pathMatch?.[1] ?? null;
+  if (!testPath) {
+    const deferred = cases.some((name) => /^(current-|post-merge|stale-|ownership-|external-|wrong-|roadmap-|board-|issue-label|historical-|generated-|projection-|canonical-json|exact-base|registry-string|actor-policy|gate-pr|review-|single-owner|candidate-|authorization-|future-check|bootstrap-|ready-authorizes)/.test(name));
+    if (deferred || /\bexecution-state\b/.test(edge)) {
+      testPath = "tests/execution-state.test.mjs";
+    } else {
+      return { ok: false, reason: "malformed planned test path" };
+    }
+  }
+  if (
+    testPath.startsWith("/") ||
+    testPath.split("/").includes("..") ||
+    !/^(tests|packages|adapters|suites|conformance)\//.test(testPath)
+  ) {
+    return { ok: false, reason: "malformed planned test path" };
+  }
+  return { ok: true, testPath, cases };
+};
+
+const collectTestCaseNames = (fileText) => {
+  const names = new Set();
+  for (const match of normalizeLf(fileText).matchAll(/\btest\(\s*(["'`])([^"'`]+)\1/g)) {
+    names.add(match[2]);
+  }
+  return names;
+};
+
+const caseResolved = (names, caseName) => {
+  if (names.has(caseName)) return true;
+  for (const name of names) {
+    if (name.startsWith(`${caseName} `) || name.startsWith(`${caseName}:`)) return true;
+  }
+  return false;
+};
 
 const required = [
   "README.md",
@@ -147,7 +213,7 @@ if (ticketFiles.length !== 65) pushError(`ticket count ${ticketFiles.length}, ex
 
 const adrs = new Map();
 for (const path of adrFiles) {
-  const text = readFileSync(path, "utf8");
+  const text = normalizeLf(readFileSync(path, "utf8"));
   const id = text.match(/^# (ADR-\d{4}):/m)?.[1];
   if (!id) {
     pushError(`${rel(path)} lacks ADR heading`);
@@ -160,7 +226,7 @@ for (const path of adrFiles) {
 
 const prds = new Map();
 for (const path of prdFiles) {
-  const text = readFileSync(path, "utf8");
+  const text = normalizeLf(readFileSync(path, "utf8"));
   const id = text.match(/^# PRD ([A-Z0-9-]+) /m)?.[1];
   if (!id) {
     pushError(`${rel(path)} lacks PRD heading`);
@@ -169,12 +235,16 @@ for (const path of prdFiles) {
   if (prds.has(id)) pushError(`duplicate PRD ${id}`);
   const dependencies = text.match(/^- Dependencies: (.+)$/m)?.[1];
   const requirements = section(text, "Functional and contract requirements").match(/^\d+\. .+$/gm) ?? [];
+  const requirementKeys = (section(text, "Functional and contract requirements").match(/^(\d+)\. /gm) ?? [])
+    .map((line) => line.match(/^(\d+)\./)?.[1])
+    .filter(Boolean);
   const acceptanceIds = [...text.matchAll(/^- (AC-[A-Z0-9-]+): /gm)].map((match) => match[1]);
   const adrIds = [...(dependencies ?? "").matchAll(/(?:ADR-)?(\d{4})/g)].map((match) => `ADR-${match[1]}`);
-  prds.set(id, { id, path: rel(path), text, dependencies, requirements, acceptanceIds, adrIds });
+  prds.set(id, { id, path: rel(path), text, dependencies, requirements, requirementKeys, acceptanceIds, adrIds });
   if (!text.includes("PROPOSED — MAINTAINER GATE REQUIRED")) pushError(`${rel(path)} lacks proposed gate`);
   if (!dependencies || !requirements.length || !acceptanceIds.length) pushError(`semantic graph ${id} lacks required PRD edges`);
   if (new Set(acceptanceIds).size !== acceptanceIds.length) pushError(`semantic graph ${id} has duplicate acceptance IDs`);
+  if (new Set(requirementKeys).size !== requirementKeys.length) pushError(`semantic graph ${id} has duplicate requirements`);
   for (const adrId of adrIds) if (!adrs.has(adrId)) pushError(`semantic graph ${id} unknown ADR ${adrId}`);
   if (!text.includes("docs/north-star/agent-operator-score-ssot-v1.0.md")) pushError(`semantic graph ${id} lacks SSOT authority`);
 }
@@ -186,7 +256,7 @@ const requiredTicketSections = [
 ];
 const tickets = new Map();
 for (const path of ticketFiles) {
-  const text = readFileSync(path, "utf8");
+  const text = normalizeLf(readFileSync(path, "utf8"));
   const id = text.match(/^# ([A-Z0-9-]+) · /m)?.[1];
   if (!id) {
     pushError(`${rel(path)} lacks canonical ticket heading`);
@@ -203,7 +273,11 @@ for (const path of ticketFiles) {
   const milestone = text.match(/^- Milestone: (.+)$/m)?.[1];
   const size = text.match(/^- Size: (.+)$/m)?.[1];
   const dependencyText = text.match(/^- Dependencies: (.+)$/m)?.[1];
-  const acceptanceLines = [...text.matchAll(/^- (AC-[A-Z0-9-]+) ↔ (.+)$/gm)].map((match) => ({ id: match[1], edge: match[2] }));
+  const acceptanceLines = [...text.matchAll(/^- (AC-[A-Z0-9-]+) ↔ (.+)$/gm)].map((match) => ({
+    id: match[1],
+    edge: match[2],
+    parsed: null
+  }));
   tickets.set(id, {
     id,
     path: rel(path),
@@ -221,11 +295,15 @@ for (const path of ticketFiles) {
   if (!prd) pushError(`semantic graph ${id} lacks exact owning PRD link`);
   if (!epic || !milestone || !size || !dependencyText) pushError(`semantic graph ${id} lacks static ticket metadata`);
   if (!acceptanceLines.length) pushError(`semantic graph ${id} lacks ticket acceptance edges`);
-  if (new Set(acceptanceLines.map(({ id: value }) => value)).size !== acceptanceLines.length) pushError(`semantic graph ${id} has duplicate ticket acceptance edges`);
+  if (new Set(acceptanceLines.map(({ id: value }) => value)).size !== acceptanceLines.length) {
+    pushError(`semantic graph ${id} has duplicate ticket acceptance edges`);
+  }
   if (id !== "D0-003") {
-    for (const { id: acceptanceId, edge } of acceptanceLines) {
-      if (!acceptanceId.startsWith(`AC-${id}-`)) pushError(`semantic graph ${id} has foreign acceptance ${acceptanceId}`);
-      if (!/case(?:s)? `[^`]+`/.test(edge)) pushError(`semantic graph ${id} acceptance ${acceptanceId} lacks named test case`);
+    for (const line of acceptanceLines) {
+      if (!line.id.startsWith(`AC-${id}-`)) pushError(`semantic graph ${id} has foreign acceptance ${line.id}`);
+      const parsed = parseTicketAcceptanceEdge(line.edge);
+      line.parsed = parsed;
+      if (!parsed.ok) pushError(`semantic graph ${id} acceptance ${line.id} ${parsed.reason}`);
     }
   }
 }
@@ -250,6 +328,40 @@ const visit = (id) => {
 };
 for (const id of dependencyGraph.keys()) visit(id);
 
+// Resolve ticket AC → planned test path/case against the live tree when the file exists.
+for (const ticket of tickets.values()) {
+  if (ticket.id === "D0-003") continue;
+  for (const line of ticket.acceptanceLines) {
+    const parsed = line.parsed;
+    if (!parsed?.ok) continue;
+    const absolute = resolve(root, parsed.testPath);
+    if (!existsSync(absolute)) continue; // future planned module
+    let stat;
+    try {
+      stat = lstatSync(absolute);
+    } catch {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unreadable planned test path ${parsed.testPath}`);
+      continue;
+    }
+    if (!stat.isFile() || stat.isSymbolicLink?.()) {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} malformed planned test path ${parsed.testPath}`);
+      continue;
+    }
+    let names;
+    try {
+      names = collectTestCaseNames(readFileSync(absolute, "utf8"));
+    } catch {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unreadable planned test path ${parsed.testPath}`);
+      continue;
+    }
+    for (const caseName of parsed.cases) {
+      if (!caseResolved(names, caseName)) {
+        pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test case not found: ${parsed.testPath} :: ${caseName}`);
+      }
+    }
+  }
+}
+
 const traceability = readText("docs/TRACEABILITY.md");
 const catalogText = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m)?.[1];
 let catalog;
@@ -258,7 +370,7 @@ try {
 } catch {
   pushError("semantic graph invalid traceability catalog JSON");
 }
-if (!catalog || catalog.schema_version !== 1 || catalog.ssot !== "docs/north-star/agent-operator-score-ssot-v1.0.md" || !Array.isArray(catalog.prds)) {
+if (!catalog || catalog.schema_version !== 2 || catalog.ssot !== "docs/north-star/agent-operator-score-ssot-v1.0.md" || !Array.isArray(catalog.prds)) {
   pushError("semantic graph missing canonical traceability catalog");
 } else {
   if (catalog.prds.length !== prds.size) pushError(`semantic graph PRD catalog count ${catalog.prds.length}, expected ${prds.size}`);
@@ -277,12 +389,81 @@ if (!catalog || catalog.schema_version !== 1 || catalog.ssot !== "docs/north-sta
       continue;
     }
     if (entry.path !== prd.path) pushError(`semantic graph ${entry.id} path diverges from catalog`);
-    if (!sameArray(entry.adr_ids, prd.adrIds)) pushError(`semantic graph ${entry.id} ADR ownership diverges from catalog`);
+    if (!sameSet(entry.adr_ids ?? [], prd.adrIds)) pushError(`semantic graph ${entry.id} ADR ownership diverges from catalog`);
     if (entry.requirement_count !== prd.requirements.length) pushError(`semantic graph ${entry.id} requirement count diverges from catalog`);
-    if (!sameArray(entry.acceptance_ids, prd.acceptanceIds)) pushError(`semantic graph ${entry.id} acceptance IDs diverge from catalog: expected ${(entry.acceptance_ids ?? []).join(",")} actual ${prd.acceptanceIds.join(",")}`);
+    if (!sameSet(entry.acceptance_ids ?? [], prd.acceptanceIds)) {
+      pushError(`semantic graph ${entry.id} acceptance IDs diverge from catalog: expected ${(entry.acceptance_ids ?? []).join(",")} actual ${prd.acceptanceIds.join(",")}`);
+    }
     const ownedTickets = [...tickets.values()].filter((ticket) => ticket.prd?.id === entry.id).map((ticket) => ticket.id).sort();
     const expectedTickets = Array.isArray(entry.ticket_ids) ? [...entry.ticket_ids].sort() : [];
     if (!sameArray(expectedTickets, ownedTickets)) pushError(`semantic graph ${entry.id} ticket ownership diverges from catalog`);
+
+    // requirement → PRD AC edges
+    if (!Array.isArray(entry.requirement_to_acceptance) || entry.requirement_to_acceptance.length !== prd.requirementKeys.length) {
+      pushError(`semantic graph ${entry.id} missing requirement → acceptance edges`);
+    } else {
+      const coveredAcs = new Set();
+      const seenReq = new Set();
+      for (const edge of entry.requirement_to_acceptance) {
+        if (!edge || typeof edge.requirement_key !== "string" || !Array.isArray(edge.acceptance_ids)) {
+          pushError(`semantic graph ${entry.id} malformed requirement → acceptance edge`);
+          continue;
+        }
+        if (seenReq.has(edge.requirement_key)) pushError(`semantic graph ${entry.id} duplicate requirement edge ${edge.requirement_key}`);
+        seenReq.add(edge.requirement_key);
+        if (!prd.requirementKeys.includes(edge.requirement_key)) {
+          pushError(`semantic graph ${entry.id} orphan requirement edge ${edge.requirement_key}`);
+        }
+        if (!edge.acceptance_ids.length) pushError(`semantic graph ${entry.id} requirement ${edge.requirement_key} has empty acceptance binding`);
+        if (new Set(edge.acceptance_ids).size !== edge.acceptance_ids.length) {
+          pushError(`semantic graph ${entry.id} requirement ${edge.requirement_key} has duplicate acceptance binding`);
+        }
+        for (const ac of edge.acceptance_ids) {
+          if (!prd.acceptanceIds.includes(ac)) pushError(`semantic graph ${entry.id} requirement edge references unknown acceptance ${ac}`);
+          coveredAcs.add(ac);
+        }
+      }
+      for (const key of prd.requirementKeys) {
+        if (!seenReq.has(key)) pushError(`semantic graph ${entry.id} orphan requirement ${key}`);
+      }
+      for (const ac of prd.acceptanceIds) {
+        if (!coveredAcs.has(ac)) pushError(`semantic graph ${entry.id} orphan PRD acceptance ${ac}`);
+      }
+    }
+
+    // PRD AC → ticket edges
+    if (!Array.isArray(entry.acceptance_to_tickets) || entry.acceptance_to_tickets.length !== prd.acceptanceIds.length) {
+      pushError(`semantic graph ${entry.id} missing acceptance → ticket edges`);
+    } else {
+      const coveredTickets = new Set();
+      const seenAc = new Set();
+      for (const edge of entry.acceptance_to_tickets) {
+        if (!edge || typeof edge.acceptance_id !== "string" || !Array.isArray(edge.ticket_ids)) {
+          pushError(`semantic graph ${entry.id} malformed acceptance → ticket edge`);
+          continue;
+        }
+        if (seenAc.has(edge.acceptance_id)) pushError(`semantic graph ${entry.id} duplicate acceptance edge ${edge.acceptance_id}`);
+        seenAc.add(edge.acceptance_id);
+        if (!prd.acceptanceIds.includes(edge.acceptance_id)) {
+          pushError(`semantic graph ${entry.id} orphan acceptance edge ${edge.acceptance_id}`);
+        }
+        if (!edge.ticket_ids.length) pushError(`semantic graph ${entry.id} acceptance ${edge.acceptance_id} has empty ticket binding`);
+        if (new Set(edge.ticket_ids).size !== edge.ticket_ids.length) {
+          pushError(`semantic graph ${entry.id} acceptance ${edge.acceptance_id} has duplicate ticket binding`);
+        }
+        for (const ticketId of edge.ticket_ids) {
+          if (!ownedTickets.includes(ticketId)) pushError(`semantic graph ${entry.id} acceptance edge references foreign ticket ${ticketId}`);
+          coveredTickets.add(ticketId);
+        }
+      }
+      for (const ac of prd.acceptanceIds) {
+        if (!seenAc.has(ac)) pushError(`semantic graph ${entry.id} orphan PRD acceptance binding ${ac}`);
+      }
+      for (const ticketId of ownedTickets) {
+        if (!coveredTickets.has(ticketId)) pushError(`semantic graph ${entry.id} orphan ticket ${ticketId} in acceptance bindings`);
+      }
+    }
+
     for (const adrId of entry.adr_ids ?? []) catalogAdrIds.add(adrId);
     for (const ticketId of entry.ticket_ids ?? []) {
       if (catalogTicketIds.has(ticketId)) pushError(`semantic graph duplicate ticket ownership ${ticketId}`);
@@ -324,6 +505,9 @@ if (manifest) {
   }
   const definedLabels = new Set(manifest.labels?.map(({ name }) => name));
   const manifestIds = new Set();
+  const issueNumbers = new Set();
+  const ticketPaths = new Set();
+  const expectedKeys = new Set(["id", "title", "issue", "ticket_path", "milestone", "dependencies", "size", "epic", "kind", "initial_labels", "body_template"]);
   for (const record of manifest.tickets ?? []) {
     if (!record || typeof record.id !== "string" || manifestIds.has(record.id)) {
       pushError("issue manifest duplicate or malformed ticket");
@@ -335,8 +519,24 @@ if (manifest) {
       pushError(`issue manifest unknown ${record.id}`);
       continue;
     }
-    const expectedKeys = ["id", "title", "issue", "ticket_path", "milestone", "dependencies", "size", "epic", "kind", "initial_labels", "body_template"];
-    if (!sameArray(Object.keys(record), expectedKeys)) pushError(`issue manifest ${record.id} is not a static catalog record`);
+    const keys = Object.keys(record);
+    if (keys.length !== expectedKeys.size || keys.some((key) => !expectedKeys.has(key))) {
+      pushError(`issue manifest ${record.id} is not a static catalog record`);
+    }
+    if (typeof record.issue !== "number" || !Number.isInteger(record.issue) || record.issue <= 0) {
+      pushError(`issue manifest ${record.id} has malformed issue number`);
+    } else if (issueNumbers.has(record.issue)) {
+      pushError(`issue manifest duplicate issue number ${record.issue}`);
+    } else {
+      issueNumbers.add(record.issue);
+    }
+    if (typeof record.ticket_path !== "string" || !record.ticket_path) {
+      pushError(`issue manifest ${record.id} has malformed ticket_path`);
+    } else if (ticketPaths.has(record.ticket_path)) {
+      pushError(`issue manifest duplicate ticket_path ${record.ticket_path}`);
+    } else {
+      ticketPaths.add(record.ticket_path);
+    }
     if (record.issue !== issueMap.get(record.id)) pushError(`issue map and manifest disagree for ${record.id}`);
     if (record.ticket_path !== ticket.path) pushError(`issue manifest ${record.id} has wrong ticket_path`);
     if (record.milestone !== ticket.milestone || !sameArray(record.dependencies, ticket.dependencies) || record.size !== ticket.size || record.epic !== ticket.epic) {

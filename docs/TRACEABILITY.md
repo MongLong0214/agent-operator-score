@@ -1,16 +1,15 @@
 # SSOT → ADR → PRD → ticket traceability
 
-## Semantic catalog v2
+Status: **STATIC SEMANTIC CATALOG — planning authority graph for D0-004A**
 
-D0-004A makes the static authority graph executable. The catalog below is a static planning input: it binds the SSOT, each PRD path, required ADRs, requirement count, exact PRD acceptance IDs, and exact owned ticket IDs. The validator derives every ticket’s acceptance-to-test edge from its contract and rejects an orphan, duplicate, missing, malformed, or mismatched edge.
+D0-004A makes the static authority graph executable. The catalog below is a static planning input: it binds the SSOT, each PRD path, required ADRs, requirement count, exact PRD acceptance IDs, owned ticket IDs, explicit requirement → PRD acceptance edges, and explicit PRD acceptance → ticket edges. The validator derives every ticket’s acceptance-to-test edge from its contract, resolves each planned test path and named case against the repository test tree when that path exists, and rejects an orphan, duplicate, missing, malformed, or mismatched edge.
 
-It does not resolve live GitHub state, readiness, current phase, or projections. Those are D0-004B/C responsibilities; issue body, issue state, labels, Roadmap, Board, the Maintainer Gate status prose, and the historical ledger are not semantic inputs. The v1 Maintainer Gate registry is historical only and is never an active ownership or validator input.
+JSON object key order in this catalog is not schema-significant; validators compare sets and sorted multi-values, never insertion order.
 
 <!-- AOS_SEMANTIC_CATALOG_V2_START -->
-
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "ssot": "docs/north-star/agent-operator-score-ssot-v1.0.md",
   "prds": [
     {
@@ -35,6 +34,77 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "D0-002",
         "D0-003",
         "D0-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-D0-1",
+            "AC-D0-6"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-D0-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-D0-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-D0-4"
+          ]
+        },
+        {
+          "requirement_key": "5",
+          "acceptance_ids": [
+            "AC-D0-5"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-D0-1",
+          "ticket_ids": [
+            "D0-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-2",
+          "ticket_ids": [
+            "D0-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-3",
+          "ticket_ids": [
+            "D0-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-4",
+          "ticket_ids": [
+            "D0-004"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-5",
+          "ticket_ids": [
+            "D0-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-6",
+          "ticket_ids": [
+            "D0-002"
+          ]
+        }
       ]
     },
     {
@@ -56,6 +126,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E0A-001",
         "E0A-002",
         "E0A-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E0A-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E0A-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E0A-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E0A-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E0A-1",
+          "ticket_ids": [
+            "E0A-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0A-2",
+          "ticket_ids": [
+            "E0A-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0A-3",
+          "ticket_ids": [
+            "E0A-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0A-4",
+          "ticket_ids": [
+            "E0A-001"
+          ]
+        }
       ]
     },
     {
@@ -74,6 +196,52 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E0B-001",
         "E0B-002",
         "E0B-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E0B-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E0B-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E0B-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E0B-1"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E0B-1",
+          "ticket_ids": [
+            "E0B-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0B-2",
+          "ticket_ids": [
+            "E0B-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0B-3",
+          "ticket_ids": [
+            "E0B-003"
+          ]
+        }
       ]
     },
     {
@@ -92,6 +260,52 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E0C-001",
         "E0C-002",
         "E0C-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E0C-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E0C-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E0C-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E0C-1"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E0C-1",
+          "ticket_ids": [
+            "E0C-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0C-2",
+          "ticket_ids": [
+            "E0C-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0C-3",
+          "ticket_ids": [
+            "E0C-003"
+          ]
+        }
       ]
     },
     {
@@ -110,6 +324,52 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E0D-001",
         "E0D-002",
         "E0D-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E0D-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E0D-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E0D-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E0D-1"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E0D-1",
+          "ticket_ids": [
+            "E0D-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0D-2",
+          "ticket_ids": [
+            "E0D-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E0D-3",
+          "ticket_ids": [
+            "E0D-003"
+          ]
+        }
       ]
     },
     {
@@ -129,6 +389,52 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E1-001",
         "E1-002",
         "E1-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E1-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E1-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E1-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E1-1"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E1-1",
+          "ticket_ids": [
+            "E1-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E1-2",
+          "ticket_ids": [
+            "E1-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E1-3",
+          "ticket_ids": [
+            "E1-003"
+          ]
+        }
       ]
     },
     {
@@ -151,6 +457,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E10-001",
         "E10-002",
         "E10-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E10-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E10-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E10-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E10-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E10-1",
+          "ticket_ids": [
+            "E10-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E10-2",
+          "ticket_ids": [
+            "E10-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E10-3",
+          "ticket_ids": [
+            "E10-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E10-4",
+          "ticket_ids": [
+            "E10-001"
+          ]
+        }
       ]
     },
     {
@@ -171,6 +529,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E11-001",
         "E11-002",
         "E11-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E11-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E11-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E11-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E11-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E11-1",
+          "ticket_ids": [
+            "E11-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E11-2",
+          "ticket_ids": [
+            "E11-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E11-3",
+          "ticket_ids": [
+            "E11-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E11-4",
+          "ticket_ids": [
+            "E11-001"
+          ]
+        }
       ]
     },
     {
@@ -190,6 +600,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E12-001",
         "E12-002",
         "E12-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E12-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E12-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E12-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E12-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E12-1",
+          "ticket_ids": [
+            "E12-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E12-2",
+          "ticket_ids": [
+            "E12-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E12-3",
+          "ticket_ids": [
+            "E12-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E12-4",
+          "ticket_ids": [
+            "E12-001"
+          ]
+        }
       ]
     },
     {
@@ -207,6 +669,52 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
       "ticket_ids": [
         "E13-001",
         "E13-002"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E13-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E13-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E13-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E13-1"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E13-1",
+          "ticket_ids": [
+            "E13-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E13-2",
+          "ticket_ids": [
+            "E13-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E13-3",
+          "ticket_ids": [
+            "E13-001"
+          ]
+        }
       ]
     },
     {
@@ -227,6 +735,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E14-001",
         "E14-002",
         "E14-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E14-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E14-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E14-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E14-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E14-1",
+          "ticket_ids": [
+            "E14-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E14-2",
+          "ticket_ids": [
+            "E14-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E14-3",
+          "ticket_ids": [
+            "E14-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E14-4",
+          "ticket_ids": [
+            "E14-001"
+          ]
+        }
       ]
     },
     {
@@ -250,6 +810,65 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E2-003",
         "E2-004",
         "E2-005"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E2-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E2-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E2-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E2-4"
+          ]
+        },
+        {
+          "requirement_key": "5",
+          "acceptance_ids": [
+            "AC-E2-1"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E2-1",
+          "ticket_ids": [
+            "E2-001",
+            "E2-005"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E2-2",
+          "ticket_ids": [
+            "E2-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E2-3",
+          "ticket_ids": [
+            "E2-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E2-4",
+          "ticket_ids": [
+            "E2-004"
+          ]
+        }
       ]
     },
     {
@@ -271,6 +890,70 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E3-002",
         "E3-003",
         "E3-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E3-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E3-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E3-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E3-4"
+          ]
+        },
+        {
+          "requirement_key": "5",
+          "acceptance_ids": [
+            "AC-E3-5"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E3-1",
+          "ticket_ids": [
+            "E3-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E3-2",
+          "ticket_ids": [
+            "E3-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E3-3",
+          "ticket_ids": [
+            "E3-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E3-4",
+          "ticket_ids": [
+            "E3-004"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E3-5",
+          "ticket_ids": [
+            "E3-001"
+          ]
+        }
       ]
     },
     {
@@ -292,6 +975,65 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E4-002",
         "E4-003",
         "E4-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E4-1",
+            "AC-E4-5"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E4-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E4-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E4-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E4-1",
+          "ticket_ids": [
+            "E4-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E4-2",
+          "ticket_ids": [
+            "E4-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E4-3",
+          "ticket_ids": [
+            "E4-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E4-4",
+          "ticket_ids": [
+            "E4-004"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E4-5",
+          "ticket_ids": [
+            "E4-001"
+          ]
+        }
       ]
     },
     {
@@ -312,6 +1054,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E5-002",
         "E5-003",
         "E5-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E5-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E5-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E5-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E5-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E5-1",
+          "ticket_ids": [
+            "E5-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E5-2",
+          "ticket_ids": [
+            "E5-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E5-3",
+          "ticket_ids": [
+            "E5-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E5-4",
+          "ticket_ids": [
+            "E5-004"
+          ]
+        }
       ]
     },
     {
@@ -334,6 +1128,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E6-002",
         "E6-003",
         "E6-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E6-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E6-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E6-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E6-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E6-1",
+          "ticket_ids": [
+            "E6-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E6-2",
+          "ticket_ids": [
+            "E6-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E6-3",
+          "ticket_ids": [
+            "E6-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E6-4",
+          "ticket_ids": [
+            "E6-004"
+          ]
+        }
       ]
     },
     {
@@ -356,6 +1202,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E7-002",
         "E7-003",
         "E7-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E7-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E7-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E7-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E7-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E7-1",
+          "ticket_ids": [
+            "E7-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E7-2",
+          "ticket_ids": [
+            "E7-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E7-3",
+          "ticket_ids": [
+            "E7-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E7-4",
+          "ticket_ids": [
+            "E7-004"
+          ]
+        }
       ]
     },
     {
@@ -376,6 +1274,58 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E8-002",
         "E8-003",
         "E8-004"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E8-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E8-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E8-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E8-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E8-1",
+          "ticket_ids": [
+            "E8-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E8-2",
+          "ticket_ids": [
+            "E8-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E8-3",
+          "ticket_ids": [
+            "E8-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E8-4",
+          "ticket_ids": [
+            "E8-004"
+          ]
+        }
       ]
     },
     {
@@ -396,12 +1346,70 @@ It does not resolve live GitHub state, readiness, current phase, or projections.
         "E9-001",
         "E9-002",
         "E9-003"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E9-1",
+            "AC-E9-5"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E9-2"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E9-3"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E9-4"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E9-1",
+          "ticket_ids": [
+            "E9-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E9-2",
+          "ticket_ids": [
+            "E9-002"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E9-3",
+          "ticket_ids": [
+            "E9-003"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E9-4",
+          "ticket_ids": [
+            "E9-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E9-5",
+          "ticket_ids": [
+            "E9-002"
+          ]
+        }
       ]
     }
   ]
 }
 ```
-
 <!-- AOS_SEMANTIC_CATALOG_V2_END -->
 
 ## Completeness rule
