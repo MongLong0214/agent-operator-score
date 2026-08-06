@@ -229,14 +229,14 @@ test("D0 name availability is separate from the E14 license and publication gate
   assert.match(e14, /LICENSE, contribution acceptance, redistribution, and publication are E14\/G4 decisions/);
 });
 
-test("superseded D0-003 has no owned implementation", () => {
+test("superseded-d0-003-has-no-owned-implementation", () => {
   const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md"), "utf8");
   assert.match(ticket, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
   assert.match(ticket, /- None\. This superseded record does not authorize a file, symbol, test, or implementation change\./);
   assert.match(ticket, /PR #53/);
 });
 
-test("issue-map-and-manifest-agreement preserves the static catalog", () => {
+test("issue-map-and-manifest-agreement", () => {
   const issues = JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8"));
   assert.equal(issues.milestones.length, 6);
   assert.equal(issues.tickets.length, 65);
@@ -349,7 +349,7 @@ test("orphan-requirement-ac-ticket-test-mutants catalog ownership orphan compani
   }
 });
 
-test("operational-authority-schema-and-ticket-agreement rejects a non-identical policy copy", () => {
+test("operational-authority-schema-and-ticket-agreement", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos operational authority mismatch "));
   const fixture = join(parent, "repository");
   try {
@@ -411,7 +411,7 @@ test("identity-consistency-and-no-exception", () => {
   }
 });
 
-test("maintainer-gate-digest-invalidation rejects a material accepted artifact edit", () => {
+test("maintainer-gate-digest-invalidation", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos gate digest invalidation "));
   const fixture = join(parent, "repository");
   try {
@@ -551,8 +551,38 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
           )
         );
       },
-      /named test case not found[\s\S]*definitely-not-a-real-test-case/,
+      /named test case not (found|in planned_tests)[\s\S]*definitely-not-a-real-test-case/,
       "orphan/missing named test case"
+    );
+
+    // Planned path: typo absent from disk and planned_tests (second-packet fail-open).
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ `tests/planning/typo-does-not-exist.test.mjs` case `canonical-pass`:"
+          )
+        );
+      },
+      /unknown planned test path[\s\S]*typo-does-not-exist/,
+      "unknown typo planned test path"
+    );
+
+    // Planned path: same path token twice in one edge (second-packet fail-open).
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` `tests/planning/identity.test.mjs` case `canonical-pass`:"
+          )
+        );
+      },
+      /duplicate planned test path/,
+      "duplicate planned test path token"
     );
 
     // Named test case: duplicate case names in one edge.
@@ -585,14 +615,14 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       "malformed ticket AC / named test case"
     );
 
-    // Planned test path: malformed escape outside allowed roots.
+    // Planned test path: path token with traversal (malformed shape).
     expectFail(
       () => {
         writeFileSync(
           ticketPath,
           originalTicket.replace(
             "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
-            "- AC-D0-001-1 ↔ `../escape.test.mjs` case `canonical-pass`:"
+            "- AC-D0-001-1 ↔ `tests/../escape.test.mjs` case `canonical-pass`:"
           )
         );
       },
@@ -702,16 +732,27 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
             ticket_ids: edge.ticket_ids.filter((id) => id !== "D0-004")
           }))
           .filter((edge) => edge.ticket_ids.length > 0);
-        // Keep one edge per remaining acceptance id; drop AC-D0-4 only.
         d0.acceptance_to_tickets = d0.acceptance_to_tickets.filter((edge) => edge.acceptance_id !== "AC-D0-4");
+        // Also drop AC-D0-2's D0-004 if present after filter above
         writeCatalog({ ...snapshot, catalog: snapshot.catalog });
       },
       /orphan ticket D0-004|ticket ownership diverges from catalog|missing acceptance → ticket edges/,
       "orphan ticket"
     );
 
-    // Ticket: duplicate ticket ownership across PRD entries is covered by dropping then re-adding
-    // the same ticket id twice on D0.
+    // Ticket ownership: malformed acceptance → ticket edge (ticket_ids not an array).
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.acceptance_to_tickets[0] = { acceptance_id: "AC-D0-1", ticket_ids: "D0-001" };
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /malformed acceptance → ticket edge/,
+      "malformed ticket ownership edge"
+    );
+
+    // Ticket: duplicate ticket id in ownership list.
     expectFail(
       () => {
         const snapshot = readCatalog(fixture);
@@ -721,6 +762,29 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       },
       /ticket ownership diverges from catalog|duplicate ticket/,
       "duplicate ticket ownership"
+    );
+
+    // Planned_tests: duplicate path entry.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        snapshot.catalog.planned_tests.push({ ...snapshot.catalog.planned_tests[0] });
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /duplicate planned test path/,
+      "duplicate planned_tests path entry"
+    );
+
+    // Planned_tests: orphan case never referenced by a ticket edge.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const entry = snapshot.catalog.planned_tests.find((item) => item.path === "tests/planning/identity.test.mjs");
+        entry.cases.push("never-referenced-orphan-case");
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan planned test case[\s\S]*never-referenced-orphan-case/,
+      "orphan planned test case"
     );
   } finally {
     rmSync(parent, { recursive: true, force: true });
