@@ -649,7 +649,7 @@ test("ADR-0003 correction invalidates the D0-002 planning acceptance and renews 
   assert.match(ticket, /No companion failure is permitted; identity and preservation cases must pass/);
   assert.match(ticket, /case `root-private-scripts-and-runnable-surface`/);
   assert.match(ticket, /duplicate clearance source/);
-  assert.match(ticket, /UNRESOLVED blocks public canonical-brand adoption, public publication, and D0 exit but does not block the private unpublished root package identifier/);
+  assert.match(ticket, /`UNRESOLVED` blocks public canonical-brand adoption, public publication, and D0 exit but does not block the private unpublished root package identifier/);
 
   assert.ok(supersededRenewal);
   assert.equal(supersededRenewal.status, "INVALIDATED");
