@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { basename, join, resolve } from "node:path";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
@@ -31,6 +31,8 @@ const setPendingGateRegistry = (fixture) => {
   }
   writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
 };
+
+const mkdirp = (path) => mkdirSync(path, { recursive: true });
 
 test("planning contract validator reports the truthful structural census", () => {
   const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
@@ -61,7 +63,7 @@ test("planning contract validator reports the truthful structural census", () =>
   }
 });
 
-test("planning validator preserves encoded paths with spaces", () => {
+test("encoded-path-root-resolution", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos encoded path "));
   const fixture = join(parent, "repository");
   try {
@@ -250,7 +252,7 @@ test("issue-map-and-manifest-agreement preserves the static catalog", () => {
   assert.equal(issues.labels.some(({ name }) => name === ["legacy", "pre-aos"].join(":")), false);
 });
 
-test("semantic-traceability-graph rejects an orphaned PRD acceptance criterion", () => {
+test("semantic-traceability-graph catalog acceptance-id companion", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos semantic traceability orphan "));
   const fixture = join(parent, "repository");
   try {
@@ -312,7 +314,7 @@ test("issue-map-and-manifest-agreement rejects a catalog dependency mismatch", (
   }
 });
 
-test("orphan-requirement-ac-ticket-test-mutants reject a catalog ownership orphan", () => {
+test("orphan-requirement-ac-ticket-test-mutants catalog ownership orphan companion", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos catalog ownership orphan "));
   const fixture = join(parent, "repository");
   try {
@@ -378,7 +380,7 @@ test("operational-authority-schema-and-ticket-agreement rejects a non-identical 
   }
 });
 
-test("identity-consistency-and-no-exception rejects root manifest drift", () => {
+test("identity-consistency-and-no-exception", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos identity consistency drift "));
   const fixture = join(parent, "repository");
   try {
@@ -439,6 +441,285 @@ test("maintainer-gate-digest-invalidation rejects a material accepted artifact e
     if (existsSync(join(fixture, ".git"))) {
       execFileSync("git", ["worktree", "remove", "--force", fixture], { cwd: root, encoding: "utf8" });
     }
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+
+test("computed-product-code-census", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos computed product census "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const mediaSource = join(fixture, "media", "hidden-source.mjs");
+    const stateSource = join(fixture, "state", "hidden-source.mjs");
+    mkdirp(join(fixture, "media"));
+    mkdirp(join(fixture, "state"));
+    writeFileSync(mediaSource, "export {};\n");
+    writeFileSync(stateSource, "export {};\n");
+
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error, "source under media/state must enter product-code census");
+    assert.equal(error.status, 1);
+    assert.match(error.stderr, /unallowlisted product code/);
+    assert.match(error.stderr, /media\/hidden-source\.mjs/);
+    assert.match(error.stderr, /state\/hidden-source\.mjs/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("orphan-requirement-ac-ticket-test-mutants", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos orphan graph mutants "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+
+    // Mutant: invent a named test case on an existing planned path (fail-open repro).
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-001-canonical-identifier-registry.md");
+    const originalTicket = readFileSync(ticketPath, "utf8");
+    writeFileSync(
+      ticketPath,
+      originalTicket.replace(
+        "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+        "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `definitely-not-a-real-test-case`:"
+      )
+    );
+    setPendingGateRegistry(fixture);
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error, "invented named test case must fail closed");
+    assert.equal(error.status, 1);
+    assert.match(error.stderr, /named test case not found/);
+    assert.match(error.stderr, /definitely-not-a-real-test-case/);
+    writeFileSync(ticketPath, originalTicket);
+
+    // Mutant: malformed planned test path.
+    writeFileSync(
+      ticketPath,
+      originalTicket.replace(
+        "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+        "- AC-D0-001-1 ↔ `../escape.test.mjs` case `canonical-pass`:"
+      )
+    );
+    setPendingGateRegistry(fixture);
+    error = undefined;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /malformed planned test path/);
+    writeFileSync(ticketPath, originalTicket);
+    setPendingGateRegistry(fixture);
+
+    // Mutant: duplicate PRD acceptance in catalog requirement edge.
+    const tracePath = join(fixture, "docs/TRACEABILITY.md");
+    const traceability = readFileSync(tracePath, "utf8");
+    const catalogMatch = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m);
+    assert.ok(catalogMatch);
+    const catalog = JSON.parse(catalogMatch[1]);
+    const d0 = catalog.prds.find(({ id }) => id === "D0");
+    d0.requirement_to_acceptance[0].acceptance_ids.push(d0.requirement_to_acceptance[0].acceptance_ids[0]);
+    writeFileSync(tracePath, traceability.replace(catalogMatch[1], JSON.stringify(catalog, null, 2)));
+    setPendingGateRegistry(fixture);
+    error = undefined;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /duplicate acceptance binding/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("semantic-traceability-graph", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos semantic edges "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const tracePath = join(fixture, "docs/TRACEABILITY.md");
+    const traceability = readFileSync(tracePath, "utf8");
+    const catalogMatch = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m);
+    assert.ok(catalogMatch);
+    const catalog = JSON.parse(catalogMatch[1]);
+    const d0 = catalog.prds.find(({ id }) => id === "D0");
+    // Orphan PRD acceptance: drop it from requirement bindings.
+    d0.requirement_to_acceptance = d0.requirement_to_acceptance.map((edge) => ({
+      ...edge,
+      acceptance_ids: edge.acceptance_ids.filter((id) => id !== "AC-D0-6")
+    }));
+    writeFileSync(tracePath, traceability.replace(catalogMatch[1], JSON.stringify(catalog, null, 2)));
+    setPendingGateRegistry(fixture);
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /orphan PRD acceptance AC-D0-6/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("markdown-crlf-normalized-equivalent", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos crlf markdown "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    for (const relativePath of [
+      "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+      "docs/TRACEABILITY.md"
+    ]) {
+      const absolute = join(fixture, relativePath);
+      const lf = readFileSync(absolute, "utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      writeFileSync(absolute, lf.replace(/\n/g, "\r\n"));
+    }
+    setPendingGateRegistry(fixture);
+    const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+      cwd: fixture,
+      encoding: "utf8"
+    });
+    assert.match(output, pendingValidatorOutput);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("issue-map-and-manifest-agreement rejects duplicate issue numbers and ticket paths", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos issue uniqueness "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const manifestPath = join(fixture, "docs/issues.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const first = manifest.tickets.find(({ id }) => id === "D0-001");
+    const second = manifest.tickets.find(({ id }) => id === "D0-002");
+    second.issue = first.issue;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /duplicate issue number/);
+
+    second.issue = 55;
+    second.ticket_path = first.ticket_path;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    error = undefined;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error);
+    assert.match(error.stderr, /duplicate ticket_path|wrong ticket_path/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("issue-map-and-manifest-agreement ignores JSON key order", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos issue key order "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    const manifestPath = join(fixture, "docs/issues.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.tickets = manifest.tickets.map((record) => {
+      // Deliberately reorder keys; schema meaning must not depend on insertion order.
+      return {
+        body_template: record.body_template,
+        kind: record.kind,
+        initial_labels: record.initial_labels,
+        epic: record.epic,
+        size: record.size,
+        dependencies: record.dependencies,
+        milestone: record.milestone,
+        ticket_path: record.ticket_path,
+        issue: record.issue,
+        title: record.title,
+        id: record.id
+      };
+    });
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const output = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+      cwd: fixture,
+      encoding: "utf8"
+    });
+    assert.match(output, pendingValidatorOutput);
+  } finally {
     rmSync(parent, { recursive: true, force: true });
   }
 });
