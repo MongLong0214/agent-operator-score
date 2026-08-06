@@ -30,6 +30,30 @@ Replace the structural planning validator with semantic planning validator v2 an
 
 The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy. D0-004A copies it without semantic expansion into `docs/issues.json.operational_authority`; the resolver rejects a missing, malformed, or non-identical copy as `TICKET_CONTRACT_CONFLICT`.
 
+```json
+{
+  "repository": "MongLong0214/agent-operator-score",
+  "target_branch": "dev",
+  "repository_owner": {
+    "login": "MongLong0214",
+    "type": "User"
+  },
+  "review": {
+    "eligible_permissions": ["maintain", "admin"],
+    "protected_check": "exact-head-review",
+    "workflow_path": ".github/workflows/operational-state.yml",
+    "trusted_ref": "refs/heads/dev",
+    "dispatch_actors": ["MongLong0214"]
+  },
+  "authorization": {
+    "protected_check": "exact-head-authorization",
+    "workflow_path": ".github/workflows/operational-state.yml",
+    "trusted_ref": "refs/heads/dev",
+    "dispatch_actors": ["MongLong0214"]
+  }
+}
+```
+
 - Repository: `MongLong0214/agent-operator-score`; target branch: `dev`; repository-owner login: `MongLong0214`.
 - An accepted gate PR must be authored against `dev`, link exactly one batch, and be merged by the repository-owner login. The GitHub repository API must independently confirm that login is the current repository owner; a committed identity string alone is insufficient.
 - A formal-review fact is eligible only when its reviewer has current `maintain` or `admin` repository permission, its `commit_id` equals the live PR head, and the reviewer is not the PR author. A review that fails any condition is ignored.
@@ -74,7 +98,7 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 
 - AC-D0-004-1 ↔ `tests/planning-contract.test.mjs` case `semantic-traceability-graph`.
 - AC-D0-004-2 ↔ `tests/planning-contract.test.mjs` case `orphan-requirement-ac-ticket-test-mutants`.
-- AC-D0-004-3 ↔ `tests/planning-contract.test.mjs` case `issue-map-and-manifest-agreement`.
+- AC-D0-004-3 ↔ `tests/planning-contract.test.mjs` cases `issue-map-and-manifest-agreement` and `operational-authority-schema-and-ticket-agreement`.
 - AC-D0-004-4 ↔ `tests/planning-contract.test.mjs` case `maintainer-gate-digest-invalidation`.
 - AC-D0-004-5 ↔ `tests/planning-contract.test.mjs` case `computed-product-code-census`.
 - AC-D0-004-6 ↔ `tests/planning-contract.test.mjs` case `identity-consistency-and-no-exception`.
@@ -86,7 +110,7 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 - AC-D0-004-12 ↔ cases `generated-views-are-deterministic`, `projection-drift-does-not-change-state`, and `canonical-json-is-byte-identical`.
 - AC-D0-004-13 ↔ case `exact-base-packet-requires-ready`, which emits base, authority digests, owned paths/symbols, and RED command only for `readiness=ready`.
 - AC-D0-004-14 ↔ cases `registry-string-is-not-gate-acceptance`, `actor-policy-missing-or-malformed`, `gate-pr-wrong-or-no-longer-owner-actor`, `gate-pr-stale-head-or-digest`, and `gate-pr-post-merge-ci-required`.
-- AC-D0-004-15 ↔ cases `review-and-authorization-are-distinct`, `current-review-without-authorization-is-blocked`, `stale-or-self-authored-review-is-blocked`, `candidate-controlled-review-workflow-is-blocked`, `wrong-dispatch-actor-is-blocked`, and `authorization-without-current-review-is-blocked`.
+- AC-D0-004-15 ↔ cases `review-and-authorization-are-distinct`, `current-review-without-authorization-is-blocked`, `stale-or-self-authored-review-is-blocked`, `candidate-controlled-or-non-ancestor-review-workflow-is-blocked`, `wrong-dispatch-actor-is-blocked`, and `authorization-without-current-review-is-blocked`.
 - AC-D0-004-16 ↔ case `ready-authorizes-packet-not-red`, which requires a separately maintainer-approved exact-base packet before the first RED command even after a resolver-ready result.
 
 ## Verification
