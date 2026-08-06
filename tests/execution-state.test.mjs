@@ -188,13 +188,13 @@ test("ownership-overlap-fails-closed", async () => {
   facts.activeOwnership = [
     {
       ticket_id: "D0-004",
-      paths: ["scripts/resolve-execution-state.mjs"],
-      symbols: ["resolveExecutionState"]
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["resolveExecutionState"]
     },
     {
       ticket_id: "E0A-001",
-      paths: ["scripts/resolve-execution-state.mjs"],
-      symbols: ["other"]
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["other"]
     }
   ];
   // Accept gates for D0-004 so ownership is the deciding blocker.
@@ -2021,6 +2021,97 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   const { result } = await resolveOffline(facts);
   const d0004 = ticketState(result, "D0-004");
   assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
+});
+
+test("collector-to-resolver-live-owned-paths-symbols-overlap-fails-closed", async () => {
+  // R9: live collector emits owned_paths/owned_symbols; ownershipCollisions must consume them.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const liveSelf = collected.facts.activeOwnership.find((entry) => entry.ticket_id === "D0-004");
+  assert.ok(liveSelf, "collector must emit activeOwnership for D0-004");
+  assert.ok(Array.isArray(liveSelf.owned_paths) && liveSelf.owned_paths.includes("scripts/resolve-execution-state.mjs"));
+  assert.ok(Array.isArray(liveSelf.owned_symbols));
+  assert.equal(Object.hasOwn(liveSelf, "paths"), false, "collector must not emit legacy paths key");
+  assert.equal(Object.hasOwn(liveSelf, "symbols"), false, "collector must not emit legacy symbols key");
+
+  // Mutant second active ticket overlaps collector-shaped owned_paths (not legacy paths/symbols).
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.activeOwnership = [
+    {
+      ticket_id: "D0-004",
+      pr_number: 150,
+      head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["resolveExecutionState"]
+    },
+    {
+      ticket_id: "E0A-001",
+      pr_number: 999,
+      head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["not-the-same"]
+    }
+  ];
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.equal(d0004.readiness, "blocked");
+  assert.ok(
+    blockerCodes(d0004).includes("OWNERSHIP_OVERLAP"),
+    `expected OWNERSHIP_OVERLAP from owned_paths contract, got ${blockerCodes(d0004).join(",")}`
+  );
+
+  // Symbol-only overlap on the same canonical fields also fails closed.
+  const symbolFacts = clone(facts);
+  symbolFacts.activeOwnership = [
+    {
+      ticket_id: "D0-004",
+      pr_number: 150,
+      head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["resolveExecutionState"]
+    },
+    {
+      ticket_id: "E0A-001",
+      pr_number: 999,
+      head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      owned_paths: ["unrelated/other.mjs"],
+      owned_symbols: ["resolveExecutionState"]
+    }
+  ];
+  const { result: symbolResult } = await resolveOffline(symbolFacts);
+  assert.ok(blockerCodes(ticketState(symbolResult, "D0-004")).includes("OWNERSHIP_OVERLAP"));
+
+  // Legacy paths/symbols without owned_* must not validate as a silent no-op contract.
+  const legacy = clone(facts);
+  legacy.activeOwnership = [
+    {
+      ticket_id: "D0-004",
+      pr_number: 150,
+      head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      paths: ["scripts/resolve-execution-state.mjs"],
+      symbols: ["resolveExecutionState"]
+    },
+    {
+      ticket_id: "E0A-001",
+      pr_number: 999,
+      head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      paths: ["scripts/resolve-execution-state.mjs"],
+      symbols: ["other"]
+    }
+  ];
+  const { result: legacyResult } = await resolveOffline(legacy);
+  const legacyCodes = [
+    ...(legacyResult.tickets?.["D0-004"] ? blockerCodes(legacyResult.tickets["D0-004"]) : []),
+    ...(legacyResult.errors ?? []).map((e) => e.code)
+  ];
+  assert.ok(
+    legacyCodes.includes("OWNERSHIP_OVERLAP") || legacyCodes.includes("TICKET_CONTRACT_INCOMPLETE"),
+    `legacy paths/symbols must fail closed, got ${legacyCodes.join(",")}`
+  );
 });
 
 test("gate-head-requires-full-identical-accepted-registry-record", async () => {
