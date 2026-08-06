@@ -1373,15 +1373,71 @@ export const parseTicketOwnershipAndRed = (markdown, options = {}) => {
   };
 };
 
-const normalizeArtifactList = (list) => {
-  if (!Array.isArray(list)) return null;
-  return list
-    .map((artifact) => ({
-      path: artifact?.path ?? null,
-      kind: artifact?.kind ?? null,
-      sha256: artifact?.sha256 ?? null
-    }))
-    .sort((left, right) => stableJson(left).localeCompare(stableJson(right)));
+const ACCEPTED_GATE_TRANSITIONS = new Set([
+  "ADR_ACCEPTED",
+  "PRD_ACCEPTED",
+  "TICKET_READY_FOR_RED"
+]);
+
+const validAcceptedArtifact = (artifact) =>
+  plainObject(artifact) &&
+  typeof artifact.path === "string" &&
+  artifact.path.length > 0 &&
+  ["ADR", "PRD", "TICKET"].includes(artifact.kind) &&
+  typeof artifact.sha256 === "string" &&
+  /^[a-f0-9]{64}$/.test(artifact.sha256);
+
+const acceptedBatchRecordIsWellFormed = (row) => {
+  if (!plainObject(row) || typeof row.id !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(row.id)) {
+    return false;
+  }
+  if (row.status !== "ACCEPTED" || typeof row.scope !== "string" || !row.scope.trim()) return false;
+  if (
+    !plainObject(row.target) ||
+    row.target.repository !== "github.com/MongLong0214/agent-operator-score" ||
+    row.target.branch !== "dev" ||
+    typeof row.target.reviewed_head !== "string" ||
+    !/^[a-f0-9]{40}$/.test(row.target.reviewed_head)
+  ) {
+    return false;
+  }
+
+  if (
+    !Array.isArray(row.required_artifacts) ||
+    row.required_artifacts.length === 0 ||
+    !row.required_artifacts.every(validAcceptedArtifact) ||
+    !Array.isArray(row.artifacts) ||
+    row.artifacts.length === 0 ||
+    !row.artifacts.every(validAcceptedArtifact)
+  ) {
+    return false;
+  }
+  const requiredArtifacts = row.required_artifacts.map(stableJson);
+  const artifacts = row.artifacts.map(stableJson);
+  if (new Set(requiredArtifacts).size !== requiredArtifacts.length) return false;
+  if (new Set(artifacts).size !== artifacts.length) return false;
+  if (stableJson([...requiredArtifacts].sort()) !== stableJson([...artifacts].sort())) return false;
+
+  if (
+    !Array.isArray(row.required_transitions) ||
+    row.required_transitions.length === 0 ||
+    !row.required_transitions.every((entry) => ACCEPTED_GATE_TRANSITIONS.has(entry)) ||
+    new Set(row.required_transitions).size !== row.required_transitions.length ||
+    !Array.isArray(row.transitions) ||
+    row.transitions.length === 0
+  ) {
+    return false;
+  }
+  const transitionNames = row.transitions.map((entry) => {
+    if (!plainObject(entry)) return null;
+    const name = entry.type ?? entry.name;
+    return ACCEPTED_GATE_TRANSITIONS.has(name) ? name : null;
+  });
+  if (transitionNames.some((entry) => entry == null)) return false;
+  if (new Set(transitionNames).size !== transitionNames.length) return false;
+  return (
+    stableJson([...row.required_transitions].sort()) === stableJson([...transitionNames].sort())
+  );
 };
 
 /**
@@ -1389,37 +1445,15 @@ const normalizeArtifactList = (list) => {
  * Includes target/reviewed head and transition structure, not only artifact digests.
  */
 export const canonicalizeAcceptedBatchRecord = (row) => {
-  if (!plainObject(row) || typeof row.id !== "string") return null;
-  const required = normalizeArtifactList(row.required_artifacts);
-  const artifacts = normalizeArtifactList(
-    Array.isArray(row.artifacts) ? row.artifacts : row.required_artifacts
-  );
-  if (!required) return null;
-  const target = plainObject(row.target)
-    ? {
-        repository: row.target.repository ?? null,
-        branch: row.target.branch ?? null,
-        reviewed_head: row.target.reviewed_head ?? null
-      }
-    : null;
-  const required_transitions = Array.isArray(row.required_transitions)
-    ? [...row.required_transitions].map(String).sort()
-    : null;
-  const transitions = Array.isArray(row.transitions)
-    ? row.transitions.map((entry) => (plainObject(entry) ? entry : entry))
-    : row.transitions === undefined
-      ? null
-      : row.transitions;
-  return {
-    id: row.id,
-    status: row.status ?? null,
-    scope: row.scope ?? null,
-    target,
-    required_artifacts: required,
-    artifacts,
-    required_transitions,
-    transitions
-  };
+  if (!acceptedBatchRecordIsWellFormed(row)) return null;
+  // Preserve every field in the accepted row (events, preparation, approval,
+  // and any future canonical content included by both tips). Object key order
+  // is normalized only by stableJson at comparison time; array structure is exact.
+  try {
+    return JSON.parse(JSON.stringify(row));
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -1945,7 +1979,12 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     const checksById = new Map();
     const checksByName = new Map();
     for (const check of checksPayload.check_runs) {
-      if (check?.id != null) checksById.set(check.id, check);
+      if (check?.id != null) {
+        if (checksById.has(Number(check.id))) {
+          return { ok: false, reason: `duplicate live check-run id ${check.id} on ${head}`, facts: null };
+        }
+        checksById.set(Number(check.id), check);
+      }
       if (typeof check?.name === "string") {
         const list = checksByName.get(check.name) ?? [];
         list.push(check);
@@ -1991,16 +2030,46 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         return { ok: false, reason: failures.join("; ") || `jobs unavailable for run ${run.id}`, facts: null };
       }
       for (const job of jobs) {
+        if (job.run_id != null && Number(job.run_id) !== run.id) {
+          return {
+            ok: false,
+            reason: `job ${job.name} mapped to wrong run ${job.run_id}; expected ${run.id}`,
+            facts: null
+          };
+        }
+        if (job.run_attempt != null && Number(job.run_attempt) !== run.run_attempt) {
+          return {
+            ok: false,
+            reason: `job ${job.name} mapped to wrong attempt ${job.run_attempt}; expected ${run.run_attempt}`,
+            facts: null
+          };
+        }
         // Bind check-run to this exact run/attempt — never reuse another attempt's check by name alone.
         let check = null;
+        let declaredCheckReference = false;
         if (typeof job.check_run_url === "string") {
           const idMatch = job.check_run_url.match(/\/check-runs\/(\d+)\b/);
           if (idMatch) {
+            declaredCheckReference = true;
             check = checksById.get(Number(idMatch[1])) ?? null;
+          } else {
+            return {
+              ok: false,
+              reason: `malformed check-run URL for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+              facts: null
+            };
           }
         }
         if (!check && job.check_run_id != null) {
+          declaredCheckReference = true;
           check = checksById.get(Number(job.check_run_id)) ?? null;
+        }
+        if (!check && declaredCheckReference) {
+          return {
+            ok: false,
+            reason: `missing live check-run mapping: declared check-run unavailable for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
         }
         if (!check) {
           const named = checksByName.get(job.name) ?? [];
@@ -2023,9 +2092,6 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
               reason: `ambiguous check-run mapping for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
               facts: null
             };
-          } else if (named.length === 1 && headRuns.workflow_runs.length === 1) {
-            // Single-run head: unique check name may bind for app provenance only.
-            check = named[0];
           } else if (named.length > 1) {
             return {
               ok: false,
@@ -2039,6 +2105,22 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
           return {
             ok: false,
             reason: `missing live check-run mapping for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        const checkRunId = check.run_id ?? check.details?.run_id ?? check.external_id_run_id;
+        const checkAttempt = check.run_attempt ?? check.details?.run_attempt;
+        if (checkRunId != null && Number(checkRunId) !== run.id) {
+          return {
+            ok: false,
+            reason: `check-run ${check.id ?? job.name} mapped to wrong run ${checkRunId}; expected ${run.id}`,
+            facts: null
+          };
+        }
+        if (checkAttempt != null && Number(checkAttempt) !== run.run_attempt) {
+          return {
+            ok: false,
+            reason: `check-run ${check.id ?? job.name} mapped to wrong attempt ${checkAttempt}; expected ${run.run_attempt}`,
             facts: null
           };
         }

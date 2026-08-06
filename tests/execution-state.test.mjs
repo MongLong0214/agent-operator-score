@@ -1668,6 +1668,36 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
       "latest failed CI attempt must not be masked as success"
     );
   }
+
+  // A unique name on a single run is still not exact provenance when neither
+  // the job nor the check identifies the run/attempt mapping.
+  const unbound = clone(base);
+  for (const job of unbound[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`].jobs) {
+    delete job.check_run_url;
+    delete job.check_run_id;
+    delete job.run_id;
+    delete job.run_attempt;
+  }
+  for (const check of unbound[checksKey].check_runs) {
+    delete check.run_id;
+    delete check.run_attempt;
+  }
+  const unboundResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(unbound)
+  });
+  assert.equal(unboundResult.ok, false);
+  assert.match(unboundResult.reason, /missing live check-run mapping/);
+
+  // A declared job-to-check reference must resolve exactly; it cannot fall
+  // back to a same-name check even when that check claims the same attempt.
+  const danglingReference = clone(base);
+  danglingReference[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`].jobs[0].check_run_url =
+    "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/999999";
+  const danglingResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(danglingReference)
+  });
+  assert.equal(danglingResult.ok, false);
+  assert.match(danglingResult.reason, /declared check-run unavailable/);
 });
 
 test("gate-head-requires-full-identical-accepted-registry-record", async () => {
@@ -1696,7 +1726,20 @@ test("gate-head-requires-full-identical-accepted-registry-record", async () => {
         sha256: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
         kind: "TICKET"
       }
-    ]
+    ],
+    events: [
+      {
+        from: "PENDING",
+        to: "ACCEPTED",
+        recorded_at: "2026-08-06T12:10:01Z",
+        recorded_by: "gate-review"
+      }
+    ],
+    approval: {
+      approved_by: "gate-review",
+      approved_at: "2026-08-06T12:10:01Z",
+      role: "MAINTAINER"
+    }
   };
   assert.ok(canonicalizeAcceptedBatchRecord(accepted));
   assert.equal(
@@ -1717,6 +1760,24 @@ test("gate-head-requires-full-identical-accepted-registry-record", async () => {
   };
   assert.equal(
     registryHeadBindsAcceptedBatch(JSON.stringify({ version: 2, batches: [mutant] }), accepted),
+    false
+  );
+
+  // Fields outside the old target/artifact subset are part of the identical row.
+  const approvalMutant = {
+    ...accepted,
+    approval: { ...accepted.approval, approved_by: "different-review" }
+  };
+  assert.equal(
+    registryHeadBindsAcceptedBatch(JSON.stringify({ version: 2, batches: [approvalMutant] }), accepted),
+    false
+  );
+
+  // A byte-identical but structurally incomplete row is not an accepted record.
+  const malformed = { ...accepted, target: null };
+  assert.equal(canonicalizeAcceptedBatchRecord(malformed), null);
+  assert.equal(
+    registryHeadBindsAcceptedBatch(JSON.stringify({ version: 2, batches: [malformed] }), malformed),
     false
   );
 
