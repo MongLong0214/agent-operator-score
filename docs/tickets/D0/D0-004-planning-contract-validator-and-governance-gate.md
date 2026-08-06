@@ -25,6 +25,11 @@ Replace the structural planning validator with semantic planning validator v2 an
 3. D0-002 is complete and D0-003 is verified superseded by PR #53.
 4. The one-time authority-surface correction is merged: Roadmap and Board are static, the dated ledger is historical, and committed current SHA/readiness prose is absent.
 5. Worktree is clean, GitHub availability mode is explicit, and unrelated owner changes are identified and protected.
+6. The execution packet names the expected GitHub PR author and at least one different actor whose current repository permission satisfies both protected-check dispatch policies. If no such actor is independently verifiable, D0-004 may not enter RED.
+
+## Planning correction boundary
+
+The contract correction that defines this ticket is not D0-004A/B/C implementation. Existing structural tests and candidate CI prove only that the planning correction does not regress the pre-implementation control plane; `semantic_checks=not_yet_enforced` remains expected. No resolver, actor policy, protected check, or named AC below may be claimed complete until the Maintainer Gates authorize D0-004 and its RED/GREEN evidence passes at the implementation candidate head.
 
 ## Trusted actor policy
 
@@ -138,7 +143,7 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 
 ## Stop and escalation
 
-- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, unallowlisted product code, unsafe path handling, GitHub outage reported as ready, comment/label/projection used as input, nondeterministic JSON, current SHA committed as state, timeout without a terminal state, or partial state.
+- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, no eligible non-author dispatch actor, unallowlisted product code, unsafe path handling, GitHub outage reported as ready, comment/label/projection used as input, nondeterministic JSON, current SHA committed as state, timeout without a terminal state, or partial state.
 
 ## Completion evidence
 
