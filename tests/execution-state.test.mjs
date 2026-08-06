@@ -846,7 +846,10 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
       run_attempt: 1,
       status: "completed",
       conclusion: "success",
+      app_slug: "github-actions",
+      app_id: 15368,
       event: "pull_request",
+      base: "dev",
       workflow_path: ".github/workflows/ci.yml"
     },
     {
@@ -856,7 +859,10 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
       run_attempt: 2,
       status: "completed",
       conclusion: "failure",
+      app_slug: "github-actions",
+      app_id: 15368,
       event: "pull_request",
+      base: "dev",
       workflow_path: ".github/workflows/ci.yml"
     }
   ];
@@ -868,6 +874,219 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
   assert.ok(blockerCodes(state).includes("EXACT_HEAD_CI_FAILED"));
+});
+
+// ---------------------------------------------------------------------------
+// Review regressions — fail-closed contract defects (PR #150 exact-head review)
+// ---------------------------------------------------------------------------
+
+test("duplicate-candidate-order-independent-active-and-superseded", async () => {
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: true,
+    authorization: true,
+    ci: true,
+    d0_004c_merged: false
+  });
+  const head149 = "1111111111111111111111111111111111111111";
+  const head150 = "cafecafecafecafecafecafecafecafecafecafe";
+  const pr149 = {
+    number: 149,
+    ticket_id: "D0-004",
+    base: "dev",
+    head_sha: head149,
+    author: "MongLong0214",
+    body: "Ticket: D0-004\n\nDuplicate evidence only.",
+    merged: false,
+    labels: ["ticket:D0-004"]
+  };
+  const pr150 = {
+    number: 150,
+    ticket_id: "D0-004",
+    base: "dev",
+    head_sha: head150,
+    author: "MongLong0214",
+    body: "Ticket: D0-004\n\nPacket-bound candidate.",
+    merged: false,
+    labels: ["ticket:D0-004"]
+  };
+  // ticket_id-only linkage must not authorize a candidate.
+  const ticketIdOnly = {
+    number: 148,
+    ticket_id: "D0-004",
+    base: "dev",
+    head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    author: "MongLong0214",
+    body: "Related to #57 — no structured Ticket field",
+    merged: false
+  };
+  // Wrong base must not become active.
+  const wrongBase = {
+    number: 151,
+    base: "main",
+    head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    author: "MongLong0214",
+    body: "Ticket: D0-004",
+    merged: false
+  };
+
+  facts.workflowBlobs[".github/workflows/ci.yml"].heads[head150] = "ci-blob-dev";
+  facts.workflowBlobs[".github/workflows/operational-state.yml"].heads[head150] = "ops-blob-dev";
+  facts.checkRuns = (facts.checkRuns ?? []).map((c) => ({ ...c, head_sha: head150 }));
+  facts.reviews = (facts.reviews ?? []).map((r) => ({ ...r, commit_id: head150 }));
+  facts.authorizations = (facts.authorizations ?? []).map((a) => ({ ...a, commit_id: head150 }));
+
+  const orderA = [pr149, pr150, ticketIdOnly, wrongBase];
+  const orderB = [wrongBase, pr150, ticketIdOnly, pr149];
+
+  facts.prs = orderA;
+  const { result: first } = await resolveOffline(facts);
+  const stateA = ticketState(first, "D0-004");
+  assert.equal(stateA.candidate?.number, 150);
+  assert.equal(stateA.candidate?.head_sha, head150);
+  assert.ok(Array.isArray(stateA.candidate?.superseded_heads));
+  assert.deepEqual(
+    stateA.candidate.superseded_heads.map((entry) => entry.number).sort((a, b) => a - b),
+    [149]
+  );
+  assert.ok(stateA.candidate.superseded_heads.every((entry) => entry.head_sha === head149));
+  // Superseded evidence must not be reused as the active candidate.
+  assert.notEqual(stateA.candidate.head_sha, head149);
+
+  facts.prs = orderB;
+  const { result: second } = await resolveOffline(facts);
+  const stateB = ticketState(second, "D0-004");
+  assert.equal(stateB.candidate?.number, stateA.candidate?.number);
+  assert.equal(stateB.candidate?.head_sha, stateA.candidate?.head_sha);
+  assert.deepEqual(
+    (stateB.candidate?.superseded_heads ?? []).map((entry) => entry.number).sort((a, b) => a - b),
+    (stateA.candidate?.superseded_heads ?? []).map((entry) => entry.number).sort((a, b) => a - b)
+  );
+
+  // Ambiguous multi-Ticket body fails closed (no linkage).
+  facts.prs = [
+    {
+      number: 152,
+      base: "dev",
+      head_sha: head150,
+      body: "Ticket: D0-004\nTicket: D0-004",
+      merged: false
+    }
+  ];
+  const { result: multi } = await resolveOffline(facts);
+  const multiState = ticketState(multi, "D0-004");
+  assert.equal(multiState.candidate, null);
+});
+
+test("missing-live-authority-digests-fail-closed", async () => {
+  const facts = loadBaselineFacts();
+  delete facts.liveDigests["docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"];
+  const { result: withoutPrd } = await resolveOffline(facts);
+  const d0001a = ticketState(withoutPrd, "D0-001");
+  assert.notEqual(d0001a.phase, "verified");
+  assert.notEqual(d0001a.readiness, "terminal");
+  assert.ok(
+    blockerCodes(d0001a).some((code) =>
+      ["PRD_GATE_MISSING", "ADR_GATE_MISSING", "TICKET_GATE_MISSING", "STALE_DIGEST"].includes(code)
+    )
+  );
+
+  const factsAdr = loadBaselineFacts();
+  delete factsAdr.liveDigests["docs/adr/ADR-0001-canonical-identity.md"];
+  const { result: withoutAdr } = await resolveOffline(factsAdr);
+  const d0001b = ticketState(withoutAdr, "D0-001");
+  assert.notEqual(d0001b.phase, "verified");
+  assert.notEqual(d0001b.readiness, "terminal");
+  assert.ok(
+    blockerCodes(d0001b).some((code) =>
+      ["ADR_GATE_MISSING", "PRD_GATE_MISSING", "TICKET_GATE_MISSING", "STALE_DIGEST"].includes(code)
+    )
+  );
+
+  const factsTicket = loadBaselineFacts();
+  delete factsTicket.liveDigests["docs/tickets/D0/D0-001-canonical-identifier-registry.md"];
+  const { result: withoutTicket } = await resolveOffline(factsTicket);
+  const d0001c = ticketState(withoutTicket, "D0-001");
+  assert.notEqual(d0001c.phase, "verified");
+  assert.notEqual(d0001c.readiness, "terminal");
+});
+
+test("post-merge-latest-failed-attempt-controls-status", async () => {
+  const facts = loadBaselineFacts();
+  const mergeSha = facts.gatePRs[0].merge_commit_sha;
+  facts.postMergeCI = [
+    {
+      merge_commit_sha: mergeSha,
+      status: "completed",
+      conclusion: "success",
+      head_sha: mergeSha,
+      run_id: 10,
+      run_attempt: 1
+    },
+    {
+      merge_commit_sha: mergeSha,
+      status: "completed",
+      conclusion: "failure",
+      head_sha: mergeSha,
+      run_id: 10,
+      run_attempt: 2
+    }
+  ];
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.notEqual(d0001.phase, "verified");
+  assert.notEqual(d0001.readiness, "terminal");
+  assert.ok(blockerCodes(d0001).includes("POST_MERGE_CI_FAILED"));
+});
+
+test("candidate-ci-missing-provenance-fields-fail-closed", async () => {
+  const base = () =>
+    makeCandidateFacts(loadBaselineFacts(), {
+      review: true,
+      authorization: true,
+      ci: true,
+      d0_004c_merged: true
+    });
+
+  const missingDevBlob = base();
+  delete missingDevBlob.workflowBlobs[".github/workflows/ci.yml"].dev;
+  {
+    const { result } = await resolveOffline(missingDevBlob);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
+
+  const missingHeadBlob = base();
+  missingHeadBlob.workflowBlobs[".github/workflows/ci.yml"].heads = {};
+  {
+    const { result } = await resolveOffline(missingHeadBlob);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
+
+  const missingApp = base();
+  missingApp.checkRuns = (missingApp.checkRuns ?? []).map((c) => {
+    if (!String(c.name).startsWith("planning-contract")) return c;
+    const next = { ...c };
+    delete next.app_slug;
+    delete next.app_id;
+    return next;
+  });
+  {
+    const { result } = await resolveOffline(missingApp);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
+
+  const missingEventBasePath = base();
+  missingEventBasePath.checkRuns = (missingEventBasePath.checkRuns ?? []).map((c) => {
+    if (!String(c.name).startsWith("planning-contract")) return c;
+    const next = { ...c };
+    delete next.event;
+    delete next.base;
+    delete next.workflow_path;
+    return next;
+  });
+  {
+    const { result } = await resolveOffline(missingEventBasePath);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
 });
 
 // ---------------------------------------------------------------------------
