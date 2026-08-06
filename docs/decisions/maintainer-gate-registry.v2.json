@@ -338,7 +338,7 @@
     },
     {
       "id": "d0-001-prerequisites-red-contract-renewal",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew D0-001 prerequisite review against the bounded RED staging contract and current exact ADR-0001/0003/0012, PRD-D0, and ticket digests before GREEN.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -432,6 +432,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-06T00:44:30Z",
           "recorded_by": "main-red-contract-correction"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-06T05:16:46Z",
+          "recorded_by": "planning-adr-0003-workspace-correction"
         }
       ],
       "preparation": {
@@ -441,11 +447,16 @@
         "approved_by": "independent-maintainer-external-review-required",
         "approved_at": "2026-08-06T00:44:30Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-06T05:16:46Z",
+        "invalidated_by": "planning-adr-0003-workspace-correction",
+        "reason": "ADR-0003 workspace scope correction changed the reviewed artifact digest; the D0-001 planning acceptance is stale and requires renewed external review."
       }
     },
     {
       "id": "d0-002-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Review D0-002 prerequisites against the current exact ADR-0001/0003/0012, PRD-D0, and corrected ticket digests before RED.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -539,6 +550,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-06T04:32:36Z",
           "recorded_by": "gate-administrator-d0-002-acceptance-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-06T05:16:46Z",
+          "recorded_by": "planning-adr-0003-workspace-correction"
         }
       ],
       "preparation": {
@@ -548,6 +565,11 @@
         "approved_by": "independent-maintainer-external-review-required",
         "approved_at": "2026-08-06T04:32:36Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-06T05:16:46Z",
+        "invalidated_by": "planning-adr-0003-workspace-correction",
+        "reason": "ADR-0003 workspace scope correction changed the reviewed artifact digest; the D0-002 planning acceptance is stale and requires renewed external review."
       }
     }
   ],
