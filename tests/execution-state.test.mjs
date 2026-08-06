@@ -1407,6 +1407,113 @@ test("live-collector-does-not-synthesize-check-app-provenance", async () => {
   assert.match(collectedEmpty.reason, /check-run mapping|app provenance|missing live/i);
 });
 
+test("candidate-ci-requires-exact-job-check-name-and-one-to-one-check-consumption", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const responses = clone(base);
+  const jobsKey = `${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`;
+
+  // All three required jobs point to the same check-run. The first name happens
+  // to agree, but the remaining two must neither reuse its ID nor accept its name.
+  for (const job of responses[jobsKey].jobs) {
+    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000";
+  }
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /check-run name|already mapped|already consumed|one-to-one/i);
+
+  const reused = clone(base);
+  for (const job of reused[jobsKey].jobs) {
+    job.name = "planning-contract (20)";
+    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000";
+  }
+  const reusedCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(reused) });
+  assert.equal(reusedCollected.ok, false);
+  assert.match(reusedCollected.reason, /already consumed|one-to-one/i);
+});
+
+test("candidate-ci-requires-mapped-job-and-check-terminals-to-agree-and-succeed", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const responses = clone(base);
+  const checksKey = `${repo}/commits/${head}/check-runs?per_page=50`;
+
+  // The jobs report success, but their exact authenticated check-runs failed.
+  // A collector must not discard the failed check terminal fields.
+  for (const check of responses[checksKey].check_runs) {
+    check.status = "completed";
+    check.conclusion = "failure";
+  }
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /terminal|conclusion|not successful|mismatch/i);
+
+  const partial = clone(base);
+  delete partial[checksKey].check_runs[0].conclusion;
+  const partialCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(partial) });
+  assert.equal(partialCollected.ok, false);
+  assert.match(partialCollected.reason, /missing live check-run terminal fields/i);
+});
+
+test("optional-operational-workflow-only-allows-authenticated-not-found", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts, resolveExecutionState } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const tip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  const path = `${repo}/contents/.github/workflows/operational-state.yml?ref=${tip}`;
+
+  // A real authenticated 404 is the sole allowed pre-C absence signal.
+  const absent = clone(base);
+  absent[path] = { __not_found: true };
+  const absentCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(absent) });
+  assert.equal(absentCollected.ok, true, absentCollected.reason);
+
+  // A timeout/outage is not absence during either the early lane probe or the
+  // later blob collection, so online strict state must be unavailable.
+  const unavailable = clone(base);
+  unavailable[path] = null;
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(unavailable) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /EXTERNAL_STATE_UNAVAILABLE|unavailable|timeout/i);
+
+  // The same rule applies after early selection, when the workflow-blob
+  // collector sees an outage after an authenticated absence probe.
+  const fixture = createFixtureTransport(absent);
+  let probes = 0;
+  const absentThenOutage = {
+    kind: "fixture-authenticated",
+    getJson(apiPath) {
+      if (apiPath === path && ++probes > 1) {
+        const error = new Error("workflow blob outage");
+        error.code = "FIXTURE_OUTAGE";
+        throw error;
+      }
+      return fixture.getJson(apiPath);
+    },
+    getRaw(apiPath) {
+      return fixture.getRaw(apiPath);
+    }
+  };
+  const laterOutage = collectLiveExecutionFacts(root, { transport: absentThenOutage });
+  assert.equal(laterOutage.ok, false);
+  assert.match(laterOutage.reason, /EXTERNAL_STATE_UNAVAILABLE|unavailable|timeout/i);
+
+  const state = resolveExecutionState({ mode: "online-strict", root, facts: collected.facts });
+  assert.ok(state.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+  assert.deepEqual(state.readySet, []);
+});
+
 test("gate-head-requires-identical-accepted-registry-record", async () => {
   const {
     createFixtureTransport,
@@ -1644,30 +1751,8 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   );
 
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
-  assert.equal(collected.ok, true, collected.reason);
-  const latestJobs = collected.facts.checkRuns.filter((entry) => entry.run_id === 4002);
-  assert.equal(latestJobs.length, 3);
-  assert.ok(latestJobs.every((entry) => entry.conclusion === "failure"));
-  assert.ok(latestJobs.every((entry) => entry.status === "completed"));
-
-  // Offline resolver on collected facts must not treat latest failed attempt as success.
-  const result = resolveExecutionState({
-    mode: "offline",
-    root,
-    facts: collected.facts,
-    runtimeIdentity: {
-      repository: collected.facts.repository,
-      branch: collected.facts.defaultBranch,
-      head: collected.facts.currentHead
-    }
-  });
-  const d0004 = ticketState(result, "D0-004");
-  if (d0004.candidate) {
-    assert.ok(
-      blockerCodes(d0004).includes("EXACT_HEAD_CI_FAILED") || d0004.readiness === "blocked",
-      "latest failed CI attempt must not be masked as success"
-    );
-  }
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /terminal state not successful|not successful/i);
 
   // A unique name on a single run is still not exact provenance when neither
   // the job nor the check identifies the run/attempt mapping.

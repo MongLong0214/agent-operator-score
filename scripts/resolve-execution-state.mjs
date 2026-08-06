@@ -1147,6 +1147,12 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
       ) {
         throw timeoutError(`per-call timeout for ${apiPath}`);
       }
+      if (
+        error?.status === 404 ||
+        /\bHTTP\s+404\b/i.test(String(error?.stderr ?? error?.message ?? ""))
+      ) {
+        error.code = "AUTHENTICATED_NOT_FOUND";
+      }
       throw error;
     }
   };
@@ -1528,6 +1534,11 @@ export const createFixtureTransport = (responses) => {
         throw err;
       }
       const value = responses[apiPath];
+      if (value && value.__not_found === true) {
+        const err = new Error(`fixture authenticated not found at ${apiPath}`);
+        err.code = "AUTHENTICATED_NOT_FOUND";
+        throw err;
+      }
       if (value === null) {
         const err = new Error(`fixture outage at ${apiPath}`);
         err.code = "FIXTURE_OUTAGE";
@@ -1548,6 +1559,11 @@ export const createFixtureTransport = (responses) => {
         throw err;
       }
       const value = Object.hasOwn(responses, key) ? responses[key] : responses[apiPath];
+      if (value && value.__not_found === true) {
+        const err = new Error(`fixture authenticated not found at ${apiPath}`);
+        err.code = "AUTHENTICATED_NOT_FOUND";
+        throw err;
+      }
       if (value === null) {
         const err = new Error(`fixture outage at ${apiPath}`);
         err.code = "FIXTURE_OUTAGE";
@@ -1584,6 +1600,9 @@ const transportCall = (transport, method, apiPath) => {
     };
   }
 };
+
+const isAuthenticatedNotFound = (result) =>
+  result?.ok === false && result.error?.code === "AUTHENTICATED_NOT_FOUND";
 
 const requireJson = (transport, apiPath, failures) => {
   const result = transportCall(transport, "getJson", apiPath);
@@ -1756,7 +1775,17 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     "getJson",
     `${repoPath}/contents/.github/workflows/operational-state.yml?ref=${liveTip}`
   );
-  const d0_004c_merged_early = opsWorkflowProbe.ok === true && typeof opsWorkflowProbe.value?.sha === "string";
+  if (!opsWorkflowProbe.ok && !isAuthenticatedNotFound(opsWorkflowProbe)) {
+    return { ok: false, reason: opsWorkflowProbe.reason, facts: null };
+  }
+  if (opsWorkflowProbe.ok && (typeof opsWorkflowProbe.value?.sha !== "string" || !opsWorkflowProbe.value.sha)) {
+    return {
+      ok: false,
+      reason: "EXTERNAL_STATE_UNAVAILABLE: partial operational-state workflow probe",
+      facts: null
+    };
+  }
+  const d0_004c_merged_early = opsWorkflowProbe.ok;
   for (const [ticketId, ticket] of Object.entries(tickets)) {
     if (ticket.kind !== "executable") continue;
     const ticketBody = readTipFile(ticket.ticket_path);
@@ -1978,6 +2007,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     }
     const checksById = new Map();
     const checksByName = new Map();
+    const consumedCheckRunIds = new Set();
     for (const check of checksPayload.check_runs) {
       if (check?.id != null) {
         if (checksById.has(Number(check.id))) {
@@ -2108,6 +2138,28 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
             facts: null
           };
         }
+        if (!Number.isSafeInteger(check.id)) {
+          return {
+            ok: false,
+            reason: `missing live check-run id for job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        if (check.name !== job.name) {
+          return {
+            ok: false,
+            reason: `check-run name must exactly match job ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        if (consumedCheckRunIds.has(check.id)) {
+          return {
+            ok: false,
+            reason: `check-run ${check.id} already consumed by another job/run lane on ${head}`,
+            facts: null
+          };
+        }
+        consumedCheckRunIds.add(check.id);
         const checkRunId = check.run_id ?? check.details?.run_id ?? check.external_id_run_id;
         const checkAttempt = check.run_attempt ?? check.details?.run_attempt;
         if (checkRunId != null && Number(checkRunId) !== run.id) {
@@ -2133,13 +2185,40 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
             facts: null
           };
         }
-        // Selected attempt's job terminal state controls — never prefer an older check-run success.
         const status = job.status;
         const conclusion = job.conclusion;
-        if (typeof status !== "string" || !status) {
+        const checkStatus = check.status;
+        const checkConclusion = check.conclusion;
+        if (typeof status !== "string" || !status || typeof conclusion !== "string" || !conclusion) {
           return {
             ok: false,
-            reason: `missing live job status for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            reason: `missing live job terminal fields for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        if (
+          typeof checkStatus !== "string" ||
+          !checkStatus ||
+          typeof checkConclusion !== "string" ||
+          !checkConclusion
+        ) {
+          return {
+            ok: false,
+            reason: `missing live check-run terminal fields for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        if (status !== checkStatus || conclusion !== checkConclusion) {
+          return {
+            ok: false,
+            reason: `job/check-run terminal mismatch for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        if (status !== "completed" || conclusion !== "success") {
+          return {
+            ok: false,
+            reason: `job/check-run terminal state not successful for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
             facts: null
           };
         }
@@ -2203,7 +2282,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   const blobOidFor = (path, ref, { required }) => {
     const result = transportCall(transport, "getJson", `${repoPath}/contents/${path}?ref=${ref}`);
     if (!result.ok) {
-      if (required) failures.push(result.reason);
+      if (!isAuthenticatedNotFound(result)) failures.push(result.reason);
       return null;
     }
     if (!result.value || typeof result.value.sha !== "string") {
