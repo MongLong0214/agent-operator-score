@@ -1,12 +1,10 @@
-# AOS Execution Roadmap SSOT
+# AOS Execution Roadmap
 
-Status: **ACTIVE**
+Status: **STATIC EXECUTION DESIGN — NOT OPERATIONAL AUTHORITY**
 
-Scope: execution order, ready-set calculation, parallel lanes, joins, and agent handoff
+Scope: milestone order, dependency-safe parallel lanes, joins, and agent handoff rules
 
-Last verified checkpoint: `dev` at `6e872ccf2387067b49217a27a7c255343ad2eb8d`
-
-This is the stable entrypoint for deciding what work may start next. It is subordinate to the product authority chain in `AGENTS.md`:
+This static design is subordinate to the product authority chain in `AGENTS.md`:
 
 1. [`docs/north-star/agent-operator-score-ssot-v1.0.md`](../north-star/agent-operator-score-ssot-v1.0.md)
 2. accepted required ADRs
@@ -14,21 +12,11 @@ This is the stable entrypoint for deciding what work may start next. It is subor
 4. accepted exact atomic ticket
 5. an exact-base execution packet
 
-If this roadmap conflicts with a higher authority, the higher authority wins and this file must be corrected before another transition starts.
+If this roadmap conflicts with a higher authority, the higher authority wins. This file never stores a current branch SHA, ready set, latest completion, active lane, or next transition.
 
-## Current state
+## Operational state
 
-- Executable ticket records: **64**
-- Superseded non-executable record: **D0-003 / issue #56**
-- Current milestone: **S0 · Name & Contracts**
-- Current implementation-ready set: **none**
-- Latest verified completion: **D0-001 / issue #54** via PR #130; exact merge commit `6e872ccf2387067b49217a27a7c255343ad2eb8d` and post-merge CI run `31063416513` passed Node 20/22/24
-- Current transition target: **D0-002 / issue #55 gate preparation**; its D0-001 dependency is satisfied, but product RED/GREEN remains blocked pending current exact-digest ADR, PRD, and ticket acceptance plus an exact-base execution packet
-- Next dependent ticket: **D0-004 / issue #57**, blocked by verified completion of #55
-
-This checkpoint advances governance to D0-002 gate preparation only. It does not authorize a D0-002 implementation worker or RED execution.
-
-The checkpoint SHA is evidence, not a permanent target. Before every new execution packet, fetch `origin/dev`, resolve its exact SHA, rehydrate GitHub issue/PR state, and update this section if the ready set changed.
+Do not infer current readiness from this document. Until D0-004 is verified, follow the interim direct-fact rule in `AGENTS.md`. After D0-004 is verified, run `npm run ops:status -- --strict`; that resolver output is the sole operational-state authority.
 
 ## Ready-set algorithm
 
@@ -141,7 +129,7 @@ Before starting work, an agent must:
 
 1. Read `AGENTS.md`, this roadmap, the north-star SSOT, required ADRs, owning PRD, and exact ticket in full.
 2. Fetch `origin/dev`; record exact base SHA, toolchain identity, issue/PR state, and a clean isolated worktree.
-3. Recompute the ready set from verified dependency receipts and milestone gates.
+3. Resolve readiness through the interim direct-fact rule in `AGENTS.md` or, after D0-004 is verified, `npm run ops:status -- --strict --ticket <ID>`; never infer it manually from this roadmap.
 4. Check active branches/worktrees/PRs for duplicate work and ownership collision.
 5. Refuse the task if it is not in the current ready set.
 6. Execute the ticket's named RED before any minimum GREEN edit.

@@ -1,19 +1,21 @@
-# D0-004 · Semantic planning validator v2 and governance gate
+# D0-004 · Semantic planning validator and execution-state resolver
 
 - Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: D0
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [D0](../../prd/PRD-D0-name-migration-and-repository-skeleton.md)
-- Size: M
+- Size: L
 - Dependencies: D0-002
 
 ## Goal
 
-Replace the structural planning validator with semantic planning validator v2. It must prove the required authority, traceability, gate, identity, issue-map, and product-code contracts instead of reporting an unverified scaffold claim.
+Replace the structural planning validator with semantic planning validator v2 and replace manually duplicated current-state prose with one deterministic Execution State Resolver. Static contracts and verifiable Git/GitHub facts are inputs; current phase, readiness, blockers, active candidates, and ready set are calculated outputs. Markdown and GitHub status surfaces are projections or audit records, never readiness inputs.
 
 ## Exact ownership
 
-- `scripts/validate-planning.mjs`; every portion of `tests/planning-contract.test.mjs` except the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput`, which D0-001 owns solely for its completed `4` to `6` adjustment caused by `scripts/validate-identity.mjs` and `tests/planning/identity.test.mjs`, the temporary D0-002 post-primary-RED staged-file insertion of `tests/planning/workspace-skeleton.test.mjs` into `scripts/validate-planning.mjs` `controlPlaneAllowlist` and its four expected `6` to `7` `acceptedValidatorOutput` and `pendingValidatorOutput` planning-census literals, the isolated fixture setup/teardown and canonical-validator preservation regression for the existing D0 identity allowlist test, the `gates=<status>` portion, which Gate Administration owns for lifecycle truth, and the compatibility migration's exact delegation test case/plumbing; `docs/TRACEABILITY.md`; historical v1 boundary only: `docs/decisions/maintainer-gate-registry.v1.json` is not an active control-plane ownership grant and must not be restored.
+- D0-004A semantic catalog: `scripts/validate-planning.mjs`; every portion of `tests/planning-contract.test.mjs` except the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput`, which D0-001 owns solely for its completed `4` to `6` adjustment, the temporary D0-002 allowlist insertion and four `6` to `7` planning-census literals, the isolated D0 identity fixture plumbing, the `gates=<status>` portion, which Gate Administration owns, and the compatibility migration's exact delegation test case/plumbing; `docs/TRACEABILITY.md`; only the static-catalog fields in `docs/issues.json`: top-level operational-authority metadata plus each record's `issue`, `ticket_path`, `milestone`, `dependencies`, `size`, `epic`, `kind`, and `initial_labels`; historical v1 boundary only: `docs/decisions/maintainer-gate-registry.v1.json` is not an active control-plane ownership grant and must not be restored.
+- D0-004B resolver core: `scripts/resolve-execution-state.mjs`; `specs/execution-state.schema.v1.json`; `tests/execution-state.test.mjs`; `fixtures/operational-state/**`; and only `package.json` scripts `ops:status` and `ops:check`.
+- D0-004C projections and CI: `scripts/render-execution-views.mjs`; only `package.json` script `ops:render`; `.github/workflows/operational-state.yml`; `AGENTS.md` **Current operational state** section; the dynamic-state header of `docs/planning/AOS-EXECUTION-ROADMAP.md`; generated/static-authority markers and generated rows in `docs/tickets/BOARD.md`; and the historical-authority banner in `docs/planning/issue-resolution-ledger-2026-08-06.md`. The existing Maintainer Gate status snapshot and gate-administration schema remain outside D0-004 ownership.
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
@@ -21,18 +23,21 @@ Replace the structural planning validator with semantic planning validator v2. I
 1. Required ADRs and owning PRD are explicitly accepted at their exact digests.
 2. This exact ticket is explicitly accepted and an execution packet pins the base SHA.
 3. D0-002 is complete and D0-003 is verified superseded by PR #53.
-4. Worktree is clean or unrelated owner changes are identified and protected.
+4. The one-time authority-surface correction is merged: Roadmap and Board are static, the dated ledger is historical, and committed current SHA/readiness prose is absent.
+5. Worktree is clean, GitHub availability mode is explicit, and unrelated owner changes are identified and protected.
 
 ## Forbidden scope
 
-- Marking any gate accepted; product source; GitHub mutation; self-approval; permissive fallback on malformed traceability, registry, digest, or source census.
+- Marking any gate accepted; product source; GitHub label/body/issue mutation; parsing free-form PR comments as machine state; committed current SHA or resolver snapshot; self-approval; wall-clock-dependent canonical JSON; permissive fallback on unavailable GitHub, malformed traceability, registry, digest, ancestry, check, or source census.
 
 ## RED contract
 
-- Test file: `tests/planning-contract.test.mjs`
-- Focused command: `npm test -- tests/planning-contract.test.mjs`
-- Expected pre-GREEN failure: a fixture that removes a PRD requirement/AC edge, ticket AC/test-case edge, gate digest, issue-map record, identity value, or product-code allowlist entry is currently not rejected by the structural validator.
-- Capture each named mutant and its unexpected PASS before editing the validator. If a mutant already fails for an unrelated reason, stop and correct the mutant rather than claiming RED.
+- D0-004A test: `tests/planning-contract.test.mjs`; command `npm test -- tests/planning-contract.test.mjs`; current structural validation unexpectedly accepts at least one named semantic traceability, ownership, catalog, or stale-digest mutant.
+- D0-004B test: stage `tests/execution-state.test.mjs` and its fixtures before resolver code; command `node --test tests/execution-state.test.mjs`; expected failure is `ERR_MODULE_NOT_FOUND` for `scripts/resolve-execution-state.mjs`, followed by named behavioral failures as the module is introduced.
+- D0-004C test: the named `roadmap-is-not-an-input`, `board-is-not-an-input`, `historical-ledger-is-ignored`, and `generated-views-are-deterministic` cases fail before renderer/projection integration.
+- Capture each named failure before its owning GREEN edit. An unrelated failure, network-derived nondeterminism in fixture mode, or a mutant already failing for the wrong reason stops the subtask.
+
+Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly accepted, and the staged resolver test cannot load the missing resolver module before GREEN.
 
 ## Minimum GREEN
 
@@ -41,6 +46,17 @@ Replace the structural planning validator with semantic planning validator v2. I
 - compute the actual product-code census from an explicit control-plane allowlist; emit the paths and count, never a fixed `product_code=0` literal.
 - validate canonical identity consistency across the registry, root manifest, README, and active planning surfaces; reject legacy/path exceptions and unresolved/malformed inputs fail closed.
 - use `fileURLToPath()` for repository paths and preserve encoded/space-containing paths with a focused regression.
+- normalize `docs/issues.json` as a static catalog. Dependencies and ticket paths are explicit fields, issue body prose and labels are never operational inputs, and D0-003 is `kind=superseded` rather than executable.
+- implement `npm run ops:status -- --strict [--json] [--ticket <ID>]` and `npm run ops:check`. Derive repository and branch identity at runtime; verify ticket/ADR/PRD digests, accepted gate records, Git ancestry, linked PR/merge/check facts, post-merge CI, dependency completion, and active path/symbol ownership collisions.
+- emit separate `phase` and `readiness` fields. Phases are `planned`, `gate_preparation`, `ready_for_red`, `red`, `implementing`, `review`, `ci`, `merged_pending_post_ci`, `verified`, `superseded`, or `invalidated`; readiness is `ready`, `blocked`, `active`, `terminal`, or `unknown`.
+- emit only these blocker codes unless a replacement ticket changes the schema: `DEPENDENCY_UNVERIFIED`, `MILESTONE_GATE_BLOCKED`, `ADR_GATE_MISSING`, `PRD_GATE_MISSING`, `TICKET_GATE_MISSING`, `TICKET_CONTRACT_CONFLICT`, `TICKET_CONTRACT_INCOMPLETE`, `EXECUTION_PACKET_MISSING`, `OWNERSHIP_OVERLAP`, `RED_CONTRACT_INVALID`, `EXACT_HEAD_CI_FAILED`, `CUMULATIVE_REVIEW_MISSING`, `MERGE_AUTHORIZATION_MISSING`, `POST_MERGE_CI_MISSING`, `POST_MERGE_CI_FAILED`, `EXTERNAL_STATE_UNAVAILABLE`, `STALE_DIGEST`, and `WRONG_TARGET`. Every blocked or unknown record also has a bounded human-readable reason.
+- support `online-strict` and fixture-backed `offline` modes. When required external facts are unavailable, affected readiness is `unknown`, the ready set is empty, and no Roadmap/Board/label fallback exists.
+- treat issue body, issue open/closed state, issue labels, PR comment prose, Roadmap, Board, Maintainer Gate status prose, and historical ledger as non-authoritative. A closed issue alone is never verification.
+- link a PR to one ticket only through the exact `Ticket: <ID>` structured PR-body field; a ticket label may be checked for agreement but cannot establish or override linkage. Resolve active candidates from base branch, head SHA, merge commit, formal review `commit_id`, review decision, and check conclusions, and report superseded heads without reusing their review or CI evidence. Free-form review comments remain audit narrative; only a formal approval bound to the current head can satisfy cumulative review and merge authorization.
+- require post-merge CI for `verified`; a merge or candidate-head CI alone cannot satisfy a dependency. A material ADR/PRD/ticket digest change removes affected readiness; a candidate-head-only change invalidates exact-head review/CI without automatically invalidating semantically unchanged RED evidence.
+- produce byte-identical canonical JSON for identical static files, Git refs, and GitHub fixture facts. Runtime timestamps and current head are output-only and excluded from committed snapshots and canonical comparisons.
+- the frozen current-baseline fixture resolves D0-001 as `verified`, D0-002 as `phase=gate_preparation` and `readiness=blocked`, and `readySet=[]`; the fixture contains facts, not a committed current-branch snapshot.
+- render the Board from the canonical static catalog with an explicit non-authority marker; fail projection drift without letting a projection overwrite resolver state. The historical Maintainer Gate snapshot is never regenerated or consumed. The workflow uploads JSON and summary artifacts and performs no repository status commit or GitHub mutation.
 
 ## Acceptance ↔ tests
 
@@ -51,23 +67,32 @@ Replace the structural planning validator with semantic planning validator v2. I
 - AC-D0-004-5 ↔ `tests/planning-contract.test.mjs` case `computed-product-code-census`.
 - AC-D0-004-6 ↔ `tests/planning-contract.test.mjs` case `identity-consistency-and-no-exception`.
 - AC-D0-004-7 ↔ `tests/planning-contract.test.mjs` case `encoded-path-root-resolution`.
+- AC-D0-004-8 ↔ `tests/execution-state.test.mjs` cases `current-baseline-state`, `current-head-is-runtime-derived`, and `closed-issue-is-not-verification`.
+- AC-D0-004-9 ↔ cases `post-merge-ci-required`, `stale-digest-removes-readiness`, and `ownership-overlap-fails-closed`.
+- AC-D0-004-10 ↔ cases `external-unavailable-yields-unknown` and `wrong-repository-or-branch-fails-closed`.
+- AC-D0-004-11 ↔ cases `roadmap-is-not-an-input`, `board-is-not-an-input`, `issue-label-is-not-an-input`, and `historical-ledger-is-ignored`.
+- AC-D0-004-12 ↔ cases `generated-views-are-deterministic`, `projection-drift-does-not-change-state`, and `canonical-json-is-byte-identical`.
+- AC-D0-004-13 ↔ case `exact-base-packet-requires-ready`, which emits base, authority digests, owned paths/symbols, and RED command only for `readiness=ready`.
 
 ## Verification
 
-1. Focused: `npm test -- tests/planning-contract.test.mjs`; each semantic mutant fails for its expected reason and canonical corpus passes.
-2. Full: `npm test`; zero failure and no unregistered skip.
-3. Build/package: `npm run build`; emitted census/digests match disk.
-4. Manual/live: `LIVE_NA`.
-5. Ownership: inspect `git diff --name-only <base>...<head>` and reject every unowned path.
+1. Focused A: `npm test -- tests/planning-contract.test.mjs`; each semantic mutant fails for its expected reason and canonical corpus passes.
+2. Focused B/C: `node --test tests/execution-state.test.mjs`; all named resolver, outage, collision, non-input, determinism, and projection cases pass.
+3. Offline strict: `npm run ops:check -- --offline`; static graph, digests, ownership, fixtures, generated-view drift, wrong-target, and historical exclusion pass without claiming online readiness.
+4. Full: `npm test`; zero failure and no unregistered skip.
+5. Build/package: `npm run build`; emitted census/digests match disk, then `npm run ops:render` is clean on a second run.
+6. Online strict: `npm run ops:status -- --strict --json`; current repository facts resolve without fallback and the CI artifact is bound to the exact candidate head.
+7. Manual/live: `LIVE_NA`; this ticket owns control-plane code only.
+8. Ownership: `git diff --check <base>...<head>` passes and the diff contains only the atomic ownership above.
 
 ## Stop and escalation
 
-- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, unallowlisted product code, unsafe path handling, timeout without a terminal state, or partial state.
+- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, unallowlisted product code, unsafe path handling, GitHub outage reported as ready, comment/label/projection used as input, nondeterministic JSON, current SHA committed as state, timeout without a terminal state, or partial state.
 
 ## Completion evidence
 
-- Exact base/head SHA, mutant RED receipts, canonical focused/full/build receipts, computed census, gate-registry/digest report, and exact-head review/CI evidence.
+- Exact base/head SHA; per-subtask RED receipts; canonical focused/full/build/offline/online receipts; computed census; gate-registry/digest/ancestry report; deterministic JSON and projection hashes; current-state explanation with blocker codes; exact-head review/CI; and `LIVE_NA` rationale.
 
 ## Invalidation
 
-Any change to the SSOT, ADR/PRD/ticket graph, gate registry, identity source, control-plane allowlist, runtime identity, or candidate head invalidates affected semantic evidence and returns this lane to RED.
+An SSOT, ADR/PRD/ticket graph, gate registry, static catalog, resolver schema, provider fixture, identity source, control-plane allowlist, runtime identity, or candidate-head change invalidates only the affected lane. Contract, AC, RED oracle, or fixture-semantic changes return that subtask to RED; an otherwise unrelated candidate-head change renews exact-head review/CI and online resolution without discarding semantically unchanged RED evidence.

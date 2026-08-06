@@ -1,10 +1,10 @@
 # Atomic Ticket Board
 
-Status: **65 records authored; 64 executable tickets; D0-001 / issue #54 is the only current ready ticket; the other 63 executable tickets remain blocked by dependency or gate; D0-003 is `SUPERSEDED_BY_PLANNING_MIGRATION` with no implementation.**
+**STATIC DAG VIEW — NOT OPERATIONAL AUTHORITY**
 
-Operational sequencing SSOT: [`../planning/AOS-EXECUTION-ROADMAP.md`](../planning/AOS-EXECUTION-ROADMAP.md). This board owns the static ticket DAG; the roadmap owns the current ready set, dependency-safe parallel waves, joins, and new-agent handoff protocol.
+Source catalog: [`../issues.json`](../issues.json). Static sequencing: [`../planning/AOS-EXECUTION-ROADMAP.md`](../planning/AOS-EXECUTION-ROADMAP.md). After D0-004 is verified, current state comes only from `npm run ops:status -- --strict`; until then use the interim direct-fact rule in `AGENTS.md`.
 
-Execution is strictly serial by dependency. Parallel work is allowed only when all predecessors are verified and file ownership is disjoint. An open GitHub issue is not implementation authorization.
+This board owns only ticket IDs, milestone placement, size, and dependency edges. It contains no current ready ticket or blocker verdict. An open or closed GitHub issue is not implementation authorization.
 
 | Ticket | Epic | Milestone | Size | Dependencies |
 |---|---|---|---:|---|

@@ -1,6 +1,8 @@
-# Maintainer Gate status
+# Historical Maintainer Gate status snapshot
 
 Date: 2026-08-06
+
+**HISTORICAL SNAPSHOT — NEVER USE FOR CURRENT READINESS.** This file preserves the gate-administration state observed on its date. The canonical gate data is `maintainer-gate-registry.v2.json`; current readiness must follow the interim direct-fact rule in `AGENTS.md` and, after D0-004 is verified, `npm run ops:status -- --strict`. This snapshot, its tables, and its next-action prose are not resolver inputs or execution authorization.
 
 | Layer | Census | State | Effect |
 |---|---:|---|---|
