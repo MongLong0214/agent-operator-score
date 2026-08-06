@@ -15,7 +15,7 @@ Date: 2026-08-06
 
 ## Required next gate order
 
-1. The bounded-RED renewal binds the five current prerequisite digests and reviewed artifact head `355332136a5fa6490aadbdfde2f60ab8b7e244e5`; the independent checker rejects malformed, wrong-target, stale-digest, partial, or self-approved records.
+1. The bounded-RED renewal binds the five current prerequisite digests and reviewed artifact head `53abf77c724bffc785bc9820ef9bbe5ffece89d3`; the independent checker rejects malformed, wrong-target, stale-digest, partial, or self-approved records.
 2. Main performs the external exact-head CEO review and requires exact-head CI before accepting the final correction candidate.
 3. Only after that review, merge verification, post-merge `dev` CI, and a fresh execution packet are verified may RED restart for that ticket.
 
