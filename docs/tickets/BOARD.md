@@ -11,7 +11,7 @@ This board owns only ticket IDs, milestone placement, size, and dependency edges
 | [D0-001](D0/D0-001-canonical-identifier-registry.md) | D0 | S0 · Name & Contracts | S | None |
 | [D0-002](D0/D0-002-repository-and-npm-workspace-skeleton.md) | D0 | S0 · Name & Contracts | M | D0-001 |
 | [D0-003](D0/D0-003-active-documentation-and-legacy-boundary-migration.md) | D0 | S0 · Name & Contracts | M | D0-001 |
-| [D0-004](D0/D0-004-planning-contract-validator-and-governance-gate.md) | D0 | S0 · Name & Contracts | M | D0-002 |
+| [D0-004](D0/D0-004-planning-contract-validator-and-governance-gate.md) | D0 | S0 · Name & Contracts | L | D0-002 |
 | [E0A-001](E0-A/E0A-001-freeze-m01-m20-metric-registry.md) | E0-A | S0 · Name & Contracts | M | D0-004 |
 | [E0A-002](E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md) | E0-A | S0 · Name & Contracts | L | E0A-001 |
 | [E0A-003](E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md) | E0-A | S0 · Name & Contracts | M | E0A-002 |
