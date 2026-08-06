@@ -1,8 +1,8 @@
 # Issue-resolution ledger — 2026-08-06
 
-Status: **PENDING — no executable issue is authorized for RED or implementation.**
+**HISTORICAL SNAPSHOT — NEVER USE FOR CURRENT READINESS.** This dated reconciliation is excluded from operational-state inputs. Its issue states, branch SHA, and next actions describe only the captured baseline.
 
-This is a planning/control-plane ledger, not a product gate, execution packet, or acceptance record. It records the reconciliation of the public issue inventory with the committed dependency graph without changing any issue, ticket, ADR, PRD, or registry status.
+This is an audit record, not a product gate, execution packet, acceptance record, or current-state projection. Current readiness follows `AGENTS.md` and, after D0-004 is verified, `npm run ops:status -- --strict`.
 
 ## Verified baseline
 
