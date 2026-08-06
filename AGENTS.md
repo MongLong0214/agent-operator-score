@@ -12,7 +12,9 @@ If any item is missing, proposed, stale, ambiguous, or conflicts with a higher a
 
 ## Current gate state
 
-The repository is a planning baseline. All active ADRs, PRDs, and 65 tickets are PROPOSED/BLOCKED. Product implementation is forbidden until each required gate is explicitly accepted.
+The canonical operational entrypoint is [`docs/planning/AOS-EXECUTION-ROADMAP.md`](docs/planning/AOS-EXECUTION-ROADMAP.md). It owns the current ready set, dependency-safe execution order, parallel windows, joins, and handoff protocol. Never infer readiness from issue state or stale prose.
+
+Product implementation remains forbidden unless the exact ticket is in that roadmap's current ready set and every required ADR, PRD, ticket, dependency, exact-base, and RED gate is current.
 
 ## Per-ticket workflow
 
