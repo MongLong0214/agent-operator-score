@@ -518,12 +518,10 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
   assert.equal(batch.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
-  assert.equal(result.externalGateEvidence, "not_applicable");
+  assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
-  assert.match(gateStatus, /PENDING → ACCEPTED → INVALIDATED/);
-  assert.match(gateStatus, /no current acceptance and renewed external review is required/);
-  assert.match(gateDecision, /PENDING → ACCEPTED → INVALIDATED/);
-  assert.match(gateDecision, /there is no current acceptance, and renewed external review is required/);
+  assert.match(gateStatus, /historic canonical v2 `PENDING → ACCEPTED → INVALIDATED`; renewal structurally `ACCEPTED`/);
+  assert.match(gateDecision, /The canonical v2 D0-001 history is `PENDING → ACCEPTED → INVALIDATED`; its separate renewal is structurally `ACCEPTED`/);
   assert.match(ticket, /only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`/);
   assert.match(ticket, /Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion/);
   assert.match(d0004Ticket, /except the numeric `control_plane_code_files` literal/);
@@ -538,10 +536,13 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.match(gateDecision, /compatibility migration's exact delegation test case\/plumbing/);
 });
 
-test("fresh D0-001 renewal remains PENDING and binds the current prerequisite digests", () => {
+test("renewed D0-001 batch is structurally ACCEPTED at the exact prerequisite head", () => {
   const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
   const historical = registry.batches.find(({ id }) => id === "d0-001-prerequisites");
   const renewal = registry.batches.find(({ id }) => id === "d0-001-prerequisites-renewal");
+  const gateStatus = readFileSync(resolve(root, "docs/decisions/MAINTAINER-GATE-STATUS.md"), "utf8");
+  const gateDecision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
+  const result = validateGateAdministration();
   const requiredArtifacts = [
     { path: "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md", kind: "ADR" },
     { path: "docs/adr/ADR-0003-runtime-repository-and-distribution.md", kind: "ADR" },
@@ -553,21 +554,31 @@ test("fresh D0-001 renewal remains PENDING and binds the current prerequisite di
   assert.equal(registry.status, "INVALIDATED");
   assert.equal(historical.status, "INVALIDATED");
   assert.ok(renewal);
-  assert.equal(renewal.status, "PENDING");
+  assert.equal(renewal.status, "ACCEPTED");
   assert.deepEqual(renewal.target, {
     repository: "github.com/MongLong0214/agent-operator-score",
-    branch: "dev"
+    branch: "dev",
+    reviewed_head: "cc23a4b0585f9537dbfd00327c253d17d8ae4387"
   });
   assert.deepEqual(renewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), requiredArtifacts);
   for (const artifact of renewal.required_artifacts) {
     assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
   }
   assert.deepEqual(renewal.required_transitions, ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"]);
-  assert.deepEqual(renewal.artifacts, []);
-  assert.deepEqual(renewal.transitions, []);
-  assert.deepEqual(renewal.events, []);
-  assert.equal("reviewed_head" in renewal.target, false);
-  assert.equal("preparation" in renewal, false);
-  assert.equal("approval" in renewal, false);
+  assert.deepEqual(renewal.artifacts, renewal.required_artifacts);
+  assert.deepEqual(renewal.transitions, [
+    { type: "ADR_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
+    { type: "PRD_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
+    { type: "TICKET_READY_FOR_RED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
+  ]);
+  assert.deepEqual(renewal.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
+  assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
+  assert.equal(renewal.approval.role, "MAINTAINER");
   assert.equal("invalidation" in renewal, false);
+  assert.equal(result.status, "invalidated");
+  assert.equal(result.externalGateEvidence, "required");
+  assert.match(gateStatus, /separate digest-bound renewal is structurally ACCEPTED/);
+  assert.match(gateStatus, /independent external exact-head review and CI are required/);
+  assert.match(gateDecision, /separate renewal is structurally ACCEPTED/);
+  assert.match(gateDecision, /not authorization to execute and requires independent external exact-head review and CI/);
 });

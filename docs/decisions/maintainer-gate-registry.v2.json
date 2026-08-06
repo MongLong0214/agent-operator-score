@@ -102,11 +102,12 @@
     },
     {
       "id": "d0-001-prerequisites-renewal",
-      "status": "PENDING",
+      "status": "ACCEPTED",
       "scope": "Renew D0-001 prerequisite review against the current exact ADR-0001/0003/0012, PRD-D0, and exact ticket digests before RED.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
-        "branch": "dev"
+        "branch": "dev",
+        "reviewed_head": "cc23a4b0585f9537dbfd00327c253d17d8ae4387"
       },
       "required_artifacts": [
         {
@@ -140,9 +141,71 @@
         "PRD_ACCEPTED",
         "TICKET_READY_FOR_RED"
       ],
-      "artifacts": [],
-      "transitions": [],
-      "events": []
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "65cf7d2be7340cb15b0794239b62ed4211106779a6f79bf2058d4bed094e1b32",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "e76a62eddcf6112e573a293691e3db67047f5452a5a3a8c41a6d6275bf7dfa12",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "ac4480d022fb7b8f3889e9160f0743ceb7a5c06dd756f407dcce46a8e828171e",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+          "sha256": "68ddf9c8d6b21d110a111fd8689604cb071e545b50657d41e1179defa5481b7a",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-001-canonical-identifier-registry.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-05T23:24:56Z",
+          "recorded_by": "gate-administrator-renewal-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "gate-administrator-renewal-candidate"
+      },
+      "approval": {
+        "approved_by": "independent-maintainer-external-review-required",
+        "approved_at": "2026-08-05T23:24:56Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
