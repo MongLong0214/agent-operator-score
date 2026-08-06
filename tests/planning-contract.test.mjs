@@ -180,6 +180,15 @@ test("planning tests preserve the canonical D0 identity validator", () => {
   if (before !== null) assert.deepEqual(readFileSync(canonical), before);
 });
 
+test("D0-001 RED permits only its two bounded pre-GREEN staging failures", () => {
+  const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-001-canonical-identifier-registry.md"), "utf8");
+  assert.match(ticket, /case `canonical-pass` fails with `ERR_MODULE_NOT_FOUND` identifying `scripts\/validate-identity\.mjs`/);
+  assert.match(ticket, /exactly two companion staging failures are expected and permitted/);
+  assert.match(ticket, /control_plane_code_files=5` while its owned literal is still `4`/);
+  assert.match(ticket, /base `scripts\.test` is not yet `node --test`/);
+  assert.match(ticket, /Any failure outside the required missing-validator signal and these two bounded companion failures stops execution/);
+});
+
 test("status ledger separates blocked executable tickets from superseded D0-003", () => {
   const ledger = readFileSync(resolve(root, "docs/decisions/MAINTAINER-GATE-STATUS.md"), "utf8");
   assert.match(ledger, /\| Atomic tickets \| 64 executable \| BLOCKED \|/);

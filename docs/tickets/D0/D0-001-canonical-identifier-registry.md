@@ -39,8 +39,9 @@ Create the single, versioned identity registry and fail-closed active-tree valid
 
 - Test file: `tests/planning/identity.test.mjs`
 - Focused command: `npm test -- tests/planning/identity.test.mjs`
-- Expected pre-GREEN failure: after first adding the named test module, the command fails because `scripts/validate-identity.mjs` and `specs/identity.v1.json` do not exist; the receipt must identify the missing validator/registry path. It must not use the obsolete claim that historical identifiers currently pass.
-- Capture the exact failing test name and message before editing `specs/identity.v1.json`, `scripts/validate-identity.mjs`, or `package.json`. If the failure is not missing registry/validator behavior, stop; the ticket precondition is stale or wrong.
+- Expected pre-GREEN failure: after first adding the named test module, case `canonical-pass` fails with `ERR_MODULE_NOT_FOUND` identifying `scripts/validate-identity.mjs` before `specs/identity.v1.json` can be read. The receipt must identify that exact missing validator path and must not use the obsolete claim that historical identifiers currently pass.
+- The exact `npm test -- tests/planning/identity.test.mjs` command still expands the base `tests/*.test.mjs` script before GREEN. Therefore exactly two companion staging failures are expected and permitted in the same RED receipt: the planning-contract census observes the newly added test alone as `control_plane_code_files=5` while its owned literal is still `4`, and `npm-test-discovers-identity` observes that the base `scripts.test` is not yet `node --test`. These are ticket-owned GREEN deltas, not alternate RED evidence. Any failure outside the required missing-validator signal and these two bounded companion failures stops execution.
+- Capture the exact failing test names and messages before editing `specs/identity.v1.json`, `scripts/validate-identity.mjs`, `package.json`, or the owned planning-contract literals. If `canonical-pass` does not fail for the exact missing-validator behavior, stop; the ticket precondition is stale or wrong.
 
 ## Minimum GREEN
 
