@@ -2,7 +2,7 @@
 
 Status: **STATIC SEMANTIC CATALOG — planning authority graph for D0-004A**
 
-D0-004A makes the static authority graph executable. The catalog below is a static planning input: it binds the SSOT, each PRD path, required ADRs, requirement count, exact PRD acceptance IDs, owned ticket IDs, explicit requirement → PRD acceptance edges authored from PRD requirement and AC text, explicit PRD acceptance → ticket edges authored from ticket goals and ownership, and an independent planned-test structure keyed by planned test path with exact named cases. Every ticket acceptance edge must resolve to that planned-test structure. When the planned path exists in the repository, the file must contain the exact named case; future missing files may be planned only through this static structure.
+D0-004A makes the static authority graph executable. The catalog below is a static planning input: it binds the SSOT, each PRD path, required ADRs, requirement count, exact PRD acceptance IDs, owned ticket IDs, requirement → PRD acceptance edges authored from PRD requirement and AC text, PRD acceptance → ticket edges authored from ticket goals and ownership, an independent planned-test structure keyed by planned test path with exact named cases, and an explicit ticket-acceptance binding for every ticket ID + ticket acceptance ID to exactly one planned test path and exact named case set. Case-only ticket prose still requires an explicit catalog path; global reverse lookup of case names is not authority.
 
 JSON object key order in this catalog is not schema-significant; validators compare sets and sorted multi-values, never insertion order.
 
@@ -933,6 +933,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "5",
           "acceptance_ids": [
+            "AC-E3-3",
+            "AC-E3-4",
             "AC-E3-5"
           ]
         }
@@ -966,7 +968,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "acceptance_id": "AC-E3-5",
           "ticket_ids": [
-            "E3-001"
+            "E3-001",
+            "E3-004"
           ]
         }
       ]
@@ -2197,6 +2200,3357 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "sample-balance",
         "schema",
         "stop-rules"
+      ]
+    }
+  ],
+  "ticket_acceptance_bindings": [
+    {
+      "ticket_id": "D0-001",
+      "acceptance_id": "AC-D0-001-1",
+      "test_path": "tests/planning/identity.test.mjs",
+      "cases": [
+        "canonical-pass"
+      ]
+    },
+    {
+      "ticket_id": "D0-001",
+      "acceptance_id": "AC-D0-001-2",
+      "test_path": "tests/planning/identity.test.mjs",
+      "cases": [
+        "each-forbidden-token"
+      ]
+    },
+    {
+      "ticket_id": "D0-001",
+      "acceptance_id": "AC-D0-001-3",
+      "test_path": "tests/planning/identity.test.mjs",
+      "cases": [
+        "no-active-tree-exception"
+      ]
+    },
+    {
+      "ticket_id": "D0-001",
+      "acceptance_id": "AC-D0-001-4",
+      "test_path": "tests/planning/identity.test.mjs",
+      "cases": [
+        "case-word-boundary-variants"
+      ]
+    },
+    {
+      "ticket_id": "D0-001",
+      "acceptance_id": "AC-D0-001-5",
+      "test_path": "tests/planning/identity.test.mjs",
+      "cases": [
+        "wrong-target-no-silent-fallback"
+      ]
+    },
+    {
+      "ticket_id": "D0-001",
+      "acceptance_id": "AC-D0-001-6",
+      "test_path": "tests/planning/identity.test.mjs",
+      "cases": [
+        "npm-test-discovers-identity"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-1",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "workspace-census"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-2",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "root-private-and-internal-workspaces-private"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-3",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "one-owner-per-path"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-4",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "root-private-scripts-and-runnable-surface"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-5",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "engine-matrix"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-6",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "minimum-name-clearance"
+      ]
+    },
+    {
+      "ticket_id": "D0-002",
+      "acceptance_id": "AC-D0-002-7",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "workspace-lock-consistency"
+      ]
+    },
+    {
+      "ticket_id": "D0-003",
+      "acceptance_id": "AC-D0-003-1",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "superseded-d0-003-has-no-owned-implementation"
+      ]
+    },
+    {
+      "ticket_id": "D0-003",
+      "acceptance_id": "AC-D0-003-2",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "superseded-d0-003-has-no-owned-implementation"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-1",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "semantic-traceability-graph"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-10",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "external-unavailable-yields-unknown",
+        "wrong-repository-or-branch-fails-closed"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-11",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "roadmap-is-not-an-input",
+        "board-is-not-an-input",
+        "issue-label-is-not-an-input"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-12",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "generated-views-are-deterministic",
+        "projection-drift-does-not-change-state"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-13",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "exact-base-packet-requires-ready"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-14",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "registry-string-is-not-gate-acceptance",
+        "actor-policy-missing-or-malformed",
+        "gate-pr-wrong-or-no-longer-owner-actor",
+        "gate-pr-stale-head-or-digest"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-15",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "review-and-authorization-are-distinct",
+        "current-review-without-authorization-is-blocked",
+        "single-owner-spoof-is-not-authorization",
+        "single-owner-sequential-review-and-authorization",
+        "candidate-controlled-or-non-ancestor-review-workflow-is-blocked",
+        "wrong-workflow-blob-or-run-provenance-is-blocked",
+        "wrong-check-creator-or-external-id-is-blocked",
+        "wrong-dispatch-permission-is-blocked"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-16",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "ready-authorizes-packet-not-red"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-17",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "candidate-ci-required-set-is-exact",
+        "candidate-ci-missing-stale-or-wrong-head-is-blocked",
+        "candidate-ci-wrong-app-event-base-path-or-run-is-blocked",
+        "candidate-ci-candidate-workflow-differs-from-live-target-is-blocked"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-18",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "future-check-premature",
+        "bootstrap-after-c-fails-closed"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-2",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "orphan-requirement-ac-ticket-test-mutants"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-3",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "issue-map-and-manifest-agreement",
+        "operational-authority-schema-and-ticket-agreement"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-4",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "maintainer-gate-digest-invalidation"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-5",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "computed-product-code-census"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-6",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "identity-consistency-and-no-exception"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-7",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "encoded-path-root-resolution"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-8",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "current-baseline-state",
+        "current-head-is-runtime-derived"
+      ]
+    },
+    {
+      "ticket_id": "D0-004",
+      "acceptance_id": "AC-D0-004-9",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "post-merge-ci-required",
+        "stale-digest-removes-readiness"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-1",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "exact-20"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-10",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "m20-frontier-derived-distance"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-11",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "reject-caller-supplied-derived-m10-m20-values"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-2",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "reject-M21"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-3",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "reject-gap"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-4",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "reject-duplicate"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-5",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "reject-dead-route"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-6",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "complete-contract-v1-fields"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-7",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "m03-precision-recall-f1-vectors"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-8",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "canonical-pass-partial-fail-no-vectors"
+      ]
+    },
+    {
+      "ticket_id": "E0A-001",
+      "acceptance_id": "AC-E0A-001-9",
+      "test_path": "packages/schema/test/metric-registry.test.ts",
+      "cases": [
+        "m10-route-table-derived-regret"
+      ]
+    },
+    {
+      "ticket_id": "E0A-002",
+      "acceptance_id": "AC-E0A-002-1",
+      "test_path": "packages/schema/test/issuance-contract.test.ts",
+      "cases": [
+        "one-negative-case-per-gate"
+      ]
+    },
+    {
+      "ticket_id": "E0A-002",
+      "acceptance_id": "AC-E0A-002-2",
+      "test_path": "packages/schema/test/issuance-contract.test.ts",
+      "cases": [
+        "all-gates-pass"
+      ]
+    },
+    {
+      "ticket_id": "E0A-002",
+      "acceptance_id": "AC-E0A-002-3",
+      "test_path": "packages/schema/test/issuance-contract.test.ts",
+      "cases": [
+        "NOT_OBSERVED-not-zero"
+      ]
+    },
+    {
+      "ticket_id": "E0A-003",
+      "acceptance_id": "AC-E0A-003-1",
+      "test_path": "packages/schema/test/scoring-contract.test.ts",
+      "cases": [
+        "published-vectors"
+      ]
+    },
+    {
+      "ticket_id": "E0A-003",
+      "acceptance_id": "AC-E0A-003-2",
+      "test_path": "packages/schema/test/scoring-contract.test.ts",
+      "cases": [
+        "O-zero"
+      ]
+    },
+    {
+      "ticket_id": "E0A-003",
+      "acceptance_id": "AC-E0A-003-3",
+      "test_path": "packages/schema/test/scoring-contract.test.ts",
+      "cases": [
+        "P-zero"
+      ]
+    },
+    {
+      "ticket_id": "E0A-003",
+      "acceptance_id": "AC-E0A-003-4",
+      "test_path": "packages/schema/test/scoring-contract.test.ts",
+      "cases": [
+        "S2-withhold"
+      ]
+    },
+    {
+      "ticket_id": "E0A-003",
+      "acceptance_id": "AC-E0A-003-5",
+      "test_path": "packages/schema/test/scoring-contract.test.ts",
+      "cases": [
+        "rounding-boundaries"
+      ]
+    },
+    {
+      "ticket_id": "E0B-001",
+      "acceptance_id": "AC-E0B-001-1",
+      "test_path": "packages/schema/test/capability.test.ts",
+      "cases": [
+        "complete-matrix"
+      ]
+    },
+    {
+      "ticket_id": "E0B-001",
+      "acceptance_id": "AC-E0B-001-2",
+      "test_path": "packages/schema/test/capability.test.ts",
+      "cases": [
+        "missing-row"
+      ]
+    },
+    {
+      "ticket_id": "E0B-001",
+      "acceptance_id": "AC-E0B-001-3",
+      "test_path": "packages/schema/test/capability.test.ts",
+      "cases": [
+        "missing-source"
+      ]
+    },
+    {
+      "ticket_id": "E0B-001",
+      "acceptance_id": "AC-E0B-001-4",
+      "test_path": "packages/schema/test/capability.test.ts",
+      "cases": [
+        "invalid-derived"
+      ]
+    },
+    {
+      "ticket_id": "E0B-001",
+      "acceptance_id": "AC-E0B-001-5",
+      "test_path": "packages/schema/test/capability.test.ts",
+      "cases": [
+        "invalid-status"
+      ]
+    },
+    {
+      "ticket_id": "E0B-002",
+      "acceptance_id": "AC-E0B-002-1",
+      "test_path": "packages/schema/test/session-class.test.ts",
+      "cases": [
+        "controlled-complete"
+      ]
+    },
+    {
+      "ticket_id": "E0B-002",
+      "acceptance_id": "AC-E0B-002-2",
+      "test_path": "packages/schema/test/session-class.test.ts",
+      "cases": [
+        "missing-start"
+      ]
+    },
+    {
+      "ticket_id": "E0B-002",
+      "acceptance_id": "AC-E0B-002-3",
+      "test_path": "packages/schema/test/session-class.test.ts",
+      "cases": [
+        "missing-end"
+      ]
+    },
+    {
+      "ticket_id": "E0B-002",
+      "acceptance_id": "AC-E0B-002-4",
+      "test_path": "packages/schema/test/session-class.test.ts",
+      "cases": [
+        "imported"
+      ]
+    },
+    {
+      "ticket_id": "E0B-002",
+      "acceptance_id": "AC-E0B-002-5",
+      "test_path": "packages/schema/test/session-class.test.ts",
+      "cases": [
+        "identity-gap"
+      ]
+    },
+    {
+      "ticket_id": "E0B-003",
+      "acceptance_id": "AC-E0B-003-1",
+      "test_path": "packages/schema/test/doctor-contract.test.ts",
+      "cases": [
+        "complete"
+      ]
+    },
+    {
+      "ticket_id": "E0B-003",
+      "acceptance_id": "AC-E0B-003-2",
+      "test_path": "packages/schema/test/doctor-contract.test.ts",
+      "cases": [
+        "degraded"
+      ]
+    },
+    {
+      "ticket_id": "E0B-003",
+      "acceptance_id": "AC-E0B-003-3",
+      "test_path": "packages/schema/test/doctor-contract.test.ts",
+      "cases": [
+        "blocked"
+      ]
+    },
+    {
+      "ticket_id": "E0B-003",
+      "acceptance_id": "AC-E0B-003-4",
+      "test_path": "packages/schema/test/doctor-contract.test.ts",
+      "cases": [
+        "imported-only"
+      ]
+    },
+    {
+      "ticket_id": "E0B-003",
+      "acceptance_id": "AC-E0B-003-5",
+      "test_path": "packages/schema/test/doctor-contract.test.ts",
+      "cases": [
+        "stable-order"
+      ]
+    },
+    {
+      "ticket_id": "E0C-001",
+      "acceptance_id": "AC-E0C-001-1",
+      "test_path": "packages/scorer/test/simulation-input.test.ts",
+      "cases": [
+        "valid-input"
+      ]
+    },
+    {
+      "ticket_id": "E0C-001",
+      "acceptance_id": "AC-E0C-001-2",
+      "test_path": "packages/scorer/test/simulation-input.test.ts",
+      "cases": [
+        "over-four-primary"
+      ]
+    },
+    {
+      "ticket_id": "E0C-001",
+      "acceptance_id": "AC-E0C-001-3",
+      "test_path": "packages/scorer/test/simulation-input.test.ts",
+      "cases": [
+        "duplicate-opportunity"
+      ]
+    },
+    {
+      "ticket_id": "E0C-001",
+      "acceptance_id": "AC-E0C-001-4",
+      "test_path": "packages/scorer/test/simulation-input.test.ts",
+      "cases": [
+        "missing-threshold"
+      ]
+    },
+    {
+      "ticket_id": "E0C-001",
+      "acceptance_id": "AC-E0C-001-5",
+      "test_path": "packages/scorer/test/simulation-input.test.ts",
+      "cases": [
+        "unregistered-policy"
+      ]
+    },
+    {
+      "ticket_id": "E0C-002",
+      "acceptance_id": "AC-E0C-002-1",
+      "test_path": "packages/scorer/test/pack-budget.test.ts",
+      "cases": [
+        "valid-pack"
+      ]
+    },
+    {
+      "ticket_id": "E0C-002",
+      "acceptance_id": "AC-E0C-002-2",
+      "test_path": "packages/scorer/test/pack-budget.test.ts",
+      "cases": [
+        "slow-pack"
+      ]
+    },
+    {
+      "ticket_id": "E0C-002",
+      "acceptance_id": "AC-E0C-002-3",
+      "test_path": "packages/scorer/test/pack-budget.test.ts",
+      "cases": [
+        "under-observed"
+      ]
+    },
+    {
+      "ticket_id": "E0C-002",
+      "acceptance_id": "AC-E0C-002-4",
+      "test_path": "packages/scorer/test/pack-budget.test.ts",
+      "cases": [
+        "double-count"
+      ]
+    },
+    {
+      "ticket_id": "E0C-002",
+      "acceptance_id": "AC-E0C-002-5",
+      "test_path": "packages/scorer/test/pack-budget.test.ts",
+      "cases": [
+        "no-prescription"
+      ]
+    },
+    {
+      "ticket_id": "E0C-003",
+      "acceptance_id": "AC-E0C-003-1",
+      "test_path": "packages/reporter/test/preflight-report.test.ts",
+      "cases": [
+        "pass-golden"
+      ]
+    },
+    {
+      "ticket_id": "E0C-003",
+      "acceptance_id": "AC-E0C-003-2",
+      "test_path": "packages/reporter/test/preflight-report.test.ts",
+      "cases": [
+        "each-threshold-fail"
+      ]
+    },
+    {
+      "ticket_id": "E0C-003",
+      "acceptance_id": "AC-E0C-003-3",
+      "test_path": "packages/reporter/test/preflight-report.test.ts",
+      "cases": [
+        "digest-mismatch"
+      ]
+    },
+    {
+      "ticket_id": "E0C-003",
+      "acceptance_id": "AC-E0C-003-4",
+      "test_path": "packages/reporter/test/preflight-report.test.ts",
+      "cases": [
+        "stable-bytes"
+      ]
+    },
+    {
+      "ticket_id": "E0D-001",
+      "acceptance_id": "AC-E0D-001-1",
+      "test_path": "packages/schema/test/prescription-input.test.ts",
+      "cases": [
+        "one-case-per-input"
+      ]
+    },
+    {
+      "ticket_id": "E0D-001",
+      "acceptance_id": "AC-E0D-001-2",
+      "test_path": "packages/schema/test/prescription-input.test.ts",
+      "cases": [
+        "missing-formula"
+      ]
+    },
+    {
+      "ticket_id": "E0D-001",
+      "acceptance_id": "AC-E0D-001-3",
+      "test_path": "packages/schema/test/prescription-input.test.ts",
+      "cases": [
+        "range"
+      ]
+    },
+    {
+      "ticket_id": "E0D-001",
+      "acceptance_id": "AC-E0D-001-4",
+      "test_path": "packages/schema/test/prescription-input.test.ts",
+      "cases": [
+        "unknown-source"
+      ]
+    },
+    {
+      "ticket_id": "E0D-001",
+      "acceptance_id": "AC-E0D-001-5",
+      "test_path": "packages/schema/test/prescription-input.test.ts",
+      "cases": [
+        "version"
+      ]
+    },
+    {
+      "ticket_id": "E0D-002",
+      "acceptance_id": "AC-E0D-002-1",
+      "test_path": "packages/schema/test/treatment-registry.test.ts",
+      "cases": [
+        "coverage-M01-M20"
+      ]
+    },
+    {
+      "ticket_id": "E0D-002",
+      "acceptance_id": "AC-E0D-002-2",
+      "test_path": "packages/schema/test/treatment-registry.test.ts",
+      "cases": [
+        "unique-default"
+      ]
+    },
+    {
+      "ticket_id": "E0D-002",
+      "acceptance_id": "AC-E0D-002-3",
+      "test_path": "packages/schema/test/treatment-registry.test.ts",
+      "cases": [
+        "S2-remediation"
+      ]
+    },
+    {
+      "ticket_id": "E0D-002",
+      "acceptance_id": "AC-E0D-002-4",
+      "test_path": "packages/schema/test/treatment-registry.test.ts",
+      "cases": [
+        "missing-retest"
+      ]
+    },
+    {
+      "ticket_id": "E0D-002",
+      "acceptance_id": "AC-E0D-002-5",
+      "test_path": "packages/schema/test/treatment-registry.test.ts",
+      "cases": [
+        "unknown-metric"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-1",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "S2"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-2",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "factor-priority"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-3",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "three-point-tie"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-4",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "lower-cost"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-5",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "lower-permission"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-6",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "insufficient"
+      ]
+    },
+    {
+      "ticket_id": "E0D-003",
+      "acceptance_id": "AC-E0D-003-7",
+      "test_path": "packages/scorer/test/select-lever.test.ts",
+      "cases": [
+        "manual-review"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-1",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "all-events"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-2",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "missing-id"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-3",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "bad-parent"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-4",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "oversized"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-5",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "secret-canary"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-6",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "unknown-event"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-7",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "stable-bytes"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-8",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "actor-attribution-events"
+      ]
+    },
+    {
+      "ticket_id": "E1-001",
+      "acceptance_id": "AC-E1-001-9",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "unknown-attribution-requires-confidence-drop"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-1",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "issuable"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-2",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "estimate"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-3",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "insufficient"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-4",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "unsafe"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-5",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "invalid"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-6",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "missing-profile"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-7",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "percentile-reject"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-8",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "stable-bytes"
+      ]
+    },
+    {
+      "ticket_id": "E1-002",
+      "acceptance_id": "AC-E1-002-9",
+      "test_path": "packages/schema/test/result-schema.test.ts",
+      "cases": [
+        "unknown-attribution-withholds-score"
+      ]
+    },
+    {
+      "ticket_id": "E1-003",
+      "acceptance_id": "AC-E1-003-1",
+      "test_path": "packages/schema/test/conformance.test.ts",
+      "cases": [
+        "zero-fixture"
+      ]
+    },
+    {
+      "ticket_id": "E1-003",
+      "acceptance_id": "AC-E1-003-2",
+      "test_path": "packages/schema/test/conformance.test.ts",
+      "cases": [
+        "valid-corpus"
+      ]
+    },
+    {
+      "ticket_id": "E1-003",
+      "acceptance_id": "AC-E1-003-3",
+      "test_path": "packages/schema/test/conformance.test.ts",
+      "cases": [
+        "negative-corpus"
+      ]
+    },
+    {
+      "ticket_id": "E1-003",
+      "acceptance_id": "AC-E1-003-4",
+      "test_path": "packages/schema/test/conformance.test.ts",
+      "cases": [
+        "breaking-minor"
+      ]
+    },
+    {
+      "ticket_id": "E1-003",
+      "acceptance_id": "AC-E1-003-5",
+      "test_path": "packages/schema/test/conformance.test.ts",
+      "cases": [
+        "digest-mismatch"
+      ]
+    },
+    {
+      "ticket_id": "E1-003",
+      "acceptance_id": "AC-E1-003-6",
+      "test_path": "packages/schema/test/conformance.test.ts",
+      "cases": [
+        "cross-node"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-1",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "issuable"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-2",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "S1-warning"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-3",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "insufficient"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-4",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "unsafe"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-5",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "invalid"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-6",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "profile-unmatched"
+      ]
+    },
+    {
+      "ticket_id": "E10-001",
+      "acceptance_id": "AC-E10-001-7",
+      "test_path": "packages/reporter/test/report.test.ts",
+      "cases": [
+        "stable-bytes"
+      ]
+    },
+    {
+      "ticket_id": "E10-002",
+      "acceptance_id": "AC-E10-002-1",
+      "test_path": "packages/reporter/test/evidence-resolver.test.ts",
+      "cases": [
+        "valid-chain"
+      ]
+    },
+    {
+      "ticket_id": "E10-002",
+      "acceptance_id": "AC-E10-002-2",
+      "test_path": "packages/reporter/test/evidence-resolver.test.ts",
+      "cases": [
+        "missing-event"
+      ]
+    },
+    {
+      "ticket_id": "E10-002",
+      "acceptance_id": "AC-E10-002-3",
+      "test_path": "packages/reporter/test/evidence-resolver.test.ts",
+      "cases": [
+        "stale-digest"
+      ]
+    },
+    {
+      "ticket_id": "E10-002",
+      "acceptance_id": "AC-E10-002-4",
+      "test_path": "packages/reporter/test/evidence-resolver.test.ts",
+      "cases": [
+        "traversal"
+      ]
+    },
+    {
+      "ticket_id": "E10-002",
+      "acceptance_id": "AC-E10-002-5",
+      "test_path": "packages/reporter/test/evidence-resolver.test.ts",
+      "cases": [
+        "wrong-run"
+      ]
+    },
+    {
+      "ticket_id": "E10-002",
+      "acceptance_id": "AC-E10-002-6",
+      "test_path": "packages/reporter/test/evidence-resolver.test.ts",
+      "cases": [
+        "secret-canary"
+      ]
+    },
+    {
+      "ticket_id": "E10-003",
+      "acceptance_id": "AC-E10-003-1",
+      "test_path": "packages/reporter/test/diagnosis.test.ts",
+      "cases": [
+        "ordinary"
+      ]
+    },
+    {
+      "ticket_id": "E10-003",
+      "acceptance_id": "AC-E10-003-2",
+      "test_path": "packages/reporter/test/diagnosis.test.ts",
+      "cases": [
+        "safety-remediation"
+      ]
+    },
+    {
+      "ticket_id": "E10-003",
+      "acceptance_id": "AC-E10-003-3",
+      "test_path": "packages/reporter/test/diagnosis.test.ts",
+      "cases": [
+        "manual-review"
+      ]
+    },
+    {
+      "ticket_id": "E10-003",
+      "acceptance_id": "AC-E10-003-4",
+      "test_path": "packages/reporter/test/diagnosis.test.ts",
+      "cases": [
+        "evidence-missing"
+      ]
+    },
+    {
+      "ticket_id": "E10-003",
+      "acceptance_id": "AC-E10-003-5",
+      "test_path": "packages/reporter/test/diagnosis.test.ts",
+      "cases": [
+        "prohibited-copy"
+      ]
+    },
+    {
+      "ticket_id": "E11-001",
+      "acceptance_id": "AC-E11-001-1",
+      "test_path": "conformance/form-b/form-b.test.ts",
+      "cases": [
+        "construct-link"
+      ]
+    },
+    {
+      "ticket_id": "E11-001",
+      "acceptance_id": "AC-E11-001-2",
+      "test_path": "conformance/form-b/form-b.test.ts",
+      "cases": [
+        "repo-distance"
+      ]
+    },
+    {
+      "ticket_id": "E11-001",
+      "acceptance_id": "AC-E11-001-3",
+      "test_path": "conformance/form-b/form-b.test.ts",
+      "cases": [
+        "trap-distance"
+      ]
+    },
+    {
+      "ticket_id": "E11-001",
+      "acceptance_id": "AC-E11-001-4",
+      "test_path": "conformance/form-b/form-b.test.ts",
+      "cases": [
+        "repeated-form"
+      ]
+    },
+    {
+      "ticket_id": "E11-001",
+      "acceptance_id": "AC-E11-001-5",
+      "test_path": "conformance/form-b/form-b.test.ts",
+      "cases": [
+        "answer-leak"
+      ]
+    },
+    {
+      "ticket_id": "E11-001",
+      "acceptance_id": "AC-E11-001-6",
+      "test_path": "conformance/form-b/form-b.test.ts",
+      "cases": [
+        "valid-B"
+      ]
+    },
+    {
+      "ticket_id": "E11-002",
+      "acceptance_id": "AC-E11-002-1",
+      "test_path": "packages/runner/test/sprint-ledger.test.ts",
+      "cases": [
+        "one-treatment"
+      ]
+    },
+    {
+      "ticket_id": "E11-002",
+      "acceptance_id": "AC-E11-002-2",
+      "test_path": "packages/runner/test/sprint-ledger.test.ts",
+      "cases": [
+        "two-treatment"
+      ]
+    },
+    {
+      "ticket_id": "E11-002",
+      "acceptance_id": "AC-E11-002-3",
+      "test_path": "packages/runner/test/sprint-ledger.test.ts",
+      "cases": [
+        "baseline-mutation"
+      ]
+    },
+    {
+      "ticket_id": "E11-002",
+      "acceptance_id": "AC-E11-002-4",
+      "test_path": "packages/runner/test/sprint-ledger.test.ts",
+      "cases": [
+        "deviation"
+      ]
+    },
+    {
+      "ticket_id": "E11-002",
+      "acceptance_id": "AC-E11-002-5",
+      "test_path": "packages/runner/test/sprint-ledger.test.ts",
+      "cases": [
+        "local-only"
+      ]
+    },
+    {
+      "ticket_id": "E11-002",
+      "acceptance_id": "AC-E11-002-6",
+      "test_path": "packages/runner/test/sprint-ledger.test.ts",
+      "cases": [
+        "close-state"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-1",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "operator"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-2",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "environment"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-3",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "combined"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-4",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "unclassified"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-5",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "verification-degrade"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-6",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "unsafe"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-7",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "exposure"
+      ]
+    },
+    {
+      "ticket_id": "E11-003",
+      "acceptance_id": "AC-E11-003-8",
+      "test_path": "packages/scorer/test/retest.test.ts",
+      "cases": [
+        "positive"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-1",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "schema"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-2",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "sample-balance"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-3",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "hypotheses"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-4",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "missingness"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-5",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "blind-review"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-6",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "stop-rules"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-7",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "no-percentile"
+      ]
+    },
+    {
+      "ticket_id": "E12-001",
+      "acceptance_id": "AC-E12-001-8",
+      "test_path": "tests/validation/alpha-protocol.test.mjs",
+      "cases": [
+        "feasibility-only-verdicts"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-1",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "dry-run"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-2",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "consent-block"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-3",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "immutable-row"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-4",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "missingness"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-5",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "counterbalance"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-6",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "blinding"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-7",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "deviation"
+      ]
+    },
+    {
+      "ticket_id": "E12-002",
+      "acceptance_id": "AC-E12-002-8",
+      "test_path": "packages/runner/test/alpha-orchestrator.test.ts",
+      "cases": [
+        "feasibility-claim-block"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-1",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "known-vectors"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-2",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "person-signal"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-3",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "noise-dominant"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-4",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "duration-fail"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-5",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "agreement-low"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-6",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "transfer-fail"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-7",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "incomplete"
+      ]
+    },
+    {
+      "ticket_id": "E12-003",
+      "acceptance_id": "AC-E12-003-8",
+      "test_path": "packages/scorer/test/validation.test.ts",
+      "cases": [
+        "feasibility-only-verdicts"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-1",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "valid"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-2",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "no-score"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-3",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "no-provisional"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-4",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "no-safe"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-5",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "no-percentile"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-6",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "watermark"
+      ]
+    },
+    {
+      "ticket_id": "E13-001",
+      "acceptance_id": "AC-E13-001-7",
+      "test_path": "packages/reporter/test/snapshot.test.ts",
+      "cases": [
+        "copy-scan"
+      ]
+    },
+    {
+      "ticket_id": "E13-002",
+      "acceptance_id": "AC-E13-002-1",
+      "test_path": "packages/reporter/test/snapshot-share.test.ts",
+      "cases": [
+        "allowlist"
+      ]
+    },
+    {
+      "ticket_id": "E13-002",
+      "acceptance_id": "AC-E13-002-2",
+      "test_path": "packages/reporter/test/snapshot-share.test.ts",
+      "cases": [
+        "unknown-field"
+      ]
+    },
+    {
+      "ticket_id": "E13-002",
+      "acceptance_id": "AC-E13-002-3",
+      "test_path": "packages/reporter/test/snapshot-share.test.ts",
+      "cases": [
+        "private-canaries"
+      ]
+    },
+    {
+      "ticket_id": "E13-002",
+      "acceptance_id": "AC-E13-002-4",
+      "test_path": "packages/reporter/test/snapshot-share.test.ts",
+      "cases": [
+        "explicit-only"
+      ]
+    },
+    {
+      "ticket_id": "E13-002",
+      "acceptance_id": "AC-E13-002-5",
+      "test_path": "packages/reporter/test/snapshot-share.test.ts",
+      "cases": [
+        "no-network"
+      ]
+    },
+    {
+      "ticket_id": "E13-002",
+      "acceptance_id": "AC-E13-002-6",
+      "test_path": "packages/reporter/test/snapshot-share.test.ts",
+      "cases": [
+        "stable-bytes"
+      ]
+    },
+    {
+      "ticket_id": "E14-001",
+      "acceptance_id": "AC-E14-001-1",
+      "test_path": "tests/publication/clearance.test.mjs",
+      "cases": [
+        "license-contribution-redistribution"
+      ]
+    },
+    {
+      "ticket_id": "E14-001",
+      "acceptance_id": "AC-E14-001-2",
+      "test_path": "tests/publication/clearance.test.mjs",
+      "cases": [
+        "license"
+      ]
+    },
+    {
+      "ticket_id": "E14-001",
+      "acceptance_id": "AC-E14-001-3",
+      "test_path": "tests/publication/clearance.test.mjs",
+      "cases": [
+        "notices"
+      ]
+    },
+    {
+      "ticket_id": "E14-001",
+      "acceptance_id": "AC-E14-001-4",
+      "test_path": "tests/publication/clearance.test.mjs",
+      "cases": [
+        "contributor"
+      ]
+    },
+    {
+      "ticket_id": "E14-001",
+      "acceptance_id": "AC-E14-001-5",
+      "test_path": "tests/publication/clearance.test.mjs",
+      "cases": [
+        "security"
+      ]
+    },
+    {
+      "ticket_id": "E14-001",
+      "acceptance_id": "AC-E14-001-6",
+      "test_path": "tests/publication/clearance.test.mjs",
+      "cases": [
+        "unresolved-block"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-1",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "commands"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-2",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "links"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-3",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "no-claims"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-4",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "no-secrets"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-5",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "no-answers"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-6",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "no-attribution"
+      ]
+    },
+    {
+      "ticket_id": "E14-002",
+      "acceptance_id": "AC-E14-002-7",
+      "test_path": "tests/publication/public-surface.test.mjs",
+      "cases": [
+        "telemetry-off"
+      ]
+    },
+    {
+      "ticket_id": "E14-003",
+      "acceptance_id": "AC-E14-003-1",
+      "test_path": "conformance/external/external-reproduction.test.ts",
+      "cases": [
+        "independent-manifest"
+      ]
+    },
+    {
+      "ticket_id": "E14-003",
+      "acceptance_id": "AC-E14-003-2",
+      "test_path": "conformance/external/external-reproduction.test.ts",
+      "cases": [
+        "exact-bytes"
+      ]
+    },
+    {
+      "ticket_id": "E14-003",
+      "acceptance_id": "AC-E14-003-3",
+      "test_path": "conformance/external/external-reproduction.test.ts",
+      "cases": [
+        "wrong-digest"
+      ]
+    },
+    {
+      "ticket_id": "E14-003",
+      "acceptance_id": "AC-E14-003-4",
+      "test_path": "conformance/external/external-reproduction.test.ts",
+      "cases": [
+        "stale-head"
+      ]
+    },
+    {
+      "ticket_id": "E14-003",
+      "acceptance_id": "AC-E14-003-5",
+      "test_path": "conformance/external/external-reproduction.test.ts",
+      "cases": [
+        "unresolved-gate"
+      ]
+    },
+    {
+      "ticket_id": "E14-003",
+      "acceptance_id": "AC-E14-003-6",
+      "test_path": "conformance/external/external-reproduction.test.ts",
+      "cases": [
+        "full-pass"
+      ]
+    },
+    {
+      "ticket_id": "E2-001",
+      "acceptance_id": "AC-E2-001-1",
+      "test_path": "packages/scorer/test/eligibility.test.ts",
+      "cases": [
+        "no-opportunity"
+      ]
+    },
+    {
+      "ticket_id": "E2-001",
+      "acceptance_id": "AC-E2-001-2",
+      "test_path": "packages/scorer/test/eligibility.test.ts",
+      "cases": [
+        "independent-two"
+      ]
+    },
+    {
+      "ticket_id": "E2-001",
+      "acceptance_id": "AC-E2-001-3",
+      "test_path": "packages/scorer/test/eligibility.test.ts",
+      "cases": [
+        "duplicate-correlation"
+      ]
+    },
+    {
+      "ticket_id": "E2-001",
+      "acceptance_id": "AC-E2-001-4",
+      "test_path": "packages/scorer/test/eligibility.test.ts",
+      "cases": [
+        "secondary-without-opportunity"
+      ]
+    },
+    {
+      "ticket_id": "E2-001",
+      "acceptance_id": "AC-E2-001-5",
+      "test_path": "packages/scorer/test/eligibility.test.ts",
+      "cases": [
+        "unavailable-adapter"
+      ]
+    },
+    {
+      "ticket_id": "E2-002",
+      "acceptance_id": "AC-E2-002-1",
+      "test_path": "packages/scorer/test/score.test.ts",
+      "cases": [
+        "published-vectors"
+      ]
+    },
+    {
+      "ticket_id": "E2-002",
+      "acceptance_id": "AC-E2-002-2",
+      "test_path": "packages/scorer/test/score.test.ts",
+      "cases": [
+        "O-zero"
+      ]
+    },
+    {
+      "ticket_id": "E2-002",
+      "acceptance_id": "AC-E2-002-3",
+      "test_path": "packages/scorer/test/score.test.ts",
+      "cases": [
+        "P-zero"
+      ]
+    },
+    {
+      "ticket_id": "E2-002",
+      "acceptance_id": "AC-E2-002-4",
+      "test_path": "packages/scorer/test/score.test.ts",
+      "cases": [
+        "missing-denominator"
+      ]
+    },
+    {
+      "ticket_id": "E2-002",
+      "acceptance_id": "AC-E2-002-5",
+      "test_path": "packages/scorer/test/score.test.ts",
+      "cases": [
+        "F6-M20-only"
+      ]
+    },
+    {
+      "ticket_id": "E2-002",
+      "acceptance_id": "AC-E2-002-6",
+      "test_path": "packages/scorer/test/score.test.ts",
+      "cases": [
+        "raw-precision"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-1",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "one-case-per-ten-gates"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-2",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "S0"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-3",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "S1"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-4",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "S2"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-5",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "S3"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-6",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "tamper"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-7",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "adapter-gap"
+      ]
+    },
+    {
+      "ticket_id": "E2-003",
+      "acceptance_id": "AC-E2-003-8",
+      "test_path": "packages/scorer/test/issuance.test.ts",
+      "cases": [
+        "reason-order"
+      ]
+    },
+    {
+      "ticket_id": "E2-004",
+      "acceptance_id": "AC-E2-004-1",
+      "test_path": "packages/scorer/test/fixture-corpus.test.ts",
+      "cases": [
+        "fixture-census"
+      ]
+    },
+    {
+      "ticket_id": "E2-004",
+      "acceptance_id": "AC-E2-004-2",
+      "test_path": "packages/scorer/test/fixture-corpus.test.ts",
+      "cases": [
+        "each-family"
+      ]
+    },
+    {
+      "ticket_id": "E2-004",
+      "acceptance_id": "AC-E2-004-3",
+      "test_path": "packages/scorer/test/fixture-corpus.test.ts",
+      "cases": [
+        "mutation-survives"
+      ]
+    },
+    {
+      "ticket_id": "E2-004",
+      "acceptance_id": "AC-E2-004-4",
+      "test_path": "packages/scorer/test/fixture-corpus.test.ts",
+      "cases": [
+        "digest-manifest"
+      ]
+    },
+    {
+      "ticket_id": "E2-004",
+      "acceptance_id": "AC-E2-004-5",
+      "test_path": "packages/scorer/test/fixture-corpus.test.ts",
+      "cases": [
+        "no-answer-leak"
+      ]
+    },
+    {
+      "ticket_id": "E2-005",
+      "acceptance_id": "AC-E2-005-1",
+      "test_path": "conformance/g0/g0.test.ts",
+      "cases": [
+        "pass"
+      ]
+    },
+    {
+      "ticket_id": "E2-005",
+      "acceptance_id": "AC-E2-005-2",
+      "test_path": "conformance/g0/g0.test.ts",
+      "cases": [
+        "one-mutant-live"
+      ]
+    },
+    {
+      "ticket_id": "E2-005",
+      "acceptance_id": "AC-E2-005-3",
+      "test_path": "conformance/g0/g0.test.ts",
+      "cases": [
+        "byte-drift"
+      ]
+    },
+    {
+      "ticket_id": "E2-005",
+      "acceptance_id": "AC-E2-005-4",
+      "test_path": "conformance/g0/g0.test.ts",
+      "cases": [
+        "stale-digest"
+      ]
+    },
+    {
+      "ticket_id": "E2-005",
+      "acceptance_id": "AC-E2-005-5",
+      "test_path": "conformance/g0/g0.test.ts",
+      "cases": [
+        "zero-fixture"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-1",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "fresh"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-2",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "dirty-base"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-3",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "wrong-root"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-4",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "symlink-escape"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-5",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "source-mutation"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-6",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "residue"
+      ]
+    },
+    {
+      "ticket_id": "E3-001",
+      "acceptance_id": "AC-E3-001-7",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "actor-attribution-classification"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-1",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "oracle-path"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-10",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "post-run-materialization"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-2",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "env-secret"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-3",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "fd-leak"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-4",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "ipc-leak"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-5",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "child-inherit"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-6",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "redaction"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-7",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "temp-oracle"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-8",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "symlink-oracle"
+      ]
+    },
+    {
+      "ticket_id": "E3-002",
+      "acceptance_id": "AC-E3-002-9",
+      "test_path": "packages/runner/test/isolation.test.ts",
+      "cases": [
+        "proc-fd-oracle"
+      ]
+    },
+    {
+      "ticket_id": "E3-003",
+      "acceptance_id": "AC-E3-003-1",
+      "test_path": "packages/runner/test/budget-fault.test.ts",
+      "cases": [
+        "concurrent-budget"
+      ]
+    },
+    {
+      "ticket_id": "E3-003",
+      "acceptance_id": "AC-E3-003-2",
+      "test_path": "packages/runner/test/budget-fault.test.ts",
+      "cases": [
+        "refund"
+      ]
+    },
+    {
+      "ticket_id": "E3-003",
+      "acceptance_id": "AC-E3-003-3",
+      "test_path": "packages/runner/test/budget-fault.test.ts",
+      "cases": [
+        "timeout"
+      ]
+    },
+    {
+      "ticket_id": "E3-003",
+      "acceptance_id": "AC-E3-003-4",
+      "test_path": "packages/runner/test/budget-fault.test.ts",
+      "cases": [
+        "seed-replay"
+      ]
+    },
+    {
+      "ticket_id": "E3-003",
+      "acceptance_id": "AC-E3-003-5",
+      "test_path": "packages/runner/test/budget-fault.test.ts",
+      "cases": [
+        "approval-deny"
+      ]
+    },
+    {
+      "ticket_id": "E3-003",
+      "acceptance_id": "AC-E3-003-6",
+      "test_path": "packages/runner/test/budget-fault.test.ts",
+      "cases": [
+        "duplicate-effect"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-1",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "all-terminal-states"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-2",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "illegal-transition"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-3",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "stall"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-4",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "timeout"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-5",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "cancel-race"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-6",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "orphan"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-7",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "final-checkpoint"
+      ]
+    },
+    {
+      "ticket_id": "E3-004",
+      "acceptance_id": "AC-E3-004-8",
+      "test_path": "packages/runner/test/lifecycle.test.ts",
+      "cases": [
+        "unknown-attribution-terminal-outcome"
+      ]
+    },
+    {
+      "ticket_id": "E4-001",
+      "acceptance_id": "AC-E4-001-1",
+      "test_path": "adapters/codex/test/interface.test.ts",
+      "cases": [
+        "lifecycle-happy"
+      ]
+    },
+    {
+      "ticket_id": "E4-001",
+      "acceptance_id": "AC-E4-001-2",
+      "test_path": "adapters/codex/test/interface.test.ts",
+      "cases": [
+        "start-fail"
+      ]
+    },
+    {
+      "ticket_id": "E4-001",
+      "acceptance_id": "AC-E4-001-3",
+      "test_path": "adapters/codex/test/interface.test.ts",
+      "cases": [
+        "stop-timeout"
+      ]
+    },
+    {
+      "ticket_id": "E4-001",
+      "acceptance_id": "AC-E4-001-4",
+      "test_path": "adapters/codex/test/interface.test.ts",
+      "cases": [
+        "double-stop"
+      ]
+    },
+    {
+      "ticket_id": "E4-001",
+      "acceptance_id": "AC-E4-001-5",
+      "test_path": "adapters/codex/test/interface.test.ts",
+      "cases": [
+        "capability-digest"
+      ]
+    },
+    {
+      "ticket_id": "E4-001",
+      "acceptance_id": "AC-E4-001-6",
+      "test_path": "adapters/codex/test/interface.test.ts",
+      "cases": [
+        "primary-source-boundary"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-1",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "complete"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-2",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "limited"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-3",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "unknown"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-4",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "missing-required"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-5",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "config-redaction"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-6",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "stable-digest"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-7",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "installed-schema-digest"
+      ]
+    },
+    {
+      "ticket_id": "E4-002",
+      "acceptance_id": "AC-E4-002-8",
+      "test_path": "adapters/codex/test/capabilities.test.ts",
+      "cases": [
+        "forbidden-source"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-1",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "event-parity"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-2",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "secret-canary"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-3",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "oversized"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-4",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "unknown-native"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-5",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "missing-parent"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-6",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "tool-error"
+      ]
+    },
+    {
+      "ticket_id": "E4-003",
+      "acceptance_id": "AC-E4-003-7",
+      "test_path": "adapters/codex/test/normalize.test.ts",
+      "cases": [
+        "actor-attribution-events"
+      ]
+    },
+    {
+      "ticket_id": "E4-004",
+      "acceptance_id": "AC-E4-004-1",
+      "test_path": "adapters/codex/test/conformance.test.ts",
+      "cases": [
+        "complete"
+      ]
+    },
+    {
+      "ticket_id": "E4-004",
+      "acceptance_id": "AC-E4-004-2",
+      "test_path": "adapters/codex/test/conformance.test.ts",
+      "cases": [
+        "degraded"
+      ]
+    },
+    {
+      "ticket_id": "E4-004",
+      "acceptance_id": "AC-E4-004-3",
+      "test_path": "adapters/codex/test/conformance.test.ts",
+      "cases": [
+        "blocked"
+      ]
+    },
+    {
+      "ticket_id": "E4-004",
+      "acceptance_id": "AC-E4-004-4",
+      "test_path": "adapters/codex/test/conformance.test.ts",
+      "cases": [
+        "imported"
+      ]
+    },
+    {
+      "ticket_id": "E4-004",
+      "acceptance_id": "AC-E4-004-5",
+      "test_path": "adapters/codex/test/conformance.test.ts",
+      "cases": [
+        "event-missing"
+      ]
+    },
+    {
+      "ticket_id": "E4-004",
+      "acceptance_id": "AC-E4-004-6",
+      "test_path": "adapters/codex/test/conformance.test.ts",
+      "cases": [
+        "digest-change"
+      ]
+    },
+    {
+      "ticket_id": "E5-001",
+      "acceptance_id": "AC-E5-001-1",
+      "test_path": "packages/runner/test/scenario-registry.test.ts",
+      "cases": [
+        "valid"
+      ]
+    },
+    {
+      "ticket_id": "E5-001",
+      "acceptance_id": "AC-E5-001-2",
+      "test_path": "packages/runner/test/scenario-registry.test.ts",
+      "cases": [
+        "late-edit"
+      ]
+    },
+    {
+      "ticket_id": "E5-001",
+      "acceptance_id": "AC-E5-001-3",
+      "test_path": "packages/runner/test/scenario-registry.test.ts",
+      "cases": [
+        "oracle-visible"
+      ]
+    },
+    {
+      "ticket_id": "E5-001",
+      "acceptance_id": "AC-E5-001-4",
+      "test_path": "packages/runner/test/scenario-registry.test.ts",
+      "cases": [
+        "over-primary"
+      ]
+    },
+    {
+      "ticket_id": "E5-001",
+      "acceptance_id": "AC-E5-001-5",
+      "test_path": "packages/runner/test/scenario-registry.test.ts",
+      "cases": [
+        "duplicate-opportunity"
+      ]
+    },
+    {
+      "ticket_id": "E5-001",
+      "acceptance_id": "AC-E5-001-6",
+      "test_path": "packages/runner/test/scenario-registry.test.ts",
+      "cases": [
+        "exposure-missing"
+      ]
+    },
+    {
+      "ticket_id": "E5-002",
+      "acceptance_id": "AC-E5-002-1",
+      "test_path": "suites/coding-core-v0/test/fam4-continuity.test.ts",
+      "cases": [
+        "fresh-resume"
+      ]
+    },
+    {
+      "ticket_id": "E5-002",
+      "acceptance_id": "AC-E5-002-2",
+      "test_path": "suites/coding-core-v0/test/fam4-continuity.test.ts",
+      "cases": [
+        "stale-checkpoint"
+      ]
+    },
+    {
+      "ticket_id": "E5-002",
+      "acceptance_id": "AC-E5-002-3",
+      "test_path": "suites/coding-core-v0/test/fam4-continuity.test.ts",
+      "cases": [
+        "missing-blocker"
+      ]
+    },
+    {
+      "ticket_id": "E5-002",
+      "acceptance_id": "AC-E5-002-4",
+      "test_path": "suites/coding-core-v0/test/fam4-continuity.test.ts",
+      "cases": [
+        "wrong-evidence"
+      ]
+    },
+    {
+      "ticket_id": "E5-002",
+      "acceptance_id": "AC-E5-002-5",
+      "test_path": "suites/coding-core-v0/test/fam4-continuity.test.ts",
+      "cases": [
+        "valid-alternative"
+      ]
+    },
+    {
+      "ticket_id": "E5-003",
+      "acceptance_id": "AC-E5-003-1",
+      "test_path": "suites/coding-core-v0/test/fam4-idempotency.test.ts",
+      "cases": [
+        "single-effect"
+      ]
+    },
+    {
+      "ticket_id": "E5-003",
+      "acceptance_id": "AC-E5-003-2",
+      "test_path": "suites/coding-core-v0/test/fam4-idempotency.test.ts",
+      "cases": [
+        "duplicate-effect"
+      ]
+    },
+    {
+      "ticket_id": "E5-003",
+      "acceptance_id": "AC-E5-003-3",
+      "test_path": "suites/coding-core-v0/test/fam4-idempotency.test.ts",
+      "cases": [
+        "wrong-key"
+      ]
+    },
+    {
+      "ticket_id": "E5-003",
+      "acceptance_id": "AC-E5-003-4",
+      "test_path": "suites/coding-core-v0/test/fam4-idempotency.test.ts",
+      "cases": [
+        "illegal-transition"
+      ]
+    },
+    {
+      "ticket_id": "E5-003",
+      "acceptance_id": "AC-E5-003-5",
+      "test_path": "suites/coding-core-v0/test/fam4-idempotency.test.ts",
+      "cases": [
+        "stale-ack"
+      ]
+    },
+    {
+      "ticket_id": "E5-004",
+      "acceptance_id": "AC-E5-004-1",
+      "test_path": "suites/coding-core-v0/test/fam4-stall.test.ts",
+      "cases": [
+        "detect"
+      ]
+    },
+    {
+      "ticket_id": "E5-004",
+      "acceptance_id": "AC-E5-004-2",
+      "test_path": "suites/coding-core-v0/test/fam4-stall.test.ts",
+      "cases": [
+        "false-complete"
+      ]
+    },
+    {
+      "ticket_id": "E5-004",
+      "acceptance_id": "AC-E5-004-3",
+      "test_path": "suites/coding-core-v0/test/fam4-stall.test.ts",
+      "cases": [
+        "wrong-stop"
+      ]
+    },
+    {
+      "ticket_id": "E5-004",
+      "acceptance_id": "AC-E5-004-4",
+      "test_path": "suites/coding-core-v0/test/fam4-stall.test.ts",
+      "cases": [
+        "budget-overrun"
+      ]
+    },
+    {
+      "ticket_id": "E5-004",
+      "acceptance_id": "AC-E5-004-5",
+      "test_path": "suites/coding-core-v0/test/fam4-stall.test.ts",
+      "cases": [
+        "valid-blocked"
+      ]
+    },
+    {
+      "ticket_id": "E6-001",
+      "acceptance_id": "AC-E6-001-1",
+      "test_path": "suites/coding-core-v0/test/fam5-false-completion.test.ts",
+      "cases": [
+        "public-green-hidden-fail"
+      ]
+    },
+    {
+      "ticket_id": "E6-001",
+      "acceptance_id": "AC-E6-001-2",
+      "test_path": "suites/coding-core-v0/test/fam5-false-completion.test.ts",
+      "cases": [
+        "true-pass"
+      ]
+    },
+    {
+      "ticket_id": "E6-001",
+      "acceptance_id": "AC-E6-001-3",
+      "test_path": "suites/coding-core-v0/test/fam5-false-completion.test.ts",
+      "cases": [
+        "honest-fail"
+      ]
+    },
+    {
+      "ticket_id": "E6-001",
+      "acceptance_id": "AC-E6-001-4",
+      "test_path": "suites/coding-core-v0/test/fam5-false-completion.test.ts",
+      "cases": [
+        "oracle-access"
+      ]
+    },
+    {
+      "ticket_id": "E6-002",
+      "acceptance_id": "AC-E6-002-1",
+      "test_path": "suites/coding-core-v0/test/fam5-stale-evidence.test.ts",
+      "cases": [
+        "pre-change-stale"
+      ]
+    },
+    {
+      "ticket_id": "E6-002",
+      "acceptance_id": "AC-E6-002-2",
+      "test_path": "suites/coding-core-v0/test/fam5-stale-evidence.test.ts",
+      "cases": [
+        "exact-head-pass"
+      ]
+    },
+    {
+      "ticket_id": "E6-002",
+      "acceptance_id": "AC-E6-002-3",
+      "test_path": "suites/coding-core-v0/test/fam5-stale-evidence.test.ts",
+      "cases": [
+        "partial-rerun"
+      ]
+    },
+    {
+      "ticket_id": "E6-002",
+      "acceptance_id": "AC-E6-002-4",
+      "test_path": "suites/coding-core-v0/test/fam5-stale-evidence.test.ts",
+      "cases": [
+        "wrong-artifact"
+      ]
+    },
+    {
+      "ticket_id": "E6-002",
+      "acceptance_id": "AC-E6-002-5",
+      "test_path": "suites/coding-core-v0/test/fam5-stale-evidence.test.ts",
+      "cases": [
+        "timestamp-only"
+      ]
+    },
+    {
+      "ticket_id": "E6-003",
+      "acceptance_id": "AC-E6-003-1",
+      "test_path": "suites/coding-core-v0/test/fam5-scope-regression.test.ts",
+      "cases": [
+        "in-scope-pass"
+      ]
+    },
+    {
+      "ticket_id": "E6-003",
+      "acceptance_id": "AC-E6-003-2",
+      "test_path": "suites/coding-core-v0/test/fam5-scope-regression.test.ts",
+      "cases": [
+        "omission"
+      ]
+    },
+    {
+      "ticket_id": "E6-003",
+      "acceptance_id": "AC-E6-003-3",
+      "test_path": "suites/coding-core-v0/test/fam5-scope-regression.test.ts",
+      "cases": [
+        "extra-path"
+      ]
+    },
+    {
+      "ticket_id": "E6-003",
+      "acceptance_id": "AC-E6-003-4",
+      "test_path": "suites/coding-core-v0/test/fam5-scope-regression.test.ts",
+      "cases": [
+        "regression"
+      ]
+    },
+    {
+      "ticket_id": "E6-003",
+      "acceptance_id": "AC-E6-003-5",
+      "test_path": "suites/coding-core-v0/test/fam5-scope-regression.test.ts",
+      "cases": [
+        "wrong-target"
+      ]
+    },
+    {
+      "ticket_id": "E6-003",
+      "acceptance_id": "AC-E6-003-6",
+      "test_path": "suites/coding-core-v0/test/fam5-scope-regression.test.ts",
+      "cases": [
+        "broad-rewrite"
+      ]
+    },
+    {
+      "ticket_id": "E6-004",
+      "acceptance_id": "AC-E6-004-1",
+      "test_path": "conformance/fam5/fam5.test.ts",
+      "cases": [
+        "honest-pass"
+      ]
+    },
+    {
+      "ticket_id": "E6-004",
+      "acceptance_id": "AC-E6-004-2",
+      "test_path": "conformance/fam5/fam5.test.ts",
+      "cases": [
+        "honest-fail"
+      ]
+    },
+    {
+      "ticket_id": "E6-004",
+      "acceptance_id": "AC-E6-004-3",
+      "test_path": "conformance/fam5/fam5.test.ts",
+      "cases": [
+        "honest-blocked"
+      ]
+    },
+    {
+      "ticket_id": "E6-004",
+      "acceptance_id": "AC-E6-004-4",
+      "test_path": "conformance/fam5/fam5.test.ts",
+      "cases": [
+        "false-pass"
+      ]
+    },
+    {
+      "ticket_id": "E6-004",
+      "acceptance_id": "AC-E6-004-5",
+      "test_path": "conformance/fam5/fam5.test.ts",
+      "cases": [
+        "stale-pass"
+      ]
+    },
+    {
+      "ticket_id": "E6-004",
+      "acceptance_id": "AC-E6-004-6",
+      "test_path": "conformance/fam5/fam5.test.ts",
+      "cases": [
+        "no-claim-terminal"
+      ]
+    },
+    {
+      "ticket_id": "E7-001",
+      "acceptance_id": "AC-E7-001-1",
+      "test_path": "suites/coding-core-v0/test/fam6-recovery.test.ts",
+      "cases": [
+        "timeout"
+      ]
+    },
+    {
+      "ticket_id": "E7-001",
+      "acceptance_id": "AC-E7-001-2",
+      "test_path": "suites/coding-core-v0/test/fam6-recovery.test.ts",
+      "cases": [
+        "rate-limit"
+      ]
+    },
+    {
+      "ticket_id": "E7-001",
+      "acceptance_id": "AC-E7-001-3",
+      "test_path": "suites/coding-core-v0/test/fam6-recovery.test.ts",
+      "cases": [
+        "human-decision"
+      ]
+    },
+    {
+      "ticket_id": "E7-001",
+      "acceptance_id": "AC-E7-001-4",
+      "test_path": "suites/coding-core-v0/test/fam6-recovery.test.ts",
+      "cases": [
+        "permanent-fail"
+      ]
+    },
+    {
+      "ticket_id": "E7-001",
+      "acceptance_id": "AC-E7-001-5",
+      "test_path": "suites/coding-core-v0/test/fam6-recovery.test.ts",
+      "cases": [
+        "bad-fallback"
+      ]
+    },
+    {
+      "ticket_id": "E7-001",
+      "acceptance_id": "AC-E7-001-6",
+      "test_path": "suites/coding-core-v0/test/fam6-recovery.test.ts",
+      "cases": [
+        "minimum-recovery"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-1",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "S0"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-2",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "S1"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-3",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "S2"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-4",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "S3"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-5",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "over-restrict"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-6",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "over-privilege"
+      ]
+    },
+    {
+      "ticket_id": "E7-002",
+      "acceptance_id": "AC-E7-002-7",
+      "test_path": "suites/coding-core-v0/test/fam6-safety.test.ts",
+      "cases": [
+        "wrong-target"
+      ]
+    },
+    {
+      "ticket_id": "E7-003",
+      "acceptance_id": "AC-E7-003-1",
+      "test_path": "suites/coding-core-v0/test/fam6-efficiency.test.ts",
+      "cases": [
+        "pareto-best"
+      ]
+    },
+    {
+      "ticket_id": "E7-003",
+      "acceptance_id": "AC-E7-003-2",
+      "test_path": "suites/coding-core-v0/test/fam6-efficiency.test.ts",
+      "cases": [
+        "cheap-fail"
+      ]
+    },
+    {
+      "ticket_id": "E7-003",
+      "acceptance_id": "AC-E7-003-3",
+      "test_path": "suites/coding-core-v0/test/fam6-efficiency.test.ts",
+      "cases": [
+        "redundant-layer"
+      ]
+    },
+    {
+      "ticket_id": "E7-003",
+      "acceptance_id": "AC-E7-003-4",
+      "test_path": "suites/coding-core-v0/test/fam6-efficiency.test.ts",
+      "cases": [
+        "missing-token"
+      ]
+    },
+    {
+      "ticket_id": "E7-003",
+      "acceptance_id": "AC-E7-003-5",
+      "test_path": "suites/coding-core-v0/test/fam6-efficiency.test.ts",
+      "cases": [
+        "human-time"
+      ]
+    },
+    {
+      "ticket_id": "E7-003",
+      "acceptance_id": "AC-E7-003-6",
+      "test_path": "suites/coding-core-v0/test/fam6-efficiency.test.ts",
+      "cases": [
+        "unsafe-cheap"
+      ]
+    },
+    {
+      "ticket_id": "E7-004",
+      "acceptance_id": "AC-E7-004-1",
+      "test_path": "conformance/demos/demo.test.ts",
+      "cases": [
+        "each-demo"
+      ]
+    },
+    {
+      "ticket_id": "E7-004",
+      "acceptance_id": "AC-E7-004-2",
+      "test_path": "conformance/demos/demo.test.ts",
+      "cases": [
+        "no-private-data"
+      ]
+    },
+    {
+      "ticket_id": "E7-004",
+      "acceptance_id": "AC-E7-004-3",
+      "test_path": "conformance/demos/demo.test.ts",
+      "cases": [
+        "byte-stable"
+      ]
+    },
+    {
+      "ticket_id": "E7-004",
+      "acceptance_id": "AC-E7-004-4",
+      "test_path": "conformance/demos/demo.test.ts",
+      "cases": [
+        "claim-scan"
+      ]
+    },
+    {
+      "ticket_id": "E7-004",
+      "acceptance_id": "AC-E7-004-5",
+      "test_path": "conformance/demos/demo.test.ts",
+      "cases": [
+        "stale-manifest"
+      ]
+    },
+    {
+      "ticket_id": "E8-001",
+      "acceptance_id": "AC-E8-001-1",
+      "test_path": "suites/coding-core-v0/test/fam1-intent.test.ts",
+      "cases": [
+        "goal-fidelity"
+      ]
+    },
+    {
+      "ticket_id": "E8-001",
+      "acceptance_id": "AC-E8-001-2",
+      "test_path": "suites/coding-core-v0/test/fam1-intent.test.ts",
+      "cases": [
+        "scope"
+      ]
+    },
+    {
+      "ticket_id": "E8-001",
+      "acceptance_id": "AC-E8-001-3",
+      "test_path": "suites/coding-core-v0/test/fam1-intent.test.ts",
+      "cases": [
+        "necessary-ask"
+      ]
+    },
+    {
+      "ticket_id": "E8-001",
+      "acceptance_id": "AC-E8-001-4",
+      "test_path": "suites/coding-core-v0/test/fam1-intent.test.ts",
+      "cases": [
+        "unnecessary-ask"
+      ]
+    },
+    {
+      "ticket_id": "E8-001",
+      "acceptance_id": "AC-E8-001-5",
+      "test_path": "suites/coding-core-v0/test/fam1-intent.test.ts",
+      "cases": [
+        "acceptance-map"
+      ]
+    },
+    {
+      "ticket_id": "E8-001",
+      "acceptance_id": "AC-E8-001-6",
+      "test_path": "suites/coding-core-v0/test/fam1-intent.test.ts",
+      "cases": [
+        "hidden-outcome"
+      ]
+    },
+    {
+      "ticket_id": "E8-002",
+      "acceptance_id": "AC-E8-002-1",
+      "test_path": "suites/coding-core-v0/test/fam2-context.test.ts",
+      "cases": [
+        "gold-recall"
+      ]
+    },
+    {
+      "ticket_id": "E8-002",
+      "acceptance_id": "AC-E8-002-2",
+      "test_path": "suites/coding-core-v0/test/fam2-context.test.ts",
+      "cases": [
+        "decoy-precision"
+      ]
+    },
+    {
+      "ticket_id": "E8-002",
+      "acceptance_id": "AC-E8-002-3",
+      "test_path": "suites/coding-core-v0/test/fam2-context.test.ts",
+      "cases": [
+        "stale"
+      ]
+    },
+    {
+      "ticket_id": "E8-002",
+      "acceptance_id": "AC-E8-002-4",
+      "test_path": "suites/coding-core-v0/test/fam2-context.test.ts",
+      "cases": [
+        "injection"
+      ]
+    },
+    {
+      "ticket_id": "E8-002",
+      "acceptance_id": "AC-E8-002-5",
+      "test_path": "suites/coding-core-v0/test/fam2-context.test.ts",
+      "cases": [
+        "no-retrieval"
+      ]
+    },
+    {
+      "ticket_id": "E8-002",
+      "acceptance_id": "AC-E8-002-6",
+      "test_path": "suites/coding-core-v0/test/fam2-context.test.ts",
+      "cases": [
+        "citation-grounding"
+      ]
+    },
+    {
+      "ticket_id": "E8-003",
+      "acceptance_id": "AC-E8-003-1",
+      "test_path": "suites/coding-core-v0/test/fam3-graph.test.ts",
+      "cases": [
+        "atomicity"
+      ]
+    },
+    {
+      "ticket_id": "E8-003",
+      "acceptance_id": "AC-E8-003-2",
+      "test_path": "suites/coding-core-v0/test/fam3-graph.test.ts",
+      "cases": [
+        "false-parallel"
+      ]
+    },
+    {
+      "ticket_id": "E8-003",
+      "acceptance_id": "AC-E8-003-3",
+      "test_path": "suites/coding-core-v0/test/fam3-graph.test.ts",
+      "cases": [
+        "valid-parallel"
+      ]
+    },
+    {
+      "ticket_id": "E8-003",
+      "acceptance_id": "AC-E8-003-4",
+      "test_path": "suites/coding-core-v0/test/fam3-graph.test.ts",
+      "cases": [
+        "direct-best"
+      ]
+    },
+    {
+      "ticket_id": "E8-003",
+      "acceptance_id": "AC-E8-003-5",
+      "test_path": "suites/coding-core-v0/test/fam3-graph.test.ts",
+      "cases": [
+        "specialist-best"
+      ]
+    },
+    {
+      "ticket_id": "E8-003",
+      "acceptance_id": "AC-E8-003-6",
+      "test_path": "suites/coding-core-v0/test/fam3-graph.test.ts",
+      "cases": [
+        "join-integrity"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-1",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "six-family-census"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-2",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "required-core"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-3",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "eligibility"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-4",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "timing"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-5",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "exposure"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-6",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "terminal-integrity"
+      ]
+    },
+    {
+      "ticket_id": "E8-004",
+      "acceptance_id": "AC-E8-004-7",
+      "test_path": "conformance/form-a/form-a.test.ts",
+      "cases": [
+        "prescription-path"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-1",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "complete"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-2",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "limited"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-3",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "unknown"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-4",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "missing-required"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-5",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "lifecycle"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-6",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "config-redaction"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-7",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "official-source-boundary"
+      ]
+    },
+    {
+      "ticket_id": "E9-001",
+      "acceptance_id": "AC-E9-001-8",
+      "test_path": "adapters/claude-code/test/capabilities.test.ts",
+      "cases": [
+        "forbidden-internal-source"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-1",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "semantic-events"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-2",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "delegation-gap"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-3",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "secret-canary"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-4",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "oversized"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-5",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "missing-parent"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-6",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "tool-error"
+      ]
+    },
+    {
+      "ticket_id": "E9-002",
+      "acceptance_id": "AC-E9-002-7",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "actor-attribution-events"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-1",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "lifecycle"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-2",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "tool-error"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-3",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "approval"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-4",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "evidence"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-5",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "intervention"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-6",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "unavailable-difference"
+      ]
+    },
+    {
+      "ticket_id": "E9-003",
+      "acceptance_id": "AC-E9-003-7",
+      "test_path": "conformance/adapters/parity/parity.test.ts",
+      "cases": [
+        "profile-difference"
       ]
     }
   ]

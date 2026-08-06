@@ -551,11 +551,11 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
           )
         );
       },
-      /named test case not (found|in planned_tests)[\s\S]*definitely-not-a-real-test-case/,
+      /named test cases diverge from catalog binding|named test case not (found|in planned_tests)/,
       "orphan/missing named test case"
     );
 
-    // Planned path: typo absent from disk and planned_tests (second-packet fail-open).
+    // Planned path: typo in ticket prose diverges from explicit catalog binding.
     expectFail(
       () => {
         writeFileSync(
@@ -566,7 +566,7 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
           )
         );
       },
-      /unknown planned test path[\s\S]*typo-does-not-exist/,
+      /planned test path diverges from catalog binding|unknown planned test path[\s\S]*typo-does-not-exist/,
       "unknown typo planned test path"
     );
 
@@ -775,7 +775,18 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       "duplicate planned_tests path entry"
     );
 
-    // Planned_tests: orphan case never referenced by a ticket edge.
+    // Planned_tests: malformed path entry.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        snapshot.catalog.planned_tests.push({ path: "tests/../escape.test.mjs", cases: ["x"] });
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /malformed planned test path/,
+      "malformed planned_tests path entry"
+    );
+
+    // Planned_tests: orphan case never referenced by a ticket binding.
     expectFail(
       () => {
         const snapshot = readCatalog(fixture);
@@ -785,6 +796,100 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       },
       /orphan planned test case[\s\S]*never-referenced-orphan-case/,
       "orphan planned test case"
+    );
+
+    // Planned_tests: duplicate case within one path entry.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const entry = snapshot.catalog.planned_tests.find((item) => item.path === "tests/planning/identity.test.mjs");
+        entry.cases.push("canonical-pass");
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /duplicate named test case under tests\/planning\/identity\.test\.mjs/,
+      "duplicate planned_tests case"
+    );
+
+    // Planned_tests: malformed case token.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const entry = snapshot.catalog.planned_tests.find((item) => item.path === "tests/planning/identity.test.mjs");
+        entry.cases.push("bad/case.mjs");
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /malformed named test case under tests\/planning\/identity\.test\.mjs/,
+      "malformed planned_tests case"
+    );
+
+    // Orphan planned-test path (entry never referenced by any binding).
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        snapshot.catalog.planned_tests.push({
+          path: "tests/planning/orphan-never-bound.test.mjs",
+          cases: ["orphan-only-case"]
+        });
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan planned test path tests\/planning\/orphan-never-bound\.test\.mjs|orphan planned test case tests\/planning\/orphan-never-bound/,
+      "orphan planned-test path"
+    );
+
+    // Orphan ticket AC binding: drop AC-D0-001-1 binding.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        snapshot.catalog.ticket_acceptance_bindings = snapshot.catalog.ticket_acceptance_bindings.filter(
+          (binding) => !(binding.ticket_id === "D0-001" && binding.acceptance_id === "AC-D0-001-1")
+        );
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan ticket acceptance edge D0-001 AC-D0-001-1|ticket acceptance binding census/,
+      "orphan ticket AC binding/edge"
+    );
+
+    // Orphan ticket AC binding entry (extra catalog key not present on a ticket).
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        snapshot.catalog.ticket_acceptance_bindings.push({
+          ticket_id: "D0-001",
+          acceptance_id: "AC-D0-001-99",
+          test_path: "tests/planning/identity.test.mjs",
+          cases: ["canonical-pass"]
+        });
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan ticket acceptance binding D0-001 AC-D0-001-99|ticket acceptance binding census/,
+      "orphan ticket AC binding entry"
+    );
+
+    // Historical-evidence bypass must not skip D0-003 AC-D0-003-1: remove its binding.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        snapshot.catalog.ticket_acceptance_bindings = snapshot.catalog.ticket_acceptance_bindings.filter(
+          (binding) => !(binding.ticket_id === "D0-003" && binding.acceptance_id === "AC-D0-003-1")
+        );
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan ticket acceptance edge D0-003 AC-D0-003-1|ticket acceptance binding census/,
+      "historical bypass removed for D0-003-1"
+    );
+
+    // Binding path typo not in planned_tests.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const binding = snapshot.catalog.ticket_acceptance_bindings.find(
+          (entry) => entry.ticket_id === "D0-001" && entry.acceptance_id === "AC-D0-001-1"
+        );
+        binding.test_path = "tests/planning/typo-does-not-exist.test.mjs";
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /unknown planned test path[\s\S]*typo-does-not-exist|planned test path diverges from catalog binding/,
+      "binding typo planned path"
     );
   } finally {
     rmSync(parent, { recursive: true, force: true });
