@@ -1,6 +1,8 @@
 # Atomic Ticket Board
 
-Status: **65 records authored; 64 executable tickets blocked pending gate acceptance; D0-003 is `SUPERSEDED_BY_PLANNING_MIGRATION` with no implementation; 0 tickets approved for implementation.**
+Status: **65 records authored; 64 executable tickets; D0-001 / issue #54 is the only current ready ticket; the other 63 executable tickets remain blocked by dependency or gate; D0-003 is `SUPERSEDED_BY_PLANNING_MIGRATION` with no implementation.**
+
+Operational sequencing SSOT: [`../planning/AOS-EXECUTION-ROADMAP.md`](../planning/AOS-EXECUTION-ROADMAP.md). This board owns the static ticket DAG; the roadmap owns the current ready set, dependency-safe parallel waves, joins, and new-agent handoff protocol.
 
 Execution is strictly serial by dependency. Parallel work is allowed only when all predecessors are verified and file ownership is disjoint. An open GitHub issue is not implementation authorization.
 
