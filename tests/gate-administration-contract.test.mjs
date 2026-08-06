@@ -533,6 +533,10 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
   assert.match(gateStatus, /four D0-001 batches `INVALIDATED`; only D0-002 contract-correction renewal structurally `ACCEPTED`/);
+  assert.match(gateStatus, /c84185e99cffaa16ba66d49fb2c8676d4e18340c/);
+  assert.doesNotMatch(gateStatus, /53abf77c724bffc785bc9820ef9bbe5ffece89d3/);
+  assert.doesNotMatch(gateStatus, /three invalidated D0-001/);
+  assert.doesNotMatch(gateStatus, /bounded-RED(?: digest)? renewal/);
   assert.match(gateDecision, /D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches/);
   assert.match(gateDecision, /D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority/);
   assert.match(gateDecision, /only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal`/);

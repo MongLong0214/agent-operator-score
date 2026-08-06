@@ -17,10 +17,10 @@ Date: 2026-08-06
 
 ## Required next gate order
 
-1. The bounded-RED renewal binds the five current prerequisite digests and reviewed artifact head `53abf77c724bffc785bc9820ef9bbe5ffece89d3`; the independent checker rejects malformed, wrong-target, stale-digest, partial, or self-approved records.
+1. The current D0-002 contract-correction renewal binds the five current prerequisite digests and reviewed artifact head `c84185e99cffaa16ba66d49fb2c8676d4e18340c`; the independent checker rejects malformed, wrong-target, stale-digest, partial, or self-approved records.
 2. Main performs the external exact-head CEO review and requires exact-head CI before accepting the final correction candidate.
 3. Only after that review, merge verification, post-merge `dev` CI, and a fresh execution packet are verified may RED restart for that ticket.
 
-A changed reviewed artifact or reviewed head invalidates the affected accepted batch; a new batch and renewed review are required. The canonical v2 registry retains three invalidated D0-001 batches and one structurally accepted bounded-RED renewal. No mutable record can self-approve or authorize execution.
+A changed reviewed artifact or reviewed head invalidates the affected accepted batch; a new batch and renewed review are required. The canonical v2 registry retains four invalidated D0-001 batches and the only current structurally accepted D0-002 contract-correction renewal. D0-001 verified post-merge completion remains historical completion evidence only, never current planning acceptance or execution authority. No mutable record can self-approve or authorize execution.
 
 The local checker is structural only: it reads only the canonical regular non-symlink registry inside this repository and emits `GATE_ADMINISTRATION_STRUCTURAL_PASS`, never authorization. CEO activation, protected independent review/CI, and final-receipt exact-head facts remain external gate evidence; mutable identity strings in a registry do not authenticate them.
