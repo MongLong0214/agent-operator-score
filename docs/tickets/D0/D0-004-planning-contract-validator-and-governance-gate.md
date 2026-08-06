@@ -52,6 +52,7 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
     "required_event": "workflow_dispatch",
     "workflow_commit_relation": "reachable_from_live_target",
     "bind_workflow_blob_oid": true,
+    "workflow_blob_relation": "equals_live_target_blob",
     "check_creator_app": "github-actions",
     "external_id_prefix": "aos-exact-head-review:"
   },
@@ -64,6 +65,7 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
     "required_event": "workflow_dispatch",
     "workflow_commit_relation": "reachable_from_live_target",
     "bind_workflow_blob_oid": true,
+    "workflow_blob_relation": "equals_live_target_blob",
     "check_creator_app": "github-actions",
     "external_id_prefix": "aos-exact-head-authorization:"
   }
@@ -75,7 +77,7 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
 - A formal-review fact is eligible only when its reviewer has current `maintain` or `admin` repository permission, its `commit_id` equals the live PR head, and the reviewer is not the PR author. A review that fails any condition is ignored.
 - A same-author candidate cannot use a formal self-review. It may satisfy cumulative review only through the protected `exact-head-review` check emitted by `.github/workflows/operational-state.yml`. The dispatch actor must differ from the PR author and have current `maintain` or `admin` permission; the supplied SHA must equal the live PR head.
 - Merge authorization is never implied by approval or candidate CI. It requires the separate protected `exact-head-authorization` check from the same trusted workflow and exact head, dispatched by an actor who differs from the PR author and has current `maintain` or `admin` permission, only after cumulative review and candidate CI are both current and passing.
-- For either protected check, the GitHub Actions run must report event `workflow_dispatch`, exact workflow ref `MongLong0214/agent-operator-score/.github/workflows/operational-state.yml@refs/heads/dev`, and a `workflow_sha` reachable from the live trusted `dev` ref. The resolver reads the workflow blob OID at that exact commit/path and binds it to the run; merely finding some workflow commit in the candidate ancestry is insufficient. The check run must be created for the live PR head by the `github-actions` app. Its external ID is the lane's exact prefix followed by decimal `run_id`, one colon, and decimal `run_attempt`; those values must resolve to that exact workflow run and lane.
+- For either protected check, the GitHub Actions run must report event `workflow_dispatch`, exact workflow ref `MongLong0214/agent-operator-score/.github/workflows/operational-state.yml@refs/heads/dev`, and a `workflow_sha` reachable from the live trusted `dev` ref. The resolver reads the workflow blob OID at that exact commit/path, requires it to equal the blob OID at the same path on the current live `dev` ref, and binds both to the run; an older or reverted workflow is stale even when its commit remains reachable. Merely finding some workflow commit in the candidate ancestry is insufficient. The check run must be created for the live PR head by the `github-actions` app. Its external ID is the lane's exact prefix followed by decimal `run_id`, one colon, and decimal `run_attempt`; those values must resolve to that exact workflow run and lane.
 - The workflow/check names, trusted workflow ref/commit/blob, workflow-run provenance, repository-owner identity, actor permissions, PR author, live head, dispatch actor, check creator, external ID, and conclusions are structured GitHub facts. Comments, mutable registry identity fields, issue metadata, and labels are not actor or authorization evidence.
 
 ## Forbidden scope
