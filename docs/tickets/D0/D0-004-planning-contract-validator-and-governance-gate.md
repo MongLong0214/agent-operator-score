@@ -43,6 +43,38 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
     "login": "MongLong0214",
     "type": "User"
   },
+  "candidate_ci": {
+    "required_checks": [
+      {
+        "name": "planning-contract (20)",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      {
+        "name": "planning-contract (22)",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      {
+        "name": "planning-contract (24)",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      {
+        "name": "operational-state-offline",
+        "workflow_path": ".github/workflows/operational-state.yml"
+      }
+    ],
+    "required_event": "pull_request",
+    "target_branch": "dev",
+    "head_sha_relation": "equals_live_pr_head",
+    "workflow_blob_relation": "candidate_and_live_target_equal",
+    "run_selection": "latest_run_attempt_only",
+    "required_status": "completed",
+    "required_conclusion": "success",
+    "check_creator_app": {
+      "id": 15368,
+      "slug": "github-actions",
+      "owner": "github"
+    }
+  },
   "review": {
     "eligible_permissions": ["maintain", "admin"],
     "must_differ_from_pr_author": true,
@@ -73,6 +105,7 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
 ```
 
 - Repository: `MongLong0214/agent-operator-score`; target branch: `dev`; repository-owner login: `MongLong0214`. `GET /repos/MongLong0214/agent-operator-score` must return that exact owner login/type and default branch, and `GET /repos/MongLong0214/agent-operator-score/collaborators/{actor}/permission` must return one of the policy's exact eligible permissions; an unavailable or ambiguous response fails closed.
+- Candidate CI selects the single latest GitHub Actions run attempt for each required workflow on the live PR head and base `dev`. The live PR-head blob and current live-`dev` blob must be byte-identical at each required workflow path. Every required check name must map through the Actions jobs API to that selected run, have the exact GitHub Actions app identity, live head SHA, `completed` status, and `success` conclusion. An older passing attempt cannot override the latest attempt; extra checks do not satisfy or replace a required name; a duplicate/ambiguous mapping, missing workflow or check, wrong app/event/base/head/path, cross-run job, candidate/live workflow-blob mismatch, or unavailable fact fails closed as `EXACT_HEAD_CI_FAILED` or `EXTERNAL_STATE_UNAVAILABLE`.
 - An accepted gate PR must be authored against `dev`, link exactly one batch, and be merged by the repository-owner login. The GitHub repository API must independently confirm that login is the current repository owner; a committed identity string alone is insufficient.
 - A formal-review fact is eligible only when its reviewer has current `maintain` or `admin` repository permission, its `commit_id` equals the live PR head, and the reviewer is not the PR author. A review that fails any condition is ignored.
 - A same-author candidate cannot use a formal self-review. It may satisfy cumulative review only through the protected `exact-head-review` check emitted by `.github/workflows/operational-state.yml`. The dispatch actor must differ from the PR author and have current `maintain` or `admin` permission; the supplied SHA must equal the live PR head.
@@ -107,7 +140,7 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 - emit only these blocker codes unless a replacement ticket changes the schema: `DEPENDENCY_UNVERIFIED`, `MILESTONE_GATE_BLOCKED`, `ADR_GATE_MISSING`, `PRD_GATE_MISSING`, `TICKET_GATE_MISSING`, `TICKET_CONTRACT_CONFLICT`, `TICKET_CONTRACT_INCOMPLETE`, `EXECUTION_PACKET_MISSING`, `OWNERSHIP_OVERLAP`, `RED_CONTRACT_INVALID`, `EXACT_HEAD_CI_FAILED`, `CUMULATIVE_REVIEW_MISSING`, `MERGE_AUTHORIZATION_MISSING`, `POST_MERGE_CI_MISSING`, `POST_MERGE_CI_FAILED`, `EXTERNAL_STATE_UNAVAILABLE`, `STALE_DIGEST`, and `WRONG_TARGET`. Every blocked or unknown record also has a bounded human-readable reason.
 - support `online-strict` and fixture-backed `offline` modes. When required external facts are unavailable, affected readiness is `unknown`, the ready set is empty, and no Roadmap/Board/label fallback exists.
 - treat issue body, issue open/closed state, issue labels, PR comment prose, Roadmap, Board, Maintainer Gate status prose, and historical ledger as non-authoritative. A closed issue alone is never verification.
-- link a PR to one ticket only through the exact `Ticket: <ID>` structured PR-body field; a ticket label may be checked for agreement but cannot establish or override linkage. Resolve active candidates from base branch, head SHA, merge commit, formal review `commit_id`, review decision, actor permission, trusted workflow ref/commit/blob, workflow-run event/provenance, dispatch actor, check creator/external ID, and check conclusions, and report superseded heads without reusing their review or CI evidence. Free-form review comments remain audit narrative. Cumulative review requires an eligible current-head formal approval or the protected `exact-head-review` check under **Trusted actor policy**; merge authorization is a separate required protected `exact-head-authorization` check on the same head. Candidate CI, the review fact, and authorization are three distinct inputs. A missing, stale-head, wrong-actor, self-authored-only, candidate-controlled-workflow, non-ancestor trusted-workflow commit, wrong workflow blob, forged run provenance, or mismatched fact fails closed.
+- link a PR to one ticket only through the exact `Ticket: <ID>` structured PR-body field; a ticket label may be checked for agreement but cannot establish or override linkage. Resolve active candidates from base branch, head SHA, merge commit, formal review `commit_id`, review decision, exact candidate-CI run/jobs/checks, actor permission, trusted workflow ref/commit/blob, workflow-run event/provenance, dispatch actor, check creator/external ID, and check conclusions, and report superseded heads without reusing their review or CI evidence. Free-form review comments remain audit narrative. Cumulative review requires an eligible current-head formal approval or the protected `exact-head-review` check under **Trusted actor policy**; merge authorization is a separate required protected `exact-head-authorization` check on the same head. Candidate CI, the review fact, and authorization are three distinct inputs. A missing, stale-head, wrong-actor, self-authored-only, candidate-controlled-workflow, non-ancestor trusted-workflow commit, wrong workflow blob, forged run provenance, or mismatched fact fails closed.
 - require post-merge CI for `verified`; a merge or candidate-head CI alone cannot satisfy a dependency. A material ADR/PRD/ticket digest change removes affected readiness; a candidate-head-only change invalidates exact-head review/CI without automatically invalidating semantically unchanged RED evidence.
 - produce byte-identical canonical JSON for identical static files, Git refs, and GitHub fixture facts. Runtime timestamps and current head are output-only and excluded from committed snapshots and canonical comparisons.
 - the frozen current-baseline fixture resolves D0-001 as `verified`, D0-002 as `phase=gate_preparation` and `readiness=blocked`, and `readySet=[]`; the fixture contains facts, not a committed current-branch snapshot.
@@ -131,6 +164,7 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 - AC-D0-004-14 ↔ cases `registry-string-is-not-gate-acceptance`, `actor-policy-missing-or-malformed`, `gate-pr-wrong-or-no-longer-owner-actor`, `gate-pr-stale-head-or-digest`, and `gate-pr-post-merge-ci-required`.
 - AC-D0-004-15 ↔ cases `review-and-authorization-are-distinct`, `current-review-without-authorization-is-blocked`, `stale-or-self-authored-review-is-blocked`, `candidate-controlled-or-non-ancestor-review-workflow-is-blocked`, `wrong-workflow-blob-or-run-provenance-is-blocked`, `wrong-check-creator-or-external-id-is-blocked`, `author-dispatched-check-is-blocked`, `wrong-dispatch-permission-is-blocked`, and `authorization-without-current-review-is-blocked`.
 - AC-D0-004-16 ↔ case `ready-authorizes-packet-not-red`, which requires a separately maintainer-approved exact-base packet before the first RED command even after a resolver-ready result.
+- AC-D0-004-17 ↔ cases `candidate-ci-required-set-is-exact`, `candidate-ci-missing-stale-or-wrong-head-is-blocked`, `candidate-ci-wrong-app-event-base-path-or-run-is-blocked`, `candidate-ci-candidate-workflow-differs-from-live-target-is-blocked`, and `candidate-ci-latest-failed-attempt-overrides-older-pass`.
 
 ## Verification
 
