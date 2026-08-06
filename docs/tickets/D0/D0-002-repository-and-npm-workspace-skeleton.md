@@ -9,62 +9,71 @@
 
 ## Goal
 
-Create the real zero-product-code npm workspace skeleton required by the SSOT. Deliver only manifests, ownership markers, and deterministic planning tests; do not infer a CLI or package behavior.
+Create the real zero-product-code npm workspace skeleton required by SSOT §9.4. Deliver only manifests, deterministic lockfile changes, ownership markers, minimum-name-clearance evidence, and deterministic planning tests. The staged `workspace-census` RED runs through full `npm test` discovery and first rejects the non-canonical root name before it checks missing manifests; do not infer a CLI, package behavior, or publication authorization.
 
 ## Exact ownership
 
-- `package.json` except `scripts.test` owned by D0-001; `packages/{schema,scorer,runner,reporter}/package.json`; `adapters/{codex,claude-code}/package.json`; `suites/coding-core-v0/OWNERS.md`; `fixtures/OWNERS.md`; `conformance/OWNERS.md`; `docs/clearance/MINIMUM-NAME-CLEARANCE.md`; `tests/planning/workspace-skeleton.test.mjs`
+- `package.json` except `scripts.test`, which remains D0-001-owned and byte-for-byte unchanged; only the deterministic `package-lock.json` subset for the root plus the exact six workspaces selected by root patterns `packages/*` and `adapters/*` and their generated link records, as produced by the execution-packet-pinned npm; no dependency edge or unrelated record; `packages/{schema,scorer,runner,reporter}/package.json`; `adapters/{codex,claude-code}/package.json`; `packages/{schema,scorer,runner,reporter}/OWNERS.md`; `adapters/{codex,claude-code}/OWNERS.md`; `suites/coding-core-v0/OWNERS.md`; `fixtures/OWNERS.md`; `conformance/OWNERS.md`; `docs/clearance/MINIMUM-NAME-CLEARANCE.md`; `tests/planning/workspace-skeleton.test.mjs`.
+- Narrow D0-004 carve-out only, and only after the required RED receipt: in `scripts/validate-planning.mjs`, insert only `tests/planning/workspace-skeleton.test.mjs` into `controlPlaneAllowlist`; in `tests/planning-contract.test.mjs`, change only the `control_plane_code_files` and `control_plane_allowlist` literals in both `acceptedValidatorOutput` and `pendingValidatorOutput`, each from `6` to `7`. No other symbol, fixture, setup/teardown, assertion, or file is granted by this carve-out.
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
 
-1. Required ADRs and owning PRD are explicitly accepted at their exact digests.
-2. This exact ticket is explicitly accepted and an execution packet pins the base SHA.
-3. Every dependency above is verified complete on the target branch; active/partial work does not count.
-4. Worktree is clean or unrelated owner changes are identified and protected.
+1. ADR-0001, ADR-0003, ADR-0012, the owning PRD, and this exact ticket are explicitly accepted at their exact digests.
+2. D0-001 is verified complete on the target branch with a post-merge receipt; active, partial, merged-without-post-CI, or stale-head work does not count.
+3. The execution packet pins a freshly fetched `origin/dev` SHA, branch, clean isolated worktree, Node/npm identity, permission profile, and every owned path and symbol above.
+4. No open PR, active branch, or worktree owns a path or symbol in **Exact ownership**. Any overlap is a hard stop.
 
 ## Forbidden scope
 
-- feature implementation; package entrypoints; dependencies; npm publication; build artifacts
-- No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
-- No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
+- feature implementation; package entrypoints; runnable `bin`; dependencies; npm publication; build artifacts; public claim
+- root script changes, including `scripts.test`; product source; manifests outside the named six workspaces; lockfile dependency edges; and any D0-004 validator/test change outside the narrow carve-out
+- fabricated search, result, clearance, legal, license, contribution, redistribution, or publication claim
+- No fallback that weakens evidence, identity, safety, privacy, ownership, or terminal-state semantics.
 
 ## RED contract
 
-- Test file: `tests/planning/workspace-skeleton.test.mjs`
-- Focused command: `npm test -- tests/planning/workspace-skeleton.test.mjs`
-- Expected pre-GREEN failure: the required workspace manifests and ownership markers are missing, so no one-owner/zero-code package census can be proven.
-- Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
+1. From the execution-packet base, add only `tests/planning/workspace-skeleton.test.mjs` before every GREEN-owned edit. At this stage it contains only case `workspace-census`. Its first assertion checks the root manifest name before any missing-manifest assertion, and its primary assertion message is exactly `root workspace name mismatch: actual agent-operator-score-repository; required agent-operator-score`.
+2. Run the canonical pre-GREEN RED command: `npm test`. This is full Node test discovery after staging only `tests/planning/workspace-skeleton.test.mjs`; do not describe it as focused, reduce discovery, or exclude the planning-contract tests.
+3. Capture the primary failure, `workspace-census`, with that exact root-name message. The required companion is only the planner's deterministic unallowlisted `tests/planning/workspace-skeleton.test.mjs` report caused by the staged file. If the implementation deliberately reruns the suite after the one permitted allowlist insertion but before updating its four dependent expected literals, the only additional permitted failures are the `acceptedValidatorOutput` and `pendingValidatorOutput` `control_plane_code_files` and `control_plane_allowlist` `6`-to-`7` census mismatches; that intermediate rerun is optional and never alternate RED evidence.
+4. Capture the exact command, exit code, failing test names, and messages before editing manifests, markers, clearance evidence, the lockfile, or D0-004-carve-out symbols. Any failure outside the primary root-name signal and these deterministic staged-file planning allowlist/census companions stops execution.
+
+Expected pre-GREEN failure: `workspace-census` reports `root workspace name mismatch: actual agent-operator-score-repository; required agent-operator-score` before any missing-manifest assertion.
 
 ## Minimum GREEN
 
-- create a root manifest named `agent-operator-score` as the sole future publish candidate; keep it non-publishable until E14.
-- create workspace manifests exactly at `packages/{schema,scorer,runner,reporter}` and `adapters/{codex,claude-code}` named `@aos/*`, each with `private: true`, no executable entrypoint, no dependencies, and no product source.
-- retain engine range `>=20 <25`; reserve `aos` as a documented future CLI name without creating a runnable bin target.
-- add one ownership marker per future package path and make every marker point to exactly one ticket/PRD owner.
-- record the minimum GitHub/npm/domain/basic-trademark name-clearance evidence and explicit search limits; a missing or unresolved item blocks canonical-name adoption, not a legal opinion, LICENSE, contribution acceptance, redistribution, or publication authorization.
-- Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
+- Change root `package.json` `name` exactly to `agent-operator-score`; retain `private: true`, engines `>=20 <25`, and every root script exactly as at the execution base. Set `workspaces` exactly to the ordered patterns `["packages/*", "adapters/*"]`. Exactly the six named internal manifests below may match those patterns; an extra matching manifest is a failure. The root is the sole future publish candidate and remains non-publishable until E14/G4.
+- Regenerate only the owned deterministic `package-lock.json` subset with the packet-pinned npm version. It remains lockfile v3 and contains the root record, the exact six workspace package records, and their exact six generated link records: `packages/schema` / `node_modules/@aos/schema`; `packages/scorer` / `node_modules/@aos/scorer`; `packages/runner` / `node_modules/@aos/runner`; `packages/reporter` / `node_modules/@aos/reporter`; `adapters/codex` / `node_modules/@aos/adapter-codex`; and `adapters/claude-code` / `node_modules/@aos/adapter-claude-code`. The root record carries the matching root name; each workspace record carries its exact declared `@aos/*` name; each generated link points only to its matching workspace. No dependency edge or record outside this deterministic subset may change.
+- Create only these six internal manifests, each with `version: "0.0.0"`, `private: true`, no executable entrypoint, no dependencies, no scripts, and no product source: `packages/schema/package.json` as `@aos/schema`; `packages/scorer/package.json` as `@aos/scorer`; `packages/runner/package.json` as `@aos/runner`; `packages/reporter/package.json` as `@aos/reporter`; `adapters/codex/package.json` as `@aos/adapter-codex`; and `adapters/claude-code/package.json` as `@aos/adapter-claude-code`.
+- Add each of the nine owned markers as UTF-8 text with one trailing newline and exactly these two lines, in this order: `owner_ticket: D0-002` and `owner_prd: PRD-D0-name-migration-and-repository-skeleton`. A missing, duplicate, reordered, or additional byte is invalid.
+- Reserve `aos` only as documentation for a future CLI; do not create a runnable command, bin, entrypoint, or invocation surface.
+- In `docs/clearance/MINIMUM-NAME-CLEARANCE.md`, create one record each for GitHub, npm, domain, and basic trademark. Every record has exactly these fields: `source`, `query`, `searched_at`, `result`, `limits`, and `status`. `status` is one of `CLEAR`, `UNRESOLVED`, or `CONFLICT`; every non-`CLEAR` status blocks canonical-name adoption and D0 exit. The evidence and its limits are factual records, not legal, license, contribution, redistribution, or publication clearance. A `CONFLICT` requires identity correction; the already migrated repository and registry do not override this fail-closed gate. Do not fabricate a source, query, date, result, limits, or status.
+- After the RED receipt, make only the narrow D0-004 carve-out changes declared in **Exact ownership**; both planner census fields and both allowlist fields change from `6` to `7`, and nothing else in those files changes.
+- Change only the owned paths and symbols above.
 
 ## Acceptance ↔ tests
 
-- AC-D0-002-1 ↔ `tests/planning/workspace-skeleton.test.mjs` case `workspace-census`: exact root/internal workspace names and paths exist.
-- AC-D0-002-2 ↔ `tests/planning/workspace-skeleton.test.mjs` case `internal-workspaces-private`: every `@aos/*` manifest has `private: true`; only root is the publish candidate.
-- AC-D0-002-3 ↔ `tests/planning/workspace-skeleton.test.mjs` case `one-owner-per-path`: each future package path has exactly one owner.
-- AC-D0-002-4 ↔ `tests/planning/workspace-skeleton.test.mjs` case `product-code-zero`: manifest/source census finds no product code or runnable bin target.
+- AC-D0-002-1 ↔ `tests/planning/workspace-skeleton.test.mjs` case `workspace-census`: exact root/internal workspace paths and names exist; the test checks the root name before missing manifests, so the staged full-discovery RED observes `root workspace name mismatch: actual agent-operator-score-repository; required agent-operator-score` as its deterministic primary signal.
+- AC-D0-002-2 ↔ `tests/planning/workspace-skeleton.test.mjs` case `internal-workspaces-private`: every exact internal package is `private: true`; only root is the future publish candidate.
+- AC-D0-002-3 ↔ `tests/planning/workspace-skeleton.test.mjs` case `one-owner-per-path`: each of the nine exact marker paths is byte-identical to the required two-line owner record with one trailing newline.
+- AC-D0-002-4 ↔ `tests/planning/workspace-skeleton.test.mjs` case `product-code-zero`: manifest/source census rejects product code, a dependency, runnable bin, entrypoint, or script.
 - AC-D0-002-5 ↔ `tests/planning/workspace-skeleton.test.mjs` case `engine-matrix`: root engines remain `>=20 <25` and CI declares Node 20/22/24.
-- AC-D0-002-6 ↔ `tests/planning/workspace-skeleton.test.mjs` case `minimum-name-clearance`: required evidence/search-limit fields are present and any unresolved state blocks canonical-name adoption without asserting formal legal, LICENSE, contribution, redistribution, or publication clearance.
+- AC-D0-002-6 ↔ `tests/planning/workspace-skeleton.test.mjs` case `minimum-name-clearance`: each named record contains exactly `source`, `query`, `searched_at`, `result`, `limits`, and `status`; every non-`CLEAR` status blocks canonical-name adoption and D0 exit, and `CONFLICT` requires identity correction, without asserting formal legal, LICENSE, contribution, redistribution, or publication clearance.
+- AC-D0-002-7 ↔ `tests/planning/workspace-skeleton.test.mjs` case `workspace-lock-consistency`: root `workspaces` is JSON-deep-equal to the ordered array `["packages/*", "adapters/*"]`; exactly the six named internal manifests match; the root manifest and lockfile root record are both named `agent-operator-score`; lockfile v3 contains exactly the six workspace records with their exact `@aos/*` names and the six generated links to those matching workspaces; the test rejects an extra or stale manifest, record, name, link, pattern, or dependency edge; and `npm ci` accepts the committed lock.
 
 ## Verification
 
-1. Focused: `npm test -- tests/planning/workspace-skeleton.test.mjs`; every named case above passes.
-2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
-3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
-4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario surface; for runtime/scenario tickets run only the controlled local fixture named by the PRD, never a production target.
-5. Ownership: inspect `git diff --name-only <base>...<head>` and reject every unowned path.
+1. RED: after staging only `tests/planning/workspace-skeleton.test.mjs`, run the canonical full-discovery `npm test` command in **RED contract** before GREEN; retain the root-name primary failure and only permitted staged-file planning allowlist/census companions as that candidate's RED receipt.
+2. Install/lock: `npm ci` succeeds with the workspace lock consistent with the root manifest.
+3. Post-GREEN focused: `npm test -- tests/planning/workspace-skeleton.test.mjs`; every named case above passes.
+4. Post-GREEN full: `npm test`; zero failure, skip only when preregistered by this ticket.
+5. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
+6. Manual/live: `LIVE_NA`; this ticket owns no runtime, scenario, network, or production target.
+7. Ownership: `git diff --check <base>...<head>` passes and `git diff --name-only <base>...<head>` lists only owned paths/symbols, including exactly the narrow D0-004 carve-out where applicable.
 
 ## Stop and escalation
 
-- Stop on ambiguity, wrong target, ownership overlap, missing required observability, unsafe permission, secret exposure, silent fallback, timeout without a registered terminal state, partial state, nondeterminism, or evidence not tied to exact head.
+- Stop on a wrong target, extra workspace, missing or duplicate owner, stale lockfile, runnable surface, dependency, product source, partial directory state, unowned path, ownership overlap, ambiguous or fabricated clearance, missing required observability, unsafe permission, secret exposure, silent fallback, timeout without a registered terminal state, partial state, nondeterminism, or evidence not tied to exact head.
 - A dependency or contract defect is escalated to its owning ADR/PRD/ticket; do not broaden this ticket.
 
 ## Completion evidence
