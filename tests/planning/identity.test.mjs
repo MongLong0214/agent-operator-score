@@ -187,7 +187,7 @@ test("wrong-target-no-silent-fallback", async () => {
 test("git-worktree-metadata-is-not-active-content", async () => {
   const { validateIdentity } = await loadValidator();
   await withFixture((root) => {
-    const historicalIdentifier = reconstruct(forbidden[0]);
+    const historicalIdentifier = reconstruct(forbidden[1]);
     writeFileSync(join(root, ".git"), `gitdir: /tmp/${historicalIdentifier}/.git/worktrees/test\n`);
     assert.deepEqual(validateIdentity({ root }), { ok: true, hits: [] });
   });
