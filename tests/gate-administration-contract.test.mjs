@@ -11,6 +11,16 @@ import { validateGateAdministration } from "../scripts/validate-gate-administrat
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
 
+test("ADR-0003 limits npm workspaces to the SSOT six", () => {
+  const adr = readFileSync(resolve(root, "docs/adr/ADR-0003-runtime-repository-and-distribution.md"), "utf8");
+  const workspaceDecision = adr.split("\n").find((line) => line.startsWith("- Use npm workspaces"));
+
+  assert.equal(
+    workspaceDecision,
+    "- Use npm workspaces for exactly the six internal workspaces at `packages/{schema,scorer,runner,reporter}` and `adapters/{codex,claude-code}`. `suites/`, `fixtures/`, and `conformance/` are repository surfaces, not npm workspaces. Every internal `@aos/*` workspace is `private: true`."
+  );
+});
+
 test("pre-implementation Gate Administrator is independent of D0-004 and D0-002", () => {
   const decision = resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md");
   assert.equal(existsSync(decision), true);
@@ -501,10 +511,12 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.equal(batch.target.reviewed_head, "dde8c29a592c35a37515645511e6da275ffb50f0");
   assert.deepEqual(batch.artifacts.map(({ path, kind }) => ({ path, kind })), batch.required_artifacts);
   const ticketArtifact = batch.artifacts.find(({ path }) => path === "docs/tickets/D0/D0-001-canonical-identifier-registry.md");
+  const adrArtifact = batch.artifacts.find(({ path }) => path === "docs/adr/ADR-0003-runtime-repository-and-distribution.md");
   assert.ok(batch.artifacts
-    .filter(({ path }) => path !== ticketArtifact.path)
+    .filter(({ path }) => path !== ticketArtifact.path && path !== adrArtifact.path)
     .every(({ path, sha256: digest }) => digest === sha256(resolve(root, path))));
   assert.notEqual(ticketArtifact.sha256, sha256(resolve(root, ticketArtifact.path)));
+  assert.notEqual(adrArtifact.sha256, sha256(resolve(root, adrArtifact.path)));
   assert.deepEqual(batch.transitions, [
     { type: "ADR_ACCEPTED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
     { type: "PRD_ACCEPTED", artifact_paths: batch.required_artifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
@@ -518,7 +530,7 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
   assert.equal(batch.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
-  assert.equal(result.externalGateEvidence, "required");
+  assert.equal(result.externalGateEvidence, "not_applicable");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
   assert.match(gateStatus, /three prior D0-001 batches `INVALIDATED`; bounded-RED renewal structurally `ACCEPTED`/);
   assert.match(gateDecision, /D0-001 history retains three `PENDING → ACCEPTED → INVALIDATED` batches; the bounded-RED renewal is structurally `ACCEPTED`/);
@@ -536,7 +548,7 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.match(gateDecision, /compatibility migration's exact delegation test case\/plumbing/);
 });
 
-test("bounded-RED D0-001 renewal is structurally ACCEPTED at the exact prerequisite head", () => {
+test("ADR-0003 correction invalidates the D0-001 bounded-RED planning acceptance", () => {
   const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
   const historical = registry.batches.find(({ id }) => id === "d0-001-prerequisites");
   const supersededRenewal = registry.batches.find(({ id }) => id === "d0-001-prerequisites-renewal");
@@ -568,7 +580,7 @@ test("bounded-RED D0-001 renewal is structurally ACCEPTED at the exact prerequis
   ]);
   assert.match(ownershipRenewal.invalidation.reason, /RED staging semantics correction/);
   assert.ok(boundedRedRenewal);
-  assert.equal(boundedRedRenewal.status, "ACCEPTED");
+  assert.equal(boundedRedRenewal.status, "INVALIDATED");
   assert.deepEqual(boundedRedRenewal.target, {
     repository: "github.com/MongLong0214/agent-operator-score",
     branch: "dev",
@@ -576,7 +588,11 @@ test("bounded-RED D0-001 renewal is structurally ACCEPTED at the exact prerequis
   });
   assert.deepEqual(boundedRedRenewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), requiredArtifacts);
   for (const artifact of boundedRedRenewal.required_artifacts) {
-    assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
+    if (artifact.path === "docs/adr/ADR-0003-runtime-repository-and-distribution.md") {
+      assert.notEqual(artifact.sha256, sha256(resolve(root, artifact.path)));
+    } else {
+      assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
+    }
   }
   assert.deepEqual(boundedRedRenewal.required_transitions, ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"]);
   assert.deepEqual(boundedRedRenewal.artifacts, boundedRedRenewal.required_artifacts);
@@ -585,14 +601,37 @@ test("bounded-RED D0-001 renewal is structurally ACCEPTED at the exact prerequis
     { type: "PRD_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
     { type: "TICKET_READY_FOR_RED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
   ]);
-  assert.deepEqual(boundedRedRenewal.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
+  assert.deepEqual(boundedRedRenewal.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
   assert.notEqual(boundedRedRenewal.preparation.prepared_by, boundedRedRenewal.approval.approved_by);
   assert.equal(boundedRedRenewal.approval.role, "MAINTAINER");
-  assert.equal("invalidation" in boundedRedRenewal, false);
+  assert.match(boundedRedRenewal.invalidation.reason, /ADR-0003 workspace scope correction/);
   assert.equal(result.status, "invalidated");
-  assert.equal(result.externalGateEvidence, "required");
+  assert.equal(result.externalGateEvidence, "not_applicable");
   assert.match(gateStatus, /bounded-RED digest renewal is structurally ACCEPTED/);
   assert.match(gateStatus, /exact-head CEO review and CI are required/);
   assert.match(gateDecision, /bounded-RED renewal is structurally `ACCEPTED`/);
   assert.match(gateDecision, /not authorization to execute and requires external exact-head CEO review and CI/);
+});
+
+test("ADR-0003 correction invalidates the D0-002 planning acceptance without changing other prerequisite digests", () => {
+  const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
+  const batch = registry.batches.find(({ id }) => id === "d0-002-prerequisites");
+
+  assert.ok(batch);
+  assert.equal(batch.status, "INVALIDATED");
+  assert.deepEqual(batch.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
+  for (const artifact of batch.required_artifacts) {
+    if (artifact.path === "docs/adr/ADR-0003-runtime-repository-and-distribution.md") {
+      assert.notEqual(artifact.sha256, sha256(resolve(root, artifact.path)));
+    } else {
+      assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
+    }
+  }
+  assert.match(batch.invalidation.reason, /ADR-0003 workspace scope correction/);
 });
