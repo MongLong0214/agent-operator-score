@@ -189,6 +189,27 @@ test("D0-001 RED permits only its two bounded pre-GREEN staging failures", () =>
   assert.match(ticket, /Any failure outside the required missing-validator signal and these two bounded companion failures stops execution/);
 });
 
+test("D0-004 single-owner policy does not require a nonexistent external actor", () => {
+  const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"), "utf8");
+  assert.match(ticket, /"governance_mode": "single_owner_agent_team"/);
+  assert.doesNotMatch(ticket, /"must_differ_from_pr_author": true/);
+  assert.match(ticket, /Self-authored strings\/registry fields.*`not_authorization`/);
+  assert.match(ticket, /distinct external actor.*recorded.*not required/s);
+  assert.match(ticket, /exact-head technical review, CI, and explicit CEO production PASS remain required/);
+  assert.match(ticket, /single-owner-spoof-is-not-authorization/);
+  assert.doesNotMatch(ticket, /at least one different actor/);
+});
+
+test("D0-004 bootstrap defers checks that D0-004C creates", () => {
+  const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"), "utf8");
+  assert.match(ticket, /"state": "NOT_REQUIRED_UNTIL_D0_004C"/);
+  assert.match(ticket, /existing CI.*local offline resolver\/contract tests.*exact-head technical review evidence/s);
+  assert.match(ticket, /operational-state-offline.*exact-head-review.*exact-head-authorization/s);
+  assert.match(ticket, /future-check-premature/);
+  assert.match(ticket, /bootstrap-after-c-fails-closed/);
+  assert.match(ticket, /After D0-004C merges.*Bootstrap.*disabled.*fail closed/s);
+});
+
 test("status ledger separates blocked executable tickets from superseded D0-003", () => {
   const ledger = readFileSync(resolve(root, "docs/decisions/MAINTAINER-GATE-STATUS.md"), "utf8");
   assert.match(ledger, /\| Atomic tickets \| 64 executable \| BLOCKED \|/);
