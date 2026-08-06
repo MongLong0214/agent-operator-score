@@ -622,6 +622,9 @@ test("ADR-0003 correction invalidates the D0-002 planning acceptance and renews 
   const batch = registry.batches.find(({ id }) => id === "d0-002-prerequisites");
   const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-adr-0003-renewal");
   const result = validateGateAdministration();
+  const adr = readFileSync(resolve(root, "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"), "utf8");
+  const prd = readFileSync(resolve(root, "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"), "utf8");
+  const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md"), "utf8");
 
   assert.ok(batch);
   assert.equal(batch.status, "INVALIDATED");
@@ -637,6 +640,13 @@ test("ADR-0003 correction invalidates the D0-002 planning acceptance and renews 
     }
   }
   assert.match(batch.invalidation.reason, /ADR-0003 workspace scope correction/);
+  assert.match(adr, /unresolved result blocks public canonical-brand adoption and public publication; it does not block the private, unpublished internal package identifier/);
+  assert.match(prd, /unresolved evidence blocks public canonical-brand adoption, public publication, and D0 exit, but not the private unpublished internal package identifier/);
+  assert.match(ticket, /explicitly allowed pre-RED harness insertion/);
+  assert.match(ticket, /No companion failure is permitted; identity and preservation cases must pass/);
+  assert.match(ticket, /case `root-private-scripts-and-runnable-surface`/);
+  assert.match(ticket, /duplicate clearance source/);
+  assert.match(ticket, /UNRESOLVED blocks public canonical-brand adoption, public publication, and D0 exit but does not block the private unpublished root package identifier/);
 
   assert.ok(renewal, "D0-002 requires a fresh digest-bound renewal after the ADR-0003 correction");
   assert.equal(renewal.status, "ACCEPTED");
