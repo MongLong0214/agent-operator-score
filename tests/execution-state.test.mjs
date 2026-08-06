@@ -2018,6 +2018,40 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
 });
 
+test("authoritative-search-incomplete-results-flag-required-fails-closed", async () => {
+  // R14: incomplete_results must be a present boolean on gate and merged Ticket searches.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const gateKey = Object.keys(responses).find(
+    (entry) => entry.includes("search/issues") && entry.includes("Gate-Batch")
+  );
+  const mergedKey = Object.keys(responses).find(
+    (entry) => entry.includes("search/issues") && entry.includes("Ticket") && entry.includes("base")
+  );
+  assert.ok(gateKey && mergedKey);
+
+  const missingGate = clone(responses);
+  delete missingGate[gateKey].incomplete_results;
+  const missingGateResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(missingGate)
+  });
+  assert.equal(missingGateResult.ok, false);
+  assert.match(missingGateResult.reason, /incomplete_results|malformed/i);
+
+  const stringFlag = clone(responses);
+  stringFlag[mergedKey] = {
+    ...clone(stringFlag[mergedKey]),
+    incomplete_results: "false"
+  };
+  const stringResult = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(stringFlag)
+  });
+  assert.equal(stringResult.ok, false);
+  assert.match(stringResult.reason, /incomplete_results|malformed/i);
+});
+
 test("authoritative-total-count-missing-or-under-reported-fails-closed", async () => {
   // R13: total_count is required and must equal returned array length (not optional, not under-count).
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();

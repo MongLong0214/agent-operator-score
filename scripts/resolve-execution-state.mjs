@@ -1809,6 +1809,11 @@ const rejectPossiblyTruncatedSearch = (search, perPage, failures, label) => {
     failures.push(`${label} missing items array`);
     return true;
   }
+  // incomplete_results must be a present boolean; missing/null/string is partial authority.
+  if (typeof search.incomplete_results !== "boolean") {
+    failures.push(`${label} missing or malformed incomplete_results`);
+    return true;
+  }
   if (search.incomplete_results === true) {
     failures.push(`${label} incomplete_results=true`);
     return true;
