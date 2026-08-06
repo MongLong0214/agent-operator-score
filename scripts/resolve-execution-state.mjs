@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
@@ -1093,10 +1094,650 @@ const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
   errors
 });
 
+const sha256Text = (text) => createHash("sha256").update(text, "utf8").digest("hex");
+
+const GITHUB_ACTIONS_APP = { id: 15368, slug: "github-actions", owner: "github" };
+
 /**
- * Bounded online-strict fact acquisition. Accepts injected facts (tests) or an
- * explicit facts path; otherwise probes live git/GitHub identity and fails closed
- * when a complete operational corpus is unavailable (no empty-corpus fallback).
+ * Authenticated read-only GitHub transport used by the live collector.
+ * Performs zero repository writes. Callers may inject a fixture transport.
+ */
+export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options = {}) => {
+  const exec = options.execFileSync ?? execFileSync;
+  const ghApi = (apiPath, { accept } = {}) => {
+    const args = ["api", apiPath];
+    if (accept) args.push("-H", `Accept: ${accept}`);
+    const raw = exec("gh", args, {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 20 * 1024 * 1024
+    });
+    return raw;
+  };
+  return {
+    kind: "github-authenticated",
+    getJson(apiPath) {
+      return JSON.parse(ghApi(apiPath));
+    },
+    getRaw(apiPath) {
+      return ghApi(apiPath, { accept: "application/vnd.github.raw" });
+    }
+  };
+};
+
+/**
+ * Fixture/test transport adapter. Provenance is explicit: responses must be supplied
+ * by the test harness; missing keys fail closed as unavailable.
+ */
+export const createFixtureTransport = (responses) => {
+  if (!plainObject(responses)) {
+    throw new Error("fixture transport requires a response map");
+  }
+  return {
+    kind: "fixture-authenticated",
+    getJson(apiPath) {
+      if (!Object.hasOwn(responses, apiPath)) {
+        const err = new Error(`fixture missing json ${apiPath}`);
+        err.code = "FIXTURE_MISSING";
+        throw err;
+      }
+      const value = responses[apiPath];
+      if (value === null) {
+        const err = new Error(`fixture outage at ${apiPath}`);
+        err.code = "FIXTURE_OUTAGE";
+        throw err;
+      }
+      if (value && value.__ambiguous === true) {
+        const err = new Error(`fixture ambiguous at ${apiPath}`);
+        err.code = "FIXTURE_AMBIGUOUS";
+        throw err;
+      }
+      return typeof value === "string" ? JSON.parse(value) : value;
+    },
+    getRaw(apiPath) {
+      const key = `raw:${apiPath}`;
+      if (!Object.hasOwn(responses, key) && !Object.hasOwn(responses, apiPath)) {
+        const err = new Error(`fixture missing raw ${apiPath}`);
+        err.code = "FIXTURE_MISSING";
+        throw err;
+      }
+      const value = Object.hasOwn(responses, key) ? responses[key] : responses[apiPath];
+      if (value === null) {
+        const err = new Error(`fixture outage at ${apiPath}`);
+        err.code = "FIXTURE_OUTAGE";
+        throw err;
+      }
+      return typeof value === "string" ? value : JSON.stringify(value);
+    }
+  };
+};
+
+const transportCall = (transport, method, apiPath) => {
+  try {
+    return { ok: true, value: transport[method](apiPath) };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error?.code === "FIXTURE_AMBIGUOUS"
+        ? `ambiguous external response for ${apiPath}`
+        : `unavailable external response for ${apiPath}`,
+      error
+    };
+  }
+};
+
+const requireJson = (transport, apiPath, failures) => {
+  const result = transportCall(transport, "getJson", apiPath);
+  if (!result.ok) {
+    failures.push(result.reason);
+    return null;
+  }
+  return result.value;
+};
+
+const requireRaw = (transport, apiPath, failures) => {
+  const result = transportCall(transport, "getRaw", apiPath);
+  if (!result.ok) {
+    failures.push(result.reason);
+    return null;
+  }
+  return result.value;
+};
+
+const parseTicketIdFromBody = (body) => {
+  const field = extractExactTicketField(body ?? "");
+  return field.ok ? field.ticketId : null;
+};
+
+const parseGateBatchFromBody = (body) => {
+  const field = extractExactGateBatchField(body ?? "");
+  return field.ok ? field.batchId : null;
+};
+
+const selectLatestWorkflowRun = (runs) => {
+  const selected = selectLatestRunAttempt(runs);
+  if (selected.ambiguous) return { ok: false, reason: "ambiguous workflow run attempts" };
+  if (selected.missing || !selected.run) return { ok: false, reason: "missing workflow run" };
+  return { ok: true, run: selected.run };
+};
+
+/**
+ * Bounded authenticated live collector for the full operational fact corpus required
+ * by online-strict resolution. Static catalog bytes are read from the live target tip
+ * via the authenticated transport; mutable GitHub state is collected with read-only APIs.
+ * Partial, outage, or ambiguous responses fail closed — no empty-corpus fallback.
+ */
+export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => {
+  const failures = [];
+  const transport = options.transport ?? createAuthenticatedGitHubTransport(root);
+  if (!transport || typeof transport.getJson !== "function" || typeof transport.getRaw !== "function") {
+    return { ok: false, reason: "authenticated transport unavailable", facts: null };
+  }
+
+  const expected = expectedActorPolicyFromTicket();
+  const repoPath = `repos/${expected.repository}`;
+  const repo = requireJson(transport, repoPath, failures);
+  if (!repo) return { ok: false, reason: failures.join("; "), facts: null };
+  if (!repo.owner?.login || !repo.owner?.type || !repo.default_branch) {
+    return { ok: false, reason: "repository owner/default_branch unavailable", facts: null };
+  }
+  if (repo.owner.login !== expected.repository_owner.login || repo.owner.type !== expected.repository_owner.type) {
+    return { ok: false, reason: "live repository owner does not match actor policy", facts: null };
+  }
+  if (repo.default_branch !== expected.target_branch) {
+    return { ok: false, reason: "live default branch does not match actor policy target_branch", facts: null };
+  }
+
+  const refPath = `${repoPath}/git/ref/heads/${repo.default_branch}`;
+  const ref = requireJson(transport, refPath, failures);
+  const liveTip = ref?.object?.sha;
+  if (!liveTip || !/^[0-9a-f]{40}$/i.test(liveTip)) {
+    return { ok: false, reason: "live target tip SHA unavailable", facts: null };
+  }
+
+  const readTipFile = (path) => {
+    const api = `${repoPath}/contents/${path}?ref=${liveTip}`;
+    return requireRaw(transport, api, failures);
+  };
+
+  const registryText = readTipFile("docs/decisions/maintainer-gate-registry.v2.json");
+  const issuesText = readTipFile("docs/issues.json");
+  if (!registryText || !issuesText) {
+    return { ok: false, reason: failures.join("; ") || "static authority files unavailable at live tip", facts: null };
+  }
+
+  let registry;
+  let issuesCatalog;
+  try {
+    registry = JSON.parse(registryText);
+    issuesCatalog = JSON.parse(issuesText);
+  } catch {
+    return { ok: false, reason: "malformed registry or issues catalog at live tip", facts: null };
+  }
+
+  if (!plainObject(issuesCatalog?.operational_authority)) {
+    return { ok: false, reason: "issues catalog missing operational_authority", facts: null };
+  }
+  if (!actorPolicyAgrees(issuesCatalog.operational_authority)) {
+    return { ok: false, reason: "live operational_authority does not match ticket actor policy", facts: null };
+  }
+
+  const catalogTickets = Array.isArray(issuesCatalog.tickets) ? issuesCatalog.tickets : null;
+  if (!catalogTickets || catalogTickets.length === 0) {
+    return { ok: false, reason: "issues catalog ticket corpus empty", facts: null };
+  }
+
+  const liveDigests = {};
+  const digestFile = (path) => {
+    if (liveDigests[path]) return liveDigests[path];
+    const text = readTipFile(path);
+    if (text == null) return null;
+    const digest = sha256Text(text);
+    liveDigests[path] = digest;
+    return digest;
+  };
+
+  // Always bind authority digests used by D0 gates.
+  const authorityPaths = new Set([
+    "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+    "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+    "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+    "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+  ]);
+  for (const entry of catalogTickets) {
+    if (entry?.ticket_path) authorityPaths.add(entry.ticket_path);
+  }
+  for (const path of authorityPaths) {
+    if (!digestFile(path)) {
+      return { ok: false, reason: failures.join("; ") || `live digest unavailable for ${path}`, facts: null };
+    }
+  }
+
+  const tickets = {};
+  for (const entry of catalogTickets) {
+    if (!entry?.id || !entry?.ticket_path) {
+      return { ok: false, reason: "catalog ticket missing id or ticket_path", facts: null };
+    }
+    const ticketDigest = liveDigests[entry.ticket_path];
+    if (!ticketDigest) {
+      return { ok: false, reason: `missing live ticket digest for ${entry.id}`, facts: null };
+    }
+    const prdPath = "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md";
+    const adrs = {
+      "ADR-0001": liveDigests["docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"],
+      "ADR-0003": liveDigests["docs/adr/ADR-0003-runtime-repository-and-distribution.md"],
+      "ADR-0012": liveDigests["docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"]
+    };
+    tickets[entry.id] = {
+      kind: entry.kind === "superseded" ? "superseded" : "executable",
+      dependencies: Array.isArray(entry.dependencies) ? [...entry.dependencies] : [],
+      owned_paths: [],
+      owned_symbols: [],
+      red_command: null,
+      digests: {
+        ticket: ticketDigest,
+        prd: liveDigests[prdPath],
+        adrs
+      }
+    };
+  }
+
+  const acceptedBatches = (Array.isArray(registry.batches) ? registry.batches : []).filter(
+    (batch) => batch?.status === "ACCEPTED"
+  );
+  const gateBatches = acceptedBatches.map((batch) => ({
+    id: batch.id,
+    status: "ACCEPTED",
+    required_artifacts: Array.isArray(batch.required_artifacts)
+      ? batch.required_artifacts
+      : Array.isArray(batch.artifacts)
+        ? batch.artifacts
+        : []
+  }));
+
+  // Collect gate PRs for accepted batches via authenticated search + pull fetch.
+  const gatePRs = [];
+  const postMergeCI = [];
+  const seenGatePr = new Set();
+  for (const batch of gateBatches) {
+    const q = encodeURIComponent(
+      `repo:${expected.repository} is:pr is:merged "Gate-Batch: ${batch.id}"`
+    );
+    const search = requireJson(transport, `search/issues?q=${q}&per_page=10`, failures);
+    if (!search) return { ok: false, reason: failures.join("; "), facts: null };
+    if (!Array.isArray(search.items)) {
+      return { ok: false, reason: `ambiguous gate PR search for ${batch.id}`, facts: null };
+    }
+    if (search.items.length === 0) {
+      // No gate PR for this accepted registry row — leave unmatched (gate acceptance fails closed later).
+      continue;
+    }
+    if (search.items.length !== 1) {
+      return { ok: false, reason: `ambiguous gate PR set for batch ${batch.id}`, facts: null };
+    }
+    const number = search.items[0].number;
+    if (seenGatePr.has(number)) continue;
+    const pull = requireJson(transport, `${repoPath}/pulls/${number}`, failures);
+    if (!pull) return { ok: false, reason: failures.join("; "), facts: null };
+    const batchField = parseGateBatchFromBody(pull.body);
+    if (batchField !== batch.id) {
+      return { ok: false, reason: `gate PR #${number} lacks exact Gate-Batch ${batch.id}`, facts: null };
+    }
+    if (pull.base?.ref !== expected.target_branch || pull.merged !== true) {
+      return { ok: false, reason: `gate PR #${number} is not merged into ${expected.target_branch}`, facts: null };
+    }
+    if (!pull.merge_commit_sha || !pull.merged_by?.login) {
+      return { ok: false, reason: `gate PR #${number} missing merge actor/sha`, facts: null };
+    }
+    // head_contains_batch: registry at merge commit must include the batch id.
+    const registryAtMerge = requireRaw(
+      transport,
+      `${repoPath}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${pull.merge_commit_sha}`,
+      failures
+    );
+    if (registryAtMerge == null) {
+      return { ok: false, reason: failures.join("; ") || `registry unavailable at merge ${pull.merge_commit_sha}`, facts: null };
+    }
+    if (!registryAtMerge.includes(`"id": "${batch.id}"`) && !registryAtMerge.includes(`"id":"${batch.id}"`)) {
+      return { ok: false, reason: `gate PR #${number} head/merge does not contain batch ${batch.id}`, facts: null };
+    }
+    seenGatePr.add(number);
+    gatePRs.push({
+      number,
+      base: pull.base.ref,
+      head_sha: pull.head?.sha,
+      body: pull.body,
+      merged: true,
+      merged_by: pull.merged_by.login,
+      merge_commit_sha: pull.merge_commit_sha,
+      author: pull.user?.login ?? null,
+      head_contains_batch: true
+    });
+
+    const runs = requireJson(
+      transport,
+      `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
+      failures
+    );
+    if (!runs || !Array.isArray(runs.workflow_runs)) {
+      return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for ${pull.merge_commit_sha}`, facts: null };
+    }
+    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const latest = selectLatestWorkflowRun(
+      ciRuns.map((run) => ({
+        merge_commit_sha: pull.merge_commit_sha,
+        head_sha: run.head_sha,
+        status: run.status,
+        conclusion: run.conclusion,
+        run_id: run.id,
+        run_attempt: run.run_attempt,
+        name: run.name,
+        event: run.event,
+        workflow_path: run.path
+      }))
+    );
+    if (!latest.ok) {
+      // Record absence as missing post-merge rather than inventing success.
+      continue;
+    }
+    postMergeCI.push({
+      merge_commit_sha: pull.merge_commit_sha,
+      head_sha: latest.run.head_sha,
+      status: latest.run.status,
+      conclusion: latest.run.conclusion,
+      run_id: latest.run.run_id,
+      run_attempt: latest.run.run_attempt
+    });
+  }
+
+  // Active candidates: open PRs targeting live default branch.
+  const openPulls = requireJson(
+    transport,
+    `${repoPath}/pulls?state=open&base=${repo.default_branch}&per_page=50`,
+    failures
+  );
+  if (!Array.isArray(openPulls)) {
+    return { ok: false, reason: failures.join("; ") || "open pull list unavailable", facts: null };
+  }
+
+  const prs = [];
+  const reviews = [];
+  const authorizations = [];
+  const checkRuns = [];
+  const workflowRuns = [];
+  const permissions = {};
+  const actors = new Set([repo.owner.login]);
+
+  const ensurePermission = (login) => {
+    if (!login || permissions[login]) return;
+    const perm = requireJson(transport, `${repoPath}/collaborators/${login}/permission`, failures);
+    if (!perm || typeof perm.permission !== "string") {
+      failures.push(`permission unavailable for ${login}`);
+      return;
+    }
+    permissions[login] = perm.permission;
+  };
+  ensurePermission(repo.owner.login);
+
+  for (const pull of openPulls) {
+    const body = pull.body ?? "";
+    const ticketId = parseTicketIdFromBody(body);
+    const author = pull.user?.login ?? null;
+    if (author) actors.add(author);
+    prs.push({
+      number: pull.number,
+      base: pull.base?.ref,
+      base_sha: pull.base?.sha ?? liveTip,
+      head_sha: pull.head?.sha,
+      author,
+      body,
+      merged: false,
+      state: pull.state,
+      labels: Array.isArray(pull.labels) ? pull.labels.map((label) => label.name) : []
+    });
+
+    if (!ticketId || !pull.head?.sha) continue;
+
+    // Candidate CI: workflow runs → jobs API mapping (check name must bind to selected run attempt).
+    const head = pull.head.sha;
+    const headRuns = requireJson(
+      transport,
+      `${repoPath}/actions/runs?head_sha=${head}&event=pull_request&per_page=30`,
+      failures
+    );
+    if (!headRuns || !Array.isArray(headRuns.workflow_runs)) {
+      return { ok: false, reason: failures.join("; ") || `workflow runs unavailable for ${head}`, facts: null };
+    }
+    const checksPayload = requireJson(
+      transport,
+      `${repoPath}/commits/${head}/check-runs?per_page=50`,
+      failures
+    );
+    if (!checksPayload || !Array.isArray(checksPayload.check_runs)) {
+      return { ok: false, reason: failures.join("; ") || `check runs unavailable for ${head}`, facts: null };
+    }
+    const checksByName = new Map();
+    for (const check of checksPayload.check_runs) {
+      checksByName.set(check.name, check);
+    }
+
+    for (const run of headRuns.workflow_runs) {
+      let jobs = null;
+      const attemptJobs = transportCall(
+        transport,
+        "getJson",
+        `${repoPath}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=50`
+      );
+      if (attemptJobs.ok && Array.isArray(attemptJobs.value?.jobs)) {
+        jobs = attemptJobs.value.jobs;
+      } else {
+        const baseJobs = requireJson(transport, `${repoPath}/actions/runs/${run.id}/jobs?per_page=50`, failures);
+        jobs = baseJobs?.jobs ?? null;
+      }
+      if (!Array.isArray(jobs)) {
+        return { ok: false, reason: failures.join("; ") || `jobs unavailable for run ${run.id}`, facts: null };
+      }
+      for (const job of jobs) {
+        const check = checksByName.get(job.name);
+        const appSlug = check?.app?.slug ?? GITHUB_ACTIONS_APP.slug;
+        const appId = check?.app?.id ?? GITHUB_ACTIONS_APP.id;
+        const workflow_path = run.path ?? ".github/workflows/ci.yml";
+        const common = {
+          name: job.name,
+          head_sha: head,
+          run_id: run.id,
+          run_attempt: run.run_attempt,
+          status: job.status ?? check?.status ?? run.status,
+          conclusion: job.conclusion ?? check?.conclusion ?? run.conclusion,
+          app_slug: appSlug,
+          app_id: appId,
+          event: run.event ?? "pull_request",
+          base: repo.default_branch,
+          workflow_path,
+          ticket_id: ticketId
+        };
+        workflowRuns.push({ ...common });
+        checkRuns.push({
+          ...common,
+          external_id: check?.external_id ?? null
+        });
+      }
+    }
+
+    // Formal reviews: only APPROVED reviews with commit_id == head count as bootstrap evidence.
+    const pullReviews = requireJson(transport, `${repoPath}/pulls/${pull.number}/reviews`, failures);
+    if (!Array.isArray(pullReviews)) {
+      return { ok: false, reason: failures.join("; ") || `reviews unavailable for PR #${pull.number}`, facts: null };
+    }
+    for (const review of pullReviews) {
+      if (review.state !== "APPROVED") continue;
+      if (review.commit_id !== head) continue;
+      const reviewer = review.user?.login;
+      if (!reviewer) continue;
+      actors.add(reviewer);
+      ensurePermission(reviewer);
+      reviews.push({
+        ticket_id: ticketId,
+        reviewer,
+        commit_id: review.commit_id,
+        decision: "approved",
+        permission: permissions[reviewer] ?? null,
+        bootstrap_evidence: true,
+        protected_check: null,
+        workflow_sha: liveTip,
+        workflow_reachable_from_dev: true
+      });
+    }
+  }
+
+  for (const actor of actors) ensurePermission(actor);
+  if (failures.length) {
+    return { ok: false, reason: failures.join("; "), facts: null };
+  }
+
+  // Workflow blobs at live tip and candidate heads.
+  const workflowPaths = [".github/workflows/ci.yml", ".github/workflows/operational-state.yml"];
+  const workflowBlobs = {};
+  const blobOidFor = (path, ref, { required }) => {
+    const result = transportCall(transport, "getJson", `${repoPath}/contents/${path}?ref=${ref}`);
+    if (!result.ok) {
+      if (required) failures.push(result.reason);
+      return null;
+    }
+    if (!result.value || typeof result.value.sha !== "string") {
+      if (required) failures.push(`workflow blob unavailable for ${path}@${ref}`);
+      return null;
+    }
+    return result.value.sha;
+  };
+  for (const path of workflowPaths) {
+    const requiredOnDev = path.endsWith("ci.yml");
+    const devBlob = blobOidFor(path, liveTip, { required: requiredOnDev });
+    if (!devBlob) {
+      // operational-state.yml may be absent before D0-004C; only ci.yml is mandatory pre-C.
+      if (requiredOnDev) {
+        return { ok: false, reason: failures.join("; ") || `workflow blob unavailable for ${path}`, facts: null };
+      }
+      continue;
+    }
+    workflowBlobs[path] = { dev: devBlob, heads: {} };
+    for (const pr of prs) {
+      if (!pr.head_sha) continue;
+      const headBlob = blobOidFor(path, pr.head_sha, { required: false });
+      if (headBlob) workflowBlobs[path].heads[pr.head_sha] = headBlob;
+    }
+  }
+  if (failures.length) {
+    return { ok: false, reason: failures.join("; "), facts: null };
+  }
+
+  // Implementation verification receipts: merged PRs with exact Ticket field + post-merge CI.
+  const verifiedTickets = [];
+  const implementationMerges = [];
+  const mergedSearch = requireJson(
+    transport,
+    `search/issues?q=${encodeURIComponent(`repo:${expected.repository} is:pr is:merged base:${repo.default_branch} "Ticket:"`)}&per_page=30`,
+    failures
+  );
+  if (!mergedSearch || !Array.isArray(mergedSearch.items)) {
+    return { ok: false, reason: failures.join("; ") || "merged PR search unavailable", facts: null };
+  }
+  for (const item of mergedSearch.items) {
+    const pull = requireJson(transport, `${repoPath}/pulls/${item.number}`, failures);
+    if (!pull?.merged || !pull.merge_commit_sha) continue;
+    const ticketId = parseTicketIdFromBody(pull.body);
+    if (!ticketId || !tickets[ticketId]) continue;
+    const runs = requireJson(
+      transport,
+      `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
+      failures
+    );
+    if (!runs || !Array.isArray(runs.workflow_runs)) {
+      return { ok: false, reason: failures.join("; ") || `implementation post-merge runs unavailable for #${item.number}`, facts: null };
+    }
+    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const latest = selectLatestWorkflowRun(
+      ciRuns.map((run) => ({
+        head_sha: run.head_sha,
+        status: run.status,
+        conclusion: run.conclusion,
+        run_id: run.id,
+        run_attempt: run.run_attempt
+      }))
+    );
+    if (!latest.ok || latest.run.conclusion !== "success" || latest.run.status !== "completed") continue;
+    if (!verifiedTickets.includes(ticketId)) verifiedTickets.push(ticketId);
+    implementationMerges.push({
+      ticket_id: ticketId,
+      merge_commit_sha: pull.merge_commit_sha,
+      number: pull.number
+    });
+    postMergeCI.push({
+      merge_commit_sha: pull.merge_commit_sha,
+      head_sha: latest.run.head_sha,
+      status: latest.run.status,
+      conclusion: latest.run.conclusion,
+      run_id: latest.run.run_id,
+      run_attempt: latest.run.run_attempt
+    });
+  }
+  if (failures.length) {
+    return { ok: false, reason: failures.join("; "), facts: null };
+  }
+
+  // Detect D0-004C merge only when the operational-state workflow exists on live tip.
+  const d0_004c_merged = Object.hasOwn(workflowBlobs, ".github/workflows/operational-state.yml");
+
+  const facts = {
+    schema_version: 1,
+    repository: expected.repository,
+    defaultBranch: repo.default_branch,
+    owner: { login: repo.owner.login, type: repo.owner.type },
+    currentHead: liveTip,
+    liveBaseSha: liveTip,
+    d0_004c_merged,
+    externalAvailable: true,
+    operationalAuthority: issuesCatalog.operational_authority,
+    tickets,
+    gateBatches,
+    gatePRs,
+    postMergeCI,
+    verifiedTickets,
+    implementationMerges,
+    issues: [],
+    prs,
+    reviews,
+    authorizations,
+    checkRuns,
+    workflowRuns,
+    permissions,
+    workflowBlobs,
+    liveDigests,
+    activeOwnership: [],
+    projectionSurfaces: {},
+    ancestry: {},
+    exactBasePackets: [],
+    registryStrings: {},
+    collector: {
+      transport: transport.kind,
+      live_tip: liveTip,
+      write_actions: 0
+    }
+  };
+
+  const corpus = validateFactsCorpus(facts);
+  if (!corpus.ok) {
+    return { ok: false, reason: `collected corpus invalid: ${corpus.failures.join("; ")}`, facts: null };
+  }
+
+  return { ok: true, facts, failures: [] };
+};
+
+/**
+ * Online-strict fact acquisition. Prefer injected complete facts for pure unit tests;
+ * otherwise run the bounded authenticated live collector (real GitHub transport or an
+ * explicit fixture transport). Environment fact files are not an authorization path.
  */
 export const acquireOnlineStrictFacts = (root = DEFAULT_ROOT, options = {}) => {
   if (options.facts != null) {
@@ -1108,57 +1749,9 @@ export const acquireOnlineStrictFacts = (root = DEFAULT_ROOT, options = {}) => {
     return { ok: true, facts: options.facts };
   }
 
-  const factsPath =
-    options.factsPath ??
-    process.env.AOS_EXECUTION_STATE_FACTS ??
-    null;
-  if (factsPath) {
-    const absolute = isAbsolute(factsPath) ? factsPath : resolve(root, factsPath);
-    const loaded = loadJsonIfExists(absolute);
-    if (!loaded) return { ok: false, reason: `facts path unavailable: ${factsPath}`, facts: null };
-    const corpus = validateFactsCorpus(loaded);
-    if (!corpus.ok) return { ok: false, reason: corpus.failures.join("; "), facts: null };
-    if (loaded.externalAvailable !== true) {
-      return { ok: false, reason: "facts path marks externalAvailable=false", facts: null };
-    }
-    return { ok: true, facts: loaded };
-  }
-
-  const identity = deriveRuntimeIdentity(root);
-  if (!identity.repository || !identity.branch || !identity.head) {
-    return { ok: false, reason: "runtime git identity unavailable", facts: null };
-  }
-
-  let repoJson = null;
-  try {
-    const raw = execFileSync(
-      "gh",
-      ["api", `repos/${identity.repository}`],
-      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-    );
-    repoJson = JSON.parse(raw);
-  } catch {
-    return { ok: false, reason: "github repository facts unavailable", facts: null };
-  }
-
-  if (!repoJson?.owner?.login || !repoJson?.default_branch) {
-    return { ok: false, reason: "github repository owner/default_branch unavailable", facts: null };
-  }
-
-  // Bounded probe succeeded for identity, but a complete operational gate/PR/CI
-  // corpus is not inventable from identity alone. Fail closed without fallback.
-  return {
-    ok: false,
-    reason: "complete live operational fact corpus unavailable",
-    facts: null,
-    identity: {
-      repository: identity.repository,
-      branch: identity.branch,
-      head: identity.head,
-      owner: { login: repoJson.owner.login, type: repoJson.owner.type },
-      defaultBranch: repoJson.default_branch
-    }
-  };
+  return collectLiveExecutionFacts(root, {
+    transport: options.transport
+  });
 };
 
 export const resolveExecutionState = (options = {}) => {
@@ -1177,7 +1770,15 @@ export const resolveExecutionState = (options = {}) => {
 
   const runtimeIdentity = options.runtimeIdentity ?? (
     mode === "online-strict"
-      ? deriveRuntimeIdentity(root)
+      ? (() => {
+          const derived = deriveRuntimeIdentity(root);
+          return {
+            repository: derived.repository,
+            // Resolve against the policy target branch identity, not a local feature branch name.
+            branch: expectedActorPolicyFromTicket().target_branch,
+            head: facts?.currentHead ?? derived.head
+          };
+        })()
       : {
           repository: facts?.repository ?? null,
           branch: facts?.defaultBranch ?? null,
@@ -1378,13 +1979,14 @@ const main = () => {
   if (mode === "online-strict") {
     const acquired = acquireOnlineStrictFacts(DEFAULT_ROOT);
     if (!acquired.ok) {
-      const identity = acquired.identity ?? deriveRuntimeIdentity(DEFAULT_ROOT);
+      const identity = deriveRuntimeIdentity(DEFAULT_ROOT);
       result = emptyFailureState(
         "online-strict",
         new Date().toISOString(),
         {
           repository: identity.repository ?? expectedActorPolicyFromTicket().repository,
-          branch: identity.defaultBranch ?? identity.branch ?? expectedActorPolicyFromTicket().target_branch,
+          // Online-strict resolves the live target branch, not the local feature branch name.
+          branch: expectedActorPolicyFromTicket().target_branch,
           head: identity.head ?? null
         },
         [blocker("EXTERNAL_STATE_UNAVAILABLE", acquired.reason ?? "external facts unavailable")]
@@ -1393,7 +1995,12 @@ const main = () => {
       result = resolveExecutionState({
         mode: "online-strict",
         facts: acquired.facts,
-        ticket: args.ticket
+        ticket: args.ticket,
+        runtimeIdentity: {
+          repository: acquired.facts.repository,
+          branch: acquired.facts.defaultBranch,
+          head: acquired.facts.currentHead
+        }
       });
     }
   } else {
