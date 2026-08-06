@@ -10,11 +10,11 @@
 
 If any item is missing, proposed, stale, ambiguous, or conflicts with a higher authority, stop. GitHub issue state alone is not authorization.
 
-## Current gate state
+## Current operational state
 
-The canonical operational entrypoint is [`docs/planning/AOS-EXECUTION-ROADMAP.md`](docs/planning/AOS-EXECUTION-ROADMAP.md). It owns the current ready set, dependency-safe execution order, parallel windows, joins, and handoff protocol. Never infer readiness from issue state or stale prose.
+Committed Markdown, issue bodies, issue state, labels, and PR comments do not determine the current ready set. Until D0-004 delivers the Execution State Resolver, only a maintainer-approved exact-base execution packet backed by freshly re-read gate-registry, Git ancestry, GitHub merge/check, dependency, and ownership facts may authorize RED. Missing or unavailable external facts yield an empty ready set.
 
-Product implementation remains forbidden unless the exact ticket is in that roadmap's current ready set and every required ADR, PRD, ticket, dependency, exact-base, and RED gate is current.
+After D0-004 is verified on `dev`, run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet. The roadmap and board remain static dependency and sequencing views; all other status surfaces are projections or historical audit records.
 
 ## Per-ticket workflow
 
