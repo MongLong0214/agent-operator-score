@@ -14,7 +14,7 @@ The final baseline replaces all earlier product identities. Mixed identifiers wo
 - Repository and package identifier is `agent-operator-score`; executable is `aos`; local state root is `.aos/`.
 - The scored instrument is `AOS-Coding`; the provisional score is `AOS-Coding P0`.
 - Earlier product identifiers are forbidden anywhere in the active tree.
-- D0 records minimum GitHub/npm/domain/basic-trademark name-clearance evidence and its limits; an unresolved result blocks canonical-name adoption. LICENSE, contribution acceptance, redistribution, and publication are separate E14/G4 decisions.
+- D0 records minimum GitHub/npm/domain/basic-trademark name-clearance evidence and its limits; an unresolved result blocks public canonical-brand adoption and public publication; it does not block the private, unpublished internal package identifier required for the D0 planning skeleton. LICENSE, contribution acceptance, redistribution, and publication remain separate E14/G4 decisions.
 
 ## Rejected alternatives
 
