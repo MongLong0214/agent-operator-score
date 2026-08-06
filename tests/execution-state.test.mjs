@@ -1333,6 +1333,225 @@ test("live-adapter-outage-partial-ambiguous-fail-closed", async () => {
   assert.ok(online.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
 });
 
+test("online-strict-exits-nonzero-on-ticket-contract-conflict", async () => {
+  const { resolveExecutionState, onlineStrictProcessShouldFail } = await importResolver();
+  const facts = loadBaselineFacts();
+  // Two open live Ticket candidates without structured supersession → ticket-level conflict.
+  facts.prs = [
+    {
+      number: 149,
+      base: "dev",
+      base_sha: facts.currentHead,
+      head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      author: "MongLong0214",
+      body: "Ticket: D0-004",
+      merged: false,
+      state: "open"
+    },
+    {
+      number: 150,
+      base: "dev",
+      base_sha: facts.currentHead,
+      head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      author: "MongLong0214",
+      body: "Ticket: D0-004",
+      merged: false,
+      state: "open"
+    }
+  ];
+  const result = resolveExecutionState({
+    mode: "online-strict",
+    root,
+    facts,
+    runtimeIdentity: {
+      repository: facts.repository,
+      branch: facts.defaultBranch,
+      head: facts.currentHead
+    }
+  });
+  const d0004 = ticketState(result, "D0-004");
+  assert.ok(blockerCodes(d0004).includes("TICKET_CONTRACT_CONFLICT"));
+  assert.ok(
+    result.errors.some((entry) => entry.code === "TICKET_CONTRACT_CONFLICT"),
+    "ticket-level contract conflict must surface on the result errors"
+  );
+  assert.equal(onlineStrictProcessShouldFail(result), true);
+});
+
+test("live-collector-does-not-synthesize-check-app-provenance", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const checkKey = `repos/MongLong0214/agent-operator-score/commits/${head}/check-runs?per_page=50`;
+  // Mutant: jobs remain, but check-run app identity is stripped (or check-runs empty).
+  const responses = clone(base);
+  responses[checkKey] = {
+    check_runs: (base[checkKey].check_runs ?? []).map((check) => {
+      const copy = { ...check };
+      delete copy.app;
+      return copy;
+    })
+  };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /app provenance|check-run mapping|provenance/i);
+
+  const emptyChecks = clone(base);
+  emptyChecks[checkKey] = { check_runs: [] };
+  const collectedEmpty = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(emptyChecks)
+  });
+  assert.equal(collectedEmpty.ok, false);
+  assert.match(collectedEmpty.reason, /check-run mapping|app provenance|missing live/i);
+});
+
+test("gate-head-requires-identical-accepted-registry-record", async () => {
+  const {
+    createFixtureTransport,
+    collectLiveExecutionFacts,
+    registryHeadBindsAcceptedBatch
+  } = await importResolver();
+  const batch = {
+    id: "batch-d0-004-fixture",
+    status: "ACCEPTED",
+    required_artifacts: [
+      {
+        path: "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+        sha256: "deadbeef",
+        kind: "TICKET"
+      }
+    ]
+  };
+  // String presence of batch id with PENDING status must not bind.
+  const pendingOnly = JSON.stringify({
+    version: 2,
+    batches: [{ id: "batch-d0-004-fixture", status: "PENDING", required_artifacts: batch.required_artifacts }]
+  });
+  assert.equal(registryHeadBindsAcceptedBatch(pendingOnly, batch), false);
+  // ACCEPTED with incomplete/wrong digests must not bind.
+  const wrongDigest = JSON.stringify({
+    version: 2,
+    batches: [
+      {
+        id: "batch-d0-004-fixture",
+        status: "ACCEPTED",
+        required_artifacts: [
+          {
+            path: "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+            sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+            kind: "TICKET"
+          }
+        ]
+      }
+    ]
+  });
+  assert.equal(registryHeadBindsAcceptedBatch(wrongDigest, batch), false);
+
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const gateHead = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const regKey = `raw:repos/MongLong0214/agent-operator-score/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${gateHead}`;
+  const responses = clone(base);
+  responses[regKey] = pendingOnly;
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /identical ACCEPTED batch|head registry/i);
+});
+
+test("live-collector-populates-owned-paths-symbols-and-red-command", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const d0004 = collected.facts.tickets["D0-004"];
+  assert.ok(Array.isArray(d0004.owned_paths) && d0004.owned_paths.length > 0);
+  assert.ok(d0004.owned_paths.includes("scripts/resolve-execution-state.mjs"));
+  assert.ok(Array.isArray(d0004.owned_symbols));
+  assert.ok(d0004.owned_symbols.includes("resolveExecutionState"));
+  assert.equal(d0004.red_command, "node --test tests/execution-state.test.mjs");
+  assert.ok(Array.isArray(collected.facts.activeOwnership));
+  assert.ok(
+    collected.facts.activeOwnership.some(
+      (entry) =>
+        entry.ticket_id === "D0-004" &&
+        Array.isArray(entry.owned_paths) &&
+        entry.owned_paths.includes("scripts/resolve-execution-state.mjs")
+    )
+  );
+
+  // Ambiguous/missing ownership in ticket body fails closed.
+  const broken = clone(responses);
+  const tip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  broken[
+    `raw:repos/MongLong0214/agent-operator-score/contents/docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md?ref=${tip}`
+  ] = "# D0-004\n\n## Exact ownership\n\n- none declared\n";
+  const failed = collectLiveExecutionFacts(root, { transport: createFixtureTransport(broken) });
+  assert.equal(failed.ok, false);
+  assert.match(failed.reason, /ownership|red_command|owned_paths/i);
+});
+
+test("live-collector-enforces-per-call-and-total-timeouts", async () => {
+  const { createAuthenticatedGitHubTransport, collectLiveExecutionFacts } = await importResolver();
+  const execFileSync = () => {
+    const error = new Error("gh api timed out");
+    error.code = "ETIMEDOUT";
+    error.killed = true;
+    throw error;
+  };
+  const transport = createAuthenticatedGitHubTransport(root, {
+    execFileSync,
+    perCallTimeoutMs: 25,
+    totalTimeoutMs: 80
+  });
+  const collected = collectLiveExecutionFacts(root, {
+    transport,
+    perCallTimeoutMs: 25,
+    totalTimeoutMs: 80
+  });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /timeout|EXTERNAL_STATE_UNAVAILABLE|unavailable/i);
+
+  // Total budget exhausted before call.
+  let calls = 0;
+  const slowTransport = {
+    kind: "fixture-authenticated",
+    getJson() {
+      calls += 1;
+      if (calls === 1) {
+        // Exhaust total budget on first call path via wall clock sleep beyond budget.
+        const end = Date.now() + 30;
+        while (Date.now() < end) {
+          /* busy wait */
+        }
+        return {
+          owner: { login: "MongLong0214", type: "User" },
+          default_branch: "dev"
+        };
+      }
+      const error = new Error("should have been blocked by total timeout");
+      error.code = "COLLECTION_TIMEOUT";
+      throw error;
+    },
+    getRaw() {
+      const error = new Error("collection total timeout exceeded");
+      error.code = "COLLECTION_TIMEOUT";
+      throw error;
+    }
+  };
+  const total = collectLiveExecutionFacts(root, {
+    transport: slowTransport,
+    totalTimeoutMs: 10,
+    perCallTimeoutMs: 5
+  });
+  assert.equal(total.ok, false);
+  assert.match(total.reason, /timeout|unavailable/i);
+});
+
 // ---------------------------------------------------------------------------
 // Helpers — candidate / ready fact builders
 // ---------------------------------------------------------------------------
