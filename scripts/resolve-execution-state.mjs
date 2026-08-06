@@ -1097,26 +1097,63 @@ const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
 const sha256Text = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 
 const GITHUB_ACTIONS_APP = { id: 15368, slug: "github-actions", owner: "github" };
+const DEFAULT_PER_CALL_TIMEOUT_MS = 15_000;
+const DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS = 90_000;
+
+const timeoutError = (reason) => {
+  const error = new Error(reason);
+  error.code = "COLLECTION_TIMEOUT";
+  return error;
+};
 
 /**
  * Authenticated read-only GitHub transport used by the live collector.
  * Performs zero repository writes. Callers may inject a fixture transport.
+ * Every call has an explicit per-call timeout; the collector also enforces a total budget.
  */
 export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options = {}) => {
   const exec = options.execFileSync ?? execFileSync;
+  const perCallTimeoutMs =
+    Number.isFinite(options.perCallTimeoutMs) && options.perCallTimeoutMs > 0
+      ? options.perCallTimeoutMs
+      : DEFAULT_PER_CALL_TIMEOUT_MS;
+  const totalTimeoutMs =
+    Number.isFinite(options.totalTimeoutMs) && options.totalTimeoutMs > 0
+      ? options.totalTimeoutMs
+      : DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS;
+  const deadline = Date.now() + totalTimeoutMs;
   const ghApi = (apiPath, { accept } = {}) => {
+    if (Date.now() > deadline) {
+      throw timeoutError(`collection total timeout exceeded before ${apiPath}`);
+    }
+    const remaining = deadline - Date.now();
+    const callTimeout = Math.max(1, Math.min(perCallTimeoutMs, remaining));
     const args = ["api", apiPath];
     if (accept) args.push("-H", `Accept: ${accept}`);
-    const raw = exec("gh", args, {
-      cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 20 * 1024 * 1024
-    });
-    return raw;
+    try {
+      const raw = exec("gh", args, {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        maxBuffer: 20 * 1024 * 1024,
+        timeout: callTimeout
+      });
+      return raw;
+    } catch (error) {
+      if (
+        error?.code === "ETIMEDOUT" ||
+        error?.killed === true ||
+        /ETIMEDOUT|timed out|TIMEOUT/i.test(String(error?.message ?? ""))
+      ) {
+        throw timeoutError(`per-call timeout for ${apiPath}`);
+      }
+      throw error;
+    }
   };
   return {
     kind: "github-authenticated",
+    perCallTimeoutMs,
+    totalTimeoutMs,
     getJson(apiPath) {
       return JSON.parse(ghApi(apiPath));
     },
@@ -1124,6 +1161,232 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
       return ghApi(apiPath, { accept: "application/vnd.github.raw" });
     }
   };
+};
+
+const withCollectionTimeouts = (transport, options = {}) => {
+  const totalTimeoutMs =
+    Number.isFinite(options.totalTimeoutMs) && options.totalTimeoutMs > 0
+      ? options.totalTimeoutMs
+      : transport.totalTimeoutMs ?? DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS;
+  const deadline = Date.now() + totalTimeoutMs;
+  const guard = (method, apiPath) => {
+    if (Date.now() > deadline) {
+      throw timeoutError(`collection total timeout exceeded before ${apiPath}`);
+    }
+    return transport[method](apiPath);
+  };
+  return {
+    kind: transport.kind,
+    perCallTimeoutMs: transport.perCallTimeoutMs ?? options.perCallTimeoutMs ?? DEFAULT_PER_CALL_TIMEOUT_MS,
+    totalTimeoutMs,
+    getJson(apiPath) {
+      return guard("getJson", apiPath);
+    },
+    getRaw(apiPath) {
+      return guard("getRaw", apiPath);
+    }
+  };
+};
+
+const extractMarkdownSection = (markdown, heading) => {
+  if (typeof markdown !== "string") return null;
+  const pattern = new RegExp(
+    `^##\\s+${heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
+    "im"
+  );
+  const match = pattern.exec(markdown);
+  if (!match) return null;
+  const start = match.index + match[0].length;
+  const rest = markdown.slice(start);
+  const next = rest.search(/^##\s+/m);
+  return (next === -1 ? rest : rest.slice(0, next)).trim();
+};
+
+const isOwnedPathToken = (token) => {
+  if (typeof token !== "string" || !token) return false;
+  if (token.includes("/") || token.includes("\\")) return true;
+  return /^(package\.json|AGENTS\.md|README\.md|CONTRIBUTING\.md)$/.test(token) ||
+    /\.(mjs|cjs|js|ts|tsx|json|yml|yaml|md)$/.test(token);
+};
+
+const isOwnedSymbolToken = (token) =>
+  typeof token === "string" &&
+  /^[A-Za-z_$][\w$]*$/.test(token) &&
+  !/^(true|false|null|undefined)$/.test(token);
+
+const PATH_TOKEN_RE =
+  /(?<![A-Za-z0-9_./@-])((?:docs|scripts|specs|tests|fixtures|packages|adapters|conformance|apps|\.github|src)\/[A-Za-z0-9_./@{}*+-]+|package\.json|AGENTS\.md|README\.md|CONTRIBUTING\.md)/g;
+
+/**
+ * Parse Exact ownership + RED contract from a canonical ticket markdown body.
+ * Accepts backtick-wrapped tokens and bare path/symbol prose used across the catalog.
+ * Missing/ambiguous mappings fail closed for executable tickets.
+ */
+export const parseTicketOwnershipAndRed = (markdown) => {
+  if (typeof markdown !== "string" || !markdown.trim()) {
+    return { ok: false, reason: "ticket markdown missing" };
+  }
+  const ownership = extractMarkdownSection(markdown, "Exact ownership");
+  if (!ownership) {
+    return { ok: false, reason: "Exact ownership section missing" };
+  }
+  // Superseded / no-implementation ownership markers.
+  if (/^\s*[-*]?\s*None\b/im.test(ownership) && !PATH_TOKEN_RE.test(ownership)) {
+    PATH_TOKEN_RE.lastIndex = 0;
+    return { ok: false, reason: "owned_paths empty or unparseable" };
+  }
+  PATH_TOKEN_RE.lastIndex = 0;
+
+  const owned_paths = [];
+  const owned_symbols = [];
+  const pushPath = (token) => {
+    const cleaned = token.replace(/[.,;:]+$/g, "").trim();
+    if (!cleaned || !isOwnedPathToken(cleaned)) return;
+    if (!owned_paths.includes(cleaned)) owned_paths.push(cleaned);
+  };
+  const pushSymbol = (token) => {
+    const cleaned = token.trim();
+    if (!cleaned || !isOwnedSymbolToken(cleaned)) return;
+    if (!owned_symbols.includes(cleaned)) owned_symbols.push(cleaned);
+  };
+
+  for (const match of ownership.matchAll(/`([^`]+)`/g)) {
+    const token = match[1].trim();
+    if (!token) continue;
+    if (isOwnedPathToken(token) || token.includes("/")) {
+      // Allow fixture globs such as fixtures/operational-state/**
+      const normalized = token.endsWith("/**") ? token.slice(0, -3) : token;
+      if (token.includes("/")) {
+        if (!owned_paths.includes(token)) owned_paths.push(token);
+      } else {
+        pushPath(normalized);
+      }
+      continue;
+    }
+    pushSymbol(token);
+  }
+
+  for (const match of ownership.matchAll(PATH_TOKEN_RE)) {
+    pushPath(match[1]);
+  }
+
+  // Symbols declared after an em/en dash or as comma-separated identifiers on ownership lines.
+  for (const line of ownership.split("\n")) {
+    const dashSplit = line.split(/—|–|--/).slice(1).join(" ");
+    const symbolSource = dashSplit || line;
+    for (const match of symbolSource.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
+      const token = match[1];
+      if (!isOwnedSymbolToken(token)) continue;
+      // Skip common prose words that are not ownership symbols.
+      if (
+        /^(No|none|other|file|symbol|may|be|edited|without|replacement|ticket|and|or|the|only|not|authorize|implementation|change|Exact|ownership)$/i.test(
+          token
+        )
+      ) {
+        continue;
+      }
+      // Prefer camelCase/PascalCase/snake API identifiers over plain English.
+      if (!/[A-Z]/.test(token) && !token.includes("_") && token === token.toLowerCase()) {
+        continue;
+      }
+      pushSymbol(token);
+    }
+  }
+
+  if (owned_paths.length === 0) {
+    return { ok: false, reason: "owned_paths empty or unparseable" };
+  }
+
+  const redSection = extractMarkdownSection(markdown, "RED contract");
+  let red_command = null;
+  if (redSection) {
+    if (/Focused command:\s*none\b/i.test(redSection) || /Focused command:\s*`none`/i.test(redSection)) {
+      return { ok: false, reason: "red_command missing or unparseable" };
+    }
+    const patterns = [
+      /Focused command:\s*`([^`]+)`/i,
+      /command:\s*`((?:npm test|npm run|node --test)[^`]*)`/i,
+      /`((?:npm test|npm run|node --test)[^`]*)`/
+    ];
+    for (const pattern of patterns) {
+      const hit = redSection.match(pattern);
+      if (hit?.[1]?.trim()) {
+        red_command = hit[1].trim();
+        break;
+      }
+    }
+  }
+  if (!red_command) {
+    return { ok: false, reason: "red_command missing or unparseable" };
+  }
+  return { ok: true, owned_paths, owned_symbols, red_command };
+};
+
+/**
+ * Require the gate PR head registry blob to contain the identical ACCEPTED batch
+ * record (id, status, required artifact path/kind/sha256), not mere batch-id text.
+ */
+export const registryHeadBindsAcceptedBatch = (registryText, batch) => {
+  if (typeof registryText !== "string" || !plainObject(batch) || typeof batch.id !== "string") {
+    return false;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(registryText);
+  } catch {
+    return false;
+  }
+  const rows = Array.isArray(parsed?.batches) ? parsed.batches : [];
+  const row = rows.find((entry) => entry?.id === batch.id);
+  if (!row || row.status !== "ACCEPTED") return false;
+  const actual = Array.isArray(row.required_artifacts)
+    ? row.required_artifacts
+    : Array.isArray(row.artifacts)
+      ? row.artifacts
+      : null;
+  const expected = Array.isArray(batch.required_artifacts) ? batch.required_artifacts : null;
+  if (!actual || !expected) return false;
+  const normalize = (list) =>
+    stableJson(
+      list
+        .map((artifact) => ({
+          path: artifact?.path ?? null,
+          kind: artifact?.kind ?? null,
+          sha256: artifact?.sha256 ?? null
+        }))
+        .sort((left, right) => stableJson(left).localeCompare(stableJson(right)))
+    );
+  return normalize(actual) === normalize(expected);
+};
+
+/**
+ * Online-strict process failure predicate. Ticket-level external ambiguity/blockers
+ * (not ordinary missing gates) must fail the strict CLI even when top-level errors are empty.
+ */
+export const onlineStrictProcessShouldFail = (result) => {
+  if (!result || typeof result !== "object") return true;
+  const externalCodes = new Set([
+    "EXTERNAL_STATE_UNAVAILABLE",
+    "WRONG_TARGET",
+    "TICKET_CONTRACT_CONFLICT",
+    "TICKET_CONTRACT_INCOMPLETE"
+  ]);
+  if ((result.errors ?? []).some((entry) => externalCodes.has(entry?.code))) {
+    return true;
+  }
+  for (const state of Object.values(result.tickets ?? {})) {
+    if (state?.readiness === "unknown") return true;
+    if (
+      (state?.blockers ?? []).some((entry) =>
+        ["TICKET_CONTRACT_CONFLICT", "EXTERNAL_STATE_UNAVAILABLE", "TICKET_CONTRACT_INCOMPLETE"].includes(
+          entry?.code
+        )
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 };
 
 /**
@@ -1177,6 +1440,19 @@ const transportCall = (transport, method, apiPath) => {
   try {
     return { ok: true, value: transport[method](apiPath) };
   } catch (error) {
+    if (
+      error?.code === "COLLECTION_TIMEOUT" ||
+      error?.code === "ETIMEDOUT" ||
+      error?.killed === true ||
+      /timeout/i.test(String(error?.message ?? ""))
+    ) {
+      return {
+        ok: false,
+        reason: `EXTERNAL_STATE_UNAVAILABLE: collection timeout for ${apiPath}`,
+        error,
+        timeout: true
+      };
+    }
     return {
       ok: false,
       reason: error?.code === "FIXTURE_AMBIGUOUS"
@@ -1230,10 +1506,17 @@ const selectLatestWorkflowRun = (runs) => {
  */
 export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => {
   const failures = [];
-  const transport = options.transport ?? createAuthenticatedGitHubTransport(root);
-  if (!transport || typeof transport.getJson !== "function" || typeof transport.getRaw !== "function") {
+  const timeoutOptions = {
+    perCallTimeoutMs: options.perCallTimeoutMs,
+    totalTimeoutMs: options.totalTimeoutMs
+  };
+  const baseTransport =
+    options.transport ??
+    createAuthenticatedGitHubTransport(root, timeoutOptions);
+  if (!baseTransport || typeof baseTransport.getJson !== "function" || typeof baseTransport.getRaw !== "function") {
     return { ok: false, reason: "authenticated transport unavailable", facts: null };
   }
+  const transport = withCollectionTimeouts(baseTransport, timeoutOptions);
 
   const expected = expectedActorPolicyFromTicket();
   const repoPath = `repos/${expected.repository}`;
@@ -1329,12 +1612,37 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       "ADR-0003": liveDigests["docs/adr/ADR-0003-runtime-repository-and-distribution.md"],
       "ADR-0012": liveDigests["docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"]
     };
+    const kind = entry.kind === "superseded" ? "superseded" : "executable";
+    let owned_paths = [];
+    let owned_symbols = [];
+    let red_command = null;
+    if (kind === "executable") {
+      const ticketBody = readTipFile(entry.ticket_path);
+      if (ticketBody == null) {
+        return {
+          ok: false,
+          reason: failures.join("; ") || `ticket body unavailable for ${entry.id}`,
+          facts: null
+        };
+      }
+      const ownership = parseTicketOwnershipAndRed(ticketBody);
+      if (!ownership.ok) {
+        return {
+          ok: false,
+          reason: `ambiguous or missing ownership/red mapping for ${entry.id}: ${ownership.reason}`,
+          facts: null
+        };
+      }
+      owned_paths = ownership.owned_paths;
+      owned_symbols = ownership.owned_symbols;
+      red_command = ownership.red_command;
+    }
     tickets[entry.id] = {
-      kind: entry.kind === "superseded" ? "superseded" : "executable",
+      kind,
       dependencies: Array.isArray(entry.dependencies) ? [...entry.dependencies] : [],
-      owned_paths: [],
-      owned_symbols: [],
-      red_command: null,
+      owned_paths,
+      owned_symbols,
+      red_command,
       digests: {
         ticket: ticketDigest,
         prd: liveDigests[prdPath],
@@ -1390,23 +1698,36 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!pull.merge_commit_sha || !pull.merged_by?.login) {
       return { ok: false, reason: `gate PR #${number} missing merge actor/sha`, facts: null };
     }
-    // head_contains_batch: registry at merge commit must include the batch id.
-    const registryAtMerge = requireRaw(
+    // head_contains_batch: gate PR head registry must bind the identical ACCEPTED
+    // batch record and artifact digests — batch-id string presence is insufficient.
+    const gateHeadSha = pull.head?.sha;
+    if (!gateHeadSha || !/^[0-9a-f]{40}$/i.test(gateHeadSha)) {
+      return { ok: false, reason: `gate PR #${number} missing head SHA`, facts: null };
+    }
+    const registryAtHead = requireRaw(
       transport,
-      `${repoPath}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${pull.merge_commit_sha}`,
+      `${repoPath}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${gateHeadSha}`,
       failures
     );
-    if (registryAtMerge == null) {
-      return { ok: false, reason: failures.join("; ") || `registry unavailable at merge ${pull.merge_commit_sha}`, facts: null };
+    if (registryAtHead == null) {
+      return {
+        ok: false,
+        reason: failures.join("; ") || `registry unavailable at gate head ${gateHeadSha}`,
+        facts: null
+      };
     }
-    if (!registryAtMerge.includes(`"id": "${batch.id}"`) && !registryAtMerge.includes(`"id":"${batch.id}"`)) {
-      return { ok: false, reason: `gate PR #${number} head/merge does not contain batch ${batch.id}`, facts: null };
+    if (!registryHeadBindsAcceptedBatch(registryAtHead, batch)) {
+      return {
+        ok: false,
+        reason: `gate PR #${number} head registry does not bind identical ACCEPTED batch ${batch.id}`,
+        facts: null
+      };
     }
     seenGatePr.add(number);
     gatePRs.push({
       number,
       base: pull.base.ref,
-      head_sha: pull.head?.sha,
+      head_sha: gateHeadSha,
       body: pull.body,
       merged: true,
       merged_by: pull.merged_by.login,
@@ -1540,27 +1861,72 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       }
       for (const job of jobs) {
         const check = checksByName.get(job.name);
-        const appSlug = check?.app?.slug ?? GITHUB_ACTIONS_APP.slug;
-        const appId = check?.app?.id ?? GITHUB_ACTIONS_APP.id;
-        const workflow_path = run.path ?? ".github/workflows/ci.yml";
+        // Every app/run/attempt/job/check fact must come from authenticated live mapping.
+        // Do not synthesize GitHub Actions app identity when the check-run is missing.
+        if (!check || typeof check !== "object") {
+          return {
+            ok: false,
+            reason: `missing live check-run mapping for job ${job.name} on ${head}`,
+            facts: null
+          };
+        }
+        const appSlug = check.app?.slug;
+        const appId = check.app?.id;
+        if (typeof appSlug !== "string" || appSlug.length === 0 || appId == null) {
+          return {
+            ok: false,
+            reason: `missing live check app provenance for job ${job.name} on ${head}`,
+            facts: null
+          };
+        }
+        if (typeof run.id !== "number" || typeof run.run_attempt !== "number") {
+          return {
+            ok: false,
+            reason: `missing live run_id/run_attempt for job ${job.name} on ${head}`,
+            facts: null
+          };
+        }
+        if (typeof run.event !== "string" || !run.event) {
+          return {
+            ok: false,
+            reason: `missing live workflow event for job ${job.name} on ${head}`,
+            facts: null
+          };
+        }
+        if (typeof run.path !== "string" || !run.path) {
+          return {
+            ok: false,
+            reason: `missing live workflow path for job ${job.name} on ${head}`,
+            facts: null
+          };
+        }
+        const status = check.status ?? job.status;
+        const conclusion = check.conclusion ?? job.conclusion;
+        if (typeof status !== "string" || !status) {
+          return {
+            ok: false,
+            reason: `missing live check/job status for ${job.name} on ${head}`,
+            facts: null
+          };
+        }
         const common = {
           name: job.name,
           head_sha: head,
           run_id: run.id,
           run_attempt: run.run_attempt,
-          status: job.status ?? check?.status ?? run.status,
-          conclusion: job.conclusion ?? check?.conclusion ?? run.conclusion,
+          status,
+          conclusion: conclusion ?? null,
           app_slug: appSlug,
           app_id: appId,
-          event: run.event ?? "pull_request",
+          event: run.event,
           base: repo.default_branch,
-          workflow_path,
+          workflow_path: run.path,
           ticket_id: ticketId
         };
         workflowRuns.push({ ...common });
         checkRuns.push({
           ...common,
-          external_id: check?.external_id ?? null
+          external_id: Object.hasOwn(check, "external_id") ? check.external_id : null
         });
       }
     }
@@ -1689,6 +2055,25 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   // Detect D0-004C merge only when the operational-state workflow exists on live tip.
   const d0_004c_merged = Object.hasOwn(workflowBlobs, ".github/workflows/operational-state.yml");
 
+  // Active ownership lanes: open linked candidates with catalog-derived owned paths/symbols.
+  const activeOwnership = [];
+  for (const pr of prs) {
+    const ticketId = parseTicketIdFromBody(pr.body);
+    if (!ticketId || !tickets[ticketId] || tickets[ticketId].kind === "superseded") continue;
+    if (pr.merged === true || pr.state === "closed") continue;
+    if (!pr.head_sha) {
+      return { ok: false, reason: `active PR #${pr.number} missing head_sha for ownership`, facts: null };
+    }
+    activeOwnership.push({
+      ticket_id: ticketId,
+      pr_number: pr.number,
+      head_sha: pr.head_sha,
+      owned_paths: [...tickets[ticketId].owned_paths],
+      owned_symbols: [...tickets[ticketId].owned_symbols]
+    });
+  }
+  activeOwnership.sort((left, right) => left.pr_number - right.pr_number);
+
   const facts = {
     schema_version: 1,
     repository: expected.repository,
@@ -1714,7 +2099,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     permissions,
     workflowBlobs,
     liveDigests,
-    activeOwnership: [],
+    activeOwnership,
     projectionSurfaces: {},
     ancestry: {},
     exactBasePackets: [],
@@ -1722,7 +2107,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     collector: {
       transport: transport.kind,
       live_tip: liveTip,
-      write_actions: 0
+      write_actions: 0,
+      per_call_timeout_ms: transport.perCallTimeoutMs ?? DEFAULT_PER_CALL_TIMEOUT_MS,
+      total_timeout_ms: transport.totalTimeoutMs ?? DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS
     }
   };
 
@@ -1750,7 +2137,9 @@ export const acquireOnlineStrictFacts = (root = DEFAULT_ROOT, options = {}) => {
   }
 
   return collectLiveExecutionFacts(root, {
-    transport: options.transport
+    transport: options.transport,
+    perCallTimeoutMs: options.perCallTimeoutMs,
+    totalTimeoutMs: options.totalTimeoutMs
   });
 };
 
@@ -1850,6 +2239,19 @@ export const resolveExecutionState = (options = {}) => {
   if (wrongTarget) errors.push(blocker("WRONG_TARGET", "runtime repository/branch mismatch"));
   if (policyConflict) errors.push(blocker("TICKET_CONTRACT_CONFLICT", "actor policy conflict"));
   if (externalUnavailable) errors.push(blocker("EXTERNAL_STATE_UNAVAILABLE", "external facts unavailable"));
+  // Promote ticket-level external ambiguity into top-level errors so strict CLI and
+  // audit surfaces cannot ignore them when readySet is empty for other reasons.
+  for (const [ticketId, state] of Object.entries(tickets)) {
+    for (const entry of state.blockers ?? []) {
+      if (
+        entry.code === "TICKET_CONTRACT_CONFLICT" ||
+        entry.code === "EXTERNAL_STATE_UNAVAILABLE" ||
+        entry.code === "TICKET_CONTRACT_INCOMPLETE"
+      ) {
+        errors.push(blocker(entry.code, `${ticketId}: ${entry.reason}`));
+      }
+    }
+  }
 
   const result = {
     schema_version: 1,
@@ -1864,7 +2266,7 @@ export const resolveExecutionState = (options = {}) => {
     },
     tickets,
     readySet,
-    errors
+    errors: uniqueBlockers(errors)
   };
 
   if (!schemaLoad.ok) {
@@ -2039,14 +2441,13 @@ const main = () => {
     console.log(lines.join("\n"));
   }
 
-  const unresolvedExternal = result.errors.some((entry) =>
-    ["EXTERNAL_STATE_UNAVAILABLE", "WRONG_TARGET", "TICKET_CONTRACT_CONFLICT", "TICKET_CONTRACT_INCOMPLETE"].includes(
-      entry.code
-    )
-  );
-  const failed =
-    unresolvedExternal ||
-    (args.strict && (result.errors.length > 0 || result.readySet === undefined));
+  const failed = args.strict
+    ? onlineStrictProcessShouldFail(result)
+    : result.errors.some((entry) =>
+        ["EXTERNAL_STATE_UNAVAILABLE", "WRONG_TARGET", "TICKET_CONTRACT_CONFLICT", "TICKET_CONTRACT_INCOMPLETE"].includes(
+          entry.code
+        )
+      );
   process.exit(failed ? 1 : 0);
 };
 
