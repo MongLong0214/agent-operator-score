@@ -14,7 +14,7 @@ If any item is missing, proposed, stale, ambiguous, or conflicts with a higher a
 
 Committed Markdown, issue bodies, issue state, labels, and PR comments do not determine the current ready set. Until D0-004 delivers the Execution State Resolver, only a maintainer-approved exact-base execution packet backed by freshly re-read gate-registry, Git ancestry, GitHub merge/check, dependency, and ownership facts may authorize RED. Missing or unavailable external facts yield an empty ready set.
 
-After D0-004 is verified on `dev`, run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet. The roadmap and board remain static dependency and sequencing views; all other status surfaces are projections or historical audit records.
+After D0-004 is verified on `dev`, run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet. The roadmap and board remain static dependency and sequencing views; `docs/decisions/MAINTAINER-GATE-STATUS.md`, dated ledgers, and all other status surfaces are projections or historical audit records.
 
 ## Per-ticket workflow
 
