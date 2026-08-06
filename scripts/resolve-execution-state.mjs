@@ -833,9 +833,16 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
   }
 
   if (ticket.digests?.prd) {
-    const prdPath = "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md";
-    const prdGate = findAcceptedGate(facts, prdPath, ticket.digests.prd, "PRD");
-    if (!prdGate) blockers.push(blocker("PRD_GATE_MISSING", `${ticketId} PRD gate not accepted`));
+    const prdPath =
+      ticket.prd_path ??
+      ticket.digests?.prd_path ??
+      null;
+    if (typeof prdPath !== "string" || !prdPath.startsWith("docs/prd/")) {
+      blockers.push(blocker("PRD_GATE_MISSING", `${ticketId} lacks owning PRD path binding`));
+    } else {
+      const prdGate = findAcceptedGate(facts, prdPath, ticket.digests.prd, "PRD");
+      if (!prdGate) blockers.push(blocker("PRD_GATE_MISSING", `${ticketId} PRD gate not accepted for ${prdPath}`));
+    }
   } else {
     blockers.push(blocker("PRD_GATE_MISSING", `${ticketId} lacks PRD digest`));
   }
@@ -843,8 +850,14 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
   const adrs = ticket.digests?.adrs ?? {};
   for (const [adrId, sha] of Object.entries(adrs)) {
     const adrPath =
+      ticket.adr_paths?.[adrId] ??
+      ticket.digests?.adr_paths?.[adrId] ??
       Object.keys(facts.liveDigests ?? {}).find((candidate) => candidate.includes(`/${adrId}-`)) ??
-      `docs/adr/${adrId}-canonical-identity.md`;
+      null;
+    if (typeof adrPath !== "string" || !adrPath.startsWith("docs/adr/")) {
+      blockers.push(blocker("ADR_GATE_MISSING", `${ticketId} ADR path missing for ${adrId}`));
+      continue;
+    }
     const adrGate = findAcceptedGate(facts, adrPath, sha, "ADR");
     if (!adrGate) blockers.push(blocker("ADR_GATE_MISSING", `${ticketId} ADR gate missing for ${adrId}`));
   }
@@ -949,6 +962,30 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
 
   if (!gateEvaluation.accepted) {
     return finalize("gate_preparation", "blocked", uniqueBlockers(gateEvaluation.blockers), null, null);
+  }
+
+  // Implementation merge receipts (even without verifiedTickets) must surface post-merge CI state.
+  const implementation = (facts.implementationMerges ?? []).find((entry) => entry.ticket_id === ticketId);
+  if (implementation && !pr) {
+    const implCi = postMergeStatus(facts, implementation.merge_commit_sha);
+    if (implCi.failed) {
+      return finalize(
+        "merged_pending_post_ci",
+        "blocked",
+        [blocker("POST_MERGE_CI_FAILED", `${ticketId} implementation post-merge CI failed`)],
+        null,
+        null
+      );
+    }
+    if (implCi.missing) {
+      return finalize(
+        "merged_pending_post_ci",
+        "blocked",
+        [blocker("POST_MERGE_CI_MISSING", `${ticketId} implementation post-merge CI missing or nonterminal`)],
+        null,
+        null
+      );
+    }
   }
 
   // Dependencies must be verified implementations.
@@ -1640,6 +1677,62 @@ const selectLatestWorkflowRun = (runs) => {
 };
 
 /**
+ * Build ticket → owning PRD path + required ADR ids from TRACEABILITY semantic catalog.
+ */
+export const buildTicketAuthorityIndex = (traceabilityMarkdown) => {
+  if (typeof traceabilityMarkdown !== "string" || !traceabilityMarkdown.trim()) {
+    return { ok: false, reason: "traceability markdown missing", index: null };
+  }
+  const match = traceabilityMarkdown.match(
+    /<!--\s*AOS_SEMANTIC_CATALOG_V2_START\s*-->\s*```json\s*([\s\S]*?)\s*```/i
+  );
+  if (!match?.[1]) {
+    return { ok: false, reason: "semantic catalog v2 missing from TRACEABILITY", index: null };
+  }
+  let catalog;
+  try {
+    catalog = JSON.parse(match[1]);
+  } catch {
+    return { ok: false, reason: "semantic catalog JSON malformed", index: null };
+  }
+  const index = {};
+  for (const prd of catalog.prds ?? []) {
+    if (typeof prd?.path !== "string" || !prd.path.startsWith("docs/prd/")) {
+      return { ok: false, reason: `catalog PRD path invalid for ${prd?.id ?? "?"}`, index: null };
+    }
+    const adr_ids = Array.isArray(prd.adr_ids) ? prd.adr_ids.map(String) : [];
+    for (const ticketId of prd.ticket_ids ?? []) {
+      if (typeof ticketId !== "string" || !ticketId) continue;
+      index[ticketId] = {
+        prd_id: prd.id ?? null,
+        prd_path: prd.path,
+        adr_ids: [...adr_ids]
+      };
+    }
+  }
+  return { ok: true, index };
+};
+
+/** Owning PRD path from ticket markdown front-matter link. */
+export const parseOwningPrdPathFromTicket = (markdown) => {
+  if (typeof markdown !== "string") return null;
+  const match =
+    markdown.match(/Owning PRD:\s*\[[^\]]*\]\(\.\.\/\.\.\/prd\/([^)\s]+)\)/i) ||
+    markdown.match(/Owning PRD:\s*\[[^\]]*\]\((?:\.\/)?(?:\.\.\/)*prd\/([^)\s]+)\)/i) ||
+    markdown.match(/Owning PRD:\s*\[[^\]]*\]\((?:\/)?docs\/prd\/([^)\s]+)\)/i);
+  if (!match?.[1]) return null;
+  return `docs/prd/${match[1]}`;
+};
+
+const resolveAdrPathFromDigests = (adrId, digests) => {
+  if (typeof adrId !== "string" || !digests) return null;
+  const hit = Object.keys(digests).find(
+    (path) => path.startsWith("docs/adr/") && (path.includes(`/${adrId}-`) || path.includes(`/${adrId}.`))
+  );
+  return hit ?? null;
+};
+
+/**
  * Bounded authenticated live collector for the full operational fact corpus required
  * by online-strict resolution. Static catalog bytes are read from the live target tip
  * via the authenticated transport; mutable GitHub state is collected with read-only APIs.
@@ -1722,15 +1815,29 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     return digest;
   };
 
-  // Always bind authority digests used by D0 gates.
-  const authorityPaths = new Set([
-    "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
-    "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
-    "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
-    "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
-  ]);
+  // Authority paths: TRACEABILITY catalog + tickets + owning PRDs + ADR corpus from INDEX.
+  const authorityPaths = new Set();
+  const traceText = readTipFile("docs/TRACEABILITY.md");
+  if (traceText == null) {
+    return { ok: false, reason: failures.join("; ") || "TRACEABILITY unavailable at live tip", facts: null };
+  }
+  const authorityIndexResult = buildTicketAuthorityIndex(traceText);
+  if (!authorityIndexResult.ok) {
+    return { ok: false, reason: authorityIndexResult.reason, facts: null };
+  }
+  const authorityIndex = authorityIndexResult.index;
   for (const entry of catalogTickets) {
     if (entry?.ticket_path) authorityPaths.add(entry.ticket_path);
+  }
+  for (const authority of Object.values(authorityIndex)) {
+    if (authority.prd_path) authorityPaths.add(authority.prd_path);
+  }
+  const adrIndexText = readTipFile("docs/adr/INDEX.md");
+  if (adrIndexText == null) {
+    return { ok: false, reason: failures.join("; ") || "ADR INDEX unavailable at live tip", facts: null };
+  }
+  for (const match of adrIndexText.matchAll(/\]\((ADR-\d{4}-[^)\s]+\.md)\)/g)) {
+    authorityPaths.add(`docs/adr/${match[1]}`);
   }
   for (const path of authorityPaths) {
     if (!digestFile(path)) {
@@ -1747,23 +1854,45 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!ticketDigest) {
       return { ok: false, reason: `missing live ticket digest for ${entry.id}`, facts: null };
     }
-    const prdPath = "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md";
-    const adrs = {
-      "ADR-0001": liveDigests["docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"],
-      "ADR-0003": liveDigests["docs/adr/ADR-0003-runtime-repository-and-distribution.md"],
-      "ADR-0012": liveDigests["docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"]
-    };
     const kind = entry.kind === "superseded" ? "superseded" : "executable";
+    const authority = authorityIndex[entry.id] ?? null;
+    if (kind === "executable" && !authority) {
+      return { ok: false, reason: `authority index missing ticket ${entry.id}`, facts: null };
+    }
+    const prdPath = authority?.prd_path ?? null;
+    const adrIds = authority?.adr_ids ?? [];
+    if (kind === "executable") {
+      if (typeof prdPath !== "string" || !prdPath.startsWith("docs/prd/")) {
+        return { ok: false, reason: `owning PRD path missing for ${entry.id}`, facts: null };
+      }
+      if (!liveDigests[prdPath]) {
+        return { ok: false, reason: `live digest unavailable for ${prdPath}`, facts: null };
+      }
+    }
+    const adrs = {};
+    const adr_paths = {};
+    for (const adrId of adrIds) {
+      const adrPath = resolveAdrPathFromDigests(adrId, liveDigests);
+      if (!adrPath || !liveDigests[adrPath]) {
+        return { ok: false, reason: `live ADR path unavailable for ${entry.id} ${adrId}`, facts: null };
+      }
+      adrs[adrId] = liveDigests[adrPath];
+      adr_paths[adrId] = adrPath;
+    }
     tickets[entry.id] = {
       kind,
       dependencies: Array.isArray(entry.dependencies) ? [...entry.dependencies] : [],
       owned_paths: [],
       owned_symbols: [],
       red_command: null,
+      prd_path: prdPath,
+      adr_paths,
       digests: {
         ticket: ticketDigest,
-        prd: liveDigests[prdPath],
-        adrs
+        prd: prdPath ? liveDigests[prdPath] : null,
+        prd_path: prdPath,
+        adrs,
+        adr_paths
       },
       ticket_path: entry.ticket_path
     };
@@ -1804,6 +1933,14 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       return {
         ok: false,
         reason: `ambiguous or missing ownership/red mapping for ${ticketId}: ${ownership.reason}`,
+        facts: null
+      };
+    }
+    const owningPrdFromTicket = parseOwningPrdPathFromTicket(ticketBody);
+    if (owningPrdFromTicket && ticket.prd_path && owningPrdFromTicket !== ticket.prd_path) {
+      return {
+        ok: false,
+        reason: `owning PRD mismatch for ${ticketId}: ticket ${owningPrdFromTicket} vs catalog ${ticket.prd_path}`,
         facts: null
       };
     }
@@ -2377,13 +2514,17 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         run_attempt: run.run_attempt
       }))
     );
-    if (!latest.ok || latest.run.conclusion !== "success" || latest.run.status !== "completed") continue;
-    if (!verifiedTickets.includes(ticketId)) verifiedTickets.push(ticketId);
+    // Always record the implementation merge receipt so failed/nonterminal post-merge
+    // CI is classified by the resolver (POST_MERGE_CI_FAILED / MISSING), not discarded.
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number
     });
+    if (!latest.ok) {
+      // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
+      continue;
+    }
     postMergeCI.push({
       merge_commit_sha: pull.merge_commit_sha,
       head_sha: latest.run.head_sha,
@@ -2392,6 +2533,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       run_id: latest.run.run_id,
       run_attempt: latest.run.run_attempt
     });
+    if (latest.run.status === "completed" && latest.run.conclusion === "success") {
+      if (!verifiedTickets.includes(ticketId)) verifiedTickets.push(ticketId);
+    }
   }
   if (failures.length) {
     return { ok: false, reason: failures.join("; "), facts: null };

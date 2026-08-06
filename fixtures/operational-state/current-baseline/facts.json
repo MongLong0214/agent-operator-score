@@ -72,7 +72,10 @@
       }
     },
     "review": {
-      "eligible_permissions": ["maintain", "admin"],
+      "eligible_permissions": [
+        "maintain",
+        "admin"
+      ],
       "must_differ_from_pr_author": false,
       "protected_check": "exact-head-review",
       "workflow_path": ".github/workflows/operational-state.yml",
@@ -85,7 +88,10 @@
       "external_id_prefix": "aos-exact-head-review:"
     },
     "authorization": {
-      "eligible_permissions": ["maintain", "admin"],
+      "eligible_permissions": [
+        "maintain",
+        "admin"
+      ],
       "must_differ_from_pr_author": false,
       "protected_check": "exact-head-authorization",
       "workflow_path": ".github/workflows/operational-state.yml",
@@ -102,59 +108,104 @@
     "D0-001": {
       "kind": "executable",
       "dependencies": [],
-      "owned_paths": ["scripts/validate-identity.mjs", "specs/identity.v1.json"],
-      "owned_symbols": ["validateIdentity"],
+      "owned_paths": [
+        "scripts/validate-identity.mjs",
+        "specs/identity.v1.json"
+      ],
+      "owned_symbols": [
+        "validateIdentity"
+      ],
       "red_command": "npm test -- tests/planning/identity.test.mjs",
       "digests": {
         "ticket": "1111111111111111111111111111111111111111111111111111111111111111",
         "prd": "2222222222222222222222222222222222222222222222222222222222222222",
         "adrs": {
           "ADR-0001": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {
+          "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
         }
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {
+        "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
       }
     },
     "D0-002": {
       "kind": "executable",
-      "dependencies": ["D0-001"],
-      "owned_paths": ["tests/planning/workspace-skeleton.test.mjs"],
-      "owned_symbols": ["workspace-census"],
+      "dependencies": [
+        "D0-001"
+      ],
+      "owned_paths": [
+        "tests/planning/workspace-skeleton.test.mjs"
+      ],
+      "owned_symbols": [
+        "workspace-census"
+      ],
       "red_command": "npm test -- tests/planning/workspace-skeleton.test.mjs",
       "digests": {
         "ticket": "4444444444444444444444444444444444444444444444444444444444444444",
         "prd": "2222222222222222222222222222222222222222222222222222222222222222",
         "adrs": {
           "ADR-0001": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {
+          "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
         }
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {
+        "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
       }
     },
     "D0-003": {
       "kind": "superseded",
-      "dependencies": ["D0-001"],
+      "dependencies": [
+        "D0-001"
+      ],
       "owned_paths": [],
       "owned_symbols": [],
       "red_command": null,
       "digests": {
         "ticket": "5555555555555555555555555555555555555555555555555555555555555555",
         "prd": "2222222222222222222222222222222222222222222222222222222222222222",
-        "adrs": {}
-      }
+        "adrs": {},
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {}
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {}
     },
     "D0-004": {
       "kind": "executable",
-      "dependencies": ["D0-002"],
+      "dependencies": [
+        "D0-002"
+      ],
       "owned_paths": [
         "scripts/resolve-execution-state.mjs",
         "specs/execution-state.schema.v1.json",
         "tests/execution-state.test.mjs"
       ],
-      "owned_symbols": ["resolveExecutionState"],
+      "owned_symbols": [
+        "resolveExecutionState"
+      ],
       "red_command": "node --test tests/execution-state.test.mjs",
       "digests": {
         "ticket": "6666666666666666666666666666666666666666666666666666666666666666",
         "prd": "2222222222222222222222222222222222222222222222222222222222222222",
         "adrs": {
           "ADR-0001": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {
+          "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
         }
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {
+        "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
       }
     }
   },
@@ -164,7 +215,10 @@
     "docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md": "5555555555555555555555555555555555555555555555555555555555555555",
     "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md": "6666666666666666666666666666666666666666666666666666666666666666",
     "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md": "2222222222222222222222222222222222222222222222222222222222222222",
-    "docs/adr/ADR-0001-canonical-identity.md": "3333333333333333333333333333333333333333333333333333333333333333"
+    "docs/adr/ADR-0001-canonical-identity.md": "3333333333333333333333333333333333333333333333333333333333333333",
+    "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md": "3333333333333333333333333333333333333333333333333333333333333333",
+    "docs/adr/ADR-0003-runtime-repository-and-distribution.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   },
   "gateBatches": [
     {
@@ -210,19 +264,27 @@
       "head_sha": "cccccccccccccccccccccccccccccccccccccccc"
     }
   ],
-  "verifiedTickets": ["D0-001"],
+  "verifiedTickets": [
+    "D0-001"
+  ],
   "issues": [
     {
       "number": 54,
       "ticket_id": "D0-001",
       "state": "closed",
-      "labels": ["status:done", "epic:D0"]
+      "labels": [
+        "status:done",
+        "epic:D0"
+      ]
     },
     {
       "number": 55,
       "ticket_id": "D0-002",
       "state": "open",
-      "labels": ["status:ready", "epic:D0"]
+      "labels": [
+        "status:ready",
+        "epic:D0"
+      ]
     }
   ],
   "prs": [],
@@ -244,7 +306,9 @@
     }
   },
   "ancestry": {
-    "cccccccccccccccccccccccccccccccccccccccc": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+    "cccccccccccccccccccccccccccccccccccccccc": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]
   },
   "registryStrings": {
     "prepared_by": "MongLong0214",
