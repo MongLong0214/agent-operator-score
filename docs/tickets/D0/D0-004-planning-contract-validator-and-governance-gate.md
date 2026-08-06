@@ -25,23 +25,46 @@ Replace the structural planning validator with semantic planning validator v2 an
 3. D0-002 is complete and D0-003 is verified superseded by PR #53.
 4. The one-time authority-surface correction is merged: Roadmap and Board are static, the dated ledger is historical, and committed current SHA/readiness prose is absent.
 5. Worktree is clean, GitHub availability mode is explicit, and unrelated owner changes are identified and protected.
-6. The execution packet names the expected GitHub PR author and at least one different actor whose current repository permission satisfies both protected-check dispatch policies. If no such actor is independently verifiable, D0-004 may not enter RED.
+6. The execution packet identifies the authenticated repository owner and the `single_owner_agent_team` mode. That owner may prepare, author, review, and authorize sequentially; exact-head technical review, CI, and explicit CEO production PASS remain required. If a distinct external actor exists, record it, but never require a nonexistent actor. Unavailable or ambiguous required repository facts fail closed.
 
 ## Planning correction boundary
 
 The contract correction that defines this ticket is not D0-004A/B/C implementation. Existing structural tests and candidate CI prove only that the planning correction does not regress the pre-implementation control plane; `semantic_checks=not_yet_enforced` remains expected. No resolver, actor policy, protected check, or named AC below may be claimed complete until the Maintainer Gates authorize D0-004 and its RED/GREEN evidence passes at the implementation candidate head.
 
-## Trusted actor policy
+## Single-owner actor policy
 
 The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy. D0-004A copies it without semantic expansion into `docs/issues.json.operational_authority`; the resolver rejects a missing, malformed, or non-identical copy as `TICKET_CONTRACT_CONFLICT`.
 
 ```json
 {
+  "governance_mode": "single_owner_agent_team",
   "repository": "MongLong0214/agent-operator-score",
   "target_branch": "dev",
   "repository_owner": {
     "login": "MongLong0214",
     "type": "User"
+  },
+  "self_authored_strings_and_registry_fields": "not_authorization",
+  "distinct_external_actor": "record_if_available_not_required",
+  "bootstrap": {
+    "state": "NOT_REQUIRED_UNTIL_D0_004C",
+    "until": "D0-004C is merged into dev",
+    "gate": [
+      "existing CI",
+      "local offline resolver/contract tests",
+      "exact-head technical review evidence"
+    ],
+    "deferred_workflow_checks": [
+      "operational-state-offline",
+      "exact-head-review",
+      "exact-head-authorization"
+    ],
+    "after_d0_004c_merge": "resolver_and_workflow_mode_required_fail_closed",
+    "fail_closed_regressions": [
+      "single-owner-spoof-is-not-authorization",
+      "future-check-premature",
+      "bootstrap-after-c-fails-closed"
+    ]
   },
   "candidate_ci": {
     "required_checks": [
@@ -77,7 +100,7 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
   },
   "review": {
     "eligible_permissions": ["maintain", "admin"],
-    "must_differ_from_pr_author": true,
+    "must_differ_from_pr_author": false,
     "protected_check": "exact-head-review",
     "workflow_path": ".github/workflows/operational-state.yml",
     "trusted_ref": "refs/heads/dev",
@@ -90,7 +113,7 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
   },
   "authorization": {
     "eligible_permissions": ["maintain", "admin"],
-    "must_differ_from_pr_author": true,
+    "must_differ_from_pr_author": false,
     "protected_check": "exact-head-authorization",
     "workflow_path": ".github/workflows/operational-state.yml",
     "trusted_ref": "refs/heads/dev",
@@ -105,17 +128,19 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
 ```
 
 - Repository: `MongLong0214/agent-operator-score`; target branch: `dev`; repository-owner login: `MongLong0214`. `GET /repos/MongLong0214/agent-operator-score` must return that exact owner login/type and default branch, and `GET /repos/MongLong0214/agent-operator-score/collaborators/{actor}/permission` must return one of the policy's exact eligible permissions; an unavailable or ambiguous response fails closed.
-- Candidate CI selects the single latest GitHub Actions run attempt for each required workflow on the live PR head and base `dev`. The live PR-head blob and current live-`dev` blob must be byte-identical at each required workflow path. Every required check name must map through the Actions jobs API to that selected run, have the exact GitHub Actions app identity, live head SHA, `completed` status, and `success` conclusion. An older passing attempt cannot override the latest attempt; extra checks do not satisfy or replace a required name; a duplicate/ambiguous mapping, missing workflow or check, wrong app/event/base/head/path, cross-run job, candidate/live workflow-blob mismatch, or unavailable fact fails closed as `EXACT_HEAD_CI_FAILED` or `EXTERNAL_STATE_UNAVAILABLE`.
+- In `single_owner_agent_team` mode, the one authenticated repository owner may prepare, author, review, and authorize sequentially. Self-authored strings/registry fields remain `not_authorization`: they cannot replace exact-head technical review, candidate CI, or the explicit CEO production PASS. A distinct external actor is recorded when available, not required to exist.
+- Before D0-004C merges, Bootstrap is the gate: existing CI, local offline resolver/contract tests, and exact-head technical review evidence. `operational-state-offline`, `exact-head-review`, and `exact-head-authorization` are `NOT_REQUIRED_UNTIL_D0_004C`; their absence is not substituted with a claim that the future workflow ran. After D0-004C merges, resolver/workflow mode is mandatory, Bootstrap is disabled, and a missing resolver, workflow, or named check fails closed.
+- Candidate CI selects the single latest GitHub Actions run attempt for each required workflow on the live PR head and base `dev`. In Bootstrap, only existing CI checks apply; after D0-004C merges, every named candidate check applies. The live PR-head blob and current live-`dev` blob must be byte-identical at each required workflow path. Every required check name must map through the Actions jobs API to that selected run, have the exact GitHub Actions app identity, live head SHA, `completed` status, and `success` conclusion. An older passing attempt cannot override the latest attempt; extra checks do not satisfy or replace a required name; a duplicate/ambiguous mapping, missing workflow or check, wrong app/event/base/head/path, cross-run job, candidate/live workflow-blob mismatch, or unavailable fact fails closed as `EXACT_HEAD_CI_FAILED` or `EXTERNAL_STATE_UNAVAILABLE`.
 - An accepted gate PR must be authored against `dev`, link exactly one batch, and be merged by the repository-owner login. The GitHub repository API must independently confirm that login is the current repository owner; a committed identity string alone is insufficient.
-- A formal-review fact is eligible only when its reviewer has current `maintain` or `admin` repository permission, its `commit_id` equals the live PR head, and the reviewer is not the PR author. A review that fails any condition is ignored.
-- A same-author candidate cannot use a formal self-review. It may satisfy cumulative review only through the protected `exact-head-review` check emitted by `.github/workflows/operational-state.yml`. The dispatch actor must differ from the PR author and have current `maintain` or `admin` permission; the supplied SHA must equal the live PR head.
-- Merge authorization is never implied by approval or candidate CI. It requires the separate protected `exact-head-authorization` check from the same trusted workflow and exact head, dispatched by an actor who differs from the PR author and has current `maintain` or `admin` permission, only after cumulative review and candidate CI are both current and passing.
+- A formal-review fact is eligible only when its reviewer has current `maintain` or `admin` repository permission and its `commit_id` equals the live PR head. In `single_owner_agent_team` mode the reviewer may be the PR author, but review must remain an explicit sequential exact-head technical review and is never authorization.
+- Before D0-004C merges, the Bootstrap review evidence is required without a protected workflow check. After D0-004C merges, cumulative review requires the protected `exact-head-review` check emitted by `.github/workflows/operational-state.yml` on the same exact head. The authenticated repository owner may dispatch that check when eligible; the supplied SHA must equal the live PR head.
+- Merge authorization is never implied by technical review or candidate CI. It requires a separate explicit CEO production PASS at the exact head; after D0-004C merges, that PASS also requires the separate protected `exact-head-authorization` check from the trusted workflow and exact head, only after cumulative review and candidate CI are both current and passing.
 - For either protected check, the GitHub Actions run must report event `workflow_dispatch`, exact workflow ref `MongLong0214/agent-operator-score/.github/workflows/operational-state.yml@refs/heads/dev`, and a `workflow_sha` reachable from the live trusted `dev` ref. The resolver reads the workflow blob OID at that exact commit/path, requires it to equal the blob OID at the same path on the current live `dev` ref, and binds both to the run; an older or reverted workflow is stale even when its commit remains reachable. Merely finding some workflow commit in the candidate ancestry is insufficient. The check run must be created for the live PR head by the `github-actions` app. Its external ID is the lane's exact prefix followed by decimal `run_id`, one colon, and decimal `run_attempt`; those values must resolve to that exact workflow run and lane.
-- The workflow/check names, trusted workflow ref/commit/blob, workflow-run provenance, repository-owner identity, actor permissions, PR author, live head, dispatch actor, check creator, external ID, and conclusions are structured GitHub facts. Comments, mutable registry identity fields, issue metadata, and labels are not actor or authorization evidence.
+- The workflow/check names, trusted workflow ref/commit/blob, workflow-run provenance, repository-owner identity, actor permissions, PR author, live head, dispatch actor, check creator, external ID, and conclusions are structured GitHub facts. Comments, mutable registry identity fields, issue metadata, labels, and self-authored strings are not actor or authorization evidence.
 
 ## Forbidden scope
 
-- Marking any gate accepted; product source; GitHub label/body/issue mutation; parsing free-form PR comments as machine state; committed current SHA or resolver snapshot; formal self-approval; wall-clock-dependent canonical JSON; permissive fallback on unavailable GitHub, malformed traceability, registry, digest, actor policy, ancestry, check, or source census.
+- Marking any gate accepted; product source; GitHub label/body/issue mutation; parsing free-form PR comments as machine state; committed current SHA or resolver snapshot; treating a self-authored string or registry field as authorization; wall-clock-dependent canonical JSON; permissive fallback on unavailable GitHub, malformed traceability, registry, digest, actor policy, ancestry, check, or source census.
 
 ## RED contract
 
@@ -135,16 +160,16 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 - use `fileURLToPath()` for repository paths and preserve encoded/space-containing paths with a focused regression.
 - normalize legacy `docs/issues.json` as a static catalog. Every record has exact `issue`, `ticket_path`, `milestone`, `dependencies`, `size`, `epic`, `kind`, and `initial_labels`; legacy prose becomes `body_template` and is never an operational input; dynamic `status:*` labels are removed from `initial_labels`; D0-003 is `kind=superseded` rather than executable; and the catalog, exact ticket, and rendered Board agree byte-for-byte on size and dependency values.
 - implement `npm run ops:status -- --strict [--json] [--ticket <ID>]` and `npm run ops:check`. Derive repository and branch identity at runtime; verify ticket/ADR/PRD digests, accepted gate records, Git ancestry, linked PR/merge/check facts, post-merge CI, dependency completion, and active path/symbol ownership collisions.
-- accept an ADR/PRD/ticket gate only when the canonical registry batch binds the exact artifact digests and accepted-record commit, a PR body links exactly one `Gate-Batch: <batch_id>`, that PR head contains the identical registry record, the PR was merged into `dev` by the repository-owner login defined and independently verified under **Trusted actor policy**, and post-merge CI succeeded on the merge commit. Registry lifecycle strings, mutable `prepared_by`/`approved_by` values, comments, issue state, and labels cannot authenticate acceptance. Missing or malformed actor policy, missing PR linkage, unavailable external state, a wrong or no-longer-owner merge actor, stale head or digest, wrong base, absent ancestry, or missing/failed post-merge CI fails closed.
+- accept an ADR/PRD/ticket gate only when the canonical registry batch binds the exact artifact digests and accepted-record commit, a PR body links exactly one `Gate-Batch: <batch_id>`, that PR head contains the identical registry record, the PR was merged into `dev` by the repository-owner login defined and independently verified under **Single-owner actor policy**, and post-merge CI succeeded on the merge commit. Registry lifecycle strings, mutable `prepared_by`/`approved_by` values, comments, issue state, labels, and self-authored strings cannot authenticate acceptance. Missing or malformed actor policy, missing PR linkage, unavailable external state, a wrong or no-longer-owner merge actor, stale head or digest, wrong base, absent ancestry, or missing/failed post-merge CI fails closed.
 - emit separate `phase` and `readiness` fields. Phases are `planned`, `gate_preparation`, `ready_for_red`, `red`, `implementing`, `review`, `ci`, `merged_pending_post_ci`, `verified`, `superseded`, or `invalidated`; readiness is `ready`, `blocked`, `active`, `terminal`, or `unknown`.
 - emit only these blocker codes unless a replacement ticket changes the schema: `DEPENDENCY_UNVERIFIED`, `MILESTONE_GATE_BLOCKED`, `ADR_GATE_MISSING`, `PRD_GATE_MISSING`, `TICKET_GATE_MISSING`, `TICKET_CONTRACT_CONFLICT`, `TICKET_CONTRACT_INCOMPLETE`, `EXECUTION_PACKET_MISSING`, `OWNERSHIP_OVERLAP`, `RED_CONTRACT_INVALID`, `EXACT_HEAD_CI_FAILED`, `CUMULATIVE_REVIEW_MISSING`, `MERGE_AUTHORIZATION_MISSING`, `POST_MERGE_CI_MISSING`, `POST_MERGE_CI_FAILED`, `EXTERNAL_STATE_UNAVAILABLE`, `STALE_DIGEST`, and `WRONG_TARGET`. Every blocked or unknown record also has a bounded human-readable reason.
 - support `online-strict` and fixture-backed `offline` modes. When required external facts are unavailable, affected readiness is `unknown`, the ready set is empty, and no Roadmap/Board/label fallback exists.
 - treat issue body, issue open/closed state, issue labels, PR comment prose, Roadmap, Board, Maintainer Gate status prose, and historical ledger as non-authoritative. A closed issue alone is never verification.
-- link a PR to one ticket only through the exact `Ticket: <ID>` structured PR-body field; a ticket label may be checked for agreement but cannot establish or override linkage. Resolve active candidates from base branch, head SHA, merge commit, formal review `commit_id`, review decision, exact candidate-CI run/jobs/checks, actor permission, trusted workflow ref/commit/blob, workflow-run event/provenance, dispatch actor, check creator/external ID, and check conclusions, and report superseded heads without reusing their review or CI evidence. Free-form review comments remain audit narrative. Cumulative review requires an eligible current-head formal approval or the protected `exact-head-review` check under **Trusted actor policy**; merge authorization is a separate required protected `exact-head-authorization` check on the same head. Candidate CI, the review fact, and authorization are three distinct inputs. A missing, stale-head, wrong-actor, self-authored-only, candidate-controlled-workflow, non-ancestor trusted-workflow commit, wrong workflow blob, forged run provenance, or mismatched fact fails closed.
+- link a PR to one ticket only through the exact `Ticket: <ID>` structured PR-body field; a ticket label may be checked for agreement but cannot establish or override linkage. Resolve active candidates from base branch, head SHA, merge commit, formal review `commit_id`, review decision, exact candidate-CI run/jobs/checks, actor permission, trusted workflow ref/commit/blob, workflow-run event/provenance, dispatch actor, check creator/external ID, and check conclusions, and report superseded heads without reusing their review or CI evidence. Free-form review comments remain audit narrative. In Bootstrap, cumulative review requires explicit current-head technical-review evidence; after D0-004C merges it requires the protected `exact-head-review` check under **Single-owner actor policy**. Merge authorization is a separate explicit CEO production PASS and, after D0-004C merges, the protected `exact-head-authorization` check on the same head. Candidate CI, technical review, and authorization are three distinct inputs. A missing, stale-head, candidate-controlled-workflow, non-ancestor trusted-workflow commit, wrong workflow blob, forged run provenance, self-authored-only string or registry field, mismatched fact, or a Bootstrap fallback after D0-004C fails closed.
 - require post-merge CI for `verified`; a merge or candidate-head CI alone cannot satisfy a dependency. A material ADR/PRD/ticket digest change removes affected readiness; a candidate-head-only change invalidates exact-head review/CI without automatically invalidating semantically unchanged RED evidence.
 - produce byte-identical canonical JSON for identical static files, Git refs, and GitHub fixture facts. Runtime timestamps and current head are output-only and excluded from committed snapshots and canonical comparisons.
 - the frozen current-baseline fixture resolves D0-001 as `verified`, D0-002 as `phase=gate_preparation` and `readiness=blocked`, and `readySet=[]`; the fixture contains facts, not a committed current-branch snapshot.
-- render the Board from the canonical static catalog with an explicit non-authority marker; fail projection drift without letting a projection overwrite resolver state. The existing Maintainer Gate status snapshot is never edited, regenerated, or consumed. On pull requests the workflow runs offline strict checks only; on `dev` pushes it runs online strict resolution. Separately approved dispatch jobs run only from the trusted `dev` workflow ref and emit the distinct `exact-head-review` and `exact-head-authorization` check runs only after verifying live PR head, exact trusted workflow commit/blob and run provenance, and **Trusted actor policy**. Offline/online resolution jobs have exactly `contents: read`, `actions: read`, `checks: read`, `pull-requests: read`, and `issues: read`; dispatch jobs replace `checks: read` with `checks: write` solely to create the one named check run on the verified candidate SHA. Each job has a bounded timeout. The workflow uploads JSON and summary artifacts and performs no repository status commit, label/body/issue mutation, or other write-token action.
+- render the Board from the canonical static catalog with an explicit non-authority marker; fail projection drift without letting a projection overwrite resolver state. The existing Maintainer Gate status snapshot is never edited, regenerated, or consumed. After D0-004C merges, pull requests run offline strict checks only and `dev` pushes run online strict resolution; Bootstrap is then disabled. Separately approved dispatch jobs run only from the trusted `dev` workflow ref and emit the distinct `exact-head-review` and `exact-head-authorization` check runs only after verifying live PR head, exact trusted workflow commit/blob and run provenance, and **Single-owner actor policy**. Offline/online resolution jobs have exactly `contents: read`, `actions: read`, `checks: read`, `pull-requests: read`, and `issues: read`; dispatch jobs replace `checks: read` with `checks: write` solely to create the one named check run on the verified candidate SHA. Each job has a bounded timeout. The workflow uploads JSON and summary artifacts and performs no repository status commit, label/body/issue mutation, or other write-token action.
 
 ## Acceptance ↔ tests
 
@@ -162,7 +187,8 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 - AC-D0-004-12 ↔ cases `generated-views-are-deterministic`, `projection-drift-does-not-change-state`, and `canonical-json-is-byte-identical`.
 - AC-D0-004-13 ↔ case `exact-base-packet-requires-ready`, which emits base, authority digests, owned paths/symbols, and RED command only for `readiness=ready`.
 - AC-D0-004-14 ↔ cases `registry-string-is-not-gate-acceptance`, `actor-policy-missing-or-malformed`, `gate-pr-wrong-or-no-longer-owner-actor`, `gate-pr-stale-head-or-digest`, and `gate-pr-post-merge-ci-required`.
-- AC-D0-004-15 ↔ cases `review-and-authorization-are-distinct`, `current-review-without-authorization-is-blocked`, `stale-or-self-authored-review-is-blocked`, `candidate-controlled-or-non-ancestor-review-workflow-is-blocked`, `wrong-workflow-blob-or-run-provenance-is-blocked`, `wrong-check-creator-or-external-id-is-blocked`, `author-dispatched-check-is-blocked`, `wrong-dispatch-permission-is-blocked`, and `authorization-without-current-review-is-blocked`.
+- AC-D0-004-15 ↔ cases `review-and-authorization-are-distinct`, `current-review-without-authorization-is-blocked`, `single-owner-spoof-is-not-authorization`, `single-owner-sequential-review-and-authorization`, `candidate-controlled-or-non-ancestor-review-workflow-is-blocked`, `wrong-workflow-blob-or-run-provenance-is-blocked`, `wrong-check-creator-or-external-id-is-blocked`, `wrong-dispatch-permission-is-blocked`, and `authorization-without-current-review-is-blocked`.
+- AC-D0-004-18 ↔ cases `future-check-premature` and `bootstrap-after-c-fails-closed`.
 - AC-D0-004-16 ↔ case `ready-authorizes-packet-not-red`, which requires a separately maintainer-approved exact-base packet before the first RED command even after a resolver-ready result.
 - AC-D0-004-17 ↔ cases `candidate-ci-required-set-is-exact`, `candidate-ci-missing-stale-or-wrong-head-is-blocked`, `candidate-ci-wrong-app-event-base-path-or-run-is-blocked`, `candidate-ci-candidate-workflow-differs-from-live-target-is-blocked`, and `candidate-ci-latest-failed-attempt-overrides-older-pass`.
 
@@ -179,7 +205,7 @@ Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly a
 
 ## Stop and escalation
 
-- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, no eligible non-author dispatch actor, unallowlisted product code, unsafe path handling, GitHub outage reported as ready, comment/label/projection used as input, nondeterministic JSON, current SHA committed as state, timeout without a terminal state, or partial state.
+- Stop on ambiguous authority, missing ownership, malformed gate registry, stale digest, wrong target, unavailable authenticated repository-owner fact, Bootstrap used after D0-004C, unallowlisted product code, unsafe path handling, GitHub outage reported as ready, comment/label/projection used as input, nondeterministic JSON, current SHA committed as state, timeout without a terminal state, or partial state.
 
 ## Completion evidence
 
