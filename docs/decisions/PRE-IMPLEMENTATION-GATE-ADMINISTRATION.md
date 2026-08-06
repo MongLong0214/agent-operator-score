@@ -6,7 +6,7 @@
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004 implementation, D0-002 implementation, RED, or product code. It does not itself authorize an ADR, PRD, or ticket. The canonical v2 D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches. D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority. The current structurally `ACCEPTED` batches are `d0-002-prerequisites-red-census-contract-correction-renewal` at reviewed artifact head `2713d5e8646ff69c979aa1114d6f6ae78d804c7f` and the D0-004 single-owner Bootstrap candidate `d0-004-prerequisites-single-owner-bootstrap` at `b45fb67321b76b769e21ba4949e394ab9beecbb6`. Neither structural record is authorization to execute; exact-head technical review, existing CI, and explicit CEO production PASS remain required.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004 implementation, D0-002 implementation, RED, or product code. It does not itself authorize an ADR, PRD, or ticket. The canonical v2 D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches. D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority. The current structurally `ACCEPTED` batches are `d0-002-prerequisites-red-census-contract-correction-renewal` at reviewed artifact head `2713d5e8646ff69c979aa1114d6f6ae78d804c7f` and the D0-004 B-harness carve-out renewal `d0-004-prerequisites-b-harness-carveout-renewal` at `550af19b655b788774861c30edaba0c4d4cea209`. The prior D0-004 single-owner Bootstrap candidate `d0-004-prerequisites-single-owner-bootstrap` is retained only as an invalidated historical record. Neither structural record is authorization to execute; exact-head technical review, existing CI, and explicit CEO production PASS remain required.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -32,7 +32,7 @@ The exact-head technical review, CI, and final CEO PASS facts cannot be authenti
 
 ## Record model and lifecycle
 
-The registry retains all four invalidated D0-001 prerequisite batches and the invalidated prior D0-002 renewal as historical records and carries the current structurally `ACCEPTED` D0-002 renewal and D0-004 single-owner Bootstrap candidate. `required_artifacts` and `required_transitions` state what a record must close. Each accepted record binds every required artifact to its SHA-256 digest and exact reviewed artifact head; mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
+The registry retains all four invalidated D0-001 prerequisite batches, the invalidated prior D0-002 renewal, and the invalidated prior D0-004 single-owner Bootstrap candidate as historical records and carries the current structurally `ACCEPTED` D0-002 renewal and D0-004 B-harness carve-out renewal. `required_artifacts` and `required_transitions` state what a record must close. Each accepted record binds every required artifact to its SHA-256 digest and exact reviewed artifact head; mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
 
 ```text
 PENDING --(complete exact batch, structural approval record)----> ACCEPTED
@@ -48,13 +48,13 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. All D0-001 prerequisite batches remain invalidated; none is a current planning acceptance or execution authority. D0-001 implementation completion is retained solely as historical post-merge completion evidence. Current structural candidates are the D0-002 renewal and the D0-004 single-owner Bootstrap candidate; each binds five current prerequisite digests and neither is execution authority.
-2. The Gate Administrator records the complete D0-004 single-owner Bootstrap candidate from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
+1. All D0-001 prerequisite batches remain invalidated; none is a current planning acceptance or execution authority. D0-001 implementation completion is retained solely as historical post-merge completion evidence. Current structural candidates are the D0-002 renewal and the D0-004 B-harness carve-out renewal; each binds five current prerequisite digests and neither is execution authority.
+2. The Gate Administrator records the complete D0-004 B-harness carve-out renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
 3. Independent exact-head technical review, existing CI, and explicit CEO production PASS are required for the final candidate. Only that reviewed final head may be merged.
 4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
 
 ## Non-authorizations and invalidation
 
-This decision grants no product implementation authority and no D0-001 execution authority. The registry retains four invalidated D0-001 historic batches, the invalidated prior D0-002 renewal, and current structurally `ACCEPTED` D0-002 and D0-004 candidates; their mutable structural approval records are not authenticated authorization, and D0-004 RED remains blocked until its exact-head review, CI, CEO PASS, and execution packet gates are independently satisfied. D0-001 verified post-merge completion remains historical completion evidence only.
+This decision grants no product implementation authority and no D0-001 execution authority. The registry retains four invalidated D0-001 historic batches, the invalidated prior D0-002 renewal, the invalidated prior D0-004 single-owner Bootstrap candidate, and current structurally `ACCEPTED` D0-002 and D0-004 B-harness carve-out renewal candidates; their mutable structural approval records are not authenticated authorization, and D0-004 RED remains blocked until its exact-head review, CI, CEO PASS, and execution packet gates are independently satisfied. D0-001 verified post-merge completion remains historical completion evidence only.
 
 The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh exact-head review of a renewed candidate is the next required action.
