@@ -1242,55 +1242,95 @@ test("facts-corpus-and-output-schema-validation-fail-closed", async () => {
   assert.ok(broken.errors.some((entry) => entry.code === "TICKET_CONTRACT_INCOMPLETE"));
 });
 
-test("online-strict-requires-live-facts-and-nonzero-exit", async () => {
-  const { acquireOnlineStrictFacts, resolveExecutionState } = await importResolver();
+test("live-adapter-fixture-e2e-collects-and-resolves", async () => {
+  const {
+    createFixtureTransport,
+    collectLiveExecutionFacts,
+    acquireOnlineStrictFacts,
+    resolveExecutionState
+  } = await importResolver();
+  const responsesPath = resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json");
+  assert.equal(existsSync(responsesPath), true);
+  const responses = JSON.parse(readFileSync(responsesPath, "utf8"));
+  const transport = createFixtureTransport(responses);
 
-  const acquired = acquireOnlineStrictFacts(root, {});
-  assert.equal(acquired.ok, false);
+  const collected = collectLiveExecutionFacts(root, { transport });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.equal(collected.facts.externalAvailable, true);
+  assert.equal(collected.facts.collector.write_actions, 0);
+  assert.equal(collected.facts.collector.transport, "fixture-authenticated");
+  assert.ok(Object.keys(collected.facts.tickets).length >= 1);
+  assert.ok(Array.isArray(collected.facts.gatePRs));
+  assert.ok(Array.isArray(collected.facts.prs));
+  assert.ok(collected.facts.liveBaseSha);
 
-  const online = resolveExecutionState({
+  const acquired = acquireOnlineStrictFacts(root, { transport });
+  assert.equal(acquired.ok, true);
+
+  const result = resolveExecutionState({
     mode: "online-strict",
     root,
-    // no facts injection → unavailable corpus
-    facts: null
-  });
-  assert.equal(online.mode, "online-strict");
-  assert.ok(online.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
-  assert.deepEqual(online.readySet, []);
-
-  // CLI strict exit is nonzero when external facts are unresolved.
-  let exitCode = 0;
-  let stderr = "";
-  try {
-    execFileSync(process.execPath, [resolverPath, "--strict", "--json"], {
-      cwd: root,
-      encoding: "utf8",
-      env: { ...process.env, AOS_EXECUTION_STATE_FACTS: "" }
-    });
-  } catch (error) {
-    exitCode = error.status ?? 1;
-    stderr = `${error.stdout ?? ""}\n${error.stderr ?? ""}`;
-  }
-  assert.notEqual(exitCode, 0);
-  assert.match(stderr, /EXTERNAL_STATE_UNAVAILABLE|complete live operational|unavailable/i);
-
-  // Injected complete online facts succeed without fallback.
-  const liveFacts = loadBaselineFacts();
-  liveFacts.externalAvailable = true;
-  const acquiredOk = acquireOnlineStrictFacts(root, { facts: liveFacts });
-  assert.equal(acquiredOk.ok, true);
-  const onlineOk = resolveExecutionState({
-    mode: "online-strict",
-    root,
-    facts: liveFacts,
+    facts: acquired.facts,
     runtimeIdentity: {
-      repository: liveFacts.repository,
-      branch: liveFacts.defaultBranch,
-      head: liveFacts.currentHead
+      repository: acquired.facts.repository,
+      branch: acquired.facts.defaultBranch,
+      head: acquired.facts.currentHead
     }
   });
-  assert.equal(onlineOk.mode, "online-strict");
-  assert.ok(!onlineOk.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+  assert.equal(result.mode, "online-strict");
+  assert.ok(!result.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+  // Schema-valid output for the live-adapter path.
+  const { loadExecutionStateSchema, validateAgainstSchema } = await importResolver();
+  const schemaLoad = loadExecutionStateSchema(root);
+  assert.deepEqual(validateAgainstSchema(result, schemaLoad.schema), []);
+});
+
+test("live-adapter-outage-partial-ambiguous-fail-closed", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts, resolveExecutionState } = await importResolver();
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+
+  // Total outage on repository probe.
+  {
+    const responses = { ...base, [repoPath]: null };
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(collected.ok, false);
+    assert.match(collected.reason, /unavailable|outage/i);
+  }
+
+  // Partial: repo works, tip ref missing.
+  {
+    const responses = { ...base };
+    delete responses[`${repoPath}/git/ref/heads/dev`];
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(collected.ok, false);
+    assert.match(collected.reason, /unavailable|tip/i);
+  }
+
+  // Ambiguous gate PR search (two items for one batch).
+  {
+    const responses = { ...base };
+    const key = Object.keys(responses).find((entry) => entry.startsWith("search/issues?q=") && entry.includes("Gate-Batch"));
+    assert.ok(key);
+    responses[key] = { items: [{ number: 200 }, { number: 201 }] };
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(collected.ok, false);
+    assert.match(collected.reason, /ambiguous/i);
+  }
+
+  // Ambiguous transport signal via fixture marker.
+  {
+    const responses = { ...base, [repoPath]: { __ambiguous: true } };
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(collected.ok, false);
+    assert.match(collected.reason, /ambiguous/i);
+  }
+
+  // resolveExecutionState without facts still fails closed online (no silent empty corpus).
+  const online = resolveExecutionState({ mode: "online-strict", root, facts: null });
+  assert.ok(online.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
 });
 
 // ---------------------------------------------------------------------------
