@@ -533,7 +533,9 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
   assert.match(gateStatus, /three prior D0-001 batches `INVALIDATED`; bounded-RED renewal structurally `ACCEPTED`/);
-  assert.match(gateDecision, /D0-001 history retains three `PENDING → ACCEPTED → INVALIDATED` batches; the bounded-RED renewal is structurally `ACCEPTED`/);
+  assert.match(gateDecision, /D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches/);
+  assert.match(gateDecision, /D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority/);
+  assert.match(gateDecision, /only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal`/);
   assert.match(ticket, /only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`/);
   assert.match(ticket, /Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion/);
   assert.match(d0004Ticket, /except the numeric `control_plane_code_files` literal/);
@@ -613,7 +615,8 @@ test("ADR-0003 correction invalidates the D0-001 bounded-RED planning acceptance
   assert.equal(result.externalGateEvidence, "required");
   assert.match(gateStatus, /bounded-RED digest renewal is structurally ACCEPTED/);
   assert.match(gateStatus, /exact-head CEO review and CI are required/);
-  assert.match(gateDecision, /bounded-RED renewal is structurally `ACCEPTED`/);
+  assert.match(gateDecision, /All D0-001 prerequisite batches remain invalidated; none is a current planning acceptance or execution authority/);
+  assert.match(gateDecision, /only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal`/);
   assert.match(gateDecision, /not authorization to execute and requires external exact-head CEO review and CI/);
 });
 
