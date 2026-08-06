@@ -7,7 +7,7 @@ Date: 2026-08-06
 | Layer | Census | State | Effect |
 |---|---:|---|---|
 | Final SSOT | 1 | FINAL / owner-supplied | Derived planning may be drafted. |
-| Gate Administration control plane | 1 | ACTIVE / three prior D0-001 batches `INVALIDATED`; bounded-RED renewal structurally `ACCEPTED` | The bounded-RED digest renewal is structurally ACCEPTED, is not execution authorization, and exact-head CEO review and CI are required. |
+| Gate Administration control plane | 1 | ACTIVE / four D0-001 batches `INVALIDATED`; only D0-002 contract-correction renewal structurally `ACCEPTED` | D0-001 verified post-merge completion is historical completion evidence, not a current planning acceptance or execution authority. The D0-002 contract-correction renewal is structurally ACCEPTED, is not execution authorization, and exact-head CEO review and CI are required. |
 | ADR | 12 | PROPOSED | PRD approval blocked. |
 | PRD | 19 | PROPOSED | Ticket approval blocked. |
 | Atomic tickets | 64 executable | BLOCKED | Product implementation forbidden. |

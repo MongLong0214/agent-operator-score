@@ -532,7 +532,7 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.equal(result.status, "invalidated");
   assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
-  assert.match(gateStatus, /three prior D0-001 batches `INVALIDATED`; bounded-RED renewal structurally `ACCEPTED`/);
+  assert.match(gateStatus, /four D0-001 batches `INVALIDATED`; only D0-002 contract-correction renewal structurally `ACCEPTED`/);
   assert.match(gateDecision, /D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches/);
   assert.match(gateDecision, /D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority/);
   assert.match(gateDecision, /only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal`/);
@@ -613,7 +613,7 @@ test("ADR-0003 correction invalidates the D0-001 bounded-RED planning acceptance
   assert.match(boundedRedRenewal.invalidation.reason, /ADR-0003 workspace scope correction/);
   assert.equal(result.status, "invalidated");
   assert.equal(result.externalGateEvidence, "required");
-  assert.match(gateStatus, /bounded-RED digest renewal is structurally ACCEPTED/);
+  assert.match(gateStatus, /D0-002 contract-correction renewal is structurally ACCEPTED/);
   assert.match(gateStatus, /exact-head CEO review and CI are required/);
   assert.match(gateDecision, /All D0-001 prerequisite batches remain invalidated; none is a current planning acceptance or execution authority/);
   assert.match(gateDecision, /only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal`/);
