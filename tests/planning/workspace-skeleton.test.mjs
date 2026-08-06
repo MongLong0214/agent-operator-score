@@ -41,8 +41,17 @@ const forbiddenManifestFields = [
   "dependencies", "devDependencies", "optionalDependencies", "peerDependencies", "bundledDependencies",
   "bin", "main", "module", "browser", "exports", "imports", "types", "typings", "files", "source"
 ];
-const readJson = (relativePath) => JSON.parse(readFileSync(resolve(repositoryRoot, relativePath), "utf8"));
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
+const assertRegularFile = (relativePath) => {
+  const absolutePath = resolve(repositoryRoot, relativePath);
+  assert.ok(existsSync(absolutePath), `${relativePath} is missing`);
+  const fileInfo = lstatSync(absolutePath);
+  assert.equal(fileInfo.isSymbolicLink(), false, `${relativePath} is a symbolic link`);
+  assert.equal(fileInfo.isFile(), true, `${relativePath} is not a regular file`);
+  return absolutePath;
+};
+const readRegularFile = (relativePath) => readFileSync(assertRegularFile(relativePath), "utf8");
+const readJson = (relativePath) => JSON.parse(readRegularFile(relativePath));
 
 const walkFiles = (relativeDirectory) => {
   const directory = resolve(repositoryRoot, relativeDirectory);
@@ -77,7 +86,7 @@ const statusSemantics = (status) => ({
 });
 
 test("workspace-census", () => {
-  const rootManifest = JSON.parse(readFileSync(resolve(repositoryRoot, "package.json"), "utf8"));
+  const rootManifest = readJson("package.json");
   assert.equal(
     rootManifest.name,
     "agent-operator-score",
@@ -104,7 +113,7 @@ test("root-private-and-internal-workspaces-private", () => {
 test("one-owner-per-path", () => {
   assert.equal(ownerPaths.length, 9);
   for (const path of ownerPaths) {
-    assert.equal(readFileSync(resolve(repositoryRoot, path), "utf8"), ownerMarker, path);
+    assert.equal(readRegularFile(path), ownerMarker, path);
   }
   const actualOwnerPaths = ["packages", "adapters", "suites", "fixtures", "conformance"]
     .flatMap((directory) => walkFiles(directory))
@@ -115,7 +124,7 @@ test("one-owner-per-path", () => {
 });
 
 test("root-private-scripts-and-runnable-surface", () => {
-  const rootManifestText = readFileSync(resolve(repositoryRoot, "package.json"), "utf8");
+  const rootManifestText = readRegularFile("package.json");
   const rootManifest = JSON.parse(rootManifestText);
   const scriptsStart = rootManifestText.indexOf("  \"scripts\": {");
   const rootClosingBrace = rootManifestText.lastIndexOf("\n}");
@@ -151,7 +160,7 @@ test("engine-matrix", () => {
 });
 
 test("minimum-name-clearance", () => {
-  const clearance = readFileSync(resolve(repositoryRoot, "docs/clearance/MINIMUM-NAME-CLEARANCE.md"), "utf8");
+  const clearance = readRegularFile("docs/clearance/MINIMUM-NAME-CLEARANCE.md");
   const { matches, records } = parseClearanceRecords(clearance);
   assert.equal(records.length, 4);
   assert.deepEqual(records.map(({ heading }) => heading), ["GitHub", "npm", "Domain", "Basic trademark"]);
