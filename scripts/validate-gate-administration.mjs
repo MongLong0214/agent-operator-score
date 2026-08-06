@@ -146,22 +146,41 @@ const verifyCandidateTarget = (root, target, errors, label) => {
   } catch {
     errors.push(`${label} has no verifiable actual repository target`);
   }
+  const targetRef = `refs/remotes/origin/${target.branch}`;
   try {
-    const targetRef = `refs/remotes/origin/${target.branch}`;
     execFileSync("git", ["show-ref", "--verify", "--quiet", targetRef], {
       cwd: root,
       stdio: "ignore"
     });
+  } catch {
+    errors.push(`${label} target ref origin/${target.branch} is unavailable`);
+    return null;
+  }
+  try {
     execFileSync("git", ["merge-base", "--is-ancestor", targetRef, "HEAD"], {
       cwd: root,
       stdio: "ignore"
     });
   } catch {
     errors.push(`${label} exact candidate HEAD is not based on target ref origin/${target.branch}`);
+    return null;
+  }
+  return targetRef;
+};
+
+const isAncestor = (root, ancestor, descendant) => {
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", ancestor, descendant], {
+      cwd: root,
+      stdio: "ignore"
+    });
+    return true;
+  } catch {
+    return false;
   }
 };
 
-const verifyReviewedHead = (root, reviewedHead, errors, label, requireCandidateAncestry) => {
+const verifyReviewedHead = (root, reviewedHead, errors, label) => {
   if (!hash40(reviewedHead)) {
     errors.push(`${label} missing or malformed reviewed_head`);
     return false;
@@ -171,21 +190,40 @@ const verifyReviewedHead = (root, reviewedHead, errors, label, requireCandidateA
       cwd: root,
       stdio: "ignore"
     });
-    if (requireCandidateAncestry) {
-      try {
-        execFileSync("git", ["merge-base", "--is-ancestor", reviewedHead, "HEAD"], {
-          cwd: root,
-          stdio: "ignore"
-        });
-      } catch {
-        errors.push(`${label} reviewed_head is not an ancestor of exact candidate HEAD`);
-        return false;
-      }
-    }
     return true;
   } catch {
     errors.push(`${label} reviewed_head is not a resolvable commit`);
     return false;
+  }
+};
+
+const verifyTargetArtifact = (root, targetRef, artifact, errors, label) => {
+  try {
+    const targetBytes = execFileSync("git", ["show", `${targetRef}:${artifact.path}`], {
+      cwd: root,
+      encoding: "buffer",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    if (sha256(targetBytes) !== artifact.sha256) {
+      errors.push(`${label} target branch tip artifact digest is stale ${artifact.path}`);
+    }
+  } catch {
+    errors.push(`${label} target branch tip lacks accepted artifact ${artifact.path}`);
+  }
+};
+
+const verifyTargetRegistry = (root, targetRef, errors, label) => {
+  try {
+    const targetBytes = execFileSync("git", ["show", `${targetRef}:${canonicalRegistryRelativePath}`], {
+      cwd: root,
+      encoding: "buffer",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+    if (!targetBytes.equals(readFileSync(resolve(root, canonicalRegistryRelativePath)))) {
+      errors.push(`${label} target branch tip canonical registry does not match exact candidate registry`);
+    }
+  } catch {
+    errors.push(`${label} target branch tip lacks canonical registry`);
   }
 };
 
@@ -288,14 +326,16 @@ const verifyBatch = (root, batch, errors) => {
     return;
   }
 
-  if (batch.status === "ACCEPTED") verifyCandidateTarget(root, batch.target, errors, label);
+  const targetRef = batch.status === "ACCEPTED" ? verifyCandidateTarget(root, batch.target, errors, label) : null;
   const reviewedHeadIsValid = verifyReviewedHead(
     root,
     batch.target.reviewed_head,
     errors,
-    label,
-    batch.status === "ACCEPTED"
+    label
   );
+  const requiresTargetTipDigestProof = batch.status === "ACCEPTED" && reviewedHeadIsValid && targetRef &&
+    !isAncestor(root, batch.target.reviewed_head, "HEAD");
+  if (requiresTargetTipDigestProof) verifyTargetRegistry(root, targetRef, errors, label);
   const actualPairs = new Set();
   if (!Array.isArray(batch.artifacts) || batch.artifacts.length !== requiredPairs.size) {
     errors.push(`${label} has partial accepted artifacts`);
@@ -312,6 +352,7 @@ const verifyBatch = (root, batch, errors) => {
     if (reviewedHeadIsValid) {
       verifyReviewedArtifact(root, batch.target.reviewed_head, artifact, errors, label, batch.status !== "INVALIDATED");
     }
+    if (requiresTargetTipDigestProof) verifyTargetArtifact(root, targetRef, artifact, errors, label);
   }
   if (!sameSet(requiredPairs, actualPairs)) errors.push(`${label} accepted artifacts do not exactly close required scope`);
 
