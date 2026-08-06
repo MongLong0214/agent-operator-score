@@ -3,13 +3,28 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { validateGateAdministration } from "../scripts/validate-gate-administration.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
+const fixtureTempPrefix = "aos gate administration";
+
+/** Bounded cleanup for exact temporary gate fixtures only (Node 22 ENOTEMPTY on .git). */
+const removeTempFixture = (targetPath) => {
+  const resolved = resolve(targetPath);
+  const tempRoot = resolve(tmpdir());
+  const relToTemp = relative(tempRoot, resolved);
+  if (relToTemp === "" || relToTemp.startsWith("..") || isAbsolute(relToTemp)) {
+    throw new Error(`refusing to remove non-temp fixture path: ${resolved}`);
+  }
+  if (!basename(resolved).startsWith(fixtureTempPrefix)) {
+    throw new Error(`refusing to remove unexpected fixture path: ${resolved}`);
+  }
+  rmSync(resolved, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+};
 
 test("ADR-0003 limits npm workspaces to the SSOT six", () => {
   const adr = readFileSync(resolve(root, "docs/adr/ADR-0003-runtime-repository-and-distribution.md"), "utf8");
@@ -305,7 +320,7 @@ test("Gate Administrator validates a structurally complete future batch only thr
     assert.match(staleResult.error.stderr, /artifact digest is stale/);
 
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -325,7 +340,7 @@ test("PENDING registry is exact-head bound before structural PASS", () => {
     assert.equal(committedPending.error, undefined);
     assert.match(committedPending.output, new RegExp(`registry=pending.*candidate_head=${pendingHead}`));
   } finally {
-    rmSync(pendingFixture.parent, { recursive: true, force: true });
+    removeTempFixture(pendingFixture.parent);
   }
 });
 
@@ -345,7 +360,7 @@ test("PENDING required artifacts require valid SHA-256 digests", () => {
     assert.equal(malformedDigestResult.error.status, 1);
     assert.match(malformedDigestResult.error.stderr, /pending required artifact has missing or malformed sha256/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -361,7 +376,7 @@ test("REJECTED registry is exact-head bound before structural PASS", () => {
     assert.equal(committedRejected.error, undefined);
     assert.match(committedRejected.output, new RegExp(`registry=rejected.*candidate_head=${rejectedHead}`));
   } finally {
-    rmSync(rejectedFixture.parent, { recursive: true, force: true });
+    removeTempFixture(rejectedFixture.parent);
   }
 });
 
@@ -377,7 +392,7 @@ test("INVALIDATED registry is exact-head bound before structural PASS", () => {
     assert.equal(committedInvalidated.error, undefined);
     assert.match(committedInvalidated.output, new RegExp(`registry=invalidated.*candidate_head=${invalidatedHead}`));
   } finally {
-    rmSync(invalidatedFixture.parent, { recursive: true, force: true });
+    removeTempFixture(invalidatedFixture.parent);
   }
 });
 
@@ -400,7 +415,7 @@ test("no-Git fixture permits only all-PENDING structural output", () => {
     assert.equal(invalidatedResult.error.status, 1);
     assert.match(invalidatedResult.error.stderr, /cannot resolve exact candidate HEAD/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -421,7 +436,7 @@ test("canonical registry rejects a forged sibling registry and a canonical symli
     assert.equal(symlinked.error.status, 1);
     assert.match(symlinked.error.stderr, /regular non-symlink file|realpath escapes repository root/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -445,10 +460,10 @@ test("accepted candidate permits a feature branch and detached CI head based on 
       assert.equal(detached.error, undefined);
       assert.match(detached.output, new RegExp(`candidate_head=${candidateHead}`));
     } finally {
-      rmSync(detachedFixture.parent, { recursive: true, force: true });
+      removeTempFixture(detachedFixture.parent);
     }
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -478,7 +493,7 @@ test("accepted candidate fails closed when canonical schema or executed validato
     assert.equal(restored.error, undefined);
     assert.match(restored.output, new RegExp(`candidate_head=${candidateHead}`));
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -518,7 +533,7 @@ test("accepted candidate fails closed for unrelated target ancestry, wrong-owner
     assert.equal(wrongCandidateAncestryResult.error.status, 1);
     assert.match(wrongCandidateAncestryResult.error.stderr, /artifact does not match reviewed head/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -537,7 +552,7 @@ test("accepted batch accepts a squash-incorporated reviewed batch only with targ
     assert.match(result.output, /external_gate_evidence=required/);
     assert.match(result.output, /not_authorization/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -555,7 +570,7 @@ test("squash incorporation rejects a non-ancestor target ref and a target-tip ar
     assert.equal(result.error.status, 1);
     assert.match(result.error.stderr, /exact candidate HEAD is not based on target ref origin\/dev/);
   } finally {
-    rmSync(unrelatedFixture.parent, { recursive: true, force: true });
+    removeTempFixture(unrelatedFixture.parent);
   }
 
   const mismatchFixture = makeFixture();
@@ -575,7 +590,7 @@ test("squash incorporation rejects a non-ancestor target ref and a target-tip ar
     assert.equal(result.error.status, 1);
     assert.match(result.error.stderr, /target branch tip artifact digest is stale/);
   } finally {
-    rmSync(mismatchFixture.parent, { recursive: true, force: true });
+    removeTempFixture(mismatchFixture.parent);
   }
 });
 
@@ -592,7 +607,7 @@ test("squash fallback rejects an accepted registry introduced only by a feature 
     assert.equal(result.error.status, 1);
     assert.match(result.error.stderr, /target branch tip canonical registry does not match exact candidate registry/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -623,7 +638,7 @@ test("squash incorporation rejects wrong owner or branch, missing target refs, a
     assert.equal(featureSpoof.error.status, 1);
     assert.match(featureSpoof.error.stderr, /wrong repository target/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -640,7 +655,7 @@ test("a structural-only approval spoof is explicitly external gate evidence, nev
     assert.match(result.output, /not_authorization/);
     assert.doesNotMatch(result.output, /authorization=granted/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
