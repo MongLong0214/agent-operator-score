@@ -2145,6 +2145,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "path": "tests/planning-contract.test.mjs",
       "cases": [
         "computed-product-code-census",
+        "d0-003-historical-pr53-boundary",
         "encoded-path-root-resolution",
         "identity-consistency-and-no-exception",
         "issue-map-and-manifest-agreement",
@@ -2325,7 +2326,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-003-1",
       "test_path": "tests/planning-contract.test.mjs",
       "cases": [
-        "superseded-d0-003-has-no-owned-implementation"
+        "d0-003-historical-pr53-boundary"
       ]
     },
     {
