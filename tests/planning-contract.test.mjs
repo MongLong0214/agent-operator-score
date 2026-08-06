@@ -555,6 +555,36 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       "orphan/missing named test case"
     );
 
+    // Case-less/path-less prose on a normal edge must fail (cannot borrow the historical bypass).
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ historical evidence `PR #53`: arbitrary case-less prose:"
+          )
+        );
+      },
+      /malformed named test case/,
+      "normal edge case-less historical prose rejected"
+    );
+
+    // Arbitrary case-less prose without historical contract also fails.
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ no planned path or named cases here:"
+          )
+        );
+      },
+      /malformed named test case/,
+      "normal edge arbitrary case-less prose rejected"
+    );
+
     // Planned path: typo in ticket prose diverges from explicit catalog binding.
     expectFail(
       () => {
