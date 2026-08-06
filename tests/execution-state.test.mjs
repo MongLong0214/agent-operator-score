@@ -2023,6 +2023,95 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
 });
 
+test("executable-ticket-missing-or-malformed-declared-ownership-fails-closed", async () => {
+  // R11: missing/malformed declared owned_paths/owned_symbols must not authorize RED packet.
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  delete facts.tickets["D0-004"].owned_paths;
+  delete facts.tickets["D0-004"].owned_symbols;
+  facts.activeOwnership = [];
+  const { result } = await resolveOffline(facts);
+  assert.equal(result.readySet.includes("D0-004"), false);
+  const d0004 = result.tickets?.["D0-004"];
+  if (d0004) {
+    assert.notEqual(d0004.readiness, "ready");
+    assert.equal(d0004.packet, null);
+  }
+  const codes = [
+    ...(d0004 ? blockerCodes(d0004) : []),
+    ...(result.errors ?? []).map((entry) => entry.code)
+  ];
+  assert.ok(
+    codes.includes("TICKET_CONTRACT_INCOMPLETE") || codes.includes("RED_CONTRACT_INVALID"),
+    `expected ownership contract blocker, got ${codes.join(",")}`
+  );
+
+  const emptyPaths = makeReadyD0004Facts(loadBaselineFacts());
+  emptyPaths.tickets["D0-004"].owned_paths = [];
+  emptyPaths.tickets["D0-004"].owned_symbols = [];
+  emptyPaths.activeOwnership = [];
+  const { result: emptyResult } = await resolveOffline(emptyPaths);
+  assert.equal(emptyResult.readySet.includes("D0-004"), false);
+  const emptyTicket = emptyResult.tickets?.["D0-004"];
+  if (emptyTicket) assert.notEqual(emptyTicket.readiness, "ready");
+  const emptyCodes = [
+    ...(emptyTicket ? blockerCodes(emptyTicket) : []),
+    ...(emptyResult.errors ?? []).map((entry) => entry.code)
+  ];
+  assert.ok(
+    emptyCodes.includes("TICKET_CONTRACT_INCOMPLETE") || emptyCodes.includes("RED_CONTRACT_INVALID"),
+    `expected empty-path ownership contract blocker, got ${emptyCodes.join(",")}`
+  );
+});
+
+test("live-collector-paginates-or-fails-closed-on-truncated-open-pulls", async () => {
+  // R11: first-page-only open PR collection must not omit later ownership lanes.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const baseKey = "repos/MongLong0214/agent-operator-score/pulls?state=open&base=dev&per_page=50";
+  const tip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  const originalOpen = responses[baseKey];
+  assert.ok(Array.isArray(originalOpen) && originalOpen.length >= 1);
+  const sharedHead = originalOpen[0].head.sha;
+  // Page 1 is full of non-ticket PRs so candidate CI is not required for them.
+  // Shared head SHA keeps workflow-blob probes within fixture coverage.
+  const page1 = [];
+  for (let i = 1; i <= 50; i += 1) {
+    page1.push({
+      number: 1000 + i,
+      body: "chore: no ticket field",
+      base: { ref: "dev", sha: tip },
+      head: { sha: sharedHead },
+      state: "open",
+      user: { login: "MongLong0214" },
+      labels: []
+    });
+  }
+  // Canonical ticket candidate lives on page 2 — must not be dropped.
+  const page2 = originalOpen;
+  const multipage = clone(responses);
+  multipage[baseKey] = page1;
+  multipage[`${baseKey}&page=2`] = page2;
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(multipage) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.ok(
+    collected.facts.prs.some((pr) => pr.number === originalOpen[0].number),
+    "collector must include open PRs beyond the first page"
+  );
+  assert.ok(
+    collected.facts.activeOwnership.some((entry) => entry.ticket_id === "D0-004"),
+    "collector must surface page-2 ownership lanes"
+  );
+
+  // Truncation without a subsequent page must fail closed.
+  const truncated = clone(responses);
+  truncated[baseKey] = page1;
+  const failed = collectLiveExecutionFacts(root, { transport: createFixtureTransport(truncated) });
+  assert.equal(failed.ok, false);
+  assert.match(failed.reason, /truncat|page|pull list|open pull|pagination|unavailable/i);
+});
+
 test("ready-ticket-no-self-active-ownership-declared-path-and-symbol-overlap-fails-closed", async () => {
   // R10: declared owned_paths/owned_symbols must collide against active lanes even without a self row.
   const facts = makeReadyD0004Facts(loadBaselineFacts());
