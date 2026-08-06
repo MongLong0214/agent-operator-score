@@ -6,7 +6,7 @@
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches. D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority. The only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal` at reviewed artifact head `c84185e99cffaa16ba66d49fb2c8676d4e18340c`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches. D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority. The only current structurally `ACCEPTED` batch is `d0-002-prerequisites-red-census-contract-correction-renewal` at reviewed artifact head `2713d5e8646ff69c979aa1114d6f6ae78d804c7f`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -32,7 +32,7 @@ The CEO activation, protected independent review/CI, and final-receipt exact-hea
 
 ## Record model and lifecycle
 
-The registry retains all four invalidated D0-001 prerequisite batches as historical records and carries the current structurally `ACCEPTED` D0-002 contract-correction renewal batch. `required_artifacts` and `required_transitions` state what a record must close. The D0-002 record binds each required artifact to its current SHA-256 digest and exact reviewed artifact head; the mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
+The registry retains all four invalidated D0-001 prerequisite batches and the invalidated prior D0-002 renewal as historical records and carries the current structurally `ACCEPTED` D0-002 RED-census contract-correction renewal batch. `required_artifacts` and `required_transitions` state what a record must close. The D0-002 record binds each required artifact to its current SHA-256 digest and exact reviewed artifact head; the mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
 
 ```text
 PENDING --(complete exact batch, distinct Maintainer approval)--> ACCEPTED
@@ -48,13 +48,13 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. All D0-001 prerequisite batches remain invalidated; none is a current planning acceptance or execution authority. D0-001 implementation completion is retained solely as historical post-merge completion evidence. The only current structurally `ACCEPTED` batch is `d0-002-prerequisites-adr-0003-contract-correction-renewal`; it binds the current five prerequisite digests at `c84185e99cffaa16ba66d49fb2c8676d4e18340c` and is not execution authority.
-2. The Gate Administrator records the complete D0-002 contract-correction renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
+1. All D0-001 prerequisite batches remain invalidated; none is a current planning acceptance or execution authority. D0-001 implementation completion is retained solely as historical post-merge completion evidence. The only current structurally `ACCEPTED` batch is `d0-002-prerequisites-red-census-contract-correction-renewal`; it binds the current five prerequisite digests at `2713d5e8646ff69c979aa1114d6f6ae78d804c7f` and is not execution authority.
+2. The Gate Administrator records the complete D0-002 RED-census contract-correction renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
 3. Main performs external cumulative exact-head CEO review and requires exact-head CI of that final candidate. Only the reviewed final head may be merged.
 4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
 
 ## Non-authorizations and invalidation
 
-This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains four invalidated D0-001 historic batches and the only current structurally `ACCEPTED` D0-002 contract-correction renewal; its mutable structural approval record is not authenticated external authorization, and all ADRs/PRDs/tickets remain proposed or blocked. D0-001 verified post-merge completion remains historical completion evidence only.
+This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains four invalidated D0-001 historic batches, the invalidated prior D0-002 renewal, and the only current structurally `ACCEPTED` D0-002 RED-census contract-correction renewal; its mutable structural approval record is not authenticated external authorization, and all ADRs/PRDs/tickets remain proposed or blocked. D0-001 verified post-merge completion remains historical completion evidence only.
 
 The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh external review of a renewed candidate is the next required action.
