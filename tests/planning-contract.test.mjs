@@ -482,6 +482,40 @@ test("computed-product-code-census", () => {
   }
 });
 
+const runPlanningValidator = (fixture) => {
+  try {
+    const stdout = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+      cwd: fixture,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    return { status: 0, stdout, stderr: "" };
+  } catch (caught) {
+    return {
+      status: caught.status ?? 1,
+      stdout: caught.stdout ?? "",
+      stderr: caught.stderr ?? ""
+    };
+  }
+};
+
+const readCatalog = (fixture) => {
+  const tracePath = join(fixture, "docs/TRACEABILITY.md");
+  const traceability = readFileSync(tracePath, "utf8");
+  const catalogMatch = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m);
+  assert.ok(catalogMatch);
+  return {
+    tracePath,
+    traceability,
+    catalogMatch,
+    catalog: JSON.parse(catalogMatch[1])
+  };
+};
+
+const writeCatalog = ({ tracePath, traceability, catalogMatch, catalog }) => {
+  writeFileSync(tracePath, traceability.replace(catalogMatch[1], JSON.stringify(catalog, null, 2)));
+};
+
 test("orphan-requirement-ac-ticket-test-mutants", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos orphan graph mutants "));
   const fixture = join(parent, "repository");
@@ -491,80 +525,203 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       filter: (source) => ![".git", "node_modules"].includes(basename(source))
     });
     setPendingGateRegistry(fixture);
-
-    // Mutant: invent a named test case on an existing planned path (fail-open repro).
     const ticketPath = join(fixture, "docs/tickets/D0/D0-001-canonical-identifier-registry.md");
     const originalTicket = readFileSync(ticketPath, "utf8");
-    writeFileSync(
-      ticketPath,
-      originalTicket.replace(
-        "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
-        "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `definitely-not-a-real-test-case`:"
-      )
-    );
-    setPendingGateRegistry(fixture);
-    let error;
-    try {
-      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: fixture,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-    } catch (caught) {
-      error = caught;
-    }
-    assert.ok(error, "invented named test case must fail closed");
-    assert.equal(error.status, 1);
-    assert.match(error.stderr, /named test case not found/);
-    assert.match(error.stderr, /definitely-not-a-real-test-case/);
-    writeFileSync(ticketPath, originalTicket);
-
-    // Mutant: malformed planned test path.
-    writeFileSync(
-      ticketPath,
-      originalTicket.replace(
-        "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
-        "- AC-D0-001-1 ↔ `../escape.test.mjs` case `canonical-pass`:"
-      )
-    );
-    setPendingGateRegistry(fixture);
-    error = undefined;
-    try {
-      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: fixture,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-    } catch (caught) {
-      error = caught;
-    }
-    assert.ok(error);
-    assert.match(error.stderr, /malformed planned test path/);
-    writeFileSync(ticketPath, originalTicket);
-    setPendingGateRegistry(fixture);
-
-    // Mutant: duplicate PRD acceptance in catalog requirement edge.
+    const originalTraceability = readFileSync(join(fixture, "docs/TRACEABILITY.md"), "utf8");
     const tracePath = join(fixture, "docs/TRACEABILITY.md");
-    const traceability = readFileSync(tracePath, "utf8");
-    const catalogMatch = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m);
-    assert.ok(catalogMatch);
-    const catalog = JSON.parse(catalogMatch[1]);
-    const d0 = catalog.prds.find(({ id }) => id === "D0");
-    d0.requirement_to_acceptance[0].acceptance_ids.push(d0.requirement_to_acceptance[0].acceptance_ids[0]);
-    writeFileSync(tracePath, traceability.replace(catalogMatch[1], JSON.stringify(catalog, null, 2)));
-    setPendingGateRegistry(fixture);
-    error = undefined;
-    try {
-      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: fixture,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-    } catch (caught) {
-      error = caught;
-    }
-    assert.ok(error);
-    assert.match(error.stderr, /duplicate acceptance binding/);
+
+    const expectFail = (mutate, pattern, label) => {
+      mutate();
+      setPendingGateRegistry(fixture);
+      const result = runPlanningValidator(fixture);
+      assert.equal(result.status, 1, `${label} must fail closed`);
+      assert.match(result.stderr, pattern, `${label} must match ${pattern}`);
+      writeFileSync(ticketPath, originalTicket);
+      writeFileSync(tracePath, originalTraceability);
+    };
+
+    // Named test case: invent a case on an existing planned path (CEO fail-open repro).
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `definitely-not-a-real-test-case`:"
+          )
+        );
+      },
+      /named test case not found[\s\S]*definitely-not-a-real-test-case/,
+      "orphan/missing named test case"
+    );
+
+    // Named test case: duplicate case names in one edge.
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` cases `canonical-pass` and `canonical-pass`:"
+          )
+        );
+      },
+      /duplicate named test case/,
+      "duplicate named test case"
+    );
+
+    // Named test case / ticket AC: malformed edge without a case binding.
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` without a named case:"
+          )
+        );
+      },
+      /malformed named test case/,
+      "malformed ticket AC / named test case"
+    );
+
+    // Planned test path: malformed escape outside allowed roots.
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `canonical-pass`:",
+            "- AC-D0-001-1 ↔ `../escape.test.mjs` case `canonical-pass`:"
+          )
+        );
+      },
+      /malformed planned test path/,
+      "malformed planned test path"
+    );
+
+    // Ticket AC: duplicate acceptance IDs on the ticket contract.
+    expectFail(
+      () => {
+        writeFileSync(
+          ticketPath,
+          originalTicket.replace(
+            "- AC-D0-001-2 ↔ `tests/planning/identity.test.mjs` case `each-forbidden-token`:",
+            "- AC-D0-001-1 ↔ `tests/planning/identity.test.mjs` case `each-forbidden-token`:"
+          )
+        );
+      },
+      /duplicate ticket acceptance edges/,
+      "duplicate ticket AC"
+    );
+
+    // Catalog requirement: orphan requirement key.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.requirement_to_acceptance = d0.requirement_to_acceptance.filter((edge) => edge.requirement_key !== "5");
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /missing requirement → acceptance edges|orphan requirement 5/,
+      "orphan requirement"
+    );
+
+    // Catalog requirement: duplicate requirement edge.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.requirement_to_acceptance.push({ ...d0.requirement_to_acceptance[0] });
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /duplicate requirement edge|missing requirement → acceptance edges/,
+      "duplicate requirement"
+    );
+
+    // Catalog requirement: malformed requirement edge.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.requirement_to_acceptance[0] = { requirement_key: 1, acceptance_ids: "AC-D0-1" };
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /malformed requirement → acceptance edge/,
+      "malformed requirement"
+    );
+
+    // PRD AC: duplicate acceptance binding inside a requirement edge.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.requirement_to_acceptance[0].acceptance_ids.push(d0.requirement_to_acceptance[0].acceptance_ids[0]);
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /duplicate acceptance binding/,
+      "duplicate PRD AC binding"
+    );
+
+    // PRD AC: orphan acceptance (drop from requirement bindings).
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.requirement_to_acceptance = d0.requirement_to_acceptance.map((edge) => ({
+          ...edge,
+          acceptance_ids: edge.acceptance_ids.filter((id) => id !== "AC-D0-6")
+        }));
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan PRD acceptance AC-D0-6/,
+      "orphan PRD AC"
+    );
+
+    // PRD AC: malformed acceptance → ticket edge.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.acceptance_to_tickets[0] = { acceptance_id: "AC-D0-1", ticket_ids: "D0-001" };
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /malformed acceptance → ticket edge/,
+      "malformed PRD AC → ticket edge"
+    );
+
+    // Ticket: orphan ticket ownership (drop from catalog ticket_ids and AC bindings).
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.ticket_ids = ["D0-001", "D0-002", "D0-003"];
+        d0.acceptance_to_tickets = d0.acceptance_to_tickets
+          .map((edge) => ({
+            ...edge,
+            ticket_ids: edge.ticket_ids.filter((id) => id !== "D0-004")
+          }))
+          .filter((edge) => edge.ticket_ids.length > 0);
+        // Keep one edge per remaining acceptance id; drop AC-D0-4 only.
+        d0.acceptance_to_tickets = d0.acceptance_to_tickets.filter((edge) => edge.acceptance_id !== "AC-D0-4");
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /orphan ticket D0-004|ticket ownership diverges from catalog|missing acceptance → ticket edges/,
+      "orphan ticket"
+    );
+
+    // Ticket: duplicate ticket ownership across PRD entries is covered by dropping then re-adding
+    // the same ticket id twice on D0.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
+        d0.ticket_ids = [...d0.ticket_ids, "D0-001"];
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /ticket ownership diverges from catalog|duplicate ticket/,
+      "duplicate ticket ownership"
+    );
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
@@ -579,31 +736,18 @@ test("semantic-traceability-graph", () => {
       filter: (source) => ![".git", "node_modules"].includes(basename(source))
     });
     setPendingGateRegistry(fixture);
-    const tracePath = join(fixture, "docs/TRACEABILITY.md");
-    const traceability = readFileSync(tracePath, "utf8");
-    const catalogMatch = traceability.match(/<!-- AOS_SEMANTIC_CATALOG_V2_START -->\s*```json\s*([\s\S]*?)\s*```\s*<!-- AOS_SEMANTIC_CATALOG_V2_END -->/m);
-    assert.ok(catalogMatch);
-    const catalog = JSON.parse(catalogMatch[1]);
-    const d0 = catalog.prds.find(({ id }) => id === "D0");
+    const snapshot = readCatalog(fixture);
+    const d0 = snapshot.catalog.prds.find(({ id }) => id === "D0");
     // Orphan PRD acceptance: drop it from requirement bindings.
     d0.requirement_to_acceptance = d0.requirement_to_acceptance.map((edge) => ({
       ...edge,
       acceptance_ids: edge.acceptance_ids.filter((id) => id !== "AC-D0-6")
     }));
-    writeFileSync(tracePath, traceability.replace(catalogMatch[1], JSON.stringify(catalog, null, 2)));
+    writeCatalog({ ...snapshot, catalog: snapshot.catalog });
     setPendingGateRegistry(fixture);
-    let error;
-    try {
-      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: fixture,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"]
-      });
-    } catch (caught) {
-      error = caught;
-    }
-    assert.ok(error);
-    assert.match(error.stderr, /orphan PRD acceptance AC-D0-6/);
+    const result = runPlanningValidator(fixture);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /orphan PRD acceptance AC-D0-6/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
