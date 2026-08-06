@@ -126,6 +126,47 @@ const makeAcceptedFixture = (fixtureRoot, reviewedHead = execFileSync("git", ["r
   return registry;
 };
 
+const createSquashIncorporatedFixture = (fixtureRoot) => {
+  const baseHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+  const artifactPath = "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md";
+  execFileSync("git", ["checkout", "-qb", "reviewed-batch"], { cwd: fixtureRoot });
+  writeFileSync(join(fixtureRoot, artifactPath), `${readFileSync(join(fixtureRoot, artifactPath), "utf8")}\nReviewed batch artifact.\n`);
+  execFileSync("git", ["add", artifactPath], { cwd: fixtureRoot });
+  execFileSync("git", ["commit", "-qm", "reviewed batch artifact"], { cwd: fixtureRoot });
+  const reviewedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+  const accepted = makeAcceptedFixture(fixtureRoot, reviewedHead);
+  writeFileSync(join(fixtureRoot, canonicalRegistry), `${JSON.stringify(accepted, null, 2)}\n`);
+  execFileSync("git", ["add", canonicalRegistry], { cwd: fixtureRoot });
+  execFileSync("git", ["commit", "-qm", "reviewed accepted gate record"], { cwd: fixtureRoot });
+  const reviewedCandidateHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+  const targetHead = execFileSync("git", ["commit-tree", `${reviewedCandidateHead}^{tree}`, "-p", baseHead], {
+    cwd: fixtureRoot,
+    encoding: "utf8"
+  }).trim();
+  execFileSync("git", ["update-ref", "refs/heads/dev", targetHead], { cwd: fixtureRoot });
+  execFileSync("git", ["update-ref", "refs/remotes/origin/dev", targetHead], { cwd: fixtureRoot });
+  execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
+  return { artifactPath, baseHead, reviewedHead, reviewedCandidateHead, targetHead };
+};
+
+const createFeatureOnlyAcceptedRegistryFixture = (fixtureRoot) => {
+  const baseHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+  const artifactPath = "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md";
+  execFileSync("git", ["checkout", "-qb", "reviewed-feature-only-registry"], { cwd: fixtureRoot });
+  writeFileSync(join(fixtureRoot, artifactPath), `${readFileSync(join(fixtureRoot, artifactPath), "utf8")}\nReviewed batch artifact.\n`);
+  execFileSync("git", ["add", artifactPath], { cwd: fixtureRoot });
+  execFileSync("git", ["commit", "-qm", "reviewed batch artifact"], { cwd: fixtureRoot });
+  const reviewedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+  const targetHead = execFileSync("git", ["commit-tree", `${reviewedHead}^{tree}`, "-p", baseHead], {
+    cwd: fixtureRoot,
+    encoding: "utf8"
+  }).trim();
+  execFileSync("git", ["update-ref", "refs/heads/dev", targetHead], { cwd: fixtureRoot });
+  execFileSync("git", ["update-ref", "refs/remotes/origin/dev", targetHead], { cwd: fixtureRoot });
+  execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
+  return { reviewedHead, targetHead };
+};
+
 const makeRejectedFixture = (fixtureRoot) => {
   const registry = JSON.parse(readFileSync(join(fixtureRoot, canonicalRegistry), "utf8"));
   const batch = registry.batches[0];
@@ -441,7 +482,7 @@ test("accepted candidate fails closed when canonical schema or executed validato
   }
 });
 
-test("accepted candidate fails closed for unrelated target ancestry, wrong-owner remote, and reviewed-head candidate ancestry", () => {
+test("accepted candidate fails closed for unrelated target ancestry, wrong-owner remote, and an unincorporated feature reviewed head", () => {
   const { parent, fixtureRoot } = makeFixture();
   try {
     const accepted = makeAcceptedFixture(fixtureRoot);
@@ -464,15 +505,123 @@ test("accepted candidate fails closed for unrelated target ancestry, wrong-owner
     assert.match(unrelated.error.stderr, /exact candidate HEAD is not based on target ref/);
 
     execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
-    const existingButUnreviewedHead = execFileSync("git", ["commit-tree", `${baseHead}^{tree}`, "-p", baseHead], {
-      cwd: fixtureRoot,
-      encoding: "utf8"
-    }).trim();
+    const featureArtifactPath = "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md";
+    execFileSync("git", ["checkout", "-qb", "unincorporated-review-feature"], { cwd: fixtureRoot });
+    writeFileSync(join(fixtureRoot, featureArtifactPath), `${readFileSync(join(fixtureRoot, featureArtifactPath), "utf8")}\nUnincorporated feature artifact.\n`);
+    execFileSync("git", ["add", featureArtifactPath], { cwd: fixtureRoot });
+    execFileSync("git", ["commit", "-qm", "unincorporated feature artifact"], { cwd: fixtureRoot });
+    const existingButUnreviewedHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+    execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixtureRoot });
     const wrongCandidateAncestry = structuredClone(accepted);
     wrongCandidateAncestry.batches[0].target.reviewed_head = existingButUnreviewedHead;
     const wrongCandidateAncestryResult = runRegistry(fixtureRoot, wrongCandidateAncestry);
     assert.equal(wrongCandidateAncestryResult.error.status, 1);
-    assert.match(wrongCandidateAncestryResult.error.stderr, /reviewed_head is not an ancestor of exact candidate HEAD/);
+    assert.match(wrongCandidateAncestryResult.error.stderr, /artifact does not match reviewed head/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("accepted batch accepts a squash-incorporated reviewed batch only with target-tip digest proof", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const { reviewedHead, reviewedCandidateHead, targetHead } = createSquashIncorporatedFixture(fixtureRoot);
+    const candidateHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+
+    assert.throws(() => execFileSync("git", ["merge-base", "--is-ancestor", reviewedHead, candidateHead], { cwd: fixtureRoot }));
+    assert.doesNotThrow(() => execFileSync("git", ["merge-base", "--is-ancestor", targetHead, candidateHead], { cwd: fixtureRoot }));
+    assert.doesNotThrow(() => execFileSync("git", ["diff", "--quiet", reviewedCandidateHead, targetHead], { cwd: fixtureRoot }));
+
+    const result = runCli(fixtureRoot);
+    assert.equal(result.error, undefined);
+    assert.match(result.output, /external_gate_evidence=required/);
+    assert.match(result.output, /not_authorization/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("squash incorporation rejects a non-ancestor target ref and a target-tip artifact digest mismatch", () => {
+  const unrelatedFixture = makeFixture();
+  try {
+    const accepted = makeAcceptedFixture(unrelatedFixture.fixtureRoot);
+    const candidateHead = commitRegistryCandidate(unrelatedFixture.fixtureRoot, accepted);
+    const unrelatedTarget = execFileSync("git", ["commit-tree", `${candidateHead}^{tree}`], {
+      cwd: unrelatedFixture.fixtureRoot,
+      encoding: "utf8"
+    }).trim();
+    execFileSync("git", ["update-ref", "refs/remotes/origin/dev", unrelatedTarget], { cwd: unrelatedFixture.fixtureRoot });
+    const result = runCli(unrelatedFixture.fixtureRoot);
+    assert.equal(result.error.status, 1);
+    assert.match(result.error.stderr, /exact candidate HEAD is not based on target ref origin\/dev/);
+  } finally {
+    rmSync(unrelatedFixture.parent, { recursive: true, force: true });
+  }
+
+  const mismatchFixture = makeFixture();
+  try {
+    const { artifactPath, reviewedHead, targetHead } = createSquashIncorporatedFixture(mismatchFixture.fixtureRoot);
+    const reviewedBytes = readFileSync(join(mismatchFixture.fixtureRoot, artifactPath), "utf8");
+    writeFileSync(join(mismatchFixture.fixtureRoot, artifactPath), `${reviewedBytes}\nTarget-tip mismatch.\n`);
+    execFileSync("git", ["add", artifactPath], { cwd: mismatchFixture.fixtureRoot });
+    execFileSync("git", ["commit", "-qm", "target tip changes reviewed artifact"], { cwd: mismatchFixture.fixtureRoot });
+    const mismatchedTarget = execFileSync("git", ["rev-parse", "HEAD"], { cwd: mismatchFixture.fixtureRoot, encoding: "utf8" }).trim();
+    execFileSync("git", ["update-ref", "refs/remotes/origin/dev", mismatchedTarget], { cwd: mismatchFixture.fixtureRoot });
+    writeFileSync(join(mismatchFixture.fixtureRoot, artifactPath), reviewedBytes);
+    execFileSync("git", ["add", artifactPath], { cwd: mismatchFixture.fixtureRoot });
+    execFileSync("git", ["commit", "-qm", "restore reviewed artifact for candidate"], { cwd: mismatchFixture.fixtureRoot });
+    assert.notEqual(targetHead, mismatchedTarget);
+    const result = runCli(mismatchFixture.fixtureRoot);
+    assert.equal(result.error.status, 1);
+    assert.match(result.error.stderr, /target branch tip artifact digest is stale/);
+  } finally {
+    rmSync(mismatchFixture.parent, { recursive: true, force: true });
+  }
+});
+
+test("squash fallback rejects an accepted registry introduced only by a feature candidate", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const { reviewedHead, targetHead } = createFeatureOnlyAcceptedRegistryFixture(fixtureRoot);
+    const accepted = makeAcceptedFixture(fixtureRoot, reviewedHead);
+    const candidateHead = commitRegistryCandidate(fixtureRoot, accepted);
+
+    assert.throws(() => execFileSync("git", ["merge-base", "--is-ancestor", reviewedHead, candidateHead], { cwd: fixtureRoot }));
+    assert.doesNotThrow(() => execFileSync("git", ["merge-base", "--is-ancestor", targetHead, candidateHead], { cwd: fixtureRoot }));
+    const result = runCli(fixtureRoot);
+    assert.equal(result.error.status, 1);
+    assert.match(result.error.stderr, /target branch tip canonical registry does not match exact candidate registry/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("squash incorporation rejects wrong owner or branch, missing target refs, and feature-target spoofing", () => {
+  const { parent, fixtureRoot } = makeFixture();
+  try {
+    const accepted = makeAcceptedFixture(fixtureRoot);
+
+    execFileSync("git", ["remote", "set-url", "origin", "git@github.com:wrong-owner/agent-operator-score.git"], { cwd: fixtureRoot });
+    const wrongOwner = runRegistry(fixtureRoot, accepted);
+    assert.equal(wrongOwner.error.status, 1);
+    assert.match(wrongOwner.error.stderr, /wrong actual repository target/);
+
+    execFileSync("git", ["remote", "set-url", "origin", "git@github.com:MongLong0214/agent-operator-score.git"], { cwd: fixtureRoot });
+    execFileSync("git", ["update-ref", "-d", "refs/remotes/origin/dev"], { cwd: fixtureRoot });
+    const missingTarget = runRegistry(fixtureRoot, accepted);
+    assert.equal(missingTarget.error.status, 1);
+    assert.match(missingTarget.error.stderr, /target ref origin\/dev is unavailable/);
+
+    const baseHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+    const featureHead = execFileSync("git", ["commit-tree", `${baseHead}^{tree}`, "-p", baseHead], { cwd: fixtureRoot, encoding: "utf8" }).trim();
+    execFileSync("git", ["update-ref", "refs/heads/feature-squash-spoof", featureHead], { cwd: fixtureRoot });
+    execFileSync("git", ["update-ref", "refs/remotes/origin/feature-squash-spoof", featureHead], { cwd: fixtureRoot });
+    execFileSync("git", ["checkout", "-q", "feature-squash-spoof"], { cwd: fixtureRoot });
+    const spoofed = structuredClone(accepted);
+    spoofed.batches[0].target.branch = "feature-squash-spoof";
+    const featureSpoof = runRegistry(fixtureRoot, spoofed);
+    assert.equal(featureSpoof.error.status, 1);
+    assert.match(featureSpoof.error.stderr, /wrong repository target/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
