@@ -1972,11 +1972,15 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     const body = pull.body ?? "";
     const ticketId = parseTicketIdFromBody(body);
     const author = pull.user?.login ?? null;
+    const authenticatedBaseSha = pull.base?.sha;
+    if (typeof authenticatedBaseSha !== "string" || !/^[0-9a-f]{40}$/i.test(authenticatedBaseSha)) {
+      return { ok: false, reason: `authenticated pull.base.sha unavailable for PR #${pull.number}`, facts: null };
+    }
     if (author) actors.add(author);
     prs.push({
       number: pull.number,
       base: pull.base?.ref,
-      base_sha: pull.base?.sha ?? liveTip,
+      base_sha: authenticatedBaseSha,
       head_sha: pull.head?.sha,
       author,
       body,
@@ -2022,7 +2026,34 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       }
     }
 
-    for (const run of headRuns.workflow_runs) {
+    const requiredCandidateChecks = expected.candidate_ci.required_checks.filter(
+      (check) => d0_004c_merged_early || check.name !== "operational-state-offline"
+    );
+    const requiredByWorkflow = new Map();
+    for (const requiredCheck of requiredCandidateChecks) {
+      const names = requiredByWorkflow.get(requiredCheck.workflow_path) ?? new Set();
+      names.add(requiredCheck.name);
+      requiredByWorkflow.set(requiredCheck.workflow_path, names);
+    }
+
+    for (const [workflowPath, requiredNames] of requiredByWorkflow) {
+      const candidates = headRuns.workflow_runs.filter(
+        (run) =>
+          run?.path === workflowPath &&
+          run?.head_sha === head &&
+          run?.event === expected.candidate_ci.required_event
+      );
+      const selected = selectLatestWorkflowRun(
+        candidates.map((run) => ({ ...run, run_id: run.id }))
+      );
+      if (!selected.ok) {
+        return {
+          ok: false,
+          reason: `${selected.reason} for required workflow ${workflowPath} on ${head}`,
+          facts: null
+        };
+      }
+      const run = selected.run;
       if (typeof run.id !== "number" || typeof run.run_attempt !== "number") {
         return {
           ok: false,
@@ -2044,22 +2075,29 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
           facts: null
         };
       }
-      let jobs = null;
       const attemptJobs = transportCall(
         transport,
         "getJson",
         `${repoPath}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=50`
       );
-      if (attemptJobs.ok && Array.isArray(attemptJobs.value?.jobs)) {
-        jobs = attemptJobs.value.jobs;
-      } else {
-        const baseJobs = requireJson(transport, `${repoPath}/actions/runs/${run.id}/jobs?per_page=50`, failures);
-        jobs = baseJobs?.jobs ?? null;
+      if (!attemptJobs.ok || !Array.isArray(attemptJobs.value?.jobs)) {
+        return {
+          ok: false,
+          reason: attemptJobs.reason || `attempt-specific jobs unavailable for run ${run.id} attempt ${run.run_attempt}`,
+          facts: null
+        };
       }
-      if (!Array.isArray(jobs)) {
-        return { ok: false, reason: failures.join("; ") || `jobs unavailable for run ${run.id}`, facts: null };
-      }
-      for (const job of jobs) {
+      const jobs = attemptJobs.value.jobs;
+      for (const requiredName of requiredNames) {
+        const matchingJobs = jobs.filter((job) => job?.name === requiredName);
+        if (matchingJobs.length !== 1) {
+          return {
+            ok: false,
+            reason: `ambiguous or missing required job ${requiredName} for run ${run.id} attempt ${run.run_attempt}`,
+            facts: null
+          };
+        }
+        const job = matchingJobs[0];
         if (job.run_id != null && Number(job.run_id) !== run.id) {
           return {
             ok: false,
@@ -2212,13 +2250,6 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
           return {
             ok: false,
             reason: `job/check-run terminal mismatch for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
-            facts: null
-          };
-        }
-        if (status !== "completed" || conclusion !== "success") {
-          return {
-            ok: false,
-            reason: `job/check-run terminal state not successful for ${job.name} run ${run.id} attempt ${run.run_attempt}`,
             facts: null
           };
         }
@@ -2479,7 +2510,8 @@ export const resolveExecutionState = (options = {}) => {
             repository: derived.repository,
             // Resolve against the policy target branch identity, not a local feature branch name.
             branch: expectedActorPolicyFromTicket().target_branch,
-            head: facts?.currentHead ?? derived.head
+            // A local feature SHA is never evidence of the live target head.
+            head: facts?.currentHead ?? null
           };
         })()
       : {
@@ -2703,7 +2735,8 @@ const main = () => {
           repository: identity.repository ?? expectedActorPolicyFromTicket().repository,
           // Online-strict resolves the live target branch, not the local feature branch name.
           branch: expectedActorPolicyFromTicket().target_branch,
-          head: identity.head ?? null
+          // Acquisition failed, so no authenticated live-dev SHA is available.
+          head: null
         },
         [blocker("EXTERNAL_STATE_UNAVAILABLE", acquired.reason ?? "external facts unavailable")]
       );
