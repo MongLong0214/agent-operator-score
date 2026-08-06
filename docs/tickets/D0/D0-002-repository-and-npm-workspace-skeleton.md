@@ -14,7 +14,7 @@ Create the real zero-product-code npm workspace skeleton required by SSOT §9.4.
 ## Exact ownership
 
 - `package.json` except `scripts.test`, which remains D0-001-owned and byte-for-byte unchanged; only the deterministic `package-lock.json` subset for the root plus the exact six workspaces selected by root patterns `packages/*` and `adapters/*` and their generated link records, as produced by the execution-packet-pinned npm; no dependency edge or unrelated record; `packages/{schema,scorer,runner,reporter}/package.json`; `adapters/{codex,claude-code}/package.json`; `packages/{schema,scorer,runner,reporter}/OWNERS.md`; `adapters/{codex,claude-code}/OWNERS.md`; `suites/coding-core-v0/OWNERS.md`; `fixtures/OWNERS.md`; `conformance/OWNERS.md`; `docs/clearance/MINIMUM-NAME-CLEARANCE.md`; `tests/planning/workspace-skeleton.test.mjs`.
-- Narrow D0-004 carve-out only: before staging the RED test, make the explicitly allowed pre-RED harness insertion of only `tests/planning/workspace-skeleton.test.mjs` into `controlPlaneAllowlist`; in `tests/planning-contract.test.mjs`, change only the `control_plane_allowlist` literal in both `acceptedValidatorOutput` and `pendingValidatorOutput` from `6` to `7`, leaving both `control_plane_code_files` literals at `6`. After the RED receipt, change only those two `control_plane_code_files` literals from `6` to `7`. No other symbol, fixture, setup/teardown, assertion, or file is granted by this carve-out.
+- Narrow D0-004 carve-out only: before staging the RED test, make the explicitly allowed pre-RED harness insertion of only `tests/planning/workspace-skeleton.test.mjs` into `controlPlaneAllowlist`; in `tests/planning-contract.test.mjs`, change only the `control_plane_allowlist` and `control_plane_code_files` literals in both `acceptedValidatorOutput` and `pendingValidatorOutput` from `6` to `7` before staging `tests/planning/workspace-skeleton.test.mjs`. No other symbol, fixture, setup/teardown, assertion, or file is granted by this carve-out.
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
@@ -33,11 +33,11 @@ Create the real zero-product-code npm workspace skeleton required by SSOT §9.4.
 
 ## RED contract
 
-1. From the execution-packet base, make the explicitly allowed pre-RED harness insertion in **Exact ownership** before staging `tests/planning/workspace-skeleton.test.mjs`; this preserves full discovery while allowing the new test path and updates only its two expected allowlist literals. At this stage, `control_plane_code_files` remains `6` and no manifest, marker, clearance, lockfile, or product path changes.
+1. From the execution-packet base, make the explicitly allowed pre-RED harness insertion in **Exact ownership** before staging `tests/planning/workspace-skeleton.test.mjs`; this preserves full discovery while allowing the new test path and updates both expected allowlist and code-file census literal pairs from `6` to `7`. At this stage, `control_plane_code_files` is `7` and no manifest, marker, clearance, lockfile, or product path changes.
 2. Add only `tests/planning/workspace-skeleton.test.mjs` before every GREEN-owned edit. At this stage it contains only case `workspace-census`. Its first assertion checks the root manifest name before any missing-manifest assertion, and its primary assertion message is exactly `root workspace name mismatch: actual agent-operator-score-repository; required agent-operator-score`.
-3. Run the canonical pre-GREEN RED command: `npm test`. This is full Node test discovery after the explicit harness insertion and staging only `tests/planning/workspace-skeleton.test.mjs`; do not describe it as focused, reduce discovery, or exclude the planning-contract tests.
-4. Capture the primary failure, `workspace-census`, with that exact root-name message. No companion failure is permitted; identity and preservation cases must pass. The pre-RED harness insertion is not GREEN evidence and must remain unchanged through the staged RED receipt.
-5. Capture the exact command, exit code, failing test names, and messages before editing manifests, markers, clearance evidence, the lockfile, or post-RED D0-004-carve-out symbols. Any failure outside the primary root-name signal stops execution.
+3. Run the canonical pre-GREEN RED command: `npm test`. This is full Node test discovery after the explicit harness insertion, both expected census literal-pair updates, and staging only `tests/planning/workspace-skeleton.test.mjs`; do not describe it as focused, reduce discovery, or exclude the planning-contract tests.
+4. Capture the primary failure, `workspace-census`, with that exact root-name message. No companion failure is permitted; identity and preservation cases must pass. The pre-RED harness insertion is not GREEN evidence and must remain unchanged through RED and GREEN.
+5. Capture the exact command, exit code, failing test names, and messages before editing manifests, markers, clearance evidence, or the lockfile. No post-RED census edit is permitted. Any failure outside the primary root-name signal stops execution.
 
 Expected pre-GREEN failure: `workspace-census` reports `root workspace name mismatch: actual agent-operator-score-repository; required agent-operator-score` before any missing-manifest assertion.
 
@@ -49,7 +49,7 @@ Expected pre-GREEN failure: `workspace-census` reports `root workspace name mism
 - Add each of the nine owned markers as UTF-8 text with one trailing newline and exactly these two lines, in this order: `owner_ticket: D0-002` and `owner_prd: PRD-D0-name-migration-and-repository-skeleton`. A missing, duplicate, reordered, or additional byte is invalid.
 - Reserve `aos` only as documentation for a future CLI; do not create a runnable command, bin, entrypoint, or invocation surface.
 - In `docs/clearance/MINIMUM-NAME-CLEARANCE.md`, create exactly one record each for GitHub, npm, domain, and basic trademark. Every record has exactly these fields: `source`, `query`, `searched_at`, `result`, `limits`, and `status`. `status` is one of `CLEAR`, `UNRESOLVED`, or `CONFLICT`; a duplicate clearance source is invalid. `UNRESOLVED` blocks public canonical-brand adoption, public publication, and D0 exit but does not block the private unpublished root package identifier; `CONFLICT` requires identity correction. The evidence and its limits are factual records, not legal, license, contribution, redistribution, or publication clearance. Do not fabricate a source, query, date, result, limits, or status.
-- After the RED receipt, make only the remaining narrow D0-004 carve-out change declared in **Exact ownership**: both `control_plane_code_files` literals change from `6` to `7`, while the pre-RED `control_plane_allowlist` literals remain `7`; nothing else in those files changes.
+- The pre-RED harness insertion completes the narrow D0-004 carve-out before staging the RED test: both `control_plane_allowlist` and `control_plane_code_files` literal pairs are `7`; no post-RED census edit is permitted.
 - Change only the owned paths and symbols above.
 
 ## Acceptance ↔ tests
@@ -64,7 +64,7 @@ Expected pre-GREEN failure: `workspace-census` reports `root workspace name mism
 
 ## Verification
 
-1. RED: after the explicit pre-RED harness insertion and staging only `tests/planning/workspace-skeleton.test.mjs`, run the canonical full-discovery `npm test` command in **RED contract** before GREEN; retain only the root-name primary failure as that candidate's RED receipt.
+1. RED: after the explicit pre-RED harness insertion updates both expected census literal pairs from `6` to `7` and stages only `tests/planning/workspace-skeleton.test.mjs`, run the canonical full-discovery `npm test` command in **RED contract** before GREEN; retain only the root-name primary failure as that candidate's RED receipt.
 2. Install/lock: `npm ci` succeeds with the workspace lock consistent with the root manifest.
 3. Post-GREEN focused: `npm test -- tests/planning/workspace-skeleton.test.mjs`; every named case above passes.
 4. Post-GREEN full: `npm test`; zero failure, skip only when preregistered by this ticket.
