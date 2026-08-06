@@ -229,6 +229,18 @@ test("D0 name availability is separate from the E14 license and publication gate
   assert.match(e14, /LICENSE, contribution acceptance, redistribution, and publication are E14\/G4 decisions/);
 });
 
+test("d0-003-historical-pr53-boundary", () => {
+  const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md"), "utf8");
+  const edge = ticket.match(/^- AC-D0-003-1 ↔ (.+)$/m)?.[1];
+  assert.equal(
+    edge,
+    "historical evidence `PR #53`: active migration was completed before this planning baseline."
+  );
+  assert.match(ticket, /active migration was completed before this planning baseline/);
+  assert.match(ticket, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
+  assert.match(ticket, /PR #53/);
+});
+
 test("superseded-d0-003-has-no-owned-implementation", () => {
   const ticket = readFileSync(resolve(root, "docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md"), "utf8");
   assert.match(ticket, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
@@ -583,6 +595,38 @@ test("orphan-requirement-ac-ticket-test-mutants", () => {
       },
       /malformed named test case/,
       "normal edge arbitrary case-less prose rejected"
+    );
+
+    // Historical contract requires the entire exact sentence; a malformed suffix fails.
+    const d0003Path = join(fixture, "docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md");
+    const originalD0003 = readFileSync(d0003Path, "utf8");
+    expectFail(
+      () => {
+        writeFileSync(
+          d0003Path,
+          originalD0003.replace(
+            "- AC-D0-003-1 ↔ historical evidence `PR #53`: active migration was completed before this planning baseline.",
+            "- AC-D0-003-1 ↔ historical evidence `PR #53`: active migration was completed before this planning baseline. EXTRA SUFFIX"
+          )
+        );
+      },
+      /malformed named test case/,
+      "historical edge malformed suffix rejected"
+    );
+    writeFileSync(d0003Path, originalD0003);
+
+    // Duplicate planned path/case ownership across two ticket AC bindings fails.
+    expectFail(
+      () => {
+        const snapshot = readCatalog(fixture);
+        const binding = snapshot.catalog.ticket_acceptance_bindings.find(
+          (entry) => entry.ticket_id === "D0-003" && entry.acceptance_id === "AC-D0-003-1"
+        );
+        binding.cases = ["superseded-d0-003-has-no-owned-implementation"];
+        writeCatalog({ ...snapshot, catalog: snapshot.catalog });
+      },
+      /duplicate planned test path\/case ownership[\s\S]*superseded-d0-003-has-no-owned-implementation/,
+      "duplicate planned path/case binding pair"
     );
 
     // Planned path: typo in ticket prose diverges from explicit catalog binding.

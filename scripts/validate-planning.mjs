@@ -123,16 +123,18 @@ const isPlannedPathShape = (testPath) =>
   /^(tests|packages|adapters|suites|conformance)\//.test(testPath);
 
 // Exact D0-003 historical-evidence contract. No other case-less/path-less edge may pass.
+// Compare the entire normalized edge sentence, not a prefix.
 const HISTORICAL_ACCEPTANCE_CONTRACT = Object.freeze({
   ticket_id: "D0-003",
   acceptance_id: "AC-D0-003-1",
-  edge_prefix: "historical evidence `PR #53`:"
+  exact_edge: "historical evidence `PR #53`: active migration was completed before this planning baseline."
 });
+const normalizeAcceptanceEdge = (edge) =>
+  typeof edge === "string" ? normalizeLf(edge).replace(/\s+/g, " ").trim() : "";
 const isHistoricalAcceptanceContract = (ticketId, acceptanceId, edge) =>
   ticketId === HISTORICAL_ACCEPTANCE_CONTRACT.ticket_id &&
   acceptanceId === HISTORICAL_ACCEPTANCE_CONTRACT.acceptance_id &&
-  typeof edge === "string" &&
-  edge.trimStart().startsWith(HISTORICAL_ACCEPTANCE_CONTRACT.edge_prefix);
+  normalizeAcceptanceEdge(edge) === HISTORICAL_ACCEPTANCE_CONTRACT.exact_edge;
 
 // Extract path/case tokens from ticket prose only. Path is never reverse-looked-up from cases.
 const parseTicketAcceptanceProse = (edge, { ticketId, acceptanceId } = {}) => {
@@ -500,6 +502,8 @@ if (!catalog || catalog.schema_version !== 2 || catalog.ssot !== "docs/north-sta
   }
 
   // Explicit ticket_id + acceptance_id → path + cases. No reverse case-name authority.
+  // Each planned path + named case pair has exactly one owner binding.
+  const plannedPairOwners = new Map(); // path\0case -> "ticket_id acceptance_id"
   if (!Array.isArray(catalog.ticket_acceptance_bindings)) {
     pushError("semantic graph missing ticket_acceptance_bindings");
   } else {
@@ -531,6 +535,17 @@ if (!catalog || catalog.schema_version !== 2 || catalog.ssot !== "docs/north-sta
       if (new Set(binding.cases).size !== binding.cases.length) {
         pushError(`semantic graph ${binding.ticket_id} acceptance ${binding.acceptance_id} duplicate named test case`);
         continue;
+      }
+      for (const caseName of binding.cases) {
+        const pairKey = `${binding.test_path}\0${caseName}`;
+        if (plannedPairOwners.has(pairKey)) {
+          pushError(
+            `semantic graph duplicate planned test path/case ownership ${binding.test_path} :: ${caseName} ` +
+            `(${plannedPairOwners.get(pairKey)} and ${binding.ticket_id} ${binding.acceptance_id})`
+          );
+          continue;
+        }
+        plannedPairOwners.set(pairKey, `${binding.ticket_id} ${binding.acceptance_id}`);
       }
       ticketAcceptanceBindings.set(key, binding);
     }
