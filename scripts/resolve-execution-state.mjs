@@ -261,7 +261,43 @@ export const validateFactsCorpus = (facts) => {
       }
     }
   }
+  // Executable tickets require present, schema-valid, nonempty owned_paths and present owned_symbols.
+  if (plainObject(facts.tickets)) {
+    for (const [ticketId, ticket] of Object.entries(facts.tickets)) {
+      if (!plainObject(ticket)) {
+        failures.push(`tickets.${ticketId} must be an object`);
+        continue;
+      }
+      if (ticket.kind === "superseded") continue;
+      const ownership = declaredOwnershipContract(ticket);
+      if (!ownership.ok) {
+        failures.push(`tickets.${ticketId}: ${ownership.reason}`);
+      }
+    }
+  }
   return { ok: failures.length === 0, failures };
+};
+
+const declaredOwnershipContract = (ticket) => {
+  if (!plainObject(ticket)) {
+    return { ok: false, reason: "ticket ownership contract missing" };
+  }
+  if (!Array.isArray(ticket.owned_paths)) {
+    return { ok: false, reason: "owned_paths must be a present array" };
+  }
+  if (ticket.owned_paths.length === 0) {
+    return { ok: false, reason: "owned_paths must be nonempty" };
+  }
+  if (ticket.owned_paths.some((path) => typeof path !== "string" || path.length === 0)) {
+    return { ok: false, reason: "owned_paths items must be non-empty strings" };
+  }
+  if (!Array.isArray(ticket.owned_symbols)) {
+    return { ok: false, reason: "owned_symbols must be a present array" };
+  }
+  if (ticket.owned_symbols.some((symbol) => typeof symbol !== "string")) {
+    return { ok: false, reason: "owned_symbols items must be strings" };
+  }
+  return { ok: true };
 };
 
 const expectedActorPolicyFromTicket = () => ({
@@ -1040,6 +1076,14 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
     }
   }
 
+  // Declared ownership must be present and schema-valid before collision evaluation or packet emission.
+  const declaredOwnership = declaredOwnershipContract(ticket);
+  if (!declaredOwnership.ok) {
+    readyBlockers.push(
+      blocker("TICKET_CONTRACT_INCOMPLETE", `${ticketId} ${declaredOwnership.reason}`)
+    );
+  }
+
   const collisions = ownershipCollisions(facts, ticketId);
   if (collisions.length) {
     readyBlockers.push(
@@ -1687,6 +1731,59 @@ const requireJson = (transport, apiPath, failures) => {
   return result.value;
 };
 
+/**
+ * Collect a full GitHub list endpoint under the collector timeout budget.
+ * First page uses the legacy URL (no page=) for fixture compatibility; later pages append &page=N.
+ * A full final page without a short trailing page fails closed as possible truncation.
+ */
+const collectAllJsonPages = (transport, firstPagePath, failures, { perPage = 50, maxPages = 40, label = "list" } = {}) => {
+  const first = requireJson(transport, firstPagePath, failures);
+  if (!Array.isArray(first)) {
+    failures.push(`${label} unavailable or not an array`);
+    return null;
+  }
+  if (first.length < perPage) return first;
+  const all = [...first];
+  for (let page = 2; page <= maxPages; page += 1) {
+    const pagePath = `${firstPagePath}&page=${page}`;
+    const batch = requireJson(transport, pagePath, failures);
+    if (!Array.isArray(batch)) {
+      failures.push(`${label} page ${page} unavailable or truncated`);
+      return null;
+    }
+    all.push(...batch);
+    if (batch.length < perPage) return all;
+  }
+  failures.push(`${label} truncated after ${maxPages} pages of ${perPage}`);
+  return null;
+};
+
+const rejectPossiblyTruncatedList = (items, perPage, failures, label) => {
+  if (!Array.isArray(items)) return false;
+  if (items.length >= perPage) {
+    failures.push(`${label} possibly truncated at ${perPage} items`);
+    return true;
+  }
+  return false;
+};
+
+const rejectPossiblyTruncatedSearch = (search, perPage, failures, label) => {
+  if (!search || !Array.isArray(search.items)) return true;
+  if (search.incomplete_results === true) {
+    failures.push(`${label} incomplete_results=true`);
+    return true;
+  }
+  if (typeof search.total_count === "number" && search.total_count > search.items.length) {
+    failures.push(`${label} total_count ${search.total_count} exceeds page size ${search.items.length}`);
+    return true;
+  }
+  if (search.items.length >= perPage) {
+    failures.push(`${label} possibly truncated at ${perPage} items`);
+    return true;
+  }
+  return false;
+};
+
 const requireRaw = (transport, apiPath, failures) => {
   const result = transportCall(transport, "getRaw", apiPath);
   if (!result.ok) {
@@ -2018,6 +2115,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!Array.isArray(search.items)) {
       return { ok: false, reason: `ambiguous gate PR search for ${batch.id}`, facts: null };
     }
+    if (search.incomplete_results === true) {
+      return { ok: false, reason: `gate PR search incomplete for batch ${batch.id}`, facts: null };
+    }
     if (search.items.length === 0) {
       // No gate PR for this accepted registry row — leave unmatched (gate acceptance fails closed later).
       continue;
@@ -2113,11 +2213,12 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     });
   }
 
-  // Active candidates: open PRs targeting live default branch.
-  const openPulls = requireJson(
+  // Active candidates: open PRs targeting live default branch (all pages; truncation fails closed).
+  const openPulls = collectAllJsonPages(
     transport,
     `${repoPath}/pulls?state=open&base=${repo.default_branch}&per_page=50`,
-    failures
+    failures,
+    { perPage: 50, maxPages: 40, label: "open pull list" }
   );
   if (!Array.isArray(openPulls)) {
     return { ok: false, reason: failures.join("; ") || "open pull list unavailable", facts: null };
@@ -2175,6 +2276,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!headRuns || !Array.isArray(headRuns.workflow_runs)) {
       return { ok: false, reason: failures.join("; ") || `workflow runs unavailable for ${head}`, facts: null };
     }
+    if (rejectPossiblyTruncatedList(headRuns.workflow_runs, 30, failures, `workflow runs for ${head}`)) {
+      return { ok: false, reason: failures.join("; "), facts: null };
+    }
     const checksPayload = requireJson(
       transport,
       `${repoPath}/commits/${head}/check-runs?per_page=50`,
@@ -2182,6 +2286,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     );
     if (!checksPayload || !Array.isArray(checksPayload.check_runs)) {
       return { ok: false, reason: failures.join("; ") || `check runs unavailable for ${head}`, facts: null };
+    }
+    if (rejectPossiblyTruncatedList(checksPayload.check_runs, 50, failures, `check runs for ${head}`)) {
+      return { ok: false, reason: failures.join("; "), facts: null };
     }
     const checksById = new Map();
     const checksByName = new Map();
@@ -2262,6 +2369,13 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         };
       }
       const jobs = attemptJobs.value.jobs;
+      if (jobs.length >= 50) {
+        return {
+          ok: false,
+          reason: `attempt jobs possibly truncated for run ${run.id} attempt ${run.run_attempt}`,
+          facts: null
+        };
+      }
       for (const requiredName of requiredNames) {
         const matchingJobs = jobs.filter((job) => job?.name === requiredName);
         if (matchingJobs.length !== 1) {
@@ -2527,6 +2641,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   );
   if (!mergedSearch || !Array.isArray(mergedSearch.items)) {
     return { ok: false, reason: failures.join("; ") || "merged PR search unavailable", facts: null };
+  }
+  if (rejectPossiblyTruncatedSearch(mergedSearch, 30, failures, "merged Ticket PR search")) {
+    return { ok: false, reason: failures.join("; "), facts: null };
   }
   for (const item of mergedSearch.items) {
     const pull = requireJson(transport, `${repoPath}/pulls/${item.number}`, failures);
