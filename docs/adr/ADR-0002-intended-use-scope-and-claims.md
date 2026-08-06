@@ -27,4 +27,4 @@ AOS has measurement design but no human calibration evidence. Product language m
 
 ## Implementation gate
 
-No product code may rely on ADR-0002 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0002 until a Maintainer Gate records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

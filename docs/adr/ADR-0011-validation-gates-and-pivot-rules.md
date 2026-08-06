@@ -27,4 +27,4 @@ A coherent specification does not prove the assessment measures a stable human c
 
 ## Implementation gate
 
-No product code may rely on ADR-0011 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0011 until a Maintainer Gate records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

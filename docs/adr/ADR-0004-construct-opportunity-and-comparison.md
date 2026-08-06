@@ -27,4 +27,4 @@ Observed results combine operator decisions, model/runtime/harness/tool effects,
 
 ## Implementation gate
 
-No product code may rely on ADR-0004 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0004 until a Maintainer Gate records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

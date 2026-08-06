@@ -27,4 +27,4 @@ Coverage alone can inflate scores by leaving difficult metrics unobserved.
 
 ## Implementation gate
 
-No product code may rely on ADR-0005 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0005 until a Maintainer Gate records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.

@@ -27,4 +27,4 @@ Unbounded generated advice and mixed environment/operator changes make improveme
 
 ## Implementation gate
 
-No product code may rely on ADR-0010 until the Maintainer records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
+No product code may rely on ADR-0010 until a Maintainer Gate records an explicit accepted verdict for the exact file digest. A material edit returns the ADR to PROPOSED.
