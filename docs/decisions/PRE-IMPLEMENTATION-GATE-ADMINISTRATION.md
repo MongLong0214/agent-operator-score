@@ -6,7 +6,7 @@
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history is `PENDING → ACCEPTED → INVALIDATED`; its separate renewal is structurally `ACCEPTED` at reviewed artifact head `cc23a4b0585f9537dbfd00327c253d17d8ae4387`. The historical accepted digest record remains invalidated after its ticket changed. The renewed structural record is not authorization to execute and requires independent external exact-head review and CI.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains two `PENDING → ACCEPTED → INVALIDATED` batches; the corrected renewal is structurally `ACCEPTED` at reviewed artifact head `3b6f12b8cc2248573a96085b3ca126f9cbf96f7f`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -14,8 +14,8 @@ It owns only the administration record and its independent fail-closed checker:
 |---|---|
 | Pre-implementation Gate Administration | This decision; `docs/decisions/MAINTAINER-GATE-STATUS.md`; `docs/decisions/maintainer-gate.schema.json`; `docs/decisions/maintainer-gate-registry.v2.json`; `scripts/validate-gate-administration.mjs` (`validateGateAdministration`); `tests/gate-administration-contract.test.mjs`; only the `gates=<status>` portion of `acceptedValidatorOutput` and `pendingValidatorOutput` in `tests/planning-contract.test.mjs` for Gate Administration lifecycle truth |
 | Pre-implementation compatibility migration | `package.json` `scripts.test` only; `scripts/validate-planning.mjs` only to require, delegate to, and allowlist the independently owned administration checker; and only the `planning validator delegates gate records to the independent administration checker` test case with its direct delegation plumbing in `tests/planning-contract.test.mjs`. It explicitly excludes `acceptedValidatorOutput` and `pendingValidatorOutput`. This is a non-circular bootstrap allowance: it depends on no D0 ticket, permits no semantic-validator expansion, and grants no product authority. |
-| D0-001, after its renewed gate | Only the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput` for its future 4→5 census change when `tests/planning/identity.test.mjs` is introduced; it does not own the `gates=<status>` portion or any remaining symbol. |
-| D0-004, after its own gates and D0-002 complete | The semantic-validator portions of `scripts/validate-planning.mjs`, the remainder of `tests/planning-contract.test.mjs` outside the D0-001 numeric literal, Gate Administration `gates=<status>` portion, and the compatibility migration's exact delegation test case/plumbing, and `docs/TRACEABILITY.md`; it may consume an independently valid gate record but must not own, write, or approve the administration surfaces above. |
+| D0-001, after its renewed gate | Only the numeric `control_plane_code_files` literal in `acceptedValidatorOutput` and `pendingValidatorOutput` for its future 4→6 census change when `scripts/validate-identity.mjs` and `tests/planning/identity.test.mjs` are introduced; it does not own the `gates=<status>` portion or any remaining symbol. |
+| D0-004, after its own gates and D0-002 complete | The semantic-validator portions of `scripts/validate-planning.mjs`, the remainder of `tests/planning-contract.test.mjs` outside the D0-001 numeric literal, the isolated fixture setup/teardown and canonical-validator preservation regression for the existing D0 identity allowlist test, Gate Administration `gates=<status>` portion, and the compatibility migration's exact delegation test case/plumbing, and `docs/TRACEABILITY.md`; it may consume an independently valid gate record but must not own, write, or approve the administration surfaces above. |
 
 No product path, workspace layout, product test, or implementation ticket ownership is granted here. The named `package.json` test-discovery migration is the sole package-manifest exception. D0-004 continues to own its future semantic validator work; the separation prevents its dependency from becoming a prerequisite for recording the gates that precede it.
 
@@ -32,7 +32,7 @@ The CEO activation, protected independent review/CI, and final-receipt exact-hea
 
 ## Record model and lifecycle
 
-The registry retains the invalidated D0-001 prerequisite batch and carries a separate structurally ACCEPTED renewal batch. `required_artifacts` and `required_transitions` state what a record must close. The renewed record binds each required artifact to its current SHA-256 digest and exact reviewed artifact head; the mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
+The registry retains both invalidated D0-001 prerequisite batches and carries a structurally ACCEPTED corrected renewal batch. `required_artifacts` and `required_transitions` state what a record must close. The corrected record binds each required artifact to its current SHA-256 digest and exact reviewed artifact head; the mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
 
 ```text
 PENDING --(complete exact batch, distinct Maintainer approval)--> ACCEPTED
@@ -48,13 +48,13 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. The historical D0-001 batch remains invalidated; it is not a current acceptance or a product gate. The separate renewal is structurally ACCEPTED, binds the current five prerequisite digests at `cc23a4b0585f9537dbfd00327c253d17d8ae4387`, and is not execution authority.
-2. The Gate Administrator records the complete renewal candidate from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
-3. A different Maintainer performs external cumulative exact-head review and CI of that final renewal candidate. Only the reviewed final head may be merged as the renewed acceptance record.
+1. The two prior D0-001 batches remain invalidated; neither is a current acceptance or product gate. The corrected renewal is structurally ACCEPTED, binds the current five prerequisite digests at `3b6f12b8cc2248573a96085b3ca126f9cbf96f7f`, and is not execution authority.
+2. The Gate Administrator records the complete corrected renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
+3. Main performs external cumulative exact-head CEO review and requires exact-head CI of that final candidate. Only the reviewed final head may be merged.
 4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
 
 ## Non-authorizations and invalidation
 
-This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains `PENDING → ACCEPTED → INVALIDATED` historic evidence and a separate structurally ACCEPTED renewal; its mutable structural approval record is not authenticated external authorization, and all ADRs/PRDs/tickets remain proposed or blocked.
+This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains two invalidated historic batches and a structurally ACCEPTED corrected renewal; its mutable structural approval record is not authenticated external authorization, and all ADRs/PRDs/tickets remain proposed or blocked.
 
 The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh external review of a renewed candidate is the next required action.
