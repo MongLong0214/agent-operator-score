@@ -38,6 +38,7 @@ test("programmatic root or registry options fail closed", () => {
   const result = validateGateAdministration({ root: process.cwd() });
   assert.equal(result.status, "invalid");
   assert.match(result.errors.join("\n"), /does not accept programmatic overrides/);
+  assert.deepEqual(result.currentAcceptedTickets, []);
 });
 
 const sha256 = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");

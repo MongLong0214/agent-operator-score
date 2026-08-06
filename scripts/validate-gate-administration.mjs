@@ -427,7 +427,7 @@ export const validateGateAdministration = (...args) => {
   const schema = readJson(schemaPath, "Gate Administration schema", errors);
   const registry = errors.length ? null : readJson(resolvedRegistryPath, "Gate Administration registry", errors);
   if (schema) checkSchemaContract(schema, errors);
-  if (!registry) return { errors, status: "invalid", counts: {} };
+  if (!registry) return { errors, status: "invalid", counts: {}, currentAcceptedTickets: [] };
   const allPending = registry.status === "PENDING" && Array.isArray(registry.batches) &&
     registry.batches.length > 0 && registry.batches.every((batch) => batch?.status === "PENDING");
   const candidateHead = allPending && !resolveCandidateHead(resolvedRoot, errors, false)
@@ -468,7 +468,7 @@ export const validateGateAdministration = (...args) => {
       }
     }
   }
-  const currentAcceptedTickets = [...acceptedTicketBatchByPath.keys()].sort();
+  const currentAcceptedTickets = errors.length ? [] : [...acceptedTicketBatchByPath.keys()].sort();
   const counts = Object.fromEntries(["ACCEPTED", "REJECTED", "INVALIDATED"].map((status) => [status.toLowerCase(),
     Array.isArray(registry.batches) ? registry.batches.filter((batch) => batch.status === status).length : 0]));
   return {
