@@ -682,7 +682,9 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
   assert.match(gateStatus, /HISTORICAL SNAPSHOT — NEVER USE FOR CURRENT READINESS/);
-  assert.match(gateStatus, /c84185e99cffaa16ba66d49fb2c8676d4e18340c/);
+  assert.match(gateStatus, /D0-002 RED-census contract-correction renewal/);
+  assert.match(gateStatus, /2713d5e8646ff69c979aa1114d6f6ae78d804c7f/);
+  assert.doesNotMatch(gateStatus, /c84185e99cffaa16ba66d49fb2c8676d4e18340c/);
   assert.doesNotMatch(gateStatus, /53abf77c724bffc785bc9820ef9bbe5ffece89d3/);
   assert.doesNotMatch(gateStatus, /three invalidated D0-001/);
   assert.doesNotMatch(gateStatus, /bounded-RED(?: digest)? renewal/);
