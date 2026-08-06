@@ -2023,6 +2023,53 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
 });
 
+test("ready-ticket-no-self-active-ownership-declared-path-and-symbol-overlap-fails-closed", async () => {
+  // R10: declared owned_paths/owned_symbols must collide against active lanes even without a self row.
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  assert.ok((facts.tickets["D0-004"].owned_paths ?? []).includes("scripts/resolve-execution-state.mjs"));
+  assert.ok((facts.tickets["D0-004"].owned_symbols ?? []).includes("resolveExecutionState"));
+  // Mutant: D0-004 has no self activeOwnership row; another active lane owns its declared path+symbol.
+  facts.activeOwnership = [
+    {
+      ticket_id: "E0A-001",
+      pr_number: 999,
+      head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["resolveExecutionState"]
+    }
+  ];
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.equal(d0004.readiness, "blocked");
+  assert.ok(
+    blockerCodes(d0004).includes("OWNERSHIP_OVERLAP"),
+    `expected OWNERSHIP_OVERLAP without self row, got ${blockerCodes(d0004).join(",")}`
+  );
+  assert.equal(result.readySet.includes("D0-004"), false);
+
+  // Duplicate/ambiguous self rows also fail closed.
+  const dup = clone(facts);
+  dup.activeOwnership = [
+    {
+      ticket_id: "D0-004",
+      pr_number: 150,
+      head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["resolveExecutionState"]
+    },
+    {
+      ticket_id: "D0-004",
+      pr_number: 151,
+      head_sha: "cccccccccccccccccccccccccccccccccccccccc",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["resolveExecutionState"]
+    }
+  ];
+  const { result: dupResult } = await resolveOffline(dup);
+  assert.ok(blockerCodes(ticketState(dupResult, "D0-004")).includes("OWNERSHIP_OVERLAP"));
+  assert.equal(dupResult.readySet.includes("D0-004"), false);
+});
+
 test("collector-to-resolver-live-owned-paths-symbols-overlap-fails-closed", async () => {
   // R9: live collector emits owned_paths/owned_symbols; ownershipCollisions must consume them.
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();

@@ -441,13 +441,29 @@ const ownershipEntrySymbols = (entry) =>
 
 const ownershipCollisions = (facts, ticketId) => {
   const active = Array.isArray(facts.activeOwnership) ? facts.activeOwnership : [];
-  const self = active.find((entry) => entry.ticket_id === ticketId);
-  if (!self) return [];
-  // Canonical live ownership fields match the collector: owned_paths / owned_symbols.
-  // Legacy paths/symbols keys are intentionally ignored (validated as incomplete elsewhere).
-  const selfPaths = new Set(ownershipEntryPaths(self));
-  const selfSymbols = new Set(ownershipEntrySymbols(self));
+  const selfRows = active.filter((entry) => entry.ticket_id === ticketId);
   const collisions = [];
+  // Duplicate / ambiguous self rows fail closed (more than one active lane for this ticket).
+  if (selfRows.length > 1) {
+    collisions.push({ ticket: ticketId, ambiguous: true, reason: "duplicate-active-ownership-rows" });
+  }
+  // Canonical live ownership fields match the collector: owned_paths / owned_symbols.
+  // Always union declared ticket ownership with any self row so ready tickets without a
+  // self activeOwnership entry still collide against other active lanes.
+  const declaredPaths = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
+    ? facts.tickets[ticketId].owned_paths
+    : [];
+  const declaredSymbols = Array.isArray(facts.tickets?.[ticketId]?.owned_symbols)
+    ? facts.tickets[ticketId].owned_symbols
+    : [];
+  const selfPaths = new Set([
+    ...declaredPaths,
+    ...selfRows.flatMap((entry) => ownershipEntryPaths(entry))
+  ]);
+  const selfSymbols = new Set([
+    ...declaredSymbols,
+    ...selfRows.flatMap((entry) => ownershipEntrySymbols(entry))
+  ]);
   for (const other of active) {
     if (other.ticket_id === ticketId) continue;
     for (const path of ownershipEntryPaths(other)) {
@@ -455,16 +471,6 @@ const ownershipCollisions = (facts, ticketId) => {
     }
     for (const symbol of ownershipEntrySymbols(other)) {
       if (selfSymbols.has(symbol)) collisions.push({ ticket: other.ticket_id, symbol });
-    }
-  }
-  // Also compare declared owned_paths against other active lanes when activeOwnership is sparse.
-  const declared = facts.tickets?.[ticketId]?.owned_paths ?? [];
-  for (const path of declared) {
-    for (const other of active) {
-      if (other.ticket_id === ticketId) continue;
-      if (ownershipEntryPaths(other).includes(path)) {
-        collisions.push({ ticket: other.ticket_id, path });
-      }
     }
   }
   return collisions;
