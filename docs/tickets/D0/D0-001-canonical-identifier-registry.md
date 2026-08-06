@@ -17,7 +17,7 @@ Create the single, versioned identity registry and fail-closed active-tree valid
 - `scripts/validate-identity.mjs` — the exported `validateIdentity` function and its direct CLI entry point only.
 - `tests/planning/identity.test.mjs` — the complete D0-001 test module.
 - `package.json` — the `scripts.test` value only; it must be `node --test` so plain `npm test` discovers this ticket's test and future Node test modules, while `npm test -- tests/planning/identity.test.mjs` remains focused.
-- `tests/planning-contract.test.mjs` — only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`, solely to change `4` to `5` when this ticket adds `tests/planning/identity.test.mjs`; Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion of those symbols and file.
+- `tests/planning-contract.test.mjs` — only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`, solely to change `4` to `6` when this ticket adds both `scripts/validate-identity.mjs` and `tests/planning/identity.test.mjs`; Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion of those symbols and file. The planning-contract allowlist test owns its isolated fixture setup and teardown and must never write, overwrite, or delete the canonical validator at `scripts/validate-identity.mjs`.
 - No other file or symbol may be edited without a replacement ticket and renewed gate. In particular, D0-002 retains all `package.json` ownership other than `scripts.test`.
 
 ## Preconditions

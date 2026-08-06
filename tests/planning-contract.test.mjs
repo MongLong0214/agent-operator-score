@@ -129,15 +129,21 @@ test("metric contract has concrete deterministic vectors for M01 through M20", (
 });
 
 test("D0 identity control-plane paths are allowed while unrelated source is rejected", () => {
-  const allowed = resolve(root, "scripts/validate-identity.mjs");
-  const unallowed = resolve(root, "scripts/unallowlisted-source.mjs");
+  const parent = mkdtempSync(join(tmpdir(), "aos identity allowlist "));
+  const fixture = join(parent, "repository");
+  cpSync(root, fixture, {
+    recursive: true,
+    filter: (source) => basename(source) !== "node_modules"
+  });
+  const allowed = resolve(fixture, "scripts/validate-identity.mjs");
+  const unallowed = resolve(fixture, "scripts/unallowlisted-source.mjs");
   const validator = readFileSync(resolve(root, "scripts/validate-planning.mjs"), "utf8");
   assert.match(validator, /"scripts\/validate-identity\.mjs"/);
   assert.match(validator, /"tests\/planning\/identity\.test\.mjs"/);
   try {
     writeFileSync(allowed, "export {};\n");
     assert.doesNotThrow(() => execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-      cwd: root,
+      cwd: fixture,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"]
     }));
@@ -146,7 +152,7 @@ test("D0 identity control-plane paths are allowed while unrelated source is reje
     let error;
     try {
       execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: root,
+        cwd: fixture,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"]
       });
@@ -157,9 +163,21 @@ test("D0 identity control-plane paths are allowed while unrelated source is reje
     assert.equal(error.status, 1);
     assert.match(error.stderr, /unallowlisted product code/);
   } finally {
-    if (existsSync(allowed)) unlinkSync(allowed);
-    if (existsSync(unallowed)) unlinkSync(unallowed);
+    rmSync(parent, { recursive: true, force: true });
   }
+});
+
+test("planning tests preserve the canonical D0 identity validator", () => {
+  const canonical = resolve(root, "scripts/validate-identity.mjs");
+  const before = existsSync(canonical) ? readFileSync(canonical) : null;
+  execFileSync(process.execPath, ["--test", "--test-name-pattern", "D0 identity control-plane paths", "tests/planning-contract.test.mjs"], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, AOS_IDENTITY_PRESERVATION_PROBE: "1" },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  assert.equal(existsSync(canonical), before !== null);
+  if (before !== null) assert.deepEqual(readFileSync(canonical), before);
 });
 
 test("status ledger separates blocked executable tickets from superseded D0-003", () => {
