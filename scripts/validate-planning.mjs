@@ -122,12 +122,10 @@ const isPlannedPathShape = (testPath) =>
   !testPath.split("/").includes("..") &&
   /^(tests|packages|adapters|suites|conformance)\//.test(testPath);
 
-const parseTicketAcceptanceEdge = (edge, plannedTestsByPath = null) => {
+// Extract path/case tokens from ticket prose only. Path is never reverse-looked-up from cases.
+const parseTicketAcceptanceProse = (edge) => {
   if (typeof edge !== "string" || !edge.trim()) {
     return { ok: false, reason: "malformed ticket acceptance edge" };
-  }
-  if (/historical evidence/.test(edge) && !/\bcase(?:s)?\s+`/.test(edge)) {
-    return { ok: true, historical: true, testPath: null, cases: [] };
   }
   const pathTokens = [...edge.matchAll(PLANNED_PATH_RE)].map((match) => match[1]);
   if (pathTokens.length > 1) {
@@ -137,9 +135,6 @@ const parseTicketAcceptanceEdge = (edge, plannedTestsByPath = null) => {
     return { ok: false, reason: "multiple planned test paths" };
   }
   const caseMatches = [...edge.matchAll(/\bcase(?:s)?\s+((?:`[^`]+`(?:\s*,\s*|\s+and\s+)?)+)/g)];
-  if (!caseMatches.length) {
-    return { ok: false, reason: "malformed named test case" };
-  }
   const cases = [];
   for (const match of caseMatches) {
     for (const name of match[1].matchAll(/`([^`]+)`/g)) {
@@ -150,26 +145,19 @@ const parseTicketAcceptanceEdge = (edge, plannedTestsByPath = null) => {
       cases.push(value);
     }
   }
-  if (!cases.length) return { ok: false, reason: "malformed named test case" };
-  if (new Set(cases).size !== cases.length) return { ok: false, reason: "duplicate named test case" };
-
-  let testPath = pathTokens[0] ?? null;
-  if (!testPath) {
-    // Case-only edges must resolve to exactly one planned-test path that contains every case.
-    if (!plannedTestsByPath) {
-      return { ok: false, reason: "malformed planned test path" };
-    }
-    const matches = [];
-    for (const [path, plannedCases] of plannedTestsByPath.entries()) {
-      if (cases.every((name) => plannedCases.has(name))) matches.push(path);
-    }
-    if (matches.length !== 1) return { ok: false, reason: "malformed planned test path" };
-    testPath = matches[0];
+  if (cases.length && new Set(cases).size !== cases.length) {
+    return { ok: false, reason: "duplicate named test case" };
   }
-  if (!isPlannedPathShape(testPath)) {
+  const testPath = pathTokens[0] ?? null;
+  if (testPath && !isPlannedPathShape(testPath)) {
     return { ok: false, reason: "malformed planned test path" };
   }
-  return { ok: true, historical: false, testPath, cases };
+  // A stated planned path must name at least one case. Case-less prose (e.g. historical
+  // evidence lines) is allowed only when an explicit catalog binding supplies path + cases.
+  if (testPath && !cases.length) {
+    return { ok: false, reason: "malformed named test case" };
+  }
+  return { ok: true, testPath, cases, proseHasPath: Boolean(testPath), proseHasCases: cases.length > 0 };
 };
 
 const collectTestCaseNames = (fileText) => {
@@ -343,8 +331,8 @@ try {
 }
 
 const plannedTestsByPath = new Map();
-const plannedCaseOwners = new Map(); // case -> Set(paths) for orphan detection within planned catalog
 const referencedPlannedPairs = new Set(); // path\0case
+const ticketAcceptanceBindings = new Map(); // ticket_id\0acceptance_id -> binding
 
 if (!catalog || catalog.schema_version !== 2 || catalog.ssot !== "docs/north-star/agent-operator-score-ssot-v1.0.md" || !Array.isArray(catalog.prds)) {
   pushError("semantic graph missing canonical traceability catalog");
@@ -475,67 +463,122 @@ if (!catalog || catalog.schema_version !== 2 || catalog.ssot !== "docs/north-sta
         pushError(`semantic graph duplicate named test case under ${entry.path}`);
         continue;
       }
-      const caseSet = new Set(entry.cases);
-      plannedTestsByPath.set(entry.path, caseSet);
-      for (const caseName of entry.cases) {
-        if (!plannedCaseOwners.has(caseName)) plannedCaseOwners.set(caseName, new Set());
-        plannedCaseOwners.get(caseName).add(entry.path);
+      plannedTestsByPath.set(entry.path, new Set(entry.cases));
+    }
+  }
+
+  // Explicit ticket_id + acceptance_id → path + cases. No reverse case-name authority.
+  if (!Array.isArray(catalog.ticket_acceptance_bindings)) {
+    pushError("semantic graph missing ticket_acceptance_bindings");
+  } else {
+    for (const binding of catalog.ticket_acceptance_bindings) {
+      if (
+        !binding ||
+        typeof binding.ticket_id !== "string" ||
+        typeof binding.acceptance_id !== "string" ||
+        typeof binding.test_path !== "string" ||
+        !Array.isArray(binding.cases) ||
+        !binding.cases.length
+      ) {
+        pushError("semantic graph malformed ticket acceptance binding");
+        continue;
       }
+      const key = `${binding.ticket_id}\0${binding.acceptance_id}`;
+      if (ticketAcceptanceBindings.has(key)) {
+        pushError(`semantic graph duplicate ticket acceptance binding ${binding.ticket_id} ${binding.acceptance_id}`);
+        continue;
+      }
+      if (!isPlannedPathShape(binding.test_path)) {
+        pushError(`semantic graph ${binding.ticket_id} acceptance ${binding.acceptance_id} malformed planned test path`);
+        continue;
+      }
+      if (binding.cases.some((name) => typeof name !== "string" || !name || name.includes("/") || /\.(mjs|cjs|js|ts|tsx|jsx)$/.test(name))) {
+        pushError(`semantic graph ${binding.ticket_id} acceptance ${binding.acceptance_id} malformed named test case`);
+        continue;
+      }
+      if (new Set(binding.cases).size !== binding.cases.length) {
+        pushError(`semantic graph ${binding.ticket_id} acceptance ${binding.acceptance_id} duplicate named test case`);
+        continue;
+      }
+      ticketAcceptanceBindings.set(key, binding);
     }
   }
 }
 
-// Parse and resolve every ticket AC against planned_tests, then against disk when the file exists.
+// Exact ticket AC census + path/case equality with prose when prose states them.
+const expectedTicketAcceptanceKeys = [];
 for (const ticket of tickets.values()) {
   for (const line of ticket.acceptanceLines) {
-    const parsed = parseTicketAcceptanceEdge(line.edge, plannedTestsByPath);
-    line.parsed = parsed;
-    if (!parsed.ok) {
-      pushError(`semantic graph ${ticket.id} acceptance ${line.id} ${parsed.reason}`);
+    expectedTicketAcceptanceKeys.push(`${ticket.id}\0${line.id}`);
+    const prose = parseTicketAcceptanceProse(line.edge);
+    line.prose = prose;
+    if (!prose.ok) {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} ${prose.reason}`);
       continue;
     }
-    if (parsed.historical) continue;
-    const plannedCases = plannedTestsByPath.get(parsed.testPath);
+    const binding = ticketAcceptanceBindings.get(`${ticket.id}\0${line.id}`);
+    if (!binding) {
+      pushError(`semantic graph orphan ticket acceptance edge ${ticket.id} ${line.id}`);
+      continue;
+    }
+    if (prose.proseHasPath && prose.testPath !== binding.test_path) {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} planned test path diverges from catalog binding`);
+    }
+    if (prose.proseHasCases && !sameSet(prose.cases, binding.cases)) {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test cases diverge from catalog binding`);
+    }
+    // Binding is the sole authority for path + cases (covers case-only and former historical edges).
+    const plannedCases = plannedTestsByPath.get(binding.test_path);
     if (!plannedCases) {
-      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unknown planned test path ${parsed.testPath}`);
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unknown planned test path ${binding.test_path}`);
       continue;
     }
-    for (const caseName of parsed.cases) {
+    for (const caseName of binding.cases) {
       if (!plannedCases.has(caseName)) {
-        pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test case not in planned_tests: ${parsed.testPath} :: ${caseName}`);
+        pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test case not in planned_tests: ${binding.test_path} :: ${caseName}`);
         continue;
       }
-      referencedPlannedPairs.add(`${parsed.testPath}\0${caseName}`);
+      referencedPlannedPairs.add(`${binding.test_path}\0${caseName}`);
     }
-    const absolute = resolve(root, parsed.testPath);
-    if (!existsSync(absolute)) continue; // future module must still be in planned_tests
+    const absolute = resolve(root, binding.test_path);
+    if (!existsSync(absolute)) continue;
     let stat;
     try {
       stat = lstatSync(absolute);
     } catch {
-      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unreadable planned test path ${parsed.testPath}`);
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unreadable planned test path ${binding.test_path}`);
       continue;
     }
     if (!stat.isFile() || stat.isSymbolicLink()) {
-      pushError(`semantic graph ${ticket.id} acceptance ${line.id} malformed planned test path ${parsed.testPath}`);
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} malformed planned test path ${binding.test_path}`);
       continue;
     }
     let names;
     try {
       names = collectTestCaseNames(readFileSync(absolute, "utf8"));
     } catch {
-      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unreadable planned test path ${parsed.testPath}`);
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} unreadable planned test path ${binding.test_path}`);
       continue;
     }
-    for (const caseName of parsed.cases) {
+    for (const caseName of binding.cases) {
       if (!names.has(caseName)) {
-        pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test case not found: ${parsed.testPath} :: ${caseName}`);
+        pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test case not found: ${binding.test_path} :: ${caseName}`);
       }
     }
   }
 }
 
-// Orphan planned path/case: catalog entries never referenced by a ticket AC edge.
+if (ticketAcceptanceBindings.size !== expectedTicketAcceptanceKeys.length) {
+  pushError(`semantic graph ticket acceptance binding census ${ticketAcceptanceBindings.size}, expected ${expectedTicketAcceptanceKeys.length}`);
+}
+for (const key of ticketAcceptanceBindings.keys()) {
+  if (!expectedTicketAcceptanceKeys.includes(key)) {
+    const [ticketId, acceptanceId] = key.split("\0");
+    pushError(`semantic graph orphan ticket acceptance binding ${ticketId} ${acceptanceId}`);
+  }
+}
+
+// Orphan planned path/case: catalog entries never referenced by a ticket AC binding.
 if (plannedTestsByPath.size) {
   for (const [path, cases] of plannedTestsByPath.entries()) {
     let pathReferenced = false;
