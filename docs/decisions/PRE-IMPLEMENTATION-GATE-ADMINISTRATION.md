@@ -6,7 +6,7 @@
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains two `PENDING → ACCEPTED → INVALIDATED` batches; the corrected renewal is structurally `ACCEPTED` at reviewed artifact head `3b6f12b8cc2248573a96085b3ca126f9cbf96f7f`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004, D0-002, RED, or product code. It does not accept an ADR, PRD, or ticket. The canonical v2 D0-001 history retains three `PENDING → ACCEPTED → INVALIDATED` batches; the bounded-RED renewal is structurally `ACCEPTED` at reviewed artifact head `355332136a5fa6490aadbdfde2f60ab8b7e244e5`. The structural record is not authorization to execute and requires external exact-head CEO review and CI.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -32,7 +32,7 @@ The CEO activation, protected independent review/CI, and final-receipt exact-hea
 
 ## Record model and lifecycle
 
-The registry retains both invalidated D0-001 prerequisite batches and carries a structurally ACCEPTED corrected renewal batch. `required_artifacts` and `required_transitions` state what a record must close. The corrected record binds each required artifact to its current SHA-256 digest and exact reviewed artifact head; the mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
+The registry retains all three invalidated D0-001 prerequisite batches and carries a structurally ACCEPTED bounded-RED renewal batch. `required_artifacts` and `required_transitions` state what a record must close. The bounded-RED record binds each required artifact to its current SHA-256 digest and exact reviewed artifact head; the mutable structural fields remain review inputs, not authenticated authorization. A batch may progress only as follows:
 
 ```text
 PENDING --(complete exact batch, distinct Maintainer approval)--> ACCEPTED
@@ -48,13 +48,13 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Operating sequence
 
-1. The two prior D0-001 batches remain invalidated; neither is a current acceptance or product gate. The corrected renewal is structurally ACCEPTED, binds the current five prerequisite digests at `3b6f12b8cc2248573a96085b3ca126f9cbf96f7f`, and is not execution authority.
-2. The Gate Administrator records the complete corrected renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
+1. The three prior D0-001 batches remain invalidated; none is a current acceptance or product gate. The bounded-RED renewal is structurally ACCEPTED, binds the current five prerequisite digests at `355332136a5fa6490aadbdfde2f60ab8b7e244e5`, and is not execution authority.
+2. The Gate Administrator records the complete bounded-RED renewal from the declared scope and current SHA-256 digest bindings, then runs `node scripts/validate-gate-administration.mjs`.
 3. Main performs external cumulative exact-head CEO review and requires exact-head CI of that final candidate. Only the reviewed final head may be merged.
 4. The execution packet independently verifies the renewed accepted record, exact digests, target branch/base, dependency state, clean ownership, and its own ticket gate before RED. A structurally valid batch never substitutes for those checks.
 
 ## Non-authorizations and invalidation
 
-This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains two invalidated historic batches and a structurally ACCEPTED corrected renewal; its mutable structural approval record is not authenticated external authorization, and all ADRs/PRDs/tickets remain proposed or blocked.
+This decision grants no ADR/PRD/ticket acceptance, no RED, no implementation authority, and no D0-001 execution authority. The registry retains three invalidated historic batches and a structurally ACCEPTED bounded-RED renewal; its mutable structural approval record is not authenticated external authorization, and all ADRs/PRDs/tickets remain proposed or blocked.
 
 The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh external review of a renewed candidate is the next required action.
