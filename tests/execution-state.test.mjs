@@ -838,32 +838,31 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
     d0_004c_merged: true
   });
   const head = facts.prs[0].head_sha;
+  const runMeta = {
+    head_sha: head,
+    app_slug: "github-actions",
+    app_id: 15368,
+    event: "pull_request",
+    base: "dev",
+    workflow_path: ".github/workflows/ci.yml"
+  };
   facts.workflowRuns = [
+    ...(facts.workflowRuns ?? []).filter((r) => r.name !== "planning-contract (20)"),
     {
       name: "planning-contract (20)",
-      head_sha: head,
       run_id: 1,
       run_attempt: 1,
       status: "completed",
       conclusion: "success",
-      app_slug: "github-actions",
-      app_id: 15368,
-      event: "pull_request",
-      base: "dev",
-      workflow_path: ".github/workflows/ci.yml"
+      ...runMeta
     },
     {
       name: "planning-contract (20)",
-      head_sha: head,
       run_id: 1,
       run_attempt: 2,
       status: "completed",
       conclusion: "failure",
-      app_slug: "github-actions",
-      app_id: 15368,
-      event: "pull_request",
-      base: "dev",
-      workflow_path: ".github/workflows/ci.yml"
+      ...runMeta
     }
   ];
   facts.checkRuns = (facts.checkRuns ?? []).map((c) =>
@@ -889,40 +888,59 @@ test("duplicate-candidate-order-independent-active-and-superseded", async () => 
   });
   const head149 = "1111111111111111111111111111111111111111";
   const head150 = "cafecafecafecafecafecafecafecafecafecafe";
-  const pr149 = {
+  const liveBase = facts.liveBaseSha;
+  // Two live open Ticket candidates without structured supersession must block
+  // (PR number is not supersession authority).
+  const pr149Live = {
     number: 149,
-    ticket_id: "D0-004",
     base: "dev",
+    base_sha: liveBase,
     head_sha: head149,
     author: "MongLong0214",
     body: "Ticket: D0-004\n\nDuplicate evidence only.",
-    merged: false,
-    labels: ["ticket:D0-004"]
+    merged: false
   };
-  const pr150 = {
+  const pr150Live = {
     number: 150,
-    ticket_id: "D0-004",
     base: "dev",
+    base_sha: liveBase,
     head_sha: head150,
     author: "MongLong0214",
     body: "Ticket: D0-004\n\nPacket-bound candidate.",
-    merged: false,
-    labels: ["ticket:D0-004"]
+    merged: false
   };
-  // ticket_id-only linkage must not authorize a candidate.
+  facts.prs = [pr149Live, pr150Live];
+  const { result: ambiguous } = await resolveOffline(facts);
+  const ambiguousState = ticketState(ambiguous, "D0-004");
+  assert.equal(ambiguousState.candidate, null);
+  assert.ok(blockerCodes(ambiguousState).includes("TICKET_CONTRACT_CONFLICT"));
+
+  // Explicit structured supersession authorizes reporting superseded heads.
+  const pr149 = {
+    ...pr149Live,
+    superseded: true,
+    superseded_by: 150,
+    body: "Ticket: D0-004\nSuperseded-By: 150"
+  };
+  const pr150 = {
+    ...pr150Live,
+    supersedes: 149,
+    body: "Ticket: D0-004\nSupersedes: 149"
+  };
   const ticketIdOnly = {
     number: 148,
     ticket_id: "D0-004",
     base: "dev",
+    base_sha: liveBase,
     head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     author: "MongLong0214",
     body: "Related to #57 — no structured Ticket field",
     merged: false
   };
-  // Wrong base must not become active.
   const wrongBase = {
     number: 151,
     base: "main",
+    base_sha: liveBase,
     head_sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     author: "MongLong0214",
     body: "Ticket: D0-004",
@@ -932,49 +950,38 @@ test("duplicate-candidate-order-independent-active-and-superseded", async () => 
   facts.workflowBlobs[".github/workflows/ci.yml"].heads[head150] = "ci-blob-dev";
   facts.workflowBlobs[".github/workflows/operational-state.yml"].heads[head150] = "ops-blob-dev";
   facts.checkRuns = (facts.checkRuns ?? []).map((c) => ({ ...c, head_sha: head150 }));
+  facts.workflowRuns = (facts.workflowRuns ?? []).map((r) => ({ ...r, head_sha: head150 }));
   facts.reviews = (facts.reviews ?? []).map((r) => ({ ...r, commit_id: head150 }));
   facts.authorizations = (facts.authorizations ?? []).map((a) => ({ ...a, commit_id: head150 }));
 
-  const orderA = [pr149, pr150, ticketIdOnly, wrongBase];
-  const orderB = [wrongBase, pr150, ticketIdOnly, pr149];
+  for (const order of [
+    [pr149, pr150, ticketIdOnly, wrongBase],
+    [wrongBase, pr150, ticketIdOnly, pr149]
+  ]) {
+    facts.prs = order;
+    const { result } = await resolveOffline(facts);
+    const state = ticketState(result, "D0-004");
+    assert.equal(state.candidate?.number, 150);
+    assert.equal(state.candidate?.head_sha, head150);
+    assert.deepEqual(
+      (state.candidate?.superseded_heads ?? []).map((entry) => entry.number),
+      [149]
+    );
+    assert.notEqual(state.candidate.head_sha, head149);
+  }
 
-  facts.prs = orderA;
-  const { result: first } = await resolveOffline(facts);
-  const stateA = ticketState(first, "D0-004");
-  assert.equal(stateA.candidate?.number, 150);
-  assert.equal(stateA.candidate?.head_sha, head150);
-  assert.ok(Array.isArray(stateA.candidate?.superseded_heads));
-  assert.deepEqual(
-    stateA.candidate.superseded_heads.map((entry) => entry.number).sort((a, b) => a - b),
-    [149]
-  );
-  assert.ok(stateA.candidate.superseded_heads.every((entry) => entry.head_sha === head149));
-  // Superseded evidence must not be reused as the active candidate.
-  assert.notEqual(stateA.candidate.head_sha, head149);
-
-  facts.prs = orderB;
-  const { result: second } = await resolveOffline(facts);
-  const stateB = ticketState(second, "D0-004");
-  assert.equal(stateB.candidate?.number, stateA.candidate?.number);
-  assert.equal(stateB.candidate?.head_sha, stateA.candidate?.head_sha);
-  assert.deepEqual(
-    (stateB.candidate?.superseded_heads ?? []).map((entry) => entry.number).sort((a, b) => a - b),
-    (stateA.candidate?.superseded_heads ?? []).map((entry) => entry.number).sort((a, b) => a - b)
-  );
-
-  // Ambiguous multi-Ticket body fails closed (no linkage).
   facts.prs = [
     {
       number: 152,
       base: "dev",
+      base_sha: liveBase,
       head_sha: head150,
       body: "Ticket: D0-004\nTicket: D0-004",
       merged: false
     }
   ];
   const { result: multi } = await resolveOffline(facts);
-  const multiState = ticketState(multi, "D0-004");
-  assert.equal(multiState.candidate, null);
+  assert.equal(ticketState(multi, "D0-004").candidate, null);
 });
 
 test("missing-live-authority-digests-fail-closed", async () => {
@@ -1090,6 +1097,203 @@ test("candidate-ci-missing-provenance-fields-fail-closed", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Review regressions — round 2 fail-closed defects
+// ---------------------------------------------------------------------------
+
+test("multiple-live-ticket-candidates-require-structured-supersession", async () => {
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: true,
+    authorization: true,
+    ci: true,
+    d0_004c_merged: false
+  });
+  const headA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const headB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const liveBase = facts.liveBaseSha;
+  facts.prs = [
+    {
+      number: 149,
+      base: "dev",
+      base_sha: liveBase,
+      head_sha: headA,
+      body: "Ticket: D0-004",
+      merged: false
+    },
+    {
+      number: 150,
+      base: "dev",
+      base_sha: liveBase,
+      head_sha: headB,
+      body: "Ticket: D0-004",
+      merged: false
+    }
+  ];
+  // Larger PR number must not silently win.
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(state.candidate, null);
+  assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_CONFLICT"));
+  assert.notEqual(state.readiness, "active");
+});
+
+test("gate-batch-requires-exactly-one-structured-field", async () => {
+  const facts = loadBaselineFacts();
+  facts.gatePRs = facts.gatePRs.map((pr) => ({
+    ...pr,
+    body: `${pr.body}\nGate-Batch: batch-d0-001-extra`
+  }));
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.notEqual(d0001.phase, "verified");
+  assert.notEqual(d0001.readiness, "terminal");
+  assert.ok(blockerCodes(d0001).includes("TICKET_GATE_MISSING"));
+});
+
+test("candidate-ci-requires-run-attempt-mapping-and-live-base-sha", async () => {
+  const base = () =>
+    makeCandidateFacts(loadBaselineFacts(), {
+      review: true,
+      authorization: true,
+      ci: true,
+      d0_004c_merged: true
+    });
+
+  // Checks without run_id/run_attempt (and no workflow runs) fail closed.
+  const noRunIds = base();
+  noRunIds.workflowRuns = [];
+  noRunIds.checkRuns = (noRunIds.checkRuns ?? []).map((c) => {
+    const next = { ...c };
+    delete next.run_id;
+    delete next.run_attempt;
+    return next;
+  });
+  {
+    const { result } = await resolveOffline(noRunIds);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
+
+  // Workflow runs alone without mapped check/job facts fail closed.
+  const runsOnly = base();
+  runsOnly.checkRuns = (runsOnly.checkRuns ?? []).filter((c) => !String(c.name).startsWith("planning-contract") && c.name !== "operational-state-offline");
+  {
+    const { result } = await resolveOffline(runsOnly);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
+
+  // Stale candidate base_sha fails closed.
+  const staleBase = base();
+  staleBase.prs = staleBase.prs.map((pr) => ({
+    ...pr,
+    base_sha: "dddddddddddddddddddddddddddddddddddddddd"
+  }));
+  {
+    const { result } = await resolveOffline(staleBase);
+    assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+  }
+});
+
+test("facts-corpus-and-output-schema-validation-fail-closed", async () => {
+  const { runOfflineCheck, validateAgainstSchema, loadExecutionStateSchema, resolveExecutionState } =
+    await importResolver();
+
+  const schemaLoad = loadExecutionStateSchema(root);
+  assert.equal(schemaLoad.ok, true);
+  assert.ok(schemaLoad.schema);
+
+  const malformed = runOfflineCheck({
+    facts: {
+      ...loadBaselineFacts(),
+      tickets: null
+    }
+  });
+  assert.equal(malformed.ok, false);
+  assert.ok(malformed.failures.length > 0);
+
+  const missingExternal = runOfflineCheck({
+    facts: {
+      ...loadBaselineFacts(),
+      externalAvailable: undefined
+    }
+  });
+  assert.equal(missingExternal.ok, false);
+
+  const emptyTickets = runOfflineCheck({
+    facts: {
+      ...loadBaselineFacts(),
+      tickets: {}
+    }
+  });
+  assert.equal(emptyTickets.ok, false);
+
+  const good = await resolveOffline(loadBaselineFacts());
+  const schemaErrors = validateAgainstSchema(good.result, schemaLoad.schema);
+  assert.deepEqual(schemaErrors, []);
+
+  // Direct schema-use: deliberately invalid output fails schema validation.
+  const invalidOutput = { schema_version: 2 };
+  assert.ok(validateAgainstSchema(invalidOutput, schemaLoad.schema).length > 0);
+
+  // resolveExecutionState surfaces schema/corpus failures as contract blockers.
+  const broken = resolveExecutionState({
+    mode: "offline",
+    root,
+    facts: { tickets: null }
+  });
+  assert.ok(broken.errors.some((entry) => entry.code === "TICKET_CONTRACT_INCOMPLETE"));
+});
+
+test("online-strict-requires-live-facts-and-nonzero-exit", async () => {
+  const { acquireOnlineStrictFacts, resolveExecutionState } = await importResolver();
+
+  const acquired = acquireOnlineStrictFacts(root, {});
+  assert.equal(acquired.ok, false);
+
+  const online = resolveExecutionState({
+    mode: "online-strict",
+    root,
+    // no facts injection → unavailable corpus
+    facts: null
+  });
+  assert.equal(online.mode, "online-strict");
+  assert.ok(online.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+  assert.deepEqual(online.readySet, []);
+
+  // CLI strict exit is nonzero when external facts are unresolved.
+  let exitCode = 0;
+  let stderr = "";
+  try {
+    execFileSync(process.execPath, [resolverPath, "--strict", "--json"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, AOS_EXECUTION_STATE_FACTS: "" }
+    });
+  } catch (error) {
+    exitCode = error.status ?? 1;
+    stderr = `${error.stdout ?? ""}\n${error.stderr ?? ""}`;
+  }
+  assert.notEqual(exitCode, 0);
+  assert.match(stderr, /EXTERNAL_STATE_UNAVAILABLE|complete live operational|unavailable/i);
+
+  // Injected complete online facts succeed without fallback.
+  const liveFacts = loadBaselineFacts();
+  liveFacts.externalAvailable = true;
+  const acquiredOk = acquireOnlineStrictFacts(root, { facts: liveFacts });
+  assert.equal(acquiredOk.ok, true);
+  const onlineOk = resolveExecutionState({
+    mode: "online-strict",
+    root,
+    facts: liveFacts,
+    runtimeIdentity: {
+      repository: liveFacts.repository,
+      branch: liveFacts.defaultBranch,
+      head: liveFacts.currentHead
+    }
+  });
+  assert.equal(onlineOk.mode, "online-strict");
+  assert.ok(!onlineOk.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+});
+
+// ---------------------------------------------------------------------------
 // Helpers — candidate / ready fact builders
 // ---------------------------------------------------------------------------
 
@@ -1151,11 +1355,14 @@ function makeCandidateFacts(base, { review, authorization, ci, d0_004c_merged = 
   const facts = makeReadyD0004Facts(base);
   facts.d0_004c_merged = d0_004c_merged;
   const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const liveBaseSha = facts.currentHead;
+  facts.liveBaseSha = liveBaseSha;
   facts.prs = [
     {
       number: 300,
       ticket_id: "D0-004",
       base: "dev",
+      base_sha: liveBaseSha,
       head_sha: head,
       author: "MongLong0214",
       body: "Ticket: D0-004",
@@ -1176,12 +1383,14 @@ function makeCandidateFacts(base, { review, authorization, ci, d0_004c_merged = 
     : ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"];
 
   facts.checkRuns = [];
+  facts.workflowRuns = [];
   if (ci) {
+    let runId = 10;
     for (const name of requiredNames) {
       const workflow_path = name === "operational-state-offline"
         ? ".github/workflows/operational-state.yml"
         : ".github/workflows/ci.yml";
-      facts.checkRuns.push({
+      const attempt = {
         name,
         head_sha: head,
         status: "completed",
@@ -1191,10 +1400,13 @@ function makeCandidateFacts(base, { review, authorization, ci, d0_004c_merged = 
         event: "pull_request",
         base: "dev",
         workflow_path,
-        run_id: 10,
+        run_id: runId,
         run_attempt: 1,
         ticket_id: "D0-004"
-      });
+      };
+      facts.checkRuns.push({ ...attempt });
+      facts.workflowRuns.push({ ...attempt });
+      runId += 1;
     }
   }
 
