@@ -97,6 +97,148 @@ const loadJsonIfExists = (path) => {
   }
 };
 
+const SCHEMA_RELATIVE_PATH = "specs/execution-state.schema.v1.json";
+
+const REQUIRED_FACT_ARRAYS = [
+  "gateBatches",
+  "gatePRs",
+  "postMergeCI",
+  "verifiedTickets",
+  "issues",
+  "prs",
+  "reviews",
+  "authorizations",
+  "checkRuns",
+  "workflowRuns",
+  "activeOwnership"
+];
+
+const REQUIRED_FACT_OBJECTS = ["tickets", "liveDigests", "permissions", "workflowBlobs", "operationalAuthority"];
+
+/**
+ * Bounded draft-2020-12 validator covering constructs used by the checked-in
+ * execution-state schema. Schema file is loaded and enforced (not dead code).
+ */
+export const validateAgainstSchema = (value, schema, rootSchema = schema, path = "$") => {
+  const errors = [];
+  if (!plainObject(schema)) {
+    return [`${path}: schema must be an object`];
+  }
+
+  if (schema.$ref) {
+    if (typeof schema.$ref !== "string" || !schema.$ref.startsWith("#/$defs/")) {
+      return [`${path}: unsupported $ref ${schema.$ref}`];
+    }
+    const defName = schema.$ref.slice("#/$defs/".length);
+    const def = rootSchema.$defs?.[defName];
+    if (!def) return [`${path}: missing $defs.${defName}`];
+    return validateAgainstSchema(value, def, rootSchema, path);
+  }
+
+  if (schema.anyOf) {
+    const nested = schema.anyOf.map((entry, index) =>
+      validateAgainstSchema(value, entry, rootSchema, `${path}/anyOf/${index}`)
+    );
+    if (nested.some((list) => list.length === 0)) return [];
+    return [`${path}: anyOf failed`, ...nested.flat()];
+  }
+
+  if (Object.hasOwn(schema, "const") && value !== schema.const) {
+    errors.push(`${path}: expected const ${JSON.stringify(schema.const)}`);
+  }
+
+  if (schema.enum && !schema.enum.includes(value)) {
+    errors.push(`${path}: value not in enum`);
+  }
+
+  if (schema.type) {
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    const ok = types.some((type) => {
+      if (type === "object") return plainObject(value);
+      if (type === "array") return Array.isArray(value);
+      if (type === "string") return typeof value === "string";
+      if (type === "boolean") return typeof value === "boolean";
+      if (type === "number") return typeof value === "number" && Number.isFinite(value);
+      if (type === "integer") return Number.isInteger(value);
+      if (type === "null") return value === null;
+      return false;
+    });
+    if (!ok) errors.push(`${path}: wrong type`);
+  }
+
+  if (typeof value === "string" && typeof schema.minLength === "number" && value.length < schema.minLength) {
+    errors.push(`${path}: minLength`);
+  }
+
+  if (Array.isArray(value) && schema.items) {
+    value.forEach((entry, index) => {
+      errors.push(...validateAgainstSchema(entry, schema.items, rootSchema, `${path}/${index}`));
+    });
+  }
+
+  if (plainObject(value) && (schema.properties || schema.required || schema.additionalProperties !== undefined)) {
+    for (const key of schema.required ?? []) {
+      if (!Object.hasOwn(value, key)) errors.push(`${path}: missing required ${key}`);
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (schema.properties?.[key]) {
+        errors.push(...validateAgainstSchema(child, schema.properties[key], rootSchema, `${path}.${key}`));
+      } else if (schema.additionalProperties === false) {
+        errors.push(`${path}: additional property ${key}`);
+      } else if (plainObject(schema.additionalProperties)) {
+        errors.push(
+          ...validateAgainstSchema(child, schema.additionalProperties, rootSchema, `${path}.${key}`)
+        );
+      }
+    }
+  }
+
+  return errors;
+};
+
+export const loadExecutionStateSchema = (root = DEFAULT_ROOT) => {
+  const schemaPath = resolve(root, SCHEMA_RELATIVE_PATH);
+  const schema = loadJsonIfExists(schemaPath);
+  if (!schema) return { ok: false, schema: null, errors: [`missing schema ${SCHEMA_RELATIVE_PATH}`] };
+  return { ok: true, schema, errors: [] };
+};
+
+export const validateFactsCorpus = (facts) => {
+  const failures = [];
+  if (!plainObject(facts)) {
+    return { ok: false, failures: ["facts corpus must be a plain object"] };
+  }
+  if (typeof facts.externalAvailable !== "boolean") {
+    failures.push("externalAvailable must be a boolean");
+  }
+  if (typeof facts.repository !== "string" || facts.repository.length === 0) {
+    failures.push("repository required");
+  }
+  if (typeof facts.defaultBranch !== "string" || facts.defaultBranch.length === 0) {
+    failures.push("defaultBranch required");
+  }
+  for (const key of REQUIRED_FACT_ARRAYS) {
+    if (!Array.isArray(facts[key])) failures.push(`${key} must be an array`);
+  }
+  for (const key of REQUIRED_FACT_OBJECTS) {
+    // operationalAuthority may be absent/malformed; that is a ticket-contract conflict, not a corpus shape error.
+    if (key === "operationalAuthority") {
+      if (facts[key] != null && !plainObject(facts[key])) {
+        failures.push(`${key} must be an object when present`);
+      }
+      continue;
+    }
+    if (!plainObject(facts[key])) failures.push(`${key} must be an object`);
+  }
+  if (plainObject(facts.tickets) && Object.keys(facts.tickets).length === 0) {
+    failures.push("empty canonical ticket corpus");
+  }
+  if (plainObject(facts.liveDigests) && Object.keys(facts.liveDigests).length === 0) {
+    failures.push("empty live digest corpus");
+  }
+  return { ok: failures.length === 0, failures };
+};
+
 const expectedActorPolicyFromTicket = () => ({
   governance_mode: "single_owner_agent_team",
   repository: "MongLong0214/agent-operator-score",
@@ -180,6 +322,15 @@ const actorPolicyAgrees = (policy) => {
   return stableJson(policy) === stableJson(expectedActorPolicyFromTicket());
 };
 
+const extractExactGateBatchField = (body) => {
+  if (typeof body !== "string") return { ok: false, reason: "missing body" };
+  const matches = [...body.matchAll(/^Gate-Batch:\s*(\S+)\s*$/gm)];
+  if (matches.length !== 1) {
+    return { ok: false, reason: "exactly one structured Gate-Batch field is required" };
+  }
+  return { ok: true, batchId: matches[0][1] };
+};
+
 const findAcceptedGate = (facts, artifactPath, expectedSha, kind) => {
   const batches = Array.isArray(facts.gateBatches) ? facts.gateBatches : [];
   for (const batch of batches) {
@@ -192,14 +343,13 @@ const findAcceptedGate = (facts, artifactPath, expectedSha, kind) => {
         artifact?.sha256 === expectedSha
     );
     if (!match) continue;
-    const pr = (facts.gatePRs ?? []).find(
-      (candidate) =>
-        typeof candidate?.body === "string" &&
-        candidate.body.includes(`Gate-Batch: ${batch.id}`) &&
-        candidate.merged === true &&
-        candidate.base === "dev" &&
-        candidate.head_contains_batch === true
-    );
+    const pr = (facts.gatePRs ?? []).find((candidate) => {
+      if (candidate.merged !== true || candidate.base !== "dev" || candidate.head_contains_batch !== true) {
+        return false;
+      }
+      const field = extractExactGateBatchField(candidate.body);
+      return field.ok && field.batchId === batch.id;
+    });
     if (!pr) continue;
     const ownerLogin = facts.owner?.login ?? facts.operationalAuthority?.repository_owner?.login;
     if (pr.merged_by !== ownerLogin) continue;
@@ -297,8 +447,15 @@ const extractExactTicketField = (body) => {
   return { ok: true, ticketId: matches[0][1] };
 };
 
-const isValidCandidatePr = (pr, ticketId, targetBranch) => {
-  if (!pr || pr.merged === true) return false;
+const extractExactLineField = (body, label) => {
+  if (typeof body !== "string") return { ok: false };
+  const matches = [...body.matchAll(new RegExp(`^${label}:\\s*(\\S+)\\s*$`, "gm"))];
+  if (matches.length !== 1) return { ok: false };
+  return { ok: true, value: matches[0][1] };
+};
+
+const isLinkedTicketPr = (pr, ticketId, targetBranch) => {
+  if (!pr) return false;
   const field = extractExactTicketField(pr.body);
   if (!field.ok || field.ticketId !== ticketId) return false;
   if (pr.base !== targetBranch) return false;
@@ -307,38 +464,113 @@ const isValidCandidatePr = (pr, ticketId, targetBranch) => {
   return true;
 };
 
+const isOpenLiveCandidate = (pr) => {
+  if (!pr) return false;
+  if (pr.merged === true) return false;
+  if (pr.closed === true) return false;
+  if (pr.state === "closed" || pr.state === "merged") return false;
+  if (pr.superseded === true || pr.state === "superseded") return false;
+  return true;
+};
+
+const explicitSupersededBy = (pr) => {
+  if (typeof pr?.superseded_by === "number") return pr.superseded_by;
+  const field = extractExactLineField(pr?.body, "Superseded-By");
+  if (field.ok && /^\d+$/.test(field.value)) return Number(field.value);
+  return null;
+};
+
+const explicitSupersedes = (pr) => {
+  if (typeof pr?.supersedes === "number") return pr.supersedes;
+  const field = extractExactLineField(pr?.body, "Supersedes");
+  if (field.ok && /^\d+$/.test(field.value)) return Number(field.value);
+  return null;
+};
+
 /**
  * Link candidates only via exactly one structured Ticket field; never ticket_id alone.
- * Deterministically select the highest PR number as active; report all others as superseded.
- * Fact array order must not change the selected active head.
+ * Multiple live open Ticket candidates fail closed unless structured supersession facts
+ * (state/fields/body) explicitly mark predecessors and bind the successor. PR number is
+ * not supersession authority.
  */
 const resolveCandidatePrs = (facts, ticketId) => {
   const targetBranch = facts.operationalAuthority?.target_branch ?? "dev";
   const linked = (Array.isArray(facts.prs) ? facts.prs : []).filter((pr) =>
-    isValidCandidatePr(pr, ticketId, targetBranch)
+    isLinkedTicketPr(pr, ticketId, targetBranch)
   );
-  if (!linked.length) return { active: null, superseded: [] };
-  const sorted = [...linked].sort((left, right) => {
-    if (left.number !== right.number) return left.number - right.number;
-    return String(left.head_sha).localeCompare(String(right.head_sha));
-  });
-  const active = sorted[sorted.length - 1];
-  const superseded = sorted.slice(0, -1).map((pr) => ({
-    number: pr.number,
-    head_sha: pr.head_sha,
-    base: pr.base
-  }));
-  return { active, superseded };
+  if (!linked.length) return { active: null, superseded: [], ambiguous: false };
+
+  const byNumber = new Map(linked.map((pr) => [pr.number, pr]));
+  const openLive = linked.filter((pr) => isOpenLiveCandidate(pr));
+
+  if (openLive.length === 0) {
+    return { active: null, superseded: [], ambiguous: false };
+  }
+
+  if (openLive.length === 1) {
+    const active = openLive[0];
+    const superseded = linked
+      .filter((pr) => pr.number !== active.number)
+      .filter((pr) => {
+        const by = explicitSupersededBy(pr);
+        const supersedes = explicitSupersedes(active);
+        const marked = pr.superseded === true || pr.state === "superseded" || pr.closed === true || pr.state === "closed";
+        return marked && (by === active.number || supersedes === pr.number);
+      })
+      .map((pr) => ({ number: pr.number, head_sha: pr.head_sha, base: pr.base }))
+      .sort((a, b) => a.number - b.number);
+    // Additional open? already only one open. Extra linked without relation are ignored (closed history).
+    const unaccounted = linked.filter(
+      (pr) =>
+        pr.number !== active.number &&
+        isOpenLiveCandidate(pr) === false &&
+        !superseded.some((entry) => entry.number === pr.number) &&
+        (pr.superseded === true || pr.state === "superseded")
+    );
+    if (unaccounted.length) {
+      // Superseded markers without successor binding fail closed.
+      return { active: null, superseded: [], ambiguous: true };
+    }
+    return { active, superseded, ambiguous: false };
+  }
+
+  // Multiple open live candidates: require explicit supersession graph reducing to one active.
+  const openNumbers = new Set(openLive.map((pr) => pr.number));
+  const remaining = new Set(openNumbers);
+  const superseded = [];
+  for (const pr of openLive) {
+    const successor = explicitSupersededBy(pr);
+    const marked = pr.superseded === true || pr.state === "superseded" || successor != null;
+    if (!marked) continue;
+    if (successor == null || !byNumber.has(successor) || successor === pr.number) {
+      return { active: null, superseded: [], ambiguous: true };
+    }
+    // Successor must be linked for the same ticket; may itself be later superseded.
+    const supersedesBack = explicitSupersedes(byNumber.get(successor));
+    if (supersedesBack != null && supersedesBack !== pr.number) {
+      return { active: null, superseded: [], ambiguous: true };
+    }
+    remaining.delete(pr.number);
+    superseded.push({ number: pr.number, head_sha: pr.head_sha, base: pr.base });
+  }
+
+  if (remaining.size !== 1) {
+    return { active: null, superseded: [], ambiguous: true };
+  }
+  const activeNumber = [...remaining][0];
+  const active = byNumber.get(activeNumber);
+  // Active may declare Supersedes for each predecessor; when present it must match.
+  for (const entry of superseded) {
+    const supersedes = explicitSupersedes(active);
+    if (supersedes != null && supersedes !== entry.number && superseded.length === 1) {
+      return { active: null, superseded: [], ambiguous: true };
+    }
+  }
+  superseded.sort((a, b) => a.number - b.number);
+  return { active, superseded, ambiguous: false };
 };
 
 const candidatePrFor = (facts, ticketId) => resolveCandidatePrs(facts, ticketId).active;
-
-const latestAttempt = (runs, name, headSha) => {
-  const matches = runs.filter((run) => run.name === name && run.head_sha === headSha);
-  const selected = selectLatestRunAttempt(matches);
-  if (selected.ambiguous || selected.missing || !selected.run) return null;
-  return selected.run;
-};
 
 const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
   const d0c = facts.d0_004c_merged === true;
@@ -354,6 +586,13 @@ const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
   const requiredAppId = policy.candidate_ci?.check_creator_app?.id;
   const requiredEvent = policy.candidate_ci?.required_event;
   const requiredBase = policy.candidate_ci?.target_branch;
+  const liveBaseSha = facts.liveBaseSha ?? facts.targetBaseSha ?? null;
+
+  if (typeof liveBaseSha !== "string" || !/^[0-9a-f]{40}$/i.test(liveBaseSha)) {
+    failures.push("missing live target base SHA");
+  } else if (typeof pr.base_sha !== "string" || pr.base_sha !== liveBaseSha) {
+    failures.push("candidate base_sha does not match live target base SHA");
+  }
 
   for (const requiredCheck of required) {
     const blobMap = facts.workflowBlobs?.[requiredCheck.workflow_path] ?? {};
@@ -373,71 +612,92 @@ const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
     }
 
     const runMatches = runs.filter((entry) => entry.name === requiredCheck.name && entry.head_sha === head);
-    const checkMatches = checks.filter(
+    if (!runMatches.length) {
+      failures.push(`missing workflow run for ${requiredCheck.name}`);
+      continue;
+    }
+    const selected = selectLatestRunAttempt(runMatches);
+    if (selected.ambiguous || selected.missing || !selected.run) {
+      failures.push(`ambiguous or missing run attempt for ${requiredCheck.name}`);
+      continue;
+    }
+    const selectedRun = selected.run;
+    if (selectedRun.run_id == null || selectedRun.run_attempt == null) {
+      failures.push(`run_id and run_attempt required for ${requiredCheck.name}`);
+      continue;
+    }
+    if (selectedRun.head_sha !== head) {
+      failures.push(`stale or wrong head for run ${requiredCheck.name}`);
+      continue;
+    }
+
+    // Exactly one job/check fact mapped to the selected workflow-run attempt.
+    const mappedChecks = checks.filter(
       (entry) =>
         entry.name === requiredCheck.name &&
         entry.head_sha === head &&
+        entry.run_id === selectedRun.run_id &&
+        entry.run_attempt === selectedRun.run_attempt &&
         (entry.ticket_id === ticketId || !entry.ticket_id)
     );
-    // Prefer workflow-run attempts when present; otherwise use check-run facts.
-    const pool = runMatches.length ? runMatches : checkMatches;
-    const selected = selectLatestRunAttempt(pool);
-    if (selected.ambiguous) {
-      failures.push(`ambiguous run attempt for ${requiredCheck.name}`);
+    if (mappedChecks.length !== 1) {
+      failures.push(`exact run-to-check mapping required for ${requiredCheck.name}`);
       continue;
     }
-    const subject = selected.run ?? null;
-    if (!subject) {
-      failures.push(`missing required check ${requiredCheck.name}`);
+    const subject = mappedChecks[0];
+    if (subject.run_id == null || subject.run_attempt == null) {
+      failures.push(`check run_id/run_attempt required for ${requiredCheck.name}`);
       continue;
     }
-    if (subject.head_sha !== head) {
-      failures.push(`stale or wrong head for ${requiredCheck.name}`);
-      continue;
+
+    const checkFields = [
+      ["app slug", subject.app_slug, requiredAppSlug],
+      ["app id", subject.app_id, requiredAppId],
+      ["event", subject.event, requiredEvent],
+      ["base", subject.base, requiredBase],
+      ["workflow path", subject.workflow_path, requiredCheck.workflow_path]
+    ];
+    let fieldFailed = false;
+    for (const [label, actual, expected] of checkFields) {
+      if (actual == null || actual === "") {
+        failures.push(`missing ${label} for ${requiredCheck.name}`);
+        fieldFailed = true;
+        break;
+      }
+      if (actual !== expected) {
+        failures.push(`wrong ${label} for ${requiredCheck.name}`);
+        fieldFailed = true;
+        break;
+      }
     }
-    // Every required provenance mapping fact must be present and exact.
-    if (subject.app_slug == null || subject.app_slug === "") {
-      failures.push(`missing app slug for ${requiredCheck.name}`);
-      continue;
+    if (fieldFailed) continue;
+
+    const runFields = [
+      ["app slug", selectedRun.app_slug, requiredAppSlug],
+      ["app id", selectedRun.app_id, requiredAppId],
+      ["event", selectedRun.event, requiredEvent],
+      ["base", selectedRun.base, requiredBase],
+      ["workflow path", selectedRun.workflow_path, requiredCheck.workflow_path]
+    ];
+    for (const [label, actual, expected] of runFields) {
+      if (actual == null || actual === "") {
+        failures.push(`missing run ${label} for ${requiredCheck.name}`);
+        fieldFailed = true;
+        break;
+      }
+      if (actual !== expected) {
+        failures.push(`wrong run ${label} for ${requiredCheck.name}`);
+        fieldFailed = true;
+        break;
+      }
     }
-    if (subject.app_slug !== requiredAppSlug) {
-      failures.push(`wrong app for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.app_id == null || subject.app_id === "") {
-      failures.push(`missing app id for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.app_id !== requiredAppId) {
-      failures.push(`wrong app id for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.event == null || subject.event === "") {
-      failures.push(`missing event for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.event !== requiredEvent) {
-      failures.push(`wrong event for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.base == null || subject.base === "") {
-      failures.push(`missing base for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.base !== requiredBase) {
-      failures.push(`wrong base for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.workflow_path == null || subject.workflow_path === "") {
-      failures.push(`missing workflow path for ${requiredCheck.name}`);
-      continue;
-    }
-    if (subject.workflow_path !== requiredCheck.workflow_path) {
-      failures.push(`wrong workflow path for ${requiredCheck.name}`);
-      continue;
-    }
+    if (fieldFailed) continue;
+
     if (subject.status !== "completed" || subject.conclusion !== "success") {
       failures.push(`required check ${requiredCheck.name} not successful`);
+    }
+    if (selectedRun.status !== "completed" || selectedRun.conclusion !== "success") {
+      failures.push(`required workflow run ${requiredCheck.name} not successful`);
     }
   }
 
@@ -655,6 +915,20 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
   const gateEvaluation = evaluateTicketGates(facts, ticketId, ticket);
 
   const candidateResolution = resolveCandidatePrs(facts, ticketId);
+  if (candidateResolution.ambiguous) {
+    return finalize(
+      "implementing",
+      "blocked",
+      [
+        blocker(
+          "TICKET_CONTRACT_CONFLICT",
+          `${ticketId} has multiple live Ticket candidates without explicit structured supersession`
+        )
+      ],
+      null,
+      null
+    );
+  }
   const pr = candidateResolution.active;
 
   // Explicit implementation verification (never from issue state alone).
@@ -806,10 +1080,92 @@ export const canonicalExecutionState = (state) => {
   return strip(state);
 };
 
+const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
+  schema_version: 1,
+  mode,
+  repository: runtimeIdentity?.repository ?? expectedActorPolicyFromTicket().repository,
+  target_branch: runtimeIdentity?.branch ?? expectedActorPolicyFromTicket().target_branch,
+  current_head: runtimeIdentity?.head ?? null,
+  resolved_at: now,
+  bootstrap: { active: true, d0_004c_merged: false },
+  tickets: {},
+  readySet: [],
+  errors
+});
+
+/**
+ * Bounded online-strict fact acquisition. Accepts injected facts (tests) or an
+ * explicit facts path; otherwise probes live git/GitHub identity and fails closed
+ * when a complete operational corpus is unavailable (no empty-corpus fallback).
+ */
+export const acquireOnlineStrictFacts = (root = DEFAULT_ROOT, options = {}) => {
+  if (options.facts != null) {
+    const corpus = validateFactsCorpus(options.facts);
+    if (!corpus.ok) return { ok: false, reason: corpus.failures.join("; "), facts: null };
+    if (options.facts.externalAvailable !== true) {
+      return { ok: false, reason: "injected facts mark externalAvailable=false", facts: null };
+    }
+    return { ok: true, facts: options.facts };
+  }
+
+  const factsPath =
+    options.factsPath ??
+    process.env.AOS_EXECUTION_STATE_FACTS ??
+    null;
+  if (factsPath) {
+    const absolute = isAbsolute(factsPath) ? factsPath : resolve(root, factsPath);
+    const loaded = loadJsonIfExists(absolute);
+    if (!loaded) return { ok: false, reason: `facts path unavailable: ${factsPath}`, facts: null };
+    const corpus = validateFactsCorpus(loaded);
+    if (!corpus.ok) return { ok: false, reason: corpus.failures.join("; "), facts: null };
+    if (loaded.externalAvailable !== true) {
+      return { ok: false, reason: "facts path marks externalAvailable=false", facts: null };
+    }
+    return { ok: true, facts: loaded };
+  }
+
+  const identity = deriveRuntimeIdentity(root);
+  if (!identity.repository || !identity.branch || !identity.head) {
+    return { ok: false, reason: "runtime git identity unavailable", facts: null };
+  }
+
+  let repoJson = null;
+  try {
+    const raw = execFileSync(
+      "gh",
+      ["api", `repos/${identity.repository}`],
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    );
+    repoJson = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "github repository facts unavailable", facts: null };
+  }
+
+  if (!repoJson?.owner?.login || !repoJson?.default_branch) {
+    return { ok: false, reason: "github repository owner/default_branch unavailable", facts: null };
+  }
+
+  // Bounded probe succeeded for identity, but a complete operational gate/PR/CI
+  // corpus is not inventable from identity alone. Fail closed without fallback.
+  return {
+    ok: false,
+    reason: "complete live operational fact corpus unavailable",
+    facts: null,
+    identity: {
+      repository: identity.repository,
+      branch: identity.branch,
+      head: identity.head,
+      owner: { login: repoJson.owner.login, type: repoJson.owner.type },
+      defaultBranch: repoJson.default_branch
+    }
+  };
+};
+
 export const resolveExecutionState = (options = {}) => {
   const mode = options.mode === "online-strict" ? "online-strict" : "offline";
   const root = options.root ? resolve(options.root) : DEFAULT_ROOT;
   const now = typeof options.now === "string" ? options.now : new Date().toISOString();
+  const schemaLoad = loadExecutionStateSchema(root);
 
   let facts = options.facts ?? null;
   if (!facts && mode === "offline") {
@@ -818,46 +1174,37 @@ export const resolveExecutionState = (options = {}) => {
       : resolve(root, "fixtures/operational-state/current-baseline/facts.json");
     facts = loadJsonIfExists(fixturePath);
   }
+
+  const runtimeIdentity = options.runtimeIdentity ?? (
+    mode === "online-strict"
+      ? deriveRuntimeIdentity(root)
+      : {
+          repository: facts?.repository ?? null,
+          branch: facts?.defaultBranch ?? null,
+          head: facts?.currentHead ?? null
+        }
+  );
+
   if (!facts) {
-    facts = {
-      repository: "MongLong0214/agent-operator-score",
-      defaultBranch: "dev",
-      owner: { login: "MongLong0214", type: "User" },
-      currentHead: null,
-      d0_004c_merged: false,
-      externalAvailable: mode === "offline",
-      operationalAuthority: expectedActorPolicyFromTicket(),
-      tickets: {},
-      gateBatches: [],
-      gatePRs: [],
-      postMergeCI: [],
-      verifiedTickets: [],
-      issues: [],
-      prs: [],
-      reviews: [],
-      authorizations: [],
-      checkRuns: [],
-      workflowRuns: [],
-      permissions: {},
-      workflowBlobs: {},
-      liveDigests: {},
-      activeOwnership: [],
-      projectionSurfaces: {}
-    };
+    const errors = [blocker("EXTERNAL_STATE_UNAVAILABLE", "required fact corpus unavailable")];
+    if (!schemaLoad.ok) {
+      // Still emit a schema-shaped failure object; output validation may also fail.
+    }
+    const state = emptyFailureState(mode, now, runtimeIdentity, errors);
+    return state;
+  }
+
+  const corpus = validateFactsCorpus(facts);
+  if (!corpus.ok) {
+    return emptyFailureState(mode, now, runtimeIdentity, [
+      blocker("TICKET_CONTRACT_INCOMPLETE", `malformed facts corpus: ${corpus.failures.join("; ")}`)
+    ]);
   }
 
   // Projection surfaces are intentionally never read for readiness.
   void facts.projectionSurfaces;
   void facts.issues;
   void facts.registryStrings;
-
-  const runtimeIdentity = options.runtimeIdentity ?? (
-    mode === "online-strict" ? deriveRuntimeIdentity(root) : {
-      repository: facts.repository,
-      branch: facts.defaultBranch,
-      head: facts.currentHead
-    }
-  );
 
   const policy = facts.operationalAuthority;
   const policyConflict = !actorPolicyAgrees(policy);
@@ -873,17 +1220,19 @@ export const resolveExecutionState = (options = {}) => {
       facts.owner.type !== policy.repository_owner.type
     ));
 
-  const externalUnavailable = facts.externalAvailable === false;
+  const externalUnavailable = facts.externalAvailable !== true;
 
   const context = { wrongTarget, policyConflict, externalUnavailable };
   const ticketIds = Object.keys(facts.tickets ?? {}).sort();
   const tickets = {};
   for (const ticketId of ticketIds) {
-    tickets[ticketId] = resolveOneTicket(facts, ticketId, facts.tickets[ticketId], policy ?? expectedActorPolicyFromTicket(), context);
-  }
-
-  if (options.ticket) {
-    // Keep full map for determinism; filter readySet/report later if needed.
+    tickets[ticketId] = resolveOneTicket(
+      facts,
+      ticketId,
+      facts.tickets[ticketId],
+      policy ?? expectedActorPolicyFromTicket(),
+      context
+    );
   }
 
   let readySet = Object.entries(tickets)
@@ -901,7 +1250,7 @@ export const resolveExecutionState = (options = {}) => {
   if (policyConflict) errors.push(blocker("TICKET_CONTRACT_CONFLICT", "actor policy conflict"));
   if (externalUnavailable) errors.push(blocker("EXTERNAL_STATE_UNAVAILABLE", "external facts unavailable"));
 
-  return {
+  const result = {
     schema_version: 1,
     mode,
     repository: expectedRepo,
@@ -916,11 +1265,32 @@ export const resolveExecutionState = (options = {}) => {
     readySet,
     errors
   };
+
+  if (!schemaLoad.ok) {
+    result.errors.push(blocker("TICKET_CONTRACT_INCOMPLETE", schemaLoad.errors.join("; ")));
+  } else {
+    const schemaErrors = validateAgainstSchema(result, schemaLoad.schema);
+    if (schemaErrors.length) {
+      result.errors.push(
+        blocker("TICKET_CONTRACT_INCOMPLETE", `output schema validation failed: ${schemaErrors[0]}`)
+      );
+    }
+  }
+
+  return result;
 };
 
 export const runOfflineCheck = (options = {}) => {
   const root = options.root ? resolve(options.root) : DEFAULT_ROOT;
   const fixturePath = resolve(root, "fixtures/operational-state/current-baseline/facts.json");
+  const failures = [];
+  if (!existsSync(fixturePath) && !options.facts) {
+    failures.push("missing current-baseline fixture");
+  }
+  if (options.facts != null) {
+    const corpus = validateFactsCorpus(options.facts);
+    if (!corpus.ok) failures.push(...corpus.failures);
+  }
   const result = resolveExecutionState({
     mode: "offline",
     root,
@@ -928,16 +1298,28 @@ export const runOfflineCheck = (options = {}) => {
     facts: options.facts,
     runtimeIdentity: options.runtimeIdentity
   });
-  const failures = [];
-  if (!existsSync(fixturePath) && !options.facts) {
-    failures.push("missing current-baseline fixture");
-  }
   if (result.errors.some((entry) => entry.code === "WRONG_TARGET")) {
     failures.push("wrong target");
   }
+  if (result.errors.some((entry) => entry.code === "TICKET_CONTRACT_CONFLICT")) {
+    failures.push("ticket contract conflict");
+  }
+  if (result.errors.some((entry) => entry.code === "TICKET_CONTRACT_INCOMPLETE")) {
+    failures.push("facts/schema contract incomplete");
+  }
+  if (result.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE")) {
+    failures.push("external state unavailable");
+  }
+  const schemaLoad = loadExecutionStateSchema(root);
+  if (!schemaLoad.ok) {
+    failures.push(...schemaLoad.errors);
+  } else {
+    const schemaErrors = validateAgainstSchema(result, schemaLoad.schema);
+    if (schemaErrors.length) failures.push(`output schema: ${schemaErrors[0]}`);
+  }
   // Offline check does not claim online readiness.
   return {
-    ok: failures.length === 0 && !result.errors.some((e) => e.code === "TICKET_CONTRACT_CONFLICT"),
+    ok: failures.length === 0,
     result,
     failures,
     claimsOnlineReadiness: false
@@ -994,10 +1376,26 @@ const main = () => {
   const mode = args.strict ? "online-strict" : "offline";
   let result;
   if (mode === "online-strict") {
-    result = resolveExecutionState({
-      mode: "online-strict",
-      ticket: args.ticket
-    });
+    const acquired = acquireOnlineStrictFacts(DEFAULT_ROOT);
+    if (!acquired.ok) {
+      const identity = acquired.identity ?? deriveRuntimeIdentity(DEFAULT_ROOT);
+      result = emptyFailureState(
+        "online-strict",
+        new Date().toISOString(),
+        {
+          repository: identity.repository ?? expectedActorPolicyFromTicket().repository,
+          branch: identity.defaultBranch ?? identity.branch ?? expectedActorPolicyFromTicket().target_branch,
+          head: identity.head ?? null
+        },
+        [blocker("EXTERNAL_STATE_UNAVAILABLE", acquired.reason ?? "external facts unavailable")]
+      );
+    } else {
+      result = resolveExecutionState({
+        mode: "online-strict",
+        facts: acquired.facts,
+        ticket: args.ticket
+      });
+    }
   } else {
     result = resolveExecutionState({
       mode: "offline",
@@ -1028,12 +1426,20 @@ const main = () => {
       const codes = state.blockers.map((entry) => entry.code).join(",") || "none";
       lines.push(`${id} phase=${state.phase} readiness=${state.readiness} blockers=${codes}`);
     }
+    if (result.errors?.length) {
+      lines.push(`errors=${result.errors.map((entry) => entry.code).join(",")}`);
+    }
     console.log(lines.join("\n"));
   }
 
+  const unresolvedExternal = result.errors.some((entry) =>
+    ["EXTERNAL_STATE_UNAVAILABLE", "WRONG_TARGET", "TICKET_CONTRACT_CONFLICT", "TICKET_CONTRACT_INCOMPLETE"].includes(
+      entry.code
+    )
+  );
   const failed =
-    result.errors.some((entry) => ["WRONG_TARGET", "TICKET_CONTRACT_CONFLICT"].includes(entry.code)) ||
-    (args.strict && result.readySet === undefined);
+    unresolvedExternal ||
+    (args.strict && (result.errors.length > 0 || result.readySet === undefined));
   process.exit(failed ? 1 : 0);
 };
 
