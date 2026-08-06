@@ -149,7 +149,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "3",
           "acceptance_ids": [
-            "AC-E0A-2"
+            "AC-E0A-2",
+            "AC-E0A-4"
           ]
         },
         {
@@ -486,7 +487,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "3",
           "acceptance_ids": [
-            "AC-E10-1"
+            "AC-E10-1",
+            "AC-E10-4"
           ]
         },
         {
@@ -630,12 +632,14 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "3",
           "acceptance_ids": [
+            "AC-E12-2",
             "AC-E12-3"
           ]
         },
         {
           "requirement_key": "4",
           "acceptance_ids": [
+            "AC-E12-3",
             "AC-E12-4"
           ]
         }
@@ -705,7 +709,9 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "4",
           "acceptance_ids": [
-            "AC-E13-1"
+            "AC-E13-1",
+            "AC-E13-2",
+            "AC-E13-3"
           ]
         }
       ],
@@ -759,13 +765,13 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "2",
           "acceptance_ids": [
-            "AC-E14-2"
+            "AC-E14-3"
           ]
         },
         {
           "requirement_key": "3",
           "acceptance_ids": [
-            "AC-E14-3"
+            "AC-E14-2"
           ]
         },
         {
@@ -785,13 +791,13 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "acceptance_id": "AC-E14-2",
           "ticket_ids": [
-            "E14-002"
+            "E14-003"
           ]
         },
         {
           "acceptance_id": "AC-E14-3",
           "ticket_ids": [
-            "E14-003"
+            "E14-002"
           ]
         },
         {
@@ -828,7 +834,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "1",
           "acceptance_ids": [
-            "AC-E2-1"
+            "AC-E2-2"
           ]
         },
         {
@@ -867,7 +873,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "acceptance_id": "AC-E2-2",
           "ticket_ids": [
-            "E2-002"
+            "E2-002",
+            "E2-003"
           ]
         },
         {
@@ -879,7 +886,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "acceptance_id": "AC-E2-4",
           "ticket_ids": [
-            "E2-004"
+            "E2-004",
+            "E2-005"
           ]
         }
       ]
@@ -999,6 +1007,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
           "requirement_key": "1",
           "acceptance_ids": [
             "AC-E4-1",
+            "AC-E4-2",
+            "AC-E4-3",
             "AC-E4-5"
           ]
         },
@@ -1017,7 +1027,6 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "4",
           "acceptance_ids": [
-            "AC-E4-3",
             "AC-E4-4",
             "AC-E4-5"
           ]
@@ -1101,7 +1110,9 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "4",
           "acceptance_ids": [
-            "AC-E5-1"
+            "AC-E5-1",
+            "AC-E5-2",
+            "AC-E5-3"
           ]
         }
       ],
@@ -1170,6 +1181,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         {
           "requirement_key": "3",
           "acceptance_ids": [
+            "AC-E6-1",
             "AC-E6-2"
           ]
         },

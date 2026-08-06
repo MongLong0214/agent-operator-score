@@ -122,8 +122,20 @@ const isPlannedPathShape = (testPath) =>
   !testPath.split("/").includes("..") &&
   /^(tests|packages|adapters|suites|conformance)\//.test(testPath);
 
+// Exact D0-003 historical-evidence contract. No other case-less/path-less edge may pass.
+const HISTORICAL_ACCEPTANCE_CONTRACT = Object.freeze({
+  ticket_id: "D0-003",
+  acceptance_id: "AC-D0-003-1",
+  edge_prefix: "historical evidence `PR #53`:"
+});
+const isHistoricalAcceptanceContract = (ticketId, acceptanceId, edge) =>
+  ticketId === HISTORICAL_ACCEPTANCE_CONTRACT.ticket_id &&
+  acceptanceId === HISTORICAL_ACCEPTANCE_CONTRACT.acceptance_id &&
+  typeof edge === "string" &&
+  edge.trimStart().startsWith(HISTORICAL_ACCEPTANCE_CONTRACT.edge_prefix);
+
 // Extract path/case tokens from ticket prose only. Path is never reverse-looked-up from cases.
-const parseTicketAcceptanceProse = (edge) => {
+const parseTicketAcceptanceProse = (edge, { ticketId, acceptanceId } = {}) => {
   if (typeof edge !== "string" || !edge.trim()) {
     return { ok: false, reason: "malformed ticket acceptance edge" };
   }
@@ -152,12 +164,32 @@ const parseTicketAcceptanceProse = (edge) => {
   if (testPath && !isPlannedPathShape(testPath)) {
     return { ok: false, reason: "malformed planned test path" };
   }
-  // A stated planned path must name at least one case. Case-less prose (e.g. historical
-  // evidence lines) is allowed only when an explicit catalog binding supplies path + cases.
+  // A stated planned path must name at least one case.
   if (testPath && !cases.length) {
     return { ok: false, reason: "malformed named test case" };
   }
-  return { ok: true, testPath, cases, proseHasPath: Boolean(testPath), proseHasCases: cases.length > 0 };
+  // Generic case-less/path-less prose fails closed. Only the exact historical contract may omit cases.
+  if (!testPath && !cases.length) {
+    if (isHistoricalAcceptanceContract(ticketId, acceptanceId, edge)) {
+      return {
+        ok: true,
+        testPath: null,
+        cases: [],
+        proseHasPath: false,
+        proseHasCases: false,
+        historicalContract: true
+      };
+    }
+    return { ok: false, reason: "malformed named test case" };
+  }
+  return {
+    ok: true,
+    testPath,
+    cases,
+    proseHasPath: Boolean(testPath),
+    proseHasCases: cases.length > 0,
+    historicalContract: false
+  };
 };
 
 const collectTestCaseNames = (fileText) => {
@@ -510,7 +542,7 @@ const expectedTicketAcceptanceKeys = [];
 for (const ticket of tickets.values()) {
   for (const line of ticket.acceptanceLines) {
     expectedTicketAcceptanceKeys.push(`${ticket.id}\0${line.id}`);
-    const prose = parseTicketAcceptanceProse(line.edge);
+    const prose = parseTicketAcceptanceProse(line.edge, { ticketId: ticket.id, acceptanceId: line.id });
     line.prose = prose;
     if (!prose.ok) {
       pushError(`semantic graph ${ticket.id} acceptance ${line.id} ${prose.reason}`);
@@ -521,13 +553,18 @@ for (const ticket of tickets.values()) {
       pushError(`semantic graph orphan ticket acceptance edge ${ticket.id} ${line.id}`);
       continue;
     }
+    // Stated path/cases must equal the explicit binding. Case-only edges still require cases in prose.
     if (prose.proseHasPath && prose.testPath !== binding.test_path) {
       pushError(`semantic graph ${ticket.id} acceptance ${line.id} planned test path diverges from catalog binding`);
     }
     if (prose.proseHasCases && !sameSet(prose.cases, binding.cases)) {
       pushError(`semantic graph ${ticket.id} acceptance ${line.id} named test cases diverge from catalog binding`);
     }
-    // Binding is the sole authority for path + cases (covers case-only and former historical edges).
+    if (!prose.proseHasCases && !prose.historicalContract) {
+      pushError(`semantic graph ${ticket.id} acceptance ${line.id} malformed named test case`);
+      continue;
+    }
+    // Binding supplies path + cases; historical contract relies on the binding alone for path/cases.
     const plannedCases = plannedTestsByPath.get(binding.test_path);
     if (!plannedCases) {
       pushError(`semantic graph ${ticket.id} acceptance ${line.id} unknown planned test path ${binding.test_path}`);
