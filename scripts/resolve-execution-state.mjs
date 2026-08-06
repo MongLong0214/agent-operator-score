@@ -1744,8 +1744,9 @@ const collectAllJsonPages = (transport, firstPagePath, failures, { perPage = 50,
   }
   if (first.length < perPage) return first;
   const all = [...first];
+  const pageSep = firstPagePath.includes("?") ? "&" : "?";
   for (let page = 2; page <= maxPages; page += 1) {
-    const pagePath = `${firstPagePath}&page=${page}`;
+    const pagePath = `${firstPagePath}${pageSep}page=${page}`;
     const batch = requireJson(transport, pagePath, failures);
     if (!Array.isArray(batch)) {
       failures.push(`${label} page ${page} unavailable or truncated`);
@@ -1767,14 +1768,51 @@ const rejectPossiblyTruncatedList = (items, perPage, failures, label) => {
   return false;
 };
 
+/**
+ * Fail closed when a GitHub list/search payload's total_count exceeds returned items,
+ * or when the page is full (possible omitted next page). Missing total_count is allowed
+ * only when the returned page is short (fixture-compatible); a full page still fails.
+ */
+const rejectPartialCountPayload = (payload, arrayKey, perPage, failures, label) => {
+  if (!payload || typeof payload !== "object") {
+    failures.push(`${label} payload missing`);
+    return true;
+  }
+  const items = payload[arrayKey];
+  if (!Array.isArray(items)) {
+    failures.push(`${label} ${arrayKey} missing or not an array`);
+    return true;
+  }
+  if (typeof payload.total_count === "number") {
+    if (payload.total_count < 0 || !Number.isFinite(payload.total_count)) {
+      failures.push(`${label} invalid total_count`);
+      return true;
+    }
+    if (payload.total_count > items.length) {
+      failures.push(
+        `${label} total_count ${payload.total_count} exceeds returned ${items.length}`
+      );
+      return true;
+    }
+  }
+  if (items.length >= perPage) {
+    failures.push(`${label} possibly truncated at ${perPage} items`);
+    return true;
+  }
+  return false;
+};
+
 const rejectPossiblyTruncatedSearch = (search, perPage, failures, label) => {
-  if (!search || !Array.isArray(search.items)) return true;
+  if (!search || !Array.isArray(search.items)) {
+    failures.push(`${label} missing items array`);
+    return true;
+  }
   if (search.incomplete_results === true) {
     failures.push(`${label} incomplete_results=true`);
     return true;
   }
   if (typeof search.total_count === "number" && search.total_count > search.items.length) {
-    failures.push(`${label} total_count ${search.total_count} exceeds page size ${search.items.length}`);
+    failures.push(`${label} total_count ${search.total_count} exceeds returned ${search.items.length}`);
     return true;
   }
   if (search.items.length >= perPage) {
@@ -2115,8 +2153,16 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!Array.isArray(search.items)) {
       return { ok: false, reason: `ambiguous gate PR search for ${batch.id}`, facts: null };
     }
-    if (search.incomplete_results === true) {
-      return { ok: false, reason: `gate PR search incomplete for batch ${batch.id}`, facts: null };
+    // Honor total_count / incomplete_results even when items.length looks unique.
+    if (rejectPossiblyTruncatedSearch(search, 10, failures, `gate PR search for ${batch.id}`)) {
+      return { ok: false, reason: failures.join("; "), facts: null };
+    }
+    if (typeof search.total_count === "number" && search.total_count !== search.items.length) {
+      return {
+        ok: false,
+        reason: `gate PR search total_count ${search.total_count} disagrees with returned ${search.items.length} for batch ${batch.id}`,
+        facts: null
+      };
     }
     if (search.items.length === 0) {
       // No gate PR for this accepted registry row — leave unmatched (gate acceptance fails closed later).
@@ -2182,7 +2228,16 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
       failures
     );
-    if (!runs || !Array.isArray(runs.workflow_runs)) {
+    if (
+      !runs ||
+      rejectPartialCountPayload(
+        runs,
+        "workflow_runs",
+        20,
+        failures,
+        `post-merge runs for ${pull.merge_commit_sha}`
+      )
+    ) {
       return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for ${pull.merge_commit_sha}`, facts: null };
     }
     const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
@@ -2273,22 +2328,22 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       `${repoPath}/actions/runs?head_sha=${head}&event=pull_request&per_page=30`,
       failures
     );
-    if (!headRuns || !Array.isArray(headRuns.workflow_runs)) {
+    if (
+      !headRuns ||
+      rejectPartialCountPayload(headRuns, "workflow_runs", 30, failures, `workflow runs for ${head}`)
+    ) {
       return { ok: false, reason: failures.join("; ") || `workflow runs unavailable for ${head}`, facts: null };
-    }
-    if (rejectPossiblyTruncatedList(headRuns.workflow_runs, 30, failures, `workflow runs for ${head}`)) {
-      return { ok: false, reason: failures.join("; "), facts: null };
     }
     const checksPayload = requireJson(
       transport,
       `${repoPath}/commits/${head}/check-runs?per_page=50`,
       failures
     );
-    if (!checksPayload || !Array.isArray(checksPayload.check_runs)) {
+    if (
+      !checksPayload ||
+      rejectPartialCountPayload(checksPayload, "check_runs", 50, failures, `check runs for ${head}`)
+    ) {
       return { ok: false, reason: failures.join("; ") || `check runs unavailable for ${head}`, facts: null };
-    }
-    if (rejectPossiblyTruncatedList(checksPayload.check_runs, 50, failures, `check runs for ${head}`)) {
-      return { ok: false, reason: failures.join("; "), facts: null };
     }
     const checksById = new Map();
     const checksByName = new Map();
@@ -2368,11 +2423,20 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
           facts: null
         };
       }
-      const jobs = attemptJobs.value.jobs;
-      if (jobs.length >= 50) {
+      const jobsPayload = attemptJobs.value;
+      const jobs = jobsPayload.jobs;
+      if (
+        rejectPartialCountPayload(
+          jobsPayload,
+          "jobs",
+          50,
+          failures,
+          `attempt jobs for run ${run.id} attempt ${run.run_attempt}`
+        )
+      ) {
         return {
           ok: false,
-          reason: `attempt jobs possibly truncated for run ${run.id} attempt ${run.run_attempt}`,
+          reason: failures.join("; ") || `attempt jobs partial for run ${run.id} attempt ${run.run_attempt}`,
           facts: null
         };
       }
@@ -2564,8 +2628,13 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       }
     }
 
-    // Formal reviews: only APPROVED reviews with commit_id == head count as bootstrap evidence.
-    const pullReviews = requireJson(transport, `${repoPath}/pulls/${pull.number}/reviews`, failures);
+    // Formal reviews: paginate all pages; only APPROVED reviews with commit_id == head count.
+    const pullReviews = collectAllJsonPages(
+      transport,
+      `${repoPath}/pulls/${pull.number}/reviews`,
+      failures,
+      { perPage: 30, maxPages: 40, label: `reviews for PR #${pull.number}` }
+    );
     if (!Array.isArray(pullReviews)) {
       return { ok: false, reason: failures.join("; ") || `reviews unavailable for PR #${pull.number}`, facts: null };
     }
@@ -2655,7 +2724,16 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
       failures
     );
-    if (!runs || !Array.isArray(runs.workflow_runs)) {
+    if (
+      !runs ||
+      rejectPartialCountPayload(
+        runs,
+        "workflow_runs",
+        20,
+        failures,
+        `implementation post-merge runs for #${item.number}`
+      )
+    ) {
       return { ok: false, reason: failures.join("; ") || `implementation post-merge runs unavailable for #${item.number}`, facts: null };
     }
     const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");

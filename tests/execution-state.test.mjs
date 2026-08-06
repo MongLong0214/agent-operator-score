@@ -2023,6 +2023,98 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   assert.ok(blockerCodes(d0004).includes("POST_MERGE_CI_MISSING"));
 });
 
+test("gate-search-total-count-mismatch-fails-closed", async () => {
+  // R12: gate PR search must honor total_count (not only items.length / incomplete_results).
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const key = Object.keys(responses).find((entry) => entry.includes("search/issues") && entry.includes("Gate-Batch"));
+  assert.ok(key, "fixture gate search key");
+  const mutant = clone(responses);
+  mutant[key] = {
+    total_count: 11,
+    incomplete_results: false,
+    items: [{ number: 200 }]
+  };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(mutant) });
+  assert.equal(collected.ok, false, "elevated total_count must not collect as ok=true");
+  assert.match(collected.reason, /total_count|truncat|gate PR|ambiguous|incomplete/i);
+});
+
+test("candidate-run-and-check-total-count-partial-fails-closed", async () => {
+  // R12: workflow_runs / check_runs total_count above returned arrays must fail closed.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const runKey = Object.keys(responses).find(
+    (entry) => entry.includes("actions/runs?head_sha=cafecafe") && entry.includes("pull_request")
+  );
+  const checkKey = Object.keys(responses).find((entry) => entry.includes("check-runs?per_page=50"));
+  assert.ok(runKey && checkKey, "fixture candidate run/check keys");
+
+  const runMutant = clone(responses);
+  const runPayload = clone(runMutant[runKey]);
+  runPayload.total_count = (runPayload.workflow_runs?.length ?? 0) + 5;
+  runMutant[runKey] = runPayload;
+  const runCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(runMutant) });
+  assert.equal(runCollected.ok, false, "workflow_runs total_count mismatch must fail closed");
+  assert.match(runCollected.reason, /total_count|truncat|workflow runs|partial/i);
+
+  const checkMutant = clone(responses);
+  const checkPayload = clone(checkMutant[checkKey]);
+  checkPayload.total_count = (checkPayload.check_runs?.length ?? 0) + 3;
+  checkMutant[checkKey] = checkPayload;
+  const checkCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(checkMutant) });
+  assert.equal(checkCollected.ok, false, "check_runs total_count mismatch must fail closed");
+  assert.match(checkCollected.reason, /total_count|truncat|check runs|partial/i);
+});
+
+test("formal-pr-reviews-paginate-or-fail-closed-on-full-page", async () => {
+  // R12: formal reviews must not silently stop at the first full page.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const reviewKey = "repos/MongLong0214/agent-operator-score/pulls/300/reviews";
+  assert.ok(Object.hasOwn(responses, reviewKey));
+  const fullPage = [];
+  for (let i = 0; i < 30; i += 1) {
+    fullPage.push({
+      id: 5000 + i,
+      state: "COMMENTED",
+      commit_id: "cafecafecafecafecafecafecafecafecafecafe",
+      user: { login: "MongLong0214" }
+    });
+  }
+  const truncated = clone(responses);
+  truncated[reviewKey] = fullPage;
+  const failed = collectLiveExecutionFacts(root, { transport: createFixtureTransport(truncated) });
+  assert.equal(failed.ok, false);
+  assert.match(failed.reason, /review|truncat|page|unavailable/i);
+
+  const page2 = [
+    {
+      id: 6001,
+      state: "APPROVED",
+      commit_id: "cafecafecafecafecafecafecafecafecafecafe",
+      user: { login: "MongLong0214" }
+    }
+  ];
+  const multipage = clone(responses);
+  multipage[reviewKey] = fullPage;
+  multipage[`${reviewKey}?page=2`] = page2;
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(multipage) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.ok(
+    collected.facts.reviews.some(
+      (entry) => entry.ticket_id === "D0-004" && entry.decision === "approved"
+    ),
+    "page-2 APPROVED review must be collected"
+  );
+});
+
 test("executable-ticket-missing-or-malformed-declared-ownership-fails-closed", async () => {
   // R11: missing/malformed declared owned_paths/owned_symbols must not authorize RED packet.
   const facts = makeReadyD0004Facts(loadBaselineFacts());
