@@ -4,7 +4,7 @@ Status: **ACTIVE**
 
 Scope: execution order, ready-set calculation, parallel lanes, joins, and agent handoff
 
-Last verified checkpoint: `dev` at `879ae90f42b42a8f83243ccb76e69b60800c3b82`
+Last verified checkpoint: `dev` at `6e872ccf2387067b49217a27a7c255343ad2eb8d`
 
 This is the stable entrypoint for deciding what work may start next. It is subordinate to the product authority chain in `AGENTS.md`:
 
@@ -21,10 +21,12 @@ If this roadmap conflicts with a higher authority, the higher authority wins and
 - Executable ticket records: **64**
 - Superseded non-executable record: **D0-003 / issue #56**
 - Current milestone: **S0 · Name & Contracts**
-- Current ready set: **D0-001 / issue #54 only**
-- Current ticket state: **fresh bounded RED/GREEN authorized; completion unverified**
-- Next blocked ticket: **D0-002 / issue #55**, blocked by verified completion of #54
-- Latest prerequisite correction: PR #127 merged; exact merge and post-merge CI passed at the checkpoint above
+- Current implementation-ready set: **none**
+- Latest verified completion: **D0-001 / issue #54** via PR #130; exact merge commit `6e872ccf2387067b49217a27a7c255343ad2eb8d` and post-merge CI run `31063416513` passed Node 20/22/24
+- Current transition target: **D0-002 / issue #55 gate preparation**; its D0-001 dependency is satisfied, but product RED/GREEN remains blocked pending current exact-digest ADR, PRD, and ticket acceptance plus an exact-base execution packet
+- Next dependent ticket: **D0-004 / issue #57**, blocked by verified completion of #55
+
+This checkpoint advances governance to D0-002 gate preparation only. It does not authorize a D0-002 implementation worker or RED execution.
 
 The checkpoint SHA is evidence, not a permanent target. Before every new execution packet, fetch `origin/dev`, resolve its exact SHA, rehydrate GitHub issue/PR state, and update this section if the ready set changed.
 
