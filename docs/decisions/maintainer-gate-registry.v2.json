@@ -571,6 +571,113 @@
         "invalidated_by": "planning-adr-0003-workspace-correction",
         "reason": "ADR-0003 workspace scope correction changed the reviewed artifact digest; the D0-002 planning acceptance is stale and requires renewed external review."
       }
+    },
+    {
+      "id": "d0-002-prerequisites-adr-0003-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew D0-002 prerequisite review against the corrected ADR-0003 and current exact ADR-0001/0012, PRD-D0, and ticket digests before RED.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "57d335be0d4c6db609fcb15dfe5b54ff3bee6164"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "65cf7d2be7340cb15b0794239b62ed4211106779a6f79bf2058d4bed094e1b32",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "ac4480d022fb7b8f3889e9160f0743ceb7a5c06dd756f407dcce46a8e828171e",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+          "sha256": "84f537900f329f26d65c79a1b3d617c0ce091d5f9f5496c5d4b602e455e640ac",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "65cf7d2be7340cb15b0794239b62ed4211106779a6f79bf2058d4bed094e1b32",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "ac4480d022fb7b8f3889e9160f0743ceb7a5c06dd756f407dcce46a8e828171e",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+          "sha256": "84f537900f329f26d65c79a1b3d617c0ce091d5f9f5496c5d4b602e455e640ac",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-06T05:50:57Z",
+          "recorded_by": "gate-administrator-d0-002-adr-0003-renewal-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "gate-administrator-d0-002-adr-0003-renewal-candidate"
+      },
+      "approval": {
+        "approved_by": "independent-maintainer-external-review-required",
+        "approved_at": "2026-08-06T05:50:57Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {

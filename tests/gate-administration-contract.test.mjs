@@ -530,7 +530,7 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
   assert.equal(batch.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
-  assert.equal(result.externalGateEvidence, "not_applicable");
+  assert.equal(result.externalGateEvidence, "required");
   assert.match(ticket, /BLOCKED — ADR \+ PRD \+ TICKET MAINTAINER GATES REQUIRED/);
   assert.match(gateStatus, /three prior D0-001 batches `INVALIDATED`; bounded-RED renewal structurally `ACCEPTED`/);
   assert.match(gateDecision, /D0-001 history retains three `PENDING → ACCEPTED → INVALIDATED` batches; the bounded-RED renewal is structurally `ACCEPTED`/);
@@ -609,16 +609,18 @@ test("ADR-0003 correction invalidates the D0-001 bounded-RED planning acceptance
   assert.equal(boundedRedRenewal.approval.role, "MAINTAINER");
   assert.match(boundedRedRenewal.invalidation.reason, /ADR-0003 workspace scope correction/);
   assert.equal(result.status, "invalidated");
-  assert.equal(result.externalGateEvidence, "not_applicable");
+  assert.equal(result.externalGateEvidence, "required");
   assert.match(gateStatus, /bounded-RED digest renewal is structurally ACCEPTED/);
   assert.match(gateStatus, /exact-head CEO review and CI are required/);
   assert.match(gateDecision, /bounded-RED renewal is structurally `ACCEPTED`/);
   assert.match(gateDecision, /not authorization to execute and requires external exact-head CEO review and CI/);
 });
 
-test("ADR-0003 correction invalidates the D0-002 planning acceptance without changing other prerequisite digests", () => {
+test("ADR-0003 correction invalidates the D0-002 planning acceptance and renews the corrected prerequisites", () => {
   const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
   const batch = registry.batches.find(({ id }) => id === "d0-002-prerequisites");
+  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-adr-0003-renewal");
+  const result = validateGateAdministration();
 
   assert.ok(batch);
   assert.equal(batch.status, "INVALIDATED");
@@ -634,4 +636,30 @@ test("ADR-0003 correction invalidates the D0-002 planning acceptance without cha
     }
   }
   assert.match(batch.invalidation.reason, /ADR-0003 workspace scope correction/);
+
+  assert.ok(renewal, "D0-002 requires a fresh digest-bound renewal after the ADR-0003 correction");
+  assert.equal(renewal.status, "ACCEPTED");
+  assert.deepEqual(renewal.target, {
+    repository: "github.com/MongLong0214/agent-operator-score",
+    branch: "dev",
+    reviewed_head: "57d335be0d4c6db609fcb15dfe5b54ff3bee6164"
+  });
+  assert.deepEqual(renewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), batch.required_artifacts.map(({ path, kind }) => ({ path, kind })));
+  for (const artifact of renewal.required_artifacts) {
+    assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
+  }
+  assert.deepEqual(renewal.artifacts, renewal.required_artifacts);
+  assert.deepEqual(renewal.transitions, [
+    { type: "ADR_ACCEPTED", artifact_paths: renewal.required_artifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
+    { type: "PRD_ACCEPTED", artifact_paths: renewal.required_artifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
+    { type: "TICKET_READY_FOR_RED", artifact_paths: renewal.required_artifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
+  ]);
+  assert.deepEqual(renewal.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" }
+  ]);
+  assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
+  assert.equal(renewal.approval.role, "MAINTAINER");
+  assert.equal(result.status, "invalidated");
+  assert.deepEqual(result.currentAcceptedTickets, ["docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md"]);
+  assert.equal(result.externalGateEvidence, "required");
 });

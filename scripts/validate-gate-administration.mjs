@@ -454,6 +454,21 @@ export const validateGateAdministration = (...args) => {
     const derived = deriveRegistryStatus(registry.batches);
     if (!derived || registry.status !== derived) errors.push("Gate Administration registry status is inconsistent with batches");
   }
+  const acceptedTicketBatchByPath = new Map();
+  if (Array.isArray(registry.batches)) {
+    for (const batch of registry.batches) {
+      if (batch?.status !== "ACCEPTED" || !Array.isArray(batch.artifacts)) continue;
+      for (const artifact of batch.artifacts) {
+        if (artifact?.kind !== "TICKET" || typeof artifact.path !== "string") continue;
+        if (acceptedTicketBatchByPath.has(artifact.path)) {
+          errors.push(`Gate Administration has multiple current accepted batches for ticket ${artifact.path}`);
+          continue;
+        }
+        acceptedTicketBatchByPath.set(artifact.path, batch.id);
+      }
+    }
+  }
+  const currentAcceptedTickets = [...acceptedTicketBatchByPath.keys()].sort();
   const counts = Object.fromEntries(["ACCEPTED", "REJECTED", "INVALIDATED"].map((status) => [status.toLowerCase(),
     Array.isArray(registry.batches) ? registry.batches.filter((batch) => batch.status === status).length : 0]));
   return {
@@ -461,6 +476,7 @@ export const validateGateAdministration = (...args) => {
     status: errors.length ? "invalid" : statusName(registry.status),
     counts,
     batches: registry.batches?.length ?? 0,
+    currentAcceptedTickets,
     externalGateEvidence: counts.accepted ? "required" : "not_applicable",
     candidateHead
   };
@@ -479,5 +495,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     for (const error of result.errors) console.error(`- ${error}`);
     process.exit(1);
   }
-  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization candidate_head=${result.candidateHead}`);
+  const currentAcceptedTickets = result.currentAcceptedTickets.length ? result.currentAcceptedTickets.join(",") : "none";
+  console.log(`GATE_ADMINISTRATION_STRUCTURAL_PASS registry=${result.status} batches=${result.batches} accepted=${result.counts.accepted} rejected=${result.counts.rejected} invalidated=${result.counts.invalidated} external_gate_evidence=${result.externalGateEvidence} not_authorization candidate_head=${result.candidateHead} current_accepted_tickets=${currentAcceptedTickets}`);
 }
