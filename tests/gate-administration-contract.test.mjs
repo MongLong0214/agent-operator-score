@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,18 +12,42 @@ const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
 const fixtureTempPrefix = "aos gate administration";
 
-/** Bounded cleanup for exact temporary gate fixtures only (Node 22 ENOTEMPTY on .git). */
+/**
+ * Bounded cleanup for exact temporary gate fixtures only (Node 22 ENOTEMPTY on .git).
+ *
+ * Containment is decided on the CANONICAL path, not the lexical one. `resolve()` and
+ * `relative()` only normalise `.`/`..` text; they never read the filesystem, so a symlink
+ * anywhere along the path — including the target itself — satisfies both checks while the
+ * bytes on disk live somewhere else entirely. A directory under tmpdir() named with the
+ * fixture prefix but symlinked to $HOME passes a lexical guard and would hand a recursive
+ * delete to $HOME. realpath resolves every component, so the comparison is made against
+ * what would actually be removed.
+ *
+ * The temp root is itself canonicalised before comparison: on macOS /var is a symlink to
+ * /private/var, so a lexical tmpdir() and a realpath'd target never share a prefix and the
+ * guard would reject every legitimate fixture.
+ */
 const removeTempFixture = (targetPath) => {
-  const resolved = resolve(targetPath);
-  const tempRoot = resolve(tmpdir());
-  const relToTemp = relative(tempRoot, resolved);
+  const lexical = resolve(targetPath);
+
+  // Canonicalise the target. A missing path cannot be escaped through and is also nothing
+  // to delete, so it is refused rather than silently passed to rmSync.
+  let canonical;
+  try {
+    canonical = realpathSync(lexical);
+  } catch {
+    throw new Error(`refusing to remove unresolvable fixture path: ${lexical}`);
+  }
+
+  const tempRoot = realpathSync(resolve(tmpdir()));
+  const relToTemp = relative(tempRoot, canonical);
   if (relToTemp === "" || relToTemp.startsWith("..") || isAbsolute(relToTemp)) {
-    throw new Error(`refusing to remove non-temp fixture path: ${resolved}`);
+    throw new Error(`refusing to remove non-temp fixture path: ${canonical}`);
   }
-  if (!basename(resolved).startsWith(fixtureTempPrefix)) {
-    throw new Error(`refusing to remove unexpected fixture path: ${resolved}`);
+  if (!basename(canonical).startsWith(fixtureTempPrefix)) {
+    throw new Error(`refusing to remove unexpected fixture path: ${canonical}`);
   }
-  rmSync(resolved, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  rmSync(canonical, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
 };
 
 // removeTempFixture performs a recursive delete, so its two refusal branches are the only
@@ -64,6 +88,55 @@ test("removeTempFixture removes a correctly prefixed temp fixture", () => {
   writeFileSync(join(fixture, "payload.txt"), "x");
   removeTempFixture(fixture);
   assert.equal(existsSync(fixture), false);
+});
+
+// A lexical guard is not a containment boundary. resolve()/relative() never touch the
+// filesystem, so a symlink that sits under tmpdir() and carries the fixture prefix passes
+// both name checks while pointing anywhere on disk. These assert the victim outside the
+// temp root still exists afterwards — the only thing that actually proves the recursive
+// delete did not follow the link.
+test("removeTempFixture refuses a prefixed temp symlink whose target escapes the temp root", () => {
+  const box = mkdtempSync(join(tmpdir(), "aos-symlink-escape-box"));
+  const victim = mkdtempSync(join(tmpdir(), "aos-victim-"));
+  const outsideVictim = resolve(root, "docs");
+  const link = join(box, `${fixtureTempPrefix}-escape`);
+  try {
+    symlinkSync(outsideVictim, link);
+    assert.throws(() => removeTempFixture(link), /refusing to remove non-temp fixture path/);
+    assert.ok(existsSync(outsideVictim), "the repository directory must survive");
+    assert.ok(existsSync(resolve(outsideVictim, "adr")), "its contents must survive");
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(victim, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses when an INTERMEDIATE component symlinks out of the temp root", () => {
+  const box = mkdtempSync(join(tmpdir(), "aos-symlink-mid-box"));
+  const escapeRoot = mkdtempSync(join(tmpdir(), "aos-escape-root-"));
+  const outsideDir = resolve(root, "specs");
+  const midLink = join(box, "mid");
+  try {
+    // box/mid -> <repo>/specs, so box/mid/<prefixed> is lexically inside tmpdir() and
+    // carries the prefix, while canonically it is inside the repository.
+    symlinkSync(outsideDir, midLink);
+    const viaMid = join(midLink, `${fixtureTempPrefix}-nested`);
+    mkdirSync(viaMid, { recursive: true });
+    try {
+      assert.throws(() => removeTempFixture(viaMid), /refusing to remove non-temp fixture path/);
+      assert.ok(existsSync(outsideDir), "the repository directory must survive");
+    } finally {
+      rmSync(viaMid, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    }
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(escapeRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses a path that cannot be canonicalised", () => {
+  const missing = join(tmpdir(), `${fixtureTempPrefix}-does-not-exist-${process.pid}`);
+  assert.throws(() => removeTempFixture(missing), /refusing to remove unresolvable fixture path/);
 });
 
 test("ADR-0003 limits npm workspaces to the SSOT six", () => {
