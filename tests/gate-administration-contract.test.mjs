@@ -1,15 +1,205 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { validateGateAdministration } from "../scripts/validate-gate-administration.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
+const fixtureTempPrefix = "aos gate administration";
+
+/**
+ * Bounded cleanup for exact temporary gate fixtures only (Node 22 ENOTEMPTY on .git).
+ *
+ * Containment is decided on the CANONICAL path, not the lexical one. `resolve()` and
+ * `relative()` only normalise `.`/`..` text; they never read the filesystem, so a symlink
+ * anywhere along the path — including the target itself — satisfies both checks while the
+ * bytes on disk live somewhere else entirely. A directory under tmpdir() named with the
+ * fixture prefix but symlinked to $HOME passes a lexical guard and would hand a recursive
+ * delete to $HOME. realpath resolves every component, so the comparison is made against
+ * what would actually be removed.
+ *
+ * The temp root is itself canonicalised before comparison: on macOS /var is a symlink to
+ * /private/var, so a lexical tmpdir() and a realpath'd target never share a prefix and the
+ * guard would reject every legitimate fixture.
+ */
+const removeTempFixture = (targetPath) => {
+  const lexical = resolve(targetPath);
+
+  // The final component must itself be a real directory, never a link. Canonical
+  // containment alone is not enough: a symlink pointing at a legitimate in-temp fixture
+  // resolves to a path that passes every containment check, and deleting through it
+  // destroys the real fixture while the caller believes it removed only its own alias.
+  // lstat does not follow the last component, so this is the one check that can see it.
+  let entry;
+  try {
+    entry = lstatSync(lexical);
+  } catch {
+    throw new Error(`refusing to remove unresolvable fixture path: ${lexical}`);
+  }
+  if (entry.isSymbolicLink()) {
+    throw new Error(`refusing to remove symlinked fixture path: ${lexical}`);
+  }
+  if (!entry.isDirectory()) {
+    throw new Error(`refusing to remove non-directory fixture path: ${lexical}`);
+  }
+
+  // Containment is decided on the CANONICAL path, not the lexical one. resolve() and
+  // relative() only normalise `.`/`..` as text and never read the filesystem, so an
+  // intermediate symlink satisfies both name checks while the bytes live elsewhere.
+  let canonical;
+  try {
+    canonical = realpathSync(lexical);
+  } catch {
+    throw new Error(`refusing to remove unresolvable fixture path: ${lexical}`);
+  }
+
+  // The temp root is canonicalised too: on macOS /var is a symlink to /private/var, so a
+  // lexical tmpdir() and a realpath'd target share no prefix and every legitimate fixture
+  // would be rejected.
+  const tempRoot = realpathSync(resolve(tmpdir()));
+  const relToTemp = relative(tempRoot, canonical);
+  if (relToTemp === "" || relToTemp.startsWith("..") || isAbsolute(relToTemp)) {
+    throw new Error(`refusing to remove non-temp fixture path: ${canonical}`);
+  }
+  if (!basename(canonical).startsWith(fixtureTempPrefix)) {
+    throw new Error(`refusing to remove unexpected fixture path: ${canonical}`);
+  }
+  rmSync(canonical, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+};
+
+// removeTempFixture performs a recursive delete, so its two refusal branches are the only
+// thing standing between a mistaken or manipulated path and an arbitrary directory being
+// removed. Both are asserted here; without these the guards could be deleted or inverted
+// and every other test in this file would still pass.
+test("removeTempFixture refuses a path outside the OS temp root", () => {
+  for (const outside of [resolve(root), resolve(root, "docs"), resolve(tmpdir(), "..")]) {
+    assert.throws(
+      () => removeTempFixture(outside),
+      /refusing to remove non-temp fixture path/,
+      `expected refusal for ${outside}`
+    );
+    assert.ok(existsSync(outside), `${outside} must still exist after the refusal`);
+  }
+});
+
+test("removeTempFixture refuses the temp root itself", () => {
+  assert.throws(() => removeTempFixture(tmpdir()), /refusing to remove non-temp fixture path/);
+  assert.ok(existsSync(tmpdir()));
+});
+
+test("removeTempFixture refuses a temp path whose basename lacks the fixture prefix", () => {
+  const stranger = mkdtempSync(join(tmpdir(), "unrelated-not-a-gate-fixture"));
+  try {
+    assert.throws(
+      () => removeTempFixture(stranger),
+      /refusing to remove unexpected fixture path/
+    );
+    assert.ok(existsSync(stranger), "a non-fixture temp directory must survive the refusal");
+  } finally {
+    rmSync(stranger, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture removes a correctly prefixed temp fixture", () => {
+  const fixture = mkdtempSync(join(tmpdir(), fixtureTempPrefix));
+  writeFileSync(join(fixture, "payload.txt"), "x");
+  removeTempFixture(fixture);
+  assert.equal(existsSync(fixture), false);
+});
+
+// A lexical guard is not a containment boundary. resolve()/relative() never touch the
+// filesystem, so a symlink that sits under tmpdir() and carries the fixture prefix passes
+// both name checks while pointing anywhere on disk. These assert the victim outside the
+// temp root still exists afterwards — the only thing that actually proves the recursive
+// delete did not follow the link.
+test("removeTempFixture refuses a prefixed temp symlink whose target escapes the temp root", () => {
+  const box = mkdtempSync(join(tmpdir(), "aos-symlink-escape-box"));
+  const outsideVictim = mkdtempSync(join(root, ".aos-escape-victim-"));
+  const payload = join(outsideVictim, "payload.txt");
+  const link = join(box, `${fixtureTempPrefix}-escape`);
+  try {
+    writeFileSync(payload, "must survive");
+    symlinkSync(outsideVictim, link);
+    assert.throws(() => removeTempFixture(link), /refusing to remove symlinked fixture path/);
+    // Assert the victim ITSELF and its payload, not some ancestor that would survive
+    // regardless. An ancestor-only assertion passes even when the leaf is destroyed.
+    assert.ok(existsSync(outsideVictim), "the victim directory itself must survive");
+    assert.ok(existsSync(payload), "the victim payload must survive");
+    assert.equal(readFileSync(payload, "utf8"), "must survive");
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(outsideVictim, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses a symlink that aliases a legitimate in-temp fixture", () => {
+  // Canonical containment alone accepts this: the link resolves to a real prefixed fixture
+  // inside tmpdir(). Deleting through it destroys the real fixture while the caller
+  // believes it removed only its own alias. Only the lstat check can see the difference.
+  const realFixture = mkdtempSync(join(tmpdir(), fixtureTempPrefix));
+  const payload = join(realFixture, "payload.txt");
+  const box = mkdtempSync(join(tmpdir(), "aos-alias-box"));
+  const alias = join(box, `${fixtureTempPrefix}-alias`);
+  try {
+    writeFileSync(payload, "must survive");
+    symlinkSync(realFixture, alias);
+    assert.throws(() => removeTempFixture(alias), /refusing to remove symlinked fixture path/);
+    assert.ok(existsSync(realFixture), "the aliased fixture itself must survive");
+    assert.ok(existsSync(payload), "its payload must survive");
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(realFixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses when an INTERMEDIATE component symlinks out of the temp root", () => {
+  const box = mkdtempSync(join(tmpdir(), "aos-symlink-mid-box"));
+  const outsideDir = mkdtempSync(join(root, ".aos-mid-victim-"));
+  const midLink = join(box, "mid");
+  try {
+    // box/mid -> <outside>, so box/mid/<prefixed> is lexically inside tmpdir() and carries
+    // the prefix, while canonically it lives outside.
+    symlinkSync(outsideDir, midLink);
+    const leafName = `${fixtureTempPrefix}-nested`;
+    const viaMid = join(midLink, leafName);
+    const realLeaf = join(outsideDir, leafName);
+    const payload = join(realLeaf, "payload.txt");
+    mkdirSync(realLeaf, { recursive: true });
+    writeFileSync(payload, "must survive");
+
+    assert.throws(() => removeTempFixture(viaMid), /refusing to remove non-temp fixture path/);
+    // Assert the LEAF and its payload, not the parent. A parent-only assertion passes even
+    // when the leaf is deleted, which is exactly what it is meant to detect.
+    assert.ok(existsSync(realLeaf), "the leaf directory itself must survive");
+    assert.ok(existsSync(payload), "the leaf payload must survive");
+    assert.equal(readFileSync(payload, "utf8"), "must survive");
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(outsideDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses a non-directory target", () => {
+  const box = mkdtempSync(join(tmpdir(), "aos-file-target-box"));
+  const file = join(box, `${fixtureTempPrefix}-file`);
+  try {
+    writeFileSync(file, "not a directory");
+    assert.throws(() => removeTempFixture(file), /refusing to remove non-directory fixture path/);
+    assert.ok(existsSync(file));
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses a path that cannot be canonicalised", () => {
+  const missing = join(tmpdir(), `${fixtureTempPrefix}-does-not-exist-${process.pid}`);
+  assert.throws(() => removeTempFixture(missing), /refusing to remove unresolvable fixture path/);
+});
 
 test("ADR-0003 limits npm workspaces to the SSOT six", () => {
   const adr = readFileSync(resolve(root, "docs/adr/ADR-0003-runtime-repository-and-distribution.md"), "utf8");
@@ -305,7 +495,7 @@ test("Gate Administrator validates a structurally complete future batch only thr
     assert.match(staleResult.error.stderr, /artifact digest is stale/);
 
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -325,7 +515,7 @@ test("PENDING registry is exact-head bound before structural PASS", () => {
     assert.equal(committedPending.error, undefined);
     assert.match(committedPending.output, new RegExp(`registry=pending.*candidate_head=${pendingHead}`));
   } finally {
-    rmSync(pendingFixture.parent, { recursive: true, force: true });
+    removeTempFixture(pendingFixture.parent);
   }
 });
 
@@ -345,7 +535,7 @@ test("PENDING required artifacts require valid SHA-256 digests", () => {
     assert.equal(malformedDigestResult.error.status, 1);
     assert.match(malformedDigestResult.error.stderr, /pending required artifact has missing or malformed sha256/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -361,7 +551,7 @@ test("REJECTED registry is exact-head bound before structural PASS", () => {
     assert.equal(committedRejected.error, undefined);
     assert.match(committedRejected.output, new RegExp(`registry=rejected.*candidate_head=${rejectedHead}`));
   } finally {
-    rmSync(rejectedFixture.parent, { recursive: true, force: true });
+    removeTempFixture(rejectedFixture.parent);
   }
 });
 
@@ -377,7 +567,7 @@ test("INVALIDATED registry is exact-head bound before structural PASS", () => {
     assert.equal(committedInvalidated.error, undefined);
     assert.match(committedInvalidated.output, new RegExp(`registry=invalidated.*candidate_head=${invalidatedHead}`));
   } finally {
-    rmSync(invalidatedFixture.parent, { recursive: true, force: true });
+    removeTempFixture(invalidatedFixture.parent);
   }
 });
 
@@ -400,7 +590,7 @@ test("no-Git fixture permits only all-PENDING structural output", () => {
     assert.equal(invalidatedResult.error.status, 1);
     assert.match(invalidatedResult.error.stderr, /cannot resolve exact candidate HEAD/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -421,7 +611,7 @@ test("canonical registry rejects a forged sibling registry and a canonical symli
     assert.equal(symlinked.error.status, 1);
     assert.match(symlinked.error.stderr, /regular non-symlink file|realpath escapes repository root/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -445,10 +635,10 @@ test("accepted candidate permits a feature branch and detached CI head based on 
       assert.equal(detached.error, undefined);
       assert.match(detached.output, new RegExp(`candidate_head=${candidateHead}`));
     } finally {
-      rmSync(detachedFixture.parent, { recursive: true, force: true });
+      removeTempFixture(detachedFixture.parent);
     }
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -478,7 +668,7 @@ test("accepted candidate fails closed when canonical schema or executed validato
     assert.equal(restored.error, undefined);
     assert.match(restored.output, new RegExp(`candidate_head=${candidateHead}`));
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -518,7 +708,7 @@ test("accepted candidate fails closed for unrelated target ancestry, wrong-owner
     assert.equal(wrongCandidateAncestryResult.error.status, 1);
     assert.match(wrongCandidateAncestryResult.error.stderr, /artifact does not match reviewed head/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -537,7 +727,7 @@ test("accepted batch accepts a squash-incorporated reviewed batch only with targ
     assert.match(result.output, /external_gate_evidence=required/);
     assert.match(result.output, /not_authorization/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -555,7 +745,7 @@ test("squash incorporation rejects a non-ancestor target ref and a target-tip ar
     assert.equal(result.error.status, 1);
     assert.match(result.error.stderr, /exact candidate HEAD is not based on target ref origin\/dev/);
   } finally {
-    rmSync(unrelatedFixture.parent, { recursive: true, force: true });
+    removeTempFixture(unrelatedFixture.parent);
   }
 
   const mismatchFixture = makeFixture();
@@ -575,7 +765,7 @@ test("squash incorporation rejects a non-ancestor target ref and a target-tip ar
     assert.equal(result.error.status, 1);
     assert.match(result.error.stderr, /target branch tip artifact digest is stale/);
   } finally {
-    rmSync(mismatchFixture.parent, { recursive: true, force: true });
+    removeTempFixture(mismatchFixture.parent);
   }
 });
 
@@ -592,7 +782,7 @@ test("squash fallback rejects an accepted registry introduced only by a feature 
     assert.equal(result.error.status, 1);
     assert.match(result.error.stderr, /target branch tip canonical registry does not match exact candidate registry/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -623,7 +813,7 @@ test("squash incorporation rejects wrong owner or branch, missing target refs, a
     assert.equal(featureSpoof.error.status, 1);
     assert.match(featureSpoof.error.stderr, /wrong repository target/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
@@ -640,7 +830,7 @@ test("a structural-only approval spoof is explicitly external gate evidence, nev
     assert.match(result.output, /not_authorization/);
     assert.doesNotMatch(result.output, /authorization=granted/);
   } finally {
-    rmSync(parent, { recursive: true, force: true });
+    removeTempFixture(parent);
   }
 });
 
