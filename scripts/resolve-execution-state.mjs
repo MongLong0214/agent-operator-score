@@ -1997,6 +1997,59 @@ const rejectPartialCountPayload = (payload, arrayKey, perPage, failures, label) 
   return false;
 };
 
+/**
+ * Collect every page of a GitHub search result. A single page that happens to be full is
+ * not evidence of truncation, but a collection that cannot be completed is: the promised
+ * total_count must be reached exactly, or the whole collection fails closed. GitHub caps
+ * search at 1000 results, so a total beyond that is uncollectable and also fails closed.
+ */
+const SEARCH_PAGE_SIZE = 100;
+const SEARCH_MAX_PAGES = 10;
+const collectSearchItems = (transport, queryPath, failures, label) => {
+  const separator = queryPath.includes("?") ? "&" : "?";
+  const items = [];
+  let expectedTotal = null;
+  for (let page = 1; page <= SEARCH_MAX_PAGES; page += 1) {
+    const payload = requireJson(
+      transport,
+      `${queryPath}${separator}per_page=${SEARCH_PAGE_SIZE}&page=${page}`,
+      failures
+    );
+    if (!payload || typeof payload !== "object" || !Array.isArray(payload.items)) {
+      failures.push(`${label} page ${page} unavailable or not a search payload`);
+      return null;
+    }
+    const total = payload.total_count;
+    if (typeof total !== "number" || !Number.isInteger(total) || total < 0) {
+      failures.push(`${label} missing or invalid total_count`);
+      return null;
+    }
+    if (expectedTotal === null) expectedTotal = total;
+    else if (total !== expectedTotal) {
+      failures.push(`${label} total_count changed from ${expectedTotal} to ${total} between pages`);
+      return null;
+    }
+    // R14: the flag must be a present boolean. A missing or non-boolean flag is a
+    // malformed payload, not an implicit "complete".
+    if (typeof payload.incomplete_results !== "boolean") {
+      failures.push(`${label} page ${page} has a missing or malformed incomplete_results flag`);
+      return null;
+    }
+    if (payload.incomplete_results) {
+      failures.push(`${label} reported incomplete results`);
+      return null;
+    }
+    items.push(...payload.items);
+    if (items.length >= expectedTotal) break;
+    if (payload.items.length === 0) break;
+  }
+  if (expectedTotal === null || items.length !== expectedTotal) {
+    failures.push(`${label} collected ${items.length} of ${expectedTotal ?? "unknown"} results`);
+    return null;
+  }
+  return items;
+};
+
 const rejectPossiblyTruncatedSearch = (search, perPage, failures, label) => {
   if (!search || !Array.isArray(search.items)) {
     failures.push(`${label} missing items array`);
@@ -3138,18 +3191,16 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   // Implementation verification receipts: merged PRs with exact Ticket field + post-merge CI.
   const verifiedTickets = [];
   const implementationMerges = [];
-  const mergedSearch = requireJson(
+  const mergedSearchItems = collectSearchItems(
     transport,
-    `search/issues?q=${encodeURIComponent(`repo:${expected.repository} is:pr is:merged base:${repo.default_branch} "Ticket:"`)}&per_page=30`,
-    failures
+    `search/issues?q=${encodeURIComponent(`repo:${expected.repository} is:pr is:merged base:${repo.default_branch} "Ticket:"`)}`,
+    failures,
+    "merged Ticket PR search"
   );
-  if (!mergedSearch || !Array.isArray(mergedSearch.items)) {
+  if (!mergedSearchItems) {
     return { ok: false, reason: failures.join("; ") || "merged PR search unavailable", facts: null };
   }
-  if (rejectPossiblyTruncatedSearch(mergedSearch, 30, failures, "merged Ticket PR search")) {
-    return { ok: false, reason: failures.join("; "), facts: null };
-  }
-  for (const item of mergedSearch.items) {
+  for (const item of mergedSearchItems) {
     // Three distinct cases, and conflating any two of them is a fail-closed violation:
     //
     //   no `Ticket:` line at all  -> unlinked. The merged-receipt search is GitHub
