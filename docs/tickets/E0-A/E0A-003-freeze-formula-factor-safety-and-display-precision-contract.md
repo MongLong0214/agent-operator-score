@@ -14,6 +14,7 @@ Freeze formula, factor, safety, and display precision contract. Deliver only the
 ## Exact ownership
 
 - specs/scoring.v0.json; packages/schema/src/scoring-contract.ts — ScoringContract,validateScoringContract
+- Coordinated census amendment, owner-authorised 2026-08-08 under the precedent E0A-001 set: tests/planning-contract.test.mjs; tests/planning/workspace-skeleton.test.mjs — none
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
