@@ -285,7 +285,7 @@ test("focused-lane-is-not-silently-empty", () => {
     stdio: ["ignore", "pipe", "pipe"],
     env
   });
-  for (const [pattern, cases] of [["metric-registry", 13], ["issuance-contract", 3]]) {
+  for (const [pattern, cases] of [["metric-registry", 13], ["issuance-contract", 7]]) {
     const output = run(pattern);
     const passed = /^\S* ?pass (\d+)\s*$/m.exec(output);
     const failed = /^\S* ?fail (\d+)\s*$/m.exec(output);
