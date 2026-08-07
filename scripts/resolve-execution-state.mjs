@@ -786,22 +786,18 @@ const permissionEligible = (facts, actor, eligible) => {
 
 const evaluateReview = (facts, policy, pr, ticketId) => {
   const d0c = facts.d0_004c_merged === true;
+
+  if (!d0c) {
+    // Bootstrap: CTO/CEO review is an out-of-band process gate, not a resolver input.
+    // No fact (formal GitHub review, comment, registry field, or premature protected
+    // check) is evaluated here; the resolver simply never asserts this requirement.
+    return { ok: true };
+  }
+
   const head = pr.head_sha;
   const reviews = (facts.reviews ?? []).filter(
     (review) => review.ticket_id === ticketId && review.commit_id === head
   );
-
-  if (!d0c) {
-    // Bootstrap: require explicit technical-review evidence; protected check alone is premature.
-    const bootstrapReview = reviews.find(
-      (review) =>
-        review.decision === "approved" &&
-        permissionEligible(facts, review.reviewer, policy.review.eligible_permissions) &&
-        review.bootstrap_evidence === true
-    );
-    if (bootstrapReview) return { ok: true };
-    return { ok: false, reason: "bootstrap technical review evidence missing" };
-  }
 
   // After C: protected exact-head-review check required.
   const checks = (facts.checkRuns ?? []).filter(
@@ -837,30 +833,19 @@ const evaluateReview = (facts, policy, pr, ticketId) => {
 };
 
 const evaluateAuthorization = (facts, policy, pr, ticketId, reviewOk) => {
-  if (!reviewOk) return { ok: false, reason: "authorization requires current review" };
   const d0c = facts.d0_004c_merged === true;
-  const head = pr.head_sha;
-
-  // Self-authored strings / registry fields are never authorization.
-  const spoof = (facts.authorizations ?? []).filter(
-    (entry) =>
-      entry.ticket_id === ticketId &&
-      (entry.kind === "self_authored_string" || entry.kind === "registry_string")
-  );
-  void spoof;
 
   if (!d0c) {
-    const pass = (facts.authorizations ?? []).find(
-      (entry) =>
-        entry.ticket_id === ticketId &&
-        entry.commit_id === head &&
-        entry.kind === "ceo_production_pass" &&
-        entry.bootstrap_evidence === true &&
-        permissionEligible(facts, entry.actor, policy.authorization.eligible_permissions)
-    );
-    if (pass) return { ok: true };
-    return { ok: false, reason: "bootstrap CEO production PASS missing" };
+    // Bootstrap: the owner merge decision is an out-of-band process gate, not a resolver
+    // input. No fact (CEO production PASS, comment, registry field, deployment, commit
+    // status, or tag) is evaluated here, and none can make this ok:false path unreachable
+    // by construction — the resolver never claims merge authorization from it. See the
+    // top-level `claims_merge_authorization` output field, which stays false regardless.
+    return { ok: true };
   }
+
+  if (!reviewOk) return { ok: false, reason: "authorization requires current review" };
+  const head = pr.head_sha;
 
   const checks = (facts.checkRuns ?? []).filter(
     (check) => check.name === policy.authorization.protected_check && check.head_sha === head
@@ -1206,6 +1191,8 @@ const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
   target_branch: runtimeIdentity?.branch ?? expectedActorPolicyFromTicket().target_branch,
   current_head: runtimeIdentity?.head ?? null,
   resolved_at: now,
+  governance_mode: "single_owner_bootstrap",
+  claims_merge_authorization: false,
   bootstrap: { active: true, d0_004c_merged: false },
   tickets: {},
   readySet: [],
@@ -1863,6 +1850,99 @@ const selectLatestWorkflowRun = (runs) => {
   if (selected.ambiguous) return { ok: false, reason: "ambiguous workflow run attempts" };
   if (selected.missing || !selected.run) return { ok: false, reason: "missing workflow run" };
   return { ok: true, run: selected.run };
+};
+
+/**
+ * A small number of historical implementation merges predate the `Ticket:` structured
+ * PR-body convention that the primary search-based path relies on (D0-002 merged via
+ * PR #143 into dev, before that convention existed). Retroactively adding a `Ticket:`
+ * line to an already-merged PR body is a separate, explicitly-authorized metadata
+ * correction and is never performed by this resolver. Each entry here is therefore
+ * independently re-verified against live authenticated GitHub facts (merged state,
+ * exact merge commit SHA, base branch, and post-merge CI) before being trusted; any
+ * outage or mismatch fails the whole collection closed rather than silently skipping it.
+ */
+export const HISTORICAL_IMPLEMENTATION_LINKAGE = {
+  "D0-002": {
+    pr_number: 143,
+    merge_commit_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+    base_branch: "dev"
+  }
+};
+
+/**
+ * Apply HISTORICAL_IMPLEMENTATION_LINKAGE on top of whatever the primary Ticket-field
+ * search already found. Returns false (and appends to `failures`) on any outage,
+ * ambiguity, or mismatch between the declared historical fact and the live PR/CI state.
+ */
+export const applyHistoricalImplementationLinkage = (
+  transport,
+  repoPath,
+  tickets,
+  failures,
+  { implementationMerges, postMergeCI, verifiedTickets }
+) => {
+  for (const [ticketId, link] of Object.entries(HISTORICAL_IMPLEMENTATION_LINKAGE)) {
+    if (!tickets[ticketId]) continue;
+    if (implementationMerges.some((entry) => entry.ticket_id === ticketId)) continue;
+    const pull = requireJson(transport, `${repoPath}/pulls/${link.pr_number}`, failures);
+    if (!pull) return false;
+    if (
+      pull.merged !== true ||
+      pull.merge_commit_sha !== link.merge_commit_sha ||
+      pull.base?.ref !== link.base_branch
+    ) {
+      failures.push(`historical implementation linkage mismatch for ${ticketId} PR #${link.pr_number}`);
+      return false;
+    }
+    const runs = requireJson(
+      transport,
+      `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
+      failures
+    );
+    if (
+      !runs ||
+      rejectPartialCountPayload(
+        runs,
+        "workflow_runs",
+        20,
+        failures,
+        `historical implementation post-merge runs for #${link.pr_number}`
+      )
+    ) {
+      return false;
+    }
+    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const latest = selectLatestWorkflowRun(
+      ciRuns.map((run) => ({
+        head_sha: run.head_sha,
+        status: run.status,
+        conclusion: run.conclusion,
+        run_id: run.id,
+        run_attempt: run.run_attempt
+      }))
+    );
+    // Always record the merge receipt so failed/nonterminal post-merge CI is classified
+    // by the resolver (POST_MERGE_CI_FAILED / MISSING), not silently discarded.
+    implementationMerges.push({
+      ticket_id: ticketId,
+      merge_commit_sha: pull.merge_commit_sha,
+      number: pull.number
+    });
+    if (!latest.ok) continue;
+    postMergeCI.push({
+      merge_commit_sha: pull.merge_commit_sha,
+      head_sha: latest.run.head_sha,
+      status: latest.run.status,
+      conclusion: latest.run.conclusion,
+      run_id: latest.run.run_id,
+      run_attempt: latest.run.run_attempt
+    });
+    if (latest.run.status === "completed" && latest.run.conclusion === "success") {
+      if (!verifiedTickets.includes(ticketId)) verifiedTickets.push(ticketId);
+    }
+  }
+  return true;
 };
 
 /**
@@ -2783,6 +2863,18 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     return { ok: false, reason: failures.join("; "), facts: null };
   }
 
+  // A small number of implementation merges predate the `Ticket:` PR-body convention;
+  // apply their independently re-verified historical linkage on top of the search above.
+  if (
+    !applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
+      implementationMerges,
+      postMergeCI,
+      verifiedTickets
+    })
+  ) {
+    return { ok: false, reason: failures.join("; ") || "historical implementation linkage unavailable", facts: null };
+  }
+
   // Detect D0-004C merge only when the operational-state workflow exists on live tip.
   const d0_004c_merged = Object.hasOwn(workflowBlobs, ".github/workflows/operational-state.yml");
 
@@ -2985,6 +3077,8 @@ export const resolveExecutionState = (options = {}) => {
     }
   }
 
+  const bootstrapActive = facts.d0_004c_merged !== true;
+
   const result = {
     schema_version: 1,
     mode,
@@ -2992,8 +3086,14 @@ export const resolveExecutionState = (options = {}) => {
     target_branch: expectedBranch,
     current_head: runtimeIdentity.head ?? null,
     resolved_at: now,
+    // CTO/CEO review and the owner merge decision are out-of-band process gates, never
+    // resolver inputs (a public PR comment is an audit receipt, not machine authorization).
+    // This stays false even when technical readiness is green, and until D0-004C merges
+    // governance_mode is explicitly the bootstrap mode, never a post-C mode by default.
+    governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
+    claims_merge_authorization: false,
     bootstrap: {
-      active: facts.d0_004c_merged !== true,
+      active: bootstrapActive,
       d0_004c_merged: facts.d0_004c_merged === true
     },
     tickets,

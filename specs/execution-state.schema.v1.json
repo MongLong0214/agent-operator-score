@@ -11,6 +11,8 @@
     "target_branch",
     "current_head",
     "resolved_at",
+    "governance_mode",
+    "claims_merge_authorization",
     "tickets",
     "readySet",
     "errors"
@@ -22,6 +24,11 @@
     "target_branch": { "type": "string", "minLength": 1 },
     "current_head": { "type": ["string", "null"] },
     "resolved_at": { "type": "string" },
+    "governance_mode": { "enum": ["single_owner_bootstrap", "single_owner_agent_team"] },
+    "claims_merge_authorization": {
+      "const": false,
+      "description": "CTO/CEO review and the owner merge decision are out-of-band process gates, never resolver inputs. This stays false until a genuine external-independence gate (E14-003/G4) exists."
+    },
     "bootstrap": {
       "type": "object",
       "additionalProperties": false,
