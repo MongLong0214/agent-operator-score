@@ -1,0 +1,147 @@
+name: operational-state
+
+# Pull requests run offline strict only; dev pushes run online strict resolution.
+# Dispatch jobs are separately approved and emit exactly one named check run each, only
+# after verifying the live PR head, the exact trusted workflow commit and blob, run
+# provenance, and single-owner actor policy. No job performs a write-token action.
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: exact-head-review or exact-head-authorization
+        required: true
+        type: choice
+        options:
+          - exact-head-review
+          - exact-head-authorization
+      candidate_sha:
+        description: the live PR head this check is bound to
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  operational-state-offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ops:check
+      - run: npm run ops:render > operational-state.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: operational-state-offline
+          path: operational-state.json
+
+  operational-state-online:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ops:status -- --strict --json > operational-state.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: operational-state-online
+          path: operational-state.json
+
+  exact-head-dispatch:
+    # Separately approved lane. Runs only from the trusted dev workflow ref, and only for
+    # an eligible maintain/admin actor. checks:write is added solely to create the one
+    # named check run on the verified candidate SHA.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+      pull-requests: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/heads/dev
+          fetch-depth: 0
+      - name: Verify trusted workflow ref, blob and actor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          DISPATCH_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/dev"
+          workflow_blob_oid="$(git rev-parse "refs/heads/dev:.github/workflows/operational-state.yml")"
+          echo "workflow_blob_oid=${workflow_blob_oid}" >> "$GITHUB_OUTPUT"
+          permission="$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${DISPATCH_ACTOR}/permission" --jq .permission)"
+          case "${permission}" in
+            maintain|admin) ;;
+            *) echo "dispatch actor lacks maintain or admin permission" >&2; exit 1 ;;
+          esac
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${CANDIDATE_SHA}" --jq .sha > /dev/null
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ops:status -- --strict --json > operational-state.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Create the one named check run on the verified candidate SHA
+        # This is the sole use of checks:write. The external_id binds the check to this
+        # exact run and attempt so a replayed or unrelated run cannot be mistaken for it.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LANE: ${{ inputs.lane }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/check-runs" \
+            --method POST \
+            -f "name=${LANE}" \
+            -f "head_sha=${CANDIDATE_SHA}" \
+            -f "status=completed" \
+            -f "conclusion=success" \
+            -f "external_id=aos-${LANE}:${RUN_ID}:${RUN_ATTEMPT}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-head-dispatch
+          path: operational-state.json
