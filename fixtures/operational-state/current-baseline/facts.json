@@ -262,6 +262,36 @@
       "status": "completed",
       "conclusion": "success",
       "head_sha": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "merge_commit_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      "run_id": 31063416513,
+      "run_attempt": 1
+    },
+    {
+      "merge_commit_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+      "run_id": 31084420124,
+      "run_attempt": 1
+    }
+  ],
+  "implementationMerges": [
+    {
+      "ticket_id": "D0-002",
+      "merge_commit_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+      "number": 143,
+      "reachable": true
+    },
+    {
+      "ticket_id": "D0-001",
+      "merge_commit_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      "number": 130,
+      "reachable": true
     }
   ],
   "verifiedTickets": [

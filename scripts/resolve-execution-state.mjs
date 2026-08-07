@@ -539,15 +539,13 @@ const extractExactCompletionField = (body) => {
 /**
  * Classify a single merged PR body against the `Ticket-Completion:` grammar for
  * ticketId. `Ticket:` remains the sole ticket-linkage field and its meaning is
- * unchanged; `Ticket-Completion:` only classifies a PR that is already exactly
- * `Ticket:`-linked to ticketId (via extractExactTicketField — same exact-single-
- * structured-field discipline: exactly one anchored line, no partial or fuzzy
- * matching) as the PR author's claimed unique whole-ticket completion merge. A PR
- * carrying `Ticket-Completion:` without a matching `Ticket:` line is never a
- * completion merge, and that absence alone is never a failure. Both fields must
- * match exactly; malformed/duplicated `Ticket-Completion:` lines, or a value that
- * disagrees with the PR's own `Ticket:` value, fail closed instead of being
- * silently ignored.
+ * unchanged; `Ticket-Completion:` never establishes linkage on its own and only
+ * classifies a PR that is already exactly `Ticket:`-linked to ticketId (via
+ * extractExactTicketField — same exact-single-structured-field discipline: exactly one
+ * anchored line, no partial or fuzzy matching) as the PR author's claimed unique
+ * whole-ticket completion merge. Both fields must match exactly; malformed/duplicated
+ * `Ticket-Completion:` lines, or a value that disagrees with the PR's own `Ticket:`
+ * value, fail closed instead of being silently ignored.
  */
 export const classifyCompletionMerge = (body, ticketId) => {
   const completion = extractExactCompletionField(body);
@@ -578,105 +576,15 @@ export const classifyCompletionMerge = (body, ticketId) => {
 };
 
 /**
- * Resolve whole-ticket implementation completion from recorded implementation merge
- * receipts (facts.implementationMerges). A ticket may legitimately accumulate several
- * merged PRs that each carry the exact `Ticket: <ID>` field (docs/contract corrections,
- * gate PRs, declared in-ticket subtask merges) without any of them being the whole-
- * ticket completion merge — see classifyCompletionMerge.
- *
- * With 0 or 1 recorded merges the pre-existing single-receipt contract is unchanged:
- * that one receipt's post-merge CI (if any) must succeed, and no Ticket-Completion
- * marker is required (this is the path D0-001/D0-002 verification already relies on).
- *
- * With 2+ recorded merges, only an explicit, unambiguous `Ticket-Completion:` marker
- * identifies the completion merge; any number of plain `Ticket:`-only contributing
- * merges alongside it are ignored. Zero completion markers among multiple merges means
- * the ticket is simply not yet verified — never a contract-conflict error (this is the
- * liveness fix: the previous "more than one merge receipt is always ambiguous" rule
- * made a ticket permanently unverifiable once legitimate contributing merges existed).
- * More than one completion marker for the same ticket, a completion-field value
- * mismatch, malformed/duplicated completion field data, a completion merge commit
- * explicitly recorded as unreachable, or a failed/missing post-merge CI on the
- * identified completion merge all fail closed instead.
+ * True when `entry` is exactly the declared legacy completion binding for ticketId
+ * (see HISTORICAL_IMPLEMENTATION_LINKAGE) — matched on the exact PR number AND exact
+ * merge commit SHA, never on ticket_id alone. Only D0-001 PR #130 and D0-002 PR #143
+ * ever qualify; no other ticket, PR, or merge inherits this exception.
  */
-const resolveImplementationCompletion = (facts, ticketId) => {
-  const entries = (facts.implementationMerges ?? []).filter((entry) => entry.ticket_id === ticketId);
-  if (entries.length === 0) {
-    return { verified: true, blockers: [] };
-  }
-  if (entries.length === 1) {
-    const ci = postMergeStatus(facts, entries[0].merge_commit_sha);
-    if (ci.failed) {
-      return {
-        verified: false,
-        blockers: [blocker("POST_MERGE_CI_FAILED", `${ticketId} implementation post-merge CI failed`)]
-      };
-    }
-    if (ci.missing) {
-      return {
-        verified: false,
-        blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} implementation post-merge CI missing or nonterminal`)]
-      };
-    }
-    return { verified: true, blockers: [] };
-  }
-
-  const blockers = [];
-  const completions = [];
-  for (const entry of entries) {
-    const classification = classifyCompletionMerge(entry.body, ticketId);
-    if (classification.failClosed) {
-      blockers.push(blocker("TICKET_CONTRACT_CONFLICT", `${ticketId}: ${classification.reason}`));
-      continue;
-    }
-    if (classification.isCompletion) completions.push(entry);
-  }
-
-  if (completions.length > 1) {
-    blockers.push(
-      blocker(
-        "TICKET_CONTRACT_CONFLICT",
-        `${ticketId} has multiple Ticket-Completion merges (#${completions.map((entry) => entry.number).join(", #")})`
-      )
-    );
-  }
-
-  if (blockers.length) {
-    return { verified: false, blockers: uniqueBlockers(blockers) };
-  }
-
-  if (completions.length === 0) {
-    // Any number of plain contributing merges without a completion marker leaves the
-    // ticket unverified. This is never a fail-closed error.
-    return { verified: false, blockers: [] };
-  }
-
-  const completionEntry = completions[0];
-  if (completionEntry.reachable === false) {
-    return {
-      verified: false,
-      blockers: [
-        blocker(
-          "TICKET_CONTRACT_CONFLICT",
-          `${ticketId} completion merge commit is not reachable from the live target branch`
-        )
-      ]
-    };
-  }
-  const ci = postMergeStatus(facts, completionEntry.merge_commit_sha);
-  if (ci.failed) {
-    return {
-      verified: false,
-      blockers: [blocker("POST_MERGE_CI_FAILED", `${ticketId} completion merge post-merge CI failed`)]
-    };
-  }
-  if (ci.missing) {
-    return {
-      verified: false,
-      blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} completion merge post-merge CI missing or nonterminal`)]
-    };
-  }
-  return { verified: true, blockers: [] };
+const isLegacyCompletionBinding = (ticketId, entry) => {
+  const binding = HISTORICAL_IMPLEMENTATION_LINKAGE[ticketId];
+  if (!binding) return false;
+  return entry?.number === binding.pr_number && entry?.merge_commit_sha === binding.merge_commit_sha;
 };
 
 const isLinkedTicketPr = (pr, ticketId, targetBranch) => {
@@ -1126,10 +1034,98 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
 };
 
 /**
+ * Resolve whole-ticket implementation completion from recorded implementation merge
+ * receipts (facts.implementationMerges). A ticket may legitimately accumulate several
+ * merged PRs that each carry the exact `Ticket: <ID>` field (docs/contract corrections,
+ * gate PRs, declared in-ticket subtask merges) without any of them being the whole-ticket
+ * completion merge — see classifyCompletionMerge.
+ *
+ * This is UNIVERSAL at every receipt count, including zero and one: there is no
+ * receipt-count-inferred exception anywhere in this function. Zero recorded merges is
+ * simply zero completion markers (not verified, not itself an error). A single recorded
+ * merge with passing post-merge CI but no valid completion marker is likewise not
+ * verified — a lone receipt never bypasses the marker requirement. The sole exceptions
+ * are the two explicit legacy completion bindings declared in
+ * HISTORICAL_IMPLEMENTATION_LINKAGE (D0-001 PR #130, D0-002 PR #143), matched only on
+ * their exact PR number and merge commit SHA, and even those still require authenticated
+ * reachability and successful post-merge CI below — never a receipt-count fallback.
+ *
+ * Any number of plain `Ticket:`-only contributing merges are ignored for completion
+ * selection. More than one completion (marker or legacy-bound) for the same ticket, a
+ * completion value mismatch, malformed/duplicated completion field data, a completion
+ * merge commit not authenticated as reachable from the live target branch, or a
+ * failed/missing latest post-merge CI on the identified completion merge all fail closed.
+ */
+const resolveImplementationCompletion = (facts, ticketId) => {
+  const entries = (facts.implementationMerges ?? []).filter((entry) => entry.ticket_id === ticketId);
+  const blockers = [];
+  const completions = [];
+
+  for (const entry of entries) {
+    if (isLegacyCompletionBinding(ticketId, entry)) {
+      completions.push(entry);
+      continue;
+    }
+    const classification = classifyCompletionMerge(entry.body, ticketId);
+    if (classification.failClosed) {
+      blockers.push(blocker("TICKET_CONTRACT_CONFLICT", `${ticketId}: ${classification.reason}`));
+      continue;
+    }
+    if (classification.isCompletion) completions.push(entry);
+  }
+
+  if (completions.length > 1) {
+    blockers.push(
+      blocker(
+        "TICKET_CONTRACT_CONFLICT",
+        `${ticketId} has multiple completion merges (#${completions.map((entry) => entry.number).join(", #")})`
+      )
+    );
+  }
+
+  if (blockers.length) {
+    return { verified: false, blockers: uniqueBlockers(blockers) };
+  }
+
+  if (completions.length === 0) {
+    // Zero completion markers among any number of plain contributing merges leaves the
+    // ticket unverified. This is never a fail-closed error.
+    return { verified: false, blockers: [] };
+  }
+
+  const completionEntry = completions[0];
+  if (completionEntry.reachable !== true) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "TICKET_CONTRACT_CONFLICT",
+          `${ticketId} completion merge commit is not authenticated as reachable from the live target branch`
+        )
+      ]
+    };
+  }
+  const ci = postMergeStatus(facts, completionEntry.merge_commit_sha);
+  if (ci.failed) {
+    return {
+      verified: false,
+      blockers: [blocker("POST_MERGE_CI_FAILED", `${ticketId} completion merge post-merge CI failed`)]
+    };
+  }
+  if (ci.missing) {
+    return {
+      verified: false,
+      blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} completion merge post-merge CI missing or nonterminal`)]
+    };
+  }
+  return { verified: true, blockers: [] };
+};
+
+/**
  * Implementation verification requires an explicit verified fact (fixture/online merge
- * receipt) plus gate acceptance; closed issues never verify. When more than one
- * implementation merge receipt is on record, whole-ticket completion is only resolved
- * via the `Ticket-Completion:` marker grammar — see resolveImplementationCompletion.
+ * receipt) plus gate acceptance; closed issues never verify. Whole-ticket completion is
+ * always resolved via resolveImplementationCompletion — see its docstring for the
+ * universal (no receipt-count exception) marker/legacy-binding semantics.
  */
 const isVerified = (facts, ticketId, gateEvaluation) => {
   if (!gateEvaluation.accepted) return false;
@@ -1198,8 +1194,8 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
   }
 
   // Implementation merge receipts (even without verifiedTickets) must surface post-merge
-  // CI / Ticket-Completion fail-closed state before ready-set computation. Zero
-  // completion markers among multiple plain contributing merges is never a failure here
+  // CI / completion fail-closed state before ready-set computation. Zero completion
+  // markers among plain contributing merges is never a failure here
   // (resolveImplementationCompletion returns no blockers in that case) — the ticket
   // simply falls through to the normal readiness pipeline below, unverified.
   const implementationCompletion = resolveImplementationCompletion(facts, ticketId);
@@ -2048,16 +2044,24 @@ const selectLatestWorkflowRun = (runs) => {
 };
 
 /**
- * A small number of historical implementation merges predate the `Ticket:` structured
- * PR-body convention that the primary search-based path relies on (D0-002 merged via
- * PR #143 into dev, before that convention existed). Retroactively adding a `Ticket:`
- * line to an already-merged PR body is a separate, explicitly-authorized metadata
- * correction and is never performed by this resolver. Each entry here is therefore
- * independently re-verified against live authenticated GitHub facts (merged state,
- * exact merge commit SHA, base branch, and post-merge CI) before being trusted; any
- * outage or mismatch fails the whole collection closed rather than silently skipping it.
+ * A small number of historical implementation merges predate the `Ticket:`/`Ticket-Completion:`
+ * structured PR-body grammar that the primary search-based path relies on (D0-001 merged via
+ * PR #130, D0-002 via PR #143, both before that grammar existed). This is the sole legacy
+ * completion exception declared by the D0-004 ticket contract: each binding is keyed on the
+ * exact PR number and merge commit SHA for its ticket, and nothing else ever qualifies.
+ * Retroactively adding `Ticket:`/`Ticket-Completion:` lines to an already-merged PR body is a
+ * separate, explicitly-authorized metadata correction and is never performed by this resolver.
+ * Each entry here is therefore independently re-verified against live authenticated GitHub facts
+ * (merged state, exact merge commit SHA, base branch, ancestry/reachability from the live target
+ * branch, and post-merge CI) before being trusted; any outage, ambiguity, or mismatch fails the
+ * whole collection closed rather than silently skipping it.
  */
 export const HISTORICAL_IMPLEMENTATION_LINKAGE = {
+  "D0-001": {
+    pr_number: 130,
+    merge_commit_sha: "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+    base_branch: "dev"
+  },
   "D0-002": {
     pr_number: 143,
     merge_commit_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7",
@@ -2069,13 +2073,18 @@ export const HISTORICAL_IMPLEMENTATION_LINKAGE = {
  * Apply HISTORICAL_IMPLEMENTATION_LINKAGE on top of whatever the primary Ticket-field
  * search already found. Returns false (and appends to `failures`) on any outage,
  * ambiguity, or mismatch between the declared historical fact and the live PR/CI state.
+ * `liveTip` authenticates the completion merge commit as reachable from (an ancestor of,
+ * or equal to) the live target branch — the same compare-based check used for trusted
+ * workflow SHAs (verifyWorkflowShaReachableFromDev); a compare outage or an unrecognized
+ * compare status fails the whole collection closed rather than defaulting to reachable.
  */
 export const applyHistoricalImplementationLinkage = (
   transport,
   repoPath,
   tickets,
   failures,
-  { implementationMerges, postMergeCI, verifiedTickets }
+  { implementationMerges, postMergeCI, verifiedTickets },
+  liveTip
 ) => {
   for (const [ticketId, link] of Object.entries(HISTORICAL_IMPLEMENTATION_LINKAGE)) {
     if (!tickets[ticketId]) continue;
@@ -2088,6 +2097,13 @@ export const applyHistoricalImplementationLinkage = (
       pull.base?.ref !== link.base_branch
     ) {
       failures.push(`historical implementation linkage mismatch for ${ticketId} PR #${link.pr_number}`);
+      return false;
+    }
+    const ancestry = verifyWorkflowShaReachableFromDev(transport, repoPath, liveTip, pull.merge_commit_sha);
+    if (!ancestry.ok) {
+      failures.push(
+        ancestry.reason || `historical implementation linkage ancestry unavailable for ${ticketId} PR #${link.pr_number}`
+      );
       return false;
     }
     const runs = requireJson(
@@ -2122,7 +2138,8 @@ export const applyHistoricalImplementationLinkage = (
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
-      number: pull.number
+      number: pull.number,
+      reachable: ancestry.reachable
     });
     if (!latest.ok) continue;
     postMergeCI.push({
@@ -3120,8 +3137,32 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   for (const item of mergedSearch.items) {
     const pull = requireJson(transport, `${repoPath}/pulls/${item.number}`, failures);
     if (!pull?.merged || !pull.merge_commit_sha) continue;
-    const ticketId = parseTicketIdFromBody(pull.body);
-    if (!ticketId || !tickets[ticketId]) continue;
+    // The search query itself is scoped to bodies containing "Ticket:", so every returned
+    // receipt must parse as exactly one structured Ticket field; malformed or duplicated
+    // lines fail the whole collection closed instead of being silently skipped (a skip
+    // would let a genuine completion or contributing merge quietly vanish from evidence).
+    const ticketField = extractExactTicketField(pull.body);
+    if (!ticketField.ok) {
+      return {
+        ok: false,
+        reason: `malformed or duplicated Ticket field on merged PR #${pull.number}`,
+        facts: null
+      };
+    }
+    const ticketId = ticketField.ticketId;
+    if (!tickets[ticketId]) continue;
+    // Authenticate the merge commit as reachable from (an ancestor of, or equal to) the
+    // live target branch before trusting it as a candidate completion merge; an outage or
+    // unrecognized compare status fails the whole collection closed rather than leaving
+    // `reachable` unpopulated (which the resolver would otherwise treat as fail-open).
+    const ancestry = verifyWorkflowShaReachableFromDev(transport, repoPath, liveTip, pull.merge_commit_sha);
+    if (!ancestry.ok) {
+      return {
+        ok: false,
+        reason: ancestry.reason || `implementation merge ancestry unavailable for #${pull.number}`,
+        facts: null
+      };
+    }
     const runs = requireJson(
       transport,
       `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
@@ -3152,13 +3193,14 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // Always record the implementation merge receipt so failed/nonterminal post-merge
     // CI is classified by the resolver (POST_MERGE_CI_FAILED / MISSING), not discarded.
     // `body` carries the raw PR body so the resolver can apply the Ticket-Completion:
-    // exact-single-structured-field grammar (classifyCompletionMerge) when more than one
-    // implementation merge is on record for the same ticket.
+    // exact-single-structured-field grammar (classifyCompletionMerge) universally, at
+    // every receipt count, when resolving whole-ticket completion for this ticket.
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number,
-      body: pull.body ?? null
+      body: pull.body ?? null,
+      reachable: ancestry.reachable
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
@@ -3183,11 +3225,14 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   // A small number of implementation merges predate the `Ticket:` PR-body convention;
   // apply their independently re-verified historical linkage on top of the search above.
   if (
-    !applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
-      implementationMerges,
-      postMergeCI,
-      verifiedTickets
-    })
+    !applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges, postMergeCI, verifiedTickets },
+      liveTip
+    )
   ) {
     return { ok: false, reason: failures.join("; ") || "historical implementation linkage unavailable", facts: null };
   }
