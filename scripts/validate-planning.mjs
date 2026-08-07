@@ -789,7 +789,9 @@ const controlPlaneAllowlist = new Set([
   "tests/gate-administration-contract.test.mjs",
   "scripts/validate-identity.mjs",
   "tests/planning/identity.test.mjs",
-  "tests/planning/workspace-skeleton.test.mjs"
+  "tests/planning/workspace-skeleton.test.mjs",
+  "scripts/resolve-execution-state.mjs",
+  "tests/execution-state.test.mjs"
 ]);
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const codeFiles = allFiles.filter((path) => sourceExtensions.has(extname(path)));
