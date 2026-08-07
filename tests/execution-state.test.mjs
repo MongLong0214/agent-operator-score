@@ -72,9 +72,14 @@ test("current-baseline-state", async () => {
   const d0002 = ticketState(result, "D0-002");
   assert.equal(d0001.phase, "verified");
   assert.equal(d0001.readiness, "terminal");
-  assert.equal(d0002.phase, "gate_preparation");
-  assert.equal(d0002.readiness, "blocked");
-  assert.deepEqual(result.readySet, []);
+  // Bootstrap contract: per-ADR/PRD/ticket Gate-Batch PR facts are not a readiness
+  // condition while facts.d0_004c_merged !== true. D0-002 has no accepted gate batch of
+  // its own in this fixture, but current-source consistency, dependencies, ownership, and
+  // the RED contract are all satisfied, so it now resolves ready_for_red instead of
+  // blocking on the (bootstrap-waived) gate chain.
+  assert.equal(d0002.phase, "ready_for_red");
+  assert.equal(d0002.readiness, "ready");
+  assert.deepEqual(result.readySet, ["D0-002"]);
 });
 
 test("current-head-is-runtime-derived", async () => {
@@ -119,7 +124,10 @@ test("closed-issue-is-not-verification", async () => {
 });
 
 test("post-merge-ci-required", async () => {
+  // Gate-PR-linked post-merge CI is part of the Gate-Batch PR facts the bootstrap
+  // contract waives; this requirement is exercised post-D0-004C.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   facts.postMergeCI = [];
   facts.verifiedTickets = [];
   const { result } = await resolveOffline(facts);
@@ -410,9 +418,12 @@ test("projection-drift-does-not-change-state", async () => {
 test("exact-base-packet-requires-ready", async () => {
   const facts = loadBaselineFacts();
   const { result } = await resolveOffline(facts);
-  const d0002 = ticketState(result, "D0-002");
-  assert.notEqual(d0002.readiness, "ready");
-  assert.equal(d0002.packet, null);
+  // D0-002 is now ready_for_red in bootstrap (see current-baseline-state); D0-004 is the
+  // ticket that still blocks in the unmodified baseline (its dependency D0-002 is not in
+  // verifiedTickets), so it remains the not-ready contrast case for this assertion.
+  const d0004 = ticketState(result, "D0-004");
+  assert.notEqual(d0004.readiness, "ready");
+  assert.equal(d0004.packet, null);
 
   // Build a ready ticket surface for D0-004.
   const readyFacts = makeReadyD0004Facts(facts);
@@ -428,7 +439,11 @@ test("exact-base-packet-requires-ready", async () => {
 });
 
 test("registry-string-is-not-gate-acceptance", async () => {
+  // Gate-Batch PR acceptance is a bootstrap-waived readiness condition (see
+  // current-baseline-state), so this invariant is exercised post-D0-004C, where a
+  // per-ticket gate is still required and a spoofed registry string must not substitute.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   // Only registry strings claim D0-002 accepted; no gate PR facts.
   facts.registryStrings = {
     prepared_by: "MongLong0214",
@@ -457,7 +472,10 @@ test("actor-policy-missing-or-malformed", async () => {
 });
 
 test("gate-pr-wrong-or-no-longer-owner-actor", async () => {
+  // Gate PR owner-actor binding is part of Gate-Batch PR acceptance, waived in bootstrap;
+  // exercised post-D0-004C where the full gate chain still runs.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   facts.gatePRs = facts.gatePRs.map((pr) => ({ ...pr, merged_by: "not-the-owner" }));
   facts.verifiedTickets = [];
   const { result } = await resolveOffline(facts);
@@ -471,7 +489,10 @@ test("gate-pr-wrong-or-no-longer-owner-actor", async () => {
 });
 
 test("gate-pr-stale-head-or-digest", async () => {
+  // Gate-batch artifact digest binding is part of Gate-Batch PR acceptance, waived in
+  // bootstrap; exercised post-D0-004C where the full gate chain still runs.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   facts.gateBatches = facts.gateBatches.map((batch) => ({
     ...batch,
     required_artifacts: batch.required_artifacts.map((a) =>
@@ -492,7 +513,10 @@ test("gate-pr-stale-head-or-digest", async () => {
 });
 
 test("gate-pr-post-merge-ci-required", async () => {
+  // Gate PR post-merge CI authenticates gate acceptance, waived in bootstrap; exercised
+  // post-D0-004C where the full gate chain still runs.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   facts.postMergeCI = [
     {
       merge_commit_sha: "cccccccccccccccccccccccccccccccccccccccc",
@@ -813,6 +837,32 @@ test("bootstrap-omits-review-and-authorization-blockers", async () => {
   assert.equal(blockerCodes(state).includes("MERGE_AUTHORIZATION_MISSING"), false);
   assert.equal(state.phase, "implementing");
   assert.equal(state.readiness, "active");
+});
+
+test("bootstrap-omits-adr-prd-ticket-gate-missing-codes", async () => {
+  // D0-002 in the unmodified baseline has no accepted gate batch of its own, but while
+  // facts.d0_004c_merged !== true, per-ADR/PRD/ticket Gate-Batch PR facts are not a
+  // readiness condition, so none of the three gate-missing codes may be emitted anywhere.
+  const facts = loadBaselineFacts();
+  const { result } = await resolveOffline(facts);
+  const codes = Object.values(result.tickets).flatMap((t) => blockerCodes(t));
+  assert.equal(codes.includes("ADR_GATE_MISSING"), false);
+  assert.equal(codes.includes("PRD_GATE_MISSING"), false);
+  assert.equal(codes.includes("TICKET_GATE_MISSING"), false);
+});
+
+test("post-d0-004c-still-emits-adr-prd-ticket-gate-missing-codes", async () => {
+  // Once facts.d0_004c_merged === true the full gate chain runs again; D0-002 still has
+  // no accepted gate batch of its own, so gate-missing codes must resurface.
+  const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
+  const { result } = await resolveOffline(facts);
+  const d0002 = ticketState(result, "D0-002");
+  assert.ok(
+    blockerCodes(d0002).some((code) =>
+      ["ADR_GATE_MISSING", "PRD_GATE_MISSING", "TICKET_GATE_MISSING"].includes(code)
+    )
+  );
 });
 
 test("claims-merge-authorization-stays-false-under-spoofed-strings", async () => {
@@ -1323,6 +1373,10 @@ test("duplicate-candidate-order-independent-active-and-superseded", async () => 
 });
 
 test("missing-live-authority-digests-fail-closed", async () => {
+  // Current-source consistency for referenced PRD/ADR authority documents is never
+  // waived, in bootstrap or post-D0-004C: a missing live digest for an authority document
+  // the ticket itself declares still fails closed even though Gate-Batch PR acceptance
+  // itself is a bootstrap-waived readiness condition.
   const facts = loadBaselineFacts();
   delete facts.liveDigests["docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"];
   const { result: withoutPrd } = await resolveOffline(facts);
@@ -1356,7 +1410,10 @@ test("missing-live-authority-digests-fail-closed", async () => {
 });
 
 test("post-merge-latest-failed-attempt-controls-status", async () => {
+  // The gate PR's post-merge CI (and its latest-attempt selection) is part of Gate-Batch
+  // PR acceptance, waived in bootstrap; exercised post-D0-004C.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   const mergeSha = facts.gatePRs[0].merge_commit_sha;
   facts.postMergeCI = [
     {
@@ -1475,7 +1532,10 @@ test("multiple-live-ticket-candidates-require-structured-supersession", async ()
 });
 
 test("gate-batch-requires-exactly-one-structured-field", async () => {
+  // Gate-Batch body field parsing is part of Gate-Batch PR acceptance, waived in
+  // bootstrap; exercised post-D0-004C where the full gate chain still runs.
   const facts = loadBaselineFacts();
+  facts.d0_004c_merged = true;
   facts.gatePRs = facts.gatePRs.map((pr) => ({
     ...pr,
     body: `${pr.body}\nGate-Batch: batch-d0-001-extra`
