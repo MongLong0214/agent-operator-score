@@ -999,23 +999,22 @@ test("bootstrap-malformed-graph-and-ownership-collision-still-block", async () =
 
 test("historical-d0-002-linkage-satisfies-dependency-verification", async () => {
   // PR #143 is the real, already-merged D0-002 implementation into dev; its merge commit
-  // and post-merge CI run are exact historical facts. PR #143's body correctly has no
-  // `Ticket: D0-002` line (retroactively adding one is a separately-authorized metadata
-  // correction, not performed here), so dependency verification must be satisfied by the
-  // historical merge + post-merge CI facts alone, without a structured Ticket-field link.
+  // and post-merge CI run are exact historical facts, and D0-002 is one of the two
+  // explicit legacy completion exceptions (see HISTORICAL_IMPLEMENTATION_LINKAGE). PR #143's
+  // body correctly has no `Ticket: D0-002` line (retroactively adding one is a separately-
+  // authorized metadata correction, not performed here), so dependency verification must be
+  // satisfied by the legacy-bound historical merge + post-merge CI facts alone, without a
+  // structured Ticket-field/Ticket-Completion-field link. The current-baseline fixture
+  // already carries this exact legacy receipt (see legacy-completion-exception-* tests);
+  // only gate acceptance is added here.
   const facts = loadBaselineFacts();
   acceptGatesFor(facts, "D0-002", "batch-d0-002-historical");
-  facts.implementationMerges = [
-    { ticket_id: "D0-002", merge_commit_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7", number: 143 }
-  ];
-  facts.postMergeCI.push({
-    merge_commit_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7",
-    head_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7",
-    status: "completed",
-    conclusion: "success",
-    run_id: 31084420124,
-    run_attempt: 1
-  });
+  assert.ok(
+    facts.implementationMerges.some(
+      (entry) => entry.ticket_id === "D0-002" && entry.number === 143 && entry.reachable === true
+    ),
+    "current-baseline fixture must already carry the D0-002 legacy completion receipt"
+  );
   facts.verifiedTickets = ["D0-001", "D0-002"];
   const { result } = await resolveOffline(facts);
   const d0002 = ticketState(result, "D0-002");
@@ -1115,12 +1114,109 @@ test("partial-sub-ticket-merges-do-not-satisfy-whole-ticket-verification", async
 });
 
 // ---------------------------------------------------------------------------
-// Ticket-Completion grammar (approved fix for the D0-004 liveness defect above):
-// `Ticket:` stays the sole ticket-linkage field. `Ticket-Completion:` only classifies an
-// already-`Ticket:`-linked merged PR as the unique whole-ticket completion merge. Any
-// number of plain `Ticket:`-only contributing merges are allowed and ignored for
-// completion selection.
+// Universal Ticket-Completion marker semantics (approved D0-004 contract amendment):
+// completion resolution is identical at every implementation-merge receipt count,
+// including zero and one — there is no receipt-count-inferred exception anywhere. The
+// sole exceptions are the two explicit legacy completion bindings (D0-001 PR #130,
+// D0-002 PR #143), matched only on their exact PR number and merge commit SHA, and even
+// those still require authenticated reachability and successful post-merge CI.
 // ---------------------------------------------------------------------------
+
+test("universal-marker-semantics-zero-receipts-is-unverified-not-error", async () => {
+  // The rejected prior implementation treated zero implementation-merge receipts as an
+  // automatic verification pass. Zero completion markers must never verify and must
+  // never itself be a fail-closed error, at any receipt count including zero.
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  // The baseline fixture already carries zero D0-004 implementation-merge receipts (only
+  // D0-001's and D0-002's own legacy-bound receipts) — left untouched so D0-002's dependency
+  // verification is unaffected by this D0-004-focused assertion.
+  assert.equal(facts.implementationMerges.some((entry) => entry.ticket_id === "D0-004"), false);
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.notEqual(d0004.phase, "verified", `zero receipts must never auto-verify, got phase=${d0004.phase}`);
+  // Zero completion markers is never itself a fail-closed error: with an accepted gate and
+  // satisfied dependencies, an unimplemented D0-004 legitimately remains ready to start
+  // (readiness is orthogonal to whole-ticket completion), never merged_pending_post_ci.
+  assert.deepEqual(blockerCodes(d0004), []);
+  assert.notEqual(d0004.phase, "merged_pending_post_ci");
+});
+
+test("legacy-ticket-without-a-recorded-legacy-entry-is-unverified-not-error", async () => {
+  // Being a legacy-eligible ticket id is never itself sufficient — the exception only ever
+  // applies to an actually recorded receipt matching the exact declared PR number and SHA.
+  const facts = loadBaselineFacts();
+  facts.implementationMerges = [];
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.notEqual(d0001.phase, "verified");
+  assert.deepEqual(blockerCodes(d0001), []);
+});
+
+test("universal-marker-semantics-single-receipt-without-marker-is-unverified-not-error", async () => {
+  // The rejected prior implementation verified a ticket with exactly one implementation
+  // merge whenever that single receipt's post-merge CI passed, regardless of any
+  // completion marker. A lone receipt never bypasses the marker requirement.
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  const sha = "400a400a400a400a400a400a400a400a400a400a";
+  // Append, never replace: D0-002's own baseline legacy receipt must survive so D0-002's
+  // dependency verification is unaffected by this D0-004-focused assertion.
+  facts.implementationMerges = [
+    ...facts.implementationMerges,
+    {
+      ticket_id: "D0-004",
+      merge_commit_sha: sha,
+      number: 400,
+      body: "Ticket: D0-004\n\nplain contributing merge, no completion marker.",
+      reachable: true
+    }
+  ];
+  facts.postMergeCI.push({
+    merge_commit_sha: sha,
+    head_sha: sha,
+    status: "completed",
+    conclusion: "success",
+    run_id: 400,
+    run_attempt: 1
+  });
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.notEqual(
+    d0004.phase,
+    "verified",
+    `a single receipt without a completion marker must never auto-verify regardless of passing CI, got phase=${d0004.phase}`
+  );
+  assert.deepEqual(blockerCodes(d0004), []);
+});
+
+test("universal-marker-semantics-single-receipt-with-valid-marker-verifies", async () => {
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  const sha = "401a401a401a401a401a401a401a401a401a401a";
+  facts.implementationMerges = [
+    {
+      ticket_id: "D0-004",
+      merge_commit_sha: sha,
+      number: 401,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      reachable: true
+    }
+  ];
+  facts.postMergeCI.push({
+    merge_commit_sha: sha,
+    head_sha: sha,
+    status: "completed",
+    conclusion: "success",
+    run_id: 401,
+    run_attempt: 1
+  });
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.equal(d0004.phase, "verified");
+  assert.equal(d0004.readiness, "terminal");
+  assert.deepEqual(blockerCodes(d0004), []);
+});
 
 test("classify-completion-merge-exact-single-field-grammar", async () => {
   const { classifyCompletionMerge } = await importResolver();
@@ -1160,44 +1256,10 @@ test("classify-completion-merge-exact-single-field-grammar", async () => {
   assert.equal(otherTicket.failClosed, false);
 });
 
-test("multiple-plain-contributing-merges-with-zero-completion-markers-is-unverified-not-error", async () => {
-  // Same real repro shape as the ambiguity test above (#135/#136/#146), but now each
-  // merged PR body is present and explicitly carries no Ticket-Completion field. Zero
-  // completion markers must leave D0-004 simply unverified — never a
-  // TICKET_CONTRACT_CONFLICT / POST_MERGE_CI_* fail-closed error.
-  const facts = makeReadyD0004Facts(loadBaselineFacts());
-  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
-  const sha135 = "135a135a135a135a135a135a135a135a135a135a";
-  const sha136 = "136b136b136b136b136b136b136b136b136b136b";
-  const sha146 = "146c146c146c146c146c146c146c146c146c146c";
-  facts.implementationMerges = [
-    { ticket_id: "D0-004", merge_commit_sha: sha135, number: 135, body: "Ticket: D0-004\n\ndocs: define single operational state author." },
-    { ticket_id: "D0-004", merge_commit_sha: sha136, number: 136, body: "Ticket: D0-004\n\ndocs: close D0-004 operational authority gap." },
-    {
-      ticket_id: "D0-004",
-      merge_commit_sha: sha146,
-      number: 146,
-      body: "Ticket: D0-004\n\nD0-004A only: semantic catalog and planning validator. No resolver, workflow/projection, gate-administration change, product code, issue body/label mutation, or current-state projection."
-    }
-  ];
-  facts.postMergeCI.push(
-    { merge_commit_sha: sha135, head_sha: sha135, status: "completed", conclusion: "success", run_id: 135, run_attempt: 1 },
-    { merge_commit_sha: sha136, head_sha: sha136, status: "completed", conclusion: "success", run_id: 136, run_attempt: 1 },
-    { merge_commit_sha: sha146, head_sha: sha146, status: "completed", conclusion: "success", run_id: 146, run_attempt: 1 }
-  );
-  const { result } = await resolveOffline(facts);
-  const state = ticketState(result, "D0-004");
-  assert.notEqual(state.phase, "verified");
-  assert.notEqual(state.readiness, "terminal");
-  assert.equal(blockerCodes(state).includes("TICKET_CONTRACT_CONFLICT"), false);
-  assert.equal(blockerCodes(state).includes("POST_MERGE_CI_MISSING"), false);
-  assert.equal(blockerCodes(state).includes("POST_MERGE_CI_FAILED"), false);
-});
-
 test("single-valid-completion-marker-verifies-ticket-despite-plain-contributing-merges", async () => {
-  // The liveness fix: once a genuine completion merge (#146 here) carries a matching
-  // Ticket-Completion marker with successful post-merge CI, D0-004 must verify even
-  // though #135/#136 remain plain contributing merges with no completion marker.
+  // Once a genuine completion merge (#146 here) carries a matching Ticket-Completion
+  // marker with authenticated reachability and successful post-merge CI, D0-004 must
+  // verify even though #135/#136 remain plain contributing merges with no marker.
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const sha135 = "135a135a135a135a135a135a135a135a135a135a";
@@ -1210,7 +1272,8 @@ test("single-valid-completion-marker-verifies-ticket-despite-plain-contributing-
       ticket_id: "D0-004",
       merge_commit_sha: sha146,
       number: 146,
-      body: "Ticket: D0-004\nTicket-Completion: D0-004\n\nD0-004 whole-ticket completion merge."
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n\nD0-004 whole-ticket completion merge.",
+      reachable: true
     }
   ];
   facts.postMergeCI.push(
@@ -1227,11 +1290,12 @@ test("single-valid-completion-marker-verifies-ticket-despite-plain-contributing-
 
 test("duplicate-completion-markers-for-same-ticket-fail-closed", async () => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const shaA = "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0";
   const shaB = "b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0";
   facts.implementationMerges = [
-    { ticket_id: "D0-004", merge_commit_sha: shaA, number: 301, body: "Ticket: D0-004\nTicket-Completion: D0-004" },
-    { ticket_id: "D0-004", merge_commit_sha: shaB, number: 302, body: "Ticket: D0-004\nTicket-Completion: D0-004" }
+    { ticket_id: "D0-004", merge_commit_sha: shaA, number: 301, body: "Ticket: D0-004\nTicket-Completion: D0-004", reachable: true },
+    { ticket_id: "D0-004", merge_commit_sha: shaB, number: 302, body: "Ticket: D0-004\nTicket-Completion: D0-004", reachable: true }
   ];
   facts.postMergeCI.push(
     { merge_commit_sha: shaA, head_sha: shaA, status: "completed", conclusion: "success", run_id: 301, run_attempt: 1 },
@@ -1246,6 +1310,7 @@ test("duplicate-completion-markers-for-same-ticket-fail-closed", async () => {
 
 test("completion-marker-value-mismatch-fails-closed-at-resolver-level", async () => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const shaA = "c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1";
   const shaB = "c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2";
   facts.implementationMerges = [
@@ -1265,6 +1330,7 @@ test("completion-marker-value-mismatch-fails-closed-at-resolver-level", async ()
 
 test("malformed-duplicated-completion-field-fails-closed-at-resolver-level", async () => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const shaA = "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1";
   const shaB = "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2";
   facts.implementationMerges = [
@@ -1288,11 +1354,12 @@ test("malformed-duplicated-completion-field-fails-closed-at-resolver-level", asy
 
 test("completion-merge-post-merge-ci-missing-fails-closed", async () => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const shaPlain = "e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1";
   const shaCompletion = "e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2";
   facts.implementationMerges = [
     { ticket_id: "D0-004", merge_commit_sha: shaPlain, number: 307, body: "Ticket: D0-004\n\nplain contributing merge." },
-    { ticket_id: "D0-004", merge_commit_sha: shaCompletion, number: 308, body: "Ticket: D0-004\nTicket-Completion: D0-004" }
+    { ticket_id: "D0-004", merge_commit_sha: shaCompletion, number: 308, body: "Ticket: D0-004\nTicket-Completion: D0-004", reachable: true }
   ];
   // Only the plain merge gets a post-merge CI row; the completion merge's is missing.
   facts.postMergeCI.push({
@@ -1311,11 +1378,12 @@ test("completion-merge-post-merge-ci-missing-fails-closed", async () => {
 
 test("completion-merge-post-merge-ci-failed-fails-closed", async () => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const shaPlain = "f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1";
   const shaCompletion = "f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2";
   facts.implementationMerges = [
     { ticket_id: "D0-004", merge_commit_sha: shaPlain, number: 309, body: "Ticket: D0-004\n\nplain contributing merge." },
-    { ticket_id: "D0-004", merge_commit_sha: shaCompletion, number: 310, body: "Ticket: D0-004\nTicket-Completion: D0-004" }
+    { ticket_id: "D0-004", merge_commit_sha: shaCompletion, number: 310, body: "Ticket: D0-004\nTicket-Completion: D0-004", reachable: true }
   ];
   facts.postMergeCI.push(
     { merge_commit_sha: shaPlain, head_sha: shaPlain, status: "completed", conclusion: "success", run_id: 309, run_attempt: 1 },
@@ -1327,11 +1395,12 @@ test("completion-merge-post-merge-ci-failed-fails-closed", async () => {
   assert.ok(blockerCodes(state).includes("POST_MERGE_CI_FAILED"));
 });
 
-test("completion-merge-unreachable-commit-fails-closed", async () => {
+test("completion-merge-explicitly-unreachable-commit-fails-closed", async () => {
   // Structural support for the "unreachable merge commit" fail-closed requirement: a
   // completion merge whose commit is explicitly recorded as not reachable from the live
   // target branch must never verify, even with successful post-merge CI.
   const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const shaPlain = "071107110711071107110711071107110711aaaa";
   const shaCompletion = "071107110711071107110711071107110711bbbb";
   facts.implementationMerges = [
@@ -1354,13 +1423,128 @@ test("completion-merge-unreachable-commit-fails-closed", async () => {
   assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_CONFLICT"));
 });
 
+test("completion-merge-reachability-not-authenticated-fails-closed", async () => {
+  // The specific fail-open defect this closes: the resolver previously rejected only
+  // `reachable === false` while nothing populated `reachable` for a completion merge, so
+  // an entry with no `reachable` field at all (undefined, the live-collector default
+  // before this fix) silently passed. Reachability must be authenticated as exactly
+  // `true`; it is never assumed from absence.
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  const sha = "9009900990099009900990099009900990099009";
+  facts.implementationMerges = [
+    {
+      ticket_id: "D0-004",
+      merge_commit_sha: sha,
+      number: 500,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004"
+      // `reachable` intentionally omitted — must fail closed, not pass open.
+    }
+  ];
+  facts.postMergeCI.push({
+    merge_commit_sha: sha,
+    head_sha: sha,
+    status: "completed",
+    conclusion: "success",
+    run_id: 500,
+    run_attempt: 1
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified");
+  assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_CONFLICT"));
+});
+
+// ---------------------------------------------------------------------------
+// Legacy completion exception (D0-001 PR #130, D0-002 PR #143 — see
+// HISTORICAL_IMPLEMENTATION_LINKAGE and the D0-004 ticket's amended linkage clause).
+// ---------------------------------------------------------------------------
+
+test("legacy-completion-exception-d0-001-verifies-without-ticket-fields", async () => {
+  const facts = loadBaselineFacts();
+  const d0001Entries = facts.implementationMerges.filter((entry) => entry.ticket_id === "D0-001");
+  assert.equal(d0001Entries.length, 1);
+  assert.equal(d0001Entries[0].number, 130);
+  assert.equal(d0001Entries[0].merge_commit_sha, "6e872ccf2387067b49217a27a7c255343ad2eb8d");
+  assert.equal(d0001Entries[0].reachable, true);
+  assert.equal(
+    Object.hasOwn(d0001Entries[0], "body"),
+    false,
+    "the legacy binding requires no Ticket:/Ticket-Completion: body fields at all"
+  );
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.equal(d0001.phase, "verified");
+  assert.equal(d0001.readiness, "terminal");
+  assert.deepEqual(blockerCodes(d0001), []);
+});
+
+test("legacy-completion-exception-requires-exact-pr-number-and-sha-match", async () => {
+  // A D0-001 receipt with the right ticket_id but a wrong PR number/merge SHA is never the
+  // legacy completion — it falls through to ordinary marker classification, and here
+  // carries no Ticket-Completion field, so it is a plain, ignored receipt.
+  const facts = loadBaselineFacts();
+  facts.implementationMerges = [
+    { ticket_id: "D0-001", merge_commit_sha: "0000000000000000000000000000000000000000", number: 999, reachable: true }
+  ];
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.notEqual(d0001.phase, "verified");
+  assert.deepEqual(blockerCodes(d0001), []);
+});
+
+test("legacy-completion-exception-still-requires-authenticated-reachability", async () => {
+  const facts = loadBaselineFacts();
+  facts.implementationMerges = facts.implementationMerges.map((entry) =>
+    entry.ticket_id === "D0-001" ? { ...entry, reachable: false } : entry
+  );
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.notEqual(d0001.phase, "verified");
+  assert.ok(blockerCodes(d0001).includes("TICKET_CONTRACT_CONFLICT"));
+});
+
+test("legacy-completion-exception-still-requires-successful-post-merge-ci", async () => {
+  const facts = loadBaselineFacts();
+  facts.postMergeCI = facts.postMergeCI.map((row) =>
+    row.merge_commit_sha === "6e872ccf2387067b49217a27a7c255343ad2eb8d" ? { ...row, conclusion: "failure" } : row
+  );
+  const { result } = await resolveOffline(facts);
+  const d0001 = ticketState(result, "D0-001");
+  assert.notEqual(d0001.phase, "verified");
+  assert.ok(blockerCodes(d0001).includes("POST_MERGE_CI_FAILED"));
+});
+
+test("legacy-completion-exception-does-not-extend-to-other-tickets", async () => {
+  // Matching PR number/merge SHA under a DIFFERENT ticket_id is never the legacy
+  // exception — HISTORICAL_IMPLEMENTATION_LINKAGE is keyed on ticket id first, and no
+  // other ticket, PR, or merge inherits it.
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  facts.implementationMerges = facts.implementationMerges ?? [];
+  facts.implementationMerges = [
+    ...facts.implementationMerges,
+    {
+      ticket_id: "D0-004",
+      merge_commit_sha: "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      number: 130,
+      reachable: true
+    }
+  ];
+  const { result } = await resolveOffline(facts);
+  const d0004 = ticketState(result, "D0-004");
+  assert.notEqual(d0004.phase, "verified");
+  assert.deepEqual(blockerCodes(d0004), []);
+});
+
 test("historical-linkage-collector-verifies-real-merge-before-trusting-it", async () => {
   const { applyHistoricalImplementationLinkage, createFixtureTransport } = await importResolver();
   const tickets = { "D0-002": { owned_paths: ["x"], owned_symbols: [] } };
   const repoPath = "repos/MongLong0214/agent-operator-score";
   const mergeSha = "782946e96baa4a3f2734a2ad6b42210d289bebb7";
+  const liveTip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
 
-  // Matching historical merge + successful post-merge CI is trusted.
+  // Matching historical merge + authenticated reachability + successful post-merge CI is trusted.
   {
     const responses = {
       [`${repoPath}/pulls/143`]: {
@@ -1369,6 +1553,7 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
         merge_commit_sha: mergeSha,
         base: { ref: "dev" }
       },
+      [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "behind" },
       [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
         total_count: 1,
         workflow_runs: [
@@ -1389,14 +1574,19 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
     const implementationMerges = [];
     const postMergeCI = [];
     const verifiedTickets = [];
-    const ok = applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
-      implementationMerges,
-      postMergeCI,
-      verifiedTickets
-    });
+    const ok = applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges, postMergeCI, verifiedTickets },
+      liveTip
+    );
     assert.equal(ok, true);
     assert.deepEqual(failures, []);
-    assert.deepEqual(implementationMerges, [{ ticket_id: "D0-002", merge_commit_sha: mergeSha, number: 143 }]);
+    assert.deepEqual(implementationMerges, [
+      { ticket_id: "D0-002", merge_commit_sha: mergeSha, number: 143, reachable: true }
+    ]);
     assert.ok(verifiedTickets.includes("D0-002"));
     assert.equal(postMergeCI[0].conclusion, "success");
   }
@@ -1413,11 +1603,14 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
     };
     const transport = createFixtureTransport(responses);
     const failures = [];
-    const ok = applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
-      implementationMerges: [],
-      postMergeCI: [],
-      verifiedTickets: []
-    });
+    const ok = applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges: [], postMergeCI: [], verifiedTickets: [] },
+      liveTip
+    );
     assert.equal(ok, false);
     assert.ok(failures.length > 0);
   }
@@ -1427,14 +1620,366 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
     const responses = { [`${repoPath}/pulls/143`]: null };
     const transport = createFixtureTransport(responses);
     const failures = [];
-    const ok = applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
-      implementationMerges: [],
-      postMergeCI: [],
-      verifiedTickets: []
-    });
+    const ok = applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges: [], postMergeCI: [], verifiedTickets: [] },
+      liveTip
+    );
     assert.equal(ok, false);
     assert.ok(failures.length > 0);
   }
+
+  // Completion merge commit not reachable from live dev fails closed.
+  {
+    const responses = {
+      [`${repoPath}/pulls/143`]: {
+        number: 143,
+        merged: true,
+        merge_commit_sha: mergeSha,
+        base: { ref: "dev" }
+      },
+      [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "diverged" },
+      [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
+        total_count: 1,
+        workflow_runs: [
+          {
+            id: 31084420124,
+            name: "CI",
+            path: ".github/workflows/ci.yml",
+            head_sha: mergeSha,
+            status: "completed",
+            conclusion: "success",
+            run_attempt: 1
+          }
+        ]
+      }
+    };
+    const transport = createFixtureTransport(responses);
+    const failures = [];
+    const implementationMerges = [];
+    const ok = applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges, postMergeCI: [], verifiedTickets: [] },
+      liveTip
+    );
+    // Ancestry itself never outright fails the collector call (it is a fact, not an
+    // outage); it is recorded as reachable:false for the resolver to fail closed on.
+    assert.equal(ok, true);
+    assert.deepEqual(failures, []);
+    assert.equal(implementationMerges[0].reachable, false);
+  }
+
+  // Ancestry compare outage fails the whole collection closed.
+  {
+    const responses = {
+      [`${repoPath}/pulls/143`]: {
+        number: 143,
+        merged: true,
+        merge_commit_sha: mergeSha,
+        base: { ref: "dev" }
+      },
+      [`${repoPath}/compare/${liveTip}...${mergeSha}`]: null
+    };
+    const transport = createFixtureTransport(responses);
+    const failures = [];
+    const ok = applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges: [], postMergeCI: [], verifiedTickets: [] },
+      liveTip
+    );
+    assert.equal(ok, false);
+    assert.ok(failures.length > 0);
+  }
+
+  // Unrecognized ancestry compare status fails the whole collection closed.
+  {
+    const responses = {
+      [`${repoPath}/pulls/143`]: {
+        number: 143,
+        merged: true,
+        merge_commit_sha: mergeSha,
+        base: { ref: "dev" }
+      },
+      [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "unexpected-status" }
+    };
+    const transport = createFixtureTransport(responses);
+    const failures = [];
+    const ok = applyHistoricalImplementationLinkage(
+      transport,
+      repoPath,
+      tickets,
+      failures,
+      { implementationMerges: [], postMergeCI: [], verifiedTickets: [] },
+      liveTip
+    );
+    assert.equal(ok, false);
+    assert.ok(failures.length > 0);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Collector-level REDs for the merged-PR-search implementation-completion pipeline
+// (scripts/resolve-execution-state.mjs collectLiveExecutionFacts, the mergedSearch loop):
+// these exercise the real collector against a mocked GitHub transport end to end, not
+// fixture-injected facts.implementationMerges shortcuts.
+// ---------------------------------------------------------------------------
+
+const COLLECTOR_REPO_PATH = "repos/MongLong0214/agent-operator-score";
+const COLLECTOR_DEV_TIP = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+const COLLECTOR_MERGED_SEARCH_KEY =
+  "search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20is%3Apr%20is%3Amerged%20base%3Adev%20%22Ticket%3A%22&per_page=30";
+
+function buildCollectorMergedSearchFixture(items) {
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  responses[COLLECTOR_MERGED_SEARCH_KEY] = {
+    items: items.map(({ number }) => ({ number })),
+    total_count: items.length,
+    incomplete_results: false
+  };
+  for (const item of items) {
+    responses[`${COLLECTOR_REPO_PATH}/pulls/${item.number}`] = {
+      number: item.number,
+      merged: true,
+      merge_commit_sha: item.merge_commit_sha,
+      body: item.body,
+      base: { ref: "dev" }
+    };
+    if (Object.hasOwn(item, "compare")) {
+      responses[`${COLLECTOR_REPO_PATH}/compare/${COLLECTOR_DEV_TIP}...${item.merge_commit_sha}`] = item.compare;
+    }
+    if (Object.hasOwn(item, "runs")) {
+      responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${item.merge_commit_sha}&event=push&per_page=20`] = item.runs;
+    }
+  }
+  // Remove the open D0-004 candidate PR so implementation-completion blockers surface
+  // through resolveOneTicket's pre-ready-set path (guarded by `!pr`), not swallowed by
+  // an in-flight candidate.
+  responses[`${COLLECTOR_REPO_PATH}/pulls?state=open&base=dev&per_page=50`] = [];
+  return responses;
+}
+
+const collectorSuccessRuns = (sha, runId) => ({
+  total_count: 1,
+  workflow_runs: [
+    {
+      id: runId,
+      name: "CI",
+      path: ".github/workflows/ci.yml",
+      head_sha: sha,
+      status: "completed",
+      conclusion: "success",
+      run_attempt: 1
+    }
+  ]
+});
+
+async function resolveCollectedOnline(collected) {
+  const { resolveExecutionState } = await importResolver();
+  return resolveExecutionState({
+    mode: "online-strict",
+    root,
+    facts: collected.facts,
+    runtimeIdentity: {
+      repository: collected.facts.repository,
+      branch: collected.facts.defaultBranch,
+      head: collected.facts.currentHead
+    }
+  });
+}
+
+test("collector-fails-closed-on-malformed-ticket-field-on-searched-receipt", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: "9010901090109010901090109010901090109010",
+      // The search query matched on the bare substring "Ticket:", but this body has no
+      // anchored `Ticket: <ID>` line — malformed, must fail the whole collection closed.
+      body: "See Ticket: D0-001 mentioned inline, not an anchored structured field."
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /malformed or duplicated Ticket field/i);
+});
+
+test("collector-fails-closed-on-duplicated-ticket-field-on-searched-receipt", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 902,
+      merge_commit_sha: "9020902090209020902090209020902090209020",
+      body: "Ticket: D0-001\nTicket: D0-001\n"
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /malformed or duplicated Ticket field/i);
+});
+
+test("collector-records-unreachable-completion-merge-and-resolver-fails-closed", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9030903090309030903090309030903090309030";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 903,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-001\nTicket-Completion: D0-001",
+      compare: { status: "diverged" },
+      runs: collectorSuccessRuns(sha, 903001)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  // Ancestry itself is a fact, not an outage: the collection succeeds and records
+  // reachable:false for the resolver to fail closed on.
+  assert.equal(collected.ok, true, collected.reason);
+  const entry = collected.facts.implementationMerges.find((row) => row.merge_commit_sha === sha);
+  assert.ok(entry, "collector must record the implementation merge receipt");
+  assert.equal(entry.reachable, false);
+  const result = await resolveCollectedOnline(collected);
+  const d0001 = result.tickets["D0-001"];
+  assert.notEqual(d0001.phase, "verified");
+  assert.ok((d0001.blockers ?? []).map((b) => b.code).includes("TICKET_CONTRACT_CONFLICT"));
+});
+
+test("collector-fails-closed-on-completion-merge-ancestry-api-outage", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9040904090409040904090409040904090409040";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 904,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-001\nTicket-Completion: D0-001",
+      compare: null, // fixture outage sentinel
+      // A valid post-merge CI response is present so the ancestry outage — not a missing
+      // downstream fixture — is what fails the collection closed.
+      runs: collectorSuccessRuns(sha, 904001)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+});
+
+test("collector-fails-closed-on-unknown-ancestry-compare-status", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9045904590459045904590459045904590459045";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 9045,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-001\nTicket-Completion: D0-001",
+      compare: { status: "sideways-unexpected-status" },
+      runs: collectorSuccessRuns(sha, 904501)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+});
+
+test("collector-level-zero-completion-markers-is-unverified-not-error", async () => {
+  // A single plain contributing merge with passing CI and authenticated reachability but
+  // no completion marker — the exact shape the rejected prior implementation auto-verified
+  // (single receipt, passing CI, marker ignored). It must stay unverified and error-free.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const shaA = "9050905090509050905090509050905090509050";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 905,
+      merge_commit_sha: shaA,
+      body: "Ticket: D0-004\n\nplain contributing merge, no completion marker.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(shaA, 905001)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const result = await resolveCollectedOnline(collected);
+  const d0004 = result.tickets["D0-004"];
+  assert.notEqual(d0004.phase, "verified");
+  assert.deepEqual((d0004.blockers ?? []).map((b) => b.code), []);
+});
+
+test("collector-level-duplicate-completion-markers-fails-closed", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const shaA = "9070907090709070907090709070907090709070";
+  const shaB = "9080908090809080908090809080908090809080";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 907,
+      merge_commit_sha: shaA,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(shaA, 907001)
+    },
+    {
+      number: 908,
+      merge_commit_sha: shaB,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(shaB, 908001)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const result = await resolveCollectedOnline(collected);
+  const d0004 = result.tickets["D0-004"];
+  assert.notEqual(d0004.phase, "verified");
+  assert.ok((d0004.blockers ?? []).map((b) => b.code).includes("TICKET_CONTRACT_CONFLICT"));
+});
+
+test("collector-level-latest-ci-attempt-failure-not-masked-by-earlier-success", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9090909090909090909090909090909090909090";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 909,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: {
+        total_count: 2,
+        workflow_runs: [
+          {
+            id: 909001,
+            name: "CI",
+            path: ".github/workflows/ci.yml",
+            head_sha: sha,
+            status: "completed",
+            conclusion: "success",
+            run_attempt: 1
+          },
+          {
+            // Higher run id: the genuinely latest attempt, and it failed. It must control
+            // classification — never masked by the earlier successful attempt above.
+            id: 909002,
+            name: "CI",
+            path: ".github/workflows/ci.yml",
+            head_sha: sha,
+            status: "completed",
+            conclusion: "failure",
+            run_attempt: 1
+          }
+        ]
+      }
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const result = await resolveCollectedOnline(collected);
+  const d0004 = result.tickets["D0-004"];
+  assert.notEqual(d0004.phase, "verified");
+  assert.ok((d0004.blockers ?? []).map((b) => b.code).includes("POST_MERGE_CI_FAILED"));
 });
 
 test("post-c-technical-check-is-not-independent-approval", async () => {
@@ -2861,7 +3406,13 @@ test("implementation-post-merge-failure-emits-post-merge-ci-failed", async () =>
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   const mergeSha = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
   facts.implementationMerges = [
-    { ticket_id: "D0-004", merge_commit_sha: mergeSha, number: 999 }
+    {
+      ticket_id: "D0-004",
+      merge_commit_sha: mergeSha,
+      number: 999,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      reachable: true
+    }
   ];
   // Keep gate post-merge rows; append implementation failure receipt.
   facts.verifiedTickets = ["D0-001", "D0-002"]; // D0-004 not verified; failure still classifies
@@ -2887,7 +3438,13 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   const mergeSha = "ffffffffffffffffffffffffffffffffffffffff";
   facts.implementationMerges = [
-    { ticket_id: "D0-004", merge_commit_sha: mergeSha, number: 998 }
+    {
+      ticket_id: "D0-004",
+      merge_commit_sha: mergeSha,
+      number: 998,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      reachable: true
+    }
   ];
   facts.verifiedTickets = ["D0-001", "D0-002"];
   facts.postMergeCI = [

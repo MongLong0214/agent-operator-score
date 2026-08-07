@@ -384,5 +384,30 @@
   "repos/MongLong0214/agent-operator-score/contents/docs/prd/PRD-E9-claude-code-adapter-and-parity.md?ref=c8937c6c31ef034535f7c2e8276514221a12fd55": {
     "sha": "blob-49",
     "path": "docs/prd/PRD-E9-claude-code-adapter-and-parity.md"
+  },
+  "repos/MongLong0214/agent-operator-score/pulls/130": {
+    "number": 130,
+    "merged": true,
+    "merge_commit_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+    "base": {
+      "ref": "dev"
+    }
+  },
+  "repos/MongLong0214/agent-operator-score/actions/runs?head_sha=6e872ccf2387067b49217a27a7c255343ad2eb8d&event=push&per_page=20": {
+    "total_count": 1,
+    "workflow_runs": [
+      {
+        "id": 31063416513,
+        "name": "CI",
+        "path": ".github/workflows/ci.yml",
+        "head_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+        "status": "completed",
+        "conclusion": "success",
+        "run_attempt": 1
+      }
+    ]
+  },
+  "repos/MongLong0214/agent-operator-score/compare/c8937c6c31ef034535f7c2e8276514221a12fd55...6e872ccf2387067b49217a27a7c255343ad2eb8d": {
+    "status": "behind"
   }
 }
