@@ -1735,8 +1735,11 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
 
 const COLLECTOR_REPO_PATH = "repos/MongLong0214/agent-operator-score";
 const COLLECTOR_DEV_TIP = "c8937c6c31ef034535f7c2e8276514221a12fd55";
-const COLLECTOR_MERGED_SEARCH_KEY =
-  "search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20is%3Apr%20is%3Amerged%20base%3Adev%20%22Ticket%3A%22&per_page=30";
+const COLLECTOR_MERGED_SEARCH_QUERY =
+  "search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20is%3Apr%20is%3Amerged%20base%3Adev%20%22Ticket%3A%22";
+const COLLECTOR_SEARCH_PAGE_SIZE = 100;
+const collectorSearchPageKey = (page) =>
+  `${COLLECTOR_MERGED_SEARCH_QUERY}&per_page=${COLLECTOR_SEARCH_PAGE_SIZE}&page=${page}`;
 
 function buildCollectorMergedSearchFixture(items) {
   const responses = JSON.parse(
@@ -1746,11 +1749,15 @@ function buildCollectorMergedSearchFixture(items) {
   // merged receipt in this repository, and the collector pre-filters on it to avoid
   // spending one request per search hit. Model that here or the pre-filter skips every
   // fixture receipt before the per-PR response is ever consulted.
-  responses[COLLECTOR_MERGED_SEARCH_KEY] = {
-    items: items.map(({ number, body }) => ({ number, body })),
-    total_count: items.length,
-    incomplete_results: false
-  };
+  const searchItems = items.map(({ number, body }) => ({ number, body }));
+  const pageCount = Math.max(1, Math.ceil(searchItems.length / COLLECTOR_SEARCH_PAGE_SIZE));
+  for (let page = 1; page <= pageCount; page += 1) {
+    responses[collectorSearchPageKey(page)] = {
+      items: searchItems.slice((page - 1) * COLLECTOR_SEARCH_PAGE_SIZE, page * COLLECTOR_SEARCH_PAGE_SIZE),
+      total_count: searchItems.length,
+      incomplete_results: false
+    };
+  }
   for (const item of items) {
     responses[`${COLLECTOR_REPO_PATH}/pulls/${item.number}`] = {
       number: item.number,
@@ -1821,6 +1828,54 @@ for (const [label, body] of [
     assert.match(collected.reason, /malformed Ticket field/i);
   });
 }
+
+test("collector-paginates-the-merged-receipt-search-past-one-page", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  // Live failure this reproduces: once this repository accumulated a full page of merged
+  // PRs carrying a `Ticket:` field, the single-page search hit its own page size and the
+  // collector failed closed with "possibly truncated at 30 items", which blocked every
+  // ticket in the backlog. Failing closed was correct; never paging was the defect.
+  const items = Array.from({ length: 34 }, (_, index) => {
+    const number = 800 + index;
+    const sha = String(number).repeat(20).slice(0, 40);
+    return {
+      number,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-001\n\nplain contributing merge, no completion marker.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha, 900000 + number)
+    };
+  });
+  const responses = buildCollectorMergedSearchFixture(items);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(
+    /possibly truncated/i.test(collected.reason ?? ""),
+    false,
+    `a full first page must be paged, not rejected: ${collected.reason}`
+  );
+  assert.equal(collected.ok, true, collected.reason);
+  const seen = new Set((collected.facts?.implementationMerges ?? []).map((entry) => entry.number));
+  for (const item of items) {
+    assert.ok(seen.has(item.number), `receipt ${item.number} was never collected`);
+  }
+});
+
+test("collector-fails-closed-when-the-merged-receipt-search-cannot-be-completed", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  // Pagination must not become a silent truncation: a payload that promises more results
+  // than it ever returns is absence of evidence and fails the whole collection closed.
+  const responses = buildCollectorMergedSearchFixture([
+    { number: 880, merge_commit_sha: "8800880088008800880088008800880088008800", body: "Ticket: D0-001\n" }
+  ]);
+  for (const key of Object.keys(responses)) {
+    if (key.startsWith("search/issues?q=") && key.includes("Ticket")) {
+      responses[key] = { ...responses[key], total_count: 500 };
+    }
+  }
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false, "an incomplete merged-receipt search must fail closed");
+  assert.match(collected.reason, /merged Ticket PR search/i);
+});
 
 test("collector-skips-search-false-positive-with-no-anchored-ticket-field", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
