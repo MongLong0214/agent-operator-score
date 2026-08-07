@@ -794,9 +794,37 @@ const controlPlaneAllowlist = new Set([
   "tests/execution-state.test.mjs"
 ]);
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
+
+// Product code is admitted only where an atomic ticket claims it by exact path, either as
+// owned scope or as its named RED test file. This is a claim check, not an acceptance
+// check: it proves some ticket owns the file, not that the ticket has passed its gates.
+// Readiness remains the resolver's job. There is no standing product-code allowlist to
+// edit, and unowned source still fails closed.
+const ticketOwnedPaths = new Set();
+for (const path of ticketFiles) {
+  let text;
+  try { text = readFileSync(path, "utf8"); } catch { continue; }
+  const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
+  for (const line of ownership ? ownership[1].split("\n") : []) {
+    const bullet = /^- (.+)$/.exec(line.trim());
+    if (!bullet) continue;
+    for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
+      const candidate = entry.trim().replace(/^`|`$/g, "");
+      if (sourceExtensions.has(extname(candidate))) ticketOwnedPaths.add(candidate);
+    }
+  }
+  const redTest = /^- Test file: `([^`]+)`\s*$/m.exec(text);
+  if (redTest && sourceExtensions.has(extname(redTest[1]))) ticketOwnedPaths.add(redTest[1]);
+}
+
 const codeFiles = allFiles.filter((path) => sourceExtensions.has(extname(path)));
 const controlPlaneCodeFiles = codeFiles.filter((path) => controlPlaneAllowlist.has(rel(path)));
-const productCodeFiles = codeFiles.filter((path) => !controlPlaneAllowlist.has(rel(path)));
+const ticketOwnedCodeFiles = codeFiles.filter(
+  (path) => !controlPlaneAllowlist.has(rel(path)) && ticketOwnedPaths.has(rel(path))
+);
+const productCodeFiles = codeFiles.filter(
+  (path) => !controlPlaneAllowlist.has(rel(path)) && !ticketOwnedPaths.has(rel(path))
+);
 if (productCodeFiles.length) pushError(`unallowlisted product code: ${productCodeFiles.map(rel).sort().join(", ")}`);
 
 const packageManifest = readJson("package.json", "root package manifest");
@@ -819,4 +847,5 @@ if (errors.length) {
 
 const mode = process.argv.includes("--build") ? "BUILD_SCAFFOLD" : "PLANNING_CONTRACT";
 const productPaths = productCodeFiles.length ? productCodeFiles.map(rel).sort().join(",") : "none";
-console.log(`${mode}_PASS adr=${adrFiles.length} prd=${prdFiles.length} tickets=${ticketFiles.length} milestones=${manifest?.milestones?.length ?? 0} product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} canonical_vectors=${metricIds.length} semantic_checks=static_catalog_enforced gates=${gateAdministration.status} product_code_paths=${productPaths}`);
+const ticketOwnedPathsCensus = ticketOwnedCodeFiles.length ? ticketOwnedCodeFiles.map(rel).sort().join(",") : "none";
+console.log(`${mode}_PASS adr=${adrFiles.length} prd=${prdFiles.length} tickets=${ticketFiles.length} milestones=${manifest?.milestones?.length ?? 0} product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} ticket_owned_code_files=${ticketOwnedCodeFiles.length} canonical_vectors=${metricIds.length} semantic_checks=static_catalog_enforced gates=${gateAdministration.status} product_code_paths=${productPaths} ticket_owned_code_paths=${ticketOwnedPathsCensus}`);
