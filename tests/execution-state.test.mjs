@@ -513,10 +513,13 @@ test("gate-pr-post-merge-ci-required", async () => {
 });
 
 test("review-and-authorization-are-distinct", async () => {
+  // Before D0-004C merges, review and authorization are out-of-band process gates and are
+  // never resolver inputs, so this distinctness is only observable after D0-004C merges.
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: true,
     authorization: false,
-    ci: true
+    ci: true,
+    d0_004c_merged: true
   });
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
@@ -525,10 +528,12 @@ test("review-and-authorization-are-distinct", async () => {
 });
 
 test("current-review-without-authorization-is-blocked", async () => {
+  // Same reasoning: this gate only exists once D0-004C merges.
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: true,
     authorization: false,
-    ci: true
+    ci: true,
+    d0_004c_merged: true
   });
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
@@ -538,10 +543,13 @@ test("current-review-without-authorization-is-blocked", async () => {
 });
 
 test("single-owner-spoof-is-not-authorization", async () => {
+  // Post-C, a spoofed self-authored string still cannot substitute for the protected
+  // exact-head-authorization check + formal ceo_production_pass fact.
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: true,
     authorization: false,
-    ci: true
+    ci: true,
+    d0_004c_merged: true
   });
   facts.registryStrings = {
     prepared_by: "MongLong0214",
@@ -560,13 +568,15 @@ test("single-owner-spoof-is-not-authorization", async () => {
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
   assert.ok(blockerCodes(state).includes("MERGE_AUTHORIZATION_MISSING"));
+  assert.equal(result.claims_merge_authorization, false);
 });
 
 test("single-owner-sequential-review-and-authorization", async () => {
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: true,
     authorization: true,
-    ci: true
+    ci: true,
+    d0_004c_merged: true
   });
   // Same owner may review and authorize sequentially.
   assert.equal(facts.reviews[0].reviewer, "MongLong0214");
@@ -668,10 +678,12 @@ test("wrong-dispatch-permission-is-blocked", async () => {
 });
 
 test("authorization-without-current-review-is-blocked", async () => {
+  // Post-C only: this gate does not exist during bootstrap.
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: false,
     authorization: true,
-    ci: true
+    ci: true,
+    d0_004c_merged: true
   });
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
@@ -683,17 +695,19 @@ test("authorization-without-current-review-is-blocked", async () => {
 });
 
 test("future-check-premature", async () => {
+  // CTO/CEO review and the owner merge decision are out-of-band process gates during
+  // bootstrap, never resolver inputs. Simulate the future exact-head-review/
+  // exact-head-authorization checks having run early (candidate CI happens to include
+  // them) and prove the resolver does not use their mere presence to upgrade its own
+  // claims: governance_mode stays the bootstrap mode and claims_merge_authorization
+  // stays false, exactly as if those checks were absent.
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: true,
     authorization: true,
     ci: true,
     d0_004c_merged: false
   });
-  // Claiming future protected checks as required evidence while bootstrap is active is premature:
-  // bootstrap should accept technical-review evidence without requiring the protected check name.
-  const withOnlyProtected = clone(facts);
-  withOnlyProtected.reviews = [];
-  withOnlyProtected.checkRuns = [
+  facts.checkRuns.push(
     {
       name: "exact-head-review",
       head_sha: facts.prs[0].head_sha,
@@ -703,17 +717,38 @@ test("future-check-premature", async () => {
       external_id: "aos-exact-head-review:1:1",
       event: "workflow_dispatch",
       workflow_path: ".github/workflows/operational-state.yml",
-      workflow_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      workflow_sha: facts.currentHead,
       workflow_reachable_from_dev: true,
       workflow_blob_oid: "ops-blob-dev",
       dispatch_actor: "MongLong0214",
+      run_id: 1,
+      run_attempt: 1,
+      ticket_id: "D0-004"
+    },
+    {
+      name: "exact-head-authorization",
+      head_sha: facts.prs[0].head_sha,
+      status: "completed",
+      conclusion: "success",
+      app_slug: "github-actions",
+      external_id: "aos-exact-head-authorization:2:1",
+      event: "workflow_dispatch",
+      workflow_path: ".github/workflows/operational-state.yml",
+      workflow_sha: facts.currentHead,
+      workflow_reachable_from_dev: true,
+      workflow_blob_oid: "ops-blob-dev",
+      dispatch_actor: "MongLong0214",
+      run_id: 2,
+      run_attempt: 1,
       ticket_id: "D0-004"
     }
-  ];
-  const { result } = await resolveOffline(withOnlyProtected);
+  );
+  const { result } = await resolveOffline(facts);
+  assert.equal(result.governance_mode, "single_owner_bootstrap");
+  assert.equal(result.claims_merge_authorization, false);
   const state = ticketState(result, "D0-004");
-  // Before D0-004C, protected check alone is premature / not a substitute for bootstrap review evidence.
-  assert.ok(blockerCodes(state).includes("CUMULATIVE_REVIEW_MISSING"));
+  assert.equal(blockerCodes(state).includes("CUMULATIVE_REVIEW_MISSING"), false);
+  assert.equal(blockerCodes(state).includes("MERGE_AUTHORIZATION_MISSING"), false);
 });
 
 test("bootstrap-after-c-fails-closed", async () => {
@@ -755,6 +790,309 @@ test("ready-authorizes-packet-not-red", async () => {
   assert.ok(state.packet);
   assert.equal(state.red_authorized, false);
   assert.equal(state.requires_maintainer_exact_base_packet, true);
+});
+
+// ---------------------------------------------------------------------------
+// Bootstrap governance simplification: CTO/CEO review and the owner merge
+// decision are out-of-band process gates, never resolver inputs, while
+// facts.d0_004c_merged === false. No authorization writer/collector (Deployment,
+// Commit-Status, or renewed per-artifact Gate-Batch PR facts) is built as a
+// substitute; the requirement is removed, not relocated.
+// ---------------------------------------------------------------------------
+
+test("bootstrap-omits-review-and-authorization-blockers", async () => {
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: false,
+    authorization: false,
+    ci: true
+  });
+  const { result } = await resolveOffline(facts);
+  assert.equal(result.governance_mode, "single_owner_bootstrap");
+  const state = ticketState(result, "D0-004");
+  assert.equal(blockerCodes(state).includes("CUMULATIVE_REVIEW_MISSING"), false);
+  assert.equal(blockerCodes(state).includes("MERGE_AUTHORIZATION_MISSING"), false);
+  assert.equal(state.phase, "implementing");
+  assert.equal(state.readiness, "active");
+});
+
+test("claims-merge-authorization-stays-false-under-spoofed-strings", async () => {
+  // Injecting comment/registry/deployment/status/tag-shaped facts must never flip
+  // claims_merge_authorization to true, in bootstrap or once fully ready.
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: false,
+    authorization: false,
+    ci: true
+  });
+  facts.registryStrings = {
+    prepared_by: "MongLong0214",
+    approved_by: "MongLong0214",
+    authorization: "CEO production PASS",
+    deployment_status: "success",
+    commit_status: "success",
+    tag: "v-production-pass"
+  };
+  facts.authorizations = [
+    {
+      ticket_id: "D0-004",
+      kind: "self_authored_string",
+      actor: "MongLong0214",
+      commit_id: facts.prs[0].head_sha,
+      text: "CEO production PASS"
+    },
+    {
+      ticket_id: "D0-004",
+      kind: "registry_string",
+      actor: "MongLong0214",
+      commit_id: facts.prs[0].head_sha,
+      text: "approved_by=MongLong0214"
+    },
+    {
+      ticket_id: "D0-004",
+      kind: "deployment",
+      actor: "MongLong0214",
+      commit_id: facts.prs[0].head_sha,
+      environment: "production",
+      state: "success"
+    },
+    {
+      ticket_id: "D0-004",
+      kind: "commit_status",
+      actor: "MongLong0214",
+      commit_id: facts.prs[0].head_sha,
+      state: "success",
+      context: "ceo/production-pass"
+    },
+    {
+      ticket_id: "D0-004",
+      kind: "tag",
+      actor: "MongLong0214",
+      commit_id: facts.prs[0].head_sha,
+      ref: "refs/tags/production-pass"
+    }
+  ];
+  const { result } = await resolveOffline(facts);
+  assert.equal(result.claims_merge_authorization, false);
+
+  // Even a fully ready ticket (green technical readiness) never asserts authorization.
+  const readyFacts = makeReadyD0004Facts(loadBaselineFacts());
+  const { result: readyResult } = await resolveOffline(readyFacts);
+  assert.ok(readyResult.readySet.includes("D0-004"));
+  assert.equal(readyResult.claims_merge_authorization, false);
+});
+
+test("bootstrap-exact-head-ci-still-blocks", async () => {
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: false,
+    authorization: false,
+    ci: false
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.ok(blockerCodes(state).includes("EXACT_HEAD_CI_FAILED"));
+  assert.equal(state.readiness, "blocked");
+  assert.equal(result.readySet.includes("D0-004"), false);
+});
+
+test("bootstrap-external-outage-yields-unknown-or-blocked", async () => {
+  const outage = makeCandidateFacts(loadBaselineFacts(), {
+    review: false,
+    authorization: false,
+    ci: true
+  });
+  outage.externalAvailable = false;
+  const { result: outageResult } = await resolveOffline(outage);
+  assert.deepEqual(outageResult.readySet, []);
+  const outageState = ticketState(outageResult, "D0-004");
+  assert.equal(outageState.readiness, "unknown");
+  assert.ok(blockerCodes(outageState).includes("EXTERNAL_STATE_UNAVAILABLE"));
+
+  // Partial candidate-CI provenance (missing run attempt identity) fails closed too.
+  const partial = makeCandidateFacts(loadBaselineFacts(), {
+    review: false,
+    authorization: false,
+    ci: true
+  });
+  partial.checkRuns = partial.checkRuns.map((entry) => ({ ...entry, run_id: undefined, run_attempt: undefined }));
+  partial.workflowRuns = partial.workflowRuns.map((entry) => ({ ...entry, run_id: undefined, run_attempt: undefined }));
+  const { result: partialResult } = await resolveOffline(partial);
+  const partialState = ticketState(partialResult, "D0-004");
+  assert.ok(blockerCodes(partialState).includes("EXACT_HEAD_CI_FAILED"));
+});
+
+test("bootstrap-malformed-graph-and-ownership-collision-still-block", async () => {
+  // A malformed binding of the current ticket's own planning graph still fails closed.
+  const malformed = loadBaselineFacts();
+  delete malformed.tickets["D0-004"].digests.ticket;
+  const { result: malformedResult } = await resolveOffline(malformed);
+  const malformedState = ticketState(malformedResult, "D0-004");
+  assert.ok(blockerCodes(malformedState).includes("TICKET_CONTRACT_INCOMPLETE"));
+  assert.notEqual(malformedState.readiness, "ready");
+
+  // Ownership collision still blocks even with review/authorization removed from bootstrap.
+  const collision = makeCandidateFacts(loadBaselineFacts(), {
+    review: false,
+    authorization: false,
+    ci: true
+  });
+  collision.activeOwnership = [
+    {
+      ticket_id: "E0A-001",
+      owned_paths: ["scripts/resolve-execution-state.mjs"],
+      owned_symbols: ["other"]
+    }
+  ];
+  const { result: collisionResult } = await resolveOffline(collision);
+  const collisionState = ticketState(collisionResult, "D0-004");
+  assert.ok(blockerCodes(collisionState).includes("OWNERSHIP_OVERLAP"));
+  assert.equal(collisionResult.readySet.includes("D0-004"), false);
+});
+
+test("historical-d0-002-linkage-satisfies-dependency-verification", async () => {
+  // PR #143 is the real, already-merged D0-002 implementation into dev; its merge commit
+  // and post-merge CI run are exact historical facts. PR #143's body correctly has no
+  // `Ticket: D0-002` line (retroactively adding one is a separately-authorized metadata
+  // correction, not performed here), so dependency verification must be satisfied by the
+  // historical merge + post-merge CI facts alone, without a structured Ticket-field link.
+  const facts = loadBaselineFacts();
+  acceptGatesFor(facts, "D0-002", "batch-d0-002-historical");
+  facts.implementationMerges = [
+    { ticket_id: "D0-002", merge_commit_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7", number: 143 }
+  ];
+  facts.postMergeCI.push({
+    merge_commit_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+    head_sha: "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+    status: "completed",
+    conclusion: "success",
+    run_id: 31084420124,
+    run_attempt: 1
+  });
+  facts.verifiedTickets = ["D0-001", "D0-002"];
+  const { result } = await resolveOffline(facts);
+  const d0002 = ticketState(result, "D0-002");
+  assert.equal(d0002.phase, "verified");
+  assert.equal(d0002.readiness, "terminal");
+  const d0004 = ticketState(result, "D0-004");
+  assert.equal(blockerCodes(d0004).includes("DEPENDENCY_UNVERIFIED"), false);
+});
+
+test("historical-linkage-collector-verifies-real-merge-before-trusting-it", async () => {
+  const { applyHistoricalImplementationLinkage, createFixtureTransport } = await importResolver();
+  const tickets = { "D0-002": { owned_paths: ["x"], owned_symbols: [] } };
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const mergeSha = "782946e96baa4a3f2734a2ad6b42210d289bebb7";
+
+  // Matching historical merge + successful post-merge CI is trusted.
+  {
+    const responses = {
+      [`${repoPath}/pulls/143`]: {
+        number: 143,
+        merged: true,
+        merge_commit_sha: mergeSha,
+        base: { ref: "dev" }
+      },
+      [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
+        total_count: 1,
+        workflow_runs: [
+          {
+            id: 31084420124,
+            name: "CI",
+            path: ".github/workflows/ci.yml",
+            head_sha: mergeSha,
+            status: "completed",
+            conclusion: "success",
+            run_attempt: 1
+          }
+        ]
+      }
+    };
+    const transport = createFixtureTransport(responses);
+    const failures = [];
+    const implementationMerges = [];
+    const postMergeCI = [];
+    const verifiedTickets = [];
+    const ok = applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
+      implementationMerges,
+      postMergeCI,
+      verifiedTickets
+    });
+    assert.equal(ok, true);
+    assert.deepEqual(failures, []);
+    assert.deepEqual(implementationMerges, [{ ticket_id: "D0-002", merge_commit_sha: mergeSha, number: 143 }]);
+    assert.ok(verifiedTickets.includes("D0-002"));
+    assert.equal(postMergeCI[0].conclusion, "success");
+  }
+
+  // A mismatched merge SHA is a tamper/integrity signal and fails closed.
+  {
+    const responses = {
+      [`${repoPath}/pulls/143`]: {
+        number: 143,
+        merged: true,
+        merge_commit_sha: "0000000000000000000000000000000000000000",
+        base: { ref: "dev" }
+      }
+    };
+    const transport = createFixtureTransport(responses);
+    const failures = [];
+    const ok = applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
+      implementationMerges: [],
+      postMergeCI: [],
+      verifiedTickets: []
+    });
+    assert.equal(ok, false);
+    assert.ok(failures.length > 0);
+  }
+
+  // API outage fails closed.
+  {
+    const responses = { [`${repoPath}/pulls/143`]: null };
+    const transport = createFixtureTransport(responses);
+    const failures = [];
+    const ok = applyHistoricalImplementationLinkage(transport, repoPath, tickets, failures, {
+      implementationMerges: [],
+      postMergeCI: [],
+      verifiedTickets: []
+    });
+    assert.equal(ok, false);
+    assert.ok(failures.length > 0);
+  }
+});
+
+test("post-c-technical-check-is-not-independent-approval", async () => {
+  // A fully passing post-C candidate (protected exact-head-review + exact-head-authorization
+  // checks, both dispatched by the same authenticated owner principal) is trusted technical
+  // automation evidence, never independent approval. The genuine external-independence gate
+  // is a future E14-003/G4 ticket with a distinct principal, not this one.
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: true,
+    authorization: true,
+    ci: true,
+    d0_004c_merged: true
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(blockerCodes(state).includes("CUMULATIVE_REVIEW_MISSING"), false);
+  assert.equal(blockerCodes(state).includes("MERGE_AUTHORIZATION_MISSING"), false);
+  assert.equal(result.claims_merge_authorization, false);
+});
+
+test("no-machine-fact-asserts-independence-before-g4", async () => {
+  const { loadExecutionStateSchema, validateAgainstSchema } = await importResolver();
+  const schemaLoad = loadExecutionStateSchema(root);
+  // The schema itself pins claims_merge_authorization to false: no accidental future flip.
+  assert.equal(schemaLoad.schema.properties.claims_merge_authorization.const, false);
+
+  const scenarios = [
+    loadBaselineFacts(),
+    makeReadyD0004Facts(loadBaselineFacts()),
+    makeCandidateFacts(loadBaselineFacts(), { review: true, authorization: true, ci: true, d0_004c_merged: false }),
+    makeCandidateFacts(loadBaselineFacts(), { review: true, authorization: true, ci: true, d0_004c_merged: true })
+  ];
+  for (const facts of scenarios) {
+    const { result } = await resolveOffline(facts);
+    assert.equal(result.claims_merge_authorization, false);
+    assert.deepEqual(validateAgainstSchema(result, schemaLoad.schema), []);
+  }
 });
 
 test("candidate-ci-required-set-is-exact", async () => {
