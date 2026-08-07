@@ -14,6 +14,7 @@ Freeze eligibility and score-issuance predicate. Deliver only the bounded contra
 ## Exact ownership
 
 - specs/issuance.v0.json; packages/schema/src/issuance-contract.ts — IssuanceRequirement,validateIssuanceContract
+- Coordinated census amendment, owner-authorised 2026-08-08 under the precedent E0A-001 set, limited to recording this ticket's two owned product paths in the census assertions: tests/planning-contract.test.mjs; tests/planning/workspace-skeleton.test.mjs — ticketOwnedSkeletonPaths
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions

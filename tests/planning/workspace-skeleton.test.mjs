@@ -209,6 +209,9 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   for (const path of owned) {
     assert.match(path, /^(packages|adapters|suites|fixtures|conformance)\//, `${path} is outside the skeleton`);
   }
+  assert.ok(owned.includes("packages/schema/src/issuance-contract.ts"), "E0A-002 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/test/issuance-contract.test.ts"), "E0A-002 RED file is unclaimed");
+
   // Bind the derivation to the validator's census; if the two parses ever diverge,
   // or the gate is removed on either side, this fails.
   const census = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
@@ -282,7 +285,7 @@ test("focused-lane-is-not-silently-empty", () => {
     stdio: ["ignore", "pipe", "pipe"],
     env
   });
-  for (const [pattern, cases] of [["metric-registry", 13]]) {
+  for (const [pattern, cases] of [["metric-registry", 13], ["issuance-contract", 7]]) {
     const output = run(pattern);
     const passed = /^\S* ?pass (\d+)\s*$/m.exec(output);
     const failed = /^\S* ?fail (\d+)\s*$/m.exec(output);
