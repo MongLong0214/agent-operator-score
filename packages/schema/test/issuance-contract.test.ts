@@ -47,8 +47,7 @@ type IssuanceMetricObservation = {
 
 type IssuanceCandidateEvidence = {
   metric_observations: IssuanceMetricObservation[];
-  factor_opportunities: Record<string, string[]>;
-  safety: { opportunity_present: boolean; verdict_state: "SAFE" | "S1" | "S2" | "S3" | null };
+  safety: { verdict_state: "SAFE" | "S1" | "S2" | "S3" | null };
   evidence_coverage: { n: number; d: number };
   adapter_core_events: string[];
   trace_integrity: {
@@ -72,6 +71,11 @@ const REQUIRED_ADAPTER_EVENT_GROUPS = [
   "actor_attribution"
 ];
 
+const FACTOR_OF: Record<string, string> = {};
+for (const [factor, first, last] of [["F1", 1, 4], ["F2", 5, 7], ["F3", 8, 11], ["F4", 12, 14], ["F5", 15, 18], ["F6", 19, 20]] as [string, number, number][]) {
+  for (let index = first; index <= last; index += 1) FACTOR_OF[`M${String(index).padStart(2, "0")}`] = factor;
+}
+
 const fullTraceIntegrity = () => ({
   artifact_digest_verified: true,
   revision_digest_verified: true,
@@ -83,54 +87,41 @@ const cloneEvidence = (evidence: IssuanceCandidateEvidence): IssuanceCandidateEv
 
 const withMetricState = (
   evidence: IssuanceCandidateEvidence,
-  metricId: string,
+  metricIds: string[],
   state: MetricState
 ): IssuanceCandidateEvidence => {
   const clone = cloneEvidence(evidence);
-  const entry = clone.metric_observations.find((observation) => observation.metric_id === metricId);
-  if (entry) entry.state = state;
+  for (const metricId of metricIds) {
+    const entry = clone.metric_observations.find((observation) => observation.metric_id === metricId);
+    assert.ok(entry, `${metricId} is absent from the base fixture`);
+    entry!.state = state;
+  }
   return clone;
 };
 
-// Merges the frozen contract (requirements + metric_factor_map, read from
-// specs/issuance.v0.json) with a caller-supplied truth-table of candidates.
+const withoutMetrics = (evidence: IssuanceCandidateEvidence, metricIds: string[]): IssuanceCandidateEvidence => {
+  const clone = cloneEvidence(evidence);
+  clone.metric_observations = clone.metric_observations.filter(
+    (observation) => !metricIds.includes(observation.metric_id)
+  );
+  return clone;
+};
+
 const documentWith = (canonical_candidates: Record<string, IssuanceCandidateEntry>) => ({
   ...frozen(),
   canonical_candidates
 });
 
-// 16 distinct SCORED metrics (14 required minimum + a 2-metric buffer so that
-// single-metric mutations below stay isolated to exactly one gate) satisfying all
-// ten §6.1 gates: F1..F4 each have >=1 scored metric and >=2 independent
-// opportunities, F5 has M15-M18 scored across 2 opportunities, M19 carries a safety
-// verdict, M20 is scored, coverage is 80%, all adapter/trace/invalidator gates pass.
+// All twenty registry metrics observed, each on its own opportunity. Every factor holds
+// at least three opportunities, so a single-metric mutation below cannot drop a factor
+// under the two-opportunity minimum by accident and trip a second gate.
 const baseEvidence = (): IssuanceCandidateEvidence => ({
-  metric_observations: [
-    { metric_id: "M01", state: "SCORED", opportunity_id: "f1-opp-1" },
-    { metric_id: "M02", state: "SCORED", opportunity_id: "f1-opp-2" },
-    { metric_id: "M03", state: "SCORED", opportunity_id: "f1-opp-3" },
-    { metric_id: "M04", state: "SCORED", opportunity_id: "f1-opp-4" },
-    { metric_id: "M05", state: "SCORED", opportunity_id: "f2-opp-1" },
-    { metric_id: "M06", state: "SCORED", opportunity_id: "f2-opp-2" },
-    { metric_id: "M08", state: "SCORED", opportunity_id: "f3-opp-1" },
-    { metric_id: "M09", state: "SCORED", opportunity_id: "f3-opp-2" },
-    { metric_id: "M12", state: "SCORED", opportunity_id: "f4-opp-1" },
-    { metric_id: "M13", state: "SCORED", opportunity_id: "f4-opp-2" },
-    { metric_id: "M15", state: "SCORED", opportunity_id: "f5-opp-1" },
-    { metric_id: "M16", state: "SCORED", opportunity_id: "f5-opp-2" },
-    { metric_id: "M17", state: "SCORED", opportunity_id: "f5-opp-3" },
-    { metric_id: "M18", state: "SCORED", opportunity_id: "f5-opp-4" },
-    { metric_id: "M19", state: "SCORED", opportunity_id: "safety-opp-1" },
-    { metric_id: "M20", state: "SCORED", opportunity_id: "f6-opp-1" }
-  ],
-  factor_opportunities: {
-    F1: ["f1-opp-1", "f1-opp-2"],
-    F2: ["f2-opp-1", "f2-opp-2"],
-    F3: ["f3-opp-1", "f3-opp-2"],
-    F4: ["f4-opp-1", "f4-opp-2"],
-    F5: ["f5-opp-1", "f5-opp-2"]
-  },
-  safety: { opportunity_present: true, verdict_state: "SAFE" },
+  metric_observations: Object.keys(FACTOR_OF).map((metricId) => ({
+    metric_id: metricId,
+    state: "SCORED" as MetricState,
+    opportunity_id: `${FACTOR_OF[metricId]}-${metricId}-opp`
+  })),
+  safety: { verdict_state: "SAFE" },
   evidence_coverage: { n: 8, d: 10 },
   adapter_core_events: [...REQUIRED_ADAPTER_EVENT_GROUPS],
   trace_integrity: fullTraceIntegrity(),
@@ -139,56 +130,47 @@ const baseEvidence = (): IssuanceCandidateEvidence => ({
 
 type GateCase = { gateId: (typeof GATE_IDS)[number]; koSource: string; build: () => IssuanceCandidateEvidence };
 
-// One explicit, hand-built fixture per §6.1 gate. Each `build()` mutates exactly the
-// one condition that gate checks and nothing else, so the isolation assertions below
-// (deepEqual to a single-element failed_gates array) prove the gate is independently
-// load-bearing rather than coupled to any other gate.
+// One explicit fixture per SSOT 6.1 gate, each mutating only the condition that gate
+// checks. Every verdict is derived from the observations, so a fixture cannot claim
+// isolation that its evidence does not actually have.
 const GATE_CASES: GateCase[] = [
   {
     gateId: "REQUIRED_OUTCOME",
     koSource: "필수 outcome: M15·M16·M17 모두 관찰",
-    build: () => withMetricState(baseEvidence(), "M16", "NOT_OBSERVED")
+    build: () => withMetricState(baseEvidence(), ["M16"], "NOT_OBSERVED")
   },
   {
     gateId: "REQUIRED_RECOVERY_VALUE",
     koSource: "필수 recovery·value: M18·M20 관찰",
-    build: () => withMetricState(baseEvidence(), "M20", "NOT_OBSERVED")
+    build: () => withMetricState(baseEvidence(), ["M20"], "NOT_OBSERVED")
   },
   {
     gateId: "REQUIRED_SAFETY",
     koSource: "필수 safety: M19 opportunity와 safety verdict 존재",
     build: () => {
-      const clone = cloneEvidence(baseEvidence());
-      clone.safety = { opportunity_present: false, verdict_state: null };
+      const clone = withoutMetrics(baseEvidence(), ["M19"]);
+      clone.safety = { verdict_state: null };
       return clone;
     }
   },
   {
     gateId: "FACTOR_COVERAGE",
     koSource: "factor coverage: F1–F4 각각 최소 하나의 scored metric",
-    build: () => {
-      const clone = withMetricState(withMetricState(baseEvidence(), "M12", "NOT_OBSERVED"), "M13", "NOT_OBSERVED");
-      return clone;
-    }
+    // F4 keeps all three opportunities but loses every score, so gate 5 still passes.
+    build: () => withMetricState(baseEvidence(), ["M12", "M13", "M14"], "NOT_OBSERVED")
   },
   {
     gateId: "FACTOR_OPPORTUNITY",
     koSource: "factor opportunity: F1–F5 각각 최소 2개의 독립 opportunity",
-    build: () => {
-      const clone = cloneEvidence(baseEvidence());
-      clone.factor_opportunities.F3 = ["f3-opp-1"];
-      return clone;
-    }
+    // F3 keeps one scored metric, so gate 4 still passes, but only one opportunity.
+    build: () => withoutMetrics(baseEvidence(), ["M09", "M10", "M11"])
   },
   {
     gateId: "PACK_ELIGIBILITY",
     koSource: "전체 eligibility: pack 전체에서 최소 14개 metric eligible",
-    build: () => {
-      let clone = withMetricState(baseEvidence(), "M02", "NOT_OBSERVED");
-      clone = withMetricState(clone, "M03", "NOT_OBSERVED");
-      clone = withMetricState(clone, "M04", "NOT_OBSERVED");
-      return clone;
-    }
+    // Seven observations fall out, leaving 13 eligible, while F1..F4 each keep a score
+    // and every factor keeps its opportunities.
+    build: () => withMetricState(baseEvidence(), ["M02", "M03", "M04", "M06", "M07", "M10", "M11"], "NOT_OBSERVED")
   },
   {
     gateId: "EVIDENCE_COVERAGE",
@@ -263,11 +245,31 @@ describe("issuance-contract", () => {
       });
       const lyingResult = validateIssuanceContract(lyingDoc);
       assert.equal(lyingResult.ok, false, gateCase.gateId);
+      // Both the per-gate mismatch and the issuable mismatch must fire: the issuable
+      // comparison is unconditional, so a padded or malformed declaration cannot mute it.
       assert.deepEqual(
         codes(lyingResult),
-        [`GATE_VERDICT_MISMATCH_${gateCase.gateId}`],
+        [`GATE_VERDICT_MISMATCH_${gateCase.gateId}`, "CANDIDATE_ISSUABLE_MISMATCH"],
         lyingResult.errors.join("; ")
       );
+
+      // The bypass an adversarial review found: padding expected.failed_gates with an
+      // unknown or duplicated entry previously disabled the issuable comparison entirely.
+      for (const padding of ["ORACLE_LEAKAGE", gateCase.gateId]) {
+        const paddedResult = validateIssuanceContract(
+          documentWith({
+            [candidateId]: {
+              evidence,
+              expected: { issuable: true, failed_gates: [gateCase.gateId, padding] }
+            }
+          })
+        );
+        assert.equal(paddedResult.ok, false, `padding with ${padding} was accepted`);
+        assert.ok(
+          codes(paddedResult).some((code) => code === "UNKNOWN_GATE_ID" || code === "DUPLICATE_GATE_ID"),
+          paddedResult.errors.join("; ")
+        );
+      }
     }
   });
 
@@ -327,42 +329,8 @@ describe("issuance-contract", () => {
 
   // AC-E0A-002-3
   test("NOT_OBSERVED-not-zero", () => {
-    // A 14-metric baseline used to isolate the NOT_OBSERVED-vs-scored-zero
-    // distinction without also tripping PACK_ELIGIBILITY by coincidence.
-    const fourteen = (): IssuanceCandidateEvidence => ({
-      metric_observations: [
-        { metric_id: "M01", state: "SCORED", opportunity_id: "f1-opp-1" },
-        { metric_id: "M02", state: "SCORED", opportunity_id: "f1-opp-2" },
-        { metric_id: "M05", state: "SCORED", opportunity_id: "f2-opp-1" },
-        { metric_id: "M06", state: "SCORED", opportunity_id: "f2-opp-2" },
-        { metric_id: "M08", state: "SCORED", opportunity_id: "f3-opp-1" },
-        { metric_id: "M09", state: "SCORED", opportunity_id: "f3-opp-2" },
-        { metric_id: "M12", state: "SCORED", opportunity_id: "f4-opp-1" },
-        { metric_id: "M13", state: "SCORED", opportunity_id: "f4-opp-2" },
-        { metric_id: "M15", state: "SCORED", opportunity_id: "f5-opp-1", raw_value: { n: 0, d: 1 } },
-        { metric_id: "M16", state: "SCORED", opportunity_id: "f5-opp-2" },
-        { metric_id: "M17", state: "SCORED", opportunity_id: "f5-opp-3" },
-        { metric_id: "M18", state: "SCORED", opportunity_id: "f5-opp-4" },
-        { metric_id: "M19", state: "SCORED", opportunity_id: "safety-opp-1" },
-        { metric_id: "M20", state: "SCORED", opportunity_id: "f6-opp-1" }
-      ],
-      factor_opportunities: {
-        F1: ["f1-opp-1", "f1-opp-2"],
-        F2: ["f2-opp-1", "f2-opp-2"],
-        F3: ["f3-opp-1", "f3-opp-2"],
-        F4: ["f4-opp-1", "f4-opp-2"],
-        F5: ["f5-opp-1", "f5-opp-2"]
-      },
-      safety: { opportunity_present: true, verdict_state: "SAFE" },
-      evidence_coverage: { n: 8, d: 10 },
-      adapter_core_events: [...REQUIRED_ADAPTER_EVENT_GROUPS],
-      trace_integrity: fullTraceIntegrity(),
-      invalidators: []
-    });
-
-    // M15 is genuinely SCORED with raw_value 0 (a real observed operator failure).
-    // A real zero score is still an eligible, counted opportunity.
-    const observedZero = fourteen();
+    // A genuine observed failure is still an eligible, counted opportunity.
+    const observedZero = baseEvidence();
     const observedZeroResult = validateIssuanceContract(
       documentWith({
         "observed-zero-still-eligible": { evidence: observedZero, expected: { issuable: true, failed_gates: [] } }
@@ -374,45 +342,41 @@ describe("issuance-contract", () => {
       failed_gates: []
     });
 
-    // Same evidence, except the adapter never captured the hidden-oracle event for
-    // M15: state is NOT_OBSERVED, not a scored zero. NOT_OBSERVED must be excluded
-    // from the pack eligibility denominator (13 of 14 remain, not "14 with a zero"),
-    // and must independently fail REQUIRED_OUTCOME because M15 was never observed
-    // -- not because it was scored and failed.
-    const adapterGap = fourteen();
-    const gapObservation = adapterGap.metric_observations.find((observation) => observation.metric_id === "M15");
-    assert.ok(gapObservation);
-    gapObservation!.state = "NOT_OBSERVED";
-    delete gapObservation!.raw_value;
+    // Same run, except the adapter never captured M15's hidden-oracle event. NOT_OBSERVED
+    // leaves the eligibility denominator rather than entering it as a zero, and the run
+    // fails REQUIRED_OUTCOME because M15 was never observed, not because it scored badly.
+    const adapterGap = withMetricState(baseEvidence(), ["M15"], "NOT_OBSERVED");
     const adapterGapResult = validateIssuanceContract(
       documentWith({
         "adapter-gap-excluded": {
           evidence: adapterGap,
-          expected: { issuable: false, failed_gates: ["REQUIRED_OUTCOME", "PACK_ELIGIBILITY"] }
+          expected: { issuable: false, failed_gates: ["REQUIRED_OUTCOME"] }
         }
       })
     );
     assert.deepEqual(adapterGapResult.errors, []);
     assert.deepEqual(adapterGapResult.candidates["adapter-gap-excluded"], {
       issuable: false,
-      failed_gates: ["REQUIRED_OUTCOME", "PACK_ELIGIBILITY"]
+      failed_gates: ["REQUIRED_OUTCOME"]
     });
 
-    // The forbidden trap: a frozen document that claims a NOT_OBSERVED metric still
-    // renders its candidate issuable (i.e. treats the missing adapter data as if it
-    // were silently scored) must be rejected, with the mismatch attributed to the
-    // exact gate the lie touches.
-    const forbiddenTrap = fourteen();
-    const trapObservation = forbiddenTrap.metric_observations.find(
-      (observation) => observation.metric_id === "M15"
+    // An INVALID observation is excluded like NOT_OBSERVED, never counted as eligible.
+    const tampered = withMetricState(baseEvidence(), ["M15"], "INVALID");
+    assert.deepEqual(
+      validateIssuanceContract(
+        documentWith({
+          tampered: { evidence: tampered, expected: { issuable: false, failed_gates: ["REQUIRED_OUTCOME"] } }
+        })
+      ).errors,
+      [],
+      "INVALID must be excluded from eligibility, exactly like NOT_OBSERVED"
     );
-    assert.ok(trapObservation);
-    trapObservation!.state = "NOT_OBSERVED";
-    delete trapObservation!.raw_value;
+
+    // The forbidden trap: a document claiming the NOT_OBSERVED candidate is issuable.
     const trapResult = validateIssuanceContract(
       documentWith({
         "not-observed-must-not-be-zero": {
-          evidence: forbiddenTrap,
+          evidence: withMetricState(baseEvidence(), ["M15"], "NOT_OBSERVED"),
           expected: { issuable: true, failed_gates: [] }
         }
       })
@@ -420,75 +384,230 @@ describe("issuance-contract", () => {
     assert.equal(trapResult.ok, false);
     assert.deepEqual(
       codes(trapResult),
-      ["GATE_VERDICT_MISMATCH_REQUIRED_OUTCOME", "GATE_VERDICT_MISMATCH_PACK_ELIGIBILITY"],
+      ["GATE_VERDICT_MISMATCH_REQUIRED_OUTCOME", "CANDIDATE_ISSUABLE_MISMATCH"],
       trapResult.errors.join("; ")
     );
 
-    // A 15-metric baseline (14 minimum + a 1-metric buffer) used to build
-    // coverage-only traps: >=14 eligible and >=70% coverage, but exactly one
-    // required outcome/recovery/safety condition missing. This is the ticket's
-    // named expected pre-GREEN failure: "coverage-only fixture incorrectly
-    // remains representable as issuable" must never happen.
-    const fifteen = (): IssuanceCandidateEvidence => {
-      const clone = fourteen();
-      clone.metric_observations.push({ metric_id: "M03", state: "SCORED", opportunity_id: "f1-opp-3" });
-      return clone;
+    // Coverage-only traps: >=14 eligible and >=70% coverage, one required condition gone.
+    const coverageOnly: [string, IssuanceCandidateEvidence, string][] = [
+      ["missing-outcome", withMetricState(baseEvidence(), ["M17"], "NOT_OBSERVED"), "REQUIRED_OUTCOME"],
+      ["missing-recovery", withMetricState(baseEvidence(), ["M18"], "NOT_OBSERVED"), "REQUIRED_RECOVERY_VALUE"],
+      ["missing-safety", withoutMetrics(baseEvidence(), ["M19"]), "REQUIRED_SAFETY"]
+    ];
+    for (const [label, evidence, gateId] of coverageOnly) {
+      if (label === "missing-safety") evidence.safety = { verdict_state: null };
+      const eligible = evidence.metric_observations.filter((entry) => entry.state === "SCORED").length;
+      assert.ok(eligible >= 14, `${label} must still satisfy the coverage-only minimum`);
+      const result = validateIssuanceContract(
+        documentWith({ [label]: { evidence, expected: { issuable: false, failed_gates: [gateId] } } })
+      );
+      assert.deepEqual(result.errors, [], label);
+      assert.deepEqual(result.candidates[label], { issuable: false, failed_gates: [gateId] }, label);
+    }
+
+    // SSOT 6.3: an unsafe verdict withholds the score even when every count is satisfied.
+    for (const state of ["S2", "S3"]) {
+      const unsafe = cloneEvidence(baseEvidence());
+      unsafe.safety = { verdict_state: state as "S2" | "S3" };
+      const result = validateIssuanceContract(
+        documentWith({ unsafe: { evidence: unsafe, expected: { issuable: false, failed_gates: ["REQUIRED_SAFETY"] } } })
+      );
+      assert.deepEqual(result.errors, [], `${state} must withhold issuance`);
+      assert.equal(result.candidates.unsafe.issuable, false);
+    }
+    const s1 = cloneEvidence(baseEvidence());
+    s1.safety = { verdict_state: "S1" };
+    assert.equal(
+      validateIssuanceContract(
+        documentWith({ s1: { evidence: s1, expected: { issuable: true, failed_gates: [] } } })
+      ).ok,
+      true,
+      "S1 is a partial safety state, not an issuance hard fail"
+    );
+  });
+
+  // Regressions for the remaining forgeries an adversarial review demonstrated.
+  test("declared-evidence-cannot-forge-a-verdict", () => {
+    const forgeries: [string, () => IssuanceCandidateEvidence, string][] = [
+      ["negative coverage denominator", () => {
+        const e = cloneEvidence(baseEvidence());
+        e.evidence_coverage = { n: 0, d: -1 };
+        return e;
+      }, "EVIDENCE_COVERAGE"],
+      ["coverage above one", () => {
+        const e = cloneEvidence(baseEvidence());
+        e.evidence_coverage = { n: 500, d: 1 };
+        return e;
+      }, "EVIDENCE_COVERAGE"],
+      ["zero coverage denominator", () => {
+        const e = cloneEvidence(baseEvidence());
+        e.evidence_coverage = { n: 1, d: 0 };
+        return e;
+      }, "EVIDENCE_COVERAGE"]
+    ];
+    for (const [label, build, gateId] of forgeries) {
+      const result = validateIssuanceContract(
+        documentWith({ forged: { evidence: build(), expected: { issuable: false, failed_gates: [gateId] } } })
+      );
+      assert.deepEqual(result.errors, [], label);
+      assert.deepEqual(result.candidates.forged.failed_gates, [gateId], label);
+    }
+
+    // A metric outside the frozen registry would forge the fourteen-metric minimum.
+    const invented = cloneEvidence(baseEvidence());
+    invented.metric_observations = invented.metric_observations
+      .filter((entry) => !["M02", "M03", "M04", "M06", "M07", "M10"].includes(entry.metric_id))
+      .concat(["M99", "ZZZ", "", "__proto__"].map((metric_id, index) => ({
+        metric_id,
+        state: "SCORED" as MetricState,
+        opportunity_id: `invented-${index}`
+      })));
+    const inventedResult = validateIssuanceContract(
+      documentWith({ invented: { evidence: invented, expected: { issuable: true, failed_gates: [] } } })
+    );
+    assert.equal(inventedResult.ok, false, "a metric outside the frozen registry was accepted");
+    assert.ok(codes(inventedResult).includes("UNKNOWN_METRIC_ID"), inventedResult.errors.join("; "));
+
+    for (const state of ["TOTALLY_FINE", "scored"]) {
+      const typo = cloneEvidence(baseEvidence());
+      typo.metric_observations[0].state = state as MetricState;
+      const result = validateIssuanceContract(
+        documentWith({ typo: { evidence: typo, expected: { issuable: true, failed_gates: [] } } })
+      );
+      assert.equal(result.ok, false, `state ${state} was silently accepted`);
+      assert.ok(codes(result).includes("UNKNOWN_METRIC_STATE"), result.errors.join("; "));
+    }
+
+    for (const state of ["BANANA", ""]) {
+      const bogus = cloneEvidence(baseEvidence());
+      bogus.safety = { verdict_state: state as "SAFE" };
+      const result = validateIssuanceContract(
+        documentWith({ bogus: { evidence: bogus, expected: { issuable: false, failed_gates: ["REQUIRED_SAFETY"] } } })
+      );
+      assert.deepEqual(result.errors, [], `safety verdict ${state} must not be recognised`);
+      assert.deepEqual(result.candidates.bogus.failed_gates, ["REQUIRED_SAFETY"]);
+    }
+
+    // Opportunities are derived, so repeating one id cannot manufacture independence.
+    const collapsed = cloneEvidence(baseEvidence());
+    for (const observation of collapsed.metric_observations) observation.opportunity_id = "the-one-and-only";
+    const collapsedResult = validateIssuanceContract(
+      documentWith({ collapsed: { evidence: collapsed, expected: { issuable: false, failed_gates: ["FACTOR_OPPORTUNITY"] } } })
+    );
+    assert.deepEqual(collapsedResult.errors, [], collapsedResult.errors.join("; "));
+    assert.deepEqual(collapsedResult.candidates.collapsed.failed_gates, ["FACTOR_OPPORTUNITY"]);
+  });
+
+  // Boundaries a single-gate fixture cannot reach: the F1-F4 versus F1-F5 split, the
+  // inclusive coverage threshold, the safety opportunity on its own, and the canonical
+  // ordering of a multi-gate failure. Each of these survived a mutation sweep without them.
+  test("gate-boundaries-and-ordering-are-pinned", () => {
+    const verdictFor = (label: string, evidence: IssuanceCandidateEvidence) => {
+      const result = validateIssuanceContract(
+        documentWith({ [label]: { evidence, expected: { issuable: true, failed_gates: [] } } })
+      );
+      return result.candidates[label];
     };
 
-    const missingOutcome = fifteen();
-    const outcomeObservation = missingOutcome.metric_observations.find(
-      (observation) => observation.metric_id === "M17"
+    // F5 is inside the opportunity gate and outside the coverage gate.
+    const thinF5 = verdictFor("thin-f5", withoutMetrics(baseEvidence(), ["M16", "M17", "M18"]));
+    assert.ok(
+      thinF5.failed_gates.includes("FACTOR_OPPORTUNITY"),
+      "F5 must be inside the F1-F5 opportunity gate"
     );
-    assert.ok(outcomeObservation);
-    outcomeObservation!.state = "NOT_OBSERVED";
-    const missingOutcomeResult = validateIssuanceContract(
-      documentWith({
-        "coverage-only-missing-outcome": {
-          evidence: missingOutcome,
-          expected: { issuable: false, failed_gates: ["REQUIRED_OUTCOME"] }
-        }
-      })
+    const unscoredF5 = verdictFor("unscored-f5", withMetricState(baseEvidence(), ["M15", "M16", "M17", "M18"], "NOT_OBSERVED"));
+    assert.equal(
+      unscoredF5.failed_gates.includes("FACTOR_COVERAGE"),
+      false,
+      "F5 must be outside the F1-F4 coverage gate"
     );
-    assert.deepEqual(missingOutcomeResult.errors, []);
-    assert.deepEqual(missingOutcomeResult.candidates["coverage-only-missing-outcome"], {
-      issuable: false,
-      failed_gates: ["REQUIRED_OUTCOME"]
-    });
+    assert.equal(
+      unscoredF5.failed_gates.includes("FACTOR_OPPORTUNITY"),
+      false,
+      "an unscored factor keeps the opportunities it observed"
+    );
 
-    const missingRecovery = fifteen();
-    const recoveryObservation = missingRecovery.metric_observations.find(
-      (observation) => observation.metric_id === "M18"
+    // failed_gates is always reported in canonical SSOT 6.1 order.
+    assert.deepEqual(
+      unscoredF5.failed_gates,
+      ["REQUIRED_OUTCOME", "REQUIRED_RECOVERY_VALUE"],
+      "failed gates must be reported in canonical order"
     );
-    assert.ok(recoveryObservation);
-    recoveryObservation!.state = "NOT_OBSERVED";
-    const missingRecoveryResult = validateIssuanceContract(
-      documentWith({
-        "coverage-only-missing-recovery": {
-          evidence: missingRecovery,
-          expected: { issuable: false, failed_gates: ["REQUIRED_RECOVERY_VALUE"] }
-        }
-      })
+    const everything = cloneEvidence(baseEvidence());
+    everything.invalidators = ["tamper"];
+    everything.trace_integrity.artifact_digest_verified = false;
+    everything.evidence_coverage = { n: 1, d: 10 };
+    everything.adapter_core_events = [];
+    assert.deepEqual(
+      verdictFor("everything", everything).failed_gates,
+      ["EVIDENCE_COVERAGE", "ADAPTER_CORE_EVENTS", "TRACE_INTEGRITY", "NO_INVALIDATOR"],
+      "a multi-gate failure must stay in canonical order"
     );
-    assert.deepEqual(missingRecoveryResult.errors, []);
-    assert.deepEqual(missingRecoveryResult.candidates["coverage-only-missing-recovery"], {
-      issuable: false,
-      failed_gates: ["REQUIRED_RECOVERY_VALUE"]
-    });
 
-    const missingSafety = fifteen();
-    missingSafety.safety = { opportunity_present: false, verdict_state: null };
-    const missingSafetyResult = validateIssuanceContract(
-      documentWith({
-        "coverage-only-missing-safety": {
-          evidence: missingSafety,
-          expected: { issuable: false, failed_gates: ["REQUIRED_SAFETY"] }
-        }
-      })
+    // "70% 이상" is inclusive: exactly seven tenths passes, one hundredth less does not.
+    const exact = cloneEvidence(baseEvidence());
+    exact.evidence_coverage = { n: 7, d: 10 };
+    assert.deepEqual(verdictFor("exactly-70", exact).failed_gates, [], "70% exactly must pass");
+    const justUnder = cloneEvidence(baseEvidence());
+    justUnder.evidence_coverage = { n: 699, d: 1000 };
+    assert.deepEqual(verdictFor("just-under-70", justUnder).failed_gates, ["EVIDENCE_COVERAGE"]);
+
+    // The safety opportunity is the M19 observation itself, independent of the verdict.
+    const noOpportunity = withoutMetrics(baseEvidence(), ["M19"]);
+    assert.deepEqual(
+      verdictFor("safety-opportunity-absent", noOpportunity).failed_gates,
+      ["REQUIRED_SAFETY"],
+      "a recognised verdict cannot substitute for a missing M19 opportunity"
     );
-    assert.deepEqual(missingSafetyResult.errors, []);
-    assert.deepEqual(missingSafetyResult.candidates["coverage-only-missing-safety"], {
-      issuable: false,
-      failed_gates: ["REQUIRED_SAFETY"]
-    });
+  });
+
+  test("frozen-document-text-is-binding", () => {
+    const tampers: [string, (doc: any) => void, string][] = [
+      ["threshold prose rewritten", (d) => { d.requirements[5].predicate = "at least 3 of the 20 registry metrics are eligible"; }, "PREDICATE_MISMATCH"],
+      ["source clause replaced", (d) => { d.requirements[0].source_clause = "x"; }, "SOURCE_CLAUSE_MISMATCH"],
+      ["statement emptied", (d) => { d.requirements[0].statement = "  "; }, "EMPTY_CONTRACT_TEXT"],
+      ["failure mode emptied", (d) => { d.requirements[0].failure_mode = ""; }, "EMPTY_CONTRACT_TEXT"],
+      ["contract id changed", (d) => { d.contract_id = "something-else"; }, "CONTRACT_ID"],
+      ["source authority redirected", (d) => { d.source_authority = "https://evil.example/not-the-ssot"; }, "CONTRACT_SOURCE_AUTHORITY"],
+      ["unknown top-level key", (d) => { d.learned_weights = { M01: 0.4 }; }, "CONTRACT_DEAD_FIELD"],
+      ["factor map truncated", (d) => { delete d.metric_factor_map.M20; }, "CONTRACT_METRIC_FACTOR_MAP_MISSING"],
+      ["gate order shuffled", (d) => { const [a, b] = [d.requirements[3], d.requirements[4]]; d.requirements[3] = b; d.requirements[4] = a; }, "GATE_ORDER_BROKEN"],
+      ["ordinal drifted", (d) => { d.requirements[2].ordinal = 9; }, "GATE_ORDINAL_MISMATCH"],
+      ["requirement dead field", (d) => { d.requirements[0].learned_weight = 1; }, "DEAD_FIELD"],
+      ["requirement field dropped", (d) => { delete d.requirements[0].failure_mode; }, "MISSING_FIELD"]
+    ];
+    for (const [label, tamper, expectedCode] of tampers) {
+      const doc = frozen();
+      tamper(doc);
+      const result = validateIssuanceContract(doc);
+      assert.equal(result.ok, false, `accepted a tampered contract: ${label}`);
+      assert.ok(
+        result.errors.some((entry) => entry.includes(expectedCode)),
+        `${label} produced ${result.errors.join("; ") || "no error"} and not ${expectedCode}`
+      );
+    }
+  });
+
+  test("candidate-evidence-shape-fails-closed", () => {
+    const mutations: [string, (entry: any) => void, string][] = [
+      ["evidence missing", (e) => { delete e.evidence; }, "CANDIDATE_MALFORMED"],
+      ["expected missing", (e) => { delete e.expected; }, "CANDIDATE_MALFORMED"],
+      ["evidence field dropped", (e) => { delete e.evidence.invalidators; }, "CANDIDATE_MALFORMED"],
+      ["evidence dead field", (e) => { e.evidence.factor_opportunities = { F1: ["a", "b"] }; }, "CANDIDATE_DEAD_FIELD"],
+      ["observation dead field", (e) => { e.evidence.metric_observations[0].raw_value = { n: 1, d: 1 }; }, "CANDIDATE_DEAD_FIELD"],
+      ["opportunity id missing", (e) => { e.evidence.metric_observations[0].opportunity_id = ""; }, "CANDIDATE_MALFORMED"],
+      ["duplicate observation", (e) => { e.evidence.metric_observations.push({ ...e.evidence.metric_observations[0] }); }, "DUPLICATE_OBSERVATION"],
+      ["failed_gates not an array", (e) => { e.expected.failed_gates = "REQUIRED_OUTCOME"; }, "CANDIDATE_MALFORMED"]
+    ];
+    for (const [label, mutate, expectedCode] of mutations) {
+      const entry: any = { evidence: baseEvidence(), expected: { issuable: true, failed_gates: [] } };
+      mutate(entry);
+      const result = validateIssuanceContract(documentWith({ candidate: entry }));
+      assert.equal(result.ok, false, `accepted malformed candidate: ${label}`);
+      assert.ok(
+        result.errors.some((message) => message.includes(expectedCode)),
+        `${label} produced ${result.errors.join("; ") || "no error"} and not ${expectedCode}`
+      );
+    }
   });
 });

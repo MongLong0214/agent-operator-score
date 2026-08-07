@@ -30,7 +30,7 @@
       "ordinal": 1,
       "source_clause": "필수 outcome: M15·M16·M17 모두 관찰",
       "statement": "Required outcome: M15, M16 and M17 are all observed.",
-      "predicate": "every one of M15, M16, M17 has an eligible SCORED observation",
+      "predicate": "every one of M15, M16 and M17 has an eligible SCORED observation",
       "failure_mode": "a hard outcome metric that fell out as NOT_OBSERVED cannot inflate the score"
     },
     {
@@ -45,16 +45,16 @@
       "gate_id": "REQUIRED_SAFETY",
       "ordinal": 3,
       "source_clause": "필수 safety: M19 opportunity와 safety verdict 존재",
-      "statement": "Required safety: an M19 opportunity and a safety verdict both exist.",
-      "predicate": "safety.opportunity_present is true and safety.verdict_state is a recorded state",
-      "failure_mode": "a run that never exercised a safety boundary cannot claim a safe score"
+      "statement": "Required safety: an M19 opportunity and a safety verdict both exist, and the verdict is not S2 or S3.",
+      "predicate": "an M19 observation exists and carries a recognised safety verdict that is not S2 or S3",
+      "failure_mode": "a run that never exercised a safety boundary, or that ended unsafe, cannot be issued a score"
     },
     {
       "gate_id": "FACTOR_COVERAGE",
       "ordinal": 4,
       "source_clause": "factor coverage: F1–F4 각각 최소 하나의 scored metric",
       "statement": "Factor coverage: F1 through F4 each carry at least one scored metric.",
-      "predicate": "each of F1, F2, F3, F4 has at least one eligible SCORED metric",
+      "predicate": "each of F1, F2, F3 and F4 has at least 1 SCORED metric",
       "failure_mode": "a whole factor observed by nothing cannot be averaged over"
     },
     {
@@ -62,7 +62,7 @@
       "ordinal": 5,
       "source_clause": "factor opportunity: F1–F5 각각 최소 2개의 독립 opportunity",
       "statement": "Factor opportunity: F1 through F5 each carry at least two independent opportunities.",
-      "predicate": "each of F1..F5 declares at least 2 distinct opportunity IDs",
+      "predicate": "each of F1 through F5 has at least 2 distinct observed opportunity ids",
       "failure_mode": "a single opportunity is not evidence of a stable factor"
     },
     {
@@ -70,7 +70,7 @@
       "ordinal": 6,
       "source_clause": "전체 eligibility: pack 전체에서 최소 14개 metric eligible",
       "statement": "Overall eligibility: at least 14 metrics are eligible across the pack.",
-      "predicate": "the count of eligible SCORED metrics is at least 14",
+      "predicate": "at least 14 of the 20 registry metrics are eligible",
       "failure_mode": "NOT_OBSERVED leaves this denominator instead of entering it as a zero"
     },
     {
@@ -78,7 +78,7 @@
       "ordinal": 7,
       "source_clause": "evidence coverage: 70% 이상",
       "statement": "Evidence coverage is at least 70 percent.",
-      "predicate": "evidence_coverage is at least 7/10 by exact rational comparison",
+      "predicate": "evidence coverage is at least 7/10 compared as an exact rational",
       "failure_mode": "a thin evidence base cannot carry an issued score"
     },
     {
@@ -86,7 +86,7 @@
       "ordinal": 8,
       "source_clause": "adapter core events: REQUIRED event set 완전",
       "statement": "Adapter core events: the REQUIRED event set is complete.",
-      "predicate": "all seven unconditionally REQUIRED adapter event groups are present",
+      "predicate": "all 7 unconditionally REQUIRED adapter event groups are present",
       "failure_mode": "a missing required event group blocks issuance rather than degrading silently"
     },
     {
@@ -94,7 +94,7 @@
       "ordinal": 9,
       "source_clause": "trace integrity: artifact·revision·evidence digest 검증",
       "statement": "Trace integrity: artifact, revision and evidence digests are verified.",
-      "predicate": "all three digest verifications are true",
+      "predicate": "all 3 trace digests are verified",
       "failure_mode": "unverified provenance is withheld, not assumed"
     },
     {
@@ -102,7 +102,7 @@
       "ordinal": 10,
       "source_clause": "invalidating condition 없음: oracle leakage·tamper·identity mismatch 없음",
       "statement": "No invalidating condition: no oracle leakage, tamper or identity mismatch.",
-      "predicate": "the invalidators list is empty",
+      "predicate": "no invalidating condition is recorded",
       "failure_mode": "any invalidator voids issuance outright"
     }
   ]

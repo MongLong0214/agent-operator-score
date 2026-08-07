@@ -8,8 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=\d+ canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=\S+/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=\d+ canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=\S+/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=4 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=4 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts/;
 
 const setPendingGateRegistry = (fixture) => {
   const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
