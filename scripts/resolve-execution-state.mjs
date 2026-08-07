@@ -977,12 +977,26 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
 /**
  * Implementation verification requires an explicit verified fact (fixture/online merge receipt).
  * Gate acceptance alone never verifies implementation; closed issues never verify.
+ *
+ * A ticket may legitimately accumulate several merged PRs that each carry the exact
+ * `Ticket: <ID>` field (docs/contract corrections, gate PRs, and — for a ticket split
+ * into declared in-ticket subtasks such as D0-004A/B/C — a separate merge per subtask)
+ * without any of them being the whole-ticket completion merge. Nothing in the declared
+ * catalog (docs/issues.json, TRACEABILITY.md) or the PR-body grammar (`Ticket:`,
+ * `Gate-Batch:`, `Superseded-By:`, `Supersedes:`) identifies which merge, if any, is
+ * that completion merge. Picking an arbitrary one (first match, newest, etc.) would be
+ * exactly the false-ready defect this guards against, so when more than one merge
+ * receipt links to the ticket, completion is unidentifiable and this fails closed
+ * rather than guessing. A single unambiguous receipt is still required to carry
+ * successful post-merge CI.
  */
 const isVerified = (facts, ticketId, gateEvaluation) => {
   if (!gateEvaluation.accepted) return false;
   if (!Array.isArray(facts.verifiedTickets) || !facts.verifiedTickets.includes(ticketId)) return false;
   // Implementation post-merge CI may be recorded separately; when present it must succeed.
-  const impl = (facts.implementationMerges ?? []).find((entry) => entry.ticket_id === ticketId);
+  const implEntries = (facts.implementationMerges ?? []).filter((entry) => entry.ticket_id === ticketId);
+  if (implEntries.length > 1) return false;
+  const impl = implEntries[0];
   if (impl) {
     const ci = postMergeStatus(facts, impl.merge_commit_sha);
     if (ci.failed || ci.missing) return false;
@@ -1732,6 +1746,34 @@ const transportCall = (transport, method, apiPath) => {
       error
     };
   }
+};
+
+/**
+ * Verify a workflow SHA is reachable from (an ancestor of, or equal to) the live
+ * trusted `dev` tip via an authenticated GitHub compare. `head_branch` is never
+ * ancestry evidence: GitHub still reports a branch label for an orphan or detached
+ * historical commit whose workflow blob happens to match, so trusting the label alone
+ * lets a non-ancestor commit pass the protected check. Any compare outage or an
+ * unrecognized compare status fails closed (never reachable, never a silent pass).
+ */
+export const verifyWorkflowShaReachableFromDev = (transport, repoPath, devSha, workflowSha) => {
+  if (typeof workflowSha !== "string" || !/^[0-9a-f]{40}$/i.test(workflowSha)) {
+    return { ok: true, reachable: false };
+  }
+  if (typeof devSha !== "string" || !/^[0-9a-f]{40}$/i.test(devSha)) {
+    return { ok: false, reachable: false, reason: "missing live dev tip SHA for workflow ancestry check" };
+  }
+  if (workflowSha === devSha) return { ok: true, reachable: true };
+  const result = transportCall(transport, "getJson", `${repoPath}/compare/${devSha}...${workflowSha}`);
+  if (!result.ok) {
+    return { ok: false, reachable: false, reason: result.reason || "workflow ancestry compare unavailable" };
+  }
+  const status = result.value?.status;
+  // GitHub compare(base=dev, head=workflowSha): "behind"/"identical" means workflowSha is
+  // an ancestor of (or equal to) dev; "ahead"/"diverged" means it is not reachable from dev.
+  if (status === "identical" || status === "behind") return { ok: true, reachable: true };
+  if (status === "ahead" || status === "diverged") return { ok: true, reachable: false };
+  return { ok: false, reachable: false, reason: `unrecognized workflow ancestry compare status ${String(status)}` };
 };
 
 const isAuthenticatedNotFound = (result) =>
@@ -2815,8 +2857,17 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
           workflowPath = typeof run.path === "string" ? run.path : null;
           dispatchActor = run.triggering_actor?.login ?? run.actor?.login ?? null;
           workflowSha = typeof run.head_sha === "string" ? run.head_sha : null;
-          const trustedBranch = gate.trusted_ref.replace(/^refs\/heads\//, "");
-          workflowReachableFromDev = run.head_branch === trustedBranch;
+          // Ancestry, not the run's self-reported head_branch label: an orphan or detached
+          // historical commit can carry any head_branch string, including "dev".
+          const ancestry = verifyWorkflowShaReachableFromDev(transport, repoPath, liveTip, workflowSha);
+          if (!ancestry.ok) {
+            return {
+              ok: false,
+              reason: ancestry.reason || `${gate.protected_check} workflow ancestry unavailable`,
+              facts: null
+            };
+          }
+          workflowReachableFromDev = ancestry.reachable;
           if (dispatchActor) {
             actors.add(dispatchActor);
             ensurePermission(dispatchActor);
