@@ -890,6 +890,41 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
     blockers.push(blocker("STALE_DIGEST", `${ticketId} ticket digest is stale`));
   }
 
+  // Bootstrap: per-ADR/PRD/ticket Gate-Batch PR facts and repeated digest acceptance are
+  // not readiness conditions. The existing registry stays as historical evidence and no
+  // renewal batch or gate-receipt PR is minted to satisfy this path. Current-source
+  // consistency above — binding completeness and live digest staleness — still blocks,
+  // and every non-gate check downstream is unchanged.
+  if (facts.d0_004c_merged !== true) {
+    // Waiving gate-batch PR acceptance never waives current-source consistency for the
+    // authority documents the ticket itself declares. A referenced PRD/ADR that is
+    // missing from the live digest corpus, or whose live content no longer matches the
+    // ticket's recorded digest, still fails closed in bootstrap.
+    if (ticket.digests?.prd) {
+      const prdPath = ticket.prd_path ?? ticket.digests?.prd_path ?? null;
+      const livePrd = prdPath ? facts.liveDigests?.[prdPath] : undefined;
+      if (!prdPath || typeof livePrd !== "string" || livePrd.length === 0) {
+        blockers.push(blocker("PRD_GATE_MISSING", `${ticketId} lacks a live PRD digest binding`));
+      } else if (livePrd !== ticket.digests.prd) {
+        blockers.push(blocker("STALE_DIGEST", `${ticketId} PRD digest is stale`));
+      }
+    }
+    for (const [adrId, sha] of Object.entries(ticket.digests?.adrs ?? {})) {
+      const adrPath =
+        ticket.adr_paths?.[adrId] ??
+        ticket.digests?.adr_paths?.[adrId] ??
+        Object.keys(facts.liveDigests ?? {}).find((candidate) => candidate.includes(`/${adrId}-`)) ??
+        null;
+      const liveAdr = adrPath ? facts.liveDigests?.[adrPath] : undefined;
+      if (!adrPath || typeof liveAdr !== "string" || liveAdr.length === 0) {
+        blockers.push(blocker("ADR_GATE_MISSING", `${ticketId} lacks a live ADR digest binding for ${adrId}`));
+      } else if (liveAdr !== sha) {
+        blockers.push(blocker("STALE_DIGEST", `${ticketId} ADR digest is stale for ${adrId}`));
+      }
+    }
+    return { blockers, accepted: blockers.length === 0, mergeSha: null, postMerge: null };
+  }
+
   if (ticket.digests?.prd) {
     const prdPath =
       ticket.prd_path ??
