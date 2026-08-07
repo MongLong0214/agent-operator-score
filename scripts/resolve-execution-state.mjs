@@ -528,6 +528,157 @@ const extractExactLineField = (body, label) => {
   return { ok: true, value: matches[0][1] };
 };
 
+const extractExactCompletionField = (body) => {
+  if (typeof body !== "string") return { present: false };
+  const matches = [...body.matchAll(/^Ticket-Completion:\s*(\S+)\s*$/gm)];
+  if (matches.length === 0) return { present: false };
+  if (matches.length !== 1) return { present: true, ok: false, malformed: true };
+  return { present: true, ok: true, value: matches[0][1] };
+};
+
+/**
+ * Classify a single merged PR body against the `Ticket-Completion:` grammar for
+ * ticketId. `Ticket:` remains the sole ticket-linkage field and its meaning is
+ * unchanged; `Ticket-Completion:` only classifies a PR that is already exactly
+ * `Ticket:`-linked to ticketId (via extractExactTicketField — same exact-single-
+ * structured-field discipline: exactly one anchored line, no partial or fuzzy
+ * matching) as the PR author's claimed unique whole-ticket completion merge. A PR
+ * carrying `Ticket-Completion:` without a matching `Ticket:` line is never a
+ * completion merge, and that absence alone is never a failure. Both fields must
+ * match exactly; malformed/duplicated `Ticket-Completion:` lines, or a value that
+ * disagrees with the PR's own `Ticket:` value, fail closed instead of being
+ * silently ignored.
+ */
+export const classifyCompletionMerge = (body, ticketId) => {
+  const completion = extractExactCompletionField(body);
+  if (!completion.present) {
+    return { isCompletion: false, failClosed: false };
+  }
+  if (!completion.ok) {
+    return {
+      isCompletion: false,
+      failClosed: true,
+      reason: "malformed or duplicated Ticket-Completion field"
+    };
+  }
+  const ticketField = extractExactTicketField(body);
+  if (!ticketField.ok || ticketField.ticketId !== ticketId) {
+    // No matching Ticket: line linking this PR to ticketId — Ticket-Completion never
+    // establishes linkage on its own, and this is not, by itself, a failure.
+    return { isCompletion: false, failClosed: false };
+  }
+  if (completion.value !== ticketField.ticketId) {
+    return {
+      isCompletion: false,
+      failClosed: true,
+      reason: `Ticket-Completion value ${completion.value} does not match Ticket value ${ticketField.ticketId}`
+    };
+  }
+  return { isCompletion: true, failClosed: false };
+};
+
+/**
+ * Resolve whole-ticket implementation completion from recorded implementation merge
+ * receipts (facts.implementationMerges). A ticket may legitimately accumulate several
+ * merged PRs that each carry the exact `Ticket: <ID>` field (docs/contract corrections,
+ * gate PRs, declared in-ticket subtask merges) without any of them being the whole-
+ * ticket completion merge — see classifyCompletionMerge.
+ *
+ * With 0 or 1 recorded merges the pre-existing single-receipt contract is unchanged:
+ * that one receipt's post-merge CI (if any) must succeed, and no Ticket-Completion
+ * marker is required (this is the path D0-001/D0-002 verification already relies on).
+ *
+ * With 2+ recorded merges, only an explicit, unambiguous `Ticket-Completion:` marker
+ * identifies the completion merge; any number of plain `Ticket:`-only contributing
+ * merges alongside it are ignored. Zero completion markers among multiple merges means
+ * the ticket is simply not yet verified — never a contract-conflict error (this is the
+ * liveness fix: the previous "more than one merge receipt is always ambiguous" rule
+ * made a ticket permanently unverifiable once legitimate contributing merges existed).
+ * More than one completion marker for the same ticket, a completion-field value
+ * mismatch, malformed/duplicated completion field data, a completion merge commit
+ * explicitly recorded as unreachable, or a failed/missing post-merge CI on the
+ * identified completion merge all fail closed instead.
+ */
+const resolveImplementationCompletion = (facts, ticketId) => {
+  const entries = (facts.implementationMerges ?? []).filter((entry) => entry.ticket_id === ticketId);
+  if (entries.length === 0) {
+    return { verified: true, blockers: [] };
+  }
+  if (entries.length === 1) {
+    const ci = postMergeStatus(facts, entries[0].merge_commit_sha);
+    if (ci.failed) {
+      return {
+        verified: false,
+        blockers: [blocker("POST_MERGE_CI_FAILED", `${ticketId} implementation post-merge CI failed`)]
+      };
+    }
+    if (ci.missing) {
+      return {
+        verified: false,
+        blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} implementation post-merge CI missing or nonterminal`)]
+      };
+    }
+    return { verified: true, blockers: [] };
+  }
+
+  const blockers = [];
+  const completions = [];
+  for (const entry of entries) {
+    const classification = classifyCompletionMerge(entry.body, ticketId);
+    if (classification.failClosed) {
+      blockers.push(blocker("TICKET_CONTRACT_CONFLICT", `${ticketId}: ${classification.reason}`));
+      continue;
+    }
+    if (classification.isCompletion) completions.push(entry);
+  }
+
+  if (completions.length > 1) {
+    blockers.push(
+      blocker(
+        "TICKET_CONTRACT_CONFLICT",
+        `${ticketId} has multiple Ticket-Completion merges (#${completions.map((entry) => entry.number).join(", #")})`
+      )
+    );
+  }
+
+  if (blockers.length) {
+    return { verified: false, blockers: uniqueBlockers(blockers) };
+  }
+
+  if (completions.length === 0) {
+    // Any number of plain contributing merges without a completion marker leaves the
+    // ticket unverified. This is never a fail-closed error.
+    return { verified: false, blockers: [] };
+  }
+
+  const completionEntry = completions[0];
+  if (completionEntry.reachable === false) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "TICKET_CONTRACT_CONFLICT",
+          `${ticketId} completion merge commit is not reachable from the live target branch`
+        )
+      ]
+    };
+  }
+  const ci = postMergeStatus(facts, completionEntry.merge_commit_sha);
+  if (ci.failed) {
+    return {
+      verified: false,
+      blockers: [blocker("POST_MERGE_CI_FAILED", `${ticketId} completion merge post-merge CI failed`)]
+    };
+  }
+  if (ci.missing) {
+    return {
+      verified: false,
+      blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} completion merge post-merge CI missing or nonterminal`)]
+    };
+  }
+  return { verified: true, blockers: [] };
+};
+
 const isLinkedTicketPr = (pr, ticketId, targetBranch) => {
   if (!pr) return false;
   const field = extractExactTicketField(pr.body);
@@ -975,33 +1126,15 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
 };
 
 /**
- * Implementation verification requires an explicit verified fact (fixture/online merge receipt).
- * Gate acceptance alone never verifies implementation; closed issues never verify.
- *
- * A ticket may legitimately accumulate several merged PRs that each carry the exact
- * `Ticket: <ID>` field (docs/contract corrections, gate PRs, and — for a ticket split
- * into declared in-ticket subtasks such as D0-004A/B/C — a separate merge per subtask)
- * without any of them being the whole-ticket completion merge. Nothing in the declared
- * catalog (docs/issues.json, TRACEABILITY.md) or the PR-body grammar (`Ticket:`,
- * `Gate-Batch:`, `Superseded-By:`, `Supersedes:`) identifies which merge, if any, is
- * that completion merge. Picking an arbitrary one (first match, newest, etc.) would be
- * exactly the false-ready defect this guards against, so when more than one merge
- * receipt links to the ticket, completion is unidentifiable and this fails closed
- * rather than guessing. A single unambiguous receipt is still required to carry
- * successful post-merge CI.
+ * Implementation verification requires an explicit verified fact (fixture/online merge
+ * receipt) plus gate acceptance; closed issues never verify. When more than one
+ * implementation merge receipt is on record, whole-ticket completion is only resolved
+ * via the `Ticket-Completion:` marker grammar — see resolveImplementationCompletion.
  */
 const isVerified = (facts, ticketId, gateEvaluation) => {
   if (!gateEvaluation.accepted) return false;
   if (!Array.isArray(facts.verifiedTickets) || !facts.verifiedTickets.includes(ticketId)) return false;
-  // Implementation post-merge CI may be recorded separately; when present it must succeed.
-  const implEntries = (facts.implementationMerges ?? []).filter((entry) => entry.ticket_id === ticketId);
-  if (implEntries.length > 1) return false;
-  const impl = implEntries[0];
-  if (impl) {
-    const ci = postMergeStatus(facts, impl.merge_commit_sha);
-    if (ci.failed || ci.missing) return false;
-  }
-  return true;
+  return resolveImplementationCompletion(facts, ticketId).verified === true;
 };
 
 const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
@@ -1064,28 +1197,20 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
     return finalize("gate_preparation", "blocked", uniqueBlockers(gateEvaluation.blockers), null, null);
   }
 
-  // Implementation merge receipts (even without verifiedTickets) must surface post-merge CI state.
-  const implementation = (facts.implementationMerges ?? []).find((entry) => entry.ticket_id === ticketId);
-  if (implementation && !pr) {
-    const implCi = postMergeStatus(facts, implementation.merge_commit_sha);
-    if (implCi.failed) {
-      return finalize(
-        "merged_pending_post_ci",
-        "blocked",
-        [blocker("POST_MERGE_CI_FAILED", `${ticketId} implementation post-merge CI failed`)],
-        null,
-        null
-      );
-    }
-    if (implCi.missing) {
-      return finalize(
-        "merged_pending_post_ci",
-        "blocked",
-        [blocker("POST_MERGE_CI_MISSING", `${ticketId} implementation post-merge CI missing or nonterminal`)],
-        null,
-        null
-      );
-    }
+  // Implementation merge receipts (even without verifiedTickets) must surface post-merge
+  // CI / Ticket-Completion fail-closed state before ready-set computation. Zero
+  // completion markers among multiple plain contributing merges is never a failure here
+  // (resolveImplementationCompletion returns no blockers in that case) — the ticket
+  // simply falls through to the normal readiness pipeline below, unverified.
+  const implementationCompletion = resolveImplementationCompletion(facts, ticketId);
+  if (!pr && implementationCompletion.blockers.length) {
+    return finalize(
+      "merged_pending_post_ci",
+      "blocked",
+      uniqueBlockers(implementationCompletion.blockers),
+      null,
+      null
+    );
   }
 
   // Dependencies must be verified implementations.
@@ -3026,10 +3151,14 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     );
     // Always record the implementation merge receipt so failed/nonterminal post-merge
     // CI is classified by the resolver (POST_MERGE_CI_FAILED / MISSING), not discarded.
+    // `body` carries the raw PR body so the resolver can apply the Ticket-Completion:
+    // exact-single-structured-field grammar (classifyCompletionMerge) when more than one
+    // implementation merge is on record for the same ticket.
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
-      number: pull.number
+      number: pull.number,
+      body: pull.body ?? null
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
