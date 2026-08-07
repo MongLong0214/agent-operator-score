@@ -28,13 +28,17 @@ const ownerMarker = "owner_ticket: D0-002\nowner_prd: PRD-D0-name-migration-and-
 const expectedScripts = {
   test: "node --test",
   build: "node scripts/validate-planning.mjs --build",
-  "docs:check": "node scripts/validate-planning.mjs"
+  "docs:check": "node scripts/validate-planning.mjs",
+  "ops:status": "node scripts/resolve-execution-state.mjs",
+  "ops:check": "node scripts/resolve-execution-state.mjs --offline"
 };
 const expectedScriptsText = [
   "  \"scripts\": {",
   "    \"test\": \"node --test\",",
   "    \"build\": \"node scripts/validate-planning.mjs --build\",",
-  "    \"docs:check\": \"node scripts/validate-planning.mjs\"",
+  "    \"docs:check\": \"node scripts/validate-planning.mjs\",",
+  "    \"ops:status\": \"node scripts/resolve-execution-state.mjs\",",
+  "    \"ops:check\": \"node scripts/resolve-execution-state.mjs --offline\"",
   "  }"
 ].join("\n");
 const forbiddenManifestFields = [
@@ -146,9 +150,13 @@ test("root-private-scripts-and-runnable-surface", () => {
     .flatMap((directory) => walkFiles(directory))
     .map(asRepositoryRelative)
     .sort();
+  const operationalStateFiles = walkFiles(resolve(repositoryRoot, "fixtures/operational-state"))
+    .map(asRepositoryRelative)
+    .sort();
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
-    ...ownerPaths
+    ...ownerPaths,
+    ...operationalStateFiles
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
 });

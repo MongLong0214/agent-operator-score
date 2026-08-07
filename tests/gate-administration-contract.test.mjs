@@ -855,16 +855,15 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   assert.equal(renewal.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
   assert.equal(result.batches, 10);
-  assert.equal(result.counts.accepted, 2);
-  assert.equal(result.counts.invalidated, 8);
+  assert.equal(result.counts.accepted, 1);
+  assert.equal(result.counts.invalidated, 9);
   assert.deepEqual(result.currentAcceptedTickets, [
-    "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
-    "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"
+    "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
 
-test("D0-004 B-harness carve-out renewal binds the current exact digests", () => {
+test("D0-004 completion-marker contract amendment invalidates the B-harness carve-out renewal without requiring a Bootstrap renewal", () => {
   const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
   const gateDecision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
   const prior = registry.batches.find(({ id }) => id === "d0-004-prerequisites-single-owner-bootstrap");
@@ -880,8 +879,8 @@ test("D0-004 B-harness carve-out renewal binds the current exact digests", () =>
   assert.ok(prior);
   assert.equal(prior.status, "INVALIDATED");
   assert.match(prior.invalidation.reason, /D0-004B pre-RED harness carve-out/);
-  assert.ok(batch, "D0-004 requires one complete exact-digest ACCEPTED candidate");
-  assert.equal(batch.status, "ACCEPTED");
+  assert.ok(batch, "the D0-004B harness carve-out renewal must remain as historical invalidated evidence");
+  assert.equal(batch.status, "INVALIDATED");
   assert.deepEqual(batch.target, {
     repository: "github.com/MongLong0214/agent-operator-score",
     branch: "dev",
@@ -889,15 +888,27 @@ test("D0-004 B-harness carve-out renewal binds the current exact digests", () =>
   });
   assert.deepEqual(batch.required_artifacts, requiredArtifacts);
   assert.deepEqual(batch.artifacts, requiredArtifacts);
-  for (const artifact of batch.artifacts) assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
+  const ticketArtifact = batch.artifacts.find(({ path }) => path === "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md");
+  assert.equal(ticketArtifact.sha256, "5598dbadc908bac78f0686759865f770f5cef790985bd8edd91202813fe7c474");
+  assert.notEqual(ticketArtifact.sha256, sha256(resolve(root, ticketArtifact.path)));
   assert.deepEqual(batch.transitions, [
     { type: "ADR_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "ADR").map(({ path }) => path) },
     { type: "PRD_ACCEPTED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "PRD").map(({ path }) => path) },
     { type: "TICKET_READY_FOR_RED", artifact_paths: requiredArtifacts.filter(({ kind }) => kind === "TICKET").map(({ path }) => path) }
   ]);
-  assert.deepEqual(batch.events.map(({ from, to }) => ({ from, to })), [{ from: "PENDING", to: "ACCEPTED" }]);
+  assert.deepEqual(batch.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
   assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
   assert.equal(batch.approval.role, "MAINTAINER");
+  assert.match(batch.invalidation.reason, /D0-004 completion-marker contract amendment changed the accepted ticket digest/);
+  assert.match(batch.invalidation.reason, /Bootstrap preserves the prior batch as historical evidence and does not require a renewal batch before D0-004C/);
+  assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
+  const currentAcceptedD0004Batches = registry.batches.filter(({ status, artifacts }) => status === "ACCEPTED" &&
+    Array.isArray(artifacts) &&
+    artifacts.some(({ path }) => path === "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"));
+  assert.deepEqual(currentAcceptedD0004Batches, [], "no batch may hold a current ACCEPTED D0-004 ticket binding during Bootstrap");
   assert.match(gateDecision, /D0-004 B-harness carve-out renewal/);
   assert.match(gateDecision, /mutable structural fields.*`not_authorization`/s);
 });
