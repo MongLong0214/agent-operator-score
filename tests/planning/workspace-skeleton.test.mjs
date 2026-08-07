@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { extname, join, relative, resolve } from "node:path";
+import { basename, extname, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -221,20 +222,22 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   assert.match(census, / product_code_paths=none /);
 
   // Selectivity, proven against a real unclaimed sibling rather than a path no
-  // implementation could ever return: writing source no ticket names must fail the census.
-  const intruder = resolve(repositoryRoot, "packages/schema/src/unclaimed-by-any-ticket.ts");
-  assert.equal(existsSync(intruder), false, "fixture path is already occupied");
+  // implementation could ever return. This runs in a temp copy: writing the intruder into
+  // the live tree would race with the fixture tests that copy this repository.
+  const parent = mkdtempSync(join(tmpdir(), "aos ticket claim census "));
+  const fixture = join(parent, "repository");
   try {
-    writeFileSync(intruder, "export {};\n");
-    assert.equal(
-      ticketOwnedSkeletonPaths().includes("packages/schema/src/unclaimed-by-any-ticket.ts"),
-      false,
-      "an unclaimed sibling under an owned directory was admitted"
-    );
+    cpSync(repositoryRoot, fixture, {
+      recursive: true,
+      // Sibling tests write transient fixtures into the live tree while this copy runs;
+      // capturing one would fail the fixture validator for an unrelated reason.
+      filter: (source) => basename(source) !== "node_modules" && !basename(source).startsWith(".planning-")
+    });
+    writeFileSync(resolve(fixture, "packages/schema/src/unclaimed-by-any-ticket.ts"), "export {};\n");
     let failed;
     try {
       execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: repositoryRoot,
+        cwd: fixture,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"]
       });
@@ -243,10 +246,25 @@ test("skeleton-source-requires-an-owning-ticket", () => {
     }
     assert.ok(failed, "the census accepted source that no ticket claims");
     assert.match(failed.stderr, /unallowlisted product code: packages\/schema\/src\/unclaimed-by-any-ticket\.ts/);
+
+    // And the converse: claiming that same path in a ticket admits it.
+    const ticket = resolve(fixture, "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md");
+    writeFileSync(
+      ticket,
+      readFileSync(ticket, "utf8").replace(
+        "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts —",
+        "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts; packages/schema/src/unclaimed-by-any-ticket.ts —"
+      )
+    );
+    const admitted = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+      cwd: fixture,
+      encoding: "utf8"
+    });
+    assert.match(admitted, /unclaimed-by-any-ticket\.ts/);
+    assert.match(admitted, / product_code_files=0 /);
   } finally {
-    rmSync(intruder, { force: true });
+    rmSync(parent, { recursive: true, force: true });
   }
-  assert.equal(existsSync(intruder), false, "fixture was not removed");
 });
 
 // A focused lane that matches no test name exits 0 with zero tests, so a mistyped or
@@ -287,9 +305,13 @@ test("focused-lane-is-not-silently-empty", () => {
 });
 
 test("engine-matrix", () => {
-  assert.equal(readJson("package.json").engines.node, ">=20 <25");
+  // Node 20 cannot execute TypeScript. Its test runner does not even discover a .ts test
+  // file, so the schema package's cases were silently skipped there rather than failing.
+  // Unflagged type stripping starts at 22.18.0, which is the floor ADR-0003 requires.
+  assert.equal(readJson("package.json").engines.node, ">=22.18 <25");
   const ci = readFileSync(resolve(repositoryRoot, ".github/workflows/ci.yml"), "utf8");
-  assert.match(ci, /node: \[20, 22, 24\]/);
+  assert.match(ci, /node: \[22, 24\]/);
+  assert.equal(/node: \[[^\]]*\b20\b/.test(ci), false, "Node 20 cannot run the TypeScript lanes");
 });
 
 test("minimum-name-clearance", () => {
