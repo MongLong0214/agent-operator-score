@@ -1742,8 +1742,12 @@ function buildCollectorMergedSearchFixture(items) {
   const responses = JSON.parse(
     readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
   );
+  // GitHub's search payload carries the full body, verified against live data for every
+  // merged receipt in this repository, and the collector pre-filters on it to avoid
+  // spending one request per search hit. Model that here or the pre-filter skips every
+  // fixture receipt before the per-PR response is ever consulted.
   responses[COLLECTOR_MERGED_SEARCH_KEY] = {
-    items: items.map(({ number }) => ({ number })),
+    items: items.map(({ number, body }) => ({ number, body })),
     total_count: items.length,
     incomplete_results: false
   };
@@ -1798,20 +1802,25 @@ async function resolveCollectedOnline(collected) {
   });
 }
 
-test("collector-fails-closed-on-malformed-ticket-field-on-searched-receipt", async () => {
+test("collector-skips-search-false-positive-with-no-anchored-ticket-field", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  // GitHub full-text search matches the bare substring "Ticket:", so it returns merged PRs
+  // whose bodies only mention it in prose. Zero anchored `Ticket: <ID>` lines is not a
+  // malformed field — the PR is simply not linked — so it is skipped, not fail-closed.
+  // Live proof this matters: merged PR #123 "docs: invalidate stale D0-001 gate evidence"
+  // has zero anchored fields, and failing closed on it made online-strict permanently
+  // unusable by aborting the whole collection before any ticket resolved.
   const responses = buildCollectorMergedSearchFixture([
     {
       number: 901,
       merge_commit_sha: "9010901090109010901090109010901090109010",
-      // The search query matched on the bare substring "Ticket:", but this body has no
-      // anchored `Ticket: <ID>` line — malformed, must fail the whole collection closed.
       body: "See Ticket: D0-001 mentioned inline, not an anchored structured field."
     }
   ]);
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
-  assert.equal(collected.ok, false);
-  assert.match(collected.reason, /malformed or duplicated Ticket field/i);
+  assert.equal(collected.ok, true);
+  const receipts = (collected.facts?.implementationMerges ?? []).filter((entry) => entry.number === 901);
+  assert.equal(receipts.length, 0, "an unlinked search false positive must not become a receipt");
 });
 
 test("collector-fails-closed-on-duplicated-ticket-field-on-searched-receipt", async () => {
@@ -1825,7 +1834,7 @@ test("collector-fails-closed-on-duplicated-ticket-field-on-searched-receipt", as
   ]);
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
   assert.equal(collected.ok, false);
-  assert.match(collected.reason, /malformed or duplicated Ticket field/i);
+  assert.match(collected.reason, /duplicated Ticket field/i);
 });
 
 test("collector-records-unreachable-completion-merge-and-resolver-fails-closed", async () => {

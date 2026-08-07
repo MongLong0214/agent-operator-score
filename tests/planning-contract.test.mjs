@@ -448,7 +448,7 @@ test("maintainer-gate-digest-invalidation", () => {
       error = caught;
     }
     assert.ok(error);
-    assert.match(error.stderr, /stale digest d0-004-prerequisites-b-harness-carveout-renewal docs\/adr\/ADR-0001/);
+    assert.match(error.stderr, /stale digest d0-002-prerequisites-red-census-contract-correction-renewal docs\/adr\/ADR-0001/);
   } finally {
     if (existsSync(join(fixture, ".git"))) {
       execFileSync("git", ["worktree", "remove", "--force", fixture], { cwd: root, encoding: "utf8" });

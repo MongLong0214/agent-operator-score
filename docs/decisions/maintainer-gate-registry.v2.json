@@ -1050,7 +1050,7 @@
     },
     {
       "id": "d0-004-prerequisites-b-harness-carveout-renewal",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew the D0-004 exact-digest prerequisite candidate after the D0-004B pre-RED harness carve-out under single_owner_agent_team Bootstrap before D0-004C creates resolver and workflow checks.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -1144,6 +1144,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-06T12:10:01Z",
           "recorded_by": "d0-004b-harness-carveout-review-record"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-07T08:03:40Z",
+          "recorded_by": "d0-004-completion-contract-amendment"
         }
       ],
       "preparation": {
@@ -1153,6 +1159,11 @@
         "approved_by": "d0-004b-harness-carveout-review-record",
         "approved_at": "2026-08-06T12:10:01Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-07T08:03:40Z",
+        "invalidated_by": "d0-004-completion-contract-amendment",
+        "reason": "D0-004 completion-marker contract amendment changed the accepted ticket digest; Bootstrap preserves the prior batch as historical evidence and does not require a renewal batch before D0-004C."
       }
     }
   ],

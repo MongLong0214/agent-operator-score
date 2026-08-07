@@ -3135,21 +3135,38 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     return { ok: false, reason: failures.join("; "), facts: null };
   }
   for (const item of mergedSearch.items) {
+    // The merged-receipt search is GitHub full-text, so it also returns bodies that merely
+    // mention "Ticket:" in prose and carry no structured field at all. Zero structured
+    // fields is that false positive: the PR is simply not linked, so skip it. Two or more
+    // is genuinely duplicated linkage and fails the whole collection closed rather than
+    // being silently skipped, which would let a real completion or contributing merge
+    // quietly vanish from evidence.
+    //
+    // The search payload carries the full body, so the unlinked majority is filtered here
+    // before spending a per-PR request on it; only a receipt that actually declares a
+    // structured field is fetched and authenticated below. Skipping that pre-filter costs
+    // one request per search hit and exhausts the total collection budget.
+    // A missing or non-string search body is absence of evidence, not evidence of absence:
+    // fall through to the authoritative per-PR fetch rather than skipping, so a receipt is
+    // never silently dropped because the search payload was incomplete.
+    if (typeof item.body === "string" && [...item.body.matchAll(/^Ticket:\s*(\S+)\s*$/gm)].length === 0) {
+      continue;
+    }
+
     const pull = requireJson(transport, `${repoPath}/pulls/${item.number}`, failures);
     if (!pull?.merged || !pull.merge_commit_sha) continue;
-    // The search query itself is scoped to bodies containing "Ticket:", so every returned
-    // receipt must parse as exactly one structured Ticket field; malformed or duplicated
-    // lines fail the whole collection closed instead of being silently skipped (a skip
-    // would let a genuine completion or contributing merge quietly vanish from evidence).
-    const ticketField = extractExactTicketField(pull.body);
-    if (!ticketField.ok) {
+    const ticketLines = typeof pull.body === "string"
+      ? [...pull.body.matchAll(/^Ticket:\s*(\S+)\s*$/gm)]
+      : [];
+    if (ticketLines.length === 0) continue;
+    if (ticketLines.length > 1) {
       return {
         ok: false,
-        reason: `malformed or duplicated Ticket field on merged PR #${pull.number}`,
+        reason: `duplicated Ticket field on merged PR #${pull.number}`,
         facts: null
       };
     }
-    const ticketId = ticketField.ticketId;
+    const ticketId = ticketLines[0][1];
     if (!tickets[ticketId]) continue;
     // Authenticate the merge commit as reachable from (an ancestor of, or equal to) the
     // live target branch before trusting it as a candidate completion merge; an outage or
