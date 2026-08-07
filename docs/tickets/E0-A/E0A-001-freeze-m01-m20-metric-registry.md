@@ -14,6 +14,7 @@ Freeze M01–M20 metric registry. Deliver only the bounded contract below; do no
 ## Exact ownership
 
 - specs/metrics.v0.json; packages/schema/src/metric-registry.ts — MetricDefinition,validateMetricRegistry
+- Coordinated census amendment, owner-authorised 2026-08-08 because this is the repository's first product code and the census admitted none: scripts/validate-planning.mjs; tests/planning-contract.test.mjs; tests/planning/workspace-skeleton.test.mjs; packages/schema/package.json; package.json; .github/workflows/ci.yml — ticketOwnedPaths,ticketOwnedCodeFiles
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions

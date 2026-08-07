@@ -5,7 +5,7 @@
   "description": "Planning baseline for Agent Operator Score; the public package and CLI are not implemented.",
   "type": "module",
   "engines": {
-    "node": ">=20 <25"
+    "node": ">=22.18 <25"
   },
   "workspaces": [
     "packages/*",
