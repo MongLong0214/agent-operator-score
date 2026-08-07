@@ -1025,6 +1025,95 @@ test("historical-d0-002-linkage-satisfies-dependency-verification", async () => 
   assert.equal(blockerCodes(d0004).includes("DEPENDENCY_UNVERIFIED"), false);
 });
 
+test("partial-sub-ticket-merges-do-not-satisfy-whole-ticket-verification", async () => {
+  // Real repro shape (D0-004 issue #57 lineage). D0-004's own ticket text splits execution
+  // into declared in-ticket subtasks D0-004A/B/C, but neither docs/issues.json nor
+  // TRACEABILITY.md's semantic catalog ever declare "D0-004A"/"D0-004B"/"D0-004C" as
+  // separate ticket ids — only a single "D0-004" id exists anywhere in the catalog. Three
+  // real merged PRs each carry the exact `Ticket: D0-004` structured field without being
+  // the whole-ticket completion merge: #135 ("docs: define single operational state
+  // author") and #136 ("docs: close D0-004 operational authority gap") are documentation
+  // and contract corrections, and #146's own body states verbatim "D0-004A only: semantic
+  // catalog and planning validator. No resolver, workflow/projection, gate-administration
+  // change, product code, issue body/label mutation, or current-state projection." #150
+  // (D0-004B) is still open; D0-004C does not exist yet. Nothing in the declared catalog
+  // or the PR-body grammar (`Ticket:`, `Gate-Batch:`, `Superseded-By:`, `Supersedes:`)
+  // identifies any one of these merges as THE completion merge, so this must fail closed
+  // rather than trust an arbitrary receipt.
+  const sha135 = "135a135a135a135a135a135a135a135a135a135a";
+  const sha136 = "136b136b136b136b136b136b136b136b136b136b";
+  const sha146 = "146c146c146c146c146c146c146c146c146c146c";
+
+  const buildPartialMergeFacts = () => {
+    const facts = makeReadyD0004Facts(loadBaselineFacts());
+    // Collector-observed fact: any merged PR carrying the exact Ticket field with
+    // successful post-merge CI adds the ticket id once (see mergedSearch loop) — the
+    // real collector already produced this false verifiedTickets membership for D0-004.
+    facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+    facts.implementationMerges = [
+      { ticket_id: "D0-004", merge_commit_sha: sha135, number: 135 },
+      { ticket_id: "D0-004", merge_commit_sha: sha136, number: 136 },
+      { ticket_id: "D0-004", merge_commit_sha: sha146, number: 146 }
+    ];
+    facts.postMergeCI.push(
+      { merge_commit_sha: sha135, head_sha: sha135, status: "completed", conclusion: "success", run_id: 135, run_attempt: 1 },
+      { merge_commit_sha: sha136, head_sha: sha136, status: "completed", conclusion: "success", run_id: 136, run_attempt: 1 },
+      { merge_commit_sha: sha146, head_sha: sha146, status: "completed", conclusion: "success", run_id: 146, run_attempt: 1 }
+    );
+    return facts;
+  };
+
+  // 1. With no open candidate in play, three ambiguous partial-merge receipts must never
+  //    let D0-004 itself resolve as "verified".
+  const soloFacts = buildPartialMergeFacts();
+  const { result: soloResult } = await resolveOffline(soloFacts);
+  const d0004Solo = ticketState(soloResult, "D0-004");
+  assert.notEqual(
+    d0004Solo.phase,
+    "verified",
+    `ambiguous partial merges must not read as whole-ticket completion, got phase=${d0004Solo.phase}`
+  );
+
+  // 2. Real shape: #150 (D0-004B) is still open, and a dependent ticket (E0A-001, whose
+  //    only declared dependency is D0-004, exactly as docs/issues.json declares) must not
+  //    read D0-004 as a satisfied dependency and must not enter readySet on that false
+  //    premise.
+  const facts = buildPartialMergeFacts();
+  facts.prs = [
+    {
+      number: 150,
+      ticket_id: "D0-004",
+      base: "dev",
+      base_sha: facts.currentHead,
+      head_sha: "150d150d150d150d150d150d150d150d150d150d",
+      author: "MongLong0214",
+      body: "Ticket: D0-004\n\nD0-004B resolver core (still open).",
+      merged: false,
+      labels: ["ticket:D0-004"]
+    }
+  ];
+  const e0a001Path = "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md";
+  const e0a001TicketSha = "e0a1e0a1e0a1e0a1e0a1e0a1e0a1e0a1e0a1e0a1";
+  facts.tickets["E0A-001"] = {
+    kind: "executable",
+    dependencies: ["D0-004"],
+    owned_paths: [e0a001Path],
+    owned_symbols: [],
+    red_command: "node --test tests/e0a-001.test.mjs",
+    digests: { ticket: e0a001TicketSha }
+  };
+  facts.liveDigests[e0a001Path] = e0a001TicketSha;
+
+  const { result } = await resolveOffline(facts);
+  const e0a001 = ticketState(result, "E0A-001");
+  assert.ok(
+    blockerCodes(e0a001).includes("DEPENDENCY_UNVERIFIED"),
+    `expected DEPENDENCY_UNVERIFIED on E0A-001 from unverified D0-004, got ${blockerCodes(e0a001).join(",")}`
+  );
+  assert.equal(e0a001.readiness, "blocked");
+  assert.equal(result.readySet.includes("E0A-001"), false, "E0A-001 must not enter readySet on a false D0-004 completion");
+});
+
 test("historical-linkage-collector-verifies-real-merge-before-trusting-it", async () => {
   const { applyHistoricalImplementationLinkage, createFixtureTransport } = await importResolver();
   const tickets = { "D0-002": { owned_paths: ["x"], owned_symbols: [] } };
@@ -1916,6 +2005,168 @@ test("optional-operational-workflow-only-allows-authenticated-not-found", async 
   const state = resolveExecutionState({ mode: "online-strict", root, facts: collected.facts });
   assert.ok(state.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
   assert.deepEqual(state.readySet, []);
+});
+
+// ---------------------------------------------------------------------------
+// Trusted-workflow ancestry: workflow_reachable_from_dev must come from an authenticated
+// ancestry compare against live dev, never from the run's self-reported head_branch label.
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a D0-004C-active collector fixture (operational-state.yml present on live dev)
+ * whose single open PR (#300, head `cafecafe...`) carries a dispatched "exact-head-review"
+ * check-run bound to `workflowSha`/`headBranch`, with the identical workflow blob at dev,
+ * the PR head, and `workflowSha` itself — isolating ancestry as the only varying fact.
+ * `compareResponse === undefined` omits the compare fixture entirely (outage/unavailable).
+ */
+function buildExactHeadReviewCollectorFacts({ workflowSha, headBranch = "dev", compareResponse }) {
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const tip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  const prHead = "cafecafecafecafecafecafecafecafecafecafe";
+  const opsBlobSha = "ops-blob-live-head-and-run-identical";
+
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const responses = clone(base);
+
+  // D0-004C's workflow now exists on live dev, and the candidate head + dispatched run's
+  // own workflow commit all carry the byte-identical blob — the exact "identical blob,
+  // ancestry differs" shape the defect describes.
+  responses[`${repo}/contents/.github/workflows/operational-state.yml?ref=${tip}`] = {
+    sha: opsBlobSha,
+    path: ".github/workflows/operational-state.yml"
+  };
+  responses[`${repo}/contents/.github/workflows/operational-state.yml?ref=${prHead}`] = {
+    sha: opsBlobSha,
+    path: ".github/workflows/operational-state.yml"
+  };
+  if (typeof workflowSha === "string") {
+    responses[`${repo}/contents/.github/workflows/operational-state.yml?ref=${workflowSha}`] = {
+      sha: opsBlobSha,
+      path: ".github/workflows/operational-state.yml"
+    };
+  }
+
+  // Once D0-004C is active, candidate CI also requires "operational-state-offline" on the
+  // PR head; wire a minimal passing run/job for it so only ancestry varies across cases.
+  const runsKey = `${repo}/actions/runs?head_sha=${prHead}&event=pull_request&per_page=30`;
+  const runs = clone(responses[runsKey]);
+  runs.workflow_runs.push({
+    id: 4002,
+    name: "operational-state",
+    path: ".github/workflows/operational-state.yml",
+    head_sha: prHead,
+    status: "completed",
+    conclusion: "success",
+    run_attempt: 1,
+    event: "pull_request"
+  });
+  runs.total_count = runs.workflow_runs.length;
+  responses[runsKey] = runs;
+
+  responses[`${repo}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
+    jobs: [
+      {
+        name: "operational-state-offline",
+        status: "completed",
+        conclusion: "success",
+        check_run_url: `https://api.github.com/${repo}/check-runs/9003`,
+        run_id: 4002,
+        run_attempt: 1
+      }
+    ],
+    total_count: 1
+  };
+
+  const checksKey = `${repo}/commits/${prHead}/check-runs?per_page=50`;
+  const checks = clone(responses[checksKey]);
+  checks.check_runs.push(
+    {
+      name: "operational-state-offline",
+      status: "completed",
+      conclusion: "success",
+      app: { id: 15368, slug: "github-actions" },
+      external_id: null,
+      id: 9003,
+      run_id: 4002,
+      run_attempt: 1
+    },
+    {
+      name: "exact-head-review",
+      status: "completed",
+      conclusion: "success",
+      app: { id: 15368, slug: "github-actions" },
+      external_id: "aos-exact-head-review:5555:1",
+      id: 9004
+    }
+  );
+  checks.total_count = checks.check_runs.length;
+  responses[checksKey] = checks;
+
+  // The dispatched run: event/path/actor are all in contract; head_branch is the exact
+  // field the pre-fix collector trusted, deliberately set to lie ("dev") in RED cases.
+  responses[`${repo}/actions/runs/5555`] = {
+    run_attempt: 1,
+    event: "workflow_dispatch",
+    path: ".github/workflows/operational-state.yml",
+    triggering_actor: { login: "MongLong0214" },
+    head_sha: workflowSha,
+    head_branch: headBranch
+  };
+
+  if (compareResponse !== undefined && typeof workflowSha === "string") {
+    responses[`${repo}/compare/${tip}...${workflowSha}`] = compareResponse;
+  }
+
+  return { responses, repo, tip, prHead };
+}
+
+test("orphan-non-ancestor-workflow-sha-with-identical-blob-fails-closed", async () => {
+  // The exact defect shape: an orphan/detached historical commit whose head_branch claims
+  // "dev" and whose workflow blob is byte-identical to live dev, but which is not actually
+  // reachable from dev. Branch-name trust would pass this; ancestry must reject it.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const orphanSha = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+  const { responses } = buildExactHeadReviewCollectorFacts({
+    workflowSha: orphanSha,
+    headBranch: "dev",
+    compareResponse: { status: "diverged", ahead_by: 3, behind_by: 0 }
+  });
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const reviewCheck = collected.facts.checkRuns.find((check) => check.name === "exact-head-review");
+  assert.ok(reviewCheck, "collector must emit the exact-head-review check fact");
+  assert.equal(
+    reviewCheck.workflow_reachable_from_dev,
+    false,
+    "a non-ancestor workflow SHA must never read as reachable from dev, even with a matching head_branch label and identical blob"
+  );
+
+  // The resolver-side consequence: this check can never satisfy review/authorization.
+  const { resolveExecutionState } = await importResolver();
+  const state = resolveExecutionState({ mode: "online-strict", root, facts: { ...collected.facts, d0_004c_merged: true } });
+  const d0004 = state.tickets["D0-004"];
+  assert.ok(d0004, "resolver must still emit D0-004 state");
+  assert.notEqual(d0004.readiness, "ready");
+});
+
+test("workflow-ancestry-api-outage-fails-closed-not-a-pass", async () => {
+  // An unavailable/erroring compare must never degrade to "reachable" (a silent pass);
+  // the whole collection fails closed as unavailable, matching every other authenticated
+  // fact outage in this collector.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const someSha = "1234567890abcdef1234567890abcdef12345678";
+  const { responses } = buildExactHeadReviewCollectorFacts({
+    workflowSha: someSha,
+    headBranch: "dev",
+    compareResponse: null // fixture outage sentinel: transport throws FIXTURE_OUTAGE
+  });
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false, "an ancestry-compare outage must fail the whole collection closed");
+  assert.match(collected.reason, /ancestry|compare|unavailable/i);
 });
 
 test("gate-head-requires-identical-accepted-registry-record", async () => {
@@ -3253,6 +3504,9 @@ test("live-collector-post-c-wrong-workflow-blob-oid-versus-dev-is-blocked", asyn
       sha: "ops-workflow-blob-OLD",
       path: POST_C_OPS_WORKFLOW_PATH
     };
+    // Isolate the blob-OID mismatch: oldDevSha is a genuine ancestor of live dev (an older,
+    // still-reachable commit), so ancestry itself is not the reason this must block.
+    r[`${POST_C_REPO_PATH}/compare/${POST_C_DEV_TIP}...${oldDevSha}`] = { status: "behind" };
   });
   const { acquired, result } = await resolvePostC(responses);
   assert.equal(acquired.ok, true, acquired.reason);
