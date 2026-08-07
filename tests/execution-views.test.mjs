@@ -54,34 +54,50 @@ const workflowJobs = (yaml) => {
 // exists to prevent.
 // ---------------------------------------------------------------------------
 
+// A declared input set is only worth asserting if the renderer cannot read around it.
+// Each of these drives readDeclaredInput — the single enforcement point every disk read
+// goes through — so deleting the declaration or the check makes the test fail, rather than
+// leaving an admired string behind.
+
 test("roadmap-is-not-an-input", async () => {
-  const { resolveViewInputs } = await importRenderer();
-  const inputs = resolveViewInputs(root);
-  assert.ok(Array.isArray(inputs.sources), "renderer must declare its input sources");
+  const { resolveViewInputs, readDeclaredInput } = await importRenderer();
   assert.equal(
-    inputs.sources.some((source) => source.includes("AOS-EXECUTION-ROADMAP")),
+    resolveViewInputs(root).sources.some((s) => s.includes("AOS-EXECUTION-ROADMAP")),
     false,
-    "the roadmap is a projection and must never be an input to resolution"
+    "the roadmap must not be declared"
+  );
+  assert.throws(
+    () => readDeclaredInput(root, "docs/planning/AOS-EXECUTION-ROADMAP.md"),
+    /refusing to read undeclared projection input/,
+    "reading the roadmap must throw, not merely be undeclared"
   );
 });
 
 test("board-is-not-an-input", async () => {
-  const { resolveViewInputs } = await importRenderer();
-  const inputs = resolveViewInputs(root);
+  const { resolveViewInputs, readDeclaredInput } = await importRenderer();
   assert.equal(
-    inputs.sources.some((source) => source.includes("BOARD.md")),
+    resolveViewInputs(root).sources.some((s) => s.includes("BOARD.md")),
     false,
-    "the Board is a projection and must never be an input to resolution"
+    "the Board must not be declared"
+  );
+  assert.throws(
+    () => readDeclaredInput(root, "docs/tickets/BOARD.md"),
+    /refusing to read undeclared projection input/,
+    "reading the Board must throw"
   );
 });
 
 test("historical-ledger-is-ignored", async () => {
-  const { resolveViewInputs } = await importRenderer();
-  const inputs = resolveViewInputs(root);
+  const { resolveViewInputs, readDeclaredInput } = await importRenderer();
   assert.equal(
-    inputs.sources.some((source) => source.includes("issue-resolution-ledger")),
+    resolveViewInputs(root).sources.some((s) => s.includes("issue-resolution-ledger")),
     false,
-    "the historical ledger is superseded evidence and must be ignored entirely"
+    "the ledger must not be declared"
+  );
+  assert.throws(
+    () => readDeclaredInput(root, "docs/planning/issue-resolution-ledger-2026-08-06.md"),
+    /refusing to read undeclared projection input/,
+    "reading the ledger must throw"
   );
 });
 
@@ -89,12 +105,15 @@ test("generated-views-are-deterministic", async () => {
   const { renderViews } = await importRenderer();
   const first = renderViews(root);
   const second = renderViews(root);
-  assert.equal(
-    JSON.stringify(first),
-    JSON.stringify(second),
-    "two renders at one head must be byte-identical"
-  );
-  assert.ok(first.board.includes("generated"), "the Board must carry a non-authority marker");
+  assert.equal(first.serialized, second.serialized, "two renders at one head must be byte-identical");
+  assert.equal(first.board, second.board, "the Board render must be byte-identical too");
+  assert.ok(first.board.includes("NOT AUTHORITY"), "the Board must carry a non-authority marker");
+  // A projection of nothing is trivially deterministic. Assert it actually rendered the
+  // catalog, or a schema drift that empties the output passes this test unnoticed.
+  assert.ok(first.json.tickets.length >= 60, `expected the full catalog, rendered ${first.json.tickets.length}`);
+  assert.equal(first.board.split("\n").filter((l) => l.startsWith("| D0-")).length >= 1, true, "D0 rows must render");
+  const ids = first.json.tickets.map((t) => String(t.id));
+  assert.deepEqual(ids, [...ids].sort(), "ticket order must be explicitly sorted, not filesystem order");
 });
 
 // ---------------------------------------------------------------------------
@@ -181,6 +200,11 @@ test("dispatch-job-adds-only-checks-write", () => {
     assert.match(body, /checks:\s*write/, `${name} needs checks: write`);
     const writes = [...body.matchAll(/^\s+([a-z-]+):\s*write\s*$/gm)].map((m) => m[1]);
     assert.deepEqual(writes, ["checks"], `${name} must add checks: write and nothing else`);
+    // A granted permission that nothing exercises is a standing grant with no purpose.
+    // Require the grant to be spent on exactly the thing it was justified by.
+    assert.match(body, /check-runs["'\s]*\\?\n?\s*--method POST|check-runs.*--method POST/s,
+      `${name} must actually create the named check run its checks:write grant exists for`);
+    assert.match(body, /external_id=aos-/, `${name} must bind the check to this exact run and attempt`);
   }
 });
 
@@ -199,16 +223,22 @@ test("each-job-has-bounded-timeout", () => {
 
 test("workflow-performs-no-write-token-action", () => {
   const yaml = readWorkflow();
+  // The single permitted mutation is creating the named check run, which is the entire
+  // justification for the dispatch lane's checks:write. Everything else that could alter
+  // repository or issue state stays forbidden.
   for (const forbidden of [
     /gh\s+pr\s+(edit|comment|merge|close|review)/,
     /gh\s+issue\s+(edit|comment|close|create)/,
     /git\s+push/,
     /git\s+commit/,
-    /-X\s*(POST|PATCH|PUT|DELETE)/,
-    /add-label|remove-label/
+    /add-label|remove-label/,
+    /repos\/[^\s"']*\/(issues|pulls|contents|git\/refs)[^\s"']*"?\s*\\?\s*--method\s*(POST|PATCH|PUT|DELETE)/
   ]) {
     assert.doesNotMatch(yaml, forbidden, `workflow must perform no write-token action: ${forbidden}`);
   }
+  const mutations = [...yaml.matchAll(/--method\s+(POST|PATCH|PUT|DELETE)/g)];
+  assert.equal(mutations.length, 1, "exactly one mutating API call is permitted");
+  assert.match(yaml, /check-runs[\s\S]{0,80}--method POST/, "the one mutation must be the check-run creation");
   assert.match(yaml, /upload-artifact/, "the workflow must upload JSON and summary artifacts");
 });
 
