@@ -8,8 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=11 control_plane_allowlist=11 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=11 control_plane_allowlist=11 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none/;
 
 const setPendingGateRegistry = (fixture) => {
   const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
