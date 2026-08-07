@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { basename, join, resolve } from "node:path";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
@@ -42,13 +42,21 @@ test("planning contract validator reports the truthful structural census", () =>
   assert.match(output, acceptedValidatorOutput);
   assert.equal(existsSync(resolve(root, "docs/north-star/legacy")), false);
 
-  const fixture = resolve(root, ".planning-legacy-identifier-fixture.txt");
-  writeFileSync(fixture, ["Agent", "Ops Score"].join(""));
+  // The legacy-identifier probe runs in a copy. Writing it into the live tree raced with
+  // every sibling test that copies this repository: cpSync would enumerate the transient
+  // file and then fail ENOENT when this test deleted it mid-copy.
+  const parent = mkdtempSync(join(tmpdir(), "aos legacy identifier "));
+  const fixture = join(parent, "repository");
   try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => basename(source) !== "node_modules"
+    });
+    writeFileSync(resolve(fixture, ".planning-legacy-identifier-fixture.txt"), ["Agent", "Ops Score"].join(""));
     let error;
     try {
       execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-        cwd: root,
+        cwd: fixture,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"]
       });
@@ -59,7 +67,7 @@ test("planning contract validator reports the truthful structural census", () =>
     assert.equal(error.status, 1);
     assert.match(error.stderr, /legacy identifier/);
   } finally {
-    unlinkSync(fixture);
+    rmSync(parent, { recursive: true, force: true });
   }
 });
 
