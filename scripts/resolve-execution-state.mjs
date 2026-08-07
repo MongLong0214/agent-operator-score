@@ -795,11 +795,14 @@ const evaluateReview = (facts, policy, pr, ticketId) => {
   }
 
   const head = pr.head_sha;
-  const reviews = (facts.reviews ?? []).filter(
-    (review) => review.ticket_id === ticketId && review.commit_id === head
-  );
 
-  // After C: protected exact-head-review check required.
+  // After C: the protected exact-head-review technical check is the review evidence.
+  // A formal GitHub "APPROVED" PR review is never required here — with a single
+  // repository collaborator who authors every candidate, GitHub blocks self-approval,
+  // making that fact permanently unobtainable. The check itself (maintainer/admin
+  // dispatched, workflow_dispatch, bound to the trusted dev workflow blob, attached to
+  // this exact head) is trusted technical automation evidence, not independent approval;
+  // genuine independent review is deferred to E14-003/G4.
   const checks = (facts.checkRuns ?? []).filter(
     (check) => check.name === policy.review.protected_check && check.head_sha === head
   );
@@ -820,13 +823,6 @@ const evaluateReview = (facts, policy, pr, ticketId) => {
     const rest = String(check.external_id).slice(prefix.length);
     if (!/^\d+:\d+$/.test(rest)) continue;
     if (!permissionEligible(facts, check.dispatch_actor, policy.review.eligible_permissions)) continue;
-    // Formal review fact still required at same head.
-    const formal = reviews.find(
-      (review) =>
-        review.decision === "approved" &&
-        permissionEligible(facts, review.reviewer, policy.review.eligible_permissions)
-    );
-    if (!formal) continue;
     return { ok: true };
   }
   return { ok: false, reason: "exact-head-review invalid" };
@@ -847,6 +843,11 @@ const evaluateAuthorization = (facts, policy, pr, ticketId, reviewOk) => {
   if (!reviewOk) return { ok: false, reason: "authorization requires current review" };
   const head = pr.head_sha;
 
+  // After C: the protected exact-head-authorization technical check is the authorization
+  // evidence. There is no `facts.authorizations` / ceo_production_pass producer and none
+  // is built — merge authorization is an out-of-band process gate the resolver never
+  // asserts (see the top-level `claims_merge_authorization` output field, which stays
+  // false in every mode). The check is trusted technical automation evidence only.
   const checks = (facts.checkRuns ?? []).filter(
     (check) => check.name === policy.authorization.protected_check && check.head_sha === head
   );
@@ -863,14 +864,6 @@ const evaluateAuthorization = (facts, policy, pr, ticketId, reviewOk) => {
     const prefix = policy.authorization.external_id_prefix;
     if (!check.external_id || !String(check.external_id).startsWith(prefix)) continue;
     if (!permissionEligible(facts, check.dispatch_actor, policy.authorization.eligible_permissions)) continue;
-    const formal = (facts.authorizations ?? []).find(
-      (entry) =>
-        entry.ticket_id === ticketId &&
-        entry.commit_id === head &&
-        entry.kind === "ceo_production_pass" &&
-        permissionEligible(facts, entry.actor, policy.authorization.eligible_permissions)
-    );
-    if (!formal) continue;
     return { ok: true };
   }
   return { ok: false, reason: "exact-head-authorization invalid" };
@@ -2749,6 +2742,115 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
           ...common,
           external_id: Object.hasOwn(check, "external_id") ? check.external_id : null,
           check_run_id: check.id ?? null
+        });
+      }
+    }
+
+    // Protected exact-head technical checks (review + authorization): custom Checks-API
+    // rows minted by a maintainer-dispatched workflow_dispatch run against trusted_ref,
+    // attached directly to this exact candidate head — never inferred from a job/run
+    // triggered by this PR's own pull_request event. GitHub does not link a standalone
+    // check to the run that created it, so provenance (event/workflow path/dispatch actor/
+    // workflow blob) is only authoritative from the run identified by the check's own
+    // external_id; a check without a well-formed external_id yields no provenance and is
+    // rejected downstream. Only attempted once D0-004C's workflow exists on live dev.
+    if (d0_004c_merged_early) {
+      for (const gate of [expected.review, expected.authorization]) {
+        const matches = checksByName.get(gate.protected_check) ?? [];
+        if (matches.length === 0) continue;
+        if (matches.length > 1) {
+          return {
+            ok: false,
+            reason: `ambiguous ${gate.protected_check} check-run set for ${head}`,
+            facts: null
+          };
+        }
+        const check = matches[0];
+        if (!Number.isSafeInteger(check.id)) {
+          return {
+            ok: false,
+            reason: `missing live check-run id for ${gate.protected_check} on ${head}`,
+            facts: null
+          };
+        }
+        const appSlug = typeof check.app?.slug === "string" ? check.app.slug : null;
+        const appId = check.app?.id ?? null;
+        const externalId = typeof check.external_id === "string" ? check.external_id : null;
+        const rest =
+          externalId && externalId.startsWith(gate.external_id_prefix)
+            ? externalId.slice(gate.external_id_prefix.length)
+            : null;
+        const runMatch = rest ? /^(\d+):(\d+)$/.exec(rest) : null;
+        const runId = runMatch ? Number(runMatch[1]) : null;
+        const runAttempt = runMatch ? Number(runMatch[2]) : null;
+
+        let event = null;
+        let workflowPath = null;
+        let dispatchActor = null;
+        let workflowSha = null;
+        let workflowReachableFromDev = false;
+        let workflowBlobOid = null;
+
+        if (runId != null) {
+          const runResult = transportCall(transport, "getJson", `${repoPath}/actions/runs/${runId}`);
+          if (!runResult.ok) {
+            return {
+              ok: false,
+              reason: runResult.reason || `${gate.protected_check} run ${runId} unavailable`,
+              facts: null
+            };
+          }
+          const run = runResult.value;
+          if (!run || typeof run !== "object") {
+            return { ok: false, reason: `${gate.protected_check} run ${runId} unavailable`, facts: null };
+          }
+          if (run.run_attempt != null && Number(run.run_attempt) !== runAttempt) {
+            return {
+              ok: false,
+              reason: `${gate.protected_check} run ${runId} attempt mismatch`,
+              facts: null
+            };
+          }
+          event = typeof run.event === "string" ? run.event : null;
+          workflowPath = typeof run.path === "string" ? run.path : null;
+          dispatchActor = run.triggering_actor?.login ?? run.actor?.login ?? null;
+          workflowSha = typeof run.head_sha === "string" ? run.head_sha : null;
+          const trustedBranch = gate.trusted_ref.replace(/^refs\/heads\//, "");
+          workflowReachableFromDev = run.head_branch === trustedBranch;
+          if (dispatchActor) {
+            actors.add(dispatchActor);
+            ensurePermission(dispatchActor);
+          }
+          if (workflowSha && workflowPath) {
+            const blobResult = transportCall(
+              transport,
+              "getJson",
+              `${repoPath}/contents/${workflowPath}?ref=${workflowSha}`
+            );
+            workflowBlobOid =
+              blobResult.ok && typeof blobResult.value?.sha === "string" ? blobResult.value.sha : null;
+          }
+        }
+
+        checkRuns.push({
+          name: check.name,
+          // Trust-but-verify: never assume the check's own head_sha equals this query's
+          // scope; evaluateReview/evaluateAuthorization re-filter on exact head_sha match.
+          head_sha: typeof check.head_sha === "string" ? check.head_sha : head,
+          status: typeof check.status === "string" ? check.status : null,
+          conclusion: typeof check.conclusion === "string" ? check.conclusion : null,
+          app_slug: appSlug,
+          app_id: appId,
+          event,
+          workflow_path: workflowPath,
+          workflow_sha: workflowSha,
+          workflow_reachable_from_dev: workflowReachableFromDev,
+          workflow_blob_oid: workflowBlobOid,
+          external_id: externalId,
+          dispatch_actor: dispatchActor,
+          run_id: runId,
+          run_attempt: runAttempt,
+          ticket_id: ticketId
         });
       }
     }

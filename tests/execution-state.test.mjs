@@ -2937,6 +2937,367 @@ test("d0-004b-ownership-and-red-from-canonical-ticket", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Post-C live-collector proof: valid protected exact-head-review /
+// exact-head-authorization technical checks must clear CUMULATIVE_REVIEW_MISSING
+// and MERGE_AUTHORIZATION_MISSING using facts a real collector would produce —
+// no review or authorization fact is ever injected into these fixtures.
+// ---------------------------------------------------------------------------
+
+const POST_C_REPO_PATH = "repos/MongLong0214/agent-operator-score";
+const POST_C_DEV_TIP = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+const POST_C_HEAD = "cafecafecafecafecafecafecafecafecafecafe";
+const POST_C_OPS_WORKFLOW_PATH = ".github/workflows/operational-state.yml";
+
+// D0-004's owning PRD/ADR gates are waived pre-C but required once d0_004c_merged is
+// true (ADR-0012's own bootstrap-ends contract). The shared live fixture's existing
+// "batch-d0-004-fixture" registry row is stale against current live digests (it predates
+// later content edits), so reaching the review/authorization evaluation post-C requires
+// a freshly accepted batch bound to the fixture's actual current live digests below.
+const GATE_BATCH_ID = "batch-d0-004-post-c-live-review";
+const GATE_PR_NUMBER = 250;
+const GATE_HEAD_SHA = `${"1".repeat(36)}aaaa`;
+const GATE_MERGE_SHA = `${"2".repeat(36)}bbbb`;
+
+function withPostCGateAcceptance(responses) {
+  const p = POST_C_REPO_PATH;
+  const registryRawKey = `raw:${p}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${POST_C_DEV_TIP}`;
+  const registry = JSON.parse(responses[registryRawKey]);
+
+  const artifacts = [
+    {
+      path: "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+      sha256: "fd7189fbb8beb4264b9ef75b2be254d0a13f8aaaa41f5fdc70efa869de222c71",
+      kind: "TICKET"
+    },
+    {
+      path: "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      sha256: "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      kind: "PRD"
+    },
+    {
+      path: "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      sha256: "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      kind: "ADR"
+    },
+    {
+      path: "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      sha256: "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      kind: "ADR"
+    },
+    {
+      path: "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      sha256: "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      kind: "ADR"
+    }
+  ];
+  const newBatch = {
+    id: GATE_BATCH_ID,
+    status: "ACCEPTED",
+    required_artifacts: artifacts,
+    scope: "post-c-live-review-fixture",
+    target: {
+      repository: "github.com/MongLong0214/agent-operator-score",
+      branch: "dev",
+      reviewed_head: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    required_transitions: ["ADR_ACCEPTED", "PRD_ACCEPTED", "TICKET_READY_FOR_RED"],
+    transitions: [{ name: "ADR_ACCEPTED" }, { name: "PRD_ACCEPTED" }, { name: "TICKET_READY_FOR_RED" }],
+    artifacts
+  };
+  registry.batches = [...registry.batches, newBatch];
+  const registryText = JSON.stringify(registry);
+
+  responses[registryRawKey] = registryText;
+  responses[`${p}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${POST_C_DEV_TIP}`] = {
+    sha: "registry-blob-postc-devtip",
+    path: "docs/decisions/maintainer-gate-registry.v2.json"
+  };
+
+  const searchKey = `search/issues?q=${encodeURIComponent(
+    `repo:MongLong0214/agent-operator-score is:pr is:merged "Gate-Batch: ${GATE_BATCH_ID}"`
+  )}&per_page=10`;
+  responses[searchKey] = { total_count: 1, incomplete_results: false, items: [{ number: GATE_PR_NUMBER }] };
+
+  responses[`${p}/pulls/${GATE_PR_NUMBER}`] = {
+    number: GATE_PR_NUMBER,
+    body: `Gate-Batch: ${GATE_BATCH_ID}\n`,
+    base: { ref: "dev" },
+    head: { sha: GATE_HEAD_SHA },
+    merged: true,
+    merged_by: { login: "MongLong0214" },
+    merge_commit_sha: GATE_MERGE_SHA,
+    user: { login: "MongLong0214" }
+  };
+
+  // The gate PR's head registry must bind the identical ACCEPTED batch record.
+  responses[`raw:${p}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${GATE_HEAD_SHA}`] = registryText;
+  responses[`${p}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${GATE_HEAD_SHA}`] = {
+    sha: "registry-blob-postc-gatehead",
+    path: "docs/decisions/maintainer-gate-registry.v2.json"
+  };
+
+  responses[`${p}/actions/runs?head_sha=${GATE_MERGE_SHA}&event=push&per_page=20`] = {
+    workflow_runs: [
+      {
+        id: 6001,
+        name: "CI",
+        path: ".github/workflows/ci.yml",
+        head_sha: GATE_MERGE_SHA,
+        status: "completed",
+        conclusion: "success",
+        run_attempt: 1,
+        event: "push"
+      }
+    ],
+    total_count: 1
+  };
+
+  return responses;
+}
+
+function loadPostCLiveResponses(mutate) {
+  const base = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const p = POST_C_REPO_PATH;
+  const responses = { ...base };
+
+  // D0-004C merged: operational-state.yml now exists at the live dev tip and is
+  // unchanged on the candidate head (bootstrap ends).
+  responses[`${p}/contents/${POST_C_OPS_WORKFLOW_PATH}?ref=${POST_C_DEV_TIP}`] = {
+    sha: "ops-workflow-blob-dev",
+    path: POST_C_OPS_WORKFLOW_PATH
+  };
+  responses[`${p}/contents/${POST_C_OPS_WORKFLOW_PATH}?ref=${POST_C_HEAD}`] = {
+    sha: "ops-workflow-blob-dev",
+    path: POST_C_OPS_WORKFLOW_PATH
+  };
+
+  // Candidate CI now also carries the ordinary pull_request-triggered
+  // operational-state-offline check (distinct from the two protected checks below).
+  const ciRunsKey = `${p}/actions/runs?head_sha=${POST_C_HEAD}&event=pull_request&per_page=30`;
+  const ciRuns = base[ciRunsKey];
+  responses[ciRunsKey] = {
+    workflow_runs: [
+      ...ciRuns.workflow_runs,
+      {
+        id: 4002,
+        name: "operational-state-offline",
+        path: POST_C_OPS_WORKFLOW_PATH,
+        head_sha: POST_C_HEAD,
+        status: "completed",
+        conclusion: "success",
+        run_attempt: 1,
+        event: "pull_request"
+      }
+    ],
+    total_count: ciRuns.workflow_runs.length + 1
+  };
+  responses[`${p}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
+    jobs: [
+      {
+        name: "operational-state-offline",
+        status: "completed",
+        conclusion: "success",
+        check_run_url: `https://api.github.com/${p}/check-runs/9003`,
+        run_id: 4002,
+        run_attempt: 1
+      }
+    ],
+    total_count: 1
+  };
+
+  const checksKey = `${p}/commits/${POST_C_HEAD}/check-runs?per_page=50`;
+  const existingChecks = base[checksKey];
+  responses[checksKey] = {
+    check_runs: [
+      ...existingChecks.check_runs,
+      {
+        name: "operational-state-offline",
+        status: "completed",
+        conclusion: "success",
+        app: { id: 15368, slug: "github-actions" },
+        external_id: null,
+        id: 9003,
+        run_id: 4002,
+        run_attempt: 1
+      },
+      {
+        name: "exact-head-review",
+        status: "completed",
+        conclusion: "success",
+        app: { id: 15368, slug: "github-actions" },
+        external_id: "aos-exact-head-review:5001:1",
+        id: 9100,
+        head_sha: POST_C_HEAD
+      },
+      {
+        name: "exact-head-authorization",
+        status: "completed",
+        conclusion: "success",
+        app: { id: 15368, slug: "github-actions" },
+        external_id: "aos-exact-head-authorization:5002:1",
+        id: 9101,
+        head_sha: POST_C_HEAD
+      }
+    ],
+    total_count: existingChecks.check_runs.length + 3
+  };
+
+  // The two protected checks are custom Checks-API rows minted by a maintainer-dispatched
+  // workflow_dispatch run against trusted_ref refs/heads/dev; run_id/attempt come from the
+  // check's own external_id (GitHub does not otherwise link a custom check to its creating
+  // run), so the collector must fetch the run itself for event/path/actor provenance.
+  responses[`${p}/actions/runs/5001`] = {
+    id: 5001,
+    event: "workflow_dispatch",
+    path: POST_C_OPS_WORKFLOW_PATH,
+    head_sha: POST_C_DEV_TIP,
+    head_branch: "dev",
+    run_attempt: 1,
+    triggering_actor: { login: "MongLong0214" }
+  };
+  responses[`${p}/actions/runs/5002`] = {
+    id: 5002,
+    event: "workflow_dispatch",
+    path: POST_C_OPS_WORKFLOW_PATH,
+    head_sha: POST_C_DEV_TIP,
+    head_branch: "dev",
+    run_attempt: 1,
+    triggering_actor: { login: "MongLong0214" }
+  };
+
+  withPostCGateAcceptance(responses);
+
+  return mutate ? mutate(responses) ?? responses : responses;
+}
+
+async function resolvePostC(responses) {
+  const { createFixtureTransport, acquireOnlineStrictFacts, resolveExecutionState } = await importResolver();
+  const transport = createFixtureTransport(responses);
+  const acquired = acquireOnlineStrictFacts(root, { transport });
+  if (!acquired.ok) return { acquired, result: null };
+  const result = resolveExecutionState({
+    mode: "online-strict",
+    root,
+    facts: acquired.facts,
+    runtimeIdentity: {
+      repository: acquired.facts.repository,
+      branch: acquired.facts.defaultBranch,
+      head: acquired.facts.currentHead
+    }
+  });
+  return { acquired, result };
+}
+
+test("live-collector-post-c-protected-checks-clear-review-and-authorization", async () => {
+  const responses = loadPostCLiveResponses();
+  const { acquired, result } = await resolvePostC(responses);
+  assert.equal(acquired.ok, true, acquired.reason);
+  assert.equal(acquired.facts.d0_004c_merged, true);
+  // There is no `facts.authorizations` producer at all (none is built — see evaluateAuthorization);
+  // the live collector never populates it, injected or otherwise.
+  assert.deepEqual(acquired.facts.authorizations, []);
+  // The candidate's GitHub PR review data (a self-review, since the sole collaborator is
+  // the PR author) is real, unmodified live-collector output — not test-injected — and is
+  // simply irrelevant now: evaluateReview never reads facts.reviews.
+
+  const state = result.tickets["D0-004"];
+  assert.ok(state, "missing D0-004 ticket state");
+  const codes = (state.blockers ?? []).map((b) => b.code);
+  assert.equal(codes.includes("CUMULATIVE_REVIEW_MISSING"), false);
+  assert.equal(codes.includes("MERGE_AUTHORIZATION_MISSING"), false);
+  assert.equal(result.claims_merge_authorization, false);
+});
+
+test("live-collector-post-c-wrong-dispatch-actor-is-blocked", async () => {
+  const responses = loadPostCLiveResponses((r) => {
+    r[`${POST_C_REPO_PATH}/actions/runs/5001`] = {
+      ...r[`${POST_C_REPO_PATH}/actions/runs/5001`],
+      triggering_actor: { login: "outside-contributor" }
+    };
+    r[`${POST_C_REPO_PATH}/collaborators/outside-contributor/permission`] = { permission: "read" };
+  });
+  const { acquired, result } = await resolvePostC(responses);
+  assert.equal(acquired.ok, true, acquired.reason);
+  const codes = (result.tickets["D0-004"].blockers ?? []).map((b) => b.code);
+  assert.ok(codes.includes("CUMULATIVE_REVIEW_MISSING"));
+});
+
+test("live-collector-post-c-wrong-head-sha-is-blocked", async () => {
+  const responses = loadPostCLiveResponses((r) => {
+    const key = `${POST_C_REPO_PATH}/commits/${POST_C_HEAD}/check-runs?per_page=50`;
+    r[key] = {
+      ...r[key],
+      check_runs: r[key].check_runs.map((check) =>
+        check.name === "exact-head-review"
+          ? { ...check, head_sha: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" }
+          : check
+      )
+    };
+  });
+  const { acquired, result } = await resolvePostC(responses);
+  assert.equal(acquired.ok, true, acquired.reason);
+  const codes = (result.tickets["D0-004"].blockers ?? []).map((b) => b.code);
+  assert.ok(codes.includes("CUMULATIVE_REVIEW_MISSING"));
+});
+
+test("live-collector-post-c-wrong-workflow-blob-oid-versus-dev-is-blocked", async () => {
+  const responses = loadPostCLiveResponses((r) => {
+    const oldDevSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    r[`${POST_C_REPO_PATH}/actions/runs/5001`] = {
+      ...r[`${POST_C_REPO_PATH}/actions/runs/5001`],
+      head_sha: oldDevSha
+    };
+    r[`${POST_C_REPO_PATH}/contents/${POST_C_OPS_WORKFLOW_PATH}?ref=${oldDevSha}`] = {
+      sha: "ops-workflow-blob-OLD",
+      path: POST_C_OPS_WORKFLOW_PATH
+    };
+  });
+  const { acquired, result } = await resolvePostC(responses);
+  assert.equal(acquired.ok, true, acquired.reason);
+  const codes = (result.tickets["D0-004"].blockers ?? []).map((b) => b.code);
+  assert.ok(codes.includes("CUMULATIVE_REVIEW_MISSING"));
+});
+
+test("live-collector-post-c-wrong-event-is-blocked", async () => {
+  const responses = loadPostCLiveResponses((r) => {
+    r[`${POST_C_REPO_PATH}/actions/runs/5001`] = {
+      ...r[`${POST_C_REPO_PATH}/actions/runs/5001`],
+      event: "push"
+    };
+  });
+  const { acquired, result } = await resolvePostC(responses);
+  assert.equal(acquired.ok, true, acquired.reason);
+  const codes = (result.tickets["D0-004"].blockers ?? []).map((b) => b.code);
+  assert.ok(codes.includes("CUMULATIVE_REVIEW_MISSING"));
+});
+
+test("live-collector-post-c-outage-or-ambiguous-protected-check-fails-closed", async () => {
+  // Outage on the run-detail fetch that provides check provenance.
+  {
+    const responses = loadPostCLiveResponses((r) => {
+      r[`${POST_C_REPO_PATH}/actions/runs/5001`] = null;
+    });
+    const { acquired } = await resolvePostC(responses);
+    assert.equal(acquired.ok, false);
+  }
+  // Ambiguous: two check-runs sharing the same protected check name on one head.
+  {
+    const responses = loadPostCLiveResponses((r) => {
+      const key = `${POST_C_REPO_PATH}/commits/${POST_C_HEAD}/check-runs?per_page=50`;
+      const duplicate = { ...r[key].check_runs.find((c) => c.name === "exact-head-review"), id: 9102 };
+      r[key] = {
+        check_runs: [...r[key].check_runs, duplicate],
+        total_count: r[key].check_runs.length + 1
+      };
+    });
+    const { acquired } = await resolvePostC(responses);
+    assert.equal(acquired.ok, false);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Helpers — candidate / ready fact builders
 // ---------------------------------------------------------------------------
 
