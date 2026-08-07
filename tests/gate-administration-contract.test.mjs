@@ -26,6 +26,46 @@ const removeTempFixture = (targetPath) => {
   rmSync(resolved, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
 };
 
+// removeTempFixture performs a recursive delete, so its two refusal branches are the only
+// thing standing between a mistaken or manipulated path and an arbitrary directory being
+// removed. Both are asserted here; without these the guards could be deleted or inverted
+// and every other test in this file would still pass.
+test("removeTempFixture refuses a path outside the OS temp root", () => {
+  for (const outside of [resolve(root), resolve(root, "docs"), resolve(tmpdir(), "..")]) {
+    assert.throws(
+      () => removeTempFixture(outside),
+      /refusing to remove non-temp fixture path/,
+      `expected refusal for ${outside}`
+    );
+    assert.ok(existsSync(outside), `${outside} must still exist after the refusal`);
+  }
+});
+
+test("removeTempFixture refuses the temp root itself", () => {
+  assert.throws(() => removeTempFixture(tmpdir()), /refusing to remove non-temp fixture path/);
+  assert.ok(existsSync(tmpdir()));
+});
+
+test("removeTempFixture refuses a temp path whose basename lacks the fixture prefix", () => {
+  const stranger = mkdtempSync(join(tmpdir(), "unrelated-not-a-gate-fixture"));
+  try {
+    assert.throws(
+      () => removeTempFixture(stranger),
+      /refusing to remove unexpected fixture path/
+    );
+    assert.ok(existsSync(stranger), "a non-fixture temp directory must survive the refusal");
+  } finally {
+    rmSync(stranger, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture removes a correctly prefixed temp fixture", () => {
+  const fixture = mkdtempSync(join(tmpdir(), fixtureTempPrefix));
+  writeFileSync(join(fixture, "payload.txt"), "x");
+  removeTempFixture(fixture);
+  assert.equal(existsSync(fixture), false);
+});
+
 test("ADR-0003 limits npm workspaces to the SSOT six", () => {
   const adr = readFileSync(resolve(root, "docs/adr/ADR-0003-runtime-repository-and-distribution.md"), "utf8");
   const workspaceDecision = adr.split("\n").find((line) => line.startsWith("- Use npm workspaces"));
