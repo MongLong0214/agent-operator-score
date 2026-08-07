@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { join, relative, resolve } from "node:path";
+import { extname, join, relative, resolve } from "node:path";
 import test from "node:test";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -45,7 +45,36 @@ const forbiddenManifestFields = [
   "dependencies", "devDependencies", "optionalDependencies", "peerDependencies", "bundledDependencies",
   "bin", "main", "module", "browser", "exports", "imports", "types", "typings", "files", "source"
 ];
+const workspaceTestScript = "node --test --test-name-pattern";
+const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
+
+// Independent re-derivation of the ticket-owned source claim the planning validator enforces.
+// Only paths an accepted ticket names exactly, and that exist on disk, may sit in the skeleton.
+const ticketOwnedSkeletonPaths = () => {
+  const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
+  const owned = new Set();
+  for (const absolutePath of walkFiles(ticketsRoot)) {
+    if (!absolutePath.endsWith(".md")) continue;
+    const text = readFileSync(absolutePath, "utf8");
+    const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
+    for (const line of ownership ? ownership[1].split("\n") : []) {
+      const bullet = /^- (.+)$/.exec(line.trim());
+      if (!bullet) continue;
+      for (const entry of bullet[1].split("—")[0].split(";")) {
+        const candidate = entry.trim().replace(/^`|`$/g, "");
+        if (sourceExtensions.has(extname(candidate))) owned.add(candidate);
+      }
+    }
+    const redTest = /^- Test file: `([^`]+)`\s*$/m.exec(text);
+    if (redTest && sourceExtensions.has(extname(redTest[1]))) owned.add(redTest[1]);
+  }
+  // Control-plane paths are also ticket-owned; this view is only the skeleton portion.
+  return [...owned]
+    .filter((path) => /^(packages|adapters|suites|fixtures|conformance)\//.test(path))
+    .filter((path) => existsSync(resolve(repositoryRoot, path)))
+    .sort();
+};
 const assertRegularFile = (relativePath) => {
   const absolutePath = resolve(repositoryRoot, relativePath);
   assert.ok(existsSync(absolutePath), `${relativePath} is missing`);
@@ -141,7 +170,13 @@ test("root-private-scripts-and-runnable-surface", () => {
   }
   for (const [path, name] of expectedWorkspaces) {
     const manifest = readJson(`${path}/package.json`);
-    assert.deepEqual(manifest, { name, version: "0.0.0", private: true }, `${path} manifest`);
+    const { scripts, ...identity } = manifest;
+    assert.deepEqual(identity, { name, version: "0.0.0", private: true }, `${path} manifest`);
+    // A workspace may declare exactly one focused lane and nothing else; it never gains
+    // a build, publish, or lifecycle hook without a ticket that owns its manifest.
+    if (scripts !== undefined) {
+      assert.deepEqual(scripts, { test: workspaceTestScript }, `${path} scripts`);
+    }
     for (const field of forbiddenManifestFields) {
       assert.equal(field in manifest, false, `${path} declares ${field}`);
     }
@@ -156,9 +191,21 @@ test("root-private-scripts-and-runnable-surface", () => {
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
-    ...operationalStateFiles
+    ...operationalStateFiles,
+    ...ticketOwnedSkeletonPaths()
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
+});
+
+test("skeleton-source-requires-an-owning-ticket", () => {
+  const owned = ticketOwnedSkeletonPaths();
+  assert.ok(owned.includes("packages/schema/src/metric-registry.ts"), "E0A-001 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/test/metric-registry.test.ts"), "E0A-001 RED file is unclaimed");
+  for (const path of owned) {
+    assert.match(path, /^(packages|adapters|suites|fixtures|conformance)\//, `${path} is outside the skeleton`);
+  }
+  // The claim is by exact path: an unclaimed sibling under an owned directory is not admitted.
+  assert.equal(owned.includes("packages/schema/src/unclaimed.ts"), false);
 });
 
 test("engine-matrix", () => {
