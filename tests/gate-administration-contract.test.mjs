@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,8 +30,27 @@ const fixtureTempPrefix = "aos gate administration";
 const removeTempFixture = (targetPath) => {
   const lexical = resolve(targetPath);
 
-  // Canonicalise the target. A missing path cannot be escaped through and is also nothing
-  // to delete, so it is refused rather than silently passed to rmSync.
+  // The final component must itself be a real directory, never a link. Canonical
+  // containment alone is not enough: a symlink pointing at a legitimate in-temp fixture
+  // resolves to a path that passes every containment check, and deleting through it
+  // destroys the real fixture while the caller believes it removed only its own alias.
+  // lstat does not follow the last component, so this is the one check that can see it.
+  let entry;
+  try {
+    entry = lstatSync(lexical);
+  } catch {
+    throw new Error(`refusing to remove unresolvable fixture path: ${lexical}`);
+  }
+  if (entry.isSymbolicLink()) {
+    throw new Error(`refusing to remove symlinked fixture path: ${lexical}`);
+  }
+  if (!entry.isDirectory()) {
+    throw new Error(`refusing to remove non-directory fixture path: ${lexical}`);
+  }
+
+  // Containment is decided on the CANONICAL path, not the lexical one. resolve() and
+  // relative() only normalise `.`/`..` as text and never read the filesystem, so an
+  // intermediate symlink satisfies both name checks while the bytes live elsewhere.
   let canonical;
   try {
     canonical = realpathSync(lexical);
@@ -39,6 +58,9 @@ const removeTempFixture = (targetPath) => {
     throw new Error(`refusing to remove unresolvable fixture path: ${lexical}`);
   }
 
+  // The temp root is canonicalised too: on macOS /var is a symlink to /private/var, so a
+  // lexical tmpdir() and a realpath'd target share no prefix and every legitimate fixture
+  // would be rejected.
   const tempRoot = realpathSync(resolve(tmpdir()));
   const relToTemp = relative(tempRoot, canonical);
   if (relToTemp === "" || relToTemp.startsWith("..") || isAbsolute(relToTemp)) {
@@ -97,40 +119,80 @@ test("removeTempFixture removes a correctly prefixed temp fixture", () => {
 // delete did not follow the link.
 test("removeTempFixture refuses a prefixed temp symlink whose target escapes the temp root", () => {
   const box = mkdtempSync(join(tmpdir(), "aos-symlink-escape-box"));
-  const victim = mkdtempSync(join(tmpdir(), "aos-victim-"));
-  const outsideVictim = resolve(root, "docs");
+  const outsideVictim = mkdtempSync(join(root, ".aos-escape-victim-"));
+  const payload = join(outsideVictim, "payload.txt");
   const link = join(box, `${fixtureTempPrefix}-escape`);
   try {
+    writeFileSync(payload, "must survive");
     symlinkSync(outsideVictim, link);
-    assert.throws(() => removeTempFixture(link), /refusing to remove non-temp fixture path/);
-    assert.ok(existsSync(outsideVictim), "the repository directory must survive");
-    assert.ok(existsSync(resolve(outsideVictim, "adr")), "its contents must survive");
+    assert.throws(() => removeTempFixture(link), /refusing to remove symlinked fixture path/);
+    // Assert the victim ITSELF and its payload, not some ancestor that would survive
+    // regardless. An ancestor-only assertion passes even when the leaf is destroyed.
+    assert.ok(existsSync(outsideVictim), "the victim directory itself must survive");
+    assert.ok(existsSync(payload), "the victim payload must survive");
+    assert.equal(readFileSync(payload, "utf8"), "must survive");
   } finally {
     rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    rmSync(victim, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(outsideVictim, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses a symlink that aliases a legitimate in-temp fixture", () => {
+  // Canonical containment alone accepts this: the link resolves to a real prefixed fixture
+  // inside tmpdir(). Deleting through it destroys the real fixture while the caller
+  // believes it removed only its own alias. Only the lstat check can see the difference.
+  const realFixture = mkdtempSync(join(tmpdir(), fixtureTempPrefix));
+  const payload = join(realFixture, "payload.txt");
+  const box = mkdtempSync(join(tmpdir(), "aos-alias-box"));
+  const alias = join(box, `${fixtureTempPrefix}-alias`);
+  try {
+    writeFileSync(payload, "must survive");
+    symlinkSync(realFixture, alias);
+    assert.throws(() => removeTempFixture(alias), /refusing to remove symlinked fixture path/);
+    assert.ok(existsSync(realFixture), "the aliased fixture itself must survive");
+    assert.ok(existsSync(payload), "its payload must survive");
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(realFixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   }
 });
 
 test("removeTempFixture refuses when an INTERMEDIATE component symlinks out of the temp root", () => {
   const box = mkdtempSync(join(tmpdir(), "aos-symlink-mid-box"));
-  const escapeRoot = mkdtempSync(join(tmpdir(), "aos-escape-root-"));
-  const outsideDir = resolve(root, "specs");
+  const outsideDir = mkdtempSync(join(root, ".aos-mid-victim-"));
   const midLink = join(box, "mid");
   try {
-    // box/mid -> <repo>/specs, so box/mid/<prefixed> is lexically inside tmpdir() and
-    // carries the prefix, while canonically it is inside the repository.
+    // box/mid -> <outside>, so box/mid/<prefixed> is lexically inside tmpdir() and carries
+    // the prefix, while canonically it lives outside.
     symlinkSync(outsideDir, midLink);
-    const viaMid = join(midLink, `${fixtureTempPrefix}-nested`);
-    mkdirSync(viaMid, { recursive: true });
-    try {
-      assert.throws(() => removeTempFixture(viaMid), /refusing to remove non-temp fixture path/);
-      assert.ok(existsSync(outsideDir), "the repository directory must survive");
-    } finally {
-      rmSync(viaMid, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    }
+    const leafName = `${fixtureTempPrefix}-nested`;
+    const viaMid = join(midLink, leafName);
+    const realLeaf = join(outsideDir, leafName);
+    const payload = join(realLeaf, "payload.txt");
+    mkdirSync(realLeaf, { recursive: true });
+    writeFileSync(payload, "must survive");
+
+    assert.throws(() => removeTempFixture(viaMid), /refusing to remove non-temp fixture path/);
+    // Assert the LEAF and its payload, not the parent. A parent-only assertion passes even
+    // when the leaf is deleted, which is exactly what it is meant to detect.
+    assert.ok(existsSync(realLeaf), "the leaf directory itself must survive");
+    assert.ok(existsSync(payload), "the leaf payload must survive");
+    assert.equal(readFileSync(payload, "utf8"), "must survive");
   } finally {
     rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-    rmSync(escapeRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    rmSync(outsideDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
+});
+
+test("removeTempFixture refuses a non-directory target", () => {
+  const box = mkdtempSync(join(tmpdir(), "aos-file-target-box"));
+  const file = join(box, `${fixtureTempPrefix}-file`);
+  try {
+    writeFileSync(file, "not a directory");
+    assert.throws(() => removeTempFixture(file), /refusing to remove non-directory fixture path/);
+    assert.ok(existsSync(file));
+  } finally {
+    rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   }
 });
 
