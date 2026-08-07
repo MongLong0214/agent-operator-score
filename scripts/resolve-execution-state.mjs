@@ -536,6 +536,21 @@ const extractExactCompletionField = (body) => {
   return { present: true, ok: true, value: matches[0][1] };
 };
 
+/** A well-formed linkage line: exactly one anchored `Ticket: <ID>` with no trailing token. */
+const TICKET_FIELD_RE = /^Ticket:\s*(\S+)\s*$/gm;
+
+/**
+ * Does this body DECLARE ticket linkage, well-formed or not?
+ *
+ * Absence of any `Ticket:` line means the receipt is simply unlinked, which is the common
+ * case for a GitHub full-text search hit that only mentions the substring in prose. A line
+ * that opens with `Ticket:` but does not parse — `Ticket:` with no value, `Ticket:` with
+ * only whitespace, or `Ticket: D0-001 extra` with a trailing token — is a declaration that
+ * fails to state what it declares. Callers must fail closed on that rather than treating it
+ * as unlinked, or a real receipt disappears from evidence behind a typo.
+ */
+const declaresTicketLinkage = (body) => /^Ticket:/m.test(body);
+
 /**
  * Classify a single merged PR body against the `Ticket-Completion:` grammar for
  * ticketId. `Ticket:` remains the sole ticket-linkage field and its meaning is
@@ -3135,34 +3150,36 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     return { ok: false, reason: failures.join("; "), facts: null };
   }
   for (const item of mergedSearch.items) {
-    // The merged-receipt search is GitHub full-text, so it also returns bodies that merely
-    // mention "Ticket:" in prose and carry no structured field at all. Zero structured
-    // fields is that false positive: the PR is simply not linked, so skip it. Two or more
-    // is genuinely duplicated linkage and fails the whole collection closed rather than
-    // being silently skipped, which would let a real completion or contributing merge
-    // quietly vanish from evidence.
+    // Three distinct cases, and conflating any two of them is a fail-closed violation:
     //
-    // The search payload carries the full body, so the unlinked majority is filtered here
-    // before spending a per-PR request on it; only a receipt that actually declares a
-    // structured field is fetched and authenticated below. Skipping that pre-filter costs
-    // one request per search hit and exhausts the total collection budget.
-    // A missing or non-string search body is absence of evidence, not evidence of absence:
-    // fall through to the authoritative per-PR fetch rather than skipping, so a receipt is
-    // never silently dropped because the search payload was incomplete.
-    if (typeof item.body === "string" && [...item.body.matchAll(/^Ticket:\s*(\S+)\s*$/gm)].length === 0) {
-      continue;
-    }
+    //   no `Ticket:` line at all  -> unlinked. The merged-receipt search is GitHub
+    //                                full-text, so it returns bodies that merely mention
+    //                                the substring in prose. Skip; this is the common case.
+    //   a `Ticket:` line that does not parse as exactly one `Ticket: <ID>`
+    //                             -> MALFORMED. `Ticket:`, `Ticket:   ` and
+    //                                `Ticket: D0-001 extra` all declare linkage and all
+    //                                fail to state it. Silently skipping them would let a
+    //                                real receipt vanish behind a typo, so they fail the
+    //                                whole collection closed.
+    //   two or more valid lines   -> duplicated linkage. Also fails closed.
+    //
+    // The search payload carries the full body, so unlinked hits are filtered here before
+    // a per-PR request is spent on them; without that the total collection budget is
+    // exhausted. A missing or non-string search body is absence of evidence rather than
+    // evidence of absence, so it falls through to the authoritative per-PR fetch.
+    if (typeof item.body === "string" && !declaresTicketLinkage(item.body)) continue;
 
     const pull = requireJson(transport, `${repoPath}/pulls/${item.number}`, failures);
     if (!pull?.merged || !pull.merge_commit_sha) continue;
-    const ticketLines = typeof pull.body === "string"
-      ? [...pull.body.matchAll(/^Ticket:\s*(\S+)\s*$/gm)]
-      : [];
-    if (ticketLines.length === 0) continue;
-    if (ticketLines.length > 1) {
+    const body = typeof pull.body === "string" ? pull.body : "";
+    if (!declaresTicketLinkage(body)) continue;
+    const ticketLines = [...body.matchAll(TICKET_FIELD_RE)];
+    if (ticketLines.length !== 1) {
       return {
         ok: false,
-        reason: `duplicated Ticket field on merged PR #${pull.number}`,
+        reason: ticketLines.length === 0
+          ? `malformed Ticket field on merged PR #${pull.number}`
+          : `duplicated Ticket field on merged PR #${pull.number}`,
         facts: null
       };
     }

@@ -1802,6 +1802,26 @@ async function resolveCollectedOnline(collected) {
   });
 }
 
+// A body that OPENS a `Ticket:` line but fails to state a usable value is malformed, not
+// unlinked. Skipping it would let a real receipt disappear behind a typo, so each of these
+// must fail the whole collection closed. Distinguishing this from the unlinked case is the
+// point: absence of any `Ticket:` line is a search false positive and is skipped.
+for (const [label, body] of [
+  ["empty-value", "Ticket:\n"],
+  ["whitespace-only-value", "Ticket:   \n"],
+  ["trailing-extra-token", "Ticket: D0-001 extra\n"]
+]) {
+  test(`collector-fails-closed-on-malformed-ticket-field-${label}`, async () => {
+    const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+    const responses = buildCollectorMergedSearchFixture([
+      { number: 903, merge_commit_sha: "9030903090309030903090309030903090309030", body }
+    ]);
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(collected.ok, false, `${label} must fail closed, not be skipped as unlinked`);
+    assert.match(collected.reason, /malformed Ticket field/i);
+  });
+}
+
 test("collector-skips-search-false-positive-with-no-anchored-ticket-field", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
   // GitHub full-text search matches the bare substring "Ticket:", so it returns merged PRs
