@@ -2,7 +2,7 @@
 
 **HISTORICAL SNAPSHOT — NEVER USE FOR CURRENT READINESS.** This dated reconciliation is excluded from operational-state inputs. Its issue states, branch SHA, and next actions describe only the captured baseline.
 
-This is an audit record, not a product gate, execution packet, acceptance record, or current-state projection. Current readiness comes only from `npm run ops:status -- --strict`. The renderer excludes this ledger from its input set by construction — `historical-ledger-is-ignored` pins that — so no edit to this file can influence resolution.
+This is an audit record, not a product gate, execution packet, acceptance record, or current-state projection. Current readiness follows `AGENTS.md` and, after D0-004 is verified, `npm run ops:status -- --strict`.
 
 ## Verified baseline
 

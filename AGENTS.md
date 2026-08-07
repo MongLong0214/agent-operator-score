@@ -12,11 +12,9 @@ If any item is missing, proposed, stale, ambiguous, or conflicts with a higher a
 
 ## Current operational state
 
-Committed Markdown, issue bodies, issue state, labels, and PR comments do not determine the current ready set. Run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet. Missing or unavailable external facts yield an empty ready set rather than a guess.
+Committed Markdown, issue bodies, issue state, labels, and PR comments do not determine the current ready set. Until D0-004 delivers the Execution State Resolver, only a maintainer-approved exact-base execution packet backed by freshly re-read gate-registry, Git ancestry, GitHub merge/check, dependency, and ownership facts may authorize RED. Missing or unavailable external facts yield an empty ready set.
 
-The roadmap header, this section, `docs/tickets/BOARD.md` generated rows, and the historical ledger banner are **rendered projections** produced by `npm run ops:render`. A projection is never an input to resolution and never overrides resolver state; re-rendering at one head is byte-identical, so drift between a projection and the resolver is a defect rather than a difference of opinion. `docs/decisions/MAINTAINER-GATE-STATUS.md`, dated ledgers, and all other status surfaces remain projections or historical audit records.
-
-Pull requests run offline strict checks only; `dev` pushes run online strict resolution. Bootstrap is disabled once `.github/workflows/operational-state.yml` is present on `dev`; from that point a missing resolver, workflow, or named check fails closed.
+After D0-004 is verified on `dev`, run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet. The roadmap and board remain static dependency and sequencing views; `docs/decisions/MAINTAINER-GATE-STATUS.md`, dated ledgers, and all other status surfaces are projections or historical audit records.
 
 ## Per-ticket workflow
 
