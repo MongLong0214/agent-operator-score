@@ -2,9 +2,6 @@
 
 Status: **STATIC EXECUTION DESIGN — NOT OPERATIONAL AUTHORITY**
 
-<!-- dynamic-state header: rendered by `npm run ops:render`. NOT AUTHORITY, NOT AN INPUT. -->
-Current state comes only from `npm run ops:status -- --strict`. This document is a rendered projection of static sequencing; it is never read back into resolution.
-
 Scope: milestone order, dependency-safe parallel lanes, joins, and agent handoff rules
 
 This static design is subordinate to the product authority chain in `AGENTS.md`:
