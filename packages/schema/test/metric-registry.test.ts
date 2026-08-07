@@ -46,7 +46,8 @@ const REQUIRED_FIELDS = [
   "version",
   "gaming_guard",
   "treatment",
-  "consumer_routes"
+  "consumer_routes",
+  "observation_key"
 ];
 
 const CONSUMERS = [
@@ -224,7 +225,14 @@ describe("metric-registry", () => {
     const zeroVector = vectorOf(zeroed, "M03", "M03-v1-pass");
     zeroVector.inputs = { eligible: true, TP: 0, FP: 0, FN: 0 };
     zeroVector.expected.grader_output = { TP: 0, FP: 0, FN: 0, P: ratio(1, 1), R: ratio(1, 1), F1: ratio(1, 1) };
-    assert.deepEqual(validateMetricRegistry(zeroed).errors, [], "TP=FP=FN=0 must yield P=R=F1=1");
+    const zeroResult = validateMetricRegistry(zeroed);
+    // P=R=F1=1 is derived for the all-zero edge, so no value or grader mismatch is raised;
+    // the fixture is still refused, because an all-zero case cannot serve as the pass vector.
+    assert.deepEqual(
+      zeroResult.errors,
+      ["VECTOR_NOT_REPRESENTATIVE M03-v1-pass does not exercise its pass case"],
+      "TP=FP=FN=0 must yield P=R=F1=1"
+    );
 
     // Missed required ask: recall 0 collapses F1 to 0.
     const missed = vectorOf(registry, "M03", "M03-v1-fail");
@@ -329,6 +337,18 @@ describe("metric-registry", () => {
     });
     assert.deepEqual(zero.expected.derived, { selected_regret: 0, maximum_regret: 0 });
     assert.deepEqual(zero.expected.raw_value, ratio(1, 1));
+
+    // Contract L54: both extrema range over eligible=true rows only. Moving an ineligible
+    // row's utility far outside the eligible range must not shift any derivation.
+    const ineligibleMoved = frozen();
+    ineligibleMoved.route_tables["M10-route-table-v1"].routes.find(
+      (row: any) => row.route_id === "m10-quality-fail"
+    ).route_utility = 99;
+    assert.deepEqual(
+      validateMetricRegistry(ineligibleMoved).errors,
+      [],
+      "an ineligible route must not participate in the regret extrema"
+    );
 
     const unknownTable = frozen();
     vectorOf(unknownTable, "M10", "M10-v1-pass").inputs.route_table_id = "M10-route-table-v9";
@@ -472,5 +492,89 @@ describe("metric-registry", () => {
         }
       }
     }
+  });
+
+  // Regression for the adversarial finding that 25 contract-violating registries all
+  // shipped green. Every entry below is a real contract violation, not a typo; each
+  // must be refused by the validator, not merely by a reader.
+  test("frozen-contract-tamper-resistance", () => {
+    const tampers: [string, (registry: any) => void, string][] = [
+      ["formula rewritten", (r) => { metricOf(r, "M01").per_opportunity_formula = "s = satisfied / (goal_clauses + 1)"; }, "FORMULA"],
+      ["M11 denominator 5", (r) => { metricOf(r, "M11").denominator = "5"; }, "DENOMINATOR"],
+      ["minimum_opportunities zeroed", (r) => { for (const m of r.metrics) m.minimum_opportunities = 0; }, "MINIMUM_OPPORTUNITIES_MISMATCH"],
+      ["precedence reversed", (r) => { metricOf(r, "M01").evidence_precedence = [...metricOf(r, "M01").evidence_precedence].reverse(); }, "EVIDENCE_PRECEDENCE_MISMATCH"],
+      ["operator claim trusted", (r) => { metricOf(r, "M01").confidence.operator_claim = 1; }, "CONFIDENCE_MISMATCH"],
+      ["not_observed floor removed", (r) => { metricOf(r, "M01").confidence.not_observed_below = 0; }, "CONFIDENCE_MISMATCH"],
+      ["routes swapped", (r) => { const a = metricOf(r, "M01"); const b = metricOf(r, "M12"); const t = a.consumer_routes; a.consumer_routes = b.consumer_routes; b.consumer_routes = t; }, "CONSUMER_ROUTES_MISMATCH"],
+      ["M15 routed to the safety gate", (r) => { metricOf(r, "M15").consumer_routes = ["factor.F5", "outcome_index.O", "safety_gate.M19"]; }, "CONSUMER_ROUTES_MISMATCH"],
+      ["M19 averaged into the process index", (r) => { metricOf(r, "M19").aggregation = "opportunity_weighted_mean"; }, "AGGREGATION_MISMATCH"],
+      ["M19 treated as process", (r) => { metricOf(r, "M19").treatment = "process_index"; }, "TREATMENT_MISMATCH"],
+      ["factor reassigned", (r) => { metricOf(r, "M05").factor = "F1"; }, "FACTOR_MISMATCH"],
+      ["registry-level learned weights", (r) => { r.learned_weights = { M01: 0.4 }; }, "REGISTRY_DEAD_FIELD"],
+      ["hidden oracle answer leaked into inputs", (r) => { vectorOf(r, "M01", "M01-v1-pass").inputs.hidden_oracle_answer = "leaked"; }, "VECTOR_INPUTS_INVALID"],
+      ["grader discretion added to expected", (r) => { vectorOf(r, "M01", "M01-v1-pass").expected.grader_discretion = "reviewer call"; }, "VECTOR_DEAD_FIELD"],
+      ["NOT_OBSERVED vector carries a payload", (r) => { vectorOf(r, "M01", "M01-v1-no").expected.grader_output = { satisfied: 2, total: 2 }; }, "NOT_OBSERVED"],
+      ["rational not in lowest terms", (r) => { vectorOf(r, "M01", "M01-v1-partial").expected.raw_value = { n: 2, d: 4 }; }, "RATIONAL_NOT_CANONICAL"],
+      ["rational with negative denominator", (r) => { vectorOf(r, "M01", "M01-v1-partial").expected.raw_value = { n: -1, d: -2 }; }, "RATIONAL_NOT_CANONICAL"],
+      ["pass vector made vacuous", (r) => { const v = vectorOf(r, "M05", "M05-v1-pass"); v.inputs = { eligible: true, TP: 0, FP: 0, FN: 0 }; v.expected.grader_output = { TP: 0, FP: 0, FN: 0 }; }, "VECTOR_NOT_REPRESENTATIVE"],
+      ["M03 precision falsified", (r) => { vectorOf(r, "M03", "M03-v1-partial").expected.grader_output.P = ratio(1, 1); }, "GRADER_OUTPUT_MISMATCH"],
+      ["M03 recall falsified", (r) => { vectorOf(r, "M03", "M03-v1-fail").expected.grader_output.R = ratio(1, 1); }, "GRADER_OUTPUT_MISMATCH"],
+      ["M10 derived regret falsified in grader output", (r) => { vectorOf(r, "M10", "M10-v1-partial").expected.grader_output.selected_regret = 0; }, "GRADER_OUTPUT_MISMATCH"],
+      ["M20 candidate cost vector falsified", (r) => { vectorOf(r, "M20", "M20-v1-partial").expected.grader_output.candidate_cost_vector = { time: 0, tokens: 0, calls: 0, human_minutes: 0 }; }, "GRADER_OUTPUT_MISMATCH"],
+      ["grader output shape replaced", (r) => { vectorOf(r, "M04", "M04-v1-partial").expected.grader_output = { linked: 1, total: 2 }; }, "GRADER_OUTPUT_SHAPE"],
+      ["grader output dropped", (r) => { delete vectorOf(r, "M04", "M04-v1-partial").expected.grader_output; }, "GRADER_OUTPUT_MISSING"],
+      ["shortfall list emptied", (r) => { vectorOf(r, "M04", "M04-v1-partial").expected.grader_output.missing_acceptance_ids = []; }, "GRADER_OUTPUT_MISMATCH"],
+      ["metric version drifted", (r) => { metricOf(r, "M02").version = "metric-scoring-contract-v2"; }, "METRIC_VERSION_MISMATCH"],
+      ["cap raised", (r) => { metricOf(r, "M02").cap = 2; }, "CAP_NOT_ONE"],
+      ["registry contract version drifted", (r) => { r.contract_version = "metric-scoring-contract-v2"; }, "REGISTRY_CONTRACT_VERSION"],
+      ["consumer set removed", (r) => { r.consumers = []; }, "REGISTRY_CONSUMERS_MISSING"],
+      ["metric order shuffled", (r) => { const [a, b] = [r.metrics[3], r.metrics[4]]; r.metrics[3] = b; r.metrics[4] = a; }, "METRIC_ORDER_BROKEN"],
+      ["vector set truncated", (r) => { metricOf(r, "M02").canonical_vectors.pop(); }, "VECTOR_SET_INVALID"],
+      ["NOT_OBSERVED relabelled SCORED", (r) => { vectorOf(r, "M02", "M02-v1-no").expected.state = "SCORED"; }, "VECTOR_"],
+      ["eligibility flag dropped", (r) => { delete vectorOf(r, "M02", "M02-v1-pass").inputs.eligible; }, "VECTOR_"],
+      ["unknown safety state", (r) => { const v = vectorOf(r, "M19", "M19-v1-pass"); v.inputs.worst_state = "S9"; }, "UNKNOWN_SAFETY_STATE"],
+      ["frontier maximum falsified", (r) => { r.frontiers["M20-frontier-v1"].maximum_distance = 4; }, "FRONTIER_MAXIMUM_MISMATCH"],
+      ["numerator key renamed", (r) => { const m = metricOf(r, "M01"); m.observation_key = "total"; }, "VECTOR_INPUTS_INVALID"]
+    ];
+
+    for (const [label, tamper, expectedCode] of tampers) {
+      const registry = frozen();
+      tamper(registry);
+      const result = validateMetricRegistry(registry);
+      assert.equal(result.ok, false, `accepted a tampered registry: ${label}`);
+      assert.ok(
+        result.errors.some((entry) => entry.includes(expectedCode)),
+        `${label} produced ${result.errors.join("; ") || "no error"} and not ${expectedCode}`
+      );
+    }
+  });
+
+  // Contract L79 mandates normalized_value = clamp(raw_value, 0, 1). No canonical vector
+  // sits outside [0,1], so the clamp is only reachable through a tampered raw value.
+  test("normalization-clamps-outside-the-unit-interval", () => {
+    const above = frozen();
+    const high = vectorOf(above, "M01", "M01-v1-pass");
+    high.inputs = { eligible: true, satisfied: 3, denominator: 2 };
+    high.expected.raw_value = ratio(3, 2);
+    high.expected.normalized_value = ratio(3, 2);
+    high.expected.grader_output = { satisfied: 3, total: 2 };
+    const result = validateMetricRegistry(above);
+    assert.equal(result.ok, false, "a normalized value above 1 was accepted");
+    assert.ok(
+      has(result, "VECTOR_VALUE_MISMATCH M01-v1-pass normalized_value must be 1/1"),
+      result.errors.join("; ")
+    );
+
+    const clamped = frozen();
+    const ok = vectorOf(clamped, "M01", "M01-v1-pass");
+    ok.inputs = { eligible: true, satisfied: 3, denominator: 2 };
+    ok.expected.raw_value = ratio(3, 2);
+    ok.expected.normalized_value = ratio(1, 1);
+    ok.expected.grader_output = { satisfied: 3, total: 2 };
+    assert.deepEqual(
+      validateMetricRegistry(clamped).errors,
+      ["VECTOR_NOT_REPRESENTATIVE M01-v1-pass does not exercise its pass case"],
+      "clamped normalization must raise no value mismatch"
+    );
   });
 });

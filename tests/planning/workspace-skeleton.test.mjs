@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, lstatSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { extname, join, relative, resolve } from "node:path";
 import test from "node:test";
@@ -50,18 +51,21 @@ const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"])
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
 
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
-// Only paths an accepted ticket names exactly, and that exist on disk, may sit in the skeleton.
+// Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
+// a claim check, not an acceptance check; ticket readiness stays the resolver's job.
 const ticketOwnedSkeletonPaths = () => {
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const owned = new Set();
   for (const absolutePath of walkFiles(ticketsRoot)) {
-    if (!absolutePath.endsWith(".md")) continue;
+    // Same ticket-file filter the planning validator applies, so this stays a
+    // re-derivation of the same claim set and not a strictly larger one.
+    if (!/^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(asRepositoryRelative(absolutePath))) continue;
     const text = readFileSync(absolutePath, "utf8");
     const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
     for (const line of ownership ? ownership[1].split("\n") : []) {
       const bullet = /^- (.+)$/.exec(line.trim());
       if (!bullet) continue;
-      for (const entry of bullet[1].split("—")[0].split(";")) {
+      for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
         const candidate = entry.trim().replace(/^`|`$/g, "");
         if (sourceExtensions.has(extname(candidate))) owned.add(candidate);
       }
@@ -204,8 +208,82 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   for (const path of owned) {
     assert.match(path, /^(packages|adapters|suites|fixtures|conformance)\//, `${path} is outside the skeleton`);
   }
-  // The claim is by exact path: an unclaimed sibling under an owned directory is not admitted.
-  assert.equal(owned.includes("packages/schema/src/unclaimed.ts"), false);
+  // Bind the derivation to the validator's census; if the two parses ever diverge,
+  // or the gate is removed on either side, this fails.
+  const census = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+    cwd: repositoryRoot,
+    encoding: "utf8"
+  });
+  const reported = /ticket_owned_code_paths=(\S+)/.exec(census);
+  assert.ok(reported, "census does not report ticket_owned_code_paths");
+  assert.deepEqual(reported[1] === "none" ? [] : reported[1].split(","), owned);
+  assert.match(census, / product_code_files=0 /);
+  assert.match(census, / product_code_paths=none /);
+
+  // Selectivity, proven against a real unclaimed sibling rather than a path no
+  // implementation could ever return: writing source no ticket names must fail the census.
+  const intruder = resolve(repositoryRoot, "packages/schema/src/unclaimed-by-any-ticket.ts");
+  assert.equal(existsSync(intruder), false, "fixture path is already occupied");
+  try {
+    writeFileSync(intruder, "export {};\n");
+    assert.equal(
+      ticketOwnedSkeletonPaths().includes("packages/schema/src/unclaimed-by-any-ticket.ts"),
+      false,
+      "an unclaimed sibling under an owned directory was admitted"
+    );
+    let failed;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      failed = caught;
+    }
+    assert.ok(failed, "the census accepted source that no ticket claims");
+    assert.match(failed.stderr, /unallowlisted product code: packages\/schema\/src\/unclaimed-by-any-ticket\.ts/);
+  } finally {
+    rmSync(intruder, { force: true });
+  }
+  assert.equal(existsSync(intruder), false, "fixture was not removed");
+});
+
+// A focused lane that matches no test name exits 0 with zero tests, so a mistyped or
+// stale pattern could be quoted as a passing receipt. Pin the real case count here so a
+// silently empty focused run fails the repository suite.
+test("focused-lane-is-not-silently-empty", () => {
+  // The child must not inherit this runner's test context, or it switches reporters and
+  // emits no summary counts for us to check.
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  delete env.NODE_OPTIONS;
+  const run = (pattern) => execFileSync("npm", ["test", "-w", "@aos/schema", "--", pattern], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env
+  });
+  for (const [pattern, cases] of [["metric-registry", 13]]) {
+    const output = run(pattern);
+    const passed = /^\S* ?pass (\d+)\s*$/m.exec(output);
+    const failed = /^\S* ?fail (\d+)\s*$/m.exec(output);
+    assert.ok(passed && failed, `focused lane ${pattern} reported no counts`);
+    assert.equal(Number(failed[1]), 0, `focused lane ${pattern} has failures`);
+    assert.ok(
+      Number(passed[1]) >= cases,
+      `focused lane ${pattern} ran ${passed[1]} tests and not at least ${cases}`
+    );
+  }
+  // The hazard itself, pinned so it cannot be mistaken for a passing receipt: a pattern
+  // matching no test name still exits 0, running only the test files themselves.
+  const empty = run("pattern-that-matches-no-test-name");
+  const emptyPassed = /^\S* ?pass (\d+)\s*$/m.exec(empty);
+  assert.ok(emptyPassed, "non-matching focused lane reported no counts");
+  assert.ok(
+    Number(emptyPassed[1]) < 13,
+    `a non-matching pattern ran ${emptyPassed[1]} tests, so the count check above proves nothing`
+  );
 });
 
 test("engine-matrix", () => {
