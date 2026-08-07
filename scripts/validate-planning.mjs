@@ -795,9 +795,11 @@ const controlPlaneAllowlist = new Set([
 ]);
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 
-// Product code is admitted only where an accepted atomic ticket claims it by exact path,
-// either as owned scope or as its named RED test file. The ticket is the gate; there is no
-// standing product-code allowlist to edit, so unowned source still fails closed.
+// Product code is admitted only where an atomic ticket claims it by exact path, either as
+// owned scope or as its named RED test file. This is a claim check, not an acceptance
+// check: it proves some ticket owns the file, not that the ticket has passed its gates.
+// Readiness remains the resolver's job. There is no standing product-code allowlist to
+// edit, and unowned source still fails closed.
 const ticketOwnedPaths = new Set();
 for (const path of ticketFiles) {
   let text;
@@ -806,7 +808,7 @@ for (const path of ticketFiles) {
   for (const line of ownership ? ownership[1].split("\n") : []) {
     const bullet = /^- (.+)$/.exec(line.trim());
     if (!bullet) continue;
-    for (const entry of bullet[1].split("—")[0].split(";")) {
+    for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
       const candidate = entry.trim().replace(/^`|`$/g, "");
       if (sourceExtensions.has(extname(candidate))) ticketOwnedPaths.add(candidate);
     }

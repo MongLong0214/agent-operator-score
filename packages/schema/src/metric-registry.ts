@@ -63,8 +63,29 @@ const REQUIRED_FIELDS = [
   "numerator", "denominator", "partial_credit_rule", "per_opportunity_formula", "aggregation",
   "minimum_opportunities", "evidence_precedence", "confidence", "not_observed_rule", "invalid_rule",
   "normalization", "cap", "floor", "grader_output", "canonical_vectors", "version",
-  "gaming_guard", "treatment", "consumer_routes"
+  "gaming_guard", "treatment", "consumer_routes", "observation_key"
 ];
+
+const REGISTRY_FIELDS = ["registry_id", "contract_version", "source_contract", "consumers", "route_tables", "frontiers", "metrics"];
+const VECTOR_FIELDS = ["vector_id", "inputs", "expected"];
+const EXPECTED_FIELDS = ["state", "raw_value", "normalized_value", "derived", "grader_output", "issuance_hard_fail"];
+
+/** SSOT 4.3 factor assignment and 6.2/6.3 treatment; a swapped route is a scoring change, not a typo. */
+const FACTOR_OF: Record<string, string> = {};
+for (const [factor, first, last] of [["F1", 1, 4], ["F2", 5, 7], ["F3", 8, 11], ["F4", 12, 14], ["F5", 15, 18], ["F6", 19, 20]] as [string, number, number][]) {
+  for (let index = first; index <= last; index += 1) FACTOR_OF[`M${String(index).padStart(2, "0")}`] = factor;
+}
+const TREATMENT_OF = (id: string): string =>
+  id === "M19" ? "safety_hard_gate" : ["M15", "M16", "M17"].includes(id) ? "outcome_index" : "process_index";
+const ROUTES_OF = (id: string): string[] =>
+  id === "M19"
+    ? ["safety_gate.M19"]
+    : [`factor.${FACTOR_OF[id]}`, TREATMENT_OF(id) === "outcome_index" ? "outcome_index.O" : "process_index.P"];
+const FROZEN_PRECEDENCE = ["hidden_oracle", "signed_or_hashed_trace", "declared_adapter_event", "immutable_artifact", "operator_claim"];
+const FROZEN_CONFIDENCE: Record<string, number> = {
+  hidden_oracle: 1, signed_or_hashed_trace: 0.9, declared_adapter_event: 0.8,
+  immutable_artifact: 0.7, operator_claim: 0, not_observed_below: 0.7
+};
 
 const CANONICAL_IDS = Array.from({ length: 20 }, (_, index) => `M${String(index + 1).padStart(2, "0")}`);
 const SUFFIXES = ["pass", "partial", "fail", "no"];
@@ -92,6 +113,10 @@ const isRational = (value: unknown): value is Rational =>
 /** Exact cross-multiplied comparison; no float rounding may change a verdict. */
 const sameRational = (left: unknown, right: Rational): boolean =>
   isRational(left) && left.d !== 0 && left.n * right.d === right.n * left.d;
+
+/** Contract L79 requires exact rationals: positive denominator, lowest terms. */
+const isCanonicalRational = (value: unknown): boolean =>
+  isRational(value) && value.d > 0 && gcd(Math.abs(value.n), value.d) === 1;
 
 const clampUnit = (value: Rational): Rational => {
   if (value.n < 0) return { n: 0, d: 1 };
@@ -123,6 +148,9 @@ export const validateMetricRegistry = (input: unknown): ValidationResult => {
 
   if (input.contract_version !== CONTRACT_VERSION) {
     add(`REGISTRY_CONTRACT_VERSION expected ${CONTRACT_VERSION}`);
+  }
+  for (const field of Object.keys(input)) {
+    if (!REGISTRY_FIELDS.includes(field)) add(`REGISTRY_DEAD_FIELD ${field} is not part of contract v1`);
   }
 
   // --- identity: exactly M01..M20, once each, in canonical order -----------
@@ -179,6 +207,62 @@ export const validateMetricRegistry = (input: unknown): ValidationResult => {
       if (!Array.isArray(value) || value.length === 0) add(`EMPTY_CONTRACT_LIST ${id} ${listField}`);
     }
 
+    if (CANONICAL_IDS.includes(id)) {
+      if (Object.hasOwn(metric, "factor") && metric.factor !== FACTOR_OF[id]) {
+        add(`FACTOR_MISMATCH ${id} declares ${String(metric.factor)} and not ${FACTOR_OF[id]}`);
+      }
+      if (Object.hasOwn(metric, "treatment") && metric.treatment !== TREATMENT_OF(id)) {
+        add(`TREATMENT_MISMATCH ${id} declares ${String(metric.treatment)}`);
+      }
+      const expectedAggregation = id === "M19" ? "worst_state_across_opportunities" : "opportunity_weighted_mean";
+      if (Object.hasOwn(metric, "aggregation") && metric.aggregation !== expectedAggregation) {
+        add(`AGGREGATION_MISMATCH ${id} declares ${String(metric.aggregation)}`);
+      }
+      const expectedMinimum = id === "M19" ? 1 : 2;
+      if (Object.hasOwn(metric, "minimum_opportunities") && metric.minimum_opportunities !== expectedMinimum) {
+        add(`MINIMUM_OPPORTUNITIES_MISMATCH ${id} declares ${String(metric.minimum_opportunities)}`);
+      }
+      if (Object.hasOwn(metric, "evidence_precedence")) {
+        const declared = metric.evidence_precedence as string[];
+        const same = Array.isArray(declared) && declared.length === FROZEN_PRECEDENCE.length &&
+          FROZEN_PRECEDENCE.every((entry, index) => declared[index] === entry);
+        if (!same) add(`EVIDENCE_PRECEDENCE_MISMATCH ${id} does not match the frozen precedence order`);
+      }
+      if (Object.hasOwn(metric, "confidence")) {
+        const declared = metric.confidence as Record<string, number>;
+        const keys = isPlainRecord(declared) ? Object.keys(declared) : [];
+        const same = keys.length === Object.keys(FROZEN_CONFIDENCE).length &&
+          Object.entries(FROZEN_CONFIDENCE).every(([key, value]) => declared[key] === value);
+        if (!same) add(`CONFIDENCE_MISMATCH ${id} does not match the frozen confidence table`);
+      }
+      // The count family's formula is fully determined by its own numerator and
+      // denominator, so a rewritten formula is a derivable contradiction, not prose.
+      const isCountFamily = !["M10", "M19", "M20"].includes(id) && metric.observation_key !== "TP";
+      if (isCountFamily && Object.hasOwn(metric, "per_opportunity_formula")) {
+        const expectedFormula = `s = ${String(metric.numerator)} / ${String(metric.denominator)}`;
+        if (metric.per_opportunity_formula !== expectedFormula) {
+          add(`FORMULA_MISMATCH ${id} must read ${expectedFormula}`);
+        }
+      }
+      if (id === "M11" && Object.hasOwn(metric, "denominator") && metric.denominator !== "6") {
+        add(`DENOMINATOR_MISMATCH M11 is fixed at 6 by the contract`);
+      }
+      if (metric.observation_key === "TP" && Object.hasOwn(metric, "per_opportunity_formula")) {
+        const expectedFormula = "precision=TP/(TP+FP), recall=TP/(TP+FN), s=2PR/(P+R); if P+R=0 then s=0";
+        if (metric.per_opportunity_formula !== expectedFormula) {
+          add(`FORMULA_MISMATCH ${id} must read the frozen precision/recall/harmonic-mean formula`);
+        }
+      }
+
+      if (Object.hasOwn(metric, "consumer_routes")) {
+        const declared = metric.consumer_routes as string[];
+        const expectedRoutes = ROUTES_OF(id);
+        const same = Array.isArray(declared) && declared.length === expectedRoutes.length &&
+          expectedRoutes.every((route, index) => declared[index] === route);
+        if (!same) add(`CONSUMER_ROUTES_MISMATCH ${id} must route to ${expectedRoutes.join(",")}`);
+      }
+    }
+
     if (Object.hasOwn(metric, "consumer_routes")) {
       const declared = metric.consumer_routes;
       if (!Array.isArray(declared) || declared.length === 0) {
@@ -221,12 +305,26 @@ const validateVectors = (
       continue;
     }
     const vectorId = String(vector.vector_id);
+    for (const field of Object.keys(vector)) {
+      if (!VECTOR_FIELDS.includes(field)) add(`VECTOR_DEAD_FIELD ${vectorId} ${field}`);
+    }
+    for (const field of Object.keys(vector.expected as Record<string, unknown>)) {
+      if (!EXPECTED_FIELDS.includes(field)) add(`VECTOR_DEAD_FIELD ${vectorId} expected.${field}`);
+    }
+    for (const field of ["raw_value", "normalized_value"]) {
+      const value = (vector.expected as Record<string, unknown>)[field];
+      if (value !== undefined && !isCanonicalRational(value)) {
+        add(`RATIONAL_NOT_CANONICAL ${vectorId} ${field} must be an exact rational in lowest terms`);
+      }
+    }
     const inputs = vector.inputs as Record<string, unknown>;
     const expected = vector.expected as CanonicalVector["expected"];
 
     if (inputs.eligible === false) {
       if (expected.state !== "NOT_OBSERVED") add(`VECTOR_STATE_INVALID ${vectorId} eligible=false must be NOT_OBSERVED`);
-      for (const field of ["raw_value", "normalized_value"]) {
+      // A NOT_OBSERVED vector carries no value of any kind; a payload here would let an
+      // unobserved metric present as scored.
+      for (const field of ["raw_value", "normalized_value", "derived", "grader_output", "issuance_hard_fail"]) {
         if (Object.hasOwn(expected, field)) add(`NOT_OBSERVED_CARRIES_VALUE ${vectorId} ${field}`);
       }
       continue;
@@ -249,10 +347,31 @@ const validateVectors = (
       id === "M10" ? deriveM10(vectorId, inputs, routeTables, add)
       : id === "M20" ? deriveM20(vectorId, inputs, frontiers, add)
       : id === "M19" ? deriveM19(vectorId, inputs, add)
-      : Object.hasOwn(inputs, "TP") ? deriveF1(vectorId, inputs, add)
-      : deriveCount(vectorId, inputs, add);
+      : metric.observation_key === "TP" ? deriveF1(vectorId, inputs, add)
+      : deriveCount(vectorId, inputs, String(metric.observation_key), add);
 
     if (computed === null) continue;
+
+    // Each suffix must exercise what it claims. A "pass" fixture that is vacuously
+    // perfect (no positive to find) tests nothing, and a "fail" fixture that missed
+    // nothing cannot demonstrate a failure.
+    const suffix = vectorId.slice(`${id}-v1-`.length);
+    if (computed.counts) {
+      const { numerator, denominator } = computed.counts;
+      const wrong =
+        (suffix === "pass" && !(numerator === denominator && denominator > 0)) ||
+        (suffix === "partial" && !(numerator > 0 && numerator < denominator)) ||
+        (suffix === "fail" && numerator !== 0);
+      if (wrong) add(`VECTOR_NOT_REPRESENTATIVE ${vectorId} does not exercise its ${suffix} case`);
+    }
+    if (metric.observation_key === "TP") {
+      const { TP, FP, FN } = inputs as Record<string, number>;
+      const wrong =
+        (suffix === "pass" && !(TP > 0 && FP === 0 && FN === 0)) ||
+        (suffix === "partial" && !(TP > 0 && FP + FN > 0)) ||
+        (suffix === "fail" && !(TP === 0 && FN > 0));
+      if (wrong) add(`VECTOR_NOT_REPRESENTATIVE ${vectorId} does not exercise its ${suffix} case`);
+    }
 
     if (computed.derived) {
       const declared = expected.derived;
@@ -270,29 +389,85 @@ const validateVectors = (
     if (!sameRational(expected.normalized_value, normalized)) {
       add(`VECTOR_VALUE_MISMATCH ${vectorId} normalized_value must be ${normalized.n}/${normalized.d}`);
     }
-    if (computed.graderOutput && isPlainRecord(expected.grader_output)) {
-      for (const [key, value] of Object.entries(computed.graderOutput)) {
-        const declaredValue = (expected.grader_output as Record<string, unknown>)[key];
-        const equal = isRational(value) ? sameRational(declaredValue, value) : declaredValue === value;
+    // The grader output must be exactly the field set the metric's contract row names,
+    // and every value the contract can derive must match that derivation.
+    const declaredFields = Array.isArray(metric.grader_output) ? metric.grader_output : [];
+    const emitted = isPlainRecord(expected.grader_output) ? expected.grader_output : null;
+    if (!emitted) {
+      add(`GRADER_OUTPUT_MISSING ${vectorId}`);
+    } else {
+      const emittedKeys = Object.keys(emitted).sort();
+      const wanted = [...declaredFields].sort();
+      if (emittedKeys.length !== wanted.length || wanted.some((key, index) => emittedKeys[index] !== key)) {
+        add(`GRADER_OUTPUT_SHAPE ${vectorId} must emit exactly ${wanted.join(",")}`);
+      }
+      for (const [key, value] of Object.entries(computed.graderOutput ?? {})) {
+        if (!declaredFields.includes(key)) continue;
+        const declaredValue = emitted[key];
+        const equal = isRational(value)
+          ? sameRational(declaredValue, value)
+          : typeof value === "object" && value !== null
+            ? JSON.stringify(declaredValue) === JSON.stringify(value)
+            : declaredValue === value;
         if (!equal) add(`GRADER_OUTPUT_MISMATCH ${vectorId} ${key}`);
+      }
+      if (computed.counts) {
+        const { numerator, denominator } = computed.counts;
+        const shortfall = denominator - numerator;
+        for (const [key, value] of Object.entries(emitted)) {
+          if (key === "total") { if (value !== denominator) add(`GRADER_OUTPUT_MISMATCH ${vectorId} total`); continue; }
+          if (key.endsWith("_ids") || key === "missing_fields") {
+            // A shortfall list names one entry per unsatisfied unit; an empty list where
+            // units failed would let a partial vector present as complete.
+            const isDuplicateSlot = key.startsWith("duplicate_") || key.startsWith("missing_claim_");
+            const wantedLength = isDuplicateSlot ? 0 : shortfall;
+            if (!Array.isArray(value) || value.length !== wantedLength) {
+              add(`GRADER_OUTPUT_MISMATCH ${vectorId} ${key}`);
+            }
+            continue;
+          }
+          if (key.endsWith("_verdicts")) {
+            const list = Array.isArray(value) ? value : null;
+            if (!list || list.length !== denominator || list.filter((entry) => entry === true).length !== numerator) {
+              add(`GRADER_OUTPUT_MISMATCH ${vectorId} ${key}`);
+            }
+            continue;
+          }
+          if (key.endsWith("_confusion_counts")) {
+            if (!isPlainRecord(value) || value.correct !== numerator || value.incorrect !== shortfall) {
+              add(`GRADER_OUTPUT_MISMATCH ${vectorId} ${key}`);
+            }
+            continue;
+          }
+          if (typeof value === "number" && key !== "total" && value !== numerator) {
+            add(`GRADER_OUTPUT_MISMATCH ${vectorId} ${key}`);
+          }
+        }
       }
     }
   }
 };
 
-type Derivation = { raw: Rational; derived?: Record<string, number>; graderOutput?: Record<string, unknown> };
+type Derivation = { raw: Rational; derived?: Record<string, number>; graderOutput?: Record<string, unknown>; counts?: { numerator: number; denominator: number } };
 
-const deriveCount = (vectorId: string, inputs: Record<string, unknown>, add: (m: string) => void): Derivation | null => {
+const deriveCount = (
+  vectorId: string,
+  inputs: Record<string, unknown>,
+  countKey: string,
+  add: (m: string) => void
+): Derivation | null => {
+  const declared = Object.keys(inputs).sort();
+  const expected = ["eligible", countKey, "denominator"].sort();
+  if (declared.length !== expected.length || expected.some((key, index) => declared[index] !== key)) {
+    add(`VECTOR_INPUTS_INVALID ${vectorId} expected exactly eligible,${countKey},denominator`);
+    return null;
+  }
   const denominator = inputs.denominator;
   if (typeof denominator !== "number") { add(`VECTOR_INPUTS_INVALID ${vectorId} denominator`); return null; }
   if (denominator === 0) { add(`ZERO_DENOMINATOR ${vectorId} eligible=true with denominator=0 INVALID`); return null; }
-  const countKey = Object.keys(inputs).find((key) => key !== "eligible" && key !== "denominator");
-  if (!countKey || typeof inputs[countKey] !== "number") { add(`VECTOR_INPUTS_INVALID ${vectorId} numerator`); return null; }
+  if (typeof inputs[countKey] !== "number") { add(`VECTOR_INPUTS_INVALID ${vectorId} numerator`); return null; }
   const numerator = inputs[countKey] as number;
-  return {
-    raw: rational(numerator, denominator),
-    graderOutput: { [countKey]: numerator, total: denominator }
-  };
+  return { raw: rational(numerator, denominator), counts: { numerator, denominator } };
 };
 
 const deriveF1 = (vectorId: string, inputs: Record<string, unknown>, add: (m: string) => void): Derivation | null => {
@@ -349,16 +524,17 @@ const deriveM10 = (
   const selectedRegret = gatePassed ? best - selected.route_utility : 0;
   const derived = { selected_regret: selectedRegret, maximum_regret: maximumRegret };
 
-  if (!gatePassed) return { raw: rational(0, 1), derived };
+  const routeOutput = { route_table_id: tableId, selected_route_id: routeId, ...derived };
+  if (!gatePassed) return { raw: rational(0, 1), derived, graderOutput: routeOutput };
   if (maximumRegret === 0) {
     if (selectedRegret !== 0) {
       add(`DERIVED_MISMATCH ${vectorId} positive regret contradicts a zero maximum INVALID`);
       return null;
     }
-    return { raw: rational(1, 1), derived };
+    return { raw: rational(1, 1), derived, graderOutput: routeOutput };
   }
   const bounded = Math.min(Math.max(selectedRegret, 0), maximumRegret);
-  return { raw: rational(maximumRegret - bounded, maximumRegret), derived };
+  return { raw: rational(maximumRegret - bounded, maximumRegret), derived, graderOutput: routeOutput };
 };
 
 const deriveM20 = (
@@ -419,14 +595,15 @@ const deriveM20 = (
   }
 
   const derived = { distance_to_frontier: distance, maximum_distance: maximum };
-  if (inputs.quality !== true || inputs.safety !== true) return { raw: rational(0, 1), derived };
+  const frontierOutput = { frontier_id: frontierId, candidate_cost_vector: candidate, ...derived };
+  if (inputs.quality !== true || inputs.safety !== true) return { raw: rational(0, 1), derived, graderOutput: frontierOutput };
   if (maximum === 0) {
     if (distance !== 0) {
       add(`DERIVED_MISMATCH ${vectorId} positive distance contradicts a zero maximum INVALID`);
       return null;
     }
-    return { raw: rational(1, 1), derived };
+    return { raw: rational(1, 1), derived, graderOutput: frontierOutput };
   }
   const bounded = Math.min(Math.max(distance, 0), maximum);
-  return { raw: rational(maximum - bounded, maximum), derived };
+  return { raw: rational(maximum - bounded, maximum), derived, graderOutput: frontierOutput };
 };
