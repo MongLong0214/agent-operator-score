@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import * as doctorModule from "../src/doctor-contract.ts";
 import { validateDoctorOutput } from "../src/doctor-contract.ts";
@@ -14,6 +14,7 @@ const repositoryRoot = resolve(here, "../../..");
 const contractPath = resolve(repositoryRoot, "specs/doctor-output.v0.json");
 const matrixPath = resolve(repositoryRoot, "specs/adapter-capabilities.v0.json");
 const sourcePath = resolve(here, "../src/doctor-contract.ts");
+const capabilitySourcePath = resolve(here, "../src/capability.ts");
 // The corpus is read from the directory the frozen document names, so a document that points
 // somewhere else stops finding its own canonical reports.
 const fixtureDirectory = resolve(
@@ -29,6 +30,30 @@ const corpusOf = (text: Record<string, string>): Record<string, unknown> =>
     try { return [name, JSON.parse(entry)]; } catch { return [name, entry]; }
   }));
 const fixtureText: Record<string, string> = readCorpusText(fixtureDirectory);
+
+// Two small derivations deliberately accept their inputs from the validated matrix rather than
+// from the frozen v0 corpus. The sibling currently supplies every source class and only null or
+// text proofs, which cannot distinguish their boundary behavior. Expose only those local
+// derivations from a disposable source copy so their contracts are exercised without widening
+// this ticket's one-symbol public API.
+const withDoctorInternals = async (
+  assertInternals: (internals: {
+    observationsOf: (runtimeId: string, view: { rows: any[] }) => any[];
+    sourceClassInventory: (observations: { source_class: string }[]) => string[];
+  }) => void | Promise<void>
+) => {
+  const directory = mkdtempSync(join(tmpdir(), "aos-doctor-internals-"));
+  try {
+    writeFileSync(join(directory, "capability.ts"), readFileSync(capabilitySourcePath, "utf8"));
+    writeFileSync(
+      join(directory, "doctor-contract.ts"),
+      `${readFileSync(sourcePath, "utf8")}\nexport { observationsOf, sourceClassInventory };\n`
+    );
+    await assertInternals(await import(pathToFileURL(join(directory, "doctor-contract.ts")).href));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+};
 
 // specs/doctor-output.v0.json freezes the SSOT §9.2 "Adapter acceptance" paragraph: the output
 // `aos doctor --capabilities --runtime <runtime>` must produce, the four verdicts and their
@@ -454,6 +479,24 @@ describe("doctor-contract", () => {
     assert.equal(rejected.exit_code, 30);
     assert.deepEqual(modeRow(doc, "IMPORTED_SESSION").source_clause, IMPORTED_CLAUSE);
     assert.deepEqual(modeRow(doc, "VERIFIED_ASSESSMENT").source_clause, VERIFIED_CLAUSE);
+  });
+
+  test("invalid-assessment-mode-stops-before-projection", () => {
+    const report = fixtureOf("complete");
+    report.assessment_mode = "PROBABLY_CONTROLLED";
+
+    // validateReport cannot derive a projection for an unknown mode. It must return as soon as
+    // it records that defect; continuing would add a misleading projection mismatch to the
+    // one error the malformed report actually caused.
+    const result = validate(report, frozen(), frozenMatrix());
+    assert.deepEqual(result.errors, [
+      "UNKNOWN_ASSESSMENT_MODE PROBABLY_CONTROLLED is outside the frozen SSOT 9.2 session classes"
+    ]);
+    assert.equal(result.ok, false);
+    assert.equal(result.verdict, "SCORE_BLOCKED");
+    assert.equal(result.exit_code, 30);
+    assert.deepEqual(result.reasons, []);
+    assert.deepEqual(result.human_projection, []);
   });
 
   // AC-E0B-003-5
@@ -1433,46 +1476,47 @@ describe("doctor-contract", () => {
     }
   });
 
-  // The digest's source-class inventory is derived, and the mutation sweep records that the
-  // derivation currently cannot be told apart from a constant: every source class occurs for
-  // every runtime, so `===` and `!==` inside it return the same three values. That equivalence
-  // is a property of the sibling matrix, not of this module, and it will stop holding the
-  // moment E0B-001 gives a runtime a narrower set of sources. This case fails when it does.
-  test("digest-source-class-inventory-covers-every-class", () => {
-    const doc = frozen();
-    const matrix = frozenMatrix();
-    const validated = validateCapabilityMatrix(matrix);
-    assert.deepEqual(validated.errors, []);
-    const rows: any[] = validated.rows;
+  test("empty-derivation-proof-is-preserved", async () => {
+    await withDoctorInternals(({ observationsOf }) => {
+      const [observation] = observationsOf("codex", {
+        rows: [{
+          event_group: "workspace_diff",
+          ordinal: 5,
+          source_row: "workspace diff",
+          contract: "DERIVED",
+          requirement_scope: "DERIVED",
+          missing_effect: "run invalid",
+          missing_effects: ["RUN_INVALID"],
+          affected_metrics: [],
+          runtimes: {
+            codex: {
+              status: "UNAVAILABLE",
+              source_class: "RUNNER_DERIVED",
+              evidence_locator: "runner snapshot",
+              derivation_proof: ""
+            }
+          }
+        }]
+      });
+      assert.equal(observation.derivation_proof, "",
+        "an explicitly blank derivation proof is distinct from an absent proof");
+    });
+  });
 
-    for (const runtimeId of RUNTIME_IDS) {
-      const used = rows.map((row) => row.runtimes[runtimeId].source_class);
-      assert.deepEqual(
-        SOURCE_CLASSES.filter((sourceClass) => used.includes(sourceClass)),
-        SOURCE_CLASSES,
-        `${runtimeId} no longer uses every source class, so the derived inventory is no longer constant`
-      );
-      // The other half of the same invariant: no class is used by every cell either, which is
-      // what makes the negated predicate return the same three values today.
-      for (const sourceClass of SOURCE_CLASSES) {
-        assert.ok(used.some((entry) => entry !== sourceClass), `${runtimeId} ${sourceClass}`);
-      }
-    }
-
-    // So every canonical report reports the same inventory, and it is still recomputed rather
-    // than read: a report that narrows it is rejected.
-    for (const reportId of CANONICAL_REPORT_IDS) {
-      assert.deepEqual(fixtureOf(reportId).capability_digest.source_class, SOURCE_CLASSES, reportId);
-    }
-    const narrowed = fixtureOf("complete");
-    narrowed.capability_digest.source_class = ["PRIMARY", "SECONDARY"];
-    assert.equal(
-      messageFor(validate(narrowed, doc, matrix), "DIGEST_SOURCE_CLASS_MISMATCH"),
-      "DIGEST_SOURCE_CLASS_MISMATCH derives PRIMARY,SECONDARY,RUNNER_DERIVED"
-    );
-    const reorderedInventory = fixtureOf("complete");
-    reorderedInventory.capability_digest.source_class = [...SOURCE_CLASSES].reverse();
-    assert.ok(has(validate(reorderedInventory, doc, matrix), "DIGEST_SOURCE_CLASS_MISMATCH"));
+  // The frozen matrix happens to exercise every source class for every runtime. That made the
+  // old case a claim about the sibling's present contents, not a test of this derivation: both
+  // deleting the filter and inverting its predicate still returned all three classes. Exercise
+  // the inventory at its actual boundary instead.
+  test("digest-source-class-inventory-selects-only-observed-classes", async () => {
+    await withDoctorInternals(({ sourceClassInventory }) => {
+      assert.deepEqual(sourceClassInventory([{ source_class: "PRIMARY" }]), ["PRIMARY"]);
+      assert.deepEqual(sourceClassInventory([
+        { source_class: "PRIMARY" }, { source_class: "RUNNER_DERIVED" }
+      ]), ["PRIMARY", "RUNNER_DERIVED"]);
+      assert.deepEqual(sourceClassInventory([
+        { source_class: "RUNNER_DERIVED" }, { source_class: "SECONDARY" }, { source_class: "PRIMARY" }
+      ]), SOURCE_CLASSES, "the inventory is canonical-order, not observation-order");
+    });
   });
 
   // The pin whose input was free. The two derivation proofs are pinned against the matrix cells
@@ -1653,6 +1697,28 @@ describe("doctor-contract", () => {
       assert.equal(accepted.exit_code === 0, accepted.verdict === "COMPLETE", reportId);
       assert.equal(accepted.exit_code, EXIT_CODES[accepted.verdict], reportId);
     }
+  });
+
+  test("invalid-canonical-report-fails-closed-without-throwing", () => {
+    const invalidCorpus = withFixture("complete", (canonical) => {
+      canonical.assessment_mode = "PROBABLY_CONTROLLED";
+    });
+    let result!: ReturnType<typeof validate>;
+
+    // Canonical fixtures are inputs too. Once one cannot be derived, it contributes named
+    // contract errors and no verdict; it must never fall through to `derived.verdict` and throw.
+    assert.doesNotThrow(() => {
+      result = validate(fixtureOf("complete"), frozen(), frozenMatrix(), invalidCorpus);
+    });
+    assert.deepEqual(result.errors, [
+      "CONTRACT_CANONICAL_REPORT_INVALID complete UNKNOWN_ASSESSMENT_MODE PROBABLY_CONTROLLED is outside the frozen SSOT 9.2 session classes",
+      "CONTRACT_VERDICT_UNEXERCISED COMPLETE is the verdict of no canonical report"
+    ]);
+    assert.equal(result.ok, false);
+    assert.equal(result.verdict, "SCORE_BLOCKED");
+    assert.equal(result.exit_code, 30);
+    assert.deepEqual(result.reasons, []);
+    assert.deepEqual(result.human_projection, []);
   });
 
   // Nine `statement` fields — two assessment modes, four verdicts, three reason codes — are
