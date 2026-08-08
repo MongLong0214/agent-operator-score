@@ -1,0 +1,240 @@
+{
+  "contract_id": "doctor-output.v0",
+  "contract_version": "doctor-output-contract-v0",
+  "source_authority": "docs/north-star/agent-operator-score-ssot-v1.0.md#9.2",
+  "capability_contract_id": "adapter-capabilities.v0",
+  "capability_contract_version": "adapter-capability-contract-v0",
+  "acceptance_clause": "aos doctor --capabilities --runtime <runtime>는 위 matrix의 실제 상태와 근거 source를 출력해야 한다.",
+  "no_silent_estimation_clause": "native event가 없다는 이유로 조용히 추정하지 않는다. DERIVED 근거가 없으면 UNAVAILABLE이다.",
+  "not_user_failure_clause": "adapter coverage 부족을 사용자 능력 부족으로 해석하지 않는다.",
+  "declared_only_statement": "A doctor report is a projection of the frozen capability matrix, not a probe of an installed runtime. Status, source class, evidence locator, missing effect, digest coverage, verdict, exit code, reason order and every projection line are recomputed from specs/adapter-capabilities.v0.json and compared. Three inputs are declared and unverifiable here: assessment_mode names the session the caller asked about, and runtime_version, protocol_or_schema_version and adapter_version are the installed versions the caller reports, checked for shape only. The evidence locator is proved to reproduce the frozen matrix cell, never proved to name a source that exists or was read.",
+  "command_template": "aos doctor --capabilities --runtime <runtime>",
+  "runtime_ids": [
+    "codex",
+    "claude-code"
+  ],
+  "capability_digest_fields": [
+    "runtime_version",
+    "protocol_or_schema_version",
+    "adapter_version",
+    "source_class",
+    "supported_event_groups",
+    "known_missing_events"
+  ],
+  "declared_digest_fields": [
+    "runtime_version",
+    "protocol_or_schema_version",
+    "adapter_version"
+  ],
+  "derived_digest_fields": [
+    "source_class",
+    "supported_event_groups",
+    "known_missing_events"
+  ],
+  "source_classes": [
+    "PRIMARY",
+    "SECONDARY",
+    "RUNNER_DERIVED"
+  ],
+  "version_token_max_chars": 64,
+  "report_fields": [
+    "contract_id",
+    "contract_version",
+    "command",
+    "runtime_id",
+    "assessment_mode",
+    "capability_digest",
+    "observations",
+    "verdict",
+    "exit_code",
+    "reasons",
+    "human_projection"
+  ],
+  "observation_fields": [
+    "event_group",
+    "ordinal",
+    "source_row",
+    "contract",
+    "requirement_scope",
+    "status",
+    "source_class",
+    "evidence_locator",
+    "derivation_proof",
+    "missing_effect",
+    "missing_effects",
+    "affected_metrics"
+  ],
+  "event_groups": [
+    "run_lifecycle",
+    "runtime_identity",
+    "user_instruction",
+    "tool_call",
+    "workspace_diff",
+    "evidence_claim",
+    "approval_safety",
+    "context_selection",
+    "retrieval_memory",
+    "delegation_handoff",
+    "plan_state",
+    "token_cost",
+    "human_active_time",
+    "actor_attribution"
+  ],
+  "unconditional_required_event_groups": [
+    "run_lifecycle",
+    "runtime_identity",
+    "user_instruction",
+    "tool_call",
+    "evidence_claim",
+    "approval_safety",
+    "actor_attribution"
+  ],
+  "derivation_proofs": [
+    {
+      "event_group": "workspace_diff",
+      "proof": "recompute the workspace diff and every artifact digest from the pre-run and post-run runner filesystem snapshots, and reject the reconstruction when a snapshot pair is missing"
+    },
+    {
+      "event_group": "plan_state",
+      "proof": "reconstruct plan, state transition, checkpoint and stall events from the runner state artifacts and the runner watchdog timeline, and reject the reconstruction when the artifact chain is incomplete"
+    }
+  ],
+  "assessment_modes": [
+    {
+      "mode_id": "VERIFIED_ASSESSMENT",
+      "ordinal": 1,
+      "source_clause": "Verified Assessment: AOS controlled wrapper가 시작부터 종료까지 감싼 세션만 공식 AOS-Coding P0 발급 가능",
+      "statement": "The caller reports a session the AOS controlled wrapper wrapped from start to end. This contract records that claim and does not verify it; deciding it needs a trace and belongs to session-class.v0."
+    },
+    {
+      "mode_id": "IMPORTED_SESSION",
+      "ordinal": 2,
+      "source_clause": "Imported Session: 기존 Codex·Claude Code 기록의 사후 분석은 DIAGNOSTIC ONLY",
+      "statement": "The caller reports a post-hoc Codex or Claude Code record. SSOT 9.2 admits such a session only as DIAGNOSTIC ONLY, so no official AOS-Coding P0 may be issued from it however complete the adapter's capability is."
+    }
+  ],
+  "verdicts": [
+    {
+      "verdict_id": "SCORE_BLOCKED",
+      "ordinal": 1,
+      "source_clause": "REQUIRED: scored run에 반드시 필요. 누락 시 관련 metric 또는 전체 점수 차단",
+      "statement": "The adapter cannot observe an event group whose absence blocks the run or the score, so no AOS-Coding P0 can be issued until the capability is restored. This is an adapter limitation and never a user failure.",
+      "predicate": "at least one event group is UNAVAILABLE and its 누락 처리 effects do not fall to NOT OBSERVED",
+      "exit_code": 30
+    },
+    {
+      "verdict_id": "IMPORTED_ONLY",
+      "ordinal": 2,
+      "source_clause": "Imported Session: 기존 Codex·Claude Code 기록의 사후 분석은 DIAGNOSTIC ONLY",
+      "statement": "The adapter's capability is sufficient, but the session the caller named is an imported record, so the output is DIAGNOSTIC ONLY.",
+      "predicate": "no such group is UNAVAILABLE and the report declares an imported session",
+      "exit_code": 20
+    },
+    {
+      "verdict_id": "DEGRADED",
+      "ordinal": 3,
+      "source_clause": "UNAVAILABLE: adapter가 관찰할 수 없음. 관련 metric은 NOT OBSERVED",
+      "statement": "One or more event groups are unobservable and their metrics fall to NOT OBSERVED. A score may still be issued, with those metrics outside the eligibility denominator rather than scored as failures.",
+      "predicate": "no such group is UNAVAILABLE, the report declares a controlled assessment, and at least one event group is UNAVAILABLE and falls to NOT OBSERVED",
+      "exit_code": 10
+    },
+    {
+      "verdict_id": "COMPLETE",
+      "ordinal": 4,
+      "source_clause": "Verified Assessment: AOS controlled wrapper가 시작부터 종료까지 감싼 세션만 공식 AOS-Coding P0 발급 가능",
+      "statement": "Every event group of the frozen matrix is observable at its declared status and the caller named a controlled assessment, so nothing in the adapter's capability stands between this runtime and an official AOS-Coding P0.",
+      "predicate": "no event group is UNAVAILABLE and the report declares a controlled assessment",
+      "exit_code": 0
+    }
+  ],
+  "reason_codes": [
+    {
+      "reason_code": "BLOCKING_GROUP_UNAVAILABLE",
+      "ordinal": 1,
+      "verdict_id": "SCORE_BLOCKED",
+      "statement": "Reported once per unobservable event group whose 누락 처리 column blocks the run, blocks the score or withholds it.",
+      "predicate": "one event group is UNAVAILABLE and its 누락 처리 effects do not fall to NOT OBSERVED"
+    },
+    {
+      "reason_code": "IMPORTED_SESSION_DIAGNOSTIC_ONLY",
+      "ordinal": 2,
+      "verdict_id": "IMPORTED_ONLY",
+      "statement": "Reported once when the caller named an imported session.",
+      "predicate": "the report declares an imported session, which SSOT 9.2 admits only as DIAGNOSTIC ONLY"
+    },
+    {
+      "reason_code": "DEGRADED_GROUP_UNAVAILABLE",
+      "ordinal": 3,
+      "verdict_id": "DEGRADED",
+      "statement": "Reported once per unobservable event group whose 누락 처리 column falls to NOT OBSERVED.",
+      "predicate": "one event group is UNAVAILABLE and its 누락 처리 effects fall to NOT OBSERVED"
+    }
+  ],
+  "matrix_variants": [
+    {
+      "variant_id": "as-declared",
+      "ordinal": 1,
+      "source_clause": "aos doctor --capabilities --runtime <runtime>는 위 matrix의 실제 상태와 근거 source를 출력해야 한다.",
+      "unproven_derivations": []
+    },
+    {
+      "variant_id": "plan-state-derivation-unproven",
+      "ordinal": 2,
+      "source_clause": "native event가 없다는 이유로 조용히 추정하지 않는다. DERIVED 근거가 없으면 UNAVAILABLE이다.",
+      "unproven_derivations": [
+        "plan_state"
+      ]
+    },
+    {
+      "variant_id": "workspace-diff-derivation-unproven",
+      "ordinal": 3,
+      "source_clause": "native event가 없다는 이유로 조용히 추정하지 않는다. DERIVED 근거가 없으면 UNAVAILABLE이다.",
+      "unproven_derivations": [
+        "workspace_diff"
+      ]
+    },
+    {
+      "variant_id": "both-derivations-unproven",
+      "ordinal": 4,
+      "source_clause": "native event가 없다는 이유로 조용히 추정하지 않는다. DERIVED 근거가 없으면 UNAVAILABLE이다.",
+      "unproven_derivations": [
+        "workspace_diff",
+        "plan_state"
+      ]
+    }
+  ],
+  "canonical_fixture_directory": "fixtures/doctor",
+  "canonical_fixture_name_template": "<report_id>.json",
+  "canonical_reports": [
+    {
+      "report_id": "complete",
+      "ordinal": 1,
+      "matrix_variant": "as-declared"
+    },
+    {
+      "report_id": "degraded",
+      "ordinal": 2,
+      "matrix_variant": "plan-state-derivation-unproven"
+    },
+    {
+      "report_id": "blocked",
+      "ordinal": 3,
+      "matrix_variant": "workspace-diff-derivation-unproven"
+    },
+    {
+      "report_id": "imported-only",
+      "ordinal": 4,
+      "matrix_variant": "as-declared"
+    },
+    {
+      "report_id": "imported-and-degraded",
+      "ordinal": 5,
+      "matrix_variant": "plan-state-derivation-unproven"
+    },
+    {
+      "report_id": "blocked-and-imported",
+      "ordinal": 6,
+      "matrix_variant": "both-derivations-unproven"
+    }
+  ]
+}
