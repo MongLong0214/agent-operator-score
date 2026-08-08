@@ -14,6 +14,7 @@ Specify capability doctor output and verdict fixtures. Deliver only the bounded 
 ## Exact ownership
 
 - specs/doctor-output.v0.json; fixtures/doctor/*.json; packages/schema/src/doctor-contract.ts — validateDoctorOutput
+- Coordinated census amendment, owner-authorised 2026-08-08 under the precedent E0A-001 set: tests/planning-contract.test.mjs; tests/planning/workspace-skeleton.test.mjs — ticketDeclaredFixtureDirectories. Unlike the E0B-001 and E0B-002 bullets this amendment is **not limited to census constants**: it adds a new governance rule. `ticketDeclaredFixtureDirectories` in tests/planning/workspace-skeleton.test.mjs derives the admitted fixture directories from every ticket's declared globs and replaces the single hardcoded `fixtures/operational-state` branch, so it changes how the whole repository admits fixture directories and not only how this ticket's own files are counted. A ticket that declares a fixture glob admits that directory; a ticket that stops declaring one stops admitting it. The census constants the amendment also moves are the ticket-owned path list and file count in tests/planning-contract.test.mjs and the doctor-contract focused-lane count in tests/planning/workspace-skeleton.test.mjs.
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions

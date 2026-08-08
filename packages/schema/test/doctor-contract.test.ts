@@ -1,7 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as doctorModule from "../src/doctor-contract.ts";
@@ -17,8 +18,17 @@ const sourcePath = resolve(here, "../src/doctor-contract.ts");
 // somewhere else stops finding its own canonical reports.
 const fixtureDirectory = resolve(
   repositoryRoot, JSON.parse(readFileSync(contractPath, "utf8")).canonical_fixture_directory);
-const fixtureText: Record<string, string> = Object.fromEntries(
-  readdirSync(fixtureDirectory).sort().map((name) => [name, readFileSync(resolve(fixtureDirectory, name), "utf8")]));
+const readCorpusText = (directory: string): Record<string, string> => Object.fromEntries(
+  readdirSync(directory).sort().map((name) => [name, readFileSync(resolve(directory, name), "utf8")]));
+// A file the manifest does not declare is an error whatever it contains, so an unparseable one
+// enters the corpus as its own raw text and reaches the contract. Parsing the directory eagerly
+// instead killed the lane with a JSON.parse SyntaxError, which does fail closed but not by the
+// named case the corpus rule claims; see `a-file-that-is-not-json-is-an-undeclared-fixture`.
+const corpusOf = (text: Record<string, string>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(text).map(([name, entry]) => {
+    try { return [name, JSON.parse(entry)]; } catch { return [name, entry]; }
+  }));
+const fixtureText: Record<string, string> = readCorpusText(fixtureDirectory);
 
 // specs/doctor-output.v0.json freezes the SSOT §9.2 "Adapter acceptance" paragraph: the output
 // `aos doctor --capabilities --runtime <runtime>` must produce, the four verdicts and their
@@ -32,8 +42,7 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 // Every canonical report is a file in fixtures/doctor holding exactly what the command prints.
 // The corpus handed to the contract is the directory listing, so a stray file is an error and a
 // missing one is an error; there is no second copy of a report anywhere to drift.
-const corpus = () => Object.fromEntries(
-  Object.entries(fixtureText).map(([name, text]) => [name, JSON.parse(text)]));
+const corpus = () => corpusOf(fixtureText);
 const fixtureOf = (reportId: string) => JSON.parse(fixtureText[`${reportId}.json`]);
 const withFixture = (reportId: string, mutate: (report: any) => void) => {
   const mutated = corpus();
@@ -158,6 +167,16 @@ const VARIANT_IDS = [
 ];
 const CANONICAL_REPORT_IDS = [
   "complete", "degraded", "blocked", "imported-only", "imported-and-degraded", "blocked-and-imported"
+];
+// Each canonical report with the DERIVED groups its matrix variant leaves unproven, so a case
+// can rebuild the matrix that produced any fixture without restating the manifest.
+const CANONICAL_CASES: [string, string[]][] = [
+  ["complete", []],
+  ["degraded", ["plan_state"]],
+  ["blocked", ["workspace_diff"]],
+  ["imported-only", []],
+  ["imported-and-degraded", ["plan_state"]],
+  ["blocked-and-imported", ["workspace_diff", "plan_state"]]
 ];
 
 const PLAN_STATE_REASON =
@@ -337,9 +356,14 @@ describe("doctor-contract", () => {
     assert.ok(has(validate(demoted, doc, matrix), "VERDICT_MISMATCH derives DEGRADED"));
 
     // The same report read against the unperturbed matrix is wrong in every derived place,
-    // which is what makes the verdict a function of the matrix and not of the report.
+    // which is what makes the verdict a function of the matrix and not of the report. The
+    // refused report fails closed, and the verdict the matrix does derive is carried in the
+    // error rather than returned as an answer.
     const againstDeclared = validate(report, doc, frozenMatrix());
-    assert.equal(againstDeclared.verdict, "COMPLETE");
+    assert.equal(againstDeclared.ok, false);
+    assert.equal(againstDeclared.verdict, "SCORE_BLOCKED");
+    assert.equal(againstDeclared.exit_code, 30);
+    assert.ok(has(againstDeclared, "VERDICT_MISMATCH derives COMPLETE"));
     assert.ok(has(againstDeclared, "OBSERVATION_MISMATCH plan_state status derives DERIVED"));
     assert.ok(has(againstDeclared, "DIGEST_KNOWN_MISSING_MISMATCH derives none"));
   });
@@ -405,12 +429,14 @@ describe("doctor-contract", () => {
     assert.equal(result.human_projection[18], `reason: ${IMPORTED_REASON}`);
 
     // The mode is load bearing in both directions: the same adapter reported as a controlled
-    // assessment is COMPLETE, and the exit code moves with it.
+    // assessment derives COMPLETE and exit 0. The report still declares the imported verdict, so
+    // it is refused and fails closed, and the two derived values arrive as errors.
     const controlled = clone(report);
     controlled.assessment_mode = "VERIFIED_ASSESSMENT";
     const asControlled = validate(controlled, doc, matrix);
-    assert.equal(asControlled.verdict, "COMPLETE");
-    assert.equal(asControlled.exit_code, 0);
+    assert.equal(asControlled.ok, false);
+    assert.equal(asControlled.verdict, "SCORE_BLOCKED");
+    assert.equal(asControlled.exit_code, 30);
     assert.deepEqual(asControlled.reasons, []);
     assert.ok(has(asControlled, "VERDICT_MISMATCH derives COMPLETE"));
     assert.ok(has(asControlled, "EXIT_CODE_MISMATCH derives 0"));
@@ -464,13 +490,19 @@ describe("doctor-contract", () => {
       if (value === null || typeof value !== "object") return value;
       return Object.fromEntries(Object.keys(value).reverse().map((key) => [key, reversedKeys(value[key])]));
     };
-    const shuffled = validate(reversedKeys(report), doc, matrix);
+    // The one ordered key set in the report is the SSOT §9.2 line 939 digest, so it keeps its
+    // order and everything else is reversed; the result is identical in every derived field.
+    const shuffledReport = reversedKeys(report);
+    shuffledReport.capability_digest = report.capability_digest;
+    const shuffled = validate(shuffledReport, doc, matrix);
+    assert.deepEqual(shuffled.errors, []);
     assert.equal(shuffled.verdict, result.verdict);
     assert.deepEqual(shuffled.reasons, result.reasons);
     assert.deepEqual(shuffled.human_projection, result.human_projection);
-    // The one ordered key set in the report is the SSOT §9.2 line 939 digest, and it is the
-    // only thing that complains: nothing else in the output depends on JSON key order.
-    assert.deepEqual([...new Set(codes(shuffled))], ["DIGEST_FIELDS_MISMATCH"]);
+    // And the digest is the only thing that complains when it is reversed too: nothing else in
+    // the output depends on JSON key order.
+    assert.deepEqual([...new Set(codes(validate(reversedKeys(report), doc, matrix)))],
+      ["DIGEST_FIELDS_MISMATCH"]);
 
     // Observation order is the SSOT §9.2 table order, not the report's choice.
     const swapped = clone(report);
@@ -941,6 +973,7 @@ describe("doctor-contract", () => {
       ["imported-and-degraded", ["plan_state"], "IMPORTED_ONLY", 20],
       ["blocked-and-imported", ["workspace_diff", "plan_state"], "SCORE_BLOCKED", 30]
     ];
+    assert.deepEqual(cases.map(([reportId, groups]) => [reportId, groups]), CANONICAL_CASES);
     for (const [reportId, groups, verdict, exitCode] of cases) {
       const report = fixtureOf(reportId);
       const view = unproven(frozenMatrix(), report.runtime_id, groups);
@@ -1079,12 +1112,20 @@ describe("doctor-contract", () => {
       atTheBound.capability_digest[field] = "v".repeat(64);
       assert.equal(has(validate(atTheBound, doc, matrix), "DIGEST_DECLARED_FIELD_INVALID"), false, field);
 
-      // The limit, demonstrated rather than asserted in prose: a well-formed lie passes.
+      // The limit, demonstrated rather than asserted in prose: a well-formed lie passes. The
+      // digest line of the projection names each declared field as `field=value`, so the lie is
+      // carried into it by substitution; the module still recomputes the whole projection, and a
+      // zero-error result is what proves it derives exactly this one.
+      const forged = "0.0.0-not-what-is-installed";
       const lying = clone(report);
-      lying.capability_digest[field] = "0.0.0-not-what-is-installed";
-      lying.human_projection = validate(lying, doc, matrix).human_projection;
-      assert.deepEqual(validate(lying, doc, matrix).errors, [],
+      lying.capability_digest[field] = forged;
+      lying.human_projection = report.human_projection.map((line: string) =>
+        line.replace(`${field}=${report.capability_digest[field]}`, `${field}=${forged}`));
+      const accepted = validate(lying, doc, matrix);
+      assert.deepEqual(accepted.errors, [],
         `${field} is a presence-and-shape check, and this test records that it is only that`);
+      assert.equal(accepted.ok, true);
+      assert.equal(accepted.verdict, "COMPLETE");
     }
 
     // The same limit for the mode: nothing in a doctor report distinguishes a session the
@@ -1095,10 +1136,19 @@ describe("doctor-contract", () => {
     claimed.verdict = "COMPLETE";
     claimed.exit_code = 0;
     claimed.reasons = [];
-    claimed.human_projection = validate(claimed, doc, matrix).human_projection;
-    assert.deepEqual(validate(claimed, doc, matrix).errors, [],
+    // The projection follows the mode: the header line restates the verdict, exit code and mode,
+    // and the imported reason line goes with the reason it reported. Written out here rather
+    // than read back from the module, so a zero-error result proves the module derives it.
+    claimed.human_projection = claimed.human_projection
+      .filter((line: string) => !line.startsWith("reason: "))
+      .map((line: string) => line === "verdict: IMPORTED_ONLY exit=20 mode=IMPORTED_SESSION"
+        ? "verdict: COMPLETE exit=0 mode=VERIFIED_ASSESSMENT"
+        : line);
+    const promoted = validate(claimed, doc, matrix);
+    assert.deepEqual(promoted.errors, [],
       "a caller may assert the controlled mode; this contract records the claim and cannot check it");
-    assert.equal(validate(claimed, doc, matrix).verdict, "COMPLETE");
+    assert.equal(promoted.verdict, "COMPLETE");
+    assert.equal(promoted.exit_code, 0);
   });
 
   test("dead-fields-fail-closed", () => {
@@ -1423,5 +1473,571 @@ describe("doctor-contract", () => {
     const reorderedInventory = fixtureOf("complete");
     reorderedInventory.capability_digest.source_class = [...SOURCE_CLASSES].reverse();
     assert.ok(has(validate(reorderedInventory, doc, matrix), "DIGEST_SOURCE_CLASS_MISMATCH"));
+  });
+
+  // The pin whose input was free. The two derivation proofs are pinned against the matrix cells
+  // that carry them, and the module writes the pinned text back to restore the DERIVED cells a
+  // variant does not blank — so a group whose proof is null in every runtime cell let the
+  // contract resurrect that cell out of its own unchecked prose, which is the exact defect this
+  // contract exists to avoid. It is refused by name.
+  test("a-derivation-proof-with-no-anchor-cell-is-refused", () => {
+    const doc = frozen();
+    const report = fixtureOf("degraded");
+
+    // Both runtimes lose the plan_state derivation. SSOT §9.2 line 980 makes the cell
+    // UNAVAILABLE for both, and the sibling still accepts the matrix, so nothing upstream
+    // objects — but no report can be COMPLETE under it.
+    const drifted = unproven(unproven(frozenMatrix(), "codex", ["plan_state"]), "claude-code", ["plan_state"]);
+    const validated = validateCapabilityMatrix(drifted);
+    assert.deepEqual(validated.errors, [], "the sibling accepts this matrix, so the guard must be this one's");
+    for (const runtimeId of RUNTIME_IDS) {
+      const cell = drifted.rows.find((row: any) => row.event_group === "plan_state").runtimes[runtimeId];
+      assert.equal(cell.derivation_proof, null, runtimeId);
+      assert.equal(cell.status, "UNAVAILABLE", runtimeId);
+      assert.deepEqual(validated.coverage[runtimeId].known_missing_events, ["plan_state"], runtimeId);
+    }
+
+    const result = validate(report, doc, drifted);
+    assert.equal(
+      messageFor(result, "CONTRACT_DERIVATION_PROOF_UNPINNED"),
+      "CONTRACT_DERIVATION_PROOF_UNPINNED plan_state carries no derivation proof in any runtime cell," +
+      " so the contract text restoring it is checked against nothing"
+    );
+    assert.equal(result.ok, false, "a pin fed by an unpinned input may not report a healthy adapter");
+    assert.equal(result.verdict, "SCORE_BLOCKED");
+    assert.equal(result.exit_code, 30);
+    assert.deepEqual(result.reasons, []);
+    assert.deepEqual(result.human_projection, []);
+
+    // The same for workspace_diff, and for both at once.
+    const bothGroups = unproven(
+      unproven(frozenMatrix(), "codex", DERIVED_EVENT_GROUPS), "claude-code", DERIVED_EVENT_GROUPS);
+    const bothResult = validate(fixtureOf("blocked-and-imported"), doc, bothGroups);
+    for (const group of DERIVED_EVENT_GROUPS) {
+      assert.ok(has(bothResult, `CONTRACT_DERIVATION_PROOF_UNPINNED ${group}`), group);
+    }
+    const diffOnly = unproven(
+      unproven(frozenMatrix(), "codex", ["workspace_diff"]), "claude-code", ["workspace_diff"]);
+    const diffResult = validate(fixtureOf("blocked"), doc, diffOnly);
+    assert.ok(has(diffResult, "CONTRACT_DERIVATION_PROOF_UNPINNED workspace_diff"));
+    assert.equal(has(diffResult, "CONTRACT_DERIVATION_PROOF_UNPINNED plan_state"), false,
+      "a group that is still anchored is not reported as unanchored");
+
+    // And the guard is not simply refusing every perturbation: one runtime losing a derivation
+    // is the ordinary degraded and blocked case, and the other runtime's cell still pins the
+    // text, so those keep validating with zero errors.
+    assert.deepEqual(validate(report, doc, unproven(frozenMatrix(), "codex", ["plan_state"])).errors, []);
+    assert.deepEqual(
+      validate(fixtureOf("blocked"), doc, unproven(frozenMatrix(), "claude-code", ["workspace_diff"])).errors, []);
+  });
+
+  // The projection reports `required_observed` as a constant because in every matrix
+  // capability.ts accepts, the unconditionally REQUIRED groups and the groups that can reach
+  // UNAVAILABLE are disjoint. That is a property of the sibling and not of this module, so it is
+  // guarded rather than trusted: this case fails the moment the two sets overlap, and whoever
+  // makes them overlap must put the subtraction back into the projection.
+  test("required-groups-cannot-be-unavailable", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const validated = validateCapabilityMatrix(matrix);
+    assert.deepEqual(validated.errors, []);
+    const rows: any[] = validated.rows;
+
+    // SSOT §9.2 line 980 is the only clause that makes a cell UNAVAILABLE and it reaches only a
+    // row whose statuses include DERIVED. Neither DERIVED row is UNCONDITIONAL_REQUIRED.
+    const canBeUnavailable = rows.filter((row) => row.statuses.includes("DERIVED")).map((row) => row.event_group);
+    assert.deepEqual(canBeUnavailable, DERIVED_EVENT_GROUPS);
+    assert.deepEqual(validated.required_event_groups, REQUIRED_EVENT_GROUPS);
+    assert.deepEqual(REQUIRED_EVENT_GROUPS.filter((group) => canBeUnavailable.includes(group)), [],
+      "a required group can now be UNAVAILABLE, so required_observed is no longer a constant");
+    for (const group of REQUIRED_EVENT_GROUPS) {
+      const row = rows.find((entry) => entry.event_group === group);
+      assert.equal(row.statuses.includes("DERIVED"), false, group);
+      assert.equal(row.requirement_scope, "UNCONDITIONAL_REQUIRED", group);
+    }
+
+    // The sibling enforces the disjointness rather than merely happening to satisfy it, so this
+    // module can never be handed a matrix in which a required group is unobservable: such a
+    // matrix is rejected upstream and yields no verdict at all.
+    for (const group of REQUIRED_EVENT_GROUPS) {
+      const forced = unproven(matrix, "codex", [group]);
+      const rejectedMatrix = validateCapabilityMatrix(forced);
+      assert.equal(rejectedMatrix.ok, false, group);
+      assert.ok(rejectedMatrix.errors.some((error: string) => error.startsWith(`CELL_STATUS_MISMATCH ${group} codex`)), group);
+      const result = validate(fixtureOf("complete"), doc, forced);
+      assert.equal(result.ok, false, group);
+      assert.ok(has(result, `CAPABILITY_MATRIX_INVALID CELL_STATUS_MISMATCH ${group} codex`), group);
+    }
+
+    // So every canonical report prints the same count, however unobservable its adapter is.
+    for (const [reportId, groups] of CANONICAL_CASES) {
+      const report = fixtureOf(reportId);
+      const result = validate(report, doc, unproven(frozenMatrix(), report.runtime_id, groups));
+      assert.deepEqual(result.errors, [], reportId);
+      assert.equal(result.human_projection[3].endsWith(" required_observed=7/7"), true, reportId);
+    }
+  });
+
+  // Exit codes are this ticket's Minimum GREEN, so the caller contract is asserted directly: a
+  // caller running `process.exit(result.exit_code)` must never exit zero on a report the module
+  // refused. `ok === false` is one shape, with no exception in it for a report-level defect.
+  test("a-refused-report-never-exits-zero", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    // The narrow case: a rejected report whose matrix derives COMPLETE, which used to return
+    // verdict COMPLETE and exit code 0 beside ok=false.
+    const narrowed = clone(report);
+    narrowed.capability_digest.supported_event_groups = ["tool_call"];
+    const rejected = validate(narrowed, doc, matrix);
+    assert.equal(rejected.ok, false);
+    assert.notEqual(rejected.exit_code, 0, "a report the doctor refused may not exit zero");
+    assert.ok(has(rejected, `DIGEST_SUPPORTED_GROUPS_MISMATCH derives ${EVENT_GROUPS.join(",")}`));
+    assert.ok(has(rejected, "VERDICT_MISMATCH") === false, "the report's own verdict still matched the matrix");
+
+    // One shape for every refusal, at every level, whatever the matrix would have derived.
+    const refusals: [string, () => ReturnType<typeof validate>][] = [
+      ["report level, matrix derives COMPLETE", () => validate(narrowed, doc, matrix)],
+      ["report level, matrix derives IMPORTED_ONLY", () => {
+        const forged = clone(fixtureOf("imported-only"));
+        forged.exit_code = 0;
+        return validate(forged, doc, matrix);
+      }],
+      ["report level, matrix derives DEGRADED", () => {
+        const forged = clone(fixtureOf("degraded"));
+        forged.exit_code = 0;
+        return validate(forged, doc, unproven(frozenMatrix(), "codex", ["plan_state"]));
+      }],
+      ["report level, matrix derives SCORE_BLOCKED", () => {
+        const forged = clone(fixtureOf("blocked"));
+        forged.exit_code = 0;
+        return validate(forged, doc, unproven(frozenMatrix(), "claude-code", ["workspace_diff"]));
+      }],
+      ["report is not an object", () => validate(null, doc, matrix)],
+      ["unknown runtime", () => {
+        const forged = clone(report);
+        forged.runtime_id = "gpt-vibes";
+        return validate(forged, doc, matrix);
+      }],
+      ["contract level", () => {
+        const tampered = frozen();
+        tampered.contract_id = "doctor-output.v9";
+        return validate(report, tampered, matrix);
+      }],
+      ["matrix level", () => {
+        const tampered = clone(matrix);
+        tampered.rows[0].contract = "BEST_EFFORT";
+        return validate(report, doc, tampered);
+      }],
+      ["corpus level", () => validate(report, doc, matrix, "fixtures/doctor")],
+      ["canonical report level", () => validate(report, doc, matrix,
+        withFixture("blocked", (canonical) => { canonical.verdict = "COMPLETE"; }))]
+    ];
+    for (const [label, produce] of refusals) {
+      const result = produce();
+      assert.equal(result.ok, false, label);
+      assert.ok(result.errors.length > 0, label);
+      assert.equal(result.verdict, "SCORE_BLOCKED", label);
+      assert.equal(result.exit_code, 30, label);
+      assert.deepEqual(result.reasons, [], label);
+      assert.deepEqual(result.human_projection, [], label);
+    }
+
+    // The converse, so the rule is a biconditional and not a blanket: an accepted report carries
+    // the verdict its matrix derives, and exit zero belongs to COMPLETE alone.
+    for (const [reportId, groups] of CANONICAL_CASES) {
+      const canonical = fixtureOf(reportId);
+      const accepted = validate(canonical, doc, unproven(frozenMatrix(), canonical.runtime_id, groups));
+      assert.equal(accepted.ok, true, reportId);
+      assert.equal(accepted.exit_code === 0, accepted.verdict === "COMPLETE", reportId);
+      assert.equal(accepted.exit_code, EXIT_CODES[accepted.verdict], reportId);
+    }
+  });
+
+  // Nine `statement` fields — two assessment modes, four verdicts, three reason codes — are
+  // prose the derivation never reads. They are checked for presence and non-emptiness and
+  // nothing else, so a statement that contradicts its own row is accepted. The module labels
+  // them in the same terms session-class.ts labels its own, the frozen document's honesty
+  // paragraph names them as the fourth declared input, and this case demonstrates the limit
+  // instead of leaving a reader to infer it.
+  test("statement-fields-are-declared-prose", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    const statementRows = [...doc.assessment_modes, ...doc.verdicts, ...doc.reason_codes];
+    assert.equal(statementRows.length, 9);
+    assert.equal(statementRows.every((row: any) => typeof row.statement === "string"), true);
+    assert.equal(doc.matrix_variants.some((row: any) => Object.hasOwn(row, "statement")), false);
+    assert.equal(doc.canonical_reports.some((row: any) => Object.hasOwn(row, "statement")), false);
+    assert.equal(doc.derivation_proofs.some((row: any) => Object.hasOwn(row, "statement")), false);
+
+    // The limit itself: the statement of the mode that SSOT §9.2 line 971 admits only as
+    // DIAGNOSTIC ONLY may say the opposite of its own pinned source clause and every gate
+    // accepts it. Recorded here so nobody reads a statement as a rule.
+    const inverted = frozen();
+    modeRow(inverted, "IMPORTED_SESSION").statement =
+      "An imported session is fully equivalent to a controlled one and may be issued an official AOS-Coding P0";
+    assert.deepEqual(validate(report, inverted, matrix).errors, [],
+      "statement is prose; this test records that presence is all that is checked");
+    assert.equal(modeRow(inverted, "IMPORTED_SESSION").source_clause, IMPORTED_CLAUSE,
+      "the rule the row does carry is the pinned clause, and it is unchanged");
+
+    // Every one of the nine, and every table, so the limit is stated for the whole surface.
+    for (const [table, idField] of [
+      ["assessment_modes", "mode_id"], ["verdicts", "verdict_id"], ["reason_codes", "reason_code"]
+    ] as [string, string][]) {
+      for (const row of doc[table]) {
+        const rewritten = frozen();
+        rewritten[table].find((entry: any) => entry[idField] === row[idField]).statement = "not true";
+        assert.deepEqual(validate(report, rewritten, matrix).errors, [], `${table} ${row[idField]}`);
+        // Presence and non-emptiness are checked, and that is the whole of it.
+        const blanked = frozen();
+        blanked[table].find((entry: any) => entry[idField] === row[idField]).statement = "  ";
+        assert.deepEqual(codes(validate(report, blanked, matrix)), ["CONTRACT_EMPTY_TEXT"], `${table} ${row[idField]}`);
+        const dropped = frozen();
+        delete dropped[table].find((entry: any) => entry[idField] === row[idField]).statement;
+        assert.deepEqual(codes(validate(report, dropped, matrix)), ["CONTRACT_MISSING_ROW_FIELD"], `${table} ${row[idField]}`);
+      }
+    }
+
+    // The honesty paragraph enumerates four declared inputs, not three, and the fourth is this.
+    assert.match(doc.declared_only_statement, /Four inputs are declared and unverifiable here/);
+    assert.match(doc.declared_only_statement, /the nine statement fields of this document are checked for presence and non-emptiness only/);
+    assert.match(doc.declared_only_statement, /no issuer may read a statement as a rule/);
+    assert.equal(doc.declared_only_statement.includes("Three inputs are declared"), false);
+
+    // And the module says it in the same words the sibling uses for the same limit, so the two
+    // labels cannot drift into meaning different things.
+    const flattened = (text: string) => text.replace(/^\s*(?:\/\/|\*)\s?/gm, "").replace(/\s+/g, " ");
+    const label = /prose the derivation never reads and (?:is|are) checked for presence only — that proves the field exists, not that it says anything true/;
+    assert.match(flattened(readFileSync(sourcePath, "utf8")), label);
+    assert.match(flattened(readFileSync(resolve(here, "../src/session-class.ts"), "utf8")), label);
+  });
+
+  // A stray file in the fixture directory is an error whatever it contains, and the rule claims
+  // it fails a named case. Reading the directory with an unconditional JSON.parse killed the
+  // lane with a SyntaxError instead: fail-closed, but not by name.
+  test("a-file-that-is-not-json-is-an-undeclared-fixture", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    // The live directory is the six declared reports and nothing else; the smuggling is done in
+    // a copy, because no test may write into the repository it is measuring.
+    assert.deepEqual(Object.keys(fixtureText), CANONICAL_REPORT_IDS.map((reportId) => `${reportId}.json`).sort());
+    const directory = mkdtempSync(join(tmpdir(), "aos-doctor-corpus-"));
+    try {
+      for (const [name, text] of Object.entries(fixtureText)) writeFileSync(join(directory, name), text);
+      writeFileSync(join(directory, "evil.ts"), "export const evil = () => process.exit(0);\n");
+      const smuggled = corpusOf(readCorpusText(directory));
+      assert.deepEqual(Object.keys(smuggled).sort(),
+        [...CANONICAL_REPORT_IDS.map((reportId) => `${reportId}.json`), "evil.ts"].sort());
+      const result = validate(report, doc, matrix, smuggled);
+      assert.equal(
+        messageFor(result, "CONTRACT_CANONICAL_FIXTURE_UNDECLARED"),
+        "CONTRACT_CANONICAL_FIXTURE_UNDECLARED evil.ts is not declared by the doctor contract"
+      );
+      assert.equal(result.ok, false);
+      assert.equal(result.verdict, "SCORE_BLOCKED");
+      assert.equal(result.exit_code, 30);
+
+      // Well-formed JSON that is not a report is the same finding by the same rule, so the
+      // check is the manifest and not the file extension.
+      writeFileSync(join(directory, "notes.json"), "{\n  \"todo\": \"tidy up\"\n}\n");
+      const both = validate(report, doc, matrix, corpusOf(readCorpusText(directory)));
+      assert.ok(has(both, "CONTRACT_CANONICAL_FIXTURE_UNDECLARED evil.ts is not declared by the doctor contract"));
+      assert.ok(has(both, "CONTRACT_CANONICAL_FIXTURE_UNDECLARED notes.json is not declared by the doctor contract"));
+
+      // A declared report is still parsed, so the tolerant read does not weaken the recompute:
+      // drift inside a real fixture is caught exactly as before.
+      writeFileSync(join(directory, "complete.json"),
+        JSON.stringify({ ...fixtureOf("complete"), exit_code: 1 }, null, 2));
+      assert.ok(has(validate(report, doc, matrix, corpusOf(readCorpusText(directory))),
+        "CONTRACT_CANONICAL_REPORT_INVALID complete EXIT_CODE_MISMATCH derives 0"));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  // Every error code the module can emit is asserted by exact code equality, and the inventory
+  // is re-derived from the module source so a code with no case fails here. `has()` is a
+  // substring test, so an assertion that quotes a code inside a longer message keeps passing
+  // when a character is appended to the code itself; that is why a sweep saw error-string
+  // mutants survive, and why this case matches `error.split(" ")[0]` and never a substring.
+  test("every-error-code-is-emitted-and-asserted-exactly", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    const withReport = (mutate: (draft: any) => void) => {
+      const draft = clone(report);
+      mutate(draft);
+      return validate(draft, doc, matrix);
+    };
+    const withContract = (mutate: (draft: any) => void) => {
+      const draft = frozen();
+      mutate(draft);
+      return validate(report, draft, matrix);
+    };
+    const unanchored = unproven(
+      unproven(frozenMatrix(), "codex", DERIVED_EVENT_GROUPS), "claude-code", DERIVED_EVENT_GROUPS);
+
+    // The whole message each input must produce, not a substring of it, so appending a
+    // character to a code or to its detail fails here.
+    const workspaceDiffProof = matrix.rows
+      .find((row: any) => row.event_group === "workspace_diff").runtimes.codex.derivation_proof;
+    const MESSAGES: Record<string, string> = {
+      REPORT_NOT_AN_OBJECT: "REPORT_NOT_AN_OBJECT a doctor report must be a JSON object",
+      REPORT_MISSING_FIELD: "REPORT_MISSING_FIELD command is required by the doctor contract",
+      REPORT_DEAD_FIELD: "REPORT_DEAD_FIELD overall_health is not part of the doctor contract",
+      REPORT_CONTRACT_ID: "REPORT_CONTRACT_ID expected doctor-output.v0",
+      REPORT_CONTRACT_VERSION: "REPORT_CONTRACT_VERSION expected doctor-output-contract-v0",
+      UNKNOWN_RUNTIME: "UNKNOWN_RUNTIME gpt-vibes is outside the frozen SSOT 9.2 runtime set",
+      UNKNOWN_ASSESSMENT_MODE: "UNKNOWN_ASSESSMENT_MODE PROBABLY_CONTROLLED is outside the frozen SSOT 9.2 session classes",
+      COMMAND_MISMATCH: "COMMAND_MISMATCH derives aos doctor --capabilities --runtime codex",
+      VERDICT_MISMATCH: "VERDICT_MISMATCH derives COMPLETE",
+      EXIT_CODE_MISMATCH: "EXIT_CODE_MISMATCH derives 0",
+      REASONS_MISMATCH: "REASONS_MISMATCH derives none",
+      HUMAN_PROJECTION_LENGTH_MISMATCH: "HUMAN_PROJECTION_LENGTH_MISMATCH derives 19 lines",
+      HUMAN_PROJECTION_MISMATCH: "HUMAN_PROJECTION_MISMATCH line 1 derives aos doctor --capabilities --runtime codex",
+      DIGEST_NOT_AN_OBJECT: "DIGEST_NOT_AN_OBJECT the stored capability digest must be an object",
+      DIGEST_FIELDS_MISMATCH: `DIGEST_FIELDS_MISMATCH the capability digest must carry exactly ${DIGEST_FIELDS.join(",")}`,
+      DIGEST_DECLARED_FIELD_INVALID: "DIGEST_DECLARED_FIELD_INVALID adapter_version    is not a version token",
+      DIGEST_SOURCE_CLASS_MISMATCH: `DIGEST_SOURCE_CLASS_MISMATCH derives ${SOURCE_CLASSES.join(",")}`,
+      DIGEST_SUPPORTED_GROUPS_MISMATCH: `DIGEST_SUPPORTED_GROUPS_MISMATCH derives ${EVENT_GROUPS.join(",")}`,
+      DIGEST_KNOWN_MISSING_MISMATCH: "DIGEST_KNOWN_MISSING_MISMATCH derives none",
+      OBSERVATIONS_NOT_AN_ARRAY: "OBSERVATIONS_NOT_AN_ARRAY the report must declare one observation per SSOT 9.2 event group",
+      OBSERVATION_COUNT_MISMATCH: "OBSERVATION_COUNT_MISMATCH found 13 and not 14",
+      OBSERVATION_NOT_AN_OBJECT: "OBSERVATION_NOT_AN_OBJECT position 4 is not an object",
+      OBSERVATION_UNKNOWN_EVENT_GROUP: "OBSERVATION_UNKNOWN_EVENT_GROUP vibes is outside the frozen SSOT 9.2 matrix",
+      OBSERVATION_ORDER_BROKEN: "OBSERVATION_ORDER_BROKEN position 1 derives run_lifecycle",
+      OBSERVATION_MISSING_FIELD: "OBSERVATION_MISSING_FIELD tool_call evidence_locator is required by the doctor contract",
+      OBSERVATION_DEAD_FIELD: "OBSERVATION_DEAD_FIELD tool_call confidence is not part of the doctor contract",
+      OBSERVATION_MISMATCH: "OBSERVATION_MISMATCH plan_state status derives DERIVED",
+      CONTRACT_NOT_AN_OBJECT: "CONTRACT_NOT_AN_OBJECT the doctor contract must be a JSON object",
+      CONTRACT_MISSING_FIELD: "CONTRACT_MISSING_FIELD verdicts required by the doctor contract",
+      CONTRACT_DEAD_FIELD: "CONTRACT_DEAD_FIELD waiver is not part of the doctor contract",
+      CONTRACT_ID: "CONTRACT_ID expected doctor-output.v0",
+      CONTRACT_VERSION: "CONTRACT_VERSION expected doctor-output-contract-v0",
+      CONTRACT_SOURCE_AUTHORITY: "CONTRACT_SOURCE_AUTHORITY expected docs/north-star/agent-operator-score-ssot-v1.0.md#9.2",
+      CONTRACT_CAPABILITY_BINDING_MISMATCH: "CONTRACT_CAPABILITY_BINDING_MISMATCH capability_contract_id must read adapter-capabilities.v0",
+      CONTRACT_ACCEPTANCE_CLAUSE_MISMATCH: "CONTRACT_ACCEPTANCE_CLAUSE_MISMATCH the SSOT 9.2 doctor acceptance clause is frozen",
+      CONTRACT_NO_SILENT_ESTIMATION_CLAUSE_MISMATCH: "CONTRACT_NO_SILENT_ESTIMATION_CLAUSE_MISMATCH the SSOT 9.2 line 980 clause is frozen",
+      CONTRACT_NOT_USER_FAILURE_CLAUSE_MISMATCH: "CONTRACT_NOT_USER_FAILURE_CLAUSE_MISMATCH the SSOT 9.2 line 981 clause is frozen",
+      CONTRACT_DECLARED_ONLY_STATEMENT_MISMATCH: "CONTRACT_DECLARED_ONLY_STATEMENT_MISMATCH the statement of what a doctor verdict does not prove is frozen",
+      CONTRACT_COMMAND_TEMPLATE_MISMATCH: "CONTRACT_COMMAND_TEMPLATE_MISMATCH expected aos doctor --capabilities --runtime <runtime>",
+      CONTRACT_VERSION_TOKEN_BOUND_MISMATCH: "CONTRACT_VERSION_TOKEN_BOUND_MISMATCH expected 64",
+      CONTRACT_FIXTURE_DIRECTORY_MISMATCH: "CONTRACT_FIXTURE_DIRECTORY_MISMATCH expected fixtures/doctor",
+      CONTRACT_FIXTURE_TEMPLATE_MISMATCH: "CONTRACT_FIXTURE_TEMPLATE_MISMATCH expected <report_id>.json",
+      CONTRACT_RUNTIME_IDS_MISMATCH: `CONTRACT_RUNTIME_IDS_MISMATCH runtime_ids must read ${RUNTIME_IDS.join(",")}`,
+      CONTRACT_DIGEST_FIELDS_MISMATCH: `CONTRACT_DIGEST_FIELDS_MISMATCH capability_digest_fields must read ${DIGEST_FIELDS.join(",")}`,
+      CONTRACT_DECLARED_DIGEST_FIELDS_MISMATCH: `CONTRACT_DECLARED_DIGEST_FIELDS_MISMATCH declared_digest_fields must read ${DIGEST_FIELDS.slice(0, 3).join(",")}`,
+      CONTRACT_DERIVED_DIGEST_FIELDS_MISMATCH: `CONTRACT_DERIVED_DIGEST_FIELDS_MISMATCH derived_digest_fields must read ${DIGEST_FIELDS.slice(3).join(",")}`,
+      CONTRACT_SOURCE_CLASSES_MISMATCH: `CONTRACT_SOURCE_CLASSES_MISMATCH source_classes must read ${SOURCE_CLASSES.join(",")}`,
+      CONTRACT_REPORT_FIELDS_MISMATCH: `CONTRACT_REPORT_FIELDS_MISMATCH report_fields must read ${REPORT_FIELDS.join(",")}`,
+      CONTRACT_OBSERVATION_FIELDS_MISMATCH: `CONTRACT_OBSERVATION_FIELDS_MISMATCH observation_fields must read ${OBSERVATION_FIELDS.join(",")}`,
+      CONTRACT_EVENT_GROUPS_MISMATCH: `CONTRACT_EVENT_GROUPS_MISMATCH event_groups must read ${EVENT_GROUPS.join(",")}`,
+      CONTRACT_REQUIRED_GROUPS_MISMATCH: `CONTRACT_REQUIRED_GROUPS_MISMATCH unconditional_required_event_groups must read ${REQUIRED_EVENT_GROUPS.join(",")}`,
+      CONTRACT_TABLE_NOT_AN_ARRAY: "CONTRACT_TABLE_NOT_AN_ARRAY mode must declare 2 rows",
+      CONTRACT_TABLE_COUNT: "CONTRACT_TABLE_COUNT mode found 1 and not 2",
+      CONTRACT_ROW_NOT_AN_OBJECT: "CONTRACT_ROW_NOT_AN_OBJECT mode position 1",
+      CONTRACT_UNKNOWN_ROW: "CONTRACT_UNKNOWN_ROW mode SEMI_CONTROLLED is outside the frozen set",
+      CONTRACT_DUPLICATE_ROW: "CONTRACT_DUPLICATE_ROW mode VERIFIED_ASSESSMENT appears more than once",
+      CONTRACT_MISSING_ROW_FIELD: "CONTRACT_MISSING_ROW_FIELD verdict COMPLETE predicate",
+      CONTRACT_ROW_DEAD_FIELD: "CONTRACT_ROW_DEAD_FIELD verdict COMPLETE severity",
+      CONTRACT_ROW_ORDER_BROKEN: "CONTRACT_ROW_ORDER_BROKEN verdict COMPLETE sits at position 1 and not 4",
+      CONTRACT_ROW_ORDINAL_MISMATCH: "CONTRACT_ROW_ORDINAL_MISMATCH mode VERIFIED_ASSESSMENT declares 7",
+      CONTRACT_EMPTY_TEXT: "CONTRACT_EMPTY_TEXT mode VERIFIED_ASSESSMENT statement",
+      CONTRACT_ROW_GAP: "CONTRACT_ROW_GAP verdict DEGRADED is absent from the contract",
+      CONTRACT_CLAUSE_MISMATCH: "CONTRACT_CLAUSE_MISMATCH verdict DEGRADED must quote its SSOT clause verbatim",
+      CONTRACT_PREDICATE_MISMATCH: "CONTRACT_PREDICATE_MISMATCH verdict COMPLETE must read no event group is UNAVAILABLE and the report declares a controlled assessment",
+      CONTRACT_EXIT_CODE_MISMATCH: "CONTRACT_EXIT_CODE_MISMATCH SCORE_BLOCKED derives 30",
+      CONTRACT_REASON_VERDICT_MISMATCH: "CONTRACT_REASON_VERDICT_MISMATCH DEGRADED_GROUP_UNAVAILABLE derives DEGRADED",
+      CONTRACT_VARIANT_GROUPS_MISMATCH: "CONTRACT_VARIANT_GROUPS_MISMATCH as-declared must read none",
+      CONTRACT_DERIVATION_PROOF_MISMATCH: `CONTRACT_DERIVATION_PROOF_MISMATCH workspace_diff codex must read ${workspaceDiffProof}`,
+      CONTRACT_DERIVATION_PROOF_UNPINNED: "CONTRACT_DERIVATION_PROOF_UNPINNED workspace_diff carries no derivation proof in any runtime cell, so the contract text restoring it is checked against nothing",
+      CONTRACT_VARIANT_INVALID: "CONTRACT_VARIANT_INVALID as-declared codex CELL_STATUS_MISMATCH plan_state codex derives UNAVAILABLE",
+      CONTRACT_CANONICAL_VARIANT_UNKNOWN: "CONTRACT_CANONICAL_VARIANT_UNKNOWN degraded names everything-is-fine",
+      CONTRACT_CANONICAL_REPORT_INVALID: "CONTRACT_CANONICAL_REPORT_INVALID blocked VERDICT_MISMATCH derives SCORE_BLOCKED",
+      CONTRACT_CANONICAL_FIXTURE_MISSING: "CONTRACT_CANONICAL_FIXTURE_MISSING complete.json is declared by the contract and absent from the corpus",
+      CONTRACT_CANONICAL_FIXTURE_UNDECLARED: "CONTRACT_CANONICAL_FIXTURE_UNDECLARED stale.json is not declared by the doctor contract",
+      CONTRACT_VERDICT_UNEXERCISED: "CONTRACT_VERDICT_UNEXERCISED IMPORTED_ONLY is the verdict of no canonical report",
+      CONTRACT_REASON_UNEXERCISED: "CONTRACT_REASON_UNEXERCISED DEGRADED_GROUP_UNAVAILABLE is reported by no canonical report",
+      CAPABILITY_MATRIX_INVALID: "CAPABILITY_MATRIX_INVALID MATRIX_NOT_AN_OBJECT the capability matrix must be a JSON object",
+      CANONICAL_CORPUS_NOT_AN_OBJECT: "CANONICAL_CORPUS_NOT_AN_OBJECT the canonical fixture corpus must be a map of file name to parsed report"
+    };
+
+    // [code, the smallest input that emits it]
+    const emitters: [string, () => ReturnType<typeof validate>][] = [
+      ["REPORT_NOT_AN_OBJECT", () => validate("healthy", doc, matrix)],
+      ["REPORT_MISSING_FIELD", () => withReport((r) => { delete r.command; })],
+      ["REPORT_DEAD_FIELD", () => withReport((r) => { r.overall_health = "green"; })],
+      ["REPORT_CONTRACT_ID", () => withReport((r) => { r.contract_id = "doctor-output.v1"; })],
+      ["REPORT_CONTRACT_VERSION", () => withReport((r) => { r.contract_version = "v1"; })],
+      ["UNKNOWN_RUNTIME", () => withReport((r) => { r.runtime_id = "gpt-vibes"; })],
+      ["UNKNOWN_ASSESSMENT_MODE", () => withReport((r) => { r.assessment_mode = "PROBABLY_CONTROLLED"; })],
+      ["COMMAND_MISMATCH", () => withReport((r) => { r.command = "aos doctor"; })],
+      ["VERDICT_MISMATCH", () => withReport((r) => { r.verdict = "DEGRADED"; })],
+      ["EXIT_CODE_MISMATCH", () => withReport((r) => { r.exit_code = 7; })],
+      ["REASONS_MISMATCH", () => withReport((r) => { r.reasons = ["DEGRADED_GROUP_UNAVAILABLE something"]; })],
+      ["HUMAN_PROJECTION_LENGTH_MISMATCH", () => withReport((r) => { r.human_projection = []; })],
+      ["HUMAN_PROJECTION_MISMATCH", () => withReport((r) => { r.human_projection[0] = "aos doctor"; })],
+      ["DIGEST_NOT_AN_OBJECT", () => withReport((r) => { r.capability_digest = "codex@1"; })],
+      ["DIGEST_FIELDS_MISMATCH", () => withReport((r) => { r.capability_digest.vendor_notes = "trust me"; })],
+      ["DIGEST_DECLARED_FIELD_INVALID", () => withReport((r) => { r.capability_digest.adapter_version = "  "; })],
+      ["DIGEST_SOURCE_CLASS_MISMATCH", () => withReport((r) => { r.capability_digest.source_class = ["PRIMARY"]; })],
+      ["DIGEST_SUPPORTED_GROUPS_MISMATCH", () => withReport((r) => { r.capability_digest.supported_event_groups = ["tool_call"]; })],
+      ["DIGEST_KNOWN_MISSING_MISMATCH", () => withReport((r) => { r.capability_digest.known_missing_events = ["plan_state"]; })],
+      ["OBSERVATIONS_NOT_AN_ARRAY", () => withReport((r) => { r.observations = "fourteen groups, all fine"; })],
+      ["OBSERVATION_COUNT_MISMATCH", () => withReport((r) => { r.observations = r.observations.slice(0, 13); })],
+      ["OBSERVATION_NOT_AN_OBJECT", () => withReport((r) => { r.observations[3] = "tool_call is fine"; })],
+      ["OBSERVATION_UNKNOWN_EVENT_GROUP", () => withReport((r) => {
+        r.observations.push({ ...observationOf(r, "tool_call"), event_group: "vibes" });
+      })],
+      ["OBSERVATION_ORDER_BROKEN", () => withReport((r) => {
+        [r.observations[0], r.observations[1]] = [r.observations[1], r.observations[0]];
+      })],
+      ["OBSERVATION_MISSING_FIELD", () => withReport((r) => { delete observationOf(r, "tool_call").evidence_locator; })],
+      ["OBSERVATION_DEAD_FIELD", () => withReport((r) => { observationOf(r, "tool_call").confidence = "high"; })],
+      ["OBSERVATION_MISMATCH", () => withReport((r) => { observationOf(r, "plan_state").status = "REQUIRED"; })],
+      ["CONTRACT_NOT_AN_OBJECT", () => validate(report, "doctor", matrix)],
+      ["CONTRACT_MISSING_FIELD", () => withContract((c) => { delete c.verdicts; })],
+      ["CONTRACT_DEAD_FIELD", () => withContract((c) => { c.waiver = "temporary"; })],
+      ["CONTRACT_ID", () => withContract((c) => { c.contract_id = "doctor-output.v9"; })],
+      ["CONTRACT_VERSION", () => withContract((c) => { c.contract_version = "doctor-output-contract-v1"; })],
+      ["CONTRACT_SOURCE_AUTHORITY", () => withContract((c) => { c.source_authority = "https://evil.example"; })],
+      ["CONTRACT_CAPABILITY_BINDING_MISMATCH", () => withContract((c) => { c.capability_contract_id = "adapter-capabilities.v1"; })],
+      ["CONTRACT_ACCEPTANCE_CLAUSE_MISMATCH", () => withContract((c) => { c.acceptance_clause = `${ACCEPTANCE_CLAUSE} (요약)`; })],
+      ["CONTRACT_NO_SILENT_ESTIMATION_CLAUSE_MISMATCH", () => withContract((c) => { c.no_silent_estimation_clause = "적당히 추정한다"; })],
+      ["CONTRACT_NOT_USER_FAILURE_CLAUSE_MISMATCH", () => withContract((c) => { c.not_user_failure_clause = "사용자 탓이다"; })],
+      ["CONTRACT_DECLARED_ONLY_STATEMENT_MISMATCH", () => withContract((c) => { c.declared_only_statement = "everything here is verified"; })],
+      ["CONTRACT_COMMAND_TEMPLATE_MISMATCH", () => withContract((c) => { c.command_template = "aos doctor"; })],
+      ["CONTRACT_VERSION_TOKEN_BOUND_MISMATCH", () => withContract((c) => { c.version_token_max_chars = 1_000_000; })],
+      ["CONTRACT_FIXTURE_DIRECTORY_MISMATCH", () => withContract((c) => { c.canonical_fixture_directory = "fixtures/doctor-v2"; })],
+      ["CONTRACT_FIXTURE_TEMPLATE_MISMATCH", () => withContract((c) => { c.canonical_fixture_name_template = "doctor-<report_id>.json"; })],
+      ["CONTRACT_RUNTIME_IDS_MISMATCH", () => withContract((c) => { c.runtime_ids = [...RUNTIME_IDS, "gemini"]; })],
+      ["CONTRACT_DIGEST_FIELDS_MISMATCH", () => withContract((c) => { c.capability_digest_fields = DIGEST_FIELDS.slice(0, 5); })],
+      ["CONTRACT_DECLARED_DIGEST_FIELDS_MISMATCH", () => withContract((c) => { c.declared_digest_fields = DIGEST_FIELDS; })],
+      ["CONTRACT_DERIVED_DIGEST_FIELDS_MISMATCH", () => withContract((c) => { c.derived_digest_fields = []; })],
+      ["CONTRACT_SOURCE_CLASSES_MISMATCH", () => withContract((c) => { c.source_classes = ["PRIMARY"]; })],
+      ["CONTRACT_REPORT_FIELDS_MISMATCH", () => withContract((c) => { c.report_fields = REPORT_FIELDS.slice(0, 4); })],
+      ["CONTRACT_OBSERVATION_FIELDS_MISMATCH", () => withContract((c) => { c.observation_fields = [...OBSERVATION_FIELDS].reverse(); })],
+      ["CONTRACT_EVENT_GROUPS_MISMATCH", () => withContract((c) => { c.event_groups = EVENT_GROUPS.slice(0, 13); })],
+      ["CONTRACT_REQUIRED_GROUPS_MISMATCH", () => withContract((c) => { c.unconditional_required_event_groups = [...REQUIRED_EVENT_GROUPS].reverse(); })],
+      ["CONTRACT_TABLE_NOT_AN_ARRAY", () => withContract((c) => { c.assessment_modes = {}; })],
+      ["CONTRACT_TABLE_COUNT", () => withContract((c) => { c.assessment_modes.pop(); })],
+      ["CONTRACT_ROW_NOT_AN_OBJECT", () => withContract((c) => { c.assessment_modes[0] = "VERIFIED_ASSESSMENT"; })],
+      ["CONTRACT_UNKNOWN_ROW", () => withContract((c) => { c.assessment_modes[1].mode_id = "SEMI_CONTROLLED"; })],
+      ["CONTRACT_DUPLICATE_ROW", () => withContract((c) => { c.assessment_modes[1] = clone(c.assessment_modes[0]); })],
+      ["CONTRACT_MISSING_ROW_FIELD", () => withContract((c) => { delete verdictRow(c, "COMPLETE").predicate; })],
+      ["CONTRACT_ROW_DEAD_FIELD", () => withContract((c) => { verdictRow(c, "COMPLETE").severity = 0; })],
+      ["CONTRACT_ROW_ORDER_BROKEN", () => withContract((c) => { c.verdicts.reverse(); })],
+      ["CONTRACT_ROW_ORDINAL_MISMATCH", () => withContract((c) => { c.assessment_modes[0].ordinal = 7; })],
+      ["CONTRACT_EMPTY_TEXT", () => withContract((c) => { c.assessment_modes[0].statement = "   "; })],
+      ["CONTRACT_ROW_GAP", () => withContract((c) => { c.verdicts = c.verdicts.filter((row: any) => row.verdict_id !== "DEGRADED"); })],
+      ["CONTRACT_CLAUSE_MISMATCH", () => withContract((c) => { verdictRow(c, "DEGRADED").source_clause = "대충"; })],
+      ["CONTRACT_PREDICATE_MISMATCH", () => withContract((c) => { verdictRow(c, "COMPLETE").predicate = "looks fine"; })],
+      ["CONTRACT_EXIT_CODE_MISMATCH", () => withContract((c) => { verdictRow(c, "SCORE_BLOCKED").exit_code = 0; })],
+      ["CONTRACT_REASON_VERDICT_MISMATCH", () => withContract((c) => { reasonRow(c, "DEGRADED_GROUP_UNAVAILABLE").verdict_id = "COMPLETE"; })],
+      ["CONTRACT_VARIANT_GROUPS_MISMATCH", () => withContract((c) => { variantRow(c, "as-declared").unproven_derivations = ["plan_state"]; })],
+      ["CONTRACT_DERIVATION_PROOF_MISMATCH", () => withContract((c) => { c.derivation_proofs[0].proof = "reconstruct it somehow"; })],
+      ["CONTRACT_DERIVATION_PROOF_UNPINNED", () => validate(fixtureOf("blocked-and-imported"), doc, unanchored)],
+      ["CONTRACT_VARIANT_INVALID", () => withContract((c) => {
+        c.derivation_proofs.find((entry: any) => entry.event_group === "plan_state").proof = "";
+      })],
+      ["CONTRACT_CANONICAL_VARIANT_UNKNOWN", () => withContract((c) => { entryOf(c, "degraded").matrix_variant = "everything-is-fine"; })],
+      ["CONTRACT_CANONICAL_REPORT_INVALID", () => validate(report, doc, matrix,
+        withFixture("blocked", (canonical) => { canonical.verdict = "COMPLETE"; }))],
+      ["CONTRACT_CANONICAL_FIXTURE_MISSING", () => {
+        const thinned = corpus();
+        delete thinned["complete.json"];
+        return validate(report, doc, matrix, thinned);
+      }],
+      ["CONTRACT_CANONICAL_FIXTURE_UNDECLARED", () => {
+        const stray = corpus();
+        stray["stale.json"] = fixtureOf("complete");
+        return validate(report, doc, matrix, stray);
+      }],
+      ["CONTRACT_VERDICT_UNEXERCISED", () => {
+        const withoutImported: Record<string, any> = corpus();
+        for (const reportId of ["imported-only", "imported-and-degraded", "blocked-and-imported"]) {
+          withoutImported[`${reportId}.json`].assessment_mode = "VERIFIED_ASSESSMENT";
+        }
+        return validate(report, doc, matrix, withoutImported);
+      }],
+      ["CONTRACT_REASON_UNEXERCISED", () => {
+        const withoutDegraded = frozen();
+        for (const reportId of ["degraded", "imported-and-degraded", "blocked-and-imported"]) {
+          entryOf(withoutDegraded, reportId).matrix_variant = "as-declared";
+        }
+        return validate(report, withoutDegraded, matrix);
+      }],
+      ["CAPABILITY_MATRIX_INVALID", () => validate(report, doc, "matrix")],
+      ["CANONICAL_CORPUS_NOT_AN_OBJECT", () => validate(report, doc, matrix, null)]
+    ];
+
+    for (const [code, produce] of emitters) {
+      const result = produce();
+      // `codes()` is `error.split(" ")[0]`, so this is code equality and never a substring, and
+      // the message is compared whole so the detail cannot drift either.
+      assert.ok(codes(result).includes(code),
+        `${code} was emitted by nothing; got ${result.errors.join("; ") || "no error"}`);
+      assert.equal(messageFor(result, code), MESSAGES[code], code);
+    }
+    assert.deepEqual(Object.keys(MESSAGES).sort(), emitters.map(([code]) => code).sort());
+
+    // The five row-table kind names and the proof table's own kind appear only inside error
+    // text, so each is pinned by an exact message rather than by the code alone.
+    const kinds: [string, (contract: any) => void, string][] = [
+      ["proof", (c) => { delete c.derivation_proofs[0].proof; }, "CONTRACT_MISSING_ROW_FIELD proof workspace_diff proof"],
+      ["mode", (c) => { delete modeRow(c, "VERIFIED_ASSESSMENT").statement; }, "CONTRACT_MISSING_ROW_FIELD mode VERIFIED_ASSESSMENT statement"],
+      ["verdict", (c) => { delete verdictRow(c, "COMPLETE").statement; }, "CONTRACT_MISSING_ROW_FIELD verdict COMPLETE statement"],
+      ["reason", (c) => { delete reasonRow(c, "DEGRADED_GROUP_UNAVAILABLE").statement; }, "CONTRACT_MISSING_ROW_FIELD reason DEGRADED_GROUP_UNAVAILABLE statement"],
+      ["variant", (c) => { delete variantRow(c, "as-declared").source_clause; }, "CONTRACT_MISSING_ROW_FIELD variant as-declared source_clause"],
+      ["canonical", (c) => { delete entryOf(c, "complete").ordinal; }, "CONTRACT_MISSING_ROW_FIELD canonical complete ordinal"]
+    ];
+    for (const [kind, tamper, expected] of kinds) {
+      assert.equal(messageFor(withContract(tamper), "CONTRACT_MISSING_ROW_FIELD"), expected, kind);
+    }
+
+    // Two codes are emitted from more than one place, and each place carries its own text.
+    assert.equal(
+      messageFor(withContract((c) => { c.capability_contract_version = "adapter-capability-contract-v1"; }),
+        "CONTRACT_CAPABILITY_BINDING_MISMATCH"),
+      `CONTRACT_CAPABILITY_BINDING_MISMATCH capability_contract_version must read ${matrix.contract_version}`
+    );
+    assert.equal(
+      messageFor(validate(report, doc, matrix,
+        withFixture("complete", (canonical) => { canonical.runtime_id = "codex-next"; })),
+        "CONTRACT_CANONICAL_REPORT_INVALID"),
+      "CONTRACT_CANONICAL_REPORT_INVALID complete UNKNOWN_RUNTIME codex-next is outside the frozen SSOT 9.2 runtime set"
+    );
+
+    // A duplicated row is reported once and is not then measured as a misplaced row, so the
+    // `continue` that stops the second pass is load bearing and is asserted exactly.
+    const duplicated = frozen();
+    duplicated.assessment_modes[1] = clone(duplicated.assessment_modes[0]);
+    assert.deepEqual(codes(validate(report, duplicated, matrix)),
+      ["CONTRACT_DUPLICATE_ROW", "CONTRACT_ROW_GAP"]);
+
+    // And the inventory is re-derived from the module rather than maintained by hand, so a new
+    // code that no case produces fails here instead of shipping unasserted. Comments are
+    // stripped first; every message this module emits begins with its code and a space, and the
+    // two codes it interpolates are read from the frozen list table they come from.
+    const stripped = readFileSync(sourcePath, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/\/\/[^\n]*/g, " ");
+    const inSource = new Set<string>();
+    for (const match of stripped.matchAll(/["`]([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+) /g)) inSource.add(match[1]);
+    for (const match of stripped.matchAll(/,\s*"(CONTRACT_[A-Z0-9_]+_MISMATCH)"\]/g)) inSource.add(match[1]);
+    const asserted = new Set(emitters.map(([code]) => code));
+    assert.equal(asserted.size, emitters.length, "an error code is listed twice");
+    assert.deepEqual([...inSource].filter((code) => !asserted.has(code)).sort(), [],
+      "the module can emit an error code that no case asserts");
+    assert.deepEqual([...asserted].filter((code) => !inSource.has(code)).sort(), [],
+      "a case asserts an error code the module does not carry");
+    assert.equal(asserted.size, 78);
   });
 });
