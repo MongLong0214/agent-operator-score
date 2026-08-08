@@ -14,6 +14,7 @@ Define adapter capability schema and complete event matrix. Deliver only the bou
 ## Exact ownership
 
 - specs/adapter-capabilities.v0.json; packages/schema/src/capability.ts — CapabilityStatus,CapabilityRow,validateCapabilityMatrix
+- Coordinated census amendment, owner-authorised 2026-08-08 under the precedent E0A-001 set: tests/planning-contract.test.mjs; tests/planning/workspace-skeleton.test.mjs — none
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
