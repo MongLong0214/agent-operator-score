@@ -138,19 +138,6 @@
   "repos/MongLong0214/agent-operator-score/commits/cafecafecafecafecafecafecafecafecafecafe/check-runs?per_page=50": {
     "check_runs": [
       {
-        "name": "planning-contract (20)",
-        "status": "completed",
-        "conclusion": "success",
-        "app": {
-          "id": 15368,
-          "slug": "github-actions"
-        },
-        "external_id": null,
-        "id": 9000,
-        "run_id": 4001,
-        "run_attempt": 1
-      },
-      {
         "name": "planning-contract (22)",
         "status": "completed",
         "conclusion": "success",
@@ -177,18 +164,10 @@
         "run_attempt": 1
       }
     ],
-    "total_count": 3
+    "total_count": 2
   },
   "repos/MongLong0214/agent-operator-score/actions/runs/4001/attempts/1/jobs?per_page=50": {
     "jobs": [
-      {
-        "name": "planning-contract (20)",
-        "status": "completed",
-        "conclusion": "success",
-        "check_run_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000",
-        "run_id": 4001,
-        "run_attempt": 1
-      },
       {
         "name": "planning-contract (22)",
         "status": "completed",
@@ -206,7 +185,7 @@
         "run_attempt": 1
       }
     ],
-    "total_count": 3
+    "total_count": 2
   },
   "repos/MongLong0214/agent-operator-score/pulls/300/reviews": [
     {

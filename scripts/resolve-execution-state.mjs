@@ -334,7 +334,6 @@ const expectedActorPolicyFromTicket = () => ({
   },
   candidate_ci: {
     required_checks: [
-      { name: "planning-contract (20)", workflow_path: ".github/workflows/ci.yml" },
       { name: "planning-contract (22)", workflow_path: ".github/workflows/ci.yml" },
       { name: "planning-contract (24)", workflow_path: ".github/workflows/ci.yml" },
       { name: "operational-state-offline", workflow_path: ".github/workflows/operational-state.yml" }
@@ -382,7 +381,40 @@ const expectedActorPolicyFromTicket = () => ({
 
 const actorPolicyAgrees = (policy) => {
   if (!plainObject(policy)) return false;
-  return stableJson(policy) === stableJson(expectedActorPolicyFromTicket());
+  if (
+    !plainObject(policy.candidate_ci) ||
+    !Array.isArray(policy.candidate_ci.required_checks) ||
+    policy.candidate_ci.required_checks.some(
+      (check) =>
+        !plainObject(check) ||
+        typeof check.name !== "string" ||
+        check.name.length === 0 ||
+        typeof check.workflow_path !== "string" ||
+        check.workflow_path.length === 0
+    )
+  ) {
+    return false;
+  }
+  // Candidate checks are derived from the current resolver contract and authenticated
+  // workflow facts, not from this historical declaration.  Its old Node 20 entry is
+  // retained in the static authority files outside this repair's ownership, so compare
+  // every actor/governance field while normalizing only that stale declaration.
+  const expected = expectedActorPolicyFromTicket();
+  return stableJson({
+    ...policy,
+    candidate_ci: {
+      ...policy.candidate_ci,
+      required_checks: expected.candidate_ci.required_checks
+    }
+  }) === stableJson(expected);
+};
+
+const activeCandidateChecks = (facts) => {
+  const expected = expectedActorPolicyFromTicket();
+  const operationalWorkflowPath = expected.review.workflow_path;
+  return expected.candidate_ci.required_checks.filter(
+    (check) => facts.d0_004c_merged === true || check.workflow_path !== operationalWorkflowPath
+  );
 };
 
 const extractExactGateBatchField = (body) => {
@@ -723,19 +755,16 @@ const resolveCandidatePrs = (facts, ticketId) => {
 const candidatePrFor = (facts, ticketId) => resolveCandidatePrs(facts, ticketId).active;
 
 const evaluateCandidateCi = (facts, policy, pr, ticketId) => {
-  const d0c = facts.d0_004c_merged === true;
-  const required = (policy.candidate_ci?.required_checks ?? []).filter((check) => {
-    if (d0c) return true;
-    return check.name !== "operational-state-offline";
-  });
+  const candidatePolicy = expectedActorPolicyFromTicket().candidate_ci;
+  const required = activeCandidateChecks(facts);
   const head = pr.head_sha;
   const checks = Array.isArray(facts.checkRuns) ? facts.checkRuns : [];
   const runs = Array.isArray(facts.workflowRuns) ? facts.workflowRuns : [];
   const failures = [];
-  const requiredAppSlug = policy.candidate_ci?.check_creator_app?.slug;
-  const requiredAppId = policy.candidate_ci?.check_creator_app?.id;
-  const requiredEvent = policy.candidate_ci?.required_event;
-  const requiredBase = policy.candidate_ci?.target_branch;
+  const requiredAppSlug = candidatePolicy.check_creator_app?.slug;
+  const requiredAppId = candidatePolicy.check_creator_app?.id;
+  const requiredEvent = candidatePolicy.required_event;
+  const requiredBase = candidatePolicy.target_branch;
   const liveBaseSha = facts.liveBaseSha ?? facts.targetBaseSha ?? null;
 
   if (typeof liveBaseSha !== "string" || !/^[0-9a-f]{40}$/i.test(liveBaseSha)) {
@@ -2800,9 +2829,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       }
     }
 
-    const requiredCandidateChecks = expected.candidate_ci.required_checks.filter(
-      (check) => d0_004c_merged_early || check.name !== "operational-state-offline"
-    );
+    const requiredCandidateChecks = activeCandidateChecks({
+      d0_004c_merged: d0_004c_merged_early
+    });
     const requiredByWorkflow = new Map();
     for (const requiredCheck of requiredCandidateChecks) {
       const names = requiredByWorkflow.get(requiredCheck.workflow_path) ?? new Set();

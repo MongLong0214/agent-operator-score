@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -60,6 +60,37 @@ const ticketState = (result, id) => {
 };
 
 const blockerCodes = (state) => (state.blockers ?? []).map((b) => b.code);
+
+const derivePullRequestChecksFromWorkflows = () => {
+  const workflowsRoot = resolve(root, ".github/workflows");
+  const checks = [];
+  for (const filename of readdirSync(workflowsRoot).sort()) {
+    if (!filename.endsWith(".yml") && !filename.endsWith(".yaml")) continue;
+    const workflowPath = `.github/workflows/${filename}`;
+    const workflow = readFileSync(resolve(workflowsRoot, filename), "utf8");
+    if (!/\bpull_request\b/.test(workflow)) continue;
+    const jobsIndex = workflow.search(/^jobs:\s*$/m);
+    assert.notEqual(jobsIndex, -1, `${workflowPath} must declare jobs`);
+    const jobs = workflow.slice(jobsIndex);
+    const jobMatches = [...jobs.matchAll(/^ {2}([A-Za-z0-9_-]+):\s*$/gm)];
+    assert.ok(jobMatches.length > 0, `${workflowPath} must declare at least one job`);
+    for (let index = 0; index < jobMatches.length; index += 1) {
+      const job = jobMatches[index];
+      const body = jobs.slice(job.index, jobMatches[index + 1]?.index);
+      const nodeMatrix = body.match(/^ {8}node:\s*\[([^\]]+)]\s*$/m);
+      if (!nodeMatrix) {
+        checks.push({ name: job[1], workflow_path: workflowPath });
+        continue;
+      }
+      for (const node of nodeMatrix[1].split(",").map((value) => value.trim()).filter(Boolean)) {
+        checks.push({ name: `${job[1]} (${node})`, workflow_path: workflowPath });
+      }
+    }
+  }
+  return checks.sort((left, right) =>
+    left.workflow_path.localeCompare(right.workflow_path) || left.name.localeCompare(right.name)
+  );
+};
 
 /**
  * A completion merge now owes evidence that what it introduced is still in the live tree,
@@ -2480,6 +2511,55 @@ test("candidate-ci-required-set-is-exact", async () => {
   assert.ok(blockerCodes(state).includes("EXACT_HEAD_CI_FAILED"));
 });
 
+test("candidate-ci-required-checks-are-produced-by-current-workflows", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const requiredChecks = derivePullRequestChecksFromWorkflows();
+  assert.ok(requiredChecks.length > 0, "current pull-request workflows must produce at least one check");
+
+  const repo = "repos/MongLong0214/agent-operator-score";
+  const head = "cafecafecafecafecafecafecafecafecafecafe";
+  const jobsKey = `${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`;
+  const checksKey = `${repo}/commits/${head}/check-runs?per_page=50`;
+  const expectedNames = new Set(requiredChecks.map((check) => check.name));
+  const jobs = responses[jobsKey].jobs.filter((job) => expectedNames.has(job.name));
+  const checkIds = new Set(
+    jobs.map((job) => Number(job.check_run_url.match(/\/(\d+)$/)?.[1]))
+  );
+  responses[jobsKey] = { jobs, total_count: jobs.length };
+  responses[checksKey] = {
+    check_runs: responses[checksKey].check_runs.filter((check) => checkIds.has(check.id)),
+    total_count: checkIds.size
+  };
+
+  const collected = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(responses)
+  });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.deepEqual(
+    collected.facts.workflowRuns
+      .map(({ name, workflow_path }) => ({ name, workflow_path }))
+      .sort((left, right) => left.workflow_path.localeCompare(right.workflow_path) || left.name.localeCompare(right.name)),
+    requiredChecks
+  );
+});
+
+test("operational-check-is-required-when-its-live-workflow-is-present", async () => {
+  const facts = makeCandidateFacts(loadBaselineFacts(), {
+    review: true,
+    authorization: true,
+    ci: true,
+    d0_004c_merged: true
+  });
+  facts.checkRuns = facts.checkRuns.filter((check) => check.name !== "operational-state-offline");
+  facts.workflowRuns = facts.workflowRuns.filter((run) => run.name !== "operational-state-offline");
+
+  const { result } = await resolveOffline(facts);
+  assert.ok(blockerCodes(ticketState(result, "D0-004")).includes("EXACT_HEAD_CI_FAILED"));
+});
+
 test("candidate-ci-missing-stale-or-wrong-head-is-blocked", async () => {
   const facts = makeCandidateFacts(loadBaselineFacts(), {
     review: true,
@@ -2546,9 +2626,9 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
     workflow_path: ".github/workflows/ci.yml"
   };
   facts.workflowRuns = [
-    ...(facts.workflowRuns ?? []).filter((r) => r.name !== "planning-contract (20)"),
+    ...(facts.workflowRuns ?? []).filter((r) => r.name !== "planning-contract (22)"),
     {
-      name: "planning-contract (20)",
+      name: "planning-contract (22)",
       run_id: 1,
       run_attempt: 1,
       status: "completed",
@@ -2556,7 +2636,7 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
       ...runMeta
     },
     {
-      name: "planning-contract (20)",
+      name: "planning-contract (22)",
       run_id: 1,
       run_attempt: 2,
       status: "completed",
@@ -2565,7 +2645,7 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
     }
   ];
   facts.checkRuns = (facts.checkRuns ?? []).map((c) =>
-    c.name === "planning-contract (20)"
+    c.name === "planning-contract (22)"
       ? { ...c, conclusion: "failure", run_id: 1, run_attempt: 2 }
       : c
   );
@@ -3131,10 +3211,10 @@ test("candidate-ci-requires-exact-job-check-name-and-one-to-one-check-consumptio
   const responses = clone(base);
   const jobsKey = `${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`;
 
-  // All three required jobs point to the same check-run. The first name happens
+  // All required jobs point to the same check-run. The first name happens
   // to agree, but the remaining two must neither reuse its ID nor accept its name.
   for (const job of responses[jobsKey].jobs) {
-    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000";
+    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9001";
   }
 
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
@@ -3143,8 +3223,8 @@ test("candidate-ci-requires-exact-job-check-name-and-one-to-one-check-consumptio
 
   const reused = clone(base);
   for (const job of reused[jobsKey].jobs) {
-    job.name = "planning-contract (20)";
-    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000";
+    job.name = "planning-contract (22)";
+    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9001";
   }
   const reusedCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(reused) });
   assert.equal(reusedCollected.ok, false);
@@ -3577,7 +3657,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   responses[runsKey] = { total_count: dualRuns.length, workflow_runs: dualRuns };
   // Stale successful check-runs (would mask failure if bound only by name).
   const dualChecks = [
-    ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+    ...["planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       id: 9100 + i,
       name,
       status: "completed",
@@ -3586,7 +3666,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
       run_id: 4001,
       run_attempt: 1
     })),
-    ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+    ...["planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       id: 9200 + i,
       name,
       status: "completed",
@@ -3598,7 +3678,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   ];
   responses[checksKey] = { total_count: dualChecks.length, check_runs: dualChecks };
   const dualJobs = (runId, conclusion, checkBase) =>
-    ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+    ["planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       name,
       status: "completed",
       conclusion,
@@ -3607,11 +3687,11 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
       check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${checkBase + i}`
     }));
   responses[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`] = {
-    total_count: 3,
+    total_count: 2,
     jobs: dualJobs(4001, "success", 9100)
   };
   responses[`${repo}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
-    total_count: 3,
+    total_count: 2,
     jobs: dualJobs(4002, "failure", 9200)
   };
 
@@ -3619,7 +3699,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   assert.equal(collected.ok, true, collected.reason);
   assert.deepEqual(
     collected.facts.workflowRuns.map((entry) => [entry.run_id, entry.run_attempt, entry.conclusion]),
-    [[4002, 1, "failure"], [4002, 1, "failure"], [4002, 1, "failure"]]
+    [[4002, 1, "failure"], [4002, 1, "failure"]]
   );
 
   // A unique name on a single run is still not exact provenance when neither
@@ -3691,7 +3771,7 @@ test("candidate-ci-selects-only-the-latest-attempt-for-each-required-workflow", 
   assert.equal(collected.ok, true, collected.reason);
   assert.deepEqual(
     collected.facts.workflowRuns.map((entry) => entry.run_id),
-    [4001, 4001, 4001]
+    [4001, 4001]
   );
 });
 
@@ -4871,14 +4951,10 @@ function makeCandidateFacts(base, { review, authorization, ci, d0_004c_merged = 
   facts.workflowBlobs[".github/workflows/ci.yml"].heads = { [head]: "ci-blob-dev" };
   facts.workflowBlobs[".github/workflows/operational-state.yml"].heads = { [head]: "ops-blob-dev" };
 
-  const requiredNames = d0_004c_merged
-    ? [
-        "planning-contract (20)",
-        "planning-contract (22)",
-        "planning-contract (24)",
-        "operational-state-offline"
-      ]
-    : ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"];
+  const requiredNames = [
+    ...derivePullRequestChecksFromWorkflows().map((check) => check.name),
+    ...(d0_004c_merged ? ["operational-state-offline"] : [])
+  ];
 
   facts.checkRuns = [];
   facts.workflowRuns = [];
