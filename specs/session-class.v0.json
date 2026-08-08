@@ -1,0 +1,2635 @@
+{
+  "contract_id": "session-class.v0",
+  "contract_version": "session-class-contract-v0",
+  "source_authority": "docs/north-star/agent-operator-score-ssot-v1.0.md#9.2",
+  "imported_incompleteness_clause": "Imported Session에는 clarification, human active time, approval, evidence invalidation, completion claim이 완전하지 않을 수 있으므로 공식 점수를 발급하지 않는다.",
+  "capability_digest_fields": [
+    "runtime_version",
+    "protocol_or_schema_version",
+    "adapter_version",
+    "source_class",
+    "supported_event_groups",
+    "known_missing_events"
+  ],
+  "attribution_classes": [
+    "agent",
+    "human/takeover",
+    "external_mutation"
+  ],
+  "unknown_attribution_marker": "actor.attribution_unknown",
+  "wrapper_actor": "wrapper",
+  "event_common_fields": [
+    "event_id",
+    "run_id",
+    "task_id",
+    "timestamp",
+    "actor",
+    "event_type",
+    "event_group",
+    "parent_id",
+    "correlation_id",
+    "identity",
+    "evidence_digest",
+    "redaction_state",
+    "payload"
+  ],
+  "redaction_states": [
+    "none",
+    "redacted"
+  ],
+  "bounded_payload_max_chars": 2048,
+  "minimum_observation_ms": 1,
+  "required_event_groups": [
+    "run_lifecycle",
+    "runtime_identity",
+    "user_instruction",
+    "tool_call",
+    "evidence_claim",
+    "approval_safety",
+    "actor_attribution"
+  ],
+  "imported_incompleteness_items": [
+    {
+      "item_id": "clarification",
+      "event_types": [
+        "user.clarification"
+      ]
+    },
+    {
+      "item_id": "human_active_time",
+      "event_types": [
+        "intervention.occurred"
+      ]
+    },
+    {
+      "item_id": "approval",
+      "event_types": [
+        "approval.requested",
+        "approval.granted",
+        "approval.denied"
+      ]
+    },
+    {
+      "item_id": "evidence_invalidation",
+      "event_types": [
+        "evidence.invalidated"
+      ]
+    },
+    {
+      "item_id": "completion_claim",
+      "event_types": [
+        "completion.claimed"
+      ]
+    }
+  ],
+  "classes": [
+    {
+      "class_id": "CONTROLLED_VERIFIED",
+      "ordinal": 1,
+      "source_clause": "Verified Assessment: AOS controlled wrapper가 시작부터 종료까지 감싼 세션만 공식 AOS-Coding P0 발급 가능",
+      "statement": "Verified Assessment: only a session that records the AOS controlled wrapper wrapping it from start to end may be issued an official AOS-Coding P0. This contract checks that the record makes that claim completely and consistently; it does not establish that the run was observed.",
+      "official_score_eligible": true,
+      "diagnostic_label": null
+    },
+    {
+      "class_id": "IMPORTED_DIAGNOSTIC",
+      "ordinal": 2,
+      "source_clause": "Imported Session: 기존 Codex·Claude Code 기록의 사후 분석은 DIAGNOSTIC ONLY",
+      "statement": "Imported Session: post-hoc analysis of an existing Codex or Claude Code record is DIAGNOSTIC ONLY, as is every record that fails to make the complete controlled-session claim.",
+      "official_score_eligible": false,
+      "diagnostic_label": "DIAGNOSTIC ONLY"
+    }
+  ],
+  "requirements": [
+    {
+      "gate_id": "WRAPPER_START_END_CORRELATION",
+      "ordinal": 1,
+      "source_clause": "Verified Assessment: AOS controlled wrapper가 시작부터 종료까지 감싼 세션만 공식 AOS-Coding P0 발급 가능",
+      "statement": "The record claims one start-to-end wrapper bracket: one assessment.started and assessment.ended declaring the wrapper actor, one run, one correlation, a bracket that spans time, and no activity outside it.",
+      "predicate": "exactly one assessment.started and assessment.ended declare the wrapper actor, share the session run id and one correlation id, span at least one millisecond, and contain every other event in time",
+      "failure_mode": "a record whose activity begins before or continues after the bracket does not claim a start-to-end wrapping at all, so it cannot be Verified; a record that does make the claim is not thereby shown to be a capture rather than a reconstruction"
+    },
+    {
+      "gate_id": "CAPABILITY_SNAPSHOT",
+      "ordinal": 2,
+      "source_clause": "run 시작 시 capability snapshot과 adapter digest를 저장한다.",
+      "statement": "A capability snapshot and adapter digest are recorded as stored at run start, strictly before any other recorded activity.",
+      "predicate": "one adapter.capability_declared event declaring the wrapper actor strictly precedes every non-bracket event and the stored snapshot carries exactly the six capability digest fields",
+      "failure_mode": "a snapshot taken at or after the first observed event describes an adapter that was already working, so it proves nothing about what was captured"
+    },
+    {
+      "gate_id": "RUNTIME_IDENTITY",
+      "ordinal": 3,
+      "source_clause": "model·runtime·harness identity",
+      "statement": "The session declares one runtime, model and harness identity whose components are unambiguous, and every event agrees with it.",
+      "predicate": "the session declares a known runtime with a model and harness, no component containing the identity delimiter, and every event reports the identity id derived from that triple",
+      "failure_mode": "an identity mismatch is an invalidating condition under SSOT 6.1 gate 10, and a component carrying the join character would make two different identities report one id"
+    },
+    {
+      "gate_id": "REQUIRED_EVENT_COMPLETENESS",
+      "ordinal": 4,
+      "source_clause": "adapter core events: REQUIRED event set 완전",
+      "statement": "Every unconditionally REQUIRED SSOT 9.2 event group is observed and no action is left unattributed.",
+      "predicate": "every one of the 7 unconditionally REQUIRED SSOT 9.2 event groups is observed and no event records an unknown actor attribution",
+      "failure_mode": "a missing REQUIRED group or an unknown attribution withholds the score rather than degrading it silently"
+    }
+  ],
+  "blocker_gates": [
+    {
+      "blocker": "WRAPPER_START_MISSING",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_END_MISSING",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_BRACKET_DUPLICATE",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_BRACKET_ACTOR_MISMATCH",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_ACTOR_MISUSED",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_BRACKET_INVERTED",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_BRACKET_ZERO_DURATION",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_BRACKET_UNCORRELATED",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "RUN_ID_MISMATCH",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "CORRELATION_GAP",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "WRAPPER_BRACKET_NOT_CONTAINING",
+      "gate_id": "WRAPPER_START_END_CORRELATION"
+    },
+    {
+      "blocker": "CAPABILITY_SNAPSHOT_MISSING",
+      "gate_id": "CAPABILITY_SNAPSHOT"
+    },
+    {
+      "blocker": "CAPABILITY_SNAPSHOT_DUPLICATE",
+      "gate_id": "CAPABILITY_SNAPSHOT"
+    },
+    {
+      "blocker": "CAPABILITY_SNAPSHOT_ACTOR_MISMATCH",
+      "gate_id": "CAPABILITY_SNAPSHOT"
+    },
+    {
+      "blocker": "CAPABILITY_SNAPSHOT_LATE",
+      "gate_id": "CAPABILITY_SNAPSHOT"
+    },
+    {
+      "blocker": "CAPABILITY_SNAPSHOT_NOT_STORED",
+      "gate_id": "CAPABILITY_SNAPSHOT"
+    },
+    {
+      "blocker": "CAPABILITY_DIGEST_FIELDS_MISMATCH",
+      "gate_id": "CAPABILITY_SNAPSHOT"
+    },
+    {
+      "blocker": "IDENTITY_NOT_DECLARED",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "IDENTITY_INCOMPLETE",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "IDENTITY_COMPONENT_DELIMITER",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "IDENTITY_DEAD_FIELD",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "UNKNOWN_RUNTIME",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "IDENTITY_RUNTIME_MISMATCH",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "IDENTITY_MISMATCH",
+      "gate_id": "RUNTIME_IDENTITY"
+    },
+    {
+      "blocker": "REQUIRED_EVENT_GROUP_GAP",
+      "gate_id": "REQUIRED_EVENT_COMPLETENESS"
+    },
+    {
+      "blocker": "ATTRIBUTION_UNKNOWN",
+      "gate_id": "REQUIRED_EVENT_COMPLETENESS"
+    }
+  ],
+  "event_vocabulary": [
+    {
+      "event_type": "assessment.started",
+      "event_group": "run_lifecycle"
+    },
+    {
+      "event_type": "assessment.ended",
+      "event_group": "run_lifecycle"
+    },
+    {
+      "event_type": "adapter.capability_declared",
+      "event_group": "runtime_identity"
+    },
+    {
+      "event_type": "task.started",
+      "event_group": "run_lifecycle"
+    },
+    {
+      "event_type": "task.ended",
+      "event_group": "run_lifecycle"
+    },
+    {
+      "event_type": "user.instruction",
+      "event_group": "user_instruction"
+    },
+    {
+      "event_type": "user.clarification",
+      "event_group": "user_instruction"
+    },
+    {
+      "event_type": "context.selected",
+      "event_group": "context_selection"
+    },
+    {
+      "event_type": "context.injected",
+      "event_group": "context_selection"
+    },
+    {
+      "event_type": "context.compacted",
+      "event_group": "context_selection"
+    },
+    {
+      "event_type": "retrieval.query",
+      "event_group": "retrieval_memory"
+    },
+    {
+      "event_type": "retrieval.result",
+      "event_group": "retrieval_memory"
+    },
+    {
+      "event_type": "memory.read",
+      "event_group": "retrieval_memory"
+    },
+    {
+      "event_type": "memory.written",
+      "event_group": "retrieval_memory"
+    },
+    {
+      "event_type": "memory.invalidated",
+      "event_group": "retrieval_memory"
+    },
+    {
+      "event_type": "tool.call",
+      "event_group": "tool_call"
+    },
+    {
+      "event_type": "tool.result",
+      "event_group": "tool_call"
+    },
+    {
+      "event_type": "tool.error",
+      "event_group": "tool_call"
+    },
+    {
+      "event_type": "agent.delegated",
+      "event_group": "delegation_handoff"
+    },
+    {
+      "event_type": "agent.returned",
+      "event_group": "delegation_handoff"
+    },
+    {
+      "event_type": "handoff.created",
+      "event_group": "delegation_handoff"
+    },
+    {
+      "event_type": "handoff.consumed",
+      "event_group": "delegation_handoff"
+    },
+    {
+      "event_type": "plan.created",
+      "event_group": "plan_state"
+    },
+    {
+      "event_type": "plan.revised",
+      "event_group": "plan_state"
+    },
+    {
+      "event_type": "state.transition",
+      "event_group": "plan_state"
+    },
+    {
+      "event_type": "state.checkpoint",
+      "event_group": "plan_state"
+    },
+    {
+      "event_type": "intervention.occurred",
+      "event_group": "human_active_time"
+    },
+    {
+      "event_type": "approval.requested",
+      "event_group": "approval_safety"
+    },
+    {
+      "event_type": "approval.granted",
+      "event_group": "approval_safety"
+    },
+    {
+      "event_type": "approval.denied",
+      "event_group": "approval_safety"
+    },
+    {
+      "event_type": "evidence.created",
+      "event_group": "evidence_claim"
+    },
+    {
+      "event_type": "evidence.invalidated",
+      "event_group": "evidence_claim"
+    },
+    {
+      "event_type": "completion.claimed",
+      "event_group": "evidence_claim"
+    },
+    {
+      "event_type": "safety.event",
+      "event_group": "approval_safety"
+    },
+    {
+      "event_type": "budget.updated",
+      "event_group": "token_cost"
+    },
+    {
+      "event_type": "run.stalled",
+      "event_group": "plan_state"
+    },
+    {
+      "event_type": "run.resumed",
+      "event_group": "run_lifecycle"
+    },
+    {
+      "event_type": "run.cancelled",
+      "event_group": "run_lifecycle"
+    }
+  ],
+  "canonical_sessions": [
+    {
+      "session": {
+        "session_id": "controlled-complete",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "CONTROLLED_VERIFIED",
+        "official_score_eligible": true,
+        "diagnostic_label": null,
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [],
+        "satisfied_gates": [
+          "WRAPPER_START_END_CORRELATION",
+          "CAPABILITY_SNAPSHOT",
+          "RUNTIME_IDENTITY",
+          "REQUIRED_EVENT_COMPLETENESS"
+        ],
+        "imported_incompleteness": []
+      }
+    },
+    {
+      "session": {
+        "session_id": "missing-start",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "WRAPPER_START_MISSING the trace records no wrapper assessment.started"
+        ],
+        "satisfied_gates": [
+          "CAPABILITY_SNAPSHOT",
+          "RUNTIME_IDENTITY",
+          "REQUIRED_EVENT_COMPLETENESS"
+        ],
+        "imported_incompleteness": []
+      }
+    },
+    {
+      "session": {
+        "session_id": "missing-end",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "WRAPPER_END_MISSING the trace records no wrapper assessment.ended"
+        ],
+        "satisfied_gates": [
+          "CAPABILITY_SNAPSHOT",
+          "RUNTIME_IDENTITY",
+          "REQUIRED_EVENT_COMPLETENESS"
+        ],
+        "imported_incompleteness": []
+      }
+    },
+    {
+      "session": {
+        "session_id": "imported",
+        "run_id": "run-claude-import-0007",
+        "runtime_id": "claude-code",
+        "identity": null,
+        "capability_snapshot": null,
+        "events": [
+          {
+            "event_id": "i01",
+            "run_id": "run-claude-import-0007",
+            "task_id": "task-claude-import-0007",
+            "timestamp": "2026-07-30T14:00:00.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-claude-import-0007",
+            "identity": null,
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "reconstructed from a finished session log"
+          },
+          {
+            "event_id": "i02",
+            "run_id": "run-claude-import-0007",
+            "task_id": "task-claude-import-0007",
+            "timestamp": "2026-07-30T14:00:30.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "i01",
+            "correlation_id": "corr-claude-import-0007",
+            "identity": null,
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "refactor the reporter"
+          },
+          {
+            "event_id": "i03",
+            "run_id": "run-claude-import-0007",
+            "task_id": "task-claude-import-0007",
+            "timestamp": "2026-07-30T14:01:00.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "i01",
+            "correlation_id": "corr-claude-import-0007",
+            "identity": null,
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "edit packages/reporter/src/index.ts"
+          },
+          {
+            "event_id": "i04",
+            "run_id": "run-claude-import-0007",
+            "task_id": "task-claude-import-0007",
+            "timestamp": "2026-07-30T14:01:05.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "i03",
+            "correlation_id": "corr-claude-import-0007",
+            "identity": null,
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "i05",
+            "run_id": "run-claude-import-0007",
+            "task_id": "task-claude-import-0007",
+            "timestamp": "2026-07-30T14:20:00.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "i01",
+            "correlation_id": "corr-claude-import-0007",
+            "identity": null,
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "session ended"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": null,
+        "blockers": [
+          "WRAPPER_START_MISSING the trace records no wrapper assessment.started",
+          "WRAPPER_END_MISSING the trace records no wrapper assessment.ended",
+          "CAPABILITY_SNAPSHOT_MISSING the trace records no adapter.capability_declared event",
+          "CAPABILITY_SNAPSHOT_NOT_STORED the run stored no capability snapshot",
+          "IDENTITY_NOT_DECLARED the session records no runtime, model and harness identity",
+          "REQUIRED_EVENT_GROUP_GAP runtime_identity is absent from the trace",
+          "REQUIRED_EVENT_GROUP_GAP evidence_claim is absent from the trace",
+          "REQUIRED_EVENT_GROUP_GAP approval_safety is absent from the trace"
+        ],
+        "satisfied_gates": [],
+        "imported_incompleteness": [
+          "clarification",
+          "human_active_time",
+          "approval",
+          "evidence_invalidation",
+          "completion_claim"
+        ]
+      }
+    },
+    {
+      "session": {
+        "session_id": "identity-gap",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-thinking|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "IDENTITY_MISMATCH e08 reports codex|gpt-5.6-thinking|aos-controlled-wrapper-v0"
+        ],
+        "satisfied_gates": [
+          "WRAPPER_START_END_CORRELATION",
+          "CAPABILITY_SNAPSHOT",
+          "REQUIRED_EVENT_COMPLETENESS"
+        ],
+        "imported_incompleteness": []
+      }
+    },
+    {
+      "session": {
+        "session_id": "snapshot-late",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:30.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "CAPABILITY_SNAPSHOT_LATE e03 precedes the capability snapshot",
+          "CAPABILITY_SNAPSHOT_LATE e04 precedes the capability snapshot",
+          "CAPABILITY_SNAPSHOT_LATE e05 precedes the capability snapshot"
+        ],
+        "satisfied_gates": [
+          "WRAPPER_START_END_CORRELATION",
+          "RUNTIME_IDENTITY",
+          "REQUIRED_EVENT_COMPLETENESS"
+        ],
+        "imported_incompleteness": []
+      }
+    },
+    {
+      "session": {
+        "session_id": "required-event-gap",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "REQUIRED_EVENT_GROUP_GAP approval_safety is absent from the trace"
+        ],
+        "satisfied_gates": [
+          "WRAPPER_START_END_CORRELATION",
+          "CAPABILITY_SNAPSHOT",
+          "RUNTIME_IDENTITY"
+        ],
+        "imported_incompleteness": [
+          "approval"
+        ]
+      }
+    },
+    {
+      "session": {
+        "session_id": "attribution-unknown",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "actor.attribution_unknown",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "ATTRIBUTION_UNKNOWN e09 records actor.attribution_unknown"
+        ],
+        "satisfied_gates": [
+          "WRAPPER_START_END_CORRELATION",
+          "CAPABILITY_SNAPSHOT",
+          "RUNTIME_IDENTITY"
+        ],
+        "imported_incompleteness": []
+      }
+    },
+    {
+      "session": {
+        "session_id": "trailing-event",
+        "run_id": "run-codex-0001",
+        "runtime_id": "codex",
+        "identity": {
+          "runtime": "codex",
+          "model": "gpt-5.6-sol",
+          "harness": "aos-controlled-wrapper-v0"
+        },
+        "capability_snapshot": {
+          "runtime_version": "0.48.2",
+          "protocol_or_schema_version": "trace-v0",
+          "adapter_version": "@aos/adapter-codex@0.0.0",
+          "source_class": "PRIMARY",
+          "supported_event_groups": [
+            "run_lifecycle",
+            "runtime_identity",
+            "user_instruction",
+            "tool_call",
+            "evidence_claim",
+            "approval_safety",
+            "actor_attribution",
+            "human_active_time"
+          ],
+          "known_missing_events": []
+        },
+        "events": [
+          {
+            "event_id": "e01",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.started",
+            "event_group": "run_lifecycle",
+            "parent_id": null,
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment opened by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e02",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:00:01.000Z",
+            "actor": "wrapper",
+            "event_type": "adapter.capability_declared",
+            "event_group": "runtime_identity",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:1b6453892473a467d07372d45eb05abc2031647a9d1f0f9b1d84d1c3a1e9f0aa",
+            "redaction_state": "none",
+            "payload": "capability snapshot and adapter digest stored at run start"
+          },
+          {
+            "event_id": "e03",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:05.000Z",
+            "actor": "agent",
+            "event_type": "task.started",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task opened"
+          },
+          {
+            "event_id": "e04",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:10.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.instruction",
+            "event_group": "user_instruction",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "redacted",
+            "payload": "add the eligibility gate to [REDACTED]"
+          },
+          {
+            "event_id": "e05",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:00:20.000Z",
+            "actor": "human/takeover",
+            "event_type": "user.clarification",
+            "event_group": "user_instruction",
+            "parent_id": "e04",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "the gate is fail-closed"
+          },
+          {
+            "event_id": "e06",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:00.000Z",
+            "actor": "agent",
+            "event_type": "approval.requested",
+            "event_group": "approval_safety",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "request permission to write the source file"
+          },
+          {
+            "event_id": "e07",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:05.000Z",
+            "actor": "human/takeover",
+            "event_type": "approval.granted",
+            "event_group": "approval_safety",
+            "parent_id": "e06",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "granted for one write"
+          },
+          {
+            "event_id": "e08",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:10.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "write packages/schema/src/session-class.ts"
+          },
+          {
+            "event_id": "e09",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:01:12.000Z",
+            "actor": "agent",
+            "event_type": "tool.result",
+            "event_group": "tool_call",
+            "parent_id": "e08",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "1 file written"
+          },
+          {
+            "event_id": "e10",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:02:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.created",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "focused test receipt"
+          },
+          {
+            "event_id": "e11",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:03:00.000Z",
+            "actor": "human/takeover",
+            "event_type": "intervention.occurred",
+            "event_group": "human_active_time",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "operator corrected the fixture"
+          },
+          {
+            "event_id": "e12",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:04:00.000Z",
+            "actor": "agent",
+            "event_type": "evidence.invalidated",
+            "event_group": "evidence_claim",
+            "parent_id": "e10",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "receipt invalidated by the correction"
+          },
+          {
+            "event_id": "e13",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:00.000Z",
+            "actor": "agent",
+            "event_type": "completion.claimed",
+            "event_group": "evidence_claim",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": "sha256:8f14e45fceea167a5a36dedd4bea2543b4a2b3c1d9e0f5a6b7c8d9e0f1a2b3c4",
+            "redaction_state": "none",
+            "payload": "claimed complete against the re-run receipt"
+          },
+          {
+            "event_id": "e14",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:05:30.000Z",
+            "actor": "agent",
+            "event_type": "task.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "task closed"
+          },
+          {
+            "event_id": "e15",
+            "run_id": "run-codex-0001",
+            "task_id": null,
+            "timestamp": "2026-08-08T09:06:00.000Z",
+            "actor": "wrapper",
+            "event_type": "assessment.ended",
+            "event_group": "run_lifecycle",
+            "parent_id": "e01",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "assessment closed by the AOS controlled wrapper"
+          },
+          {
+            "event_id": "e16",
+            "run_id": "run-codex-0001",
+            "task_id": "task-codex-0001-implement",
+            "timestamp": "2026-08-08T09:07:00.000Z",
+            "actor": "agent",
+            "event_type": "tool.call",
+            "event_group": "tool_call",
+            "parent_id": "e03",
+            "correlation_id": "corr-codex-0001",
+            "identity": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+            "evidence_digest": null,
+            "redaction_state": "none",
+            "payload": "a tool call outside the wrapper bracket"
+          }
+        ]
+      },
+      "expected": {
+        "classification": "IMPORTED_DIAGNOSTIC",
+        "official_score_eligible": false,
+        "diagnostic_label": "DIAGNOSTIC ONLY",
+        "identity_id": "codex|gpt-5.6-sol|aos-controlled-wrapper-v0",
+        "blockers": [
+          "WRAPPER_BRACKET_NOT_CONTAINING e16 lies outside the wrapper assessment bracket"
+        ],
+        "satisfied_gates": [
+          "CAPABILITY_SNAPSHOT",
+          "RUNTIME_IDENTITY",
+          "REQUIRED_EVENT_COMPLETENESS"
+        ],
+        "imported_incompleteness": []
+      }
+    }
+  ]
+}
