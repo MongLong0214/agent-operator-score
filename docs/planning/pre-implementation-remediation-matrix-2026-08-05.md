@@ -16,5 +16,5 @@
 |P2-9 OSS truth|README, CONTRIBUTING, SSOT, PRD-E14, E14 tickets|Current state is public source-visible planning only; no license means external contribution acceptance remains blocked; target remains local-first OSS.|
 |P2-10 name clearance|SSOT, PRD-D0, D0-002, PRD-E14, E14-001|D0 owns minimum GitHub/npm/domain/basic trademark evidence; E14 retains legal/notices/publication clearance only.|
 |P2-11 E12 feasibility|SSOT, PRD-E12, E12 tickets|n=20 is feasibility only; exactly PASS_TO_CONTINUE/INCONCLUSIVE/PIVOT_REQUIRED are allowed and prohibited claims are tested.|
-|P2-12 Node/workspaces|ADR-0003, D0-002, CI, validator/tests|CI matrix is 20/22/24; engines stay `>=20 <25`; all future `@aos/*` manifests are private and root is the sole publish candidate.|
+|P2-12 Node/workspaces|ADR-0003, D0-002, CI, validator/tests|CI matrix is 22/24 and engines are `>=22.18 <25`, the floor having moved off Node 20 because Node 20 cannot execute this repository's TypeScript and its test runner skips `.ts` files silently rather than failing; all future `@aos/*` manifests are private and root is the sole publish candidate.|
 |T-13 encoded paths|planning validator/tests|`fileURLToPath()` replaces URL pathname; a copied fixture under a space-containing encoded path passes the focused regression.|

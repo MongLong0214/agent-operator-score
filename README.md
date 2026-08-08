@@ -1,6 +1,6 @@
 # Agent Operator Score (AOS)
 
-> **Current status: planning baseline. Product not implemented.**
+> **Current status: foundation contracts implemented in `@aos/schema`; no public CLI and no end-to-end assessment.**
 
 Agent Operator Score is a planned local-first open assessment of how effectively a human operator runs AI coding agents in a declared environment.
 
@@ -37,14 +37,21 @@ Verified scores require a controlled AOS wrapper from start to finish. Imported 
 
 ## What exists now
 
+Planning:
+
 - final single source of truth;
 - 12 proposed ADRs;
 - 19 proposed PRDs;
 - 65 atomic implementation tickets;
-- milestone, dependency, acceptance, and evidence contracts;
-- planning-only CI.
+- milestone, dependency, acceptance, and evidence contracts.
 
-The `agent-operator-score` package, `aos` CLI, schemas, scorer, runner, adapters, task forms, reports, Snapshot, and public release do **not** exist yet.
+Implemented, private and internal:
+
+- the npm workspace skeleton and the canonical identifier registry;
+- `@aos/schema` foundation and scoring/adapter contracts — `metric-registry.ts` (the frozen M01–M20 registry), `scoring-contract.ts`, `issuance-contract.ts`, `capability.ts`, and `session-class.ts` — each with its own test lane;
+- the control-plane validators and the operational-state resolver, with CI on Node 22 and 24.
+
+Everything below is still absent. The `agent-operator-score` package, the `aos` CLI, the trace and result schemas, the scorer, the runner, the Codex and Claude Code adapters, the task forms, reports, Snapshot, and any public release do **not** exist yet, and nothing here can run an assessment end to end. Every implemented contract is `private: true` and unpublished.
 
 ## Fixed implementation order
 
@@ -98,7 +105,7 @@ Do not run these commands until the owning tickets are implemented and verified.
 - [Milestones](docs/MILESTONES.md)
 - [Traceability](docs/TRACEABILITY.md)
 
-All ADRs, PRDs, and tickets are currently **PROPOSED/BLOCKED**. Issue creation does not authorize product code.
+Every ADR and PRD is **PROPOSED**; every ticket not yet verified is **BLOCKED**. Issue creation does not authorize product code.
 
 ## Required development protocol
 
