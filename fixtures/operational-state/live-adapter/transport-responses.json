@@ -16,7 +16,7 @@
     "sha": "blob-reg-c8937c6c",
     "path": "docs/decisions/maintainer-gate-registry.v2.json"
   },
-  "raw:repos/MongLong0214/agent-operator-score/contents/docs/issues.json?ref=c8937c6c31ef034535f7c2e8276514221a12fd55": "{\n  \"schema_version\": 2,\n  \"operational_authority\": {\n    \"governance_mode\": \"single_owner_agent_team\",\n    \"repository\": \"MongLong0214/agent-operator-score\",\n    \"target_branch\": \"dev\",\n    \"repository_owner\": {\n      \"login\": \"MongLong0214\",\n      \"type\": \"User\"\n    },\n    \"self_authored_strings_and_registry_fields\": \"not_authorization\",\n    \"distinct_external_actor\": \"record_if_available_not_required\",\n    \"bootstrap\": {\n      \"state\": \"NOT_REQUIRED_UNTIL_D0_004C\",\n      \"until\": \"D0-004C is merged into dev\",\n      \"gate\": [\n        \"existing CI\",\n        \"local offline resolver/contract tests\",\n        \"exact-head technical review evidence\"\n      ],\n      \"deferred_workflow_checks\": [\n        \"operational-state-offline\",\n        \"exact-head-review\",\n        \"exact-head-authorization\"\n      ],\n      \"after_d0_004c_merge\": \"resolver_and_workflow_mode_required_fail_closed\",\n      \"fail_closed_regressions\": [\n        \"single-owner-spoof-is-not-authorization\",\n        \"future-check-premature\",\n        \"bootstrap-after-c-fails-closed\"\n      ]\n    },\n    \"candidate_ci\": {\n      \"required_checks\": [\n        {\n          \"name\": \"planning-contract (20)\",\n          \"workflow_path\": \".github/workflows/ci.yml\"\n        },\n        {\n          \"name\": \"planning-contract (22)\",\n          \"workflow_path\": \".github/workflows/ci.yml\"\n        },\n        {\n          \"name\": \"planning-contract (24)\",\n          \"workflow_path\": \".github/workflows/ci.yml\"\n        },\n        {\n          \"name\": \"operational-state-offline\",\n          \"workflow_path\": \".github/workflows/operational-state.yml\"\n        }\n      ],\n      \"required_event\": \"pull_request\",\n      \"target_branch\": \"dev\",\n      \"head_sha_relation\": \"equals_live_pr_head\",\n      \"workflow_blob_relation\": \"candidate_and_live_target_equal\",\n      \"run_selection\": \"latest_run_attempt_only\",\n      \"required_status\": \"completed\",\n      \"required_conclusion\": \"success\",\n      \"check_creator_app\": {\n        \"id\": 15368,\n        \"slug\": \"github-actions\",\n        \"owner\": \"github\"\n      }\n    },\n    \"review\": {\n      \"eligible_permissions\": [\n        \"maintain\",\n        \"admin\"\n      ],\n      \"must_differ_from_pr_author\": false,\n      \"protected_check\": \"exact-head-review\",\n      \"workflow_path\": \".github/workflows/operational-state.yml\",\n      \"trusted_ref\": \"refs/heads/dev\",\n      \"required_event\": \"workflow_dispatch\",\n      \"workflow_commit_relation\": \"reachable_from_live_target\",\n      \"bind_workflow_blob_oid\": true,\n      \"workflow_blob_relation\": \"equals_live_target_blob\",\n      \"check_creator_app\": \"github-actions\",\n      \"external_id_prefix\": \"aos-exact-head-review:\"\n    },\n    \"authorization\": {\n      \"eligible_permissions\": [\n        \"maintain\",\n        \"admin\"\n      ],\n      \"must_differ_from_pr_author\": false,\n      \"protected_check\": \"exact-head-authorization\",\n      \"workflow_path\": \".github/workflows/operational-state.yml\",\n      \"trusted_ref\": \"refs/heads/dev\",\n      \"required_event\": \"workflow_dispatch\",\n      \"workflow_commit_relation\": \"reachable_from_live_target\",\n      \"bind_workflow_blob_oid\": true,\n      \"workflow_blob_relation\": \"equals_live_target_blob\",\n      \"check_creator_app\": \"github-actions\",\n      \"external_id_prefix\": \"aos-exact-head-authorization:\"\n    }\n  },\n  \"tickets\": [\n    {\n      \"id\": \"D0-004\",\n      \"issue\": 57,\n      \"ticket_path\": \"docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md\",\n      \"dependencies\": [],\n      \"kind\": \"executable\"\n    },\n    {\n      \"id\": \"D0-001\",\n      \"issue\": 54,\n      \"ticket_path\": \"docs/tickets/D0/D0-001-canonical-identifier-registry.md\",\n      \"dependencies\": [],\n      \"kind\": \"executable\"\n    }\n  ]\n}",
+  "raw:repos/MongLong0214/agent-operator-score/contents/docs/issues.json?ref=c8937c6c31ef034535f7c2e8276514221a12fd55": "{\n  \"schema_version\": 2,\n  \"operational_authority\": {\n    \"governance_mode\": \"single_owner_agent_team\",\n    \"repository\": \"MongLong0214/agent-operator-score\",\n    \"target_branch\": \"dev\",\n    \"repository_owner\": {\n      \"login\": \"MongLong0214\",\n      \"type\": \"User\"\n    },\n    \"self_authored_strings_and_registry_fields\": \"not_authorization\",\n    \"distinct_external_actor\": \"record_if_available_not_required\",\n    \"bootstrap\": {\n      \"state\": \"NOT_REQUIRED_UNTIL_D0_004C\",\n      \"until\": \"D0-004C is merged into dev\",\n      \"gate\": [\n        \"existing CI\",\n        \"local offline resolver/contract tests\",\n        \"exact-head technical review evidence\"\n      ],\n      \"deferred_workflow_checks\": [\n        \"operational-state-offline\",\n        \"exact-head-review\",\n        \"exact-head-authorization\"\n      ],\n      \"after_d0_004c_merge\": \"resolver_and_workflow_mode_required_fail_closed\",\n      \"fail_closed_regressions\": [\n        \"single-owner-spoof-is-not-authorization\",\n        \"future-check-premature\",\n        \"bootstrap-after-c-fails-closed\"\n      ]\n    },\n    \"candidate_ci\": {\n      \"required_checks\": [\n        {\n          \"name\": \"planning-contract (22)\",\n          \"workflow_path\": \".github/workflows/ci.yml\"\n        },\n        {\n          \"name\": \"planning-contract (24)\",\n          \"workflow_path\": \".github/workflows/ci.yml\"\n        },\n        {\n          \"name\": \"operational-state-offline\",\n          \"workflow_path\": \".github/workflows/operational-state.yml\"\n        }\n      ],\n      \"required_event\": \"pull_request\",\n      \"target_branch\": \"dev\",\n      \"head_sha_relation\": \"equals_live_pr_head\",\n      \"workflow_blob_relation\": \"candidate_and_live_target_equal\",\n      \"run_selection\": \"latest_run_attempt_only\",\n      \"required_status\": \"completed\",\n      \"required_conclusion\": \"success\",\n      \"check_creator_app\": {\n        \"id\": 15368,\n        \"slug\": \"github-actions\",\n        \"owner\": \"github\"\n      }\n    },\n    \"review\": {\n      \"eligible_permissions\": [\n        \"maintain\",\n        \"admin\"\n      ],\n      \"must_differ_from_pr_author\": false,\n      \"protected_check\": \"exact-head-review\",\n      \"workflow_path\": \".github/workflows/operational-state.yml\",\n      \"trusted_ref\": \"refs/heads/dev\",\n      \"required_event\": \"workflow_dispatch\",\n      \"workflow_commit_relation\": \"reachable_from_live_target\",\n      \"bind_workflow_blob_oid\": true,\n      \"workflow_blob_relation\": \"equals_live_target_blob\",\n      \"check_creator_app\": \"github-actions\",\n      \"external_id_prefix\": \"aos-exact-head-review:\"\n    },\n    \"authorization\": {\n      \"eligible_permissions\": [\n        \"maintain\",\n        \"admin\"\n      ],\n      \"must_differ_from_pr_author\": false,\n      \"protected_check\": \"exact-head-authorization\",\n      \"workflow_path\": \".github/workflows/operational-state.yml\",\n      \"trusted_ref\": \"refs/heads/dev\",\n      \"required_event\": \"workflow_dispatch\",\n      \"workflow_commit_relation\": \"reachable_from_live_target\",\n      \"bind_workflow_blob_oid\": true,\n      \"workflow_blob_relation\": \"equals_live_target_blob\",\n      \"check_creator_app\": \"github-actions\",\n      \"external_id_prefix\": \"aos-exact-head-authorization:\"\n    }\n  },\n  \"tickets\": [\n    {\n      \"id\": \"D0-004\",\n      \"issue\": 57,\n      \"ticket_path\": \"docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md\",\n      \"dependencies\": [],\n      \"kind\": \"executable\"\n    },\n    {\n      \"id\": \"D0-001\",\n      \"issue\": 54,\n      \"ticket_path\": \"docs/tickets/D0/D0-001-canonical-identifier-registry.md\",\n      \"dependencies\": [],\n      \"kind\": \"executable\"\n    }\n  ]\n}",
   "repos/MongLong0214/agent-operator-score/contents/docs/issues.json?ref=c8937c6c31ef034535f7c2e8276514221a12fd55": {
     "sha": "bafc9b1746751b7e8409c4b91df30b32718c75c9",
     "path": "docs/issues.json"
@@ -138,19 +138,6 @@
   "repos/MongLong0214/agent-operator-score/commits/cafecafecafecafecafecafecafecafecafecafe/check-runs?per_page=50": {
     "check_runs": [
       {
-        "name": "planning-contract (20)",
-        "status": "completed",
-        "conclusion": "success",
-        "app": {
-          "id": 15368,
-          "slug": "github-actions"
-        },
-        "external_id": null,
-        "id": 9000,
-        "run_id": 4001,
-        "run_attempt": 1
-      },
-      {
         "name": "planning-contract (22)",
         "status": "completed",
         "conclusion": "success",
@@ -177,18 +164,10 @@
         "run_attempt": 1
       }
     ],
-    "total_count": 3
+    "total_count": 2
   },
   "repos/MongLong0214/agent-operator-score/actions/runs/4001/attempts/1/jobs?per_page=50": {
     "jobs": [
-      {
-        "name": "planning-contract (20)",
-        "status": "completed",
-        "conclusion": "success",
-        "check_run_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000",
-        "run_id": 4001,
-        "run_attempt": 1
-      },
       {
         "name": "planning-contract (22)",
         "status": "completed",
@@ -206,7 +185,7 @@
         "run_attempt": 1
       }
     ],
-    "total_count": 3
+    "total_count": 2
   },
   "repos/MongLong0214/agent-operator-score/pulls/300/reviews": [
     {

@@ -334,7 +334,6 @@ const expectedActorPolicyFromTicket = () => ({
   },
   candidate_ci: {
     required_checks: [
-      { name: "planning-contract (20)", workflow_path: ".github/workflows/ci.yml" },
       { name: "planning-contract (22)", workflow_path: ".github/workflows/ci.yml" },
       { name: "planning-contract (24)", workflow_path: ".github/workflows/ci.yml" },
       { name: "operational-state-offline", workflow_path: ".github/workflows/operational-state.yml" }
