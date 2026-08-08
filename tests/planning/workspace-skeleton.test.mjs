@@ -213,6 +213,8 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   assert.ok(owned.includes("packages/schema/src/scoring-contract.ts"), "E0A-003 owned source is unclaimed");
   assert.ok(owned.includes("packages/schema/test/scoring-contract.test.ts"), "E0A-003 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/test/issuance-contract.test.ts"), "E0A-002 RED file is unclaimed");
+  assert.ok(owned.includes("packages/schema/src/session-class.ts"), "E0B-002 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/test/session-class.test.ts"), "E0B-002 RED file is unclaimed");
 
   // Bind the derivation to the validator's census; if the two parses ever diverge,
   // or the gate is removed on either side, this fails.
@@ -287,7 +289,13 @@ test("focused-lane-is-not-silently-empty", () => {
     stdio: ["ignore", "pipe", "pipe"],
     env
   });
-  for (const [pattern, cases] of [["metric-registry", 16], ["issuance-contract", 10], ["capability", 12], ["scoring-contract", 13]]) {
+  // Exact, not a floor: a lane that loses a case must fail here. Every count includes the
+  // per-file results the runner emits, so adding a test file shifts all of them at once.
+  const lanes = [
+    ["metric-registry", 17], ["issuance-contract", 11], ["capability", 13],
+    ["scoring-contract", 14], ["session-class", 22]
+  ];
+  for (const [pattern, cases] of lanes) {
     const output = run(pattern);
     const passed = /^\S* ?pass (\d+)\s*$/m.exec(output);
     const failed = /^\S* ?fail (\d+)\s*$/m.exec(output);
@@ -304,8 +312,9 @@ test("focused-lane-is-not-silently-empty", () => {
   const empty = run("pattern-that-matches-no-test-name");
   const emptyPassed = /^\S* ?pass (\d+)\s*$/m.exec(empty);
   assert.ok(emptyPassed, "non-matching focused lane reported no counts");
+  const smallestLane = Math.min(...lanes.map(([, cases]) => cases));
   assert.ok(
-    Number(emptyPassed[1]) < 13,
+    Number(emptyPassed[1]) < smallestLane,
     `a non-matching pattern ran ${emptyPassed[1]} tests, so the count check above proves nothing`
   );
 });
