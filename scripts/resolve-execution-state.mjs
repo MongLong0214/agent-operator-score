@@ -1418,8 +1418,15 @@ const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
 const sha256Text = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 
 const GITHUB_ACTIONS_APP = { id: 15368, slug: "github-actions", owner: "github" };
+/**
+ * Collection cost scales with the number of merged Ticket-linked pull requests: one
+ * authoritative fetch per search hit, plus one commit fetch per completion receipt, plus
+ * one recursive tree listing. At 35 merged receipts a full run measured 89.5s against the
+ * former 90s ceiling, so the budget was being hit by ordinary backlog growth rather than
+ * by any outage. The remaining tickets roughly double that, which this headroom covers.
+ */
 const DEFAULT_PER_CALL_TIMEOUT_MS = 15_000;
-const DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS = 90_000;
+const DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS = 300_000;
 
 const timeoutError = (reason) => {
   const error = new Error(reason);
