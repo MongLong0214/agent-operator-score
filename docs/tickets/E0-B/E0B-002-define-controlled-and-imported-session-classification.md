@@ -14,6 +14,7 @@ Define controlled and imported session classification. Deliver only the bounded 
 ## Exact ownership
 
 - packages/schema/src/session-class.ts — classifySession,assertVerifiedEligibility; specs/session-class.v0.json
+- Coordinated census amendment, owner-authorised 2026-08-08 under the precedent E0A-001 set, limited to recording this ticket's two owned product paths in the census assertions: tests/planning-contract.test.mjs; tests/planning/workspace-skeleton.test.mjs — ticketOwnedSkeletonPaths
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
