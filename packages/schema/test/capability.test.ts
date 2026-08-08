@@ -709,4 +709,31 @@ describe("adapter-capability-matrix", () => {
     assert.ok(has(duplicateResult, "DUPLICATE_RUNTIME codex"), duplicateResult.errors.join("; "));
     assert.ok(has(duplicateResult, "RUNTIME_GAP claude-code"), duplicateResult.errors.join("; "));
   });
+
+  // The source class of every cell is frozen. Leaving PRIMARY versus SECONDARY free let a
+  // cell drop protocol_or_schema_version from its invalidation set by relabelling itself.
+  test("source-class-is-frozen-per-cell", () => {
+    const flips: [string, string, string][] = [
+      ["tool_call", "codex", "SECONDARY"],
+      ["run_lifecycle", "codex", "PRIMARY"],
+      ["approval_safety", "claude-code", "SECONDARY"],
+      ["actor_attribution", "codex", "PRIMARY"],
+      ["retrieval_memory", "claude-code", "SECONDARY"]
+    ];
+    for (const [eventGroup, runtimeId, wrongClass] of flips) {
+      const document = frozen();
+      const cell = document.rows.find((row: any) => row.event_group === eventGroup).runtimes[runtimeId];
+      cell.source_class = wrongClass;
+      cell.runtime_constraint =
+        wrongClass === "PRIMARY"
+          ? ["runtime_version", "protocol_or_schema_version", "adapter_version"]
+          : ["runtime_version", "adapter_version"];
+      const result = validateCapabilityMatrix(document);
+      assert.equal(result.ok, false, `${eventGroup}/${runtimeId} accepted ${wrongClass}`);
+      assert.ok(
+        result.errors.some((entry: string) => entry.includes("SOURCE_CLASS_MISMATCH")),
+        result.errors.join("; ")
+      );
+    }
+  });
 });
