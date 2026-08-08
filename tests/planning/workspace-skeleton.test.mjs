@@ -210,6 +210,8 @@ test("skeleton-source-requires-an-owning-ticket", () => {
     assert.match(path, /^(packages|adapters|suites|fixtures|conformance)\//, `${path} is outside the skeleton`);
   }
   assert.ok(owned.includes("packages/schema/src/issuance-contract.ts"), "E0A-002 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/src/scoring-contract.ts"), "E0A-003 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/test/scoring-contract.test.ts"), "E0A-003 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/test/issuance-contract.test.ts"), "E0A-002 RED file is unclaimed");
 
   // Bind the derivation to the validator's census; if the two parses ever diverge,
@@ -285,7 +287,7 @@ test("focused-lane-is-not-silently-empty", () => {
     stdio: ["ignore", "pipe", "pipe"],
     env
   });
-  for (const [pattern, cases] of [["metric-registry", 15], ["issuance-contract", 9], ["capability", 11]]) {
+  for (const [pattern, cases] of [["metric-registry", 16], ["issuance-contract", 10], ["capability", 12], ["scoring-contract", 13]]) {
     const output = run(pattern);
     const passed = /^\S* ?pass (\d+)\s*$/m.exec(output);
     const failed = /^\S* ?fail (\d+)\s*$/m.exec(output);
