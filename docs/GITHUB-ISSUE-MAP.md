@@ -13,6 +13,7 @@ All bindings are unique positive GitHub issue numbers generated from the verifie
 | D0-007 | [#175](https://github.com/MongLong0214/agent-operator-score/issues/175) | S0 · Name & Contracts |
 | D0-008 | [#176](https://github.com/MongLong0214/agent-operator-score/issues/176) | S0 · Name & Contracts |
 | D0-009 | [#177](https://github.com/MongLong0214/agent-operator-score/issues/177) | S0 · Name & Contracts |
+| D0-010 | [#167](https://github.com/MongLong0214/agent-operator-score/issues/167) | S0 · Name & Contracts |
 | E0A-001 | [#58](https://github.com/MongLong0214/agent-operator-score/issues/58) | S0 · Name & Contracts |
 | E0A-002 | [#59](https://github.com/MongLong0214/agent-operator-score/issues/59) | S0 · Name & Contracts |
 | E0A-003 | [#60](https://github.com/MongLong0214/agent-operator-score/issues/60) | S0 · Name & Contracts |

@@ -33,7 +33,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "D0-001",
         "D0-002",
         "D0-003",
-        "D0-004"
+        "D0-004",
+        "D0-010"
       ],
       "requirement_to_acceptance": [
         {
@@ -89,7 +90,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
           "acceptance_id": "AC-D0-3",
           "ticket_ids": [
             "D0-002",
-            "D0-004"
+            "D0-004",
+            "D0-010"
           ]
         },
         {
@@ -2423,6 +2425,19 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "schema",
         "stop-rules"
       ]
+    },
+    {
+      "path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "advisory-renewal-refuses-legacy-multi-artifact-batch",
+        "one-accepted-batch-per-artifact",
+        "single-artifact-batch-closes-its-transition",
+        "blast-radius-is-computed-not-declared",
+        "renewal-mints-fresh-pending-batch",
+        "invalidated-batch-id-is-terminal",
+        "renewal-is-not-authorization",
+        "equal-preparer-and-approver-fails-closed"
+      ]
     }
   ],
   "ticket_acceptance_bindings": [
@@ -2979,6 +2994,56 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "test_path": "tests/authenticated-review-activation.test.mjs",
       "cases": [
         "activation-stale-review-dismissal-required"
+      ]
+    },
+    {
+      "ticket_id": "D0-010",
+      "acceptance_id": "AC-D0-010-1",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "one-accepted-batch-per-artifact"
+      ]
+    },
+    {
+      "ticket_id": "D0-010",
+      "acceptance_id": "AC-D0-010-2",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "single-artifact-batch-closes-its-transition"
+      ]
+    },
+    {
+      "ticket_id": "D0-010",
+      "acceptance_id": "AC-D0-010-3",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "advisory-renewal-refuses-legacy-multi-artifact-batch"
+      ]
+    },
+    {
+      "ticket_id": "D0-010",
+      "acceptance_id": "AC-D0-010-4",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "blast-radius-is-computed-not-declared"
+      ]
+    },
+    {
+      "ticket_id": "D0-010",
+      "acceptance_id": "AC-D0-010-5",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "renewal-mints-fresh-pending-batch",
+        "invalidated-batch-id-is-terminal"
+      ]
+    },
+    {
+      "ticket_id": "D0-010",
+      "acceptance_id": "AC-D0-010-6",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "renewal-is-not-authorization",
+        "equal-preparer-and-approver-fails-closed"
       ]
     },
     {
