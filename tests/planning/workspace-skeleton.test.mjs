@@ -51,13 +51,12 @@ const workspaceTestScript = "node --test --test-name-pattern";
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
 
-// Independent re-derivation of the ticket-owned source claim the planning validator enforces.
-// Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
-// a claim check, not an acceptance check; ticket readiness stays the resolver's job.
 // Fixture directories a ticket declares by glob, e.g. `fixtures/doctor/*.json`. These are
 // data, not source, so the product-code census never sees them; the only thing they need
 // is admission to the skeleton file list. Derived from the tickets so a second directory
-// does not need a second hardcoded branch.
+// does not need a second hardcoded branch. This is a governance rule and not a census
+// constant: it changes how the whole repository admits fixture directories, so the tickets
+// that introduce it carry a coordinated amendment bullet saying exactly that.
 const ticketDeclaredFixtureDirectories = () => {
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const directories = new Set();
@@ -78,6 +77,9 @@ const ticketDeclaredFixtureDirectories = () => {
   return [...directories].filter((path) => existsSync(resolve(repositoryRoot, path))).sort();
 };
 
+// Independent re-derivation of the ticket-owned source claim the planning validator enforces.
+// Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
+// a claim check, not an acceptance check; ticket readiness stays the resolver's job.
 const ticketOwnedSkeletonPaths = () => {
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const owned = new Set();
@@ -325,7 +327,7 @@ test("focused-lane-is-not-silently-empty", () => {
   // per-file results the runner emits, so adding a test file shifts all of them at once.
   const lanes = [
     ["metric-registry", 18], ["issuance-contract", 12], ["capability", 14],
-    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 22]
+    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 28]
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);

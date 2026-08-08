@@ -37,7 +37,7 @@
  * is observable at its declared status, and the report repeats that correctly". It does not
  * mean any adapter was executed, and no issuer may read it as evidence that one was.
  *
- * Three inputs are declared and cannot be checked here, and each is labelled rather than
+ * Four inputs are declared and cannot be checked here, and each is labelled rather than
  * dressed up:
  *   - `assessment_mode` names the session the caller asked about. Deciding whether a session
  *     really was wrapped start to end is session-class.ts's job and needs a trace; here it is
@@ -52,6 +52,21 @@
  *     against each runtime's forbidden source list; this contract inherits that limit and
  *     adds nothing to it. The report is proved to name the source the matrix names, never
  *     proved that the source exists or was read.
+ *   - the nine `statement` fields of the frozen document — two assessment modes, four verdicts
+ *     and three reason codes — are prose the derivation never reads and are checked for
+ *     presence and non-emptiness only. That proves the field exists, not that it says anything
+ *     true: the accompanying `source_clause`, `predicate`, `exit_code` and `verdict_id` are the
+ *     pinned halves of every row, and a `statement` that contradicts them is accepted, so no
+ *     issuer may read one as a rule. This is the same limit session-class.ts records for its
+ *     own `statement` and `failure_mode` fields, stated here in the same terms.
+ *
+ * The return value carries one rule with no exception in it, for the same reason everything
+ * above is labelled rather than dressed up. A rejected report is not an answer, so `ok === false`
+ * always carries the SCORE_BLOCKED verdict, exit code 30, no reasons and no projection, whatever
+ * the matrix would have derived for a correct report: a caller running
+ * `process.exit(result.exit_code)` on a report this module refused must not exit zero, and a
+ * report-level defect fails closed by the same rule as a matrix, contract or corpus defect. The
+ * verdict the matrix does derive is still reported, in the `VERDICT_MISMATCH derives …` error.
  *
  * There is no signature, attestation or key material anywhere in this module, and there is
  * none in SSOT v1.0 §9.2 or §9.5 to implement. A trust root invented inside a contract-freezing
@@ -126,10 +141,13 @@ const DECLARED_ONLY_STATEMENT =
   "A doctor report is a projection of the frozen capability matrix, not a probe of an installed runtime. " +
   "Status, source class, evidence locator, missing effect, digest coverage, verdict, exit code, reason order " +
   "and every projection line are recomputed from specs/adapter-capabilities.v0.json and compared. " +
-  "Three inputs are declared and unverifiable here: assessment_mode names the session the caller asked about, " +
+  "Four inputs are declared and unverifiable here: assessment_mode names the session the caller asked about, " +
   "and runtime_version, protocol_or_schema_version and adapter_version are the installed versions the caller " +
   "reports, checked for shape only. The evidence locator is proved to reproduce the frozen matrix cell, never " +
-  "proved to name a source that exists or was read.";
+  "proved to name a source that exists or was read. The fourth is prose: the nine statement fields of this " +
+  "document are checked for presence and non-emptiness only, the derivation never reads one, and a statement " +
+  "that contradicts its own row's pinned source clause, predicate, exit code or verdict id is accepted, so no " +
+  "issuer may read a statement as a rule.";
 
 /** SSOT §9.2 line 977 and §9.3 line 989: the command whose output this contract governs. */
 const COMMAND_TEMPLATE = "aos doctor --capabilities --runtime <runtime>";
@@ -385,9 +403,16 @@ const projectionOf = (
   reasons: string[]
 ): string[] => {
   const unavailable = observations.filter((observation) => observation.status === UNAVAILABLE);
-  const requiredObserved = view.required_event_groups.filter(
-    (group) => !unavailable.some((observation) => observation.event_group === group)
-  );
+  // Every unconditionally REQUIRED group is observed in every matrix this contract can be
+  // handed, so the count is stated as the constant it is rather than filtered. capability.ts
+  // freezes the 계약 column text per event group, derives `statuses` and `requirement_scope`
+  // from it, and reaches UNAVAILABLE only for a row whose statuses include DERIVED (line 980);
+  // no DERIVED row of that frozen table is UNCONDITIONAL_REQUIRED, so the two sets are disjoint
+  // for any matrix the sibling accepts and a subtraction here could never subtract anything.
+  // That is a property of the sibling and not of this module, so it is guarded rather than
+  // trusted: `required-groups-cannot-be-unavailable` fails the moment they stop being disjoint,
+  // and whoever makes them overlap must put the subtraction back.
+  const requiredObserved = view.required_event_groups.length;
   return [
     command,
     `verdict: ${verdict} exit=${exitCode} mode=${assessmentMode}`,
@@ -396,7 +421,7 @@ const projectionOf = (
       ` adapter_version=${String(digest.adapter_version)}` +
       ` source_class=${listText(sourceClassInventory(observations))}`,
     `groups: supported=${observations.length - unavailable.length} unavailable=${unavailable.length}` +
-      ` required_observed=${requiredObserved.length}/${view.required_event_groups.length}`,
+      ` required_observed=${requiredObserved}/${view.required_event_groups.length}`,
     ...observations.map((observation) =>
       `${observation.ordinal}. ${observation.event_group} ${observation.status}` +
       ` contract=${observation.contract} scope=${observation.requirement_scope}` +
@@ -602,6 +627,11 @@ const validateTable = (
     if (Object.hasOwn(entry, "ordinal") && entry.ordinal !== canonicalIndex + 1) {
       push(`CONTRACT_ROW_ORDINAL_MISMATCH ${spec.kind} ${id} declares ${String(entry.ordinal)}`);
     }
+    // `statement` is prose the derivation never reads and is checked for presence only — that
+    // proves the field exists, not that it says anything true. Every rule a row carries lives in
+    // its pinned `source_clause`, `predicate`, `exit_code` or `verdict_id`; the statement beside
+    // them may contradict all four and still be accepted, so it is documentation and never an
+    // input. The declared-only statement names all nine of them for the same reason.
     if (Object.hasOwn(entry, "statement") && !isFilledString(entry.statement)) {
       push(`CONTRACT_EMPTY_TEXT ${spec.kind} ${id} statement`);
     }
@@ -755,6 +785,15 @@ const validateContract = (
   // The two derivation proofs, pinned against the matrix rather than restated. E0B-001 left
   // `derivation_proof` free apart from being non-blank, so this is the first place the text
   // itself is held to a second file; a cell that carries one must carry this one.
+  //
+  // A cell whose proof is null pins nothing, and this text is not inert: `variantMatrix` writes
+  // it back to restore the DERIVED cells a variant does not blank. So a group whose proof is
+  // null in every runtime cell of the supplied matrix would let the contract resurrect that cell
+  // from its own unchecked prose — a pin fed by an unpinned input, and exactly the defect this
+  // contract exists to avoid. It is refused instead: at least one cell must carry the proof, and
+  // every cell that carries one must carry this one. What remains is the inherited E0B-001
+  // limit, which is a two-file coordinated edit and is recorded rather than closed: a matrix
+  // cell and this document restating the same forged proof agree with each other.
   const derivedGroups = view.rows.filter(derivedGroup).map((row) => row.event_group as string);
   const proofs: Record<string, unknown> = {};
   validateTable(contract.derivation_proofs,
@@ -762,11 +801,17 @@ const validateContract = (
     push, (entry, _index, id) => {
       proofs[id] = entry.proof;
       const row = view.rows.find((candidate) => candidate.event_group === id) as Record<string, unknown>;
+      let pinned = false;
       for (const runtimeId of RUNTIME_IDS) {
         const declared = (row.runtimes as Record<string, Record<string, unknown>>)[runtimeId].derivation_proof;
-        if (declared !== null && declared !== entry.proof) {
+        if (declared === null) continue;
+        pinned = true;
+        if (declared !== entry.proof) {
           push(`CONTRACT_DERIVATION_PROOF_MISMATCH ${id} ${runtimeId} must read ${String(declared)}`);
         }
+      }
+      if (!pinned) {
+        push(`CONTRACT_DERIVATION_PROOF_UNPINNED ${id} carries no derivation proof in any runtime cell, so the contract text restoring it is checked against nothing`);
       }
     });
 
@@ -860,6 +905,15 @@ const validateContract = (
  * A matrix, contract or corpus that has drifted validates nothing: the result fails closed to
  * SCORE_BLOCKED carrying the defects, because a healthy answer derived from a broken rule is
  * worse than no answer.
+ *
+ * A report this function refuses fails closed by the same rule and for the same reason, so the
+ * caller contract is one sentence with no exception in it: `ok === false` yields verdict
+ * SCORE_BLOCKED, `exit_code` 30, no reasons and no projection. The alternative was to return the
+ * verdict the matrix derives beside `ok: false`, and it is a trap — `process.exit(exit_code)` on
+ * a rejected report would have exited zero whenever the matrix happened to derive COMPLETE, so a
+ * report the doctor refused would have read as a runtime cleared to issue an official
+ * AOS-Coding P0. Nothing is lost: `VERDICT_MISMATCH derives …` and `EXIT_CODE_MISMATCH derives …`
+ * still carry the derived values, as diagnostics rather than as an answer.
  */
 export const validateDoctorOutput = (
   report: unknown,
@@ -880,9 +934,9 @@ export const validateDoctorOutput = (
 
   const errors: string[] = [];
   const derived = validateReport(report, view, (message) => { errors.push(message); });
-  if (derived === null) return failClosed(errors);
+  if (derived === null || errors.length > 0) return failClosed(errors);
   return {
-    ok: errors.length === 0,
+    ok: true,
     errors,
     verdict: derived.verdict,
     exit_code: derived.exit_code,
