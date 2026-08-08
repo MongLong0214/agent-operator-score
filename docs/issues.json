@@ -1541,6 +1541,99 @@
         "release"
       ],
       "body_template": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E14`\n- Milestone: S5 · Public OSS\n- Size: L\n- Dependencies: E14-002,E12-003\n- Exact implementation contract: [docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md](/docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency."
+    },
+    {
+      "id": "D0-005",
+      "title": "D0-005 · Governance mode contract and advisory boundary",
+      "issue": "TBD-1",
+      "ticket_path": "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md",
+      "milestone": "S0 · Name & Contracts",
+      "dependencies": [],
+      "size": "M",
+      "epic": "D0",
+      "kind": "transitional_placeholder",
+      "initial_labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:M"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED. This bounded transitional planning-control-plane work carries zero product code.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: None — will supersede D0-004 policy authority\n- Exact implementation contract: [docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md](/docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md)\n- Authority basis: owner-ratified one-time governance repair plus CEO gate\n\nRead the exact ticket in full. A placeholder issue is not authorization."
+    },
+    {
+      "id": "D0-006",
+      "title": "D0-006 · v2 effective-state quarantine and legacy reclassification",
+      "issue": "TBD-2",
+      "ticket_path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+      "milestone": "S0 · Name & Contracts",
+      "dependencies": [
+        "D0-005"
+      ],
+      "size": "M",
+      "epic": "D0",
+      "kind": "transitional_placeholder",
+      "initial_labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:M"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED. This bounded transitional planning-control-plane work carries zero product code.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: D0-005\n- Exact implementation contract: [docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md](/docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md)\n- Authority basis: owner-ratified one-time governance repair plus CEO gate\n\nRead the exact ticket in full. A placeholder issue is not authorization."
+    },
+    {
+      "id": "D0-007",
+      "title": "D0-007 · v3 artifact-manifest schema, validator, and legacy migration",
+      "issue": "TBD-3",
+      "ticket_path": "docs/tickets/D0/D0-007-artifact-manifest-v3-and-legacy-migration.md",
+      "milestone": "S0 · Name & Contracts",
+      "dependencies": [
+        "D0-006"
+      ],
+      "size": "L",
+      "epic": "D0",
+      "kind": "transitional_placeholder",
+      "initial_labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:L"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED. This bounded transitional planning-control-plane work carries zero product code.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: D0-006\n- Exact implementation contract: [docs/tickets/D0/D0-007-artifact-manifest-v3-and-legacy-migration.md](/docs/tickets/D0/D0-007-artifact-manifest-v3-and-legacy-migration.md)\n- Authority basis: owner-ratified one-time governance repair plus CEO gate\n\nRead the exact ticket in full. A placeholder issue is not authorization."
+    },
+    {
+      "id": "D0-008",
+      "title": "D0-008 · Exact-head GitHub-review acceptance derivation, inactive",
+      "issue": "TBD-4",
+      "ticket_path": "docs/tickets/D0/D0-008-github-review-acceptance-derivation-inactive.md",
+      "milestone": "S0 · Name & Contracts",
+      "dependencies": [
+        "D0-007"
+      ],
+      "size": "L",
+      "epic": "D0",
+      "kind": "transitional_placeholder",
+      "initial_labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:L"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED. This bounded transitional planning-control-plane work carries zero product code.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: D0-007\n- Exact implementation contract: [docs/tickets/D0/D0-008-github-review-acceptance-derivation-inactive.md](/docs/tickets/D0/D0-008-github-review-acceptance-derivation-inactive.md)\n- Authority basis: owner-ratified one-time governance repair plus CEO gate\n\nRead the exact ticket in full. A placeholder issue is not authorization."
+    },
+    {
+      "id": "D0-009",
+      "title": "D0-009 · Authenticated-review activation after live control verification",
+      "issue": "TBD-5",
+      "ticket_path": "docs/tickets/D0/D0-009-authenticated-review-activation.md",
+      "milestone": "S0 · Name & Contracts",
+      "dependencies": [
+        "D0-008"
+      ],
+      "size": "L",
+      "epic": "D0",
+      "kind": "transitional_placeholder",
+      "initial_labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:L"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED. This bounded transitional planning-control-plane work carries zero product code.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: D0-008\n- Exact implementation contract: [docs/tickets/D0/D0-009-authenticated-review-activation.md](/docs/tickets/D0/D0-009-authenticated-review-activation.md)\n- Authority basis: owner-ratified one-time governance repair plus CEO gate\n\nRead the exact ticket in full. A placeholder issue is not authorization."
     }
   ]
 }

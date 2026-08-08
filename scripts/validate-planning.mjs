@@ -114,6 +114,14 @@ const walk = (directory = root) => {
 };
 const section = (text, heading) => text.match(new RegExp(`^## ${heading}\\n([\\s\\S]*?)\\n## `, "m"))?.[1] ?? "";
 const parseDelimitedList = (value) => value === "None" ? [] : value.split(",").map((entry) => entry.trim()).filter(Boolean);
+const TRANSITIONAL_TBD_BINDINGS = new Map([
+  ["D0-005", "TBD-1"],
+  ["D0-006", "TBD-2"],
+  ["D0-007", "TBD-3"],
+  ["D0-008", "TBD-4"],
+  ["D0-009", "TBD-5"]
+]);
+const isPositiveIssueNumber = (value) => typeof value === "number" && Number.isInteger(value) && value > 0;
 
 const PLANNED_PATH_RE = /`((?:tests|packages|adapters|suites|conformance)\/[^`]+)`/g;
 const isPlannedPathShape = (testPath) =>
@@ -196,7 +204,7 @@ const parseTicketAcceptanceProse = (edge, { ticketId, acceptanceId } = {}) => {
 
 const collectTestCaseNames = (fileText) => {
   const names = new Set();
-  for (const match of normalizeLf(fileText).matchAll(/\btest\(\s*(["'`])([^"'`]+)\1/g)) {
+  for (const match of normalizeLf(fileText).matchAll(/\b(?:test|placeholderMutation)\(\s*(["'`])([^"'`]+)\1/g)) {
     names.add(match[2]);
   }
   return names;
@@ -237,9 +245,9 @@ if (!metricContract.includes("maximum_distance=0")) pushError("missing M20 zero-
 const adrFiles = allFiles.filter((path) => /^docs\/adr\/ADR-\d{4}-.+\.md$/.test(rel(path)));
 const prdFiles = allFiles.filter((path) => /^docs\/prd\/PRD-(?:D0|E0[ABCD]|E\d+)-.+\.md$/.test(rel(path)));
 const ticketFiles = allFiles.filter((path) => /^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(rel(path)));
-if (adrFiles.length !== 12) pushError(`ADR count ${adrFiles.length}, expected 12`);
-if (prdFiles.length !== 19) pushError(`PRD count ${prdFiles.length}, expected 19`);
-if (ticketFiles.length !== 65) pushError(`ticket count ${ticketFiles.length}, expected 65`);
+if (adrFiles.length !== 13) pushError(`ADR count ${adrFiles.length}, expected 13`);
+if (prdFiles.length !== 20) pushError(`PRD count ${prdFiles.length}, expected 20`);
+if (ticketFiles.length !== 70) pushError(`ticket count ${ticketFiles.length}, expected 70`);
 
 const adrs = new Map();
 for (const path of adrFiles) {
@@ -251,7 +259,10 @@ for (const path of adrFiles) {
   }
   if (adrs.has(id)) pushError(`duplicate ADR ${id}`);
   adrs.set(id, { path: rel(path), text });
-  if (!text.includes("PROPOSED — MAINTAINER GATE REQUIRED")) pushError(`${rel(path)} lacks proposed gate`);
+  const expectedGate = id === "ADR-0013"
+    ? "PROPOSED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED"
+    : "PROPOSED — MAINTAINER GATE REQUIRED";
+  if (!text.includes(expectedGate)) pushError(`${rel(path)} lacks expected proposed gate`);
 }
 
 const prds = new Map();
@@ -271,7 +282,10 @@ for (const path of prdFiles) {
   const acceptanceIds = [...text.matchAll(/^- (AC-[A-Z0-9-]+): /gm)].map((match) => match[1]);
   const adrIds = [...(dependencies ?? "").matchAll(/(?:ADR-)?(\d{4})/g)].map((match) => `ADR-${match[1]}`);
   prds.set(id, { id, path: rel(path), text, dependencies, requirements, requirementKeys, acceptanceIds, adrIds });
-  if (!text.includes("PROPOSED — MAINTAINER GATE REQUIRED")) pushError(`${rel(path)} lacks proposed gate`);
+  const expectedGate = id === "D0-GOV"
+    ? "PROPOSED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED"
+    : "PROPOSED — MAINTAINER GATE REQUIRED";
+  if (!text.includes(expectedGate)) pushError(`${rel(path)} lacks expected proposed gate`);
   if (!dependencies || !requirements.length || !acceptanceIds.length) pushError(`semantic graph ${id} lacks required PRD edges`);
   if (new Set(acceptanceIds).size !== acceptanceIds.length) pushError(`semantic graph ${id} has duplicate acceptance IDs`);
   if (new Set(requirementKeys).size !== requirementKeys.length) pushError(`semantic graph ${id} has duplicate requirements`);
@@ -295,7 +309,9 @@ for (const path of ticketFiles) {
   if (tickets.has(id)) pushError(`duplicate ticket id ${id}`);
   const expectedStatus = id === "D0-003"
     ? "SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION"
-    : "BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED";
+    : TRANSITIONAL_TBD_BINDINGS.has(id)
+      ? "BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED"
+      : "BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED";
   const prdHref = text.match(/^- Owning PRD: \[[^\]]+\]\(([^)]+)\)$/m)?.[1];
   const linkedPrdPath = prdHref ? rel(resolve(dirname(path), prdHref)) : null;
   const prd = [...prds.values()].find((candidate) => candidate.path === linkedPrdPath);
@@ -645,15 +661,18 @@ if (plannedTestsByPath.size) {
 const issueMapText = readText("docs/GITHUB-ISSUE-MAP.md");
 const issueMap = new Map();
 for (const line of issueMapText.split("\n")) {
-  const match = line.match(/^\|\s*([A-Z0-9-]+)\s*\|\s*\[#(\d+)\]/);
+  const match = line.match(/^\|\s*([A-Z0-9-]+)\s*\|\s*([^|]+?)\s*\|/);
   if (!match) continue;
+  if (match[1] === "---") continue;
   if (issueMap.has(match[1])) pushError(`issue map duplicate ticket ${match[1]}`);
-  issueMap.set(match[1], Number(match[2]));
+  const numeric = match[2].trim().match(/^\[#([1-9]\d*)\]\([^)]*\)$/);
+  issueMap.set(match[1], numeric ? Number(numeric[1]) : match[2].trim());
 }
 if (issueMap.size !== tickets.size) pushError(`issue map count ${issueMap.size}, expected ${tickets.size}`);
 for (const id of tickets.keys()) if (!issueMap.has(id)) pushError(`issue map missing ${id}`);
 
 const manifest = readJson("docs/issues.json", "issue manifest");
+const manifestRecordsById = new Map();
 if (manifest) {
   if (manifest.schema_version !== 2) pushError("issue manifest schema_version must be 2");
   if (manifest.authority !== "docs/north-star/agent-operator-score-ssot-v1.0.md") pushError("issue manifest has wrong SSOT authority");
@@ -672,7 +691,6 @@ if (manifest) {
   }
   const definedLabels = new Set(manifest.labels?.map(({ name }) => name));
   const manifestIds = new Set();
-  const issueNumbers = new Set();
   const ticketPaths = new Set();
   const expectedKeys = new Set(["id", "title", "issue", "ticket_path", "milestone", "dependencies", "size", "epic", "kind", "initial_labels", "body_template"]);
   for (const record of manifest.tickets ?? []) {
@@ -681,6 +699,7 @@ if (manifest) {
       continue;
     }
     manifestIds.add(record.id);
+    manifestRecordsById.set(record.id, record);
     const ticket = tickets.get(record.id);
     if (!ticket) {
       pushError(`issue manifest unknown ${record.id}`);
@@ -689,13 +708,6 @@ if (manifest) {
     const keys = Object.keys(record);
     if (keys.length !== expectedKeys.size || keys.some((key) => !expectedKeys.has(key))) {
       pushError(`issue manifest ${record.id} is not a static catalog record`);
-    }
-    if (typeof record.issue !== "number" || !Number.isInteger(record.issue) || record.issue <= 0) {
-      pushError(`issue manifest ${record.id} has malformed issue number`);
-    } else if (issueNumbers.has(record.issue)) {
-      pushError(`issue manifest duplicate issue number ${record.issue}`);
-    } else {
-      issueNumbers.add(record.issue);
     }
     if (typeof record.ticket_path !== "string" || !record.ticket_path) {
       pushError(`issue manifest ${record.id} has malformed ticket_path`);
@@ -709,7 +721,11 @@ if (manifest) {
     if (record.milestone !== ticket.milestone || !sameArray(record.dependencies, ticket.dependencies) || record.size !== ticket.size || record.epic !== ticket.epic) {
       pushError(`issue manifest ${record.id} diverges from exact ticket metadata`);
     }
-    const expectedKind = record.id === "D0-003" ? "superseded" : "executable";
+    const expectedKind = record.id === "D0-003"
+      ? "superseded"
+      : TRANSITIONAL_TBD_BINDINGS.has(record.id)
+        ? "transitional_placeholder"
+        : "executable";
     if (record.kind !== expectedKind) pushError(`issue manifest ${record.id} has wrong kind`);
     if (typeof record.body_template !== "string" || !record.body_template.trim()) pushError(`issue manifest ${record.id} lacks body_template`);
     if (!Array.isArray(record.initial_labels) || record.initial_labels.some((label) => label.startsWith("status:"))) pushError(`issue manifest ${record.id} has dynamic status label`);
@@ -721,6 +737,44 @@ if (manifest) {
   }
   for (const id of tickets.keys()) if (!manifestIds.has(id)) pushError(`issue manifest missing ${id}`);
 }
+
+const validateClosedTransitionalBindings = (surface, getIssue) => {
+  const numbers = new Set();
+  const placeholders = new Set();
+  for (const id of tickets.keys()) {
+    const issue = getIssue(id);
+    const requiredPlaceholder = TRANSITIONAL_TBD_BINDINGS.get(id);
+    if (requiredPlaceholder) {
+      if (isPositiveIssueNumber(issue)) {
+        pushError(`${surface} ${id} missing required placeholder: required ${requiredPlaceholder}; actual ${issue}`);
+      } else if (typeof issue !== "string" || !/^TBD-\d+$/.test(issue)) {
+        pushError(`${surface} ${id} has malformed issue binding ${String(issue)}`);
+      } else {
+        if (placeholders.has(issue)) pushError(`${surface} duplicate issue placeholder ${issue}`);
+        placeholders.add(issue);
+        if (issue !== requiredPlaceholder) {
+          pushError(`${surface} ${id} wrong placeholder binding: required ${requiredPlaceholder}; actual ${issue}`);
+        }
+      }
+      continue;
+    }
+    if (!isPositiveIssueNumber(issue)) {
+      pushError(`${surface} ${id} existing numeric binding cannot be TBD or malformed: actual ${String(issue)}`);
+      continue;
+    }
+    if (numbers.has(issue)) pushError(`${surface} duplicate issue number ${issue}`);
+    numbers.add(issue);
+  }
+  if (placeholders.size !== TRANSITIONAL_TBD_BINDINGS.size) {
+    pushError(`${surface} placeholder count ${placeholders.size}, expected ${TRANSITIONAL_TBD_BINDINGS.size}`);
+  }
+  const expectedNumericCount = tickets.size - TRANSITIONAL_TBD_BINDINGS.size;
+  if (numbers.size !== expectedNumericCount) {
+    pushError(`${surface} numeric binding count ${numbers.size}, expected ${expectedNumericCount}`);
+  }
+};
+validateClosedTransitionalBindings("issue map", (id) => issueMap.get(id));
+validateClosedTransitionalBindings("issue manifest", (id) => manifestRecordsById.get(id)?.issue);
 
 const board = readText("docs/tickets/BOARD.md");
 const boardRows = new Map();
@@ -842,7 +896,7 @@ if (!readme.includes("Current status: foundation contracts implemented in `@aos/
   pushError("README lacks exact implementation-state truth");
 }
 if (!readme.includes("Planned CLI — not available yet")) pushError("README blurs planned CLI status");
-if (!readme.includes("65 atomic implementation tickets")) pushError("README ticket census stale");
+if (!readme.includes("70 atomic implementation tickets")) pushError("README ticket census stale");
 if (existsSync(resolve(root, "docs/north-star/legacy"))) pushError("legacy planning path is active");
 
 if (errors.length) {
