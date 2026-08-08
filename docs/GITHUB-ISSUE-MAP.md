@@ -1,8 +1,6 @@
 # GitHub issue map
 
-Existing numeric bindings are generated from the verified public management surface after the AOS restructuring. The sole transitional placeholder allowlist is exactly `D0-005 → TBD-1`, `D0-006 → TBD-2`, `D0-007 → TBD-3`, `D0-008 → TBD-4`, and `D0-009 → TBD-5`; all other bindings are numeric. A `TBD-<n>` value conveys no GitHub issue identity, authority, readiness, or executable state.
-
-Removal path: after the five real issues exist, a successor planning PR re-reads their GitHub identity, title, milestone, and labels, atomically replaces every placeholder with its numeric binding, and removes this allowlist. When the placeholder count reaches zero, that successor removes the transitional rule itself.
+All bindings are unique positive GitHub issue numbers generated from the verified public management surface after the AOS restructuring. A numeric binding records issue identity only; it conveys no authority, readiness, or executable state.
 
 | Ticket | Issue | Milestone |
 |---|---:|---|
@@ -10,11 +8,11 @@ Removal path: after the five real issues exist, a successor planning PR re-reads
 | D0-002 | [#55](https://github.com/MongLong0214/agent-operator-score/issues/55) | S0 · Name & Contracts |
 | D0-003 | [#56](https://github.com/MongLong0214/agent-operator-score/issues/56) | S0 · Name & Contracts |
 | D0-004 | [#57](https://github.com/MongLong0214/agent-operator-score/issues/57) | S0 · Name & Contracts |
-| D0-005 | TBD-1 | S0 · Name & Contracts |
-| D0-006 | TBD-2 | S0 · Name & Contracts |
-| D0-007 | TBD-3 | S0 · Name & Contracts |
-| D0-008 | TBD-4 | S0 · Name & Contracts |
-| D0-009 | TBD-5 | S0 · Name & Contracts |
+| D0-005 | [#173](https://github.com/MongLong0214/agent-operator-score/issues/173) | S0 · Name & Contracts |
+| D0-006 | [#174](https://github.com/MongLong0214/agent-operator-score/issues/174) | S0 · Name & Contracts |
+| D0-007 | [#175](https://github.com/MongLong0214/agent-operator-score/issues/175) | S0 · Name & Contracts |
+| D0-008 | [#176](https://github.com/MongLong0214/agent-operator-score/issues/176) | S0 · Name & Contracts |
+| D0-009 | [#177](https://github.com/MongLong0214/agent-operator-score/issues/177) | S0 · Name & Contracts |
 | E0A-001 | [#58](https://github.com/MongLong0214/agent-operator-score/issues/58) | S0 · Name & Contracts |
 | E0A-002 | [#59](https://github.com/MongLong0214/agent-operator-score/issues/59) | S0 · Name & Contracts |
 | E0A-003 | [#60](https://github.com/MongLong0214/agent-operator-score/issues/60) | S0 · Name & Contracts |
