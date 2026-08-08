@@ -5,7 +5,7 @@
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E8](../../prd/PRD-E8-fam1-3-and-form-a.md)
 - Size: L
-- Dependencies: E8-001,E8-002,E8-003,E5-004,E6-004,E7-004,E0C-003
+- Dependencies: E8-001,E8-002,E8-003
 
 ## Goal
 

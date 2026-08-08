@@ -2,12 +2,35 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { basename, join, resolve } from "node:path";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const ticketEpicKeyPattern = /^(E0[A-D]|E\d+|D0)/;
+const ticketEpicKey = (ticketId) => {
+  const epic = ticketId.match(ticketEpicKeyPattern)?.[1];
+  assert.ok(epic, `ticket lacks a canonical epic key: ${ticketId}`);
+  return epic;
+};
+const declaredPrdEpicDependencies = () => {
+  const prdDirectory = resolve(root, "docs/prd");
+  const declared = new Set();
+  for (const filename of readdirSync(prdDirectory)) {
+    const consumerEpic = filename.match(/^PRD-(E0[A-D]|E\d+|D0)-/)?.[1];
+    if (!consumerEpic) continue;
+    const dependencyLine = readFileSync(resolve(prdDirectory, filename), "utf8")
+      .match(/^- Dependencies: (.+)$/m)?.[1];
+    assert.ok(dependencyLine, `${filename} lacks a Dependencies line`);
+    for (const dependency of dependencyLine.split(/[;,]/).map((entry) => entry.trim())) {
+      // Only an exact canonical ticket-epic key declares an edge in the ticket graph.
+      const producerEpic = dependency.match(/^(E0[A-D]|E\d+|D0)$/)?.[1];
+      if (producerEpic) declared.add(`${consumerEpic}<-${producerEpic}`);
+    }
+  }
+  return declared;
+};
 const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=70 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
 const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=70 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
 
@@ -1235,4 +1258,31 @@ test("issue-map-and-manifest-agreement ignores JSON key order", () => {
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
+});
+
+test("ticket-epic-key-parser-prioritizes-e0-letter-epics", () => {
+  assert.equal(ticketEpicKey("E0A-001"), "E0A");
+  assert.notEqual(ticketEpicKey("E0A-001"), "E0");
+});
+
+test("cross-epic-ticket-dependencies-have-declared-prd-basis", () => {
+  const declared = declaredPrdEpicDependencies();
+  const manifest = JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8"));
+  const unsupported = [];
+
+  for (const ticket of manifest.tickets) {
+    const consumerEpic = ticketEpicKey(ticket.id);
+    for (const dependency of ticket.dependencies) {
+      const producerEpic = ticketEpicKey(dependency);
+      if (consumerEpic === producerEpic) continue;
+      const epicEdge = `${consumerEpic}<-${producerEpic}`;
+      if (!declared.has(epicEdge)) unsupported.push(`${ticket.id}<-${dependency} (${epicEdge})`);
+    }
+  }
+
+  assert.deepEqual(
+    unsupported,
+    [],
+    `cross-epic ticket dependencies lack a declared PRD basis:\n${unsupported.join("\n")}`
+  );
 });

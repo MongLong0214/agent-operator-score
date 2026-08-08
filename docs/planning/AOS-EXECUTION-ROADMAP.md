@@ -37,24 +37,21 @@ Open issues, drafted code, green CI on a prior head, or an unmerged PR do not ma
 
 Serial foundation:
 
-`#54 D0-001 → #55 D0-002 → (#57 D0-004 ∥ #173 D0-005, which will supersede D0-004 policy authority) → #58 E0A-001 → #59 E0A-002`
+`#54 D0-001 → #55 D0-002 → (#57 D0-004 ∥ #173 D0-005, which will supersede D0-004 policy authority) → #58 E0A-001 → #59 E0A-002 → #60 E0A-003`
 
-Parallel window S0-P1:
+Independent S0 chains:
 
-- Lane A: `#60 E0A-003`
+- Lane A: `#61 E0B-001 → #62 E0B-002 → #63 E0B-003`
   - `specs/scoring.v0.json`
   - `packages/schema/src/scoring-contract.ts`
-- Lane B: `#61 E0B-001 → #62 E0B-002 → #63 E0B-003`
-  - #61 starts concurrently with #60; #62 and #63 continue only after their own predecessors.
-- Join: #60 and #63 verified complete unlock `#64 E0C-001`.
-
-Serial completion:
-
-`#64 → #65 → #66 → #67 → #68 → #69 → S0 exit`
+- Lane B: `#64 E0C-001 → #65 E0C-002 → #66 E0C-003`
+- Lane C: `#67 E0D-001 → #68 E0D-002 → #69 E0D-003`
 
 ### S1 — G0 scorer truth
 
 `#70 → #71 → #72 → #73 → #74 → #75 → #76 → #77 → S1 exit`
+
+The E1 chain ends at #72; the E2 chain begins at #73 only after that E1 dependency. No E0 ticket dependency is implied by this milestone layout.
 
 No S1 product code may start before the S0 exit gate, even when a raw ticket dependency appears satisfied earlier.
 

@@ -5,7 +5,7 @@
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E5](../../prd/PRD-E5-fam4-loop-state-scenarios.md)
 - Size: L
-- Dependencies: E5-001,E3-003
+- Dependencies: E5-001
 
 ## Goal
 
