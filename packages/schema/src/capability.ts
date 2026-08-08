@@ -129,6 +129,40 @@ const CONSTRAINT_OF: Record<string, string[]> = {
 };
 
 /**
+ * The source class of every cell, frozen.
+ *
+ * Only the DERIVED-to-RUNNER_DERIVED biconditional is mechanically derivable from the
+ * contract column; PRIMARY versus SECONDARY is a reading of each capture phrase. Leaving
+ * that reading free made the pin below it worthless, because runtime_constraint is derived
+ * from the very value a document supplies: a cell reading the Codex app-server surface
+ * could declare SECONDARY and silently drop protocol_or_schema_version from its
+ * invalidation set, so an app-server schema bump would no longer invalidate it.
+ *
+ * [event_group, codex, claude-code]
+ */
+const FROZEN_SOURCE_CLASS: [string, string, string][] = [
+  ["run_lifecycle", "SECONDARY", "SECONDARY"],
+  ["runtime_identity", "PRIMARY", "PRIMARY"],
+  ["user_instruction", "PRIMARY", "PRIMARY"],
+  ["tool_call", "PRIMARY", "PRIMARY"],
+  ["workspace_diff", "RUNNER_DERIVED", "RUNNER_DERIVED"],
+  ["evidence_claim", "SECONDARY", "SECONDARY"],
+  ["approval_safety", "SECONDARY", "PRIMARY"],
+  ["context_selection", "SECONDARY", "SECONDARY"],
+  ["retrieval_memory", "PRIMARY", "PRIMARY"],
+  ["delegation_handoff", "SECONDARY", "SECONDARY"],
+  ["plan_state", "RUNNER_DERIVED", "RUNNER_DERIVED"],
+  ["token_cost", "PRIMARY", "PRIMARY"],
+  ["human_active_time", "SECONDARY", "SECONDARY"],
+  ["actor_attribution", "SECONDARY", "PRIMARY"]
+];
+const frozenSourceClassOf = (eventGroup: string, runtimeId: string): string | null => {
+  const row = FROZEN_SOURCE_CLASS.find(([group]) => group === eventGroup);
+  if (!row) return null;
+  return runtimeId === "codex" ? row[1] : runtimeId === "claude-code" ? row[2] : null;
+};
+
+/**
  * The SSOT §9.2 "v0 event coverage matrix" (lines 951-966), verbatim.
  * [event_group, Event group, 계약, Codex adapter v0, Claude Code adapter v0, 누락 처리]
  */
@@ -543,6 +577,12 @@ const validateCell = (
     const shouldBeRunnerDerived = statuses.includes("DERIVED");
     if (shouldBeRunnerDerived !== (sourceClass === "RUNNER_DERIVED")) {
       add(`SOURCE_CLASS_MISMATCH ${eventGroup} ${runtimeId} derives ${shouldBeRunnerDerived ? "RUNNER_DERIVED" : "a non-runner source class"}`);
+    }
+    // PRIMARY versus SECONDARY is not derivable from the contract column, so it is frozen
+    // rather than left free; runtime_constraint is computed from it.
+    const frozenClass = frozenSourceClassOf(eventGroup, runtimeId);
+    if (frozenClass !== null && sourceClass !== frozenClass) {
+      add(`SOURCE_CLASS_MISMATCH ${eventGroup} ${runtimeId} is frozen as ${frozenClass}`);
     }
     if (sourceClass !== "RUNNER_DERIVED" && cell.derivation_proof !== null) {
       add(`DERIVATION_PROOF_UNEXPECTED ${eventGroup} ${runtimeId} is not reconstructed from the runner`);
