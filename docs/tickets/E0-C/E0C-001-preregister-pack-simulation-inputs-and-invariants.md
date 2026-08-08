@@ -5,7 +5,7 @@
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-C](../../prd/PRD-E0C-pack-time-and-eligibility-simulation.md)
 - Size: M
-- Dependencies: E0A-003,E0B-003
+- Dependencies: None
 
 ## Goal
 

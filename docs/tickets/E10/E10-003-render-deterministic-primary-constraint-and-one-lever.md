@@ -5,7 +5,7 @@
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E10](../../prd/PRD-E10-report-and-one-lever.md)
 - Size: M
-- Dependencies: E10-001,E10-002,E0D-003
+- Dependencies: E10-001,E10-002
 
 ## Goal
 

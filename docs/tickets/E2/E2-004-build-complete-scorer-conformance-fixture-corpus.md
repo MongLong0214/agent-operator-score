@@ -5,7 +5,7 @@
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E2](../../prd/PRD-E2-deterministic-scorer-and-conformance.md)
 - Size: L
-- Dependencies: E2-003,E0D-003
+- Dependencies: E2-003
 
 ## Goal
 

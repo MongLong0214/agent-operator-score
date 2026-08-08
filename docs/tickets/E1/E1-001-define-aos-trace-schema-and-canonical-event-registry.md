@@ -5,7 +5,7 @@
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E1](../../prd/PRD-E1-trace-and-result-schemas.md)
 - Size: L
-- Dependencies: E0A-002,E0B-003
+- Dependencies: None
 
 ## Goal
 
