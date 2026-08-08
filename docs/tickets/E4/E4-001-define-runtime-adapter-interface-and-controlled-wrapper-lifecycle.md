@@ -5,7 +5,7 @@
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E4](../../prd/PRD-E4-codex-adapter.md)
 - Size: L
-- Dependencies: E3-004,E0B-003
+- Dependencies: E3-004
 
 ## Goal
 

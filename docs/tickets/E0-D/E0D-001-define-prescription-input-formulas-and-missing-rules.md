@@ -5,7 +5,7 @@
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-D](../../prd/PRD-E0D-deterministic-prescription-input-contract.md)
 - Size: L
-- Dependencies: E0A-003,E0C-003
+- Dependencies: None
 
 ## Goal
 

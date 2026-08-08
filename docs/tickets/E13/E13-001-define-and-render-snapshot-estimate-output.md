@@ -5,7 +5,7 @@
 - Milestone: S5 · Public OSS
 - Owning PRD: [E13](../../prd/PRD-E13-snapshot-estimate.md)
 - Size: M
-- Dependencies: E12-003
+- Dependencies: None
 
 ## Goal
 

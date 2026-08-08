@@ -5,7 +5,7 @@
 - Milestone: S2 · Runner & Differentiated Wedge
 - Owning PRD: [E7](../../prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md)
 - Size: M
-- Dependencies: E7-001,E7-002,E7-003,E2-005
+- Dependencies: E7-001,E7-002,E7-003
 
 ## Goal
 

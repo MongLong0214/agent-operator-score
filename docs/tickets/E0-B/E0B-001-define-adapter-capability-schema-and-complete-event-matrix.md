@@ -5,7 +5,7 @@
 - Milestone: S0 · Name & Contracts
 - Owning PRD: [E0-B](../../prd/PRD-E0B-adapter-observability-contract.md)
 - Size: L
-- Dependencies: E0A-002
+- Dependencies: None
 
 ## Goal
 
