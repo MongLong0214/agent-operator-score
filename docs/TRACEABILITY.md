@@ -2292,7 +2292,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "single-owner-sequential-review-and-authorization",
         "single-owner-spoof-is-not-authorization",
         "stale-digest-removes-readiness",
-        "transitional-placeholder-ticket-is-never-executable",
+        "executable-ticket-still-requires-authority",
         "wrong-check-creator-or-external-id-is-blocked",
         "wrong-dispatch-permission-is-blocked",
         "wrong-repository-or-branch-fails-closed",
@@ -2361,17 +2361,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "orphan-requirement-ac-ticket-test-mutants",
         "semantic-traceability-graph",
         "superseded-d0-003-has-no-owned-implementation",
-        "tbd-placeholder-d0-005-binding-is-rejected",
-        "tbd-placeholder-d0-006-binding-is-rejected",
-        "tbd-placeholder-d0-007-binding-is-rejected",
-        "tbd-placeholder-d0-008-binding-is-rejected",
-        "tbd-placeholder-d0-009-binding-is-rejected",
-        "tbd-placeholder-duplicate-is-rejected",
-        "tbd-placeholder-existing-numeric-binding-cannot-change",
-        "tbd-placeholder-malformed-is-rejected",
-        "tbd-placeholder-map-manifest-disagreement-is-rejected",
-        "tbd-placeholder-missing-is-rejected",
-        "tbd-placeholder-wrong-pair-is-rejected"
+        "all-issue-bindings-are-numeric-and-unique",
+        "numeric-issue-binding-mutations-are-rejected"
       ]
     },
     {
@@ -2766,17 +2757,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-005-6",
       "test_path": "tests/planning-contract.test.mjs",
       "cases": [
-        "tbd-placeholder-d0-005-binding-is-rejected",
-        "tbd-placeholder-d0-006-binding-is-rejected",
-        "tbd-placeholder-d0-007-binding-is-rejected",
-        "tbd-placeholder-d0-008-binding-is-rejected",
-        "tbd-placeholder-d0-009-binding-is-rejected",
-        "tbd-placeholder-duplicate-is-rejected",
-        "tbd-placeholder-existing-numeric-binding-cannot-change",
-        "tbd-placeholder-malformed-is-rejected",
-        "tbd-placeholder-map-manifest-disagreement-is-rejected",
-        "tbd-placeholder-missing-is-rejected",
-        "tbd-placeholder-wrong-pair-is-rejected"
+        "all-issue-bindings-are-numeric-and-unique",
+        "numeric-issue-binding-mutations-are-rejected"
       ]
     },
     {
@@ -2784,7 +2766,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-005-7",
       "test_path": "tests/execution-state.test.mjs",
       "cases": [
-        "transitional-placeholder-ticket-is-never-executable"
+        "executable-ticket-still-requires-authority"
       ]
     },
     {
