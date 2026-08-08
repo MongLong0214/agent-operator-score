@@ -38,7 +38,9 @@ const BLOCKER_CODES = new Set([
   "POST_MERGE_CI_FAILED",
   "EXTERNAL_STATE_UNAVAILABLE",
   "STALE_DIGEST",
-  "WRONG_TARGET"
+  "WRONG_TARGET",
+  "COMPLETION_EFFECT_REVERTED",
+  "COMPLETION_EFFECT_UNKNOWN"
 ]);
 
 const RUNTIME_KEYS = new Set(["current_head", "resolved_at", "runtime"]);
@@ -1116,6 +1118,42 @@ const resolveImplementationCompletion = (facts, ticketId) => {
         blocker(
           "TICKET_CONTRACT_CONFLICT",
           `${ticketId} completion merge commit is not authenticated as reachable from the live target branch`
+        )
+      ]
+    };
+  }
+  // The completion's own effect must still be present. A revert leaves the merge commit
+  // in the ancestry, so without this a reverted ticket stays verified forever.
+  const introduced = completionEntry.added_paths;
+  if (introduced === null || introduced === undefined) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "COMPLETION_EFFECT_UNKNOWN",
+          `${ticketId} completion merge introduced-path set is unavailable, so its effect cannot be confirmed present`
+        )
+      ]
+    };
+  }
+  const livePaths = facts.liveTreePaths;
+  if (!Array.isArray(livePaths)) {
+    return {
+      verified: false,
+      blockers: [
+        blocker("EXTERNAL_STATE_UNAVAILABLE", `${ticketId} live tree listing unavailable for completion-effect check`)
+      ]
+    };
+  }
+  const liveSet = new Set(livePaths);
+  const absent = introduced.filter((path) => !liveSet.has(path));
+  if (absent.length) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "COMPLETION_EFFECT_REVERTED",
+          `${ticketId} completion merge introduced ${absent.join(", ")}, absent from the live target branch`
         )
       ]
     };
@@ -2201,13 +2239,24 @@ export const applyHistoricalImplementationLinkage = (
         run_attempt: run.run_attempt
       }))
     );
+    // A legacy binding is a completion too, so it owes the same effect-still-present
+    // evidence as a marker-carrying receipt.
+    const legacyCommit = requireJson(transport, `${repoPath}/commits/${pull.merge_commit_sha}`, failures);
+    if (!legacyCommit || !Array.isArray(legacyCommit.files)) {
+      failures.push(`historical completion merge ${pull.merge_commit_sha} file list unavailable`);
+      return false;
+    }
     // Always record the merge receipt so failed/nonterminal post-merge CI is classified
     // by the resolver (POST_MERGE_CI_FAILED / MISSING), not silently discarded.
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number,
-      reachable: ancestry.reachable
+      reachable: ancestry.reachable,
+      added_paths: legacyCommit.files
+        .filter((file) => file?.status === "added" && typeof file.filename === "string")
+        .map((file) => file.filename)
+        .sort()
     });
     if (!latest.ok) continue;
     postMergeCI.push({
@@ -2448,6 +2497,18 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   }
 
   // Detect D0-004C from tip workflow blob for multi-lane ownership selection (B vs C).
+  // One recursive tree listing at the live tip answers every completion-effect check.
+  const liveTree = requireJson(transport, `${repoPath}/git/trees/${liveTip}?recursive=1`, failures);
+  if (!liveTree || !Array.isArray(liveTree.tree)) {
+    return { ok: false, reason: failures.join("; ") || "live tree listing unavailable", facts: null };
+  }
+  if (liveTree.truncated === true) {
+    return { ok: false, reason: "live tree listing truncated, completion effects cannot be confirmed", facts: null };
+  }
+  const liveTreePaths = liveTree.tree
+    .filter((node) => node?.type === "blob" && typeof node.path === "string")
+    .map((node) => node.path);
+
   const opsWorkflowProbe = transportCall(
     transport,
     "getJson",
@@ -3280,12 +3341,35 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // `body` carries the raw PR body so the resolver can apply the Ticket-Completion:
     // exact-single-structured-field grammar (classifyCompletionMerge) universally, at
     // every receipt count, when resolving whole-ticket completion for this ticket.
+    // A completion merge that has since been reverted is still an ancestor of the target
+    // branch, so ancestry alone credits a ticket whose deliverable is no longer in the
+    // tree. Record what the completion introduced so the resolver can require it to still
+    // be there. Only completion-marked merges pay for the extra request.
+    let addedPaths = null;
+    const isCompletionReceipt =
+      classifyCompletionMerge(pull.body ?? "", ticketId).isCompletion ||
+      isLegacyCompletionBinding(ticketId, { number: pull.number, merge_commit_sha: pull.merge_commit_sha });
+    if (isCompletionReceipt) {
+      const commit = requireJson(transport, `${repoPath}/commits/${pull.merge_commit_sha}`, failures);
+      if (!commit || !Array.isArray(commit.files)) {
+        return {
+          ok: false,
+          reason: failures.join("; ") || `completion merge ${pull.merge_commit_sha} file list unavailable`,
+          facts: null
+        };
+      }
+      addedPaths = commit.files
+        .filter((file) => file?.status === "added" && typeof file.filename === "string")
+        .map((file) => file.filename)
+        .sort();
+    }
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number,
       body: pull.body ?? null,
-      reachable: ancestry.reachable
+      reachable: ancestry.reachable,
+      added_paths: addedPaths
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
@@ -3360,6 +3444,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     postMergeCI,
     verifiedTickets,
     implementationMerges,
+    liveTreePaths,
     issues: [],
     prs,
     reviews,

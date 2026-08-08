@@ -373,7 +373,7 @@ test("workspace-lock-consistency", () => {
       name: "agent-operator-score",
       version: "0.0.0",
       workspaces: ["packages/*", "adapters/*"],
-      engines: { node: ">=20 <25" }
+      engines: { node: ">=22.18 <25" }
     }
   };
   for (const [path, name] of expectedWorkspaces) {

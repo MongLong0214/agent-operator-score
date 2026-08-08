@@ -409,5 +409,72 @@
     "items": [],
     "total_count": 0,
     "incomplete_results": false
+  },
+  "repos/MongLong0214/agent-operator-score/commits/6e872ccf2387067b49217a27a7c255343ad2eb8d": {
+    "sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+    "files": [
+      {
+        "filename": "scripts/validate-identity.mjs",
+        "status": "added"
+      },
+      {
+        "filename": "specs/identity.v1.json",
+        "status": "added"
+      },
+      {
+        "filename": "tests/planning/identity.test.mjs",
+        "status": "added"
+      },
+      {
+        "filename": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+        "status": "modified"
+      }
+    ]
+  },
+  "repos/MongLong0214/agent-operator-score/git/trees/c8937c6c31ef034535f7c2e8276514221a12fd55?recursive=1": {
+    "sha": "c8937c6c31ef034535f7c2e8276514221a12fd55",
+    "truncated": false,
+    "tree": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "README.md",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "package.json",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "scripts/validate-identity.mjs",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "specs/identity.v1.json",
+        "type": "blob",
+        "mode": "100644"
+      },
+      {
+        "path": "tests/planning/identity.test.mjs",
+        "type": "blob",
+        "mode": "100644"
+      }
+    ]
   }
 }

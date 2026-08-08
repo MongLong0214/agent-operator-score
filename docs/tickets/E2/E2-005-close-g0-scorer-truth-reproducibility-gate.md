@@ -38,7 +38,7 @@ Close G0 scorer truth reproducibility gate. Deliver only the bounded contract be
 
 ## Minimum GREEN
 
-- run clean install, schemas, scorer, mutations, Node 20/24 byte comparison; emit exact manifest/verdict and block on any mismatch.
+- run clean install, schemas, scorer, mutations, Node 22/24 byte comparison — not Node 20, which cannot execute this repository's TypeScript and whose test runner skips `.ts` files silently instead of failing; emit exact manifest/verdict and block on any mismatch.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
