@@ -100,18 +100,19 @@ test("transitional-placeholder-ticket-is-never-executable", async () => {
   facts.tickets["D0-005"] = {
     kind: "transitional_placeholder",
     dependencies: [],
-    owned_paths: [],
-    owned_symbols: [],
-    red_command: null,
+    owned_paths: ["scripts/resolve-execution-state.mjs"],
+    owned_symbols: ["resolveExecutionState"],
+    red_command: "node --test tests/execution-state.test.mjs",
     digests: { ticket: "d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005" }
   };
+  const { validateFactsCorpus } = await importResolver();
+  const corpus = validateFactsCorpus(facts);
+  assert.equal(corpus.ok, false);
+  assert.ok(corpus.failures.includes("tickets.D0-005.kind must be executable or superseded"));
   const { result } = await resolveOffline(facts);
-  const state = ticketState(result, "D0-005");
-  assert.equal(state.phase, "planned");
-  assert.equal(state.readiness, "blocked");
-  assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_INCOMPLETE"));
+  assert.ok((result.errors ?? []).some(({ code }) => code === "TICKET_CONTRACT_INCOMPLETE"));
   assert.equal(result.readySet.includes("D0-005"), false);
-  assert.equal(state.packet, null);
+  assert.equal(result.tickets["D0-005"], undefined);
 });
 
 test("current-head-is-runtime-derived", async () => {

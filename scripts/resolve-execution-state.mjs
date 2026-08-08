@@ -270,7 +270,11 @@ export const validateFactsCorpus = (facts) => {
         failures.push(`tickets.${ticketId} must be an object`);
         continue;
       }
-      if (ticket.kind === "superseded" || ticket.kind === "transitional_placeholder") continue;
+      if (ticket.kind !== "executable" && ticket.kind !== "superseded") {
+        failures.push(`tickets.${ticketId}.kind must be executable or superseded`);
+        continue;
+      }
+      if (ticket.kind === "superseded") continue;
       const ownership = declaredOwnershipContract(ticket);
       if (!ownership.ok) {
         failures.push(`tickets.${ticketId}: ${ownership.reason}`);
@@ -1206,16 +1210,6 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
 
   if (ticket?.kind === "superseded") {
     return finalize("superseded", "terminal", [], null, null);
-  }
-
-  if (ticket?.kind === "transitional_placeholder") {
-    return finalize(
-      "planned",
-      "blocked",
-      [blocker("TICKET_CONTRACT_INCOMPLETE", `${ticketId} has a non-authorizing transitional TBD binding`)],
-      null,
-      null
-    );
   }
 
   const gateEvaluation = evaluateTicketGates(facts, ticketId, ticket);
@@ -2469,9 +2463,10 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!ticketDigest) {
       return { ok: false, reason: `missing live ticket digest for ${entry.id}`, facts: null };
     }
-    const kind = entry.kind === "superseded" || entry.kind === "transitional_placeholder"
-      ? entry.kind
-      : "executable";
+    if (entry.kind !== "executable" && entry.kind !== "superseded") {
+      return { ok: false, reason: `catalog ticket ${entry.id} has unsupported kind ${String(entry.kind)}`, facts: null };
+    }
+    const kind = entry.kind;
     const authority = authorityIndex[entry.id] ?? null;
     if (kind === "executable" && !authority) {
       return { ok: false, reason: `authority index missing ticket ${entry.id}`, facts: null };

@@ -114,13 +114,6 @@ const walk = (directory = root) => {
 };
 const section = (text, heading) => text.match(new RegExp(`^## ${heading}\\n([\\s\\S]*?)\\n## `, "m"))?.[1] ?? "";
 const parseDelimitedList = (value) => value === "None" ? [] : value.split(",").map((entry) => entry.trim()).filter(Boolean);
-const TRANSITIONAL_TBD_BINDINGS = new Map([
-  ["D0-005", "TBD-1"],
-  ["D0-006", "TBD-2"],
-  ["D0-007", "TBD-3"],
-  ["D0-008", "TBD-4"],
-  ["D0-009", "TBD-5"]
-]);
 const isPositiveIssueNumber = (value) => typeof value === "number" && Number.isInteger(value) && value > 0;
 
 const PLANNED_PATH_RE = /`((?:tests|packages|adapters|suites|conformance)\/[^`]+)`/g;
@@ -204,7 +197,7 @@ const parseTicketAcceptanceProse = (edge, { ticketId, acceptanceId } = {}) => {
 
 const collectTestCaseNames = (fileText) => {
   const names = new Set();
-  for (const match of normalizeLf(fileText).matchAll(/\b(?:test|placeholderMutation)\(\s*(["'`])([^"'`]+)\1/g)) {
+  for (const match of normalizeLf(fileText).matchAll(/\btest\(\s*(["'`])([^"'`]+)\1/g)) {
     names.add(match[2]);
   }
   return names;
@@ -307,14 +300,14 @@ for (const path of ticketFiles) {
     continue;
   }
   if (tickets.has(id)) pushError(`duplicate ticket id ${id}`);
-  const expectedStatus = id === "D0-003"
-    ? "SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION"
-    : TRANSITIONAL_TBD_BINDINGS.has(id)
-      ? "BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED"
-      : "BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED";
   const prdHref = text.match(/^- Owning PRD: \[[^\]]+\]\(([^)]+)\)$/m)?.[1];
   const linkedPrdPath = prdHref ? rel(resolve(dirname(path), prdHref)) : null;
   const prd = [...prds.values()].find((candidate) => candidate.path === linkedPrdPath);
+  const expectedStatus = id === "D0-003"
+    ? "SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION"
+    : prd?.id === "D0-GOV"
+      ? "BLOCKED — OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED"
+      : "BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED";
   const epic = text.match(/^- Epic: (.+)$/m)?.[1];
   const milestone = text.match(/^- Milestone: (.+)$/m)?.[1];
   const size = text.match(/^- Size: (.+)$/m)?.[1];
@@ -721,11 +714,7 @@ if (manifest) {
     if (record.milestone !== ticket.milestone || !sameArray(record.dependencies, ticket.dependencies) || record.size !== ticket.size || record.epic !== ticket.epic) {
       pushError(`issue manifest ${record.id} diverges from exact ticket metadata`);
     }
-    const expectedKind = record.id === "D0-003"
-      ? "superseded"
-      : TRANSITIONAL_TBD_BINDINGS.has(record.id)
-        ? "transitional_placeholder"
-        : "executable";
+    const expectedKind = record.id === "D0-003" ? "superseded" : "executable";
     if (record.kind !== expectedKind) pushError(`issue manifest ${record.id} has wrong kind`);
     if (typeof record.body_template !== "string" || !record.body_template.trim()) pushError(`issue manifest ${record.id} lacks body_template`);
     if (!Array.isArray(record.initial_labels) || record.initial_labels.some((label) => label.startsWith("status:"))) pushError(`issue manifest ${record.id} has dynamic status label`);
@@ -738,43 +727,23 @@ if (manifest) {
   for (const id of tickets.keys()) if (!manifestIds.has(id)) pushError(`issue manifest missing ${id}`);
 }
 
-const validateClosedTransitionalBindings = (surface, getIssue) => {
+const validateNumericIssueBindings = (surface, getIssue) => {
   const numbers = new Set();
-  const placeholders = new Set();
   for (const id of tickets.keys()) {
     const issue = getIssue(id);
-    const requiredPlaceholder = TRANSITIONAL_TBD_BINDINGS.get(id);
-    if (requiredPlaceholder) {
-      if (isPositiveIssueNumber(issue)) {
-        pushError(`${surface} ${id} missing required placeholder: required ${requiredPlaceholder}; actual ${issue}`);
-      } else if (typeof issue !== "string" || !/^TBD-\d+$/.test(issue)) {
-        pushError(`${surface} ${id} has malformed issue binding ${String(issue)}`);
-      } else {
-        if (placeholders.has(issue)) pushError(`${surface} duplicate issue placeholder ${issue}`);
-        placeholders.add(issue);
-        if (issue !== requiredPlaceholder) {
-          pushError(`${surface} ${id} wrong placeholder binding: required ${requiredPlaceholder}; actual ${issue}`);
-        }
-      }
-      continue;
-    }
     if (!isPositiveIssueNumber(issue)) {
-      pushError(`${surface} ${id} existing numeric binding cannot be TBD or malformed: actual ${String(issue)}`);
+      pushError(`${surface} ${id} must have a positive integer issue binding: actual ${String(issue)}`);
       continue;
     }
     if (numbers.has(issue)) pushError(`${surface} duplicate issue number ${issue}`);
     numbers.add(issue);
   }
-  if (placeholders.size !== TRANSITIONAL_TBD_BINDINGS.size) {
-    pushError(`${surface} placeholder count ${placeholders.size}, expected ${TRANSITIONAL_TBD_BINDINGS.size}`);
-  }
-  const expectedNumericCount = tickets.size - TRANSITIONAL_TBD_BINDINGS.size;
-  if (numbers.size !== expectedNumericCount) {
-    pushError(`${surface} numeric binding count ${numbers.size}, expected ${expectedNumericCount}`);
+  if (numbers.size !== tickets.size) {
+    pushError(`${surface} numeric binding count ${numbers.size}, expected ${tickets.size}`);
   }
 };
-validateClosedTransitionalBindings("issue map", (id) => issueMap.get(id));
-validateClosedTransitionalBindings("issue manifest", (id) => manifestRecordsById.get(id)?.issue);
+validateNumericIssueBindings("issue map", (id) => issueMap.get(id));
+validateNumericIssueBindings("issue manifest", (id) => manifestRecordsById.get(id)?.issue);
 
 const board = readText("docs/tickets/BOARD.md");
 const boardRows = new Map();

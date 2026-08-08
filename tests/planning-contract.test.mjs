@@ -279,20 +279,22 @@ test("issue-map-and-manifest-agreement", () => {
   assert.equal(superseded.kind, "superseded");
   assert.match(superseded.body_template, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
   assert.ok(issues.tickets
-    .filter(({ id }) => !["D0-003", "D0-005", "D0-006", "D0-007", "D0-008", "D0-009"].includes(id))
-    .every(({ kind, body_template }) => kind === "executable" && body_template.includes("ADR + PRD + TICKET MAINTAINER GATES REQUIRED")));
+    .filter(({ id }) => id !== "D0-003")
+    .every(({ kind }) => kind === "executable"));
   assert.deepEqual(
     issues.tickets
       .filter(({ id }) => ["D0-005", "D0-006", "D0-007", "D0-008", "D0-009"].includes(id))
       .map(({ id, issue, kind }) => [id, issue, kind]),
     [
-      ["D0-005", "TBD-1", "transitional_placeholder"],
-      ["D0-006", "TBD-2", "transitional_placeholder"],
-      ["D0-007", "TBD-3", "transitional_placeholder"],
-      ["D0-008", "TBD-4", "transitional_placeholder"],
-      ["D0-009", "TBD-5", "transitional_placeholder"]
+      ["D0-005", 173, "executable"],
+      ["D0-006", 174, "executable"],
+      ["D0-007", 175, "executable"],
+      ["D0-008", 176, "executable"],
+      ["D0-009", 177, "executable"]
     ]
   );
+  assert.equal(issues.tickets.filter(({ issue }) => typeof issue === "number" && Number.isInteger(issue) && issue > 0).length, 70);
+  assert.equal(issues.tickets.filter(({ issue }) => typeof issue === "string" && issue.startsWith("TBD-")).length, 0);
   assert.ok(issues.tickets.every(({ body, labels, initial_labels }) => body === undefined && labels === undefined && Array.isArray(initial_labels)));
   assert.ok(issues.tickets.every(({ initial_labels }) => initial_labels.every((label) => !label.startsWith("status:"))));
   assert.equal(issues.labels.some(({ name }) => name === ["legacy", "pre-aos"].join(":")), false);
@@ -319,8 +321,23 @@ const updateManifestBinding = (fixture, id, issue) => {
   writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
-const placeholderMutation = (name, mutate, expected) => test(name, () => {
-  const parent = mkdtempSync(join(tmpdir(), "aos tbd placeholder "));
+const removeIssueMapBinding = (fixture, id) => {
+  const path = join(fixture, "docs/GITHUB-ISSUE-MAP.md");
+  const original = readFileSync(path, "utf8");
+  const row = new RegExp(`^\\| ${id} \\|.*\\n`, "m");
+  assert.match(original, row, `missing issue-map row ${id}`);
+  writeFileSync(path, original.replace(row, ""));
+};
+
+const removeManifestBinding = (fixture, id) => {
+  const path = join(fixture, "docs/issues.json");
+  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  manifest.tickets = manifest.tickets.filter((candidate) => candidate.id !== id);
+  writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+};
+
+const issueBindingMutation = (mutate, expected) => () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos issue binding "));
   const fixture = join(parent, "repository");
   try {
     cpSync(root, fixture, {
@@ -345,104 +362,94 @@ const placeholderMutation = (name, mutate, expected) => test(name, () => {
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
-});
+};
 
-placeholderMutation(
+test(
   "tbd-placeholder-d0-005-binding-is-rejected",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-005", "TBD-6");
     updateManifestBinding(fixture, "D0-005", "TBD-6");
-  },
-  /issue map D0-005 wrong placeholder binding: required TBD-1; actual TBD-6/
+  }, /issue map D0-005 must have a positive integer issue binding: actual TBD-6/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-d0-006-binding-is-rejected",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-006", "TBD-6");
     updateManifestBinding(fixture, "D0-006", "TBD-6");
-  },
-  /issue map D0-006 wrong placeholder binding: required TBD-2; actual TBD-6/
+  }, /issue map D0-006 must have a positive integer issue binding: actual TBD-6/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-d0-007-binding-is-rejected",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-007", "TBD-6");
     updateManifestBinding(fixture, "D0-007", "TBD-6");
-  },
-  /issue map D0-007 wrong placeholder binding: required TBD-3; actual TBD-6/
+  }, /issue map D0-007 must have a positive integer issue binding: actual TBD-6/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-d0-008-binding-is-rejected",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-008", "TBD-6");
     updateManifestBinding(fixture, "D0-008", "TBD-6");
-  },
-  /issue map D0-008 wrong placeholder binding: required TBD-4; actual TBD-6/
+  }, /issue map D0-008 must have a positive integer issue binding: actual TBD-6/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-d0-009-binding-is-rejected",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-009", "TBD-6");
     updateManifestBinding(fixture, "D0-009", "TBD-6");
-  },
-  /issue map D0-009 wrong placeholder binding: required TBD-5; actual TBD-6/
+  }, /issue map D0-009 must have a positive integer issue binding: actual TBD-6/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-malformed-is-rejected",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-005", "TBD-X");
     updateManifestBinding(fixture, "D0-005", "TBD-X");
-  },
-  /issue map D0-005 has malformed issue binding TBD-X/
+  }, /issue map D0-005 must have a positive integer issue binding: actual TBD-X/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-duplicate-is-rejected",
-  (fixture) => {
-    updateIssueMapBinding(fixture, "D0-006", "TBD-1");
-    updateManifestBinding(fixture, "D0-006", "TBD-1");
-  },
-  /issue map duplicate issue placeholder TBD-1/
+  issueBindingMutation((fixture) => {
+    updateIssueMapBinding(fixture, "D0-006", 173);
+    updateManifestBinding(fixture, "D0-006", 173);
+  }, /issue map duplicate issue number 173/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-missing-is-rejected",
-  (fixture) => {
-    updateIssueMapBinding(fixture, "D0-005", 119);
-    updateManifestBinding(fixture, "D0-005", 119);
-  },
-  /issue map D0-005 missing required placeholder: required TBD-1; actual 119/
+  issueBindingMutation((fixture) => {
+    removeIssueMapBinding(fixture, "D0-005");
+    removeManifestBinding(fixture, "D0-005");
+  }, /issue map missing D0-005/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-wrong-pair-is-rejected",
-  (fixture) => {
-    updateIssueMapBinding(fixture, "D0-005", "TBD-2");
-    updateManifestBinding(fixture, "D0-005", "TBD-2");
-    updateIssueMapBinding(fixture, "D0-006", "TBD-1");
-    updateManifestBinding(fixture, "D0-006", "TBD-1");
-  },
-  /issue map D0-005 wrong placeholder binding: required TBD-1; actual TBD-2/
+  issueBindingMutation((fixture) => {
+    updateIssueMapBinding(fixture, "D0-005", 174);
+    updateIssueMapBinding(fixture, "D0-006", 173);
+  }, /issue map and manifest disagree for D0-005/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-existing-numeric-binding-cannot-change",
-  (fixture) => {
+  issueBindingMutation((fixture) => {
     updateIssueMapBinding(fixture, "D0-004", "TBD-6");
     updateManifestBinding(fixture, "D0-004", "TBD-6");
-  },
-  /issue map D0-004 existing numeric binding cannot be TBD or malformed: actual TBD-6/
+  }, /issue map D0-004 must have a positive integer issue binding: actual TBD-6/)
 );
 
-placeholderMutation(
+test(
   "tbd-placeholder-map-manifest-disagreement-is-rejected",
-  (fixture) => updateIssueMapBinding(fixture, "D0-005", "TBD-2"),
-  /issue map and manifest disagree for D0-005/
+  issueBindingMutation(
+    (fixture) => updateIssueMapBinding(fixture, "D0-005", 174),
+    /issue map and manifest disagree for D0-005/
+  )
 );
 
 test("semantic-traceability-graph catalog acceptance-id companion", () => {

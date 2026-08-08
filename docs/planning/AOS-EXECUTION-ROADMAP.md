@@ -37,7 +37,7 @@ Open issues, drafted code, green CI on a prior head, or an unmerged PR do not ma
 
 Serial foundation:
 
-`#54 D0-001 → #55 D0-002 → (#57 D0-004 ∥ TBD-1 D0-005, which will supersede D0-004 policy authority) → #58 E0A-001 → #59 E0A-002`
+`#54 D0-001 → #55 D0-002 → (#57 D0-004 ∥ #173 D0-005, which will supersede D0-004 policy authority) → #58 E0A-001 → #59 E0A-002`
 
 Parallel window S0-P1:
 
