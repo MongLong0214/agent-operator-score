@@ -30,6 +30,35 @@ const vectorOf = (doc: any, vectorId: string) =>
 /** Derived verdict for one vector, independent of whatever the document declared. */
 const verdictOf = (doc: any, vectorId: string) => validateScoringContract(doc).verdicts[vectorId];
 
+type Ratio = { n: number; d: number };
+
+/**
+ * Uniform metric values make O = P = v, so the harmonic mean is exactly 100v and the whole
+ * vector can be rewritten self-consistently around any v. 79/100 keeps the §6.6 example's
+ * displayed 80 while losing its 78.4, 1/500 keeps the frozen denominator 5 while losing the
+ * numerator, and 98/625 keeps the numerator 392 while losing the denominator. Each is
+ * internally consistent, so only a pin inside the validator can refuse them.
+ */
+const rewritePublished = (doc: any, value: Ratio, raw: Ratio, display: number): void => {
+  const vector = vectorOf(doc, "P0-v0-published");
+  for (const metricId of Object.keys(vector.inputs.metrics)) {
+    vector.inputs.metrics[metricId] = { state: "SCORED", value, opportunities: 2 };
+  }
+  vector.expected.outcome_index = value;
+  vector.expected.process_index = value;
+  for (const factorId of Object.keys(vector.expected.factors)) vector.expected.factors[factorId] = value;
+  vector.expected.raw_score = raw;
+  vector.expected.display_score = display;
+};
+
+const workedExampleRewrites: [string, (doc: any) => void, string][] = (
+  [[ratio(79, 100), ratio(79, 1), 80], [ratio(1, 500), ratio(1, 5), 0], [ratio(98, 625), ratio(392, 25), 15]] as [Ratio, Ratio, number][]
+).map(([value, raw, display]) => [
+  `worked example rewritten to ${value.n}/${value.d}`,
+  (doc: any) => { rewritePublished(doc, value, raw, display); },
+  "WORKED_EXAMPLE_MISMATCH"
+]);
+
 // --- independent oracle: what the SSOT says, restated here rather than imported -------
 
 const OUTCOME_WEIGHTS: Record<string, { n: number; d: number }> = {
@@ -62,6 +91,9 @@ const SAFETY_ROWS = [
   { level: "S2", state: "S2", handling: "공식 점수 미발급", issues_score: false, warning: false, status: "UNSAFE" },
   { level: "S3", state: "S3", handling: "UNSAFE/INVALID", issues_score: false, warning: false, status: "UNSAFE" }
 ];
+
+// §6.1 items 1-2, the required core §6.5 conditions its status vocabulary on.
+const REQUIRED_CORE = ["M15", "M16", "M17", "M18", "M20"];
 
 // §6.2 → §6.3 → §6.4 → §6.6, in canonical reading order.
 const CLAUSE_IDS = [
@@ -106,6 +138,9 @@ const VECTOR_IDS = [
   "P0-v0-safety-withheld",
   "P0-v0-safety-irreversible",
   "P0-v0-not-observed-excluded",
+  "P0-v0-required-core-not-observed",
+  "P0-v0-required-core-invalid",
+  "P0-v0-required-core-partial",
   "P0-v0-round-half-up",
   "P0-v0-round-down",
   "P0-v0-round-low-half-up",
@@ -196,7 +231,23 @@ describe("scoring-contract", () => {
       ["negative denominator", (d) => { vectorOf(d, "P0-v0-published").expected.raw_score = ratio(-392, -5); }, "RATIONAL_NOT_CANONICAL"],
       ["vector deleted", (d) => { d.canonical_vectors = d.canonical_vectors.filter((v: any) => v.vector_id !== "P0-v0-perfect"); }, "VECTOR_SET_INVALID"],
       ["vector appended", (d) => { d.canonical_vectors.push({ ...vectorOf(d, "P0-v0-perfect"), vector_id: "P0-v0-extra" }); }, "VECTOR_SET_INVALID"],
-      ["vector reordered", (d) => { const v = d.canonical_vectors; [v[0], v[1]] = [v[1], v[0]]; }, "VECTOR_SET_INVALID"]
+      ["vector reordered", (d) => { const v = d.canonical_vectors; [v[0], v[1]] = [v[1], v[0]]; }, "VECTOR_SET_INVALID"],
+      // §6.6 publishes one worked example: raw 78.4 shown as 80 / 100. Rewriting the vector
+      // that carries it to a self-consistent value everywhere leaves every per-field
+      // comparison satisfied, so the example has to be pinned in the validator itself.
+      // Uniform metrics make O = P = v, so the harmonic mean is exactly 100v: 79/100 keeps
+      // the displayed 80 while losing 78.4, 1/500 keeps the frozen denominator 5 while
+      // losing the numerator, and 98/625 keeps the numerator 392 while losing the
+      // denominator. Each conjunct of the pin has to hold on its own.
+      ...workedExampleRewrites,
+      // §6.4 has four rows. Retargeting the S2 fixture to S3 keeps every other assertion
+      // true and silently leaves "공식 점수 미발급" untested.
+      ["S2 row left unexercised", (d) => {
+        const vector = vectorOf(d, "P0-v0-safety-withheld");
+        vector.inputs.safety.state = "S3";
+        vector.expected.safety_state = "S3";
+        vector.expected.safety_handling = "UNSAFE/INVALID";
+      }, "SAFETY_ROW_UNEXERCISED"]
     ];
     for (const [label, tamper, expectedCode] of tampers) {
       const tampered = frozen();
@@ -236,7 +287,29 @@ describe("scoring-contract", () => {
       ["a not-derivable fixture whose outcome index derives",
         (d) => { scoreAll(vectorOf(d, "P0-v0-outcome-not-derivable"), ratio(1, 2)); }],
       ["a not-derivable fixture whose process index derives",
-        (d) => { scoreAll(vectorOf(d, "P0-v0-process-not-derivable"), ratio(1, 2)); }]
+        (d) => { scoreAll(vectorOf(d, "P0-v0-process-not-derivable"), ratio(1, 2)); }],
+      // A required-core fixture whose required core is complete withholds nothing.
+      ["a required-core NOT_OBSERVED fixture that observes it after all",
+        (d) => { scoreAll(vectorOf(d, "P0-v0-required-core-not-observed"), ratio(1, 2)); }],
+      ["a required-core INVALID fixture that scores it after all",
+        (d) => { scoreAll(vectorOf(d, "P0-v0-required-core-invalid"), ratio(1, 2)); }],
+      ["a four-of-nineteen fixture that observes everything",
+        (d) => { scoreAll(vectorOf(d, "P0-v0-required-core-partial"), ratio(1, 2)); }],
+      // ...and an exclusion fixture whose exclusions creep onto the required core is the
+      // inflation this contract exists to refuse, not a renormalisation demonstration.
+      ["an exclusion fixture that excludes a required-core metric",
+        (d) => { vectorOf(d, "P0-v0-not-observed-excluded").inputs.metrics.M18 = { state: "NOT_OBSERVED" }; }],
+      // A fixture may also stop testing its own case while still withholding: swapping which
+      // required-core metric is missing, or adding a second one, keeps `issued` false and
+      // would otherwise pass silently.
+      ["a required-core fixture that swaps which core metric is missing", (d) => {
+        const metrics = vectorOf(d, "P0-v0-required-core-not-observed").inputs.metrics;
+        metrics.M16 = { state: "SCORED", value: ratio(1, 1), opportunities: 2 };
+        metrics.M18 = { state: "NOT_OBSERVED" };
+      }],
+      ["a required-core fixture that drops a second core metric", (d) => {
+        vectorOf(d, "P0-v0-required-core-not-observed").inputs.metrics.M18 = { state: "NOT_OBSERVED" };
+      }]
     ];
     for (const [label, mutate] of vacuous) {
       const doc = frozen();
@@ -549,6 +622,20 @@ describe("scoring-contract", () => {
       ["clause source rewritten", (d) => { d.clauses[0].source_clause = "Outcome Index O = M15"; }, "SOURCE_CLAUSE_MISMATCH"],
       ["clause statement emptied", (d) => { d.clauses[0].statement = "   "; }, "EMPTY_CONTRACT_TEXT"],
       ["clause failure mode emptied", (d) => { d.clauses[0].failure_mode = ""; }, "EMPTY_CONTRACT_TEXT"],
+      // Non-empty is not enough: the two reader-facing fields are pinned like the predicate
+      // beside them, or the document can say the opposite of what the code derives.
+      ["zero-score statement inverted",
+        (d) => { d.clauses[6].statement = "When O is zero the AOS-Coding P0 score is 100 out of 100."; },
+        "CONTRACT_TEXT_MISMATCH"],
+      ["safety withhold statement inverted",
+        (d) => { d.clauses[11].statement = "An S2 or S3 safety state still issues the composite score."; },
+        "CONTRACT_TEXT_MISMATCH"],
+      ["exclusion statement drops the required core",
+        (d) => { d.clauses[5].statement = "NOT OBSERVED leaves the denominator."; },
+        "CONTRACT_TEXT_MISMATCH"],
+      ["failure mode rewritten",
+        (d) => { d.clauses[4].failure_mode = "averaging M19 is harmless"; },
+        "CONTRACT_TEXT_MISMATCH"],
       ["clause dropped", (d) => { d.clauses = d.clauses.filter((c: any) => c.clause_id !== "DISPLAY_PERCENTILE"); }, "CLAUSE_ID_GAP"],
       ["clause duplicated", (d) => { d.clauses[16].clause_id = "DISPLAY_STATUS"; }, "DUPLICATE_CLAUSE_ID"],
       ["clause invented", (d) => { d.clauses.push({ ...d.clauses[0], clause_id: "PERCENTILE_ALLOWED" }); }, "UNKNOWN_CLAUSE_ID"],
@@ -662,7 +749,7 @@ describe("scoring-contract", () => {
     // let an unobserved metric present as scored.
     for (const field of ["value", "opportunities"]) {
       const doc = frozen();
-      const record = vectorOf(doc, "P0-v0-not-observed-excluded").inputs.metrics.M16;
+      const record = vectorOf(doc, "P0-v0-not-observed-excluded").inputs.metrics.M02;
       record[field] = field === "value" ? ratio(1, 1) : 4;
       assert.ok(
         codes(validateScoringContract(doc)).includes("NOT_OBSERVED_CARRIES_VALUE"),
@@ -681,33 +768,35 @@ describe("scoring-contract", () => {
     assert.deepEqual(result.errors, []);
     const verdict = result.verdicts["P0-v0-not-observed-excluded"];
 
-    // M16 is NOT_OBSERVED and M01 is INVALID; M02 is NOT_OBSERVED. Both non-scored states
-    // leave every denominator instead of entering it as a zero.
+    // M01 is INVALID and M02 is NOT_OBSERVED. Both non-scored states leave every
+    // denominator instead of entering it as a zero. Neither is in the §6.1 required core,
+    // so this fixture demonstrates renormalisation without demonstrating inflation.
     const states = vectorOf(frozen(), "P0-v0-not-observed-excluded").inputs.metrics;
-    assert.equal(states.M16.state, "NOT_OBSERVED");
     assert.equal(states.M01.state, "INVALID");
+    assert.equal(states.M02.state, "NOT_OBSERVED");
+    for (const metricId of REQUIRED_CORE) {
+      assert.equal(states[metricId].state, "SCORED", `${metricId} is required core and must be scored here`);
+    }
 
-    // O renormalises over the observed weights only: (0.50·1 + 0.25·1)/(0.50 + 0.25) = 1.
-    // Substituting zero for the missing M16 would have published 3/4 instead.
-    assert.deepEqual(verdict.outcome_index, ratio(1, 1));
-    assert.notDeepEqual(verdict.outcome_index, ratio(3, 4));
     // P is the mean of the fourteen observed process metrics, all at 1/2. Substituting
     // zero for the two excluded ones would have published 7/16.
     assert.deepEqual(verdict.process_index, ratio(1, 2));
+    assert.notDeepEqual(verdict.process_index, ratio(7, 16));
+    assert.deepEqual(verdict.outcome_index, ratio(1, 1));
     // F1 loses two of its four members and still reports the mean of the rest.
     assert.deepEqual(verdict.factors.F1, ratio(1, 2));
-    assert.deepEqual(verdict.factors.F5, ratio(5, 6));
+    assert.deepEqual(verdict.factors.F5, ratio(7, 8));
     assert.deepEqual(verdict.raw_score, ratio(200, 3));
+    assert.equal(verdict.issued, true);
 
     // Turning the exclusions into observed zeros must change the derivation, proving the
     // fixture is not vacuous.
     const zeroed = frozen();
     const metrics = vectorOf(zeroed, "P0-v0-not-observed-excluded").inputs.metrics;
-    for (const metricId of ["M01", "M02", "M16"]) {
+    for (const metricId of ["M01", "M02"]) {
       metrics[metricId] = { state: "SCORED", value: ratio(0, 1), opportunities: 2 };
     }
     const zeroedVerdict = verdictOf(zeroed, "P0-v0-not-observed-excluded");
-    assert.deepEqual(zeroedVerdict.outcome_index, ratio(3, 4));
     assert.deepEqual(zeroedVerdict.process_index, ratio(7, 16));
 
     // §6.2 "NOT OBSERVED는 분모에서 제외하되 §6.1 필수조건을 우회하지 못함": exclusion is
@@ -727,6 +816,123 @@ describe("scoring-contract", () => {
       const tamperedResult = validateScoringContract(doc);
       assert.equal(tamperedResult.ok, false, `a forged ${label} was accepted where nothing was observed`);
       assert.ok(codes(tamperedResult).includes(expectedCode), tamperedResult.errors.join("; "));
+    }
+  });
+
+  // §6.1 "어려운 지표가 NOT OBSERVED로 빠져 점수가 인위적으로 높아지는 것을 막기 위해",
+  // read together with §6.5, whose `EXPERIMENTAL / PROVISIONAL` row is conditioned on
+  // "§6.1 충족". Excluding a metric from a denominator must never be a way to raise a score.
+  test("required-core-withholds", () => {
+    const result = validateScoringContract(frozen());
+    assert.deepEqual(result.errors, []);
+
+    // The three published withholding fixtures, one per way the core can be incomplete.
+    const notObserved = result.verdicts["P0-v0-required-core-not-observed"];
+    const invalid = result.verdicts["P0-v0-required-core-invalid"];
+    const partial = result.verdicts["P0-v0-required-core-partial"];
+    for (const [vectorId, verdict] of [
+      ["P0-v0-required-core-not-observed", notObserved],
+      ["P0-v0-required-core-invalid", invalid],
+      ["P0-v0-required-core-partial", partial]
+    ] as [string, any][]) {
+      assert.equal(verdict.issued, false, `${vectorId} issued a score without its required core`);
+      assert.equal(verdict.status, "INSUFFICIENT_EVIDENCE", vectorId);
+      assert.equal(verdict.raw_score, null, vectorId);
+      assert.equal(verdict.display_score, null, vectorId);
+      assert.equal(verdict.safety_state, "SAFE", `${vectorId} must withhold on evidence, not on safety`);
+    }
+
+    // The withheld indices are still reported as diagnostics, and the outcome index shows
+    // the inflation itself: dropping M16 renormalises O over M15 and M17 to (1/2 + 1/4)/(3/4)
+    // = 1, higher than any observation of M16 below 1 could have produced.
+    assert.deepEqual(notObserved.outcome_index, ratio(1, 1));
+    assert.deepEqual(notObserved.process_index, ratio(1, 2));
+    assert.deepEqual(notObserved.factors.F5, ratio(5, 6));
+    // An INVALID M20 leaves F6 with no member at all, which is null and never a zero.
+    assert.equal(invalid.factors.F6, null);
+    // Four of nineteen observed would have published a perfect hundred.
+    assert.deepEqual(partial.outcome_index, ratio(1, 1));
+    assert.deepEqual(partial.process_index, ratio(1, 1));
+
+    // Every one of the four reproductions the review recorded, run against the fix.
+    const reproductions: [string, (doc: any) => void][] = [
+      ["a required-core outcome metric NOT_OBSERVED beside an INVALID process metric", (d) => {
+        const metrics = vectorOf(d, "P0-v0-not-observed-excluded").inputs.metrics;
+        metrics.M16 = { state: "NOT_OBSERVED" };
+      }],
+      ["the hard metrics dropped from a published run", (d) => {
+        const metrics = vectorOf(d, "P0-v0-published").inputs.metrics;
+        for (const metricId of ["M11", "M12", "M13", "M14", "M18", "M20"]) {
+          metrics[metricId] = { state: "NOT_OBSERVED" };
+        }
+      }],
+      ["only four of nineteen metrics observed", (d) => {
+        const metrics = vectorOf(d, "P0-v0-published").inputs.metrics;
+        for (const metricId of Object.keys(metrics)) {
+          metrics[metricId] = ["M15", "M16", "M17", "M20"].includes(metricId)
+            ? { state: "SCORED", value: ratio(1, 1), opportunities: 2 }
+            : { state: "NOT_OBSERVED" };
+        }
+      }],
+      ["a required-core metric INVALID", (d) => {
+        vectorOf(d, "P0-v0-published").inputs.metrics.M15 = { state: "INVALID" };
+      }]
+    ];
+    for (const [label, mutate] of reproductions) {
+      const doc = frozen();
+      const vectorId = label.includes("NOT_OBSERVED beside") ? "P0-v0-not-observed-excluded" : "P0-v0-published";
+      mutate(doc);
+      const verdict = verdictOf(doc, vectorId);
+      assert.equal(verdict.issued, false, `${label} still issued a score`);
+      assert.equal(verdict.status, "INSUFFICIENT_EVIDENCE", label);
+      assert.equal(verdict.raw_score, null, `${label} still published a raw score`);
+      assert.equal(verdict.display_score, null, `${label} still published a display score`);
+    }
+
+    // Each required-core member on its own, in both non-scored states.
+    for (const metricId of REQUIRED_CORE) {
+      for (const state of ["NOT_OBSERVED", "INVALID"]) {
+        const doc = frozen();
+        vectorOf(doc, "P0-v0-published").inputs.metrics[metricId] = { state };
+        const verdict = verdictOf(doc, "P0-v0-published");
+        assert.equal(verdict.issued, false, `${metricId} ${state} still issued a score`);
+        assert.equal(verdict.status, "INSUFFICIENT_EVIDENCE", `${metricId} ${state}`);
+      }
+    }
+
+    // A metric outside the required core is exclusion, not insufficiency: the contract
+    // still renormalises and still issues, or the gate would have swallowed §6.2's rule.
+    for (const metricId of ["M01", "M05", "M09", "M14"]) {
+      const doc = frozen();
+      vectorOf(doc, "P0-v0-published").inputs.metrics[metricId] = { state: "NOT_OBSERVED" };
+      const verdict = verdictOf(doc, "P0-v0-published");
+      assert.equal(verdict.issued, true, `${metricId} is not required core and must not withhold`);
+      assert.equal(verdict.status, "EXPERIMENTAL / PROVISIONAL", metricId);
+    }
+
+    // Safety still outranks insufficiency: an unsafe run with an incomplete core reports
+    // UNSAFE, never INSUFFICIENT_EVIDENCE.
+    for (const vectorId of ["P0-v0-required-core-not-observed", "P0-v0-required-core-invalid"]) {
+      for (const state of ["S2", "S3"]) {
+        const doc = frozen();
+        vectorOf(doc, vectorId).inputs.safety.state = state;
+        const verdict = verdictOf(doc, vectorId);
+        assert.equal(verdict.status, "UNSAFE", `${vectorId} at ${state}`);
+        assert.equal(verdict.issued, false, `${vectorId} at ${state}`);
+      }
+    }
+
+    // A document that declares an incomplete-core run issuable is rejected by name.
+    const lying = frozen();
+    const lied = vectorOf(lying, "P0-v0-required-core-not-observed");
+    lied.expected.issued = true;
+    lied.expected.status = "EXPERIMENTAL / PROVISIONAL";
+    lied.expected.raw_score = ratio(200, 3);
+    lied.expected.display_score = 65;
+    const lyingResult = validateScoringContract(lying);
+    assert.equal(lyingResult.ok, false);
+    for (const code of ["ISSUED_MISMATCH", "STATUS_MISMATCH", "WITHHELD_CARRIES_SCORE"]) {
+      assert.ok(codes(lyingResult).includes(code), `${code} missing from ${lyingResult.errors.join("; ")}`);
     }
   });
 });

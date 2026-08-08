@@ -200,8 +200,8 @@
       "ordinal": 6,
       "source_clause": "NOT OBSERVED는 분모에서 제외하되 §6.1 필수조건을 우회하지 못함",
       "statement": "NOT OBSERVED leaves the denominator and never bypasses the §6.1 required core.",
-      "predicate": "a NOT_OBSERVED or INVALID metric leaves every denominator and is never scored as a zero",
-      "failure_mode": "scoring an adapter gap as zero would report missing evidence as operator failure"
+      "predicate": "a NOT_OBSERVED or INVALID metric leaves every denominator, is never scored as a zero, and never bypasses the §6.1 required core of M15, M16, M17, M18 and M20",
+      "failure_mode": "scoring an adapter gap as zero would report missing evidence as operator failure, and excusing one would raise the score by dropping the metric that was hard to earn"
     },
     {
       "clause_id": "ZERO_INDEX_ZERO_SCORE",
@@ -2062,6 +2062,214 @@
             "opportunities": 2
           },
           "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 2
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 2
+          },
+          "F2": {
+            "n": 1,
+            "d": 2
+          },
+          "F3": {
+            "n": 1,
+            "d": 2
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 7,
+            "d": 8
+          },
+          "F6": {
+            "n": 1,
+            "d": 2
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 200,
+          "d": 3
+        },
+        "display_score": 65
+      }
+    },
+    {
+      "vector_id": "P0-v0-required-core-not-observed",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
             "state": "NOT_OBSERVED"
           },
           "M17": {
@@ -2131,13 +2339,319 @@
         "safety_state": "SAFE",
         "safety_handling": "점수 발급",
         "safety_warning": false,
-        "issued": true,
-        "status": "EXPERIMENTAL / PROVISIONAL",
-        "raw_score": {
-          "n": 200,
-          "d": 3
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-required-core-invalid",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "INVALID"
+          }
         },
-        "display_score": 65
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 2
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 2
+          },
+          "F2": {
+            "n": 1,
+            "d": 2
+          },
+          "F3": {
+            "n": 1,
+            "d": 2
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 7,
+            "d": 8
+          },
+          "F6": null
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-required-core-partial",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "NOT_OBSERVED"
+          },
+          "M02": {
+            "state": "NOT_OBSERVED"
+          },
+          "M03": {
+            "state": "NOT_OBSERVED"
+          },
+          "M04": {
+            "state": "NOT_OBSERVED"
+          },
+          "M05": {
+            "state": "NOT_OBSERVED"
+          },
+          "M06": {
+            "state": "NOT_OBSERVED"
+          },
+          "M07": {
+            "state": "NOT_OBSERVED"
+          },
+          "M08": {
+            "state": "NOT_OBSERVED"
+          },
+          "M09": {
+            "state": "NOT_OBSERVED"
+          },
+          "M10": {
+            "state": "NOT_OBSERVED"
+          },
+          "M11": {
+            "state": "NOT_OBSERVED"
+          },
+          "M12": {
+            "state": "NOT_OBSERVED"
+          },
+          "M13": {
+            "state": "NOT_OBSERVED"
+          },
+          "M14": {
+            "state": "NOT_OBSERVED"
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "NOT_OBSERVED"
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 1
+        },
+        "factors": {
+          "F1": null,
+          "F2": null,
+          "F3": null,
+          "F4": null,
+          "F5": {
+            "n": 1,
+            "d": 1
+          },
+          "F6": {
+            "n": 1,
+            "d": 1
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
       }
     },
     {

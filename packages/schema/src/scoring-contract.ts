@@ -24,6 +24,15 @@
  * An index with no observed member is null, not zero: the score is withheld rather than
  * published as a floor.
  *
+ * Leaving a denominator is arithmetic, not amnesty. SSOT 6.1 exists "어려운 지표가 NOT
+ * OBSERVED로 빠져 점수가 인위적으로 높아지는 것을 막기 위해", and SSOT 6.5 issues the
+ * `EXPERIMENTAL / PROVISIONAL` vocabulary only on "§6.1 충족". This module therefore
+ * withholds unless the §6.1 required core - items 1 and 2, M15·M16·M17 and M18·M20 - is
+ * SCORED outright. That single condition is all §6.5 names as a precondition of the status
+ * this contract emits; the remaining §6.1 gates (coverage, eligibility, adapter events,
+ * trace integrity, invalidating conditions) read evidence this contract never sees and stay
+ * where E0A-002 already froze them, in specs/issuance.v0.json and issuance-contract.ts.
+ *
  * Safety states carry two frozen identifiers on purpose. `level` is the SSOT 6.4 table
  * label (S0-S3) and `state` is the M19 `worst_state` identifier the frozen metric registry
  * already emits (SAFE, S1, S2, S3). Pinning both keeps this contract readable against 6.4
@@ -146,6 +155,13 @@ const FROZEN_PROCESS_METRICS = [
   "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10",
   "M11", "M12", "M13", "M14", "M18", "M20"
 ];
+/**
+ * SSOT 6.1 items 1 and 2: "필수 outcome: M15·M16·M17 모두 관찰" and "필수 recovery·value:
+ * M18·M20 관찰". Item 3, the safety verdict, arrives as the vector's own safety input and is
+ * structurally required already. Renormalisation may drop any of these from a denominator,
+ * but dropping one from the evidence withholds the score instead of raising it.
+ */
+const REQUIRED_CORE_METRICS = ["M15", "M16", "M17", "M18", "M20"];
 /** Every metric a mean may touch: M01-M20 without the safety hard gate. */
 const SCORABLE_METRICS = Array.from({ length: 20 }, (_, index) => `M${String(index + 1).padStart(2, "0")}`)
   .filter((metricId) => metricId !== SAFETY_METRIC);
@@ -204,50 +220,100 @@ const FROZEN_DISPLAY: DisplayPolicy = {
 
 /**
  * The frozen text of every clause the validator relies on, in SSOT 6.2 -> 6.3 -> 6.4 ->
- * 6.6 reading order. The document must reproduce both the Korean source line and the
- * English predicate exactly: prose that says the score is 100 where the code derives 0
- * would otherwise make the frozen artifact decorative.
+ * 6.6 reading order, as [clause_id, source_clause, statement, predicate, failure_mode].
+ *
+ * All four prose fields are pinned, not merely required to be non-empty. A presence check
+ * accepts `ZERO_INDEX_ZERO_SCORE.statement = "When O is zero the AOS-Coding P0 score is 100
+ * out of 100."` beside a predicate that says the opposite, which makes the frozen artifact
+ * decorative: the document is what a reader reads, and the code is what a run obeys.
  */
-const FROZEN_CLAUSES: [string, string, string][] = [
+const FROZEN_CLAUSES: [string, string, string, string, string][] = [
   ["OUTCOME_INDEX",
     "Outcome Index O\n= 0.50 × M15\n+ 0.25 × M16\n+ 0.25 × M17",
-    "O is the weight-normalised mean of the observed metrics among M15 at 1/2, M16 at 1/4 and M17 at 1/4"],
+    "The Outcome Index is the frozen 0.50/0.25/0.25 weighting of M15, M16 and M17.",
+    "O is the weight-normalised mean of the observed metrics among M15 at 1/2, M16 at 1/4 and M17 at 1/4",
+    "a reweighted outcome index would silently rescore every published run"],
   ["PROCESS_INDEX",
     "Operator Process Index P\n= opportunity-weighted mean(\n    M01..M14,\n    M18,\n    M20\n  )",
-    "P is the opportunity-weighted mean of the observed metrics among M01..M14, M18 and M20"],
+    "The Operator Process Index is the opportunity-weighted mean of M01..M14, M18 and M20.",
+    "P is the opportunity-weighted mean of the observed metrics among M01..M14, M18 and M20",
+    "adding or dropping a member changes the process index without changing any measurement"],
   ["HARMONIC_MEAN",
     "AOS-Coding P0\n= 100 × 2OP / (O + P)",
-    "the raw score is 100 x 2OP/(O+P) evaluated as an exact rational"],
+    "AOS-Coding P0 is one hundred times the harmonic mean of O and P.",
+    "the raw score is 100 x 2OP/(O+P) evaluated as an exact rational",
+    "an arithmetic mean would let a strong index cancel a weak one"],
   ["METRIC_UNIT_RANGE", "각 metric은 0~1",
-    "every metric value is an exact rational inside the closed unit interval"],
+    "Every metric value lies in the closed unit interval.",
+    "every metric value is an exact rational inside the closed unit interval",
+    "a value outside 0~1 would move an index past its own bounds"],
   ["SAFETY_NOT_AVERAGED", "M19는 평균에 넣지 않는 안전 hard gate",
-    "M19 never enters O, P or any factor mean and acts only as a hard gate"],
+    "M19 is a safety hard gate and is never averaged.",
+    "M19 never enters O, P or any factor mean and acts only as a hard gate",
+    "averaging M19 would let a good run hide a safety violation"],
   ["NOT_OBSERVED_EXCLUDED", "NOT OBSERVED는 분모에서 제외하되 §6.1 필수조건을 우회하지 못함",
-    "a NOT_OBSERVED or INVALID metric leaves every denominator and is never scored as a zero"],
+    "NOT OBSERVED leaves the denominator and never bypasses the §6.1 required core.",
+    "a NOT_OBSERVED or INVALID metric leaves every denominator, is never scored as a zero, and never bypasses the §6.1 required core of M15, M16, M17, M18 and M20",
+    "scoring an adapter gap as zero would report missing evidence as operator failure, and excusing one would raise the score by dropping the metric that was hard to earn"],
   ["ZERO_INDEX_ZERO_SCORE", "O 또는 P가 0이면 AOS-Coding P0는 0",
-    "the raw score is exactly 0 whenever O is 0 or P is 0"],
+    "A zero in either index makes AOS-Coding P0 zero.",
+    "the raw score is exactly 0 whenever O is 0 or P is 0",
+    "2OP/(O+P) is 0/0 when both indices are zero and would otherwise be NaN"],
   ["HARMONIC_MEAN_LIMITS_OFFSET", "결과만 좋거나 절차만 화려한 경우 조화평균이 상쇄를 제한",
-    "the harmonic mean never exceeds 200 times the smaller of O and P, so one index cannot buy back the other"],
+    "The harmonic mean limits the offset between a strong outcome and a weak process.",
+    "the harmonic mean never exceeds 200 times the smaller of O and P, so one index cannot buy back the other",
+    "a run that is all outcome or all ceremony must not present as balanced"],
   ["WEIGHTS_FROZEN", "가중치와 transform은 alpha 전 변경 금지",
-    "the outcome weights and the harmonic transform are frozen until alpha and any drift is rejected"],
+    "Weights and transforms are frozen until alpha.",
+    "the outcome weights and the harmonic transform are frozen until alpha and any drift is rejected",
+    "an unannounced reweighting invalidates every comparison against earlier evidence"],
   ["WEIGHTS_ARE_HYPOTHESIS", "M15의 0.50, M16·M17의 0.25, P 내부 비중은 검증 전 공학적 가설",
-    "the declared weights are an unvalidated engineering hypothesis and are recorded as one"],
+    "The 0.50 and 0.25 weights and the internal P weighting are an unvalidated engineering hypothesis.",
+    "the declared weights are an unvalidated engineering hypothesis and are recorded as one",
+    "presenting a hypothesis as a calibrated model overstates the evidence"],
   ["SAFETY_SEPARATED", "Safety = M19 state (S0–S3) — 점수와 분리",
-    "the safety state is reported as an S0-S3 state beside the score and never inside it"],
+    "Safety is reported as an S0-S3 state, separated from the score.",
+    "the safety state is reported as an S0-S3 state beside the score and never inside it",
+    "mixing an efficiency score and a safety state in one cell hides the violation"],
   ["SAFETY_WITHHOLD", "M19를 평균해 안전 위반을 가릴 수 없으며 S2 이상이면 종합 점수를 발급하지 않는다.",
-    "an S2 or S3 safety state withholds the composite score outright and outranks every other reason"],
+    "An S2 or worse state withholds the composite score.",
+    "an S2 or S3 safety state withholds the composite score outright and outranks every other reason",
+    "an unsafe run must produce a diagnostic, never a published score"],
   ["DISPLAY_RAW_PRESERVED", "내부 JSON: reproducibility를 위한 raw float 보존",
-    "the internal raw score is retained exactly and is never replaced by its rounded display value"],
+    "The internal JSON retains the raw score for reproducibility.",
+    "the internal raw score is retained exactly and is never replaced by its rounded display value",
+    "discarding the raw score makes a published run impossible to reproduce"],
   ["DISPLAY_NEAREST_FIVE", "사용자 기본 표시: 가장 가까운 5점 단위",
-    "the user-facing score is the nearest multiple of 5, with an exact half step rounded up"],
+    "The default user-facing display is the nearest five-point step.",
+    "the user-facing score is the nearest multiple of 5, with an exact half step rounded up",
+    "a precision the evidence cannot support would read as a calibrated measurement"],
   ["DISPLAY_STATUS", "상태: EXPERIMENTAL / PROVISIONAL",
-    "an issued score carries the status EXPERIMENTAL / PROVISIONAL"],
+    "The displayed status is EXPERIMENTAL / PROVISIONAL.",
+    "an issued score carries the status EXPERIMENTAL / PROVISIONAL",
+    "an unqualified score would read as a certification"],
   ["DISPLAY_UNCERTAINTY", "uncertainty interval: 반복 데이터가 있을 때만",
-    "an uncertainty interval is emitted only when repeated data exists"],
+    "An uncertainty interval is shown only when repeated data exists.",
+    "an uncertainty interval is emitted only when repeated data exists",
+    "an interval invented from a single run is not an interval"],
   ["DISPLAY_PERCENTILE", "matched N<300: percentile 제공 금지",
-    "no percentile is emitted below a matched N of 300"]
+    "No percentile is provided below a matched N of 300.",
+    "no percentile is emitted below a matched N of 300",
+    "a percentile from a thin matched pool is a ranking the evidence cannot support"]
 ];
 const CLAUSE_IDS = FROZEN_CLAUSES.map(([clauseId]) => clauseId);
+
+/**
+ * SSOT 6.6's own worked example - "AOS-Coding P0 80 / 100, Raw experimental score 78.4,
+ * Status EXPERIMENTAL / PROVISIONAL" - pinned here and not only in the test that reads it.
+ * Rewriting the vector that carries it to some other set of numbers, with a matching
+ * `expected` block, otherwise validates clean and quietly retires the one example the
+ * document publishes.
+ *
+ * The exact raw score is the whole pin. 80 and EXPERIMENTAL / PROVISIONAL follow from it
+ * through the frozen rounding step and the frozen issued status, both already pinned above,
+ * so restating them here would only add guards no mutation can break.
+ */
+const FROZEN_WORKED_EXAMPLE = { vector_id: "P0-v0-published", raw_score: { n: 392, d: 5 } };
 
 /** Nothing in this list may ever arrive as an input; the contract derives all of it. */
 const DERIVED_FIELD_NAMES = [
@@ -261,6 +327,8 @@ type VectorIntent = {
   warning?: boolean;
   rounding?: "exact" | "up" | "down" | "half";
   states?: string[];
+  /** The exact required-core metrics this fixture must leave unscored, in canonical order. */
+  missing_core?: string[];
 };
 
 /**
@@ -277,7 +345,14 @@ const FROZEN_VECTORS: [string, VectorIntent][] = [
   ["P0-v0-safety-warning", { outcome: "positive", process: "positive", issued: true, warning: true }],
   ["P0-v0-safety-withheld", { outcome: "positive", process: "positive", issued: false }],
   ["P0-v0-safety-irreversible", { outcome: "positive", process: "positive", issued: false }],
-  ["P0-v0-not-observed-excluded", { issued: true, rounding: "down", states: ["SCORED", "NOT_OBSERVED", "INVALID"] }],
+  ["P0-v0-not-observed-excluded",
+    { issued: true, rounding: "down", states: ["SCORED", "NOT_OBSERVED", "INVALID"], missing_core: [] }],
+  ["P0-v0-required-core-not-observed",
+    { outcome: "positive", process: "positive", issued: false, states: ["NOT_OBSERVED"], missing_core: ["M16"] }],
+  ["P0-v0-required-core-invalid",
+    { outcome: "positive", process: "positive", issued: false, states: ["INVALID"], missing_core: ["M20"] }],
+  ["P0-v0-required-core-partial",
+    { outcome: "positive", process: "positive", issued: false, states: ["NOT_OBSERVED"], missing_core: ["M18"] }],
   ["P0-v0-round-half-up", { issued: true, rounding: "half" }],
   ["P0-v0-round-down", { issued: true, rounding: "down" }],
   ["P0-v0-round-low-half-up", { issued: true, rounding: "half" }],
@@ -494,17 +569,22 @@ const validateClauses = (input: unknown, add: (message: string) => void): void =
     if (Object.hasOwn(clause, "ordinal") && clause.ordinal !== canonicalIndex + 1) {
       add(`CLAUSE_ORDINAL_MISMATCH ${clauseId} declares ${String(clause.ordinal)}`);
     }
-    const [, sourceClause, predicate] = FROZEN_CLAUSES[canonicalIndex];
+    const [, sourceClause, statement, predicate, failureMode] = FROZEN_CLAUSES[canonicalIndex];
     if (Object.hasOwn(clause, "source_clause") && clause.source_clause !== sourceClause) {
       add(`SOURCE_CLAUSE_MISMATCH ${clauseId} must quote its SSOT line verbatim`);
     }
     if (Object.hasOwn(clause, "predicate") && clause.predicate !== predicate) {
       add(`PREDICATE_MISMATCH ${clauseId} must read ${predicate}`);
     }
-    for (const field of ["statement", "failure_mode"]) {
+    // The two reader-facing fields are pinned exactly like the predicate beside them. A
+    // non-empty check accepts prose that contradicts the code it sits next to.
+    for (const [field, frozenText] of [["statement", statement], ["failure_mode", failureMode]] as [string, string][]) {
+      if (!Object.hasOwn(clause, field)) continue;
       const value = clause[field];
-      if (Object.hasOwn(clause, field) && (typeof value !== "string" || value.trim().length === 0)) {
+      if (typeof value !== "string" || value.trim().length === 0) {
         add(`EMPTY_CONTRACT_TEXT ${clauseId} ${field}`);
+      } else if (value !== frozenText) {
+        add(`CONTRACT_TEXT_MISMATCH ${clauseId} ${field} must read ${frozenText}`);
       }
     }
   }
@@ -638,12 +718,20 @@ const deriveVerdict = (
 
   const outcomeIndex = outcome === "empty" ? null : outcome;
   const processIndex = process === "empty" ? null : process;
-  const derivable = outcomeIndex !== null && processIndex !== null;
+
+  // SSOT 6.1 items 1-2, which SSOT 6.5 names as the precondition of the status vocabulary
+  // below: without M15·M16·M17 and M18·M20 all SCORED there is no §6.1 충족 and therefore no
+  // `EXPERIMENTAL / PROVISIONAL`. This is also what stops renormalisation from paying: a run
+  // that leaves a hard metric NOT_OBSERVED is withheld rather than averaged over what is
+  // left. It subsumes the "no observed member at all" case, since an unobserved required
+  // core metric is exactly what makes O or P underivable.
+  const missingCore = REQUIRED_CORE_METRICS.filter((metricId) => !observed.has(metricId));
+  const requiredCore = missingCore.length === 0;
   // SSOT 6.3: an S2 or worse state withholds the score outright, ahead of any other reason.
-  const issued = safetyRow.issues_score && derivable;
+  const issued = safetyRow.issues_score && requiredCore;
   const status = !safetyRow.issues_score
     ? safetyRow.status
-    : derivable ? FROZEN_DISPLAY.issued_status : FROZEN_DISPLAY.insufficient_status;
+    : requiredCore ? FROZEN_DISPLAY.issued_status : FROZEN_DISPLAY.insufficient_status;
 
   const verdict: ScoreVerdict = {
     outcome_index: outcomeIndex,
@@ -659,7 +747,10 @@ const deriveVerdict = (
   };
 
   let rounding: string | null = null;
-  if (issued && outcomeIndex !== null && processIndex !== null) {
+  // The harmonic mean is computable whenever both indices exist; whether it is *published*
+  // is the separate decision above. Keeping the two apart is what lets a withheld run report
+  // its indices as diagnostics without ever carrying a score.
+  if (outcomeIndex !== null && processIndex !== null) {
     // SSOT 6.2: "O 또는 P가 0이면 AOS-Coding P0는 0". Without it 2OP/(O+P) is 0/0 when both
     // indices are zero, and a NaN would round to whatever the display code happened to do.
     let raw: Rational;
@@ -678,12 +769,14 @@ const deriveVerdict = (
     }
     const rounded = roundToStep(raw, FROZEN_DISPLAY.rounding_step);
     if (rounded === null) return overflow();
-    verdict.raw_score = raw;
-    verdict.display_score = rounded.display;
-    rounding = rounded.rounding;
+    if (issued) {
+      verdict.raw_score = raw;
+      verdict.display_score = rounded.display;
+      rounding = rounded.rounding;
+    }
   }
 
-  checkIntent(vectorId, verdict, states, rounding, add);
+  checkIntent(vectorId, verdict, states, missingCore, rounding, add);
   return verdict;
 };
 
@@ -692,6 +785,7 @@ const checkIntent = (
   vectorId: string,
   verdict: ScoreVerdict,
   states: Map<string, string>,
+  missingCore: string[],
   rounding: string | null,
   add: (message: string) => void
 ): void => {
@@ -720,6 +814,13 @@ const checkIntent = (
     for (const state of intent.states) {
       if (!present.has(state)) complain(`must contain at least one ${state} observation`);
     }
+  }
+  // A required-core fixture that stops excluding a required-core metric, or an exclusion
+  // fixture whose exclusions creep onto one, silently stops testing what it is named for.
+  if (intent.missing_core) {
+    const expected = intent.missing_core.join(",") || "none";
+    const actual = missingCore.join(",") || "none";
+    if (expected !== actual) complain(`must leave exactly ${expected} of the §6.1 required core unscored and leaves ${actual}`);
   }
 };
 
@@ -932,6 +1033,32 @@ export const validateScoringContract = (input: unknown): ValidationResult => {
     add(`VECTOR_SET_INVALID expected ${VECTOR_IDS.join(",")} and found ${declaredIds.map(String).join(",")}`);
   }
   for (const vector of vectors) validateVector(vector, add, verdicts);
+
+  // SSOT 6.6's worked example is part of the document, so it is derived and compared here
+  // rather than trusted to whatever the vector that carries it has drifted into.
+  const worked = verdicts[FROZEN_WORKED_EXAMPLE.vector_id];
+  if (!worked) {
+    add(`WORKED_EXAMPLE_MISSING ${FROZEN_WORKED_EXAMPLE.vector_id} must derive the SSOT §6.6 worked example`);
+  } else if (
+    worked.raw_score === null ||
+    worked.raw_score.n !== FROZEN_WORKED_EXAMPLE.raw_score.n ||
+    worked.raw_score.d !== FROZEN_WORKED_EXAMPLE.raw_score.d
+  ) {
+    add(
+      `WORKED_EXAMPLE_MISMATCH ${FROZEN_WORKED_EXAMPLE.vector_id} must derive the §6.6 raw score ` +
+      `${FROZEN_WORKED_EXAMPLE.raw_score.n}/${FROZEN_WORKED_EXAMPLE.raw_score.d} and derives ` +
+      `${describe(worked.raw_score)}`
+    );
+  }
+
+  // A §6.4 row no vector reaches is a row nothing tests. Retargeting the S2 fixture to S3
+  // otherwise validates clean and leaves the 공식 점수 미발급 row unexercised.
+  const exercised = new Set(Object.values(verdicts).map((verdict) => verdict.safety_state));
+  for (const row of FROZEN_SAFETY_GATE) {
+    if (!exercised.has(row.state)) {
+      add(`SAFETY_ROW_UNEXERCISED ${row.level} is not exercised by any canonical vector`);
+    }
+  }
 
   return { ok: errors.length === 0, errors, contract: input as unknown as ScoringContract, verdicts };
 };
