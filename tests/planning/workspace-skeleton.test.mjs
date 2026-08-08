@@ -54,6 +54,30 @@ const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolute
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
 // Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
 // a claim check, not an acceptance check; ticket readiness stays the resolver's job.
+// Fixture directories a ticket declares by glob, e.g. `fixtures/doctor/*.json`. These are
+// data, not source, so the product-code census never sees them; the only thing they need
+// is admission to the skeleton file list. Derived from the tickets so a second directory
+// does not need a second hardcoded branch.
+const ticketDeclaredFixtureDirectories = () => {
+  const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
+  const directories = new Set();
+  for (const absolutePath of walkFiles(ticketsRoot)) {
+    if (!/^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(asRepositoryRelative(absolutePath))) continue;
+    const text = readFileSync(absolutePath, "utf8");
+    const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
+    for (const line of ownership ? ownership[1].split("\n") : []) {
+      const bullet = /^- (.+)$/.exec(line.trim());
+      if (!bullet) continue;
+      for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
+        const candidate = entry.trim().replace(/^`|`$/g, "");
+        const glob = /^(fixtures\/[A-Za-z0-9._-]+)\/\*[A-Za-z0-9.*]*$/.exec(candidate);
+        if (glob) directories.add(glob[1]);
+      }
+    }
+  }
+  return [...directories].filter((path) => existsSync(resolve(repositoryRoot, path))).sort();
+};
+
 const ticketOwnedSkeletonPaths = () => {
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const owned = new Set();
@@ -190,13 +214,19 @@ test("root-private-scripts-and-runnable-surface", () => {
     .flatMap((directory) => walkFiles(directory))
     .map(asRepositoryRelative)
     .sort();
-  const operationalStateFiles = walkFiles(resolve(repositoryRoot, "fixtures/operational-state"))
-    .map(asRepositoryRelative)
-    .sort();
+  // D0-004B declares fixtures/operational-state itself, so the explicit entry and the
+  // derived one overlap; dedupe rather than list a directory's files twice.
+  const fixtureDirectoryFiles = [
+    ...new Set(
+      ["fixtures/operational-state", ...ticketDeclaredFixtureDirectories()]
+        .flatMap((directory) => walkFiles(resolve(repositoryRoot, directory)))
+        .map(asRepositoryRelative)
+    )
+  ].sort();
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
-    ...operationalStateFiles,
+    ...fixtureDirectoryFiles,
     ...ticketOwnedSkeletonPaths()
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
@@ -214,6 +244,8 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   assert.ok(owned.includes("packages/schema/test/scoring-contract.test.ts"), "E0A-003 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/test/issuance-contract.test.ts"), "E0A-002 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/src/session-class.ts"), "E0B-002 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/src/doctor-contract.ts"), "E0B-003 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/test/doctor-contract.test.ts"), "E0B-003 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/test/session-class.test.ts"), "E0B-002 RED file is unclaimed");
 
   // Bind the derivation to the validator's census; if the two parses ever diverge,
@@ -292,8 +324,8 @@ test("focused-lane-is-not-silently-empty", () => {
   // Exact, not a floor: a lane that loses a case must fail here. Every count includes the
   // per-file results the runner emits, so adding a test file shifts all of them at once.
   const lanes = [
-    ["metric-registry", 17], ["issuance-contract", 11], ["capability", 13],
-    ["scoring-contract", 14], ["session-class", 22]
+    ["metric-registry", 18], ["issuance-contract", 12], ["capability", 14],
+    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 22]
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);
