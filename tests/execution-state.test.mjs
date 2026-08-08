@@ -11,6 +11,8 @@ const resolverPath = resolve(root, "scripts/resolve-execution-state.mjs");
 const baselineFactsPath = resolve(root, "fixtures/operational-state/current-baseline/facts.json");
 
 const loadBaselineFacts = () => JSON.parse(readFileSync(baselineFactsPath, "utf8"));
+const loadCommittedOperationalAuthority = () =>
+  JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8")).operational_authority;
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const CANONICAL_EXCLUDE = new Set(["current_head", "resolved_at", "runtime"]);
@@ -501,6 +503,41 @@ test("actor-policy-missing-or-malformed", async () => {
   assert.deepEqual(result.readySet, []);
   const codes = Object.values(result.tickets).flatMap((t) => blockerCodes(t));
   assert.ok(codes.includes("TICKET_CONTRACT_CONFLICT"));
+});
+
+const assertRequiredChecksMutationIsRejected = async (mutate) => {
+  const facts = loadBaselineFacts();
+  facts.operationalAuthority = clone(loadCommittedOperationalAuthority());
+
+  const baseline = await resolveOffline(facts);
+  assert.equal(
+    baseline.result.errors.some((entry) => entry.code === "TICKET_CONTRACT_CONFLICT"),
+    false,
+    "the unmodified committed required_checks policy must agree with the resolver"
+  );
+
+  mutate(facts.operationalAuthority.candidate_ci.required_checks);
+  const { result } = await resolveOffline(facts);
+  assert.deepEqual(result.readySet, []);
+  assert.ok(result.errors.some((entry) => entry.code === "TICKET_CONTRACT_CONFLICT"));
+};
+
+test("actor-policy-rejects-empty-required-checks", async () => {
+  await assertRequiredChecksMutationIsRejected((requiredChecks) => {
+    requiredChecks.length = 0;
+  });
+});
+
+test("actor-policy-rejects-reordered-required-checks", async () => {
+  await assertRequiredChecksMutationIsRejected((requiredChecks) => {
+    requiredChecks.reverse();
+  });
+});
+
+test("actor-policy-rejects-renamed-required-check", async () => {
+  await assertRequiredChecksMutationIsRejected((requiredChecks) => {
+    requiredChecks[0].name = "planning-contract (changed)";
+  });
 });
 
 test("gate-pr-wrong-or-no-longer-owner-actor", async () => {
@@ -2565,9 +2602,9 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
     workflow_path: ".github/workflows/ci.yml"
   };
   facts.workflowRuns = [
-    ...(facts.workflowRuns ?? []).filter((r) => r.name !== "planning-contract (20)"),
+    ...(facts.workflowRuns ?? []).filter((r) => r.name !== "planning-contract (22)"),
     {
-      name: "planning-contract (20)",
+      name: "planning-contract (22)",
       run_id: 1,
       run_attempt: 1,
       status: "completed",
@@ -2575,7 +2612,7 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
       ...runMeta
     },
     {
-      name: "planning-contract (20)",
+      name: "planning-contract (22)",
       run_id: 1,
       run_attempt: 2,
       status: "completed",
@@ -2584,7 +2621,7 @@ test("candidate-ci-latest-failed-attempt-overrides-older-pass", async () => {
     }
   ];
   facts.checkRuns = (facts.checkRuns ?? []).map((c) =>
-    c.name === "planning-contract (20)"
+    c.name === "planning-contract (22)"
       ? { ...c, conclusion: "failure", run_id: 1, run_attempt: 2 }
       : c
   );
@@ -3150,10 +3187,10 @@ test("candidate-ci-requires-exact-job-check-name-and-one-to-one-check-consumptio
   const responses = clone(base);
   const jobsKey = `${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`;
 
-  // All three required jobs point to the same check-run. The first name happens
-  // to agree, but the remaining two must neither reuse its ID nor accept its name.
+  // Both required jobs point to the same check-run. The first name happens
+  // to agree, but the remaining job must neither reuse its ID nor accept its name.
   for (const job of responses[jobsKey].jobs) {
-    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000";
+    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9001";
   }
 
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
@@ -3162,8 +3199,8 @@ test("candidate-ci-requires-exact-job-check-name-and-one-to-one-check-consumptio
 
   const reused = clone(base);
   for (const job of reused[jobsKey].jobs) {
-    job.name = "planning-contract (20)";
-    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9000";
+    job.name = "planning-contract (22)";
+    job.check_run_url = "https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/9001";
   }
   const reusedCollected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(reused) });
   assert.equal(reusedCollected.ok, false);
@@ -3596,7 +3633,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   responses[runsKey] = { total_count: dualRuns.length, workflow_runs: dualRuns };
   // Stale successful check-runs (would mask failure if bound only by name).
   const dualChecks = [
-    ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+    ...["planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       id: 9100 + i,
       name,
       status: "completed",
@@ -3605,7 +3642,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
       run_id: 4001,
       run_attempt: 1
     })),
-    ...["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+    ...["planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       id: 9200 + i,
       name,
       status: "completed",
@@ -3617,7 +3654,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   ];
   responses[checksKey] = { total_count: dualChecks.length, check_runs: dualChecks };
   const dualJobs = (runId, conclusion, checkBase) =>
-    ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
+    ["planning-contract (22)", "planning-contract (24)"].map((name, i) => ({
       name,
       status: "completed",
       conclusion,
@@ -3626,11 +3663,11 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
       check_run_url: `https://api.github.com/repos/MongLong0214/agent-operator-score/check-runs/${checkBase + i}`
     }));
   responses[`${repo}/actions/runs/4001/attempts/1/jobs?per_page=50`] = {
-    total_count: 3,
+    total_count: 2,
     jobs: dualJobs(4001, "success", 9100)
   };
   responses[`${repo}/actions/runs/4002/attempts/1/jobs?per_page=50`] = {
-    total_count: 3,
+    total_count: 2,
     jobs: dualJobs(4002, "failure", 9200)
   };
 
@@ -3638,7 +3675,7 @@ test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async 
   assert.equal(collected.ok, true, collected.reason);
   assert.deepEqual(
     collected.facts.workflowRuns.map((entry) => [entry.run_id, entry.run_attempt, entry.conclusion]),
-    [[4002, 1, "failure"], [4002, 1, "failure"], [4002, 1, "failure"]]
+    [[4002, 1, "failure"], [4002, 1, "failure"]]
   );
 
   // A unique name on a single run is still not exact provenance when neither
@@ -3710,7 +3747,7 @@ test("candidate-ci-selects-only-the-latest-attempt-for-each-required-workflow", 
   assert.equal(collected.ok, true, collected.reason);
   assert.deepEqual(
     collected.facts.workflowRuns.map((entry) => entry.run_id),
-    [4001, 4001, 4001]
+    [4001, 4001]
   );
 });
 
@@ -4892,12 +4929,11 @@ function makeCandidateFacts(base, { review, authorization, ci, d0_004c_merged = 
 
   const requiredNames = d0_004c_merged
     ? [
-        "planning-contract (20)",
         "planning-contract (22)",
         "planning-contract (24)",
         "operational-state-offline"
       ]
-    : ["planning-contract (20)", "planning-contract (22)", "planning-contract (24)"];
+    : ["planning-contract (22)", "planning-contract (24)"];
 
   facts.checkRuns = [];
   facts.workflowRuns = [];
