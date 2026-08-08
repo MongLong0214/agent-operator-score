@@ -31,8 +31,8 @@ const declaredPrdEpicDependencies = () => {
   }
   return declared;
 };
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=70 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=70 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=71 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=71 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
 
 const setPendingGateRegistry = (fixture) => {
   const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
@@ -130,7 +130,7 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
   assert.match(readme, /do \*\*not\*\* exist yet/);
   assert.equal(existsSync(resolve(root, "packages/scorer/src")), false);
   assert.match(readme, /Planned CLI — not available yet/);
-  assert.match(readme, /70 atomic implementation tickets/);
+  assert.match(readme, /71 atomic implementation tickets/);
   assert.match(readme, /EXPERIMENTAL \/ PROVISIONAL/);
   assert.match(readme, /Historical planning material was removed from the active tree and is recoverable only through Git history\./);
   assert.doesNotMatch(readme, /docs\/north-star\/legacy/);
@@ -296,8 +296,8 @@ test("superseded-d0-003-has-no-owned-implementation", () => {
 test("issue-map-and-manifest-agreement", () => {
   const issues = JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8"));
   assert.equal(issues.milestones.length, 6);
-  assert.equal(issues.tickets.length, 70);
-  assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 70);
+  assert.equal(issues.tickets.length, 71);
+  assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 71);
   const superseded = issues.tickets.find(({ id }) => id === "D0-003");
   assert.equal(superseded.kind, "superseded");
   assert.match(superseded.body_template, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
@@ -340,9 +340,10 @@ test("all-issue-bindings-are-numeric-and-unique", () => {
   for (const { id, issue } of issues.tickets) assert.equal(mapRows.get(id), issue, `map binding ${id}`);
   assert.deepEqual(
     issues.tickets
-      .filter(({ id }) => ["D0-005", "D0-006", "D0-007", "D0-008", "D0-009"].includes(id))
-      .map(({ id, issue }) => [id, issue]),
-    [["D0-005", 173], ["D0-006", 174], ["D0-007", 175], ["D0-008", 176], ["D0-009", 177]]
+      .filter(({ id }) => ["D0-005", "D0-006", "D0-007", "D0-008", "D0-009", "D0-011"].includes(id))
+      .map(({ id, issue }) => [id, issue])
+      .sort(([a], [b]) => a.localeCompare(b)),
+    [["D0-005", 173], ["D0-006", 174], ["D0-007", 175], ["D0-008", 176], ["D0-009", 177], ["D0-011", 182]]
   );
 });
 
