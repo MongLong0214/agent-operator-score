@@ -99,7 +99,9 @@
         "POST_MERGE_CI_FAILED",
         "EXTERNAL_STATE_UNAVAILABLE",
         "STALE_DIGEST",
-        "WRONG_TARGET"
+        "WRONG_TARGET",
+        "COMPLETION_EFFECT_REVERTED",
+        "COMPLETION_EFFECT_UNKNOWN"
       ]
     },
     "blocker": {

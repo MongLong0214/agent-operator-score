@@ -4995,3 +4995,19 @@ void execFileSync;
 void stripRuntime;
 void tmpdir;
 void join;
+
+test("published-schema-enum-covers-every-emittable-blocker-code", async () => {
+  const { BLOCKER_CODES } = await importResolver();
+  const schema = JSON.parse(
+    readFileSync(resolve(root, "specs/execution-state.schema.v1.json"), "utf8")
+  );
+  const enumerated = schema?.$defs?.blockerCode?.enum ?? schema?.definitions?.blockerCode?.enum;
+  assert.ok(Array.isArray(enumerated), "the schema must enumerate blocker codes");
+
+  const emittable = [...BLOCKER_CODES].sort();
+  const published = [...enumerated].sort();
+  // Drift in either direction is a defect: a code the resolver can emit but the schema
+  // rejects makes every run fail its own output validation, and a code the schema allows
+  // but the resolver cannot emit is dead vocabulary.
+  assert.deepEqual(published, emittable);
+});
