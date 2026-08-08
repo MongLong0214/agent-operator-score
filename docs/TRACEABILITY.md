@@ -113,6 +113,130 @@ JSON object key order in this catalog is not schema-significant; validators comp
       ]
     },
     {
+      "id": "D0-GOV",
+      "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+      "adr_ids": [
+        "ADR-0012",
+        "ADR-0013"
+      ],
+      "requirement_count": 6,
+      "acceptance_ids": [
+        "AC-D0-GOV-1",
+        "AC-D0-GOV-2",
+        "AC-D0-GOV-3",
+        "AC-D0-GOV-4",
+        "AC-D0-GOV-5",
+        "AC-D0-GOV-6",
+        "AC-D0-GOV-7",
+        "AC-D0-GOV-8",
+        "AC-D0-GOV-9"
+      ],
+      "ticket_ids": [
+        "D0-005",
+        "D0-006",
+        "D0-007",
+        "D0-008",
+        "D0-009"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-D0-GOV-1",
+            "AC-D0-GOV-2"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-D0-GOV-3",
+            "AC-D0-GOV-4"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-D0-GOV-5"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-D0-GOV-6"
+          ]
+        },
+        {
+          "requirement_key": "5",
+          "acceptance_ids": [
+            "AC-D0-GOV-7",
+            "AC-D0-GOV-8"
+          ]
+        },
+        {
+          "requirement_key": "6",
+          "acceptance_ids": [
+            "AC-D0-GOV-9"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-D0-GOV-1",
+          "ticket_ids": [
+            "D0-005"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-2",
+          "ticket_ids": [
+            "D0-005"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-3",
+          "ticket_ids": [
+            "D0-006"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-4",
+          "ticket_ids": [
+            "D0-006"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-5",
+          "ticket_ids": [
+            "D0-007"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-6",
+          "ticket_ids": [
+            "D0-008"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-7",
+          "ticket_ids": [
+            "D0-009"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-8",
+          "ticket_ids": [
+            "D0-009"
+          ]
+        },
+        {
+          "acceptance_id": "AC-D0-GOV-9",
+          "ticket_ids": [
+            "D0-005"
+          ]
+        }
+      ]
+    },
+    {
       "id": "E0-A",
       "path": "docs/prd/PRD-E0A-metric-and-score-issuance-contract.md",
       "adr_ids": [
@@ -2106,6 +2230,39 @@ JSON object key order in this catalog is not schema-significant; validators comp
       ]
     },
     {
+      "path": "tests/artifact-manifest-v3.test.mjs",
+      "cases": [
+        "legacy-registry-migrates-with-provenance-and-no-acceptance",
+        "manifest-v3-is-deterministic",
+        "manifest-v3-rejects-ambiguous-provenance",
+        "manifest-v3-rejects-authored-effective-state",
+        "manifest-v3-rejects-duplicate-artifact",
+        "manifest-v3-rejects-malformed-record",
+        "manifest-v3-rejects-unbound-artifact",
+        "manifest-v3-rejects-unsafe-artifact-path"
+      ]
+    },
+    {
+      "path": "tests/authenticated-review-activation.test.mjs",
+      "cases": [
+        "activation-admin-enforcement-required",
+        "activation-app-bypass-fails-closed",
+        "activation-artifact-mismatch-fails-closed",
+        "activation-github-outage-fails-closed",
+        "activation-identity-collision-fails-closed",
+        "activation-last-push-approval-required",
+        "activation-partial-protection-fails-closed",
+        "activation-permission-loss-fails-closed",
+        "activation-protection-404-fails-closed",
+        "activation-requires-second-principal-and-protected-dev",
+        "activation-revalidates-three-distinct-principals",
+        "activation-stale-review-dismissal-required",
+        "activation-team-bypass-fails-closed",
+        "activation-user-bypass-fails-closed",
+        "activation-wrong-target-fails-closed"
+      ]
+    },
+    {
       "path": "tests/execution-state.test.mjs",
       "cases": [
         "actor-policy-missing-or-malformed",
@@ -2135,10 +2292,60 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "single-owner-sequential-review-and-authorization",
         "single-owner-spoof-is-not-authorization",
         "stale-digest-removes-readiness",
+        "transitional-placeholder-ticket-is-never-executable",
         "wrong-check-creator-or-external-id-is-blocked",
         "wrong-dispatch-permission-is-blocked",
         "wrong-repository-or-branch-fails-closed",
         "wrong-workflow-blob-or-run-provenance-is-blocked"
+      ]
+    },
+    {
+      "path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "accepted-self-authored-row-is-legacy-unauthenticated",
+        "effective-state-census-covers-every-accepted-row",
+        "effective-state-duplicate-input-is-rejected",
+        "effective-state-malformed-input-is-rejected",
+        "effective-state-missing-input-is-rejected",
+        "effective-state-unsafe-input-is-rejected",
+        "effective-state-unverified-input-is-rejected",
+        "legacy-unauthenticated-row-does-not-freeze-artifacts"
+      ]
+    },
+    {
+      "path": "tests/github-acceptance-derivation.test.mjs",
+      "cases": [
+        "ambiguous-principal-is-rejected",
+        "author-merger-collision-is-rejected",
+        "author-reviewer-collision-is-rejected",
+        "dismissed-review-is-rejected",
+        "duplicate-gate-facts-are-rejected",
+        "exact-head-authenticated-review-derives-pending-while-inactive",
+        "github-outage-fails-closed",
+        "inactive-derivation-never-authorizes-or-freezes",
+        "malformed-manifest-is-rejected",
+        "reviewer-merger-collision-is-rejected",
+        "reviewer-permission-is-rejected",
+        "stale-review-is-rejected",
+        "wrong-base-is-rejected",
+        "wrong-target-is-rejected"
+      ]
+    },
+    {
+      "path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "contradictory-governance-mode-is-contract-error",
+        "d0-004-authority-source-is-rejected",
+        "invalid-governance-contract-never-falls-back",
+        "malformed-governance-mode-is-contract-error",
+        "missing-governance-mode-is-contract-error",
+        "unknown-governance-mode-is-contract-error",
+        "valid-governance-contract-declares-exact-modes",
+        "valid-sole-owner-advisory-emits-empty-ready-set",
+        "valid-sole-owner-advisory-has-no-artifact-freeze",
+        "valid-sole-owner-advisory-is-canonical",
+        "valid-sole-owner-advisory-never-authorizes-red-merge-or-implementation",
+        "valid-sole-owner-advisory-never-claims-separation-of-duties-for-different-role-strings"
       ]
     },
     {
@@ -2153,7 +2360,18 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "operational-authority-schema-and-ticket-agreement",
         "orphan-requirement-ac-ticket-test-mutants",
         "semantic-traceability-graph",
-        "superseded-d0-003-has-no-owned-implementation"
+        "superseded-d0-003-has-no-owned-implementation",
+        "tbd-placeholder-d0-005-binding-is-rejected",
+        "tbd-placeholder-d0-006-binding-is-rejected",
+        "tbd-placeholder-d0-007-binding-is-rejected",
+        "tbd-placeholder-d0-008-binding-is-rejected",
+        "tbd-placeholder-d0-009-binding-is-rejected",
+        "tbd-placeholder-duplicate-is-rejected",
+        "tbd-placeholder-existing-numeric-binding-cannot-change",
+        "tbd-placeholder-malformed-is-rejected",
+        "tbd-placeholder-map-manifest-disagreement-is-rejected",
+        "tbd-placeholder-missing-is-rejected",
+        "tbd-placeholder-wrong-pair-is-rejected"
       ]
     },
     {
@@ -2359,9 +2577,9 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-004-11",
       "test_path": "tests/execution-state.test.mjs",
       "cases": [
-        "roadmap-is-not-an-input",
         "board-is-not-an-input",
-        "issue-label-is-not-an-input"
+        "issue-label-is-not-an-input",
+        "roadmap-is-not-an-input"
       ]
     },
     {
@@ -2386,10 +2604,10 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-004-14",
       "test_path": "tests/execution-state.test.mjs",
       "cases": [
-        "registry-string-is-not-gate-acceptance",
         "actor-policy-missing-or-malformed",
+        "gate-pr-stale-head-or-digest",
         "gate-pr-wrong-or-no-longer-owner-actor",
-        "gate-pr-stale-head-or-digest"
+        "registry-string-is-not-gate-acceptance"
       ]
     },
     {
@@ -2397,14 +2615,14 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-004-15",
       "test_path": "tests/execution-state.test.mjs",
       "cases": [
-        "review-and-authorization-are-distinct",
-        "current-review-without-authorization-is-blocked",
-        "single-owner-spoof-is-not-authorization",
-        "single-owner-sequential-review-and-authorization",
         "candidate-controlled-or-non-ancestor-review-workflow-is-blocked",
-        "wrong-workflow-blob-or-run-provenance-is-blocked",
+        "current-review-without-authorization-is-blocked",
+        "review-and-authorization-are-distinct",
+        "single-owner-sequential-review-and-authorization",
+        "single-owner-spoof-is-not-authorization",
         "wrong-check-creator-or-external-id-is-blocked",
-        "wrong-dispatch-permission-is-blocked"
+        "wrong-dispatch-permission-is-blocked",
+        "wrong-workflow-blob-or-run-provenance-is-blocked"
       ]
     },
     {
@@ -2420,10 +2638,10 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-004-17",
       "test_path": "tests/execution-state.test.mjs",
       "cases": [
-        "candidate-ci-required-set-is-exact",
+        "candidate-ci-candidate-workflow-differs-from-live-target-is-blocked",
         "candidate-ci-missing-stale-or-wrong-head-is-blocked",
-        "candidate-ci-wrong-app-event-base-path-or-run-is-blocked",
-        "candidate-ci-candidate-workflow-differs-from-live-target-is-blocked"
+        "candidate-ci-required-set-is-exact",
+        "candidate-ci-wrong-app-event-base-path-or-run-is-blocked"
       ]
     },
     {
@@ -2431,8 +2649,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "acceptance_id": "AC-D0-004-18",
       "test_path": "tests/execution-state.test.mjs",
       "cases": [
-        "future-check-premature",
-        "bootstrap-after-c-fails-closed"
+        "bootstrap-after-c-fails-closed",
+        "future-check-premature"
       ]
     },
     {
@@ -2500,6 +2718,285 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "cases": [
         "post-merge-ci-required",
         "stale-digest-removes-readiness"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-1",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "missing-governance-mode-is-contract-error"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-2",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "malformed-governance-mode-is-contract-error"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-3",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "unknown-governance-mode-is-contract-error"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-4",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "contradictory-governance-mode-is-contract-error"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-5",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "d0-004-authority-source-is-rejected",
+        "invalid-governance-contract-never-falls-back"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-6",
+      "test_path": "tests/planning-contract.test.mjs",
+      "cases": [
+        "tbd-placeholder-d0-005-binding-is-rejected",
+        "tbd-placeholder-d0-006-binding-is-rejected",
+        "tbd-placeholder-d0-007-binding-is-rejected",
+        "tbd-placeholder-d0-008-binding-is-rejected",
+        "tbd-placeholder-d0-009-binding-is-rejected",
+        "tbd-placeholder-duplicate-is-rejected",
+        "tbd-placeholder-existing-numeric-binding-cannot-change",
+        "tbd-placeholder-malformed-is-rejected",
+        "tbd-placeholder-map-manifest-disagreement-is-rejected",
+        "tbd-placeholder-missing-is-rejected",
+        "tbd-placeholder-wrong-pair-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-7",
+      "test_path": "tests/execution-state.test.mjs",
+      "cases": [
+        "transitional-placeholder-ticket-is-never-executable"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-8",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "valid-governance-contract-declares-exact-modes"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-9",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "valid-sole-owner-advisory-is-canonical"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-10",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "valid-sole-owner-advisory-emits-empty-ready-set"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-11",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "valid-sole-owner-advisory-never-authorizes-red-merge-or-implementation"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-12",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "valid-sole-owner-advisory-has-no-artifact-freeze"
+      ]
+    },
+    {
+      "ticket_id": "D0-005",
+      "acceptance_id": "AC-D0-005-13",
+      "test_path": "tests/governance-mode-contract.test.mjs",
+      "cases": [
+        "valid-sole-owner-advisory-never-claims-separation-of-duties-for-different-role-strings"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-1",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "accepted-self-authored-row-is-legacy-unauthenticated"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-2",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "legacy-unauthenticated-row-does-not-freeze-artifacts"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-3",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "effective-state-census-covers-every-accepted-row"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-4",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "effective-state-missing-input-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-5",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "effective-state-duplicate-input-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-6",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "effective-state-unsafe-input-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-7",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "effective-state-malformed-input-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-8",
+      "test_path": "tests/gate-effective-state.test.mjs",
+      "cases": [
+        "effective-state-unverified-input-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-007",
+      "acceptance_id": "AC-D0-007-1",
+      "test_path": "tests/artifact-manifest-v3.test.mjs",
+      "cases": [
+        "manifest-v3-rejects-unbound-artifact"
+      ]
+    },
+    {
+      "ticket_id": "D0-007",
+      "acceptance_id": "AC-D0-007-2",
+      "test_path": "tests/artifact-manifest-v3.test.mjs",
+      "cases": [
+        "legacy-registry-migrates-with-provenance-and-no-acceptance"
+      ]
+    },
+    {
+      "ticket_id": "D0-007",
+      "acceptance_id": "AC-D0-007-3",
+      "test_path": "tests/artifact-manifest-v3.test.mjs",
+      "cases": [
+        "manifest-v3-is-deterministic",
+        "manifest-v3-rejects-ambiguous-provenance",
+        "manifest-v3-rejects-authored-effective-state",
+        "manifest-v3-rejects-duplicate-artifact",
+        "manifest-v3-rejects-malformed-record",
+        "manifest-v3-rejects-unsafe-artifact-path"
+      ]
+    },
+    {
+      "ticket_id": "D0-008",
+      "acceptance_id": "AC-D0-008-1",
+      "test_path": "tests/github-acceptance-derivation.test.mjs",
+      "cases": [
+        "exact-head-authenticated-review-derives-pending-while-inactive"
+      ]
+    },
+    {
+      "ticket_id": "D0-008",
+      "acceptance_id": "AC-D0-008-2",
+      "test_path": "tests/github-acceptance-derivation.test.mjs",
+      "cases": [
+        "inactive-derivation-never-authorizes-or-freezes"
+      ]
+    },
+    {
+      "ticket_id": "D0-008",
+      "acceptance_id": "AC-D0-008-3",
+      "test_path": "tests/github-acceptance-derivation.test.mjs",
+      "cases": [
+        "ambiguous-principal-is-rejected",
+        "author-merger-collision-is-rejected",
+        "author-reviewer-collision-is-rejected",
+        "dismissed-review-is-rejected",
+        "duplicate-gate-facts-are-rejected",
+        "github-outage-fails-closed",
+        "malformed-manifest-is-rejected",
+        "reviewer-merger-collision-is-rejected",
+        "reviewer-permission-is-rejected",
+        "stale-review-is-rejected",
+        "wrong-base-is-rejected",
+        "wrong-target-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-009",
+      "acceptance_id": "AC-D0-009-1",
+      "test_path": "tests/authenticated-review-activation.test.mjs",
+      "cases": [
+        "activation-requires-second-principal-and-protected-dev",
+        "activation-revalidates-three-distinct-principals"
+      ]
+    },
+    {
+      "ticket_id": "D0-009",
+      "acceptance_id": "AC-D0-009-2",
+      "test_path": "tests/authenticated-review-activation.test.mjs",
+      "cases": [
+        "activation-admin-enforcement-required",
+        "activation-app-bypass-fails-closed",
+        "activation-artifact-mismatch-fails-closed",
+        "activation-github-outage-fails-closed",
+        "activation-identity-collision-fails-closed",
+        "activation-last-push-approval-required",
+        "activation-partial-protection-fails-closed",
+        "activation-permission-loss-fails-closed",
+        "activation-protection-404-fails-closed",
+        "activation-team-bypass-fails-closed",
+        "activation-user-bypass-fails-closed",
+        "activation-wrong-target-fails-closed"
+      ]
+    },
+    {
+      "ticket_id": "D0-009",
+      "acceptance_id": "AC-D0-009-3",
+      "test_path": "tests/authenticated-review-activation.test.mjs",
+      "cases": [
+        "activation-stale-review-dismissal-required"
       ]
     },
     {

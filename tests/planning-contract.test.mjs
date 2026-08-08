@@ -8,8 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=70 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=70 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
 
 const setPendingGateRegistry = (fixture) => {
   const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
@@ -107,7 +107,7 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
   assert.match(readme, /do \*\*not\*\* exist yet/);
   assert.equal(existsSync(resolve(root, "packages/scorer/src")), false);
   assert.match(readme, /Planned CLI — not available yet/);
-  assert.match(readme, /65 atomic implementation tickets/);
+  assert.match(readme, /70 atomic implementation tickets/);
   assert.match(readme, /EXPERIMENTAL \/ PROVISIONAL/);
   assert.match(readme, /Historical planning material was removed from the active tree and is recoverable only through Git history\./);
   assert.doesNotMatch(readme, /docs\/north-star\/legacy/);
@@ -273,18 +273,177 @@ test("superseded-d0-003-has-no-owned-implementation", () => {
 test("issue-map-and-manifest-agreement", () => {
   const issues = JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8"));
   assert.equal(issues.milestones.length, 6);
-  assert.equal(issues.tickets.length, 65);
-  assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 65);
+  assert.equal(issues.tickets.length, 70);
+  assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 70);
   const superseded = issues.tickets.find(({ id }) => id === "D0-003");
   assert.equal(superseded.kind, "superseded");
   assert.match(superseded.body_template, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);
   assert.ok(issues.tickets
-    .filter(({ id }) => id !== "D0-003")
+    .filter(({ id }) => !["D0-003", "D0-005", "D0-006", "D0-007", "D0-008", "D0-009"].includes(id))
     .every(({ kind, body_template }) => kind === "executable" && body_template.includes("ADR + PRD + TICKET MAINTAINER GATES REQUIRED")));
+  assert.deepEqual(
+    issues.tickets
+      .filter(({ id }) => ["D0-005", "D0-006", "D0-007", "D0-008", "D0-009"].includes(id))
+      .map(({ id, issue, kind }) => [id, issue, kind]),
+    [
+      ["D0-005", "TBD-1", "transitional_placeholder"],
+      ["D0-006", "TBD-2", "transitional_placeholder"],
+      ["D0-007", "TBD-3", "transitional_placeholder"],
+      ["D0-008", "TBD-4", "transitional_placeholder"],
+      ["D0-009", "TBD-5", "transitional_placeholder"]
+    ]
+  );
   assert.ok(issues.tickets.every(({ body, labels, initial_labels }) => body === undefined && labels === undefined && Array.isArray(initial_labels)));
   assert.ok(issues.tickets.every(({ initial_labels }) => initial_labels.every((label) => !label.startsWith("status:"))));
   assert.equal(issues.labels.some(({ name }) => name === ["legacy", "pre-aos"].join(":")), false);
 });
+
+const issueMapCell = (issue) => Number.isInteger(issue)
+  ? `[#${issue}](https://github.com/MongLong0214/agent-operator-score/issues/${issue})`
+  : issue;
+
+const updateIssueMapBinding = (fixture, id, issue) => {
+  const path = join(fixture, "docs/GITHUB-ISSUE-MAP.md");
+  const original = readFileSync(path, "utf8");
+  const row = new RegExp(`(\\| ${id} \\| )[^|]+(\\| S0 · Name & Contracts \\|)`);
+  assert.match(original, row, `missing issue-map row ${id}`);
+  writeFileSync(path, original.replace(row, `$1${issueMapCell(issue)} $2`));
+};
+
+const updateManifestBinding = (fixture, id, issue) => {
+  const path = join(fixture, "docs/issues.json");
+  const manifest = JSON.parse(readFileSync(path, "utf8"));
+  const record = manifest.tickets.find((candidate) => candidate.id === id);
+  assert.ok(record, `missing manifest record ${id}`);
+  record.issue = issue;
+  writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`);
+};
+
+const placeholderMutation = (name, mutate, expected) => test(name, () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos tbd placeholder "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    setPendingGateRegistry(fixture);
+    mutate(fixture);
+    let error;
+    try {
+      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      });
+    } catch (caught) {
+      error = caught;
+    }
+    assert.ok(error, "mutant must fail planning validation");
+    assert.equal(error.status, 1);
+    assert.match(error.stderr, expected);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+placeholderMutation(
+  "tbd-placeholder-d0-005-binding-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-005", "TBD-6");
+    updateManifestBinding(fixture, "D0-005", "TBD-6");
+  },
+  /issue map D0-005 wrong placeholder binding: required TBD-1; actual TBD-6/
+);
+
+placeholderMutation(
+  "tbd-placeholder-d0-006-binding-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-006", "TBD-6");
+    updateManifestBinding(fixture, "D0-006", "TBD-6");
+  },
+  /issue map D0-006 wrong placeholder binding: required TBD-2; actual TBD-6/
+);
+
+placeholderMutation(
+  "tbd-placeholder-d0-007-binding-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-007", "TBD-6");
+    updateManifestBinding(fixture, "D0-007", "TBD-6");
+  },
+  /issue map D0-007 wrong placeholder binding: required TBD-3; actual TBD-6/
+);
+
+placeholderMutation(
+  "tbd-placeholder-d0-008-binding-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-008", "TBD-6");
+    updateManifestBinding(fixture, "D0-008", "TBD-6");
+  },
+  /issue map D0-008 wrong placeholder binding: required TBD-4; actual TBD-6/
+);
+
+placeholderMutation(
+  "tbd-placeholder-d0-009-binding-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-009", "TBD-6");
+    updateManifestBinding(fixture, "D0-009", "TBD-6");
+  },
+  /issue map D0-009 wrong placeholder binding: required TBD-5; actual TBD-6/
+);
+
+placeholderMutation(
+  "tbd-placeholder-malformed-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-005", "TBD-X");
+    updateManifestBinding(fixture, "D0-005", "TBD-X");
+  },
+  /issue map D0-005 has malformed issue binding TBD-X/
+);
+
+placeholderMutation(
+  "tbd-placeholder-duplicate-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-006", "TBD-1");
+    updateManifestBinding(fixture, "D0-006", "TBD-1");
+  },
+  /issue map duplicate issue placeholder TBD-1/
+);
+
+placeholderMutation(
+  "tbd-placeholder-missing-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-005", 119);
+    updateManifestBinding(fixture, "D0-005", 119);
+  },
+  /issue map D0-005 missing required placeholder: required TBD-1; actual 119/
+);
+
+placeholderMutation(
+  "tbd-placeholder-wrong-pair-is-rejected",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-005", "TBD-2");
+    updateManifestBinding(fixture, "D0-005", "TBD-2");
+    updateIssueMapBinding(fixture, "D0-006", "TBD-1");
+    updateManifestBinding(fixture, "D0-006", "TBD-1");
+  },
+  /issue map D0-005 wrong placeholder binding: required TBD-1; actual TBD-2/
+);
+
+placeholderMutation(
+  "tbd-placeholder-existing-numeric-binding-cannot-change",
+  (fixture) => {
+    updateIssueMapBinding(fixture, "D0-004", "TBD-6");
+    updateManifestBinding(fixture, "D0-004", "TBD-6");
+  },
+  /issue map D0-004 existing numeric binding cannot be TBD or malformed: actual TBD-6/
+);
+
+placeholderMutation(
+  "tbd-placeholder-map-manifest-disagreement-is-rejected",
+  (fixture) => updateIssueMapBinding(fixture, "D0-005", "TBD-2"),
+  /issue map and manifest disagree for D0-005/
+);
 
 test("semantic-traceability-graph catalog acceptance-id companion", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos semantic traceability orphan "));
@@ -449,7 +608,7 @@ test("maintainer-gate-digest-invalidation", () => {
   const parent = mkdtempSync(join(tmpdir(), "aos gate digest invalidation "));
   const fixture = join(parent, "repository");
   try {
-    execFileSync("git", ["worktree", "add", "--detach", fixture, "HEAD"], {
+    execFileSync("git", ["clone", "--no-local", root, fixture], {
       cwd: root,
       encoding: "utf8"
     });
@@ -472,9 +631,6 @@ test("maintainer-gate-digest-invalidation", () => {
     assert.ok(error);
     assert.match(error.stderr, /stale digest d0-002-prerequisites-red-census-contract-correction-renewal docs\/adr\/ADR-0001/);
   } finally {
-    if (existsSync(join(fixture, ".git"))) {
-      execFileSync("git", ["worktree", "remove", "--force", fixture], { cwd: root, encoding: "utf8" });
-    }
     rmSync(parent, { recursive: true, force: true });
   }
 });

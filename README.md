@@ -40,9 +40,9 @@ Verified scores require a controlled AOS wrapper from start to finish. Imported 
 Planning:
 
 - final single source of truth;
-- 12 proposed ADRs;
-- 19 proposed PRDs;
-- 65 atomic implementation tickets;
+- 13 proposed ADRs;
+- 20 proposed PRDs;
+- 70 atomic implementation tickets;
 - milestone, dependency, acceptance, and evidence contracts.
 
 Implemented, private and internal:

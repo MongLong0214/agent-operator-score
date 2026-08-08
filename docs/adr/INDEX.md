@@ -16,3 +16,4 @@ Status: **PROPOSED — derived from the final AOS SSOT; product implementation i
 | [ADR-0010](ADR-0010-prescription-and-retest-attribution.md) | Issue one deterministic lever and separate retest attribution |
 | [ADR-0011](ADR-0011-validation-gates-and-pivot-rules.md) | Gate public claims on scorer truth, human signal, transfer, and open reproduction |
 | [ADR-0012](ADR-0012-planning-tdd-and-exact-head-governance.md) | Require gated ADR, PRD, atomic ticket, TDD, cumulative review, and exact-head evidence |
+| [ADR-0013](ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md) | Define advisory and authenticated-review modes and quarantine unauthenticated legacy acceptance |
