@@ -69,10 +69,6 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
   "candidate_ci": {
     "required_checks": [
       {
-        "name": "planning-contract (20)",
-        "workflow_path": ".github/workflows/ci.yml"
-      },
-      {
         "name": "planning-contract (22)",
         "workflow_path": ".github/workflows/ci.yml"
       },
