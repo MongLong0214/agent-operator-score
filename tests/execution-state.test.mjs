@@ -61,6 +61,19 @@ const ticketState = (result, id) => {
 
 const blockerCodes = (state) => (state.blockers ?? []).map((b) => b.code);
 
+/**
+ * A completion merge now owes evidence that what it introduced is still in the live tree,
+ * so a case whose real subject is something else (post-merge CI, reachability, marker
+ * grammar) must supply a still-present introduced-path set or it fails on the newer
+ * completion-effect check instead of the requirement it was written for. Records the paths
+ * on the receipt and mirrors them into facts.liveTreePaths.
+ */
+const withPresentEffect = (facts, entry, paths) => {
+  const introduced = paths ?? [`docs/effect/${entry.merge_commit_sha.slice(0, 8)}.md`];
+  facts.liveTreePaths = [...(facts.liveTreePaths ?? []), ...introduced];
+  return { ...entry, added_paths: introduced };
+};
+
 // ---------------------------------------------------------------------------
 // RED staging contract: resolver module must exist for GREEN; named cases follow.
 // ---------------------------------------------------------------------------
@@ -1195,13 +1208,13 @@ test("universal-marker-semantics-single-receipt-with-valid-marker-verifies", asy
   facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const sha = "401a401a401a401a401a401a401a401a401a401a";
   facts.implementationMerges = [
-    {
+    withPresentEffect(facts, {
       ticket_id: "D0-004",
       merge_commit_sha: sha,
       number: 401,
       body: "Ticket: D0-004\nTicket-Completion: D0-004",
       reachable: true
-    }
+    })
   ];
   facts.postMergeCI.push({
     merge_commit_sha: sha,
@@ -1268,13 +1281,13 @@ test("single-valid-completion-marker-verifies-ticket-despite-plain-contributing-
   facts.implementationMerges = [
     { ticket_id: "D0-004", merge_commit_sha: sha135, number: 135, body: "Ticket: D0-004\n\ndocs: define single operational state author." },
     { ticket_id: "D0-004", merge_commit_sha: sha136, number: 136, body: "Ticket: D0-004\n\ndocs: close D0-004 operational authority gap." },
-    {
+    withPresentEffect(facts, {
       ticket_id: "D0-004",
       merge_commit_sha: sha146,
       number: 146,
       body: "Ticket: D0-004\nTicket-Completion: D0-004\n\nD0-004 whole-ticket completion merge.",
       reachable: true
-    }
+    })
   ];
   facts.postMergeCI.push(
     { merge_commit_sha: sha135, head_sha: sha135, status: "completed", conclusion: "success", run_id: 135, run_attempt: 1 },
@@ -1359,7 +1372,13 @@ test("completion-merge-post-merge-ci-missing-fails-closed", async () => {
   const shaCompletion = "e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2";
   facts.implementationMerges = [
     { ticket_id: "D0-004", merge_commit_sha: shaPlain, number: 307, body: "Ticket: D0-004\n\nplain contributing merge." },
-    { ticket_id: "D0-004", merge_commit_sha: shaCompletion, number: 308, body: "Ticket: D0-004\nTicket-Completion: D0-004", reachable: true }
+    withPresentEffect(facts, {
+      ticket_id: "D0-004",
+      merge_commit_sha: shaCompletion,
+      number: 308,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      reachable: true
+    })
   ];
   // Only the plain merge gets a post-merge CI row; the completion merge's is missing.
   facts.postMergeCI.push({
@@ -1383,7 +1402,13 @@ test("completion-merge-post-merge-ci-failed-fails-closed", async () => {
   const shaCompletion = "f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2";
   facts.implementationMerges = [
     { ticket_id: "D0-004", merge_commit_sha: shaPlain, number: 309, body: "Ticket: D0-004\n\nplain contributing merge." },
-    { ticket_id: "D0-004", merge_commit_sha: shaCompletion, number: 310, body: "Ticket: D0-004\nTicket-Completion: D0-004", reachable: true }
+    withPresentEffect(facts, {
+      ticket_id: "D0-004",
+      merge_commit_sha: shaCompletion,
+      number: 310,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      reachable: true
+    })
   ];
   facts.postMergeCI.push(
     { merge_commit_sha: shaPlain, head_sha: shaPlain, status: "completed", conclusion: "success", run_id: 309, run_attempt: 1 },
@@ -1453,6 +1478,286 @@ test("completion-merge-reachability-not-authenticated-fails-closed", async () =>
   const state = ticketState(result, "D0-004");
   assert.notEqual(state.phase, "verified");
   assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_CONFLICT"));
+});
+
+// ---------------------------------------------------------------------------
+// Completion effect still present (the reverted-completion false green).
+//
+// Live defect this closes: `Ticket-Completion: D0-004` was carried by PR #155, which PR
+// #156 then reverted in full. A revert adds a new commit; it does not remove the reverted
+// merge from the ancestry, so #155 stayed an authenticated-reachable, CI-passing ancestor
+// of dev forever. The resolver credited whole-ticket completion on that ancestry alone and
+// D0-004 read verified/terminal while `.github/workflows/operational-state.yml` and
+// `scripts/render-execution-views.mjs` — its entire deliverable — were absent from the
+// tree. Five product tickets were opened against that false dependency.
+//
+// A completion is therefore only credited when the paths its merge introduced are still in
+// the live target tree: absent → COMPLETION_EFFECT_REVERTED, introduced set unavailable →
+// COMPLETION_EFFECT_UNKNOWN, tree listing unusable → EXTERNAL_STATE_UNAVAILABLE. Never a
+// silent pass in any of the three.
+// ---------------------------------------------------------------------------
+
+const REVERTED_DELIVERABLE = [".github/workflows/operational-state.yml", "scripts/render-execution-views.mjs"];
+
+/**
+ * D0-004's real shape at the moment of the defect: an authenticated-reachable, CI-passing
+ * completion merge carrying a valid marker. `presentPaths` decides whether the live tree
+ * still carries what it introduced; everything else is held identical between the reverted
+ * case and its control so the introduced-path check is the only variable.
+ */
+const makeCompletionEffectFacts = ({ addedPaths, presentPaths }) => {
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  const sha = "155a155a155a155a155a155a155a155a155a155a";
+  const entry = {
+    ticket_id: "D0-004",
+    merge_commit_sha: sha,
+    number: 155,
+    body: "Ticket: D0-004\nTicket-Completion: D0-004\n\nD0-004 whole-ticket completion merge.",
+    reachable: true
+  };
+  facts.implementationMerges = [addedPaths === undefined ? entry : { ...entry, added_paths: addedPaths }];
+  facts.postMergeCI.push({
+    merge_commit_sha: sha,
+    head_sha: sha,
+    status: "completed",
+    conclusion: "success",
+    run_id: 155,
+    run_attempt: 1
+  });
+  facts.liveTreePaths = [...(facts.liveTreePaths ?? []), ...(presentPaths ?? [])];
+  return facts;
+};
+
+const blockerReason = (state, code) => (state.blockers ?? []).find((entry) => entry.code === code)?.reason ?? "";
+
+test("completion-effect-reverted-when-introduced-path-is-absent-from-the-live-tree", async () => {
+  // Ancestry says the completion merge is still there; the tree says its deliverable is not.
+  const facts = makeCompletionEffectFacts({ addedPaths: REVERTED_DELIVERABLE, presentPaths: [] });
+  for (const path of REVERTED_DELIVERABLE) {
+    assert.equal(facts.liveTreePaths.includes(path), false, `${path} must be absent for this case to mean anything`);
+  }
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a completion whose deliverable was reverted must never verify, got phase=${state.phase}`
+  );
+  assert.notEqual(state.readiness, "terminal");
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_REVERTED"),
+    `expected COMPLETION_EFFECT_REVERTED, got ${blockerCodes(state).join(",") || "none"}`
+  );
+  // The blocker has to say which path went missing, or the operator cannot tell a revert
+  // from any other completion failure without re-deriving the whole check by hand.
+  const reason = blockerReason(state, "COMPLETION_EFFECT_REVERTED");
+  for (const path of REVERTED_DELIVERABLE) {
+    assert.ok(reason.includes(path), `blocker reason must name the absent path ${path}: ${reason}`);
+  }
+});
+
+test("completion-effect-present-introduced-path-verifies", async () => {
+  // Control for the case above. Without it, a resolver that refused every completion would
+  // pass the reverted case for entirely the wrong reason.
+  const facts = makeCompletionEffectFacts({
+    addedPaths: REVERTED_DELIVERABLE,
+    presentPaths: REVERTED_DELIVERABLE
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(state.phase, "verified");
+  assert.equal(state.readiness, "terminal");
+  assert.deepEqual(blockerCodes(state), []);
+});
+
+test("completion-effect-unknown-when-introduced-path-set-is-unavailable", async () => {
+  // No introduced-path set is not evidence of an intact effect. Both the absent-field shape
+  // and the explicit null the collector writes on an unusable commit payload must block.
+  for (const addedPaths of [undefined, null]) {
+    const facts = makeCompletionEffectFacts({ addedPaths, presentPaths: REVERTED_DELIVERABLE });
+    const { result } = await resolveOffline(facts);
+    const state = ticketState(result, "D0-004");
+    assert.notEqual(
+      state.phase,
+      "verified",
+      `added_paths=${String(addedPaths)} must never be silently verified, got phase=${state.phase}`
+    );
+    assert.ok(
+      blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
+      `added_paths=${String(addedPaths)} expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+    );
+  }
+});
+
+test("completion-effect-missing-live-tree-listing-is-external-state-unavailable", async () => {
+  // The check needs the live tree. An absent or wrongly-shaped listing is an outage, so it
+  // is reported as one — never resolved as a pass because there was nothing to compare to.
+  for (const [label, liveTreePaths] of [
+    ["absent", undefined],
+    ["null", null],
+    ["object instead of array", { ".github/workflows/operational-state.yml": true }],
+    ["string instead of array", ".github/workflows/operational-state.yml"]
+  ]) {
+    const facts = makeCompletionEffectFacts({
+      addedPaths: REVERTED_DELIVERABLE,
+      presentPaths: REVERTED_DELIVERABLE
+    });
+    if (liveTreePaths === undefined) delete facts.liveTreePaths;
+    else facts.liveTreePaths = liveTreePaths;
+    const { result } = await resolveOffline(facts);
+    const state = ticketState(result, "D0-004");
+    assert.notEqual(state.phase, "verified", `liveTreePaths ${label} must not verify, got phase=${state.phase}`);
+    assert.ok(
+      blockerCodes(state).includes("EXTERNAL_STATE_UNAVAILABLE"),
+      `liveTreePaths ${label} expected EXTERNAL_STATE_UNAVAILABLE, got ${blockerCodes(state).join(",") || "none"}`
+    );
+  }
+});
+
+test("legacy-completion-binding-is-subject-to-the-same-completion-effect-check", async () => {
+  // HISTORICAL_IMPLEMENTATION_LINKAGE (D0-001 PR #130, D0-002 PR #143) is a completion
+  // exception for the *marker grammar* only. It buys no exemption from the effect check: a
+  // legacy-bound merge whose deliverable was later reverted is exactly as false a green.
+  //
+  // Real bug hit while fixing this: the legacy collector fetched no commit payload, so it
+  // recorded no added_paths at all and both D0-001 and D0-002 flipped to
+  // COMPLETION_EFFECT_UNKNOWN. Parts B and C below pin the collector's side of it.
+  const legacyPaths = {
+    "D0-001": "scripts/validate-identity.mjs",
+    "D0-002": "tests/planning/workspace-skeleton.test.mjs"
+  };
+
+  // A. An introduced path missing from the live tree blocks a legacy binding too.
+  for (const [ticketId, path] of Object.entries(legacyPaths)) {
+    const facts = loadBaselineFacts();
+    const entry = facts.implementationMerges.find((row) => row.ticket_id === ticketId);
+    assert.ok(entry?.added_paths?.includes(path), `${ticketId} legacy receipt must record ${path}`);
+    facts.liveTreePaths = facts.liveTreePaths.filter((candidate) => candidate !== path);
+    const { result } = await resolveOffline(facts);
+    const state = ticketState(result, ticketId);
+    assert.notEqual(state.phase, "verified", `${ticketId} legacy completion must not survive a revert`);
+    assert.ok(
+      blockerCodes(state).includes("COMPLETION_EFFECT_REVERTED"),
+      `${ticketId} expected COMPLETION_EFFECT_REVERTED, got ${blockerCodes(state).join(",") || "none"}`
+    );
+    assert.ok(blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(path));
+  }
+
+  // B. Control: untouched, both legacy bindings still verify. A legacy receipt that records
+  // no introduced set at all is COMPLETION_EFFECT_UNKNOWN, which is what a collector that
+  // forgets to capture added_paths produces — correct as a blocker, wrong as a steady state.
+  for (const ticketId of Object.keys(legacyPaths)) {
+    const intact = loadBaselineFacts();
+    const { result: intactResult } = await resolveOffline(intact);
+    assert.deepEqual(blockerCodes(ticketState(intactResult, ticketId)), [], `${ticketId} must be clean when intact`);
+
+    const stripped = loadBaselineFacts();
+    stripped.implementationMerges = stripped.implementationMerges.map((row) => {
+      if (row.ticket_id !== ticketId) return row;
+      const { added_paths, ...rest } = row;
+      void added_paths;
+      return rest;
+    });
+    const { result } = await resolveOffline(stripped);
+    assert.ok(
+      blockerCodes(ticketState(result, ticketId)).includes("COMPLETION_EFFECT_UNKNOWN"),
+      `${ticketId} without an introduced set must be UNKNOWN, never verified`
+    );
+  }
+
+  // C. The legacy collector must actually record it, or B is the permanent live state.
+  const { applyHistoricalImplementationLinkage, createFixtureTransport } = await importResolver();
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const mergeSha = "6e872ccf2387067b49217a27a7c255343ad2eb8d";
+  const liveTip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  const transport = createFixtureTransport({
+    [`${repoPath}/pulls/130`]: { number: 130, merged: true, merge_commit_sha: mergeSha, base: { ref: "dev" } },
+    [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "behind" },
+    [`${repoPath}/commits/${mergeSha}`]: {
+      sha: mergeSha,
+      files: [
+        { filename: "specs/identity.v1.json", status: "added" },
+        { filename: "scripts/validate-identity.mjs", status: "added" },
+        { filename: "docs/tickets/D0/D0-001-canonical-identifier-registry.md", status: "modified" }
+      ]
+    },
+    [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
+      total_count: 1,
+      workflow_runs: [
+        {
+          id: 31063416513,
+          name: "CI",
+          path: ".github/workflows/ci.yml",
+          head_sha: mergeSha,
+          status: "completed",
+          conclusion: "success",
+          run_attempt: 1
+        }
+      ]
+    }
+  });
+  const implementationMerges = [];
+  const failures = [];
+  const ok = applyHistoricalImplementationLinkage(
+    transport,
+    repoPath,
+    { "D0-001": { owned_paths: ["x"], owned_symbols: [] } },
+    failures,
+    { implementationMerges, postMergeCI: [], verifiedTickets: [] },
+    liveTip
+  );
+  assert.equal(ok, true, failures.join("; "));
+  assert.deepEqual(
+    implementationMerges[0].added_paths,
+    ["scripts/validate-identity.mjs", "specs/identity.v1.json"],
+    "the legacy collector must record the introduced paths, sorted, added-only"
+  );
+});
+
+test("completion-that-introduced-nothing-still-verifies", async () => {
+  // A completion merge that only deleted or modified files introduces no path. An empty
+  // introduced set has nothing that could go absent, so it is a pass — not an absent effect
+  // and not an unknown one. Conflating empty with unknown would block every refactor,
+  // deletion, and doc-correction completion in the backlog.
+  const facts = makeCompletionEffectFacts({ addedPaths: [], presentPaths: [] });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(
+    state.phase,
+    "verified",
+    `an empty introduced set is not an absent effect, got phase=${state.phase} blockers=${blockerCodes(state).join(",")}`
+  );
+  assert.equal(state.readiness, "terminal");
+  assert.deepEqual(blockerCodes(state), []);
+});
+
+test("truncated-live-tree-listing-fails-closed-instead-of-being-treated-as-complete", async () => {
+  // GitHub truncates a recursive tree listing past its size limit and says so in
+  // `truncated`. A truncated listing is a partial view of the tree, so neither answer it
+  // gives is evidence: present is unconfirmed and absent is unproven. It fails the whole
+  // collection closed and produces no facts corpus for anything downstream to read.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9110911091109110911091109110911091109110";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 911,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha, 911001),
+      added_paths: ["docs/effect/911.md"]
+    }
+  ]);
+  const treeKey = `${COLLECTOR_REPO_PATH}/git/trees/${COLLECTOR_DEV_TIP}?recursive=1`;
+  // Same tree as the passing case, only flagged truncated: the flag alone must be decisive.
+  const untruncated = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(untruncated.ok, true, untruncated.reason);
+  responses[treeKey] = { ...responses[treeKey], truncated: true };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false, "a truncated tree listing must fail the collection closed");
+  assert.match(collected.reason, /truncat/i);
+  assert.equal(collected.facts, null, "a truncated listing must yield no facts corpus at all");
 });
 
 // ---------------------------------------------------------------------------
@@ -1543,10 +1848,21 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
   const repoPath = "repos/MongLong0214/agent-operator-score";
   const mergeSha = "782946e96baa4a3f2734a2ad6b42210d289bebb7";
   const liveTip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  // A legacy binding is a completion, so the collector must record what it introduced;
+  // the resolver then requires those paths to still be present.
+  const legacyAdded = ["packages/schema/package.json", "tests/planning/workspace-skeleton.test.mjs"];
+  const legacyCommitResponse = {
+    sha: mergeSha,
+    files: [
+      ...legacyAdded.map((filename) => ({ filename, status: "added" })),
+      { filename: "package.json", status: "modified" }
+    ]
+  };
 
   // Matching historical merge + authenticated reachability + successful post-merge CI is trusted.
   {
     const responses = {
+      [`${repoPath}/commits/${mergeSha}`]: legacyCommitResponse,
       [`${repoPath}/pulls/143`]: {
         number: 143,
         merged: true,
@@ -1585,7 +1901,14 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
     assert.equal(ok, true);
     assert.deepEqual(failures, []);
     assert.deepEqual(implementationMerges, [
-      { ticket_id: "D0-002", merge_commit_sha: mergeSha, number: 143, reachable: true }
+      {
+        ticket_id: "D0-002",
+        merge_commit_sha: mergeSha,
+        number: 143,
+        reachable: true,
+        // Only `added` files, sorted; a modified file is not an introduced path.
+        added_paths: ["packages/schema/package.json", "tests/planning/workspace-skeleton.test.mjs"]
+      }
     ]);
     assert.ok(verifiedTickets.includes("D0-002"));
     assert.equal(postMergeCI[0].conclusion, "success");
@@ -1641,6 +1964,7 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
         merge_commit_sha: mergeSha,
         base: { ref: "dev" }
       },
+      [`${repoPath}/commits/${mergeSha}`]: legacyCommitResponse,
       [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "diverged" },
       [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
         total_count: 1,
@@ -1750,6 +2074,7 @@ function buildCollectorMergedSearchFixture(items) {
   // spending one request per search hit. Model that here or the pre-filter skips every
   // fixture receipt before the per-PR response is ever consulted.
   const searchItems = items.map(({ number, body }) => ({ number, body }));
+  const collectorTreePaths = [];
   const pageCount = Math.max(1, Math.ceil(searchItems.length / COLLECTOR_SEARCH_PAGE_SIZE));
   for (let page = 1; page <= pageCount; page += 1) {
     responses[collectorSearchPageKey(page)] = {
@@ -1772,7 +2097,31 @@ function buildCollectorMergedSearchFixture(items) {
     if (Object.hasOwn(item, "runs")) {
       responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${item.merge_commit_sha}&event=push&per_page=20`] = item.runs;
     }
+    // A completion receipt costs one extra commit request so the resolver can require what
+    // the merge introduced to still be in the live tree. `added_paths: null` models the
+    // outage/unknown shape; `effect_present: false` models the reverted shape by recording
+    // the introduced paths and deliberately leaving them out of the live tree listing.
+    if (Object.hasOwn(item, "added_paths")) {
+      responses[`${COLLECTOR_REPO_PATH}/commits/${item.merge_commit_sha}`] =
+        item.added_paths === null
+          ? { sha: item.merge_commit_sha }
+          : {
+              sha: item.merge_commit_sha,
+              files: item.added_paths.map((filename) => ({ filename, status: "added" }))
+            };
+      if (Array.isArray(item.added_paths) && item.effect_present !== false) {
+        collectorTreePaths.push(...item.added_paths);
+      }
+    }
   }
+  const treeKey = `${COLLECTOR_REPO_PATH}/git/trees/${COLLECTOR_DEV_TIP}?recursive=1`;
+  responses[treeKey] = {
+    ...responses[treeKey],
+    tree: [
+      ...(responses[treeKey]?.tree ?? []),
+      ...collectorTreePaths.map((path) => ({ path, type: "blob", mode: "100644" }))
+    ]
+  };
   // Remove the open D0-004 candidate PR so implementation-completion blockers surface
   // through resolveOneTicket's pre-ready-set path (guarded by `!pr`), not swallowed by
   // an in-flight candidate.
@@ -1921,7 +2270,8 @@ test("collector-records-unreachable-completion-merge-and-resolver-fails-closed",
       merge_commit_sha: sha,
       body: "Ticket: D0-001\nTicket-Completion: D0-001",
       compare: { status: "diverged" },
-      runs: collectorSuccessRuns(sha, 903001)
+      runs: collectorSuccessRuns(sha, 903001),
+      added_paths: ["docs/effect/903.md"]
     }
   ]);
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
@@ -2004,14 +2354,16 @@ test("collector-level-duplicate-completion-markers-fails-closed", async () => {
       merge_commit_sha: shaA,
       body: "Ticket: D0-004\nTicket-Completion: D0-004",
       compare: { status: "behind" },
-      runs: collectorSuccessRuns(shaA, 907001)
+      runs: collectorSuccessRuns(shaA, 907001),
+      added_paths: ["docs/effect/907.md"]
     },
     {
       number: 908,
       merge_commit_sha: shaB,
       body: "Ticket: D0-004\nTicket-Completion: D0-004",
       compare: { status: "behind" },
-      runs: collectorSuccessRuns(shaB, 908001)
+      runs: collectorSuccessRuns(shaB, 908001),
+      added_paths: ["docs/effect/908.md"]
     }
   ]);
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
@@ -2031,6 +2383,7 @@ test("collector-level-latest-ci-attempt-failure-not-masked-by-earlier-success", 
       merge_commit_sha: sha,
       body: "Ticket: D0-004\nTicket-Completion: D0-004",
       compare: { status: "behind" },
+      added_paths: ["docs/effect/909.md"],
       runs: {
         total_count: 2,
         workflow_runs: [
@@ -3490,13 +3843,13 @@ test("implementation-post-merge-failure-emits-post-merge-ci-failed", async () =>
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   const mergeSha = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
   facts.implementationMerges = [
-    {
+    withPresentEffect(facts, {
       ticket_id: "D0-004",
       merge_commit_sha: mergeSha,
       number: 999,
       body: "Ticket: D0-004\nTicket-Completion: D0-004",
       reachable: true
-    }
+    })
   ];
   // Keep gate post-merge rows; append implementation failure receipt.
   facts.verifiedTickets = ["D0-001", "D0-002"]; // D0-004 not verified; failure still classifies
@@ -3522,13 +3875,13 @@ test("implementation-post-merge-nonterminal-emits-post-merge-ci-missing", async 
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   const mergeSha = "ffffffffffffffffffffffffffffffffffffffff";
   facts.implementationMerges = [
-    {
+    withPresentEffect(facts, {
       ticket_id: "D0-004",
       merge_commit_sha: mergeSha,
       number: 998,
       body: "Ticket: D0-004\nTicket-Completion: D0-004",
       reachable: true
-    }
+    })
   ];
   facts.verifiedTickets = ["D0-001", "D0-002"];
   facts.postMergeCI = [

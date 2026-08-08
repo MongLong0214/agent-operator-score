@@ -38,7 +38,7 @@ Add schema conformance, compatibility, and digest gate. Deliver only the bounded
 
 ## Minimum GREEN
 
-- validate positive/negative corpus, exact census, semver verdict, canonical bytes and manifest SHA-256 on Node 20/24.
+- validate positive/negative corpus, exact census, semver verdict, canonical bytes and manifest SHA-256 on Node 22/24 — not Node 20, which cannot execute this repository's TypeScript and whose test runner skips `.ts` files silently instead of failing.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests

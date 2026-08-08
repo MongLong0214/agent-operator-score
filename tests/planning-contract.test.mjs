@@ -91,7 +91,21 @@ test("encoded-path-root-resolution", () => {
 
 test("README distinguishes planning truth from every planned CLI surface", () => {
   const readme = readFileSync(resolve(root, "README.md"), "utf8");
-  assert.match(readme, /Current status: planning baseline\. Product not implemented\./);
+  // "planning baseline. Product not implemented." was false from the moment
+  // packages/schema/src landed the metric registry and the scoring, issuance, capability,
+  // and session-class contracts. The pin is kept — it is what stops the status line
+  // drifting from the tree — and only what it pins has changed.
+  assert.match(
+    readme,
+    /Current status: foundation contracts implemented in `@aos\/schema`; no public CLI and no end-to-end assessment\./
+  );
+  assert.doesNotMatch(readme, /planning baseline\. Product not implemented/);
+  // What is claimed present must be present, and what is claimed absent must stay absent.
+  assert.match(readme, /`metric-registry\.ts`/);
+  assert.ok(existsSync(resolve(root, "packages/schema/src/metric-registry.ts")));
+  assert.match(readme, /the `aos` CLI, the trace and result schemas, the scorer, the runner/);
+  assert.match(readme, /do \*\*not\*\* exist yet/);
+  assert.equal(existsSync(resolve(root, "packages/scorer/src")), false);
   assert.match(readme, /Planned CLI — not available yet/);
   assert.match(readme, /65 atomic implementation tickets/);
   assert.match(readme, /EXPERIMENTAL \/ PROVISIONAL/);

@@ -834,7 +834,13 @@ if (manifest?.repository !== "MongLong0214/agent-operator-score") pushError("iss
 if (!readme.includes("# Agent Operator Score (AOS)") || !readme.includes("`agent-operator-score`") || !readme.includes("`aos`")) {
   pushError("README lacks canonical identity consistency");
 }
-if (!readme.includes("Current status: planning baseline. Product not implemented.")) pushError("README lacks exact planning truth");
+// The status line is pinned by exact text so the README cannot drift away from what is
+// actually built. "Planning baseline. Product not implemented." stopped being true once
+// packages/schema/src landed the metric registry and the scoring/issuance/capability/
+// session-class contracts; the claim it is replaced by must stay equally exact.
+if (!readme.includes("Current status: foundation contracts implemented in `@aos/schema`; no public CLI and no end-to-end assessment.")) {
+  pushError("README lacks exact implementation-state truth");
+}
 if (!readme.includes("Planned CLI — not available yet")) pushError("README blurs planned CLI status");
 if (!readme.includes("65 atomic implementation tickets")) pushError("README ticket census stale");
 if (existsSync(resolve(root, "docs/north-star/legacy"))) pushError("legacy planning path is active");
