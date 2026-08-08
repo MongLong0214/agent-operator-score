@@ -270,7 +270,7 @@ export const validateFactsCorpus = (facts) => {
         failures.push(`tickets.${ticketId} must be an object`);
         continue;
       }
-      if (ticket.kind === "superseded") continue;
+      if (ticket.kind === "superseded" || ticket.kind === "transitional_placeholder") continue;
       const ownership = declaredOwnershipContract(ticket);
       if (!ownership.ok) {
         failures.push(`tickets.${ticketId}: ${ownership.reason}`);
@@ -1206,6 +1206,16 @@ const resolveOneTicket = (facts, ticketId, ticket, policy, context) => {
 
   if (ticket?.kind === "superseded") {
     return finalize("superseded", "terminal", [], null, null);
+  }
+
+  if (ticket?.kind === "transitional_placeholder") {
+    return finalize(
+      "planned",
+      "blocked",
+      [blocker("TICKET_CONTRACT_INCOMPLETE", `${ticketId} has a non-authorizing transitional TBD binding`)],
+      null,
+      null
+    );
   }
 
   const gateEvaluation = evaluateTicketGates(facts, ticketId, ticket);
@@ -2459,7 +2469,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!ticketDigest) {
       return { ok: false, reason: `missing live ticket digest for ${entry.id}`, facts: null };
     }
-    const kind = entry.kind === "superseded" ? "superseded" : "executable";
+    const kind = entry.kind === "superseded" || entry.kind === "transitional_placeholder"
+      ? entry.kind
+      : "executable";
     const authority = authorityIndex[entry.id] ?? null;
     if (kind === "executable" && !authority) {
       return { ok: false, reason: `authority index missing ticket ${entry.id}`, facts: null };
@@ -3420,7 +3432,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   const activeOwnership = [];
   for (const pr of prs) {
     const ticketId = parseTicketIdFromBody(pr.body);
-    if (!ticketId || !tickets[ticketId] || tickets[ticketId].kind === "superseded") continue;
+    if (!ticketId || !tickets[ticketId] || tickets[ticketId].kind !== "executable") continue;
     if (pr.merged === true || pr.state === "closed") continue;
     if (!pr.head_sha) {
       return { ok: false, reason: `active PR #${pr.number} missing head_sha for ownership`, facts: null };

@@ -95,6 +95,25 @@ test("current-baseline-state", async () => {
   assert.deepEqual(result.readySet, ["D0-002"]);
 });
 
+test("transitional-placeholder-ticket-is-never-executable", async () => {
+  const facts = loadBaselineFacts();
+  facts.tickets["D0-005"] = {
+    kind: "transitional_placeholder",
+    dependencies: [],
+    owned_paths: [],
+    owned_symbols: [],
+    red_command: null,
+    digests: { ticket: "d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005" }
+  };
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-005");
+  assert.equal(state.phase, "planned");
+  assert.equal(state.readiness, "blocked");
+  assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_INCOMPLETE"));
+  assert.equal(result.readySet.includes("D0-005"), false);
+  assert.equal(state.packet, null);
+});
+
 test("current-head-is-runtime-derived", async () => {
   const facts = loadBaselineFacts();
   const headA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

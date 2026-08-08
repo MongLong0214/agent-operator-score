@@ -7,6 +7,7 @@ The execution order is fixed: D0 → E0-A → E0-B → E0-C → E0-D → E1 → 
 | PRD | Milestone | Goal |
 |---|---|---|
 | [D0](PRD-D0-name-migration-and-repository-skeleton.md) | S0 · Name & Contracts | Migrate every active surface to Agent Operator Score and establish a planning-valid repository skeleton without product behavior. |
+| [D0-GOV](PRD-D0-GOV-authenticated-governance-repair.md) | S0 · Name & Contracts | Replace role-string gate claims with an advisory default and an authenticated-review activation path. |
 | [E0-A](PRD-E0A-metric-and-score-issuance-contract.md) | S0 · Name & Contracts | Encode the frozen M01–M20 registry and the complete score-issuance predicate before scoring code. |
 | [E0-B](PRD-E0B-adapter-observability-contract.md) | S0 · Name & Contracts | Freeze vendor-neutral capability semantics and the exact information required from Codex and Claude Code adapters. |
 | [E0-C](PRD-E0C-pack-time-and-eligibility-simulation.md) | S0 · Name & Contracts | Prove the 35–45 minute pack and required metric opportunities can coexist before building scenarios. |
