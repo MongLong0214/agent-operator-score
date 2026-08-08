@@ -5,7 +5,7 @@
 - Milestone: S3 · Full Form A & Second Runtime
 - Owning PRD: [E9](../../prd/PRD-E9-claude-code-adapter-and-parity.md)
 - Size: L
-- Dependencies: E9-002,E4-004
+- Dependencies: E9-002
 
 ## Goal
 

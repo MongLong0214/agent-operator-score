@@ -5,7 +5,7 @@
 - Milestone: S5 · Public OSS
 - Owning PRD: [E14](../../prd/PRD-E14-public-oss-and-g4.md)
 - Size: L
-- Dependencies: E14-002,E12-003
+- Dependencies: E14-002
 
 ## Goal
 
