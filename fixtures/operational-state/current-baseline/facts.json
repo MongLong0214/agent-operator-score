@@ -285,14 +285,64 @@
       "ticket_id": "D0-002",
       "merge_commit_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
       "number": 143,
-      "reachable": true
+      "reachable": true,
+      "added_paths": [
+        "adapters/claude-code/OWNERS.md",
+        "adapters/claude-code/package.json",
+        "adapters/codex/OWNERS.md",
+        "adapters/codex/package.json",
+        "conformance/OWNERS.md",
+        "docs/clearance/MINIMUM-NAME-CLEARANCE.md",
+        "fixtures/OWNERS.md",
+        "packages/reporter/OWNERS.md",
+        "packages/reporter/package.json",
+        "packages/runner/OWNERS.md",
+        "packages/runner/package.json",
+        "packages/schema/OWNERS.md",
+        "packages/schema/package.json",
+        "packages/scorer/OWNERS.md",
+        "packages/scorer/package.json",
+        "suites/coding-core-v0/OWNERS.md",
+        "tests/planning/workspace-skeleton.test.mjs"
+      ]
     },
     {
       "ticket_id": "D0-001",
       "merge_commit_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
       "number": 130,
-      "reachable": true
+      "reachable": true,
+      "added_paths": [
+        "scripts/validate-identity.mjs",
+        "specs/identity.v1.json",
+        "tests/planning/identity.test.mjs"
+      ]
     }
+  ],
+  "liveTreePaths": [
+    ".github/workflows/ci.yml",
+    "README.md",
+    "adapters/claude-code/OWNERS.md",
+    "adapters/claude-code/package.json",
+    "adapters/codex/OWNERS.md",
+    "adapters/codex/package.json",
+    "conformance/OWNERS.md",
+    "docs/clearance/MINIMUM-NAME-CLEARANCE.md",
+    "fixtures/OWNERS.md",
+    "package.json",
+    "packages/reporter/OWNERS.md",
+    "packages/reporter/package.json",
+    "packages/runner/OWNERS.md",
+    "packages/runner/package.json",
+    "packages/schema/OWNERS.md",
+    "packages/schema/package.json",
+    "packages/scorer/OWNERS.md",
+    "packages/scorer/package.json",
+    "scripts/resolve-execution-state.mjs",
+    "scripts/validate-identity.mjs",
+    "specs/identity.v1.json",
+    "suites/coding-core-v0/OWNERS.md",
+    "tests/planning/identity.test.mjs",
+    "tests/planning/workspace-skeleton.test.mjs"
   ],
   "verifiedTickets": [
     "D0-001"
