@@ -347,6 +347,25 @@
       "body_template": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: L\n- Dependencies: D0-002\n- Exact implementation contract: [docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md](/docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency."
     },
     {
+      "id": "D0-006",
+      "title": "D0-006 · Per-artifact gate batch scope and mechanical renewal",
+      "issue": 167,
+      "ticket_path": "docs/tickets/D0/D0-006-gate-batch-scope-and-renewal.md",
+      "milestone": "S0 · Name & Contracts",
+      "dependencies": [
+        "D0-002"
+      ],
+      "size": "M",
+      "epic": "D0",
+      "kind": "executable",
+      "initial_labels": [
+        "epic:D0",
+        "phase:S0",
+        "size:M"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `D0`\n- Milestone: S0 · Name & Contracts\n- Size: M\n- Dependencies: D0-002\n- Exact implementation contract: [docs/tickets/D0/D0-006-gate-batch-scope-and-renewal.md](/docs/tickets/D0/D0-006-gate-batch-scope-and-renewal.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency."
+    },
+    {
       "id": "E0A-001",
       "title": "E0A-001 · Freeze M01–M20 metric registry",
       "issue": 58,

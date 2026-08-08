@@ -8,8 +8,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=65 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=66 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=12 prd=19 tickets=66 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=10 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts/;
 
 const setPendingGateRegistry = (fixture) => {
   const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
@@ -107,7 +107,7 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
   assert.match(readme, /do \*\*not\*\* exist yet/);
   assert.equal(existsSync(resolve(root, "packages/scorer/src")), false);
   assert.match(readme, /Planned CLI — not available yet/);
-  assert.match(readme, /65 atomic implementation tickets/);
+  assert.match(readme, /66 atomic implementation tickets/);
   assert.match(readme, /EXPERIMENTAL \/ PROVISIONAL/);
   assert.match(readme, /Historical planning material was removed from the active tree and is recoverable only through Git history\./);
   assert.doesNotMatch(readme, /docs\/north-star\/legacy/);
@@ -273,8 +273,8 @@ test("superseded-d0-003-has-no-owned-implementation", () => {
 test("issue-map-and-manifest-agreement", () => {
   const issues = JSON.parse(readFileSync(resolve(root, "docs/issues.json"), "utf8"));
   assert.equal(issues.milestones.length, 6);
-  assert.equal(issues.tickets.length, 65);
-  assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 65);
+  assert.equal(issues.tickets.length, 66);
+  assert.equal(new Set(issues.tickets.map(({ id }) => id)).size, 66);
   const superseded = issues.tickets.find(({ id }) => id === "D0-003");
   assert.equal(superseded.kind, "superseded");
   assert.match(superseded.body_template, /SUPERSEDED_BY_PLANNING_MIGRATION — NO IMPLEMENTATION/);

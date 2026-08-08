@@ -239,7 +239,7 @@ const prdFiles = allFiles.filter((path) => /^docs\/prd\/PRD-(?:D0|E0[ABCD]|E\d+)
 const ticketFiles = allFiles.filter((path) => /^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(rel(path)));
 if (adrFiles.length !== 12) pushError(`ADR count ${adrFiles.length}, expected 12`);
 if (prdFiles.length !== 19) pushError(`PRD count ${prdFiles.length}, expected 19`);
-if (ticketFiles.length !== 65) pushError(`ticket count ${ticketFiles.length}, expected 65`);
+if (ticketFiles.length !== 66) pushError(`ticket count ${ticketFiles.length}, expected 66`);
 
 const adrs = new Map();
 for (const path of adrFiles) {
@@ -842,7 +842,7 @@ if (!readme.includes("Current status: foundation contracts implemented in `@aos/
   pushError("README lacks exact implementation-state truth");
 }
 if (!readme.includes("Planned CLI — not available yet")) pushError("README blurs planned CLI status");
-if (!readme.includes("65 atomic implementation tickets")) pushError("README ticket census stale");
+if (!readme.includes("66 atomic implementation tickets")) pushError("README ticket census stale");
 if (existsSync(resolve(root, "docs/north-star/legacy"))) pushError("legacy planning path is active");
 
 if (errors.length) {

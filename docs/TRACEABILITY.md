@@ -33,7 +33,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "D0-001",
         "D0-002",
         "D0-003",
-        "D0-004"
+        "D0-004",
+        "D0-006"
       ],
       "requirement_to_acceptance": [
         {
@@ -89,7 +90,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
           "acceptance_id": "AC-D0-3",
           "ticket_ids": [
             "D0-002",
-            "D0-004"
+            "D0-004",
+            "D0-006"
           ]
         },
         {
@@ -2213,6 +2215,21 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "sample-balance",
         "schema",
         "stop-rules"
+      ]
+    },
+    {
+      "path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "one-accepted-batch-per-artifact",
+        "single-artifact-batch-closes-its-transition",
+        "editorial-correction-invalidates-one-batch",
+        "planning-build-green-after-scoped-invalidation",
+        "blast-radius-is-computed-not-declared",
+        "renewal-mints-fresh-pending-batch",
+        "invalidated-batch-id-is-terminal",
+        "renewal-is-not-authorization",
+        "equal-preparer-and-approver-fails-closed",
+        "digest-invalidation-control-survives-rescope"
       ]
     }
   ],
@@ -5564,6 +5581,65 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "test_path": "conformance/adapters/parity/parity.test.ts",
       "cases": [
         "profile-difference"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-1",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "one-accepted-batch-per-artifact"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-2",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "single-artifact-batch-closes-its-transition"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-3",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "editorial-correction-invalidates-one-batch",
+        "planning-build-green-after-scoped-invalidation"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-4",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "blast-radius-is-computed-not-declared"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-5",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "renewal-mints-fresh-pending-batch",
+        "invalidated-batch-id-is-terminal"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-6",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "renewal-is-not-authorization",
+        "equal-preparer-and-approver-fails-closed"
+      ]
+    },
+    {
+      "ticket_id": "D0-006",
+      "acceptance_id": "AC-D0-006-7",
+      "test_path": "tests/planning/gate-batch-scope.test.mjs",
+      "cases": [
+        "digest-invalidation-control-survives-rescope"
       ]
     }
   ]

@@ -8,6 +8,7 @@ Generated from the verified public management surface after the AOS restructurin
 | D0-002 | [#55](https://github.com/MongLong0214/agent-operator-score/issues/55) | S0 · Name & Contracts |
 | D0-003 | [#56](https://github.com/MongLong0214/agent-operator-score/issues/56) | S0 · Name & Contracts |
 | D0-004 | [#57](https://github.com/MongLong0214/agent-operator-score/issues/57) | S0 · Name & Contracts |
+| D0-006 | [#167](https://github.com/MongLong0214/agent-operator-score/issues/167) | S0 · Name & Contracts |
 | E0A-001 | [#58](https://github.com/MongLong0214/agent-operator-score/issues/58) | S0 · Name & Contracts |
 | E0A-002 | [#59](https://github.com/MongLong0214/agent-operator-score/issues/59) | S0 · Name & Contracts |
 | E0A-003 | [#60](https://github.com/MongLong0214/agent-operator-score/issues/60) | S0 · Name & Contracts |
