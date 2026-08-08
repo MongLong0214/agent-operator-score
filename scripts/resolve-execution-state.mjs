@@ -20,7 +20,7 @@ const PHASES = new Set([
 
 const READINESS = new Set(["ready", "blocked", "active", "terminal", "unknown"]);
 
-const BLOCKER_CODES = new Set([
+export const BLOCKER_CODES = new Set([
   "DEPENDENCY_UNVERIFIED",
   "MILESTONE_GATE_BLOCKED",
   "ADR_GATE_MISSING",
