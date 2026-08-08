@@ -285,15 +285,16 @@ test("focused-lane-is-not-silently-empty", () => {
     stdio: ["ignore", "pipe", "pipe"],
     env
   });
-  for (const [pattern, cases] of [["metric-registry", 13], ["issuance-contract", 7]]) {
+  for (const [pattern, cases] of [["metric-registry", 15], ["issuance-contract", 9], ["capability", 11]]) {
     const output = run(pattern);
     const passed = /^\S* ?pass (\d+)\s*$/m.exec(output);
     const failed = /^\S* ?fail (\d+)\s*$/m.exec(output);
     assert.ok(passed && failed, `focused lane ${pattern} reported no counts`);
     assert.equal(Number(failed[1]), 0, `focused lane ${pattern} has failures`);
-    assert.ok(
-      Number(passed[1]) >= cases,
-      `focused lane ${pattern} ran ${passed[1]} tests and not at least ${cases}`
+    assert.equal(
+      Number(passed[1]),
+      cases,
+      `focused lane ${pattern} ran ${passed[1]} tests and not exactly ${cases}`
     );
   }
   // The hazard itself, pinned so it cannot be mistaken for a passing receipt: a pattern
