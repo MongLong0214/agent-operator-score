@@ -27,7 +27,7 @@ The owner-ratified one-time governance repair plus the CEO gate is the sole auth
 3. Create a v3 artifact-manifest schema and fail-closed validator, then migrate legacy records with immutable provenance and no inferred acceptance effect.
 4. Derive candidate acceptance from authenticated exact-head GitHub PR/review facts, with the derivation observable but inactive and incapable of authorizing or freezing artifacts before activation.
 5. Activate `AUTHENTICATED_REVIEW` only after live verification of a distinct second principal, protected `dev`, stale-review dismissal, and bypass prevention; otherwise remain advisory and fail closed.
-6. Enforce the closed transitional issue-binding contract: exactly `D0-005 → TBD-1` through `D0-009 → TBD-5`, with every other binding numeric. A placeholder has no GitHub issue identity, authority, readiness, or executable state. A successor planning PR must re-read GitHub identity, title, milestone, and labels; atomically replace the five placeholders with numeric bindings; remove the allowlist; and remove the transitional rule when the placeholder count reaches zero.
+6. Require every issue-map and issue-manifest binding to be a unique positive GitHub issue number and identical across both surfaces. Before recording a numeric binding, re-read the issue identity, title, milestone, and labels; an issue number alone conveys no authority, readiness, or executable state.
 
 ## Acceptance criteria
 
@@ -39,7 +39,7 @@ The owner-ratified one-time governance repair plus the CEO gate is the sole auth
 - AC-D0-GOV-6: the inactive derivation requires a merged gate PR, exactly one `Gate-Batch`, a schema-valid v3 manifest present in that PR head, an authenticated merge commit and `merged_by`, and reviewer, author, and merger as three distinct authenticated principals; it is observable and still cannot authorize RED or freeze artifacts.
 - AC-D0-GOV-7: activation requires a live verified second principal, `dev` branch protection with at least one required approving review, stale-review dismissal, administrator enforcement, and no user/team/app bypass allowance.
 - AC-D0-GOV-8: after activation, stale reviews, changed heads, absent protection, bypass, ambiguous identity, or unavailable GitHub facts fail closed; the mode remains or returns to advisory rather than manufacturing readiness.
-- AC-D0-GOV-9: malformed, duplicate, missing, wrong-pair, numeric-to-placeholder, and issue-map-versus-manifest placeholder-binding mutations fail closed, while the exact five permitted placeholders remain non-authorizing and removable only through the stated successor-planning-PR path.
+- AC-D0-GOV-9: malformed, duplicate, missing, or issue-map-versus-manifest-disagreeing numeric bindings fail closed; a numeric issue binding remains non-authorizing.
 
 ## Failure and stop semantics
 

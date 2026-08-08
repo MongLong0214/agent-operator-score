@@ -95,22 +95,45 @@ test("current-baseline-state", async () => {
   assert.deepEqual(result.readySet, ["D0-002"]);
 });
 
-test("transitional-placeholder-ticket-is-never-executable", async () => {
+test("executable-ticket-still-requires-authority", async () => {
   const facts = loadBaselineFacts();
+  const ticketPath = "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md";
+  const prdPath = "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md";
+  const adr0012Path = "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md";
+  const adr0013Path = "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md";
+  const ticketDigest = "d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005";
+  const prdDigest = "d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0d0a0";
+  const adr0012Digest = "1212121212121212121212121212121212121212121212121212121212121212";
+  const adr0013Digest = "1313131313131313131313131313131313131313131313131313131313131313";
+  facts.d0_004c_merged = true;
+  facts.liveDigests[ticketPath] = ticketDigest;
+  facts.liveDigests[prdPath] = prdDigest;
+  facts.liveDigests[adr0012Path] = adr0012Digest;
+  facts.liveDigests[adr0013Path] = adr0013Digest;
   facts.tickets["D0-005"] = {
-    kind: "transitional_placeholder",
+    kind: "executable",
     dependencies: [],
-    owned_paths: [],
-    owned_symbols: [],
-    red_command: null,
-    digests: { ticket: "d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005d005" }
+    owned_paths: ["tests/planning-contract.test.mjs"],
+    owned_symbols: ["validateNumericBindings"],
+    red_command: "node --test tests/planning-contract.test.mjs",
+    digests: {
+      ticket: ticketDigest,
+      prd: prdDigest,
+      adrs: { "ADR-0012": adr0012Digest, "ADR-0013": adr0013Digest },
+      prd_path: prdPath,
+      adr_paths: { "ADR-0012": adr0012Path, "ADR-0013": adr0013Path }
+    },
+    prd_path: prdPath,
+    adr_paths: { "ADR-0012": adr0012Path, "ADR-0013": adr0013Path }
   };
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-005");
-  assert.equal(state.phase, "planned");
+  assert.equal(state.phase, "gate_preparation");
   assert.equal(state.readiness, "blocked");
-  assert.ok(blockerCodes(state).includes("TICKET_CONTRACT_INCOMPLETE"));
+  assert.ok(blockerCodes(state).includes("PRD_GATE_MISSING"));
+  assert.ok(blockerCodes(state).includes("TICKET_GATE_MISSING"));
   assert.equal(result.readySet.includes("D0-005"), false);
+  assert.equal(state.red_authorized, false);
   assert.equal(state.packet, null);
 });
 
