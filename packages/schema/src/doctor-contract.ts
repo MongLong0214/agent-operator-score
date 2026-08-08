@@ -436,10 +436,11 @@ const projectionOf = (
 
 /**
  * The digest's `source_class` inventory, in canonical order. It is derived rather than pinned
- * so it follows the matrix, but a limit is worth recording: E0B-001 freezes a source class per
- * cell, and in the v0 matrix all three classes occur for both runtimes, so today this returns
- * the same three values for every report and no test can distinguish it from a constant. The
- * mutation sweep reports that as its one surviving mutant rather than hiding it.
+ * so it follows the matrix. A limit is worth recording: E0B-001 freezes a source class per cell,
+ * and in the v0 matrix all three classes occur for both runtimes, so every report built from
+ * that matrix yields the same three values. The inventory is nonetheless exercised directly with
+ * a PRIMARY-only observation set, which is what distinguishes it from a constant; an earlier
+ * guard asserted only that the frozen matrix contains all three classes and therefore did not.
  */
 const sourceClassInventory = (observations: Observation[]): string[] =>
   SOURCE_CLASSES.filter((sourceClass) =>
