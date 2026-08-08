@@ -33,7 +33,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "D0-001",
         "D0-002",
         "D0-003",
-        "D0-004"
+        "D0-004",
+        "D0-011"
       ],
       "requirement_to_acceptance": [
         {
@@ -89,7 +90,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
           "acceptance_id": "AC-D0-3",
           "ticket_ids": [
             "D0-002",
-            "D0-004"
+            "D0-004",
+            "D0-011"
           ]
         },
         {
@@ -2366,6 +2368,29 @@ JSON object key order in this catalog is not schema-significant; validators comp
       ]
     },
     {
+      "path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "absolute-fixture-declaration-is-rejected",
+        "declared-file-predicate-refuses-nonmatching-file",
+        "fixture-reference-does-not-admit",
+        "malformed-ticket-does-not-admit-or-abort-census",
+        "non-glob-fixture-declaration-is-not-admitted",
+        "outside-fixtures-declaration-is-rejected",
+        "outside-repository-symlinked-fixture-directory-is-not-admitted",
+        "planning-catalog-ticket-corpus-is-exact",
+        "repeated-unquoted-fixture-declarations-are-admitted",
+        "ticket-declared-absent-fixture-directory-is-not-admitted",
+        "ticket-declared-artifact-manifest-v3-fixture-directory-is-admitted",
+        "ticket-declared-authenticated-review-activation-fixture-directory-is-admitted",
+        "ticket-declared-doctor-fixture-directory-is-admitted",
+        "ticket-declared-effective-state-fixture-directory-is-admitted",
+        "ticket-declared-github-acceptance-fixture-directory-is-admitted",
+        "ticket-declared-operational-state-fixture-directory-is-admitted",
+        "traversal-fixture-declaration-is-rejected",
+        "unquoted-final-fixture-declaration-is-admitted"
+      ]
+    },
+    {
       "path": "tests/planning/identity.test.mjs",
       "cases": [
         "canonical-pass",
@@ -2709,6 +2734,150 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "cases": [
         "post-merge-ci-required",
         "stale-digest-removes-readiness"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-1",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-operational-state-fixture-directory-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-2",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "fixture-reference-does-not-admit"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-3",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-doctor-fixture-directory-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-4",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-effective-state-fixture-directory-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-5",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-artifact-manifest-v3-fixture-directory-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-6",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-github-acceptance-fixture-directory-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-7",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-authenticated-review-activation-fixture-directory-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-8",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "ticket-declared-absent-fixture-directory-is-not-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-9",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "non-glob-fixture-declaration-is-not-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-10",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "traversal-fixture-declaration-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-11",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "malformed-ticket-does-not-admit-or-abort-census"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-12",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "outside-repository-symlinked-fixture-directory-is-not-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-13",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "planning-catalog-ticket-corpus-is-exact"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-14",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "declared-file-predicate-refuses-nonmatching-file"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-15",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "absolute-fixture-declaration-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-16",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "outside-fixtures-declaration-is-rejected"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-17",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "unquoted-final-fixture-declaration-is-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-011",
+      "acceptance_id": "AC-D0-011-18",
+      "test_path": "tests/planning/fixture-directory-admission.test.mjs",
+      "cases": [
+        "repeated-unquoted-fixture-declarations-are-admitted"
       ]
     },
     {
