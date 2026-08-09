@@ -1,6 +1,7 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateGateAdministration } from "./validate-gate-administration.mjs";
 
@@ -868,6 +869,62 @@ if (!readme.includes("Planned CLI — not available yet")) pushError("README blu
 if (!readme.includes("70 atomic implementation tickets")) pushError("README ticket census stale");
 if (existsSync(resolve(root, "docs/north-star/legacy"))) pushError("legacy planning path is active");
 
+// Banned wording. Two phrasings are prohibited: one asserting the absence of code, and one
+// framing the repository as a mere planning exercise. Both have been used to conceal
+// control-plane changes from review. The rule existed in prose with no enforcement and was
+// violated four times in one day, including by the change that removed the earlier violations.
+// The patterns below are assembled from fragments so this file does not itself contain either
+// literal phrase and therefore does not trip its own guard.
+const BANNED_WORDING = [
+  new RegExp(["planning", "only"].join("[\\s-]+"), "i"),
+  new RegExp(`\\b${["no", "code"].join("[\\s-]+")}\\b`, "i")
+];
+// Enumerate from git rather than walking the filesystem. An extension allowlist kept leaking —
+// each round of review found another tracked artifact it skipped — and walking the tree also
+// scanned untracked local scratch files, which would make this gate fail nondeterministically on
+// a developer machine. `git ls-files` is exactly the set of tracked artifacts and needs no
+// allowlist. Binary blobs are skipped by content sniff, not by extension.
+const trackedFiles = spawnSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" });
+// Prefer git enumeration in a real checkout. Sibling tests copy this repository into a temporary
+// fixture without its git metadata and run the validator there, so a filesystem walk is the correct
+// behaviour when this is not a repository at all. It is NOT correct when git is present but the
+// enumeration fails: that would silently swap a deterministic scan for a nondeterministic one, so
+// it is an error. The two cases are distinguished rather than collapsed.
+const insideRepository = spawnSync("git", ["rev-parse", "--git-dir"], { cwd: root, encoding: "utf8" }).status === 0;
+// When git is unavailable the file set is not deterministic — sibling tests copy this repository
+// into a fixture and a developer's untracked scratch file rides along — so the scan is skipped
+// explicitly and says so, rather than scanning an unpredictable set. Enforcement happens in every
+// real checkout, which is where it matters; silently scanning something different would be worse
+// than not scanning.
+let bannedWordingFiles = [];
+let bannedWordingScanned = true;
+if (!insideRepository) {
+  // Not silent: the run states that the scan did not happen, so a passing gate never implies the
+  // artifacts were checked. Enforcement binds in every real checkout.
+  bannedWordingScanned = false;
+  console.error("BANNED_WORDING_SCAN_SKIPPED no git metadata; tracked-file set is not determinable here");
+} else if (trackedFiles.status === 0) {
+  bannedWordingFiles = (trackedFiles.stdout ?? "").split("\u0000").filter(Boolean);
+} else {
+  pushError("git is present but tracked-file enumeration failed; the wording scan will not silently degrade");
+}
+for (const relativePath of bannedWordingFiles.sort()) {
+  let text;
+  try {
+    text = readFileSync(resolve(root, relativePath), "utf8");
+  } catch (error) {
+    // Fail closed. A tracked artifact that cannot be read is not evidence of compliance.
+    pushError(`cannot read tracked file for the wording scan: ${relativePath}`);
+    continue;
+  }
+  for (const pattern of BANNED_WORDING) {
+    const match = pattern.exec(text);
+    if (!match) continue;
+    const line = text.slice(0, match.index).split("\n").length;
+    pushError(`banned wording in ${relativePath}:${line}`);
+  }
+}
+
 if (errors.length) {
   console.error(`PLANNING_CONTRACT_FAIL ${errors.length}`);
   for (const error of errors) console.error(`- ${error}`);
@@ -877,4 +934,4 @@ if (errors.length) {
 const mode = process.argv.includes("--build") ? "BUILD_SCAFFOLD" : "PLANNING_CONTRACT";
 const productPaths = productCodeFiles.length ? productCodeFiles.map(rel).sort().join(",") : "none";
 const ticketOwnedPathsCensus = ticketOwnedCodeFiles.length ? ticketOwnedCodeFiles.map(rel).sort().join(",") : "none";
-console.log(`${mode}_PASS adr=${adrFiles.length} prd=${prdFiles.length} tickets=${ticketFiles.length} milestones=${manifest?.milestones?.length ?? 0} product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} ticket_owned_code_files=${ticketOwnedCodeFiles.length} canonical_vectors=${metricIds.length} semantic_checks=static_catalog_enforced gates=${gateAdministration.status} product_code_paths=${productPaths} ticket_owned_code_paths=${ticketOwnedPathsCensus}`);
+console.log(`${mode}_PASS adr=${adrFiles.length} prd=${prdFiles.length} tickets=${ticketFiles.length} milestones=${manifest?.milestones?.length ?? 0} product_code_files=${productCodeFiles.length} control_plane_code_files=${controlPlaneCodeFiles.length} control_plane_allowlist=${controlPlaneAllowlist.size} ticket_owned_code_files=${ticketOwnedCodeFiles.length} canonical_vectors=${metricIds.length} semantic_checks=static_catalog_enforced gates=${gateAdministration.status} product_code_paths=${productPaths} ticket_owned_code_paths=${ticketOwnedPathsCensus} banned_wording_scan=${bannedWordingScanned ? "on" : "skipped"}`);
