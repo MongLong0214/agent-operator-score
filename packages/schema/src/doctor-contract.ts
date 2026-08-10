@@ -309,7 +309,8 @@ const VARIANT_IDS = FROZEN_VARIANTS.map(([variantId]) => variantId);
  * renamed fixture fails twice over.
  */
 const CANONICAL_REPORT_IDS = [
-  "complete", "degraded", "blocked", "imported-only", "imported-and-degraded", "blocked-and-imported"
+  "complete", "degraded", "blocked", "imported-only", "imported-and-degraded", "blocked-and-imported",
+  "blocking-and-degraded", "blocking-and-imported"
 ];
 const CANONICAL_FIXTURE_DIRECTORY = "fixtures/doctor";
 const CANONICAL_FIXTURE_NAME_TEMPLATE = "<report_id>.json";
@@ -327,6 +328,14 @@ const sameList = (left: unknown, right: readonly string[]): boolean =>
   Array.isArray(left) && left.length === right.length && right.every((entry, index) => left[index] === entry);
 
 const listText = (values: readonly string[]): string => values.join(",") || "none";
+
+// An error message must never throw while naming the value it refuses. Strings name
+// themselves; primitives keep their coercion; an object may carry no primitive coercion at
+// all, so it is named by the placeholder the sibling contracts use rather than coerced.
+const namedValue = (value: unknown): string =>
+  typeof value === "string" ? value
+    : typeof value === "object" && value !== null ? "<unnamed>"
+    : String(value);
 
 const failClosed = (errors: string[]): DoctorResult => ({
   ok: false,
@@ -416,9 +425,9 @@ const projectionOf = (
   return [
     command,
     `verdict: ${verdict} exit=${exitCode} mode=${assessmentMode}`,
-    `digest: runtime_version=${String(digest.runtime_version)}` +
-      ` protocol_or_schema_version=${String(digest.protocol_or_schema_version)}` +
-      ` adapter_version=${String(digest.adapter_version)}` +
+    `digest: runtime_version=${namedValue(digest.runtime_version)}` +
+      ` protocol_or_schema_version=${namedValue(digest.protocol_or_schema_version)}` +
+      ` adapter_version=${namedValue(digest.adapter_version)}` +
       ` source_class=${listText(sourceClassInventory(observations))}`,
     `groups: supported=${observations.length - unavailable.length} unavailable=${unavailable.length}` +
       ` required_observed=${requiredObserved}/${view.required_event_groups.length}`,
@@ -469,12 +478,12 @@ const validateReport = (report: unknown, view: MatrixView, push: (message: strin
 
   const runtimeId = report.runtime_id;
   if (typeof runtimeId !== "string" || !RUNTIME_IDS.includes(runtimeId)) {
-    push(`UNKNOWN_RUNTIME ${String(runtimeId)} is outside the frozen SSOT 9.2 runtime set`);
+    push(`UNKNOWN_RUNTIME ${namedValue(runtimeId)} is outside the frozen SSOT 9.2 runtime set`);
     return null;
   }
   const assessmentMode = report.assessment_mode;
   if (typeof assessmentMode !== "string" || !MODE_IDS.includes(assessmentMode)) {
-    push(`UNKNOWN_ASSESSMENT_MODE ${String(assessmentMode)} is outside the frozen SSOT 9.2 session classes`);
+    push(`UNKNOWN_ASSESSMENT_MODE ${namedValue(assessmentMode)} is outside the frozen SSOT 9.2 session classes`);
     return null;
   }
 
@@ -525,7 +534,7 @@ const validateDigest = (
   for (const field of DECLARED_DIGEST_FIELDS) {
     const value = declared[field];
     if (!isFilledString(value) || !VERSION_TOKEN.test(value) || value.length > VERSION_TOKEN_MAX_CHARS) {
-      push(`DIGEST_DECLARED_FIELD_INVALID ${field} ${String(value)} is not a version token`);
+      push(`DIGEST_DECLARED_FIELD_INVALID ${field} ${namedValue(value)} is not a version token`);
     }
   }
   const inventory = sourceClassInventory(observations);
@@ -557,7 +566,7 @@ const validateObservations = (
     const expected = derived[index];
     if (!isPlainRecord(entry)) { push(`OBSERVATION_NOT_AN_OBJECT position ${index + 1} is not an object`); continue; }
     if (expected === undefined) {
-      push(`OBSERVATION_UNKNOWN_EVENT_GROUP ${String(entry.event_group)} is outside the frozen SSOT 9.2 matrix`);
+      push(`OBSERVATION_UNKNOWN_EVENT_GROUP ${namedValue(entry.event_group)} is outside the frozen SSOT 9.2 matrix`);
       continue;
     }
     if (entry.event_group !== expected.event_group) {
@@ -858,9 +867,10 @@ const validateContract = (
         return;
       }
       const canonical = corpus[fixtureName];
-      const variantIndex = VARIANT_IDS.indexOf(String(entry.matrix_variant));
+      const declaredVariant = entry.matrix_variant;
+      const variantIndex = typeof declaredVariant === "string" ? VARIANT_IDS.indexOf(declaredVariant) : -1;
       if (variantIndex === -1) {
-        push(`CONTRACT_CANONICAL_VARIANT_UNKNOWN ${id} names ${String(entry.matrix_variant)}`);
+        push(`CONTRACT_CANONICAL_VARIANT_UNKNOWN ${id} names ${namedValue(declaredVariant)}`);
         return;
       }
       const runtimeId = isPlainRecord(canonical) ? canonical.runtime_id : undefined;
