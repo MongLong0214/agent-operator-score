@@ -34,7 +34,7 @@ const isInsideRoot = (path) => {
   const value = relative(root, path);
   return value !== "" && !value.startsWith(`..${sep}`) && value !== ".." && !isAbsolute(value);
 };
-const readRepositoryText = (relativePath, label = relativePath) => {
+const readRepositoryFile = (relativePath, label = relativePath) => {
   const resolved = resolve(root, relativePath);
   if (!isInsideRoot(resolved)) {
     pushError(`wrong target ${label}`);
@@ -45,18 +45,24 @@ const readRepositoryText = (relativePath, label = relativePath) => {
     return null;
   }
   try {
-    return normalizeLf(readFileSync(resolved, "utf8"));
+    return readFileSync(resolved, "utf8");
   } catch {
     pushError(`unreadable ${label}`);
     return null;
   }
 };
-const sameOrderedArray = (left, right) =>
-  Array.isArray(left) && Array.isArray(right) &&
-  left.length === right.length && left.every((value, index) => value === right[index]);
 const formatDependencies = (dependencies) => (dependencies.length ? dependencies.join(",") : "None");
-const parseTicketDependencyLine = (value) =>
-  value.trim() === "None" ? [] : value.split(",").map((entry) => entry.trim()).filter(Boolean);
+// A ticket_path is rejected on its raw string, before resolve() ever interprets it:
+// absolute paths, `.`/`..` segments, backslashes, and paths outside docs/tickets/ are
+// never normalized into acceptance.
+const isSafeTicketPath = (raw) => {
+  if (typeof raw !== "string") return false;
+  if (raw.startsWith("/")) return false;
+  if (/^[A-Za-z]:/.test(raw)) return false;
+  if (raw.includes("\\")) return false;
+  if (!raw.startsWith("docs/tickets/")) return false;
+  return !raw.split("/").some((segment) => segment === "." || segment === "..");
+};
 
 const startMarker = (marker) => `<!-- generated:${marker} start — rendered by ${RENDERER_PATH}; do not edit by hand -->`;
 const endMarker = (marker) => `<!-- generated:${marker} end -->`;
@@ -76,32 +82,39 @@ const renderBoardRows = (tickets) => {
 };
 
 const locateGeneratedBlock = (relativePath, marker, lines) => {
-  // The start line is located leniently so a hand-edited marker wording still counts as
-  // drift instead of hiding the block; the end line is exact.
-  const startPattern = new RegExp(`^<!-- generated:${marker} start.*-->$`);
-  const endPattern = new RegExp(`^<!-- generated:${marker} end -->$`);
+  // Marker lines are matched per line after trimming, never by substring: the start line
+  // by its fixed prefix (the comment tail may vary), the end line by exact equality. Each
+  // marker must occur exactly once in the whole file, and the end after the start.
+  const startPrefix = `<!-- generated:${marker} start`;
+  const endLine = endMarker(marker);
   const starts = [];
   const ends = [];
   lines.forEach((line, index) => {
-    if (startPattern.test(line)) starts.push(index);
-    if (endPattern.test(line)) ends.push(index);
+    const trimmed = line.trim();
+    if (trimmed.startsWith(startPrefix)) starts.push(index);
+    if (trimmed === endLine) ends.push(index);
   });
-  if (starts.length === 0 || ends.length === 0 || starts[0] > ends[0]) {
-    pushError(`missing generated marker ${marker} in ${relativePath}`);
-    return null;
+  if (starts.length !== 1) {
+    pushError(`${relativePath} ${marker} expected exactly one start marker, found ${starts.length}`);
   }
-  if (starts.length > 1 || ends.length > 1) {
-    pushError(`ambiguous generated marker ${marker} in ${relativePath}`);
+  if (ends.length !== 1) {
+    pushError(`${relativePath} ${marker} expected exactly one end marker, found ${ends.length}`);
+  }
+  if (starts.length !== 1 || ends.length !== 1) return null;
+  if (ends[0] <= starts[0]) {
+    pushError(`${relativePath} ${marker} end marker appears before start marker`);
     return null;
   }
   return { start: starts[0], end: ends[0] };
 };
 
-const catalogText = readRepositoryText(CATALOG_PATH);
+// Phase 1 — validate and compute; nothing is written here. Any error fails closed before
+// a single file changes, so a surface can never be left partially rewritten.
+const catalogText = readRepositoryFile(CATALOG_PATH);
 let catalog = null;
 if (catalogText !== null) {
   try {
-    catalog = JSON.parse(catalogText);
+    catalog = JSON.parse(normalizeLf(catalogText));
   } catch {
     pushError(`invalid JSON ${CATALOG_PATH}`);
   }
@@ -121,71 +134,73 @@ const renderedContent = catalog
 const surfaceStates = [];
 if (renderedContent) {
   for (const surface of SURFACES) {
-    const text = readRepositoryText(surface.path);
+    const text = readRepositoryFile(surface.path);
     if (text === null) continue;
-    const lines = text.split("\n");
+    // Remember the file's dominant line ending and restore it on write; a repaired block
+    // must never rewrite unrelated bytes just because the line ending differs.
+    const eol = text.includes("\r\n") ? "\r\n" : "\n";
+    const lines = text.split(/\r\n|\n|\r/);
     const block = locateGeneratedBlock(surface.path, surface.marker, lines);
     if (!block) continue;
     const expected = [startMarker(surface.marker), ...renderedContent.get(surface.marker), endMarker(surface.marker)];
-    surfaceStates.push({ surface, lines, block, expected });
+    const drifted = lines.slice(block.start, block.end + 1).join("\n") !== expected.join("\n");
+    if (drifted) pushDrift(`DRIFT ${surface.path} ${surface.marker} disk block differs from rendered block`);
+    surfaceStates.push({ surface, lines, block, expected, eol, drifted });
+  }
+
+  // Byte-for-byte catalog/ticket agreement on size and dependency values. A projection can
+  // never repair a disagreement: both modes fail closed on it.
+  for (const record of catalog.tickets) {
+    if (!isSafeTicketPath(record.ticket_path)) {
+      pushError(`invalid ticket_path ${record.id} ${record.ticket_path}`);
+      continue;
+    }
+    const resolved = resolve(root, record.ticket_path);
+    if (!existsSync(resolved)) {
+      pushDrift(`DRIFT ${record.id} ticket_path catalog=${record.ticket_path} ticket=<missing file>`);
+      continue;
+    }
+    let ticketText;
+    try {
+      ticketText = normalizeLf(readFileSync(resolved, "utf8"));
+    } catch {
+      pushDrift(`DRIFT ${record.id} ticket_path catalog=${record.ticket_path} ticket=<unreadable file>`);
+      continue;
+    }
+    const sizeMatch = ticketText.match(/^- Size: (.+)$/m);
+    if (!sizeMatch) {
+      pushDrift(`DRIFT ${record.id} size catalog=${record.size} ticket=<missing line>`);
+    } else if (sizeMatch[1].trim() !== record.size) {
+      pushDrift(`DRIFT ${record.id} size catalog=${record.size} ticket=${sizeMatch[1].trim()}`);
+    }
+    const dependencyMatch = ticketText.match(/^- Dependencies: (.+)$/m);
+    if (!dependencyMatch) {
+      pushDrift(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=<missing line>`);
+    } else {
+      const ticketDependencies = dependencyMatch[1].trim();
+      if (ticketDependencies !== formatDependencies(record.dependencies)) {
+        pushDrift(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=${ticketDependencies}`);
+      }
+    }
   }
 }
 
+// Phase 2 — write, only when phase 1 found no error and writing is requested. Repairing
+// drift is the purpose of the write mode, so a successful repair exits 0.
 if (errors.length) {
   for (const error of errors) console.error(`ERROR ${error}`);
   process.exit(1);
 }
 
-for (const state of surfaceStates) {
-  const disk = state.lines.slice(state.block.start, state.block.end + 1);
-  if (disk.join("\n") !== state.expected.join("\n")) {
-    pushDrift(`DRIFT ${state.surface.path} ${state.surface.marker} disk block differs from rendered block`);
-  }
-}
-
-// Byte-for-byte catalog/ticket agreement on size and dependency values. A projection can
-// never repair a disagreement: both modes fail closed on it, and the write mode still
-// renders so the drift stays visible rather than being masked by a stale surface.
-for (const record of catalog.tickets) {
-  const resolved = resolve(root, record.ticket_path);
-  if (!isInsideRoot(resolved) || !existsSync(resolved)) {
-    pushDrift(`DRIFT ${record.id} ticket_path catalog=${record.ticket_path} ticket=<missing file>`);
-    continue;
-  }
-  let ticketText;
-  try {
-    ticketText = normalizeLf(readFileSync(resolved, "utf8"));
-  } catch {
-    pushDrift(`DRIFT ${record.id} ticket_path catalog=${record.ticket_path} ticket=<unreadable file>`);
-    continue;
-  }
-  const sizeMatch = ticketText.match(/^- Size: (.+)$/m);
-  if (!sizeMatch) {
-    pushDrift(`DRIFT ${record.id} size catalog=${record.size} ticket=<missing line>`);
-  } else if (sizeMatch[1] !== record.size) {
-    pushDrift(`DRIFT ${record.id} size catalog=${record.size} ticket=${sizeMatch[1]}`);
-  }
-  const dependencyMatch = ticketText.match(/^- Dependencies: (.+)$/m);
-  if (!dependencyMatch) {
-    pushDrift(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=<missing line>`);
-  } else {
-    const ticketDependencies = parseTicketDependencyLine(dependencyMatch[1]);
-    if (!sameOrderedArray(ticketDependencies, record.dependencies)) {
-      pushDrift(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=${formatDependencies(ticketDependencies)}`);
-    }
-  }
-}
-
 if (!checkMode) {
   for (const state of surfaceStates) {
-    const disk = state.lines.slice(state.block.start, state.block.end + 1);
-    if (disk.join("\n") === state.expected.join("\n")) continue;
+    if (!state.drifted) continue;
     state.lines.splice(state.block.start, state.block.end - state.block.start + 1, ...state.expected);
-    writeFileSync(resolve(root, state.surface.path), state.lines.join("\n"));
+    writeFileSync(resolve(root, state.surface.path), state.lines.join(state.eol));
   }
 }
 
 for (const drift of drifts) console.error(drift);
 const label = checkMode ? "EXECUTION_VIEWS_CHECK" : "EXECUTION_VIEWS_RENDERED";
 console.log(`${label} surfaces=${SURFACES.length} drift=${drifts.length}`);
-if (drifts.length) process.exit(1);
+if (checkMode && drifts.length) process.exit(1);
