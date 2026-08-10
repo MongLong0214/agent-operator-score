@@ -49,37 +49,50 @@ unless every condition below is true:
 
 Open issues, drafted code, green CI on a prior head, or an unmerged PR do not make a ticket ready.
 
-Dependency edges come from `docs/tickets/BOARD.md`, which is authored from the exact ticket contracts.
+Dependency edges belong to the exact ticket contracts. `docs/tickets/BOARD.md` is a projection of
+them and a non-input to the resolver, so where the two disagree the contract wins and the board is
+the thing to correct.
 
 **The board's epic-entry edges are currently narrower than the PRDs declare, and the test meant to
 catch that cannot see it.** `PRD-E0B` declares `Dependencies: D0, E0-A`, `PRD-E0C` declares
 `E0-A, E0-B`, and `PRD-E0D` declares `E0-A, E0-C`, while the board records `None` for E0B-001,
 E0C-001 and E0D-001. The producer pattern that enforces a PRD basis matches the unhyphenated form
 `E0A` and not the hyphenated `E0-A` the PRDs actually use, so those edges read as undeclared and
-were removed as such. Until the pattern and the board are corrected under their owning ticket, the
-epic order in the PRDs and the north-star SSOT is the higher authority and this roadmap sequences
-by it: `D0 → E0-A → E0-B → E0-C → E0-D`.
+were removed as such. Correcting this is not one edit under one owner: the pattern and its case belong to D0-004A, the
+generated board to D0-004C, and each dependency edge to its own exact ticket. Until that happens the
+epic order in the PRDs and the north-star SSOT is the higher authority, and this file sequences by
+it: `D0 → E0-A → E0-B → E0-C → E0-D`.
 
 ## Records that cannot enter a ready set
 
 **D0-010 / issue #167** has a GitHub issue and a milestone but no ticket contract at `docs/tickets/D0/`. Authority order places the accepted exact atomic ticket above issue state, so this record is not executable at any dependency state. Authoring and accepting its contract is a prerequisite to its own readiness. Its absence does not block D0-011 or any other record: no ticket declares a dependency on D0-010, and the catalog invariants check identifier sets and mutual bindings rather than contiguous numbering.
 
-**Backlog — outside agent execution.** Four records require a party this pipeline cannot supply. They stay open, keep their dependency edges, and are not counted against S0–S5 progress:
+**Records that need an input this pipeline cannot supply.** Four records wait on a party outside it.
+They remain required: the SSOT and the owning PRDs make human alpha, licence and security clearance,
+and independent reproduction completion conditions for their gates, and nothing here exempts them
+from milestone credit. What follows is why each is blocked, not permission to pass its gate without it:
 
 | Ticket | Issue | Why it cannot be executed here |
 |---|---:|---|
 | E12-002 | [#112](https://github.com/MongLong0214/agent-operator-score/issues/112) | Requires a reference run plus twenty human participants |
-| E12-003 | [#113](https://github.com/MongLong0214/agent-operator-score/issues/113) | Analyses data that only #112 can produce |
+| E12-003 | [#113](https://github.com/MongLong0214/agent-operator-score/issues/113) | Analysis this pipeline can run, once #112 has produced the data |
 | E14-001 | [#116](https://github.com/MongLong0214/agent-operator-score/issues/116) | Requires a licence and security clearance decision |
 | E14-003 | [#118](https://github.com/MongLong0214/agent-operator-score/issues/118) | Requires an independent third party to reproduce |
 
-Reaching them is a stop, not a gate to weaken. S4 and S5 complete only as far as their non-backlog records allow.
+Reaching one of these is a stop, not a gate to weaken. S4 and S5 do not complete without them.
 
 ## Fixture admission is a shared blocker
 
 Any ticket that ships a fixture directory needs that directory admitted to the workspace skeleton file list. Today only D0-004's narrow `fixtures/operational-state/**` carve-out grants admission, and the general ticket-derived rule that would grant it to everyone else is owned by D0-011, which depends on D0-004.
 
-E0B-003 / #63 is the first record to hit this. Its candidate answered the need by introducing the general rule itself, which is D0-011's scope and was wrong in both directions: a `fixtures/<name>/*.json` declaration admitted the whole directory rather than the matching files, and a two-segment declaration such as the merged `fixtures/governance/effective-state/**` was not recognised at all. D0-011 criterion 14 states the correct behaviour that this implementation contradicts.
+Every record that declares a fixture glob meets this, including D0-006 through D0-009 and E0B-003.
+
+One candidate has already answered it the wrong way and been corrected, and the shape of that error
+is worth keeping: it introduced the general rule itself, which is D0-011's scope, and the
+implementation was wrong in both directions — a `fixtures/<name>/*.json` declaration admitted the
+whole directory rather than the matching files, and a two-segment declaration such as
+`fixtures/governance/effective-state/**` was not recognised at all. D0-011 criterion 14 states the
+behaviour it contradicted.
 
 Waiting for D0-004 and then D0-011 changes no contract. Every other route does. A narrow carve-out
 on the D0-004 precedent, owned by the record's own ticket and superseded by D0-011 on its
@@ -91,9 +104,10 @@ D0-011's general rule under a different ticket.
 
 ## Recorded integrity exception
 
-The pull requests for E0A-001 through E0B-002 (#58, #59, #60, #61, #62) are reachable from `dev`
-while D0-004 (#57), which `docs/tickets/BOARD.md` declares as E0A-001's dependency, is still open.
-Merge order therefore ran ahead of the declared edge.
+Issues #58 through #62 carry E0A-001 through E0B-002, and their implementation merges — pull
+requests #157, #159, #161, #160 and #162 — are reachable from `dev` while issue #57, carrying
+D0-004, is still open. E0A-001 declares D0-004 as a dependency, so merge order ran ahead of the
+declared edge.
 
 Reachability is merge evidence, not a completion receipt: D0-004 requires a unique completion
 record, live reachability, and current post-merge CI before a record counts as complete, and this
@@ -109,30 +123,34 @@ Serial foundation, complete: `#54 D0-001 → #55 D0-002`.
 
 Independent S0 lanes. Each has all declared dependencies satisfied and disjoint ownership, so at most one worker per lane may run concurrently:
 
-- Lane A — governance validator: `#57 D0-004`
-- Lane C — governance mode chain: `#173 D0-005 → #174 D0-006 → #175 D0-007 → #176 D0-008 → #177 D0-009`
+- `#57 D0-004`
+- `#173 D0-005 → #174 D0-006 → #175 D0-007 → #176 D0-008 → #177 D0-009`
 
-Lanes A and C are D0 records and may run beside each other on disjoint ownership.
+These two are **not** concurrent lanes. D0-005 supersedes symbols D0-004 owns — its policy and
+validator authority, resolver and schema symbols, and planning-contract cases — so running them
+beside each other is the ownership overlap `AGENTS.md` makes a hard stop. Their order and the
+resolution of that supersession belong to those contracts, not to this file.
 
-`#63 E0B-003` is **not** a peer lane. `PRD-E0B` declares `Dependencies: D0, E0-A` and the north-star
-SSOT orders `D0 → E0-A → E0-B`, so E0-B follows the whole of D0, not E0-A alone. It also carries the
-fixture-admission condition below.
+After D0, in epic order:
 
-The E0-C and E0-D chains are **not** independent lanes. `PRD-E0C` declares `E0-A, E0-B` and
-`PRD-E0D` declares `E0-A, E0-C`, so they follow in epic order once their predecessors complete:
+- E0-A: `#58 E0A-001 → #59 E0A-002 → #60 E0A-003`
+- E0-B: `#61 E0B-001 → #62 E0B-002 → #63 E0B-003`
+- E0-C: `#64 E0C-001 → #65 E0C-002 → #66 E0C-003`
+- E0-D: `#67 E0D-001 → #68 E0D-002 → #69 E0D-003`
 
-- After E0-B: `#64 E0C-001 → #65 E0C-002 → #66 E0C-003`
-- After E0-C: `#67 E0D-001 → #68 E0D-002 → #69 E0D-003`
+`#63 E0B-003` is not a peer of the D0 records. `PRD-E0B` declares `Dependencies: D0, E0-A` and the
+north-star SSOT orders `D0 → E0-A → E0-B`, so E0-B follows the whole of D0, not E0-A alone. It also
+carries the fixture-admission condition below. The chains above are epic order; each record's own
+dependencies are in its contract, and where the board disagrees the contract wins.
 
-Reading `None` from the board for E0C-001 or E0D-001 and starting either early contradicts the
-owning PRD, which outranks the board.
+`#182 D0-011` sits with the D0 records and unblocks on verified `#55 D0-002` and `#57 D0-004`.
 
-Joins:
+`PRD-E0C` declares `E0-A, E0-B` and `PRD-E0D` declares `E0-A, E0-C`. Reading `None` from the board
+for E0C-001 or E0D-001 and starting either early contradicts the owning PRD, which outranks it.
 
-- `#182 D0-011` unblocks on verified `#55 D0-002` and `#57 D0-004`.
-- S0 exit requires every S0 record verified. D0-010 is included: authoring and accepting its contract
-  makes it executable, and it must then be executed and verified like any other record. An accepted
-  contract alone does not satisfy the exit.
+S0 exit requires every S0 record verified. D0-010 is included: authoring and accepting its contract
+makes it executable, and it must then be executed and verified like any other record. An accepted
+contract alone does not satisfy the exit.
 
 ### S1 — G0 scorer truth
 
