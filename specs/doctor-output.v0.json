@@ -235,6 +235,16 @@
       "report_id": "blocked-and-imported",
       "ordinal": 6,
       "matrix_variant": "both-derivations-unproven"
+    },
+    {
+      "report_id": "blocking-and-degraded",
+      "ordinal": 7,
+      "matrix_variant": "both-derivations-unproven"
+    },
+    {
+      "report_id": "blocking-and-imported",
+      "ordinal": 8,
+      "matrix_variant": "workspace-diff-derivation-unproven"
     }
   ]
 }

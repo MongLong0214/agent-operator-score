@@ -57,7 +57,7 @@ const withDoctorInternals = async (
 
 // specs/doctor-output.v0.json freezes the SSOT §9.2 "Adapter acceptance" paragraph: the output
 // `aos doctor --capabilities --runtime <runtime>` must produce, the four verdicts and their
-// exit codes, the ordered reason catalogue, and six canonical reports with the verdict each
+// exit codes, the ordered reason catalogue, and eight canonical reports with the verdict each
 // one derives. This test loads that frozen document and the frozen matrix it projects, and
 // mutates copies of both, mirroring capability.test.ts and session-class.test.ts.
 const frozen = () => JSON.parse(readFileSync(contractPath, "utf8"));
@@ -191,7 +191,8 @@ const VARIANT_IDS = [
   "both-derivations-unproven"
 ];
 const CANONICAL_REPORT_IDS = [
-  "complete", "degraded", "blocked", "imported-only", "imported-and-degraded", "blocked-and-imported"
+  "complete", "degraded", "blocked", "imported-only", "imported-and-degraded", "blocked-and-imported",
+  "blocking-and-degraded", "blocking-and-imported"
 ];
 // Each canonical report with the DERIVED groups its matrix variant leaves unproven, so a case
 // can rebuild the matrix that produced any fixture without restating the manifest.
@@ -1057,11 +1058,15 @@ describe("doctor-contract", () => {
     const matrix = frozenMatrix();
     const report = fixtureOf("complete");
 
-    // Six canonical reports covering all four verdicts, all three reason codes, both runtimes,
+    // Eight canonical reports covering all four verdicts, all three reason codes, both runtimes,
     // both modes and all four variants; the contract refuses a set that stops covering them.
+    // The old six left verified+both-derivations-unproven and imported+workspace-diff-only
+    // unproven uncovered, so a mutant that reverses the reason order survived in exactly those
+    // combinations; blocking-and-degraded and blocking-and-imported close that hole.
     const canonical = CANONICAL_REPORT_IDS.map((reportId) => fixtureOf(reportId));
     assert.deepEqual(canonical.map((entry: any) => entry.verdict),
-      ["COMPLETE", "DEGRADED", "SCORE_BLOCKED", "IMPORTED_ONLY", "IMPORTED_ONLY", "SCORE_BLOCKED"]);
+      ["COMPLETE", "DEGRADED", "SCORE_BLOCKED", "IMPORTED_ONLY", "IMPORTED_ONLY", "SCORE_BLOCKED",
+        "SCORE_BLOCKED", "SCORE_BLOCKED"]);
     assert.deepEqual([...new Set(canonical.map((entry: any) => entry.verdict))].sort(),
       [...VERDICT_IDS].sort());
     assert.deepEqual([...new Set(canonical.map((entry: any) => entry.runtime_id))].sort(),
@@ -1069,7 +1074,9 @@ describe("doctor-contract", () => {
     assert.deepEqual([...new Set(canonical.map((entry: any) => entry.assessment_mode))].sort(),
       [...MODE_IDS].sort());
     assert.deepEqual(doc.canonical_reports.map((entry: any) => entry.matrix_variant).sort(),
-      [...VARIANT_IDS, "as-declared", "plan-state-derivation-unproven"].sort());
+      ["as-declared", "as-declared", "both-derivations-unproven", "both-derivations-unproven",
+        "plan-state-derivation-unproven", "plan-state-derivation-unproven",
+        "workspace-diff-derivation-unproven", "workspace-diff-derivation-unproven"]);
     const reported = new Set(canonical.flatMap(
       (entry: any) => entry.reasons.map((reason: string) => reason.split(" ")[0])));
     assert.deepEqual([...reported].sort(), [...REASON_CODES].sort());
@@ -1084,7 +1091,8 @@ describe("doctor-contract", () => {
 
     // Repoint every report that derives a verdict away from it and the guard names it.
     const noImported = corpus();
-    for (const reportId of ["imported-only", "imported-and-degraded", "blocked-and-imported"]) {
+    for (const reportId of ["imported-only", "imported-and-degraded", "blocked-and-imported",
+      "blocking-and-imported"]) {
       noImported[`${reportId}.json`].assessment_mode = "VERIFIED_ASSESSMENT";
     }
     const withoutImported = validate(report, doc, matrix, noImported);
@@ -1092,7 +1100,8 @@ describe("doctor-contract", () => {
     assert.ok(has(withoutImported, "CONTRACT_REASON_UNEXERCISED IMPORTED_SESSION_DIAGNOSTIC_ONLY is reported by no canonical report"));
 
     const noDegradedReason = frozen();
-    for (const reportId of ["degraded", "imported-and-degraded", "blocked-and-imported"]) {
+    for (const reportId of ["degraded", "imported-and-degraded", "blocked-and-imported",
+      "blocking-and-degraded"]) {
       entryOf(noDegradedReason, reportId).matrix_variant = "as-declared";
     }
     const withoutDegraded = validate(report, noDegradedReason, matrix);
@@ -1790,7 +1799,7 @@ describe("doctor-contract", () => {
     const matrix = frozenMatrix();
     const report = fixtureOf("complete");
 
-    // The live directory is the six declared reports and nothing else; the smuggling is done in
+    // The live directory is the eight declared reports and nothing else; the smuggling is done in
     // a copy, because no test may write into the repository it is measuring.
     assert.deepEqual(Object.keys(fixtureText), CANONICAL_REPORT_IDS.map((reportId) => `${reportId}.json`).sort());
     const directory = mkdtempSync(join(tmpdir(), "aos-doctor-corpus-"));
@@ -2035,7 +2044,8 @@ describe("doctor-contract", () => {
       }],
       ["CONTRACT_REASON_UNEXERCISED", () => {
         const withoutDegraded = frozen();
-        for (const reportId of ["degraded", "imported-and-degraded", "blocked-and-imported"]) {
+        for (const reportId of ["degraded", "imported-and-degraded", "blocked-and-imported",
+          "blocking-and-degraded"]) {
           entryOf(withoutDegraded, reportId).matrix_variant = "as-declared";
         }
         return validate(report, withoutDegraded, matrix);
@@ -2105,5 +2115,61 @@ describe("doctor-contract", () => {
     assert.deepEqual([...asserted].filter((code) => !inSource.has(code)).sort(), [],
       "a case asserts an error code the module does not carry");
     assert.equal(asserted.size, 78);
+  });
+
+  test("blocking-and-degraded", () => {
+    const doc = frozen();
+    // SSOT §9.2 line 980 applied to both DERIVED rows at once: neither carries a derivation
+    // proof, so both are UNAVAILABLE. workspace_diff's 누락 처리 column invalidates the run,
+    // so the verdict is SCORE_BLOCKED and the degraded reason follows in severity order.
+    const matrix = unproven(frozenMatrix(), "claude-code", ["workspace_diff", "plan_state"]);
+    const report = fixtureOf("blocking-and-degraded");
+    const result = validate(report, doc, matrix);
+
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.ok, true);
+    assert.equal(result.verdict, "SCORE_BLOCKED");
+    assert.equal(result.exit_code, 30);
+    assert.deepEqual(result.reasons, [WORKSPACE_DIFF_REASON, PLAN_STATE_REASON]);
+    assert.equal(report.runtime_id, "claude-code");
+    assert.equal(report.assessment_mode, "VERIFIED_ASSESSMENT");
+    assert.equal(report.verdict, result.verdict);
+    assert.equal(report.exit_code, result.exit_code);
+    assert.deepEqual(report.reasons, result.reasons);
+    assert.deepEqual(report.human_projection, result.human_projection);
+
+    assert.equal(observationOf(report, "workspace_diff").status, "UNAVAILABLE");
+    assert.equal(observationOf(report, "plan_state").status, "UNAVAILABLE");
+    assert.equal(result.human_projection[3], "groups: supported=12 unavailable=2 required_observed=7/7");
+    assert.equal(result.human_projection[1], "verdict: SCORE_BLOCKED exit=30 mode=VERIFIED_ASSESSMENT");
+    assert.equal(result.human_projection[20], `note: ${NOT_USER_FAILURE_CLAUSE}`);
+  });
+
+  test("blocking-and-imported", () => {
+    const doc = frozen();
+    // Only workspace_diff loses its derivation proof, so the run is invalid and the imported
+    // session keeps its DIAGNOSTIC ONLY reason after the blocking one; plan_state stays
+    // derived, so no degraded reason appears.
+    const matrix = unproven(frozenMatrix(), "codex", ["workspace_diff"]);
+    const report = fixtureOf("blocking-and-imported");
+    const result = validate(report, doc, matrix);
+
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.ok, true);
+    assert.equal(result.verdict, "SCORE_BLOCKED");
+    assert.equal(result.exit_code, 30);
+    assert.deepEqual(result.reasons, [WORKSPACE_DIFF_REASON, IMPORTED_REASON]);
+    assert.equal(report.runtime_id, "codex");
+    assert.equal(report.assessment_mode, "IMPORTED_SESSION");
+    assert.equal(report.verdict, result.verdict);
+    assert.equal(report.exit_code, result.exit_code);
+    assert.deepEqual(report.reasons, result.reasons);
+    assert.deepEqual(report.human_projection, result.human_projection);
+
+    assert.equal(observationOf(report, "workspace_diff").status, "UNAVAILABLE");
+    assert.equal(observationOf(report, "plan_state").status, "DERIVED");
+    assert.equal(result.human_projection[3], "groups: supported=13 unavailable=1 required_observed=7/7");
+    assert.equal(result.human_projection[1], "verdict: SCORE_BLOCKED exit=30 mode=IMPORTED_SESSION");
+    assert.equal(result.human_projection[20], `note: ${NOT_USER_FAILURE_CLAUSE}`);
   });
 });

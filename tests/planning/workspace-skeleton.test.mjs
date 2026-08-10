@@ -51,32 +51,6 @@ const workspaceTestScript = "node --test --test-name-pattern";
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
 
-// Fixture directories a ticket declares by glob, e.g. `fixtures/doctor/*.json`. These are
-// data, not source, so the product-code census never sees them; the only thing they need
-// is admission to the skeleton file list. Derived from the tickets so a second directory
-// does not need a second hardcoded branch. This is a governance rule and not a census
-// constant: it changes how the whole repository admits fixture directories, so the tickets
-// that introduce it carry a coordinated amendment bullet saying exactly that.
-const ticketDeclaredFixtureDirectories = () => {
-  const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
-  const directories = new Set();
-  for (const absolutePath of walkFiles(ticketsRoot)) {
-    if (!/^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(asRepositoryRelative(absolutePath))) continue;
-    const text = readFileSync(absolutePath, "utf8");
-    const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
-    for (const line of ownership ? ownership[1].split("\n") : []) {
-      const bullet = /^- (.+)$/.exec(line.trim());
-      if (!bullet) continue;
-      for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
-        const candidate = entry.trim().replace(/^`|`$/g, "");
-        const glob = /^(fixtures\/[A-Za-z0-9._-]+)\/\*[A-Za-z0-9.*]*$/.exec(candidate);
-        if (glob) directories.add(glob[1]);
-      }
-    }
-  }
-  return [...directories].filter((path) => existsSync(resolve(repositoryRoot, path))).sort();
-};
-
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
 // Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
 // a claim check, not an acceptance check; ticket readiness stays the resolver's job.
@@ -216,19 +190,23 @@ test("root-private-scripts-and-runnable-surface", () => {
     .flatMap((directory) => walkFiles(directory))
     .map(asRepositoryRelative)
     .sort();
-  // D0-004B declares fixtures/operational-state itself, so the explicit entry and the
-  // derived one overlap; dedupe rather than list a directory's files twice.
-  const fixtureDirectoryFiles = [
-    ...new Set(
-      ["fixtures/operational-state", ...ticketDeclaredFixtureDirectories()]
-        .flatMap((directory) => walkFiles(resolve(repositoryRoot, directory)))
-        .map(asRepositoryRelative)
-    )
-  ].sort();
+  const operationalStateFiles = walkFiles(resolve(repositoryRoot, "fixtures/operational-state"))
+    .map(asRepositoryRelative)
+    .sort();
+  // E0B-003 carve-out on the precedent D0-004 set for fixtures/operational-state. This ticket
+  // declares `fixtures/doctor/*.json`, so admission is exactly the regular JSON files directly in
+  // that one directory: not its subtree, and not any other ticket's directory. Deriving admission
+  // from every ticket's globs is a repository-wide governance rule that D0-011 owns, and it is
+  // superseded here by that ticket on its acceptance, exactly as D0-004's carve-out is.
+  const doctorFixtureFiles = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
+    .map(asRepositoryRelative)
+    .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path))
+    .sort();
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
-    ...fixtureDirectoryFiles,
+    ...operationalStateFiles,
+    ...doctorFixtureFiles,
     ...ticketOwnedSkeletonPaths()
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
@@ -327,7 +305,7 @@ test("focused-lane-is-not-silently-empty", () => {
   // per-file results the runner emits, so adding a test file shifts all of them at once.
   const lanes = [
     ["metric-registry", 18], ["issuance-contract", 12], ["capability", 14],
-    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 31]
+    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 33]
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);
@@ -415,4 +393,22 @@ test("workspace-lock-consistency", () => {
     expectedPackages[`node_modules/${name}`] = { resolved: path, link: true };
   }
   assert.deepEqual(lock.packages, expectedPackages);
+});
+
+test("doctor-fixture-admission-honours-the-declared-file-predicate", () => {
+  // The declaration is `fixtures/doctor/*.json`. An earlier revision admitted the directory
+  // itself, so any file dropped into it passed the skeleton gate regardless of the glob. This
+  // case pins the predicate: a non-matching regular file in that directory is not admitted, so
+  // the skeleton comparison sees it as unexplained and fails.
+  const probe = resolve(repositoryRoot, "fixtures/doctor/not-declared-by-the-glob.txt");
+  writeFileSync(probe, "probe\n");
+  try {
+    const admitted = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
+      .map(asRepositoryRelative)
+      .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path));
+    assert.equal(admitted.includes("fixtures/doctor/not-declared-by-the-glob.txt"), false);
+    assert.ok(admitted.includes("fixtures/doctor/complete.json"), "declared fixture is not admitted");
+  } finally {
+    rmSync(probe, { force: true });
+  }
 });
