@@ -193,10 +193,20 @@ test("root-private-scripts-and-runnable-surface", () => {
   const operationalStateFiles = walkFiles(resolve(repositoryRoot, "fixtures/operational-state"))
     .map(asRepositoryRelative)
     .sort();
+  // E0B-003 carve-out on the precedent D0-004 set for fixtures/operational-state. This ticket
+  // declares `fixtures/doctor/*.json`, so admission is exactly the regular JSON files directly in
+  // that one directory: not its subtree, and not any other ticket's directory. Deriving admission
+  // from every ticket's globs is a repository-wide governance rule that D0-011 owns, and it is
+  // superseded here by that ticket on its acceptance, exactly as D0-004's carve-out is.
+  const doctorFixtureFiles = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
+    .map(asRepositoryRelative)
+    .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path))
+    .sort();
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
     ...operationalStateFiles,
+    ...doctorFixtureFiles,
     ...ticketOwnedSkeletonPaths()
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
@@ -214,6 +224,8 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   assert.ok(owned.includes("packages/schema/test/scoring-contract.test.ts"), "E0A-003 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/test/issuance-contract.test.ts"), "E0A-002 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/src/session-class.ts"), "E0B-002 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/src/doctor-contract.ts"), "E0B-003 owned source is unclaimed");
+  assert.ok(owned.includes("packages/schema/test/doctor-contract.test.ts"), "E0B-003 RED file is unclaimed");
   assert.ok(owned.includes("packages/schema/test/session-class.test.ts"), "E0B-002 RED file is unclaimed");
 
   // Bind the derivation to the validator's census; if the two parses ever diverge,
@@ -292,8 +304,8 @@ test("focused-lane-is-not-silently-empty", () => {
   // Exact, not a floor: a lane that loses a case must fail here. Every count includes the
   // per-file results the runner emits, so adding a test file shifts all of them at once.
   const lanes = [
-    ["metric-registry", 17], ["issuance-contract", 11], ["capability", 13],
-    ["scoring-contract", 14], ["session-class", 22]
+    ["metric-registry", 18], ["issuance-contract", 12], ["capability", 14],
+    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 36]
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);
@@ -381,4 +393,22 @@ test("workspace-lock-consistency", () => {
     expectedPackages[`node_modules/${name}`] = { resolved: path, link: true };
   }
   assert.deepEqual(lock.packages, expectedPackages);
+});
+
+test("doctor-fixture-admission-honours-the-declared-file-predicate", () => {
+  // The declaration is `fixtures/doctor/*.json`. An earlier revision admitted the directory
+  // itself, so any file dropped into it passed the skeleton gate regardless of the glob. This
+  // case pins the predicate: a non-matching regular file in that directory is not admitted, so
+  // the skeleton comparison sees it as unexplained and fails.
+  const probe = resolve(repositoryRoot, "fixtures/doctor/not-declared-by-the-glob.txt");
+  writeFileSync(probe, "probe\n");
+  try {
+    const admitted = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
+      .map(asRepositoryRelative)
+      .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path));
+    assert.equal(admitted.includes("fixtures/doctor/not-declared-by-the-glob.txt"), false);
+    assert.ok(admitted.includes("fixtures/doctor/complete.json"), "declared fixture is not admitted");
+  } finally {
+    rmSync(probe, { force: true });
+  }
 });
