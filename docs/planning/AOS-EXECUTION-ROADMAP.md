@@ -4,7 +4,6 @@ Status: **ACTIVE**
 
 Scope: execution order, ready-set calculation, parallel lanes, joins, and agent handoff
 
-Last verified checkpoint: `dev` at `467df0af49f6fc6ca5eb8d9dfa4044835ff1a060`
 
 This is the stable entrypoint for deciding what work may start next. It is subordinate to the product authority chain in `AGENTS.md`:
 
@@ -16,26 +15,29 @@ This is the stable entrypoint for deciding what work may start next. It is subor
 
 If this roadmap conflicts with a higher authority, the higher authority wins and this file must be corrected before another transition starts.
 
-## Current state
+## What this file is, and is not
+
+This is a **static** dependency and sequencing view. It carries no current branch SHA, no ready set,
+and no readiness verdict, because `AGENTS.md` and the D0-004 contract place those outside it:
+Roadmap, Board, issue state, issue labels, pull-request prose, gate-status prose, and the dated
+ledger are all non-authoritative as state inputs. Before D0-004 is verified on `dev`, only a
+maintainer-approved exact-base execution packet authorizes work. After it is verified, only
+`npm run ops:status -- --strict --ticket <ID>` returning `readiness=ready` does. When a required
+external fact is unavailable the ready set is empty; there is no fallback to this file.
+
+What it does carry: the catalog's shape, the order records must run in, where lanes may run beside
+each other, and the conditions that stop a lane. Those change when a contract changes, not when
+`dev` moves.
 
 - Ticket records in the catalog: **71** — 70 executable and one superseded, D0-003 / issue #56
 - Ticket record without an owning contract: **D0-010 / issue #167** (see *Records that cannot enter a ready set*)
 - Current milestone: **S0 · Name & Contracts**
-- Static candidate set for S0: **D0-004 / #57**, **E0B-003 / #63**, **D0-005 / #173**
-- Merged on `dev` at this checkpoint: D0-001 / #54, D0-002 / #55, E0A-001 / #58, E0A-002 / #59, E0A-003 / #60, E0B-001 / #61, E0B-002 / #62
-
-The candidate set is a static sequencing derivation, not an authorization. `AGENTS.md` reserves that
-to the resolver: once D0-004 is verified on `dev`, only `npm run ops:status -- --strict --ticket <ID>`
-returning `readiness=ready` may authorize an execution packet, and this roadmap stays a static
-dependency and sequencing view. A record listed above is a candidate to resolve, never a receipt.
-Likewise, a merge commit reachable from `dev` is merge evidence and not by itself a current
-post-merge completion receipt.
-
-The checkpoint SHA is evidence, not a permanent target. Before every new execution packet, fetch `origin/dev`, resolve its exact SHA, rehydrate GitHub issue/PR state, and update this section if the ready set changed.
 
 ## Ready-set algorithm
 
-A ticket is implementation-ready only when every condition is true:
+These are necessary conditions on ordering, not a readiness verdict. Satisfying all of them still
+does not authorize work; the resolver or a maintainer-approved packet does. A record may not run
+unless every condition below is true:
 
 1. An accepted owning ticket contract exists at its catalog path.
 2. Every declared dependency is verified merged and has a post-merge completion receipt.
@@ -79,17 +81,23 @@ Any ticket that ships a fixture directory needs that directory admitted to the w
 
 E0B-003 / #63 is the first record to hit this. Its candidate answered the need by introducing the general rule itself, which is D0-011's scope and was wrong in both directions: a `fixtures/<name>/*.json` declaration admitted the whole directory rather than the matching files, and a two-segment declaration such as the merged `fixtures/governance/effective-state/**` was not recognised at all. D0-011 criterion 14 states the correct behaviour that this implementation contradicts.
 
-Two moves are available without changing any contract: wait for D0-004 and then D0-011, or add a
-narrow carve-out owned by the record's own ticket on the D0-004 precedent, declared in that ticket
-and superseded by D0-011 on its acceptance. A carve-out taken this way needs the ticket amended
-first; a pull-request description does not confer ownership. Other routes exist but all of them
+Waiting for D0-004 and then D0-011 changes no contract. Every other route does. A narrow carve-out
+on the D0-004 precedent, owned by the record's own ticket and superseded by D0-011 on its
+acceptance, is the smallest of them, but amending a ticket is a contract change and needs that
+ticket re-accepted at its new digest; a pull-request description confers nothing. Other routes exist but all of them
 change a contract — a new successor ticket, an explicit ownership reassignment, a dependency change
 — and each needs its own acceptance. What is not available at any authority level is re-implementing
 D0-011's general rule under a different ticket.
 
 ## Recorded integrity exception
 
-E0A-001 through E0B-002 (#58, #59, #60, #61, #62) are merged and closed while D0-004 (#57), which `docs/tickets/BOARD.md` declares as E0A-001's dependency, is still open. Completion therefore ran ahead of the declared order for that edge.
+The pull requests for E0A-001 through E0B-002 (#58, #59, #60, #61, #62) are reachable from `dev`
+while D0-004 (#57), which `docs/tickets/BOARD.md` declares as E0A-001's dependency, is still open.
+Merge order therefore ran ahead of the declared edge.
+
+Reachability is merge evidence, not a completion receipt: D0-004 requires a unique completion
+record, live reachability, and current post-merge CI before a record counts as complete, and this
+file cannot assert any of them. Whether those records are complete is the resolver's answer.
 
 This is recorded rather than silently normalised, and it is not authority to repeat the pattern. The affected records are treated as complete on their merge evidence; D0-004 remains in the ready set on its own dependency, which is satisfied. No new ticket may start on the precedent that a dependency was skipped before.
 
@@ -102,11 +110,13 @@ Serial foundation, complete: `#54 D0-001 → #55 D0-002`.
 Independent S0 lanes. Each has all declared dependencies satisfied and disjoint ownership, so at most one worker per lane may run concurrently:
 
 - Lane A — governance validator: `#57 D0-004`
-- Lane B — capability doctor: `#63 E0B-003` — see *Fixture admission is a shared blocker* below
 - Lane C — governance mode chain: `#173 D0-005 → #174 D0-006 → #175 D0-007 → #176 D0-008 → #177 D0-009`
 
-Lanes A and C are D0 records. Lane B is the last open E0-B record; E0-A is merged, so its epic
-predecessor is satisfied.
+Lanes A and C are D0 records and may run beside each other on disjoint ownership.
+
+`#63 E0B-003` is **not** a peer lane. `PRD-E0B` declares `Dependencies: D0, E0-A` and the north-star
+SSOT orders `D0 → E0-A → E0-B`, so E0-B follows the whole of D0, not E0-A alone. It also carries the
+fixture-admission condition below.
 
 The E0-C and E0-D chains are **not** independent lanes. `PRD-E0C` declares `E0-A, E0-B` and
 `PRD-E0D` declares `E0-A, E0-C`, so they follow in epic order once their predecessors complete:
@@ -205,9 +215,9 @@ Before starting work, an agent must:
 
 1. Read `AGENTS.md`, this roadmap, the north-star SSOT, required ADRs, owning PRD, and exact ticket in full.
 2. Fetch `origin/dev`; record exact base SHA, toolchain identity, issue/PR state, and a clean isolated worktree.
-3. Recompute the ready set from verified dependency receipts and milestone gates.
+3. Obtain authorization: a maintainer-approved exact-base execution packet before D0-004 is verified on `dev`, or `npm run ops:status -- --strict --ticket <ID>` returning `readiness=ready` after it is. Do not derive readiness from this file, the board, issue state, or Git ancestry.
 4. Check active branches/worktrees/PRs for duplicate work and ownership collision.
-5. Refuse the task if it is not in the current ready set.
+5. Refuse the task without that authorization, and whenever a required external fact is unavailable.
 6. Execute the ticket's named RED before any minimum GREEN edit.
 7. Change only the ticket's declared files and symbols.
 8. Return exact head, diff manifest, RED/GREEN evidence, focused/full/build/manual status, security/fail-closed review, CI, blocker, and next transition.
