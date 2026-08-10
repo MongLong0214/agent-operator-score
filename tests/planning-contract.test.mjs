@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { basename, join, resolve } from "node:path";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -1285,4 +1285,69 @@ test("cross-epic-ticket-dependencies-have-declared-prd-basis", () => {
     [],
     `cross-epic ticket dependencies lack a declared PRD basis:\n${unsupported.join("\n")}`
   );
+});
+
+test("banned-wording-guard-is-load-bearing", () => {
+  // The prohibition on two phrasings — one asserting the absence of code, one framing this
+  // repository as a mere planning exercise — was violated seven times in one day while it lived
+  // in prose alone, including inside the validator added to enforce it. This case exists so the
+  // guard cannot silently stop working. Fragments avoid embedding either literal here.
+  //
+  // The probe runs in a copy for the reason the legacy-identifier probe above already documents:
+  // writing into the live tree races every sibling test that copies this repository. The first
+  // version of this case mutated docs/tickets/BOARD.md in place and reintroduced that bug.
+  const probes = [["planning", "only"].join(" "), ["no", "code"].join(" ")];
+  const parent = mkdtempSync(join(tmpdir(), "aos banned wording "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, { recursive: true, filter: (source) => basename(source) !== "node_modules" });
+    // Two probe targets, deliberately. A Markdown-only probe stays green if someone reinstates an
+    // extension allowlist that happens to include Markdown, which is exactly the regression this
+    // case exists to catch, so an extensionless tracked artifact is probed as well.
+    const probeTargets = ["docs/tickets/BOARD.md", ".gitignore"];
+    for (const target of probeTargets) {
+      const probeFile = resolve(fixture, target);
+      const original = readFileSync(probeFile, "utf8");
+      for (const probe of probes) {
+        writeFileSync(probeFile, `${original}\n\nprobe: this is ${probe}.\n`);
+        const mutated = spawnSync(process.execPath, [resolve(fixture, "scripts/validate-planning.mjs")], { cwd: fixture, encoding: "utf8" });
+        assert.equal(mutated.status, 1, `guard did not fail for probe ${probe} in ${target}`);
+        assert.ok(mutated.stderr.includes(`banned wording in ${target}:`), `guard did not name ${target}`);
+      }
+      writeFileSync(probeFile, original);
+    }
+    const restored = spawnSync(process.execPath, [resolve(fixture, "scripts/validate-planning.mjs")], { cwd: fixture, encoding: "utf8" });
+    assert.equal(restored.status, 0, "guard did not return to passing after restore");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("banned-wording-guard-covers-commit-messages", () => {
+  // A tree validator cannot see commit messages, and two of the day's seven violations were in
+  // them. This case closes that gap for the range under review: every commit not on the merge base
+  // is scanned. Fragments avoid embedding either literal.
+  const patterns = [new RegExp(["planning", "only"].join("[\\s-]+"), "i"), new RegExp(`\\b${["no", "code"].join("[\\s-]+")}\\b`, "i")];
+  const mergeBase = spawnSync("git", ["merge-base", "origin/dev", "HEAD"], { cwd: root, encoding: "utf8" });
+  // Fail closed. The first version returned early when origin/dev was missing, so the guard
+  // silently passed in exactly the environments least likely to have been checked by hand.
+  assert.equal(mergeBase.status, 0, "cannot resolve merge base with origin/dev; commit-message scan cannot fail open");
+  // Post-merge, HEAD is the merge base, so a range scan is empty and the merge or squash commit's
+  // own message would evade the check. Fall back to scanning HEAD itself in that case.
+  const base = mergeBase.stdout.trim();
+  const headSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+  const range = base === headSha ? "-1 HEAD" : `${base}..HEAD`;
+  // Enumerate first, then read each message on its own. An earlier version streamed every message
+  // in one `git log` with in-band record and field separators, which a message containing those
+  // same bytes could split: the banned phrase landed in the sha field and the scanned message was
+  // undefined. Commit messages are attacker-controlled text, so they are never parsed in band.
+  const revList = spawnSync("git", ["rev-list", ...range.split(" ")], { cwd: root, encoding: "utf8" });
+  assert.equal(revList.status, 0, "git rev-list failed");
+  for (const sha of revList.stdout.split("\n").map((line) => line.trim()).filter(Boolean)) {
+    const body = spawnSync("git", ["log", "-1", "--format=%B", sha], { cwd: root, encoding: "utf8" });
+    assert.equal(body.status, 0, `git log failed for ${sha.slice(0, 8)}`);
+    for (const pattern of patterns) {
+      assert.equal(pattern.test(body.stdout), false, `banned wording in commit message ${sha.slice(0, 8)}`);
+    }
+  }
 });
