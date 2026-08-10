@@ -1436,3 +1436,115 @@ test("rendering-is-idempotent", () => {
     rmSync(parent, { recursive: true, force: true });
   }
 });
+
+test("write-mode-repairs-drift", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos write repairs drift "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const lines = readFileSync(boardPath, "utf8").split("\n");
+    const start = lines.findIndex((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(start >= 0, "board-rows start marker is missing");
+    // Tamper with the first rendered data row (D0-001): mutate only its size cell.
+    lines[start + 3] = lines[start + 3].replace("| S0 · Name & Contracts | S |", "| S0 · Name & Contracts | X |");
+    assert.ok(lines[start + 3].includes("| X |"), "tamper did not change the row");
+    writeFileSync(boardPath, lines.join("\n"));
+    const repair = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(repair.status, 0, repair.stderr);
+    const check = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, /EXECUTION_VIEWS_CHECK surfaces=2 drift=0\n?$/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("dependency-drift-is-detected-byte-for-byte", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos dependency byte drift "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md");
+    const ticket = readFileSync(ticketPath, "utf8");
+    assert.ok(ticket.includes("- Dependencies: D0-002,D0-004"), "expected dependencies line is missing from D0-011");
+    // Whitespace and a trailing comma only: the parsed list is unchanged, the bytes are not.
+    writeFileSync(ticketPath, ticket.replace("- Dependencies: D0-002,D0-004", "- Dependencies: D0-002,   , D0-004,"));
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs"), "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("DRIFT"), result.stderr);
+    assert.ok(result.stderr.includes("D0-011"), `stderr did not name the drifted ticket: ${result.stderr}`);
+    assert.ok(result.stderr.includes("dependencies"), `stderr did not name the drifted field: ${result.stderr}`);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("duplicate-or-broken-markers-write-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos marker guard "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const original = readFileSync(boardPath, "utf8");
+    const endMarkerLine = "<!-- generated:board-rows end -->";
+    const firstEnd = original.indexOf(endMarkerLine);
+    assert.ok(firstEnd >= 0, "board-rows end marker is missing");
+
+    // A second end marker with unique prose between the two: write mode must fail closed
+    // and keep the prose that sits outside the generated block.
+    writeFileSync(boardPath, `${original.slice(0, firstEnd + endMarkerLine.length)}\nKEEP_OUTSIDE_PROSE\n${original.slice(firstEnd)}`);
+    const duplicated = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(duplicated.status, 1, duplicated.stdout);
+    assert.ok(duplicated.stderr.includes("expected exactly one end marker"), duplicated.stderr);
+    assert.ok(readFileSync(boardPath, "utf8").includes("KEEP_OUTSIDE_PROSE"), "prose between duplicated end markers was deleted");
+
+    // A missing start marker: write mode fails closed and changes nothing.
+    const startLine = original.split("\n").find((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(startLine, "board-rows start marker is missing");
+    writeFileSync(boardPath, original.replace(`${startLine}\n`, ""));
+    const before = readFileSync(boardPath);
+    const missingStart = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(missingStart.status, 1, missingStart.stdout);
+    assert.ok(missingStart.stderr.includes("expected exactly one start marker"), missingStart.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the file despite a missing start marker");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("unsafe-ticket-path-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos unsafe ticket path "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const catalogPath = join(fixture, "docs/issues.json");
+    const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+    const target = catalog.tickets.find((ticket) => ticket.id === "D0-001");
+    assert.ok(target, "D0-001 is missing from the catalog");
+    target.ticket_path = "docs/tickets/D0/../D0/D0-001-canonical-identifier-registry.md";
+    writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const before = readFileSync(boardPath);
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs")], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("ERROR invalid ticket_path D0-001"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite an unsafe ticket_path");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
