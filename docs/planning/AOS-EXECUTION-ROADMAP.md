@@ -18,12 +18,18 @@ If this roadmap conflicts with a higher authority, the higher authority wins and
 
 ## Current state
 
-- Executable ticket records: **71**
-- Superseded non-executable record: **D0-003 / issue #56**
+- Ticket records in the catalog: **71** — 70 executable and one superseded, D0-003 / issue #56
 - Ticket record without an owning contract: **D0-010 / issue #167** (see *Records that cannot enter a ready set*)
 - Current milestone: **S0 · Name & Contracts**
-- Current ready set: **D0-004 / #57**, **E0B-003 / #63**, **D0-005 / #173**, **E0C-001 / #64**, **E0D-001 / #67**
-- Verified complete: D0-001 / #54, D0-002 / #55, E0A-001 / #58, E0A-002 / #59, E0A-003 / #60, E0B-001 / #61, E0B-002 / #62
+- Static candidate set for S0: **D0-004 / #57**, **E0B-003 / #63**, **D0-005 / #173**
+- Merged on `dev` at this checkpoint: D0-001 / #54, D0-002 / #55, E0A-001 / #58, E0A-002 / #59, E0A-003 / #60, E0B-001 / #61, E0B-002 / #62
+
+The candidate set is a static sequencing derivation, not an authorization. `AGENTS.md` reserves that
+to the resolver: once D0-004 is verified on `dev`, only `npm run ops:status -- --strict --ticket <ID>`
+returning `readiness=ready` may authorize an execution packet, and this roadmap stays a static
+dependency and sequencing view. A record listed above is a candidate to resolve, never a receipt.
+Likewise, a merge commit reachable from `dev` is merge evidence and not by itself a current
+post-merge completion receipt.
 
 The checkpoint SHA is evidence, not a permanent target. Before every new execution packet, fetch `origin/dev`, resolve its exact SHA, rehydrate GitHub issue/PR state, and update this section if the ready set changed.
 
@@ -41,7 +47,16 @@ A ticket is implementation-ready only when every condition is true:
 
 Open issues, drafted code, green CI on a prior head, or an unmerged PR do not make a ticket ready.
 
-Dependency edges come from `docs/tickets/BOARD.md`, which is authored from the exact ticket contracts. An edge removed for lacking a declared PRD basis is removed from readiness computation as well; it is not reinstated here.
+Dependency edges come from `docs/tickets/BOARD.md`, which is authored from the exact ticket contracts.
+
+**The board's epic-entry edges are currently narrower than the PRDs declare, and the test meant to
+catch that cannot see it.** `PRD-E0B` declares `Dependencies: D0, E0-A`, `PRD-E0C` declares
+`E0-A, E0-B`, and `PRD-E0D` declares `E0-A, E0-C`, while the board records `None` for E0B-001,
+E0C-001 and E0D-001. The producer pattern that enforces a PRD basis matches the unhyphenated form
+`E0A` and not the hyphenated `E0-A` the PRDs actually use, so those edges read as undeclared and
+were removed as such. Until the pattern and the board are corrected under their owning ticket, the
+epic order in the PRDs and the north-star SSOT is the higher authority and this roadmap sequences
+by it: `D0 → E0-A → E0-B → E0-C → E0-D`.
 
 ## Records that cannot enter a ready set
 
@@ -64,7 +79,13 @@ Any ticket that ships a fixture directory needs that directory admitted to the w
 
 E0B-003 / #63 is the first record to hit this. Its candidate answered the need by introducing the general rule itself, which is D0-011's scope and was wrong in both directions: a `fixtures/<name>/*.json` declaration admitted the whole directory rather than the matching files, and a two-segment declaration such as the merged `fixtures/governance/effective-state/**` was not recognised at all. D0-011 criterion 14 states the correct behaviour that this implementation contradicts.
 
-Any record in this position has exactly two lawful moves: wait for D0-004 and then D0-011, or add a narrow carve-out owned by its own ticket on the D0-004 precedent, declared as such and superseded by D0-011 on that ticket's acceptance. Re-implementing the general rule under another ticket is not one of them.
+Two moves are available without changing any contract: wait for D0-004 and then D0-011, or add a
+narrow carve-out owned by the record's own ticket on the D0-004 precedent, declared in that ticket
+and superseded by D0-011 on its acceptance. A carve-out taken this way needs the ticket amended
+first; a pull-request description does not confer ownership. Other routes exist but all of them
+change a contract — a new successor ticket, an explicit ownership reassignment, a dependency change
+— and each needs its own acceptance. What is not available at any authority level is re-implementing
+D0-011's general rule under a different ticket.
 
 ## Recorded integrity exception
 
@@ -81,15 +102,27 @@ Serial foundation, complete: `#54 D0-001 → #55 D0-002`.
 Independent S0 lanes. Each has all declared dependencies satisfied and disjoint ownership, so at most one worker per lane may run concurrently:
 
 - Lane A — governance validator: `#57 D0-004`
-- Lane B — capability doctor: `#63 E0B-003` — dependency-ready, but see *Fixture admission is a shared blocker* below
+- Lane B — capability doctor: `#63 E0B-003` — see *Fixture admission is a shared blocker* below
 - Lane C — governance mode chain: `#173 D0-005 → #174 D0-006 → #175 D0-007 → #176 D0-008 → #177 D0-009`
-- Lane D — pack simulation chain: `#64 E0C-001 → #65 E0C-002 → #66 E0C-003`
-- Lane E — prescription chain: `#67 E0D-001 → #68 E0D-002 → #69 E0D-003`
+
+Lanes A and C are D0 records. Lane B is the last open E0-B record; E0-A is merged, so its epic
+predecessor is satisfied.
+
+The E0-C and E0-D chains are **not** independent lanes. `PRD-E0C` declares `E0-A, E0-B` and
+`PRD-E0D` declares `E0-A, E0-C`, so they follow in epic order once their predecessors complete:
+
+- After E0-B: `#64 E0C-001 → #65 E0C-002 → #66 E0C-003`
+- After E0-C: `#67 E0D-001 → #68 E0D-002 → #69 E0D-003`
+
+Reading `None` from the board for E0C-001 or E0D-001 and starting either early contradicts the
+owning PRD, which outranks the board.
 
 Joins:
 
 - `#182 D0-011` unblocks on verified `#55 D0-002` and `#57 D0-004`.
-- S0 exit requires every S0 record verified except D0-010, whose contract must exist and be accepted first.
+- S0 exit requires every S0 record verified. D0-010 is included: authoring and accepting its contract
+  makes it executable, and it must then be executed and verified like any other record. An accepted
+  contract alone does not satisfy the exit.
 
 ### S1 — G0 scorer truth
 
@@ -148,14 +181,21 @@ Serial completion: `#101 → #102 → #103 → #104 → #105 → #106 → #107 �
 
 ## Post-merge rebase requirement
 
-Every merge to `dev` invalidates the gate-administration batch recorded in `docs/decisions/maintainer-gate-registry.v2.json`, because that batch pins a candidate head that must be based on the current `origin/dev`. The observable symptom on any branch that has not caught up is:
+A merge to `dev` does not invalidate an accepted batch in
+`docs/decisions/maintainer-gate-registry.v2.json` by itself. What it invalidates is the ancestry of
+any candidate recorded against the previous head: a batch pins a candidate that must be based on the
+current `origin/dev`, so a branch left behind stops satisfying it. The observable symptom on such a
+branch is:
 
 ```
 PLANNING_CONTRACT_FAIL 1
 - Gate Administration batch <id> exact candidate HEAD is not based on target ref origin/dev
 ```
 
-together with six failing cases covering the registry, the structural census, the identity control-plane paths, and the skeleton ownership check. `dev` itself stays green; only branches behind it fail.
+together with several failing cases covering the registry, the structural census, the identity
+control-plane paths, and the skeleton ownership check. The exact count depends on which cases the
+branch carries, so treat the named `PLANNING_CONTRACT_FAIL` line as the signal rather than a
+failure total. `dev` itself stays green; only branches behind it fail.
 
 This is a stale-evidence signal working as designed, not a defect to route around. After any merge, every open candidate must be rebased onto the new `dev` head and re-verified before its evidence is quoted again. Evidence measured on a superseded base does not describe the candidate and must not be carried into a review.
 
