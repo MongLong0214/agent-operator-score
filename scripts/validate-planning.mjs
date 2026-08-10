@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateGateAdministration } from "./validate-gate-administration.mjs";
 
@@ -883,7 +883,8 @@ const BANNED_WORDING = [
 // each round of review found another tracked artifact it skipped — and walking the tree also
 // scanned untracked local scratch files, which would make this gate fail nondeterministically on
 // a developer machine. `git ls-files` is exactly the set of tracked artifacts and needs no
-// allowlist. Binary blobs are skipped by content sniff, not by extension.
+// allowlist. Every tracked artifact is scanned as text; the repository tracks no binary blob, and
+// admitting one would need this decision revisited rather than a silent skip that hides its bytes.
 const trackedFiles = spawnSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" });
 // Prefer git enumeration in a real checkout. Sibling tests copy this repository into a temporary
 // fixture without its git metadata and run the validator there, so a filesystem walk is the correct
