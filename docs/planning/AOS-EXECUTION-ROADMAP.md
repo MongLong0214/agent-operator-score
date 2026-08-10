@@ -4,6 +4,13 @@ Status: **ACTIVE**
 
 Scope: execution order, ready-set calculation, parallel lanes, joins, and agent handoff
 
+<!-- generated:roadmap-authority-header start — rendered by scripts/render-execution-views.mjs; do not edit by hand -->
+**STATIC SEQUENCING VIEW — NOT OPERATIONAL AUTHORITY.** This file carries no branch SHA, no ready
+set, and no readiness verdict. Before D0-004 is verified on `dev`, only a maintainer-approved
+exact-base execution packet authorizes work; after it is verified, only
+`npm run ops:status -- --strict --ticket <ID>` returning `readiness=ready` does. When a required
+external fact is unavailable the ready set is empty, and there is no fallback to this file.
+<!-- generated:roadmap-authority-header end -->
 
 This is the stable entrypoint for deciding what work may start next. It is subordinate to the product authority chain in `AGENTS.md`:
 

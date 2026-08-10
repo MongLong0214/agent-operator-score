@@ -31,8 +31,8 @@ const declaredPrdEpicDependencies = () => {
   }
   return declared;
 };
-const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=71 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=12 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/doctor-contract\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/doctor-contract\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts banned_wording_scan=on\n?$/;
-const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=71 milestones=6 product_code_files=0 control_plane_code_files=9 control_plane_allowlist=9 ticket_owned_code_files=12 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/doctor-contract\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/doctor-contract\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts banned_wording_scan=skipped\n?$/;
+const acceptedValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=71 milestones=6 product_code_files=0 control_plane_code_files=10 control_plane_allowlist=10 ticket_owned_code_files=12 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=invalidated product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/doctor-contract\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/doctor-contract\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts banned_wording_scan=on\n?$/;
+const pendingValidatorOutput = /PLANNING_CONTRACT_PASS adr=13 prd=20 tickets=71 milestones=6 product_code_files=0 control_plane_code_files=10 control_plane_allowlist=10 ticket_owned_code_files=12 canonical_vectors=20 semantic_checks=static_catalog_enforced gates=pending product_code_paths=none ticket_owned_code_paths=packages\/schema\/src\/capability\.ts,packages\/schema\/src\/doctor-contract\.ts,packages\/schema\/src\/issuance-contract\.ts,packages\/schema\/src\/metric-registry\.ts,packages\/schema\/src\/scoring-contract\.ts,packages\/schema\/src\/session-class\.ts,packages\/schema\/test\/capability\.test\.ts,packages\/schema\/test\/doctor-contract\.test\.ts,packages\/schema\/test\/issuance-contract\.test\.ts,packages\/schema\/test\/metric-registry\.test\.ts,packages\/schema\/test\/scoring-contract\.test\.ts,packages\/schema\/test\/session-class\.test\.ts banned_wording_scan=skipped\n?$/;
 
 const setPendingGateRegistry = (fixture) => {
   const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
@@ -1350,5 +1350,89 @@ test("banned-wording-guard-covers-commit-messages", () => {
     for (const pattern of patterns) {
       assert.equal(pattern.test(body.stdout), false, `banned wording in commit message ${sha.slice(0, 8)}`);
     }
+  }
+});
+
+test("rendered-board-matches-the-static-catalog", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos rendered board "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs"), "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /EXECUTION_VIEWS_CHECK surfaces=2 drift=0\n?$/);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("board-drift-fails-closed", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos board drift "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const lines = readFileSync(boardPath, "utf8").split("\n");
+    const start = lines.findIndex((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(start >= 0, "board-rows start marker is missing");
+    // Tamper with the first rendered data row (D0-001): mutate only its size cell.
+    lines[start + 3] = lines[start + 3].replace("| S0 · Name & Contracts | S |", "| S0 · Name & Contracts | X |");
+    assert.ok(lines[start + 3].includes("| X |"), "tamper did not change the row");
+    writeFileSync(boardPath, lines.join("\n"));
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs"), "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("docs/tickets/BOARD.md"), `stderr did not name the drifted surface: ${result.stderr}`);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("catalog-and-ticket-disagreement-fails-closed", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos catalog ticket drift "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-001-canonical-identifier-registry.md");
+    const ticket = readFileSync(ticketPath, "utf8");
+    assert.ok(ticket.includes("- Size: S"), "expected size line is missing from D0-001");
+    writeFileSync(ticketPath, ticket.replace("- Size: S", "- Size: L"));
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs"), "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("DRIFT"), result.stderr);
+    assert.ok(result.stderr.includes("D0-001"), `stderr did not name the drifted ticket: ${result.stderr}`);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("rendering-is-idempotent", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos render idempotent "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const targets = [join(fixture, "docs/tickets/BOARD.md"), join(fixture, "docs/planning/AOS-EXECUTION-ROADMAP.md")];
+    const first = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(first.status, 0, first.stderr);
+    const before = targets.map((path) => readFileSync(path));
+    const second = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(second.status, 0, second.stderr);
+    targets.forEach((path, index) => {
+      assert.ok(readFileSync(path).equals(before[index]), `second render changed ${basename(path)}`);
+    });
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
   }
 });

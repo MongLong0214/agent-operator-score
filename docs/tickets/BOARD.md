@@ -6,18 +6,13 @@ Current static rows are authored from the exact ticket contracts and static sequ
 
 This board owns only ticket IDs, milestone placement, size, and dependency edges. It contains no current ready ticket or blocker verdict. An open or closed GitHub issue is not implementation authorization.
 
+<!-- generated:board-rows start — rendered by scripts/render-execution-views.mjs; do not edit by hand -->
 | Ticket | Epic | Milestone | Size | Dependencies |
 |---|---|---|---:|---|
 | [D0-001](D0/D0-001-canonical-identifier-registry.md) | D0 | S0 · Name & Contracts | S | None |
 | [D0-002](D0/D0-002-repository-and-npm-workspace-skeleton.md) | D0 | S0 · Name & Contracts | M | D0-001 |
 | [D0-003](D0/D0-003-active-documentation-and-legacy-boundary-migration.md) | D0 | S0 · Name & Contracts | M | D0-001 |
 | [D0-004](D0/D0-004-planning-contract-validator-and-governance-gate.md) | D0 | S0 · Name & Contracts | L | D0-002 |
-| [D0-005](D0/D0-005-governance-mode-contract-and-advisory-boundary.md) | D0 | S0 · Name & Contracts | M | None |
-| [D0-006](D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md) | D0 | S0 · Name & Contracts | M | D0-005 |
-| [D0-007](D0/D0-007-artifact-manifest-v3-and-legacy-migration.md) | D0 | S0 · Name & Contracts | L | D0-006 |
-| [D0-008](D0/D0-008-github-review-acceptance-derivation-inactive.md) | D0 | S0 · Name & Contracts | L | D0-007 |
-| [D0-009](D0/D0-009-authenticated-review-activation.md) | D0 | S0 · Name & Contracts | L | D0-008 |
-| [D0-011](D0/D0-011-ticket-derived-fixture-directory-admission.md) | D0 | S0 · Name & Contracts | M | D0-002,D0-004 |
 | [E0A-001](E0-A/E0A-001-freeze-m01-m20-metric-registry.md) | E0-A | S0 · Name & Contracts | M | D0-004 |
 | [E0A-002](E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md) | E0-A | S0 · Name & Contracts | L | E0A-001 |
 | [E0A-003](E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md) | E0-A | S0 · Name & Contracts | M | E0A-002 |
@@ -79,6 +74,13 @@ This board owns only ticket IDs, milestone placement, size, and dependency edges
 | [E14-001](E14/E14-001-complete-name-license-notices-and-security-clearance.md) | E14 | S5 · Public OSS | L | E13-002 |
 | [E14-002](E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md) | E14 | S5 · Public OSS | L | E14-001 |
 | [E14-003](E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md) | E14 | S5 · Public OSS | L | E14-002 |
+| [D0-005](D0/D0-005-governance-mode-contract-and-advisory-boundary.md) | D0 | S0 · Name & Contracts | M | None |
+| [D0-006](D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md) | D0 | S0 · Name & Contracts | M | D0-005 |
+| [D0-007](D0/D0-007-artifact-manifest-v3-and-legacy-migration.md) | D0 | S0 · Name & Contracts | L | D0-006 |
+| [D0-008](D0/D0-008-github-review-acceptance-derivation-inactive.md) | D0 | S0 · Name & Contracts | L | D0-007 |
+| [D0-009](D0/D0-009-authenticated-review-activation.md) | D0 | S0 · Name & Contracts | L | D0-008 |
+| [D0-011](D0/D0-011-ticket-derived-fixture-directory-admission.md) | D0 | S0 · Name & Contracts | M | D0-002,D0-004 |
+<!-- generated:board-rows end -->
 
 ## Gate invariant
 
