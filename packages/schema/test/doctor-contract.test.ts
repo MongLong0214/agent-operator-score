@@ -2172,4 +2172,101 @@ describe("doctor-contract", () => {
     assert.equal(result.human_projection[1], "verdict: SCORE_BLOCKED exit=30 mode=IMPORTED_SESSION");
     assert.equal(result.human_projection[20], `note: ${NOT_USER_FAILURE_CLAUSE}`);
   });
+
+  // The manifest names one frozen matrix variant per canonical report, and the variant is
+  // read as a string, never coerced: an earlier String(...) coercion let a one-element array
+  // naming the id pass as the id itself, validating a wrong-shaped contract to COMPLETE.
+  test("canonical-matrix-variant-is-read-as-a-string-not-coerced", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    const nonStrings: [string, unknown, string][] = [
+      ["one-element array", ["as-declared"], "<unnamed>"],
+      ["number", 0, "0"],
+      ["plain object", { variant_id: "as-declared" }, "<unnamed>"],
+      ["null-prototype object", Object.create(null), "<unnamed>"]
+    ];
+    for (const [label, variant, named] of nonStrings) {
+      const tampered = frozen();
+      entryOf(tampered, "complete").matrix_variant = variant;
+      const result = validate(report, tampered, matrix);
+      assert.equal(result.ok, false, label);
+      assert.equal(
+        messageFor(result, "CONTRACT_CANONICAL_VARIANT_UNKNOWN"),
+        `CONTRACT_CANONICAL_VARIANT_UNKNOWN complete names ${named}`, label);
+      assert.equal(result.verdict, "SCORE_BLOCKED", label);
+      assert.equal(result.exit_code, 30, label);
+    }
+  });
+
+  // A value with no prototype carries no primitive coercion at all, so a naming site that
+  // calls String(...) throws a TypeError instead of refusing the value. Every site names the
+  // value through the same helper, so a null-prototype value fails closed with the value
+  // unnamed — in the contract's row tables and inside a canonical fixture alike.
+  test("null-prototype-values-fail-closed-without-throwing", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    const cases: [string, () => ReturnType<typeof validate>, string[]][] = [
+      ["canonical fixture runtime_id", () => validate(report, doc, matrix,
+        withFixture("complete", (canonical) => { canonical.runtime_id = Object.create(null); })),
+        ["CONTRACT_CANONICAL_REPORT_INVALID complete UNKNOWN_RUNTIME <unnamed> is outside the frozen SSOT 9.2 runtime set",
+          "CONTRACT_VERDICT_UNEXERCISED COMPLETE is the verdict of no canonical report"]],
+      ["mode row id", () => {
+        const tampered = frozen();
+        tampered.assessment_modes[0].mode_id = Object.create(null);
+        return validate(report, tampered, matrix);
+      },
+        ["CONTRACT_UNKNOWN_ROW mode <unnamed> is outside the frozen set",
+          "CONTRACT_ROW_GAP mode VERIFIED_ASSESSMENT is absent from the contract"]],
+      ["mode row ordinal", () => {
+        const tampered = frozen();
+        tampered.assessment_modes[0].ordinal = Object.create(null);
+        return validate(report, tampered, matrix);
+      },
+        ["CONTRACT_ROW_ORDINAL_MISMATCH mode VERIFIED_ASSESSMENT declares <unnamed>"]]
+    ];
+    for (const [label, produce, expected] of cases) {
+      let result!: ReturnType<typeof validate>;
+      assert.doesNotThrow(() => { result = produce(); }, label);
+      assert.deepEqual(result.errors, expected, label);
+      assert.equal(result.ok, false, label);
+      assert.equal(result.verdict, "SCORE_BLOCKED", label);
+      assert.equal(result.exit_code, 30, label);
+      assert.deepEqual(result.reasons, [], label);
+      assert.deepEqual(result.human_projection, [], label);
+    }
+  });
+
+  // A version token is echoed into the projection, so the shape check refuses control and
+  // bidi characters: an escape sequence forges terminal output, a NUL breaks log parsing and
+  // a bidi override disguises direction. The refusal is the existing shape error, and it
+  // holds even for a report that is otherwise perfectly self-consistent.
+  test("version-tokens-refuse-control-and-bidi-characters", () => {
+    const doc = frozen();
+    const matrix = frozenMatrix();
+    const report = fixtureOf("complete");
+
+    const smuggled: [string, string][] = [
+      ["escape", "\u001b[2JFAKE_COMPLETE"],
+      ["nul", "\u0000"],
+      ["bidi override", "\u202e"]
+    ];
+    for (const [label, token] of smuggled) {
+      const forged = clone(report);
+      forged.capability_digest.runtime_version = token;
+      // The forgery is complete: the projection line carries the same token, so nothing but
+      // the token shape check can refuse it.
+      forged.human_projection = report.human_projection.map((line: string) =>
+        line.replace(`runtime_version=${report.capability_digest.runtime_version}`, `runtime_version=${token}`));
+      const result = validate(forged, doc, matrix);
+      assert.equal(result.ok, false, label);
+      assert.deepEqual(result.errors,
+        [`DIGEST_DECLARED_FIELD_INVALID runtime_version ${token} is not a version token`], label);
+      assert.equal(result.verdict, "SCORE_BLOCKED", label);
+      assert.equal(result.exit_code, 30, label);
+    }
+  });
 });
