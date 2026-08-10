@@ -1337,12 +1337,17 @@ test("banned-wording-guard-covers-commit-messages", () => {
   const base = mergeBase.stdout.trim();
   const headSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
   const range = base === headSha ? "-1 HEAD" : `${base}..HEAD`;
-  const log = spawnSync("git", ["log", "--format=%H%x00%B%x01", ...range.split(" ")], { cwd: root, encoding: "utf8" });
-  assert.equal(log.status, 0, "git log failed");
-  for (const entry of log.stdout.split("\u0001").filter((chunk) => chunk.trim())) {
-    const [sha, message] = entry.split("\u0000");
+  // Enumerate first, then read each message on its own. An earlier version streamed every message
+  // in one `git log` with in-band record and field separators, which a message containing those
+  // same bytes could split: the banned phrase landed in the sha field and the scanned message was
+  // undefined. Commit messages are attacker-controlled text, so they are never parsed in band.
+  const revList = spawnSync("git", ["rev-list", ...range.split(" ")], { cwd: root, encoding: "utf8" });
+  assert.equal(revList.status, 0, "git rev-list failed");
+  for (const sha of revList.stdout.split("\n").map((line) => line.trim()).filter(Boolean)) {
+    const body = spawnSync("git", ["log", "-1", "--format=%B", sha], { cwd: root, encoding: "utf8" });
+    assert.equal(body.status, 0, `git log failed for ${sha.slice(0, 8)}`);
     for (const pattern of patterns) {
-      assert.equal(pattern.test(message), false, `banned wording in commit message ${sha.trim().slice(0, 8)}`);
+      assert.equal(pattern.test(body.stdout), false, `banned wording in commit message ${sha.slice(0, 8)}`);
     }
   }
 });
