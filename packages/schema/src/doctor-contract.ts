@@ -167,6 +167,10 @@ const DECLARED_DIGEST_FIELDS = ["runtime_version", "protocol_or_schema_version",
 const DERIVED_DIGEST_FIELDS = ["source_class", "supported_event_groups", "known_missing_events"];
 const VERSION_TOKEN = /^\S+$/;
 const VERSION_TOKEN_MAX_CHARS = 64;
+// A version token is echoed into the projection and stored in the digest, so control and
+// bidi characters are refused: they forge terminal output, disguise direction and break
+// log parsing.
+const FORBIDDEN_TOKEN_CHARS = /[\u0000-\u001F\u007F-\u009F\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
 
 /** The capability matrix's source classes, in the order the digest inventory reports them. */
 const SOURCE_CLASSES = ["PRIMARY", "SECONDARY", "RUNNER_DERIVED"];
@@ -533,7 +537,7 @@ const validateDigest = (
   }
   for (const field of DECLARED_DIGEST_FIELDS) {
     const value = declared[field];
-    if (!isFilledString(value) || !VERSION_TOKEN.test(value) || value.length > VERSION_TOKEN_MAX_CHARS) {
+    if (!isFilledString(value) || !VERSION_TOKEN.test(value) || FORBIDDEN_TOKEN_CHARS.test(value) || value.length > VERSION_TOKEN_MAX_CHARS) {
       push(`DIGEST_DECLARED_FIELD_INVALID ${field} ${namedValue(value)} is not a version token`);
     }
   }
@@ -618,7 +622,7 @@ const validateTable = (
     if (!isPlainRecord(entry)) { push(`CONTRACT_ROW_NOT_AN_OBJECT ${spec.kind} position ${index + 1}`); continue; }
     const id = entry[spec.idField];
     if (typeof id !== "string" || !spec.ids.includes(id)) {
-      push(`CONTRACT_UNKNOWN_ROW ${spec.kind} ${String(id)} is outside the frozen set`);
+      push(`CONTRACT_UNKNOWN_ROW ${spec.kind} ${namedValue(id)} is outside the frozen set`);
       continue;
     }
     if (seen.has(id)) { push(`CONTRACT_DUPLICATE_ROW ${spec.kind} ${id} appears more than once`); continue; }
@@ -635,7 +639,7 @@ const validateTable = (
       continue;
     }
     if (Object.hasOwn(entry, "ordinal") && entry.ordinal !== canonicalIndex + 1) {
-      push(`CONTRACT_ROW_ORDINAL_MISMATCH ${spec.kind} ${id} declares ${String(entry.ordinal)}`);
+      push(`CONTRACT_ROW_ORDINAL_MISMATCH ${spec.kind} ${id} declares ${namedValue(entry.ordinal)}`);
     }
     // `statement` is prose the derivation never reads and is checked for presence only — that
     // proves the field exists, not that it says anything true. Every rule a row carries lives in
@@ -875,7 +879,7 @@ const validateContract = (
       }
       const runtimeId = isPlainRecord(canonical) ? canonical.runtime_id : undefined;
       if (typeof runtimeId !== "string" || !RUNTIME_IDS.includes(runtimeId)) {
-        push(`CONTRACT_CANONICAL_REPORT_INVALID ${id} UNKNOWN_RUNTIME ${String(runtimeId)} is outside the frozen SSOT 9.2 runtime set`);
+        push(`CONTRACT_CANONICAL_REPORT_INVALID ${id} UNKNOWN_RUNTIME ${namedValue(runtimeId)} is outside the frozen SSOT 9.2 runtime set`);
         return;
       }
       const perturbed = variantMatrix(matrix, runtimeId, FROZEN_VARIANTS[variantIndex][2], proofs);

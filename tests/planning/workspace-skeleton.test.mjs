@@ -305,7 +305,7 @@ test("focused-lane-is-not-silently-empty", () => {
   // per-file results the runner emits, so adding a test file shifts all of them at once.
   const lanes = [
     ["metric-registry", 18], ["issuance-contract", 12], ["capability", 14],
-    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 33]
+    ["scoring-contract", 15], ["session-class", 23], ["doctor-contract", 36]
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);
