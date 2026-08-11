@@ -43,6 +43,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ops:check -- --offline
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: npm run ops:render -- --check
       - name: Capture operational state JSON
         run: node scripts/resolve-execution-state.mjs --offline --json > operational-state.json
@@ -82,8 +84,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ops:check -- --offline
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: npm run ops:render -- --check
       - name: Capture operational state JSON (online strict)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: npm run ops:status -- --strict --json > operational-state.json
       - name: Upload operational state artifact
         uses: actions/upload-artifact@v4
