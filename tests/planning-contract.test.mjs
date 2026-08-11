@@ -1771,7 +1771,82 @@ test("write-failure-leaves-no-partial-state", (t) => {
   }
 });
 
+test("rename-failure-rolls-back-every-surface", (t) => {
+  const parent = mkdtempSync(join(tmpdir(), "aos rename failure rollback "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const roadmapPath = join(fixture, "docs/planning/AOS-EXECUTION-ROADMAP.md");
+    // Both surfaces drift, so write mode must rename both. The board (the first
+    // surface) renames successfully; the roadmap rename then fails, so the board
+    // must come back byte-for-byte to the drift bytes recorded here.
+    const boardLines = readFileSync(boardPath, "utf8").split("\n");
+    const boardStart = boardLines.findIndex((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(boardStart >= 0, "board-rows start marker is missing");
+    boardLines[boardStart + 3] = boardLines[boardStart + 3].replace("| S0 · Name & Contracts | S |", "| S0 · Name & Contracts | X |");
+    assert.ok(boardLines[boardStart + 3].includes("| X |"), "tamper did not change the board row");
+    writeFileSync(boardPath, boardLines.join("\n"));
+    const roadmapLines = readFileSync(roadmapPath, "utf8").split("\n");
+    const roadmapStart = roadmapLines.findIndex((line) => line.startsWith("<!-- generated:roadmap-authority-header start"));
+    assert.ok(roadmapStart >= 0, "roadmap-authority-header start marker is missing");
+    roadmapLines[roadmapStart + 1] = "**TAMPERED** roadmap authority header line";
+    writeFileSync(roadmapPath, roadmapLines.join("\n"));
+    const boardDrift = readFileSync(boardPath);
+    const roadmapDrift = readFileSync(roadmapPath);
+    // A CommonJS preload patches fs.renameSync before the renderer module loads, and
+    // syncBuiltinESMExports carries the patch into the renderer's named ESM imports:
+    // only the second surface's rename throws, after the first rename already moved.
+    const loaderPath = join(fixture, "rename-failure-loader.cjs");
+    writeFileSync(loaderPath, `const fs = require("node:fs");
+const { syncBuiltinESMExports } = require("node:module");
+const rename = fs.renameSync;
+fs.renameSync = (from, to) => {
+  if (String(to).endsWith("docs/planning/AOS-EXECUTION-ROADMAP.md")) {
+    const error = new Error("injected EIO");
+    error.code = "EIO";
+    throw error;
+  }
+  return rename(from, to);
+};
+syncBuiltinESMExports();
+`);
+    // Prove the preload actually takes effect on this Node version before judging the
+    // renderer run: with the patch active the injected EIO fires before the real
+    // renameSync ever sees the missing source; without it the probe cannot say EIO.
+    const probe = spawnSync(process.execPath, [
+      "--require", loaderPath, "-e",
+      "const fs = require(\"node:fs\"); try { fs.renameSync(\"__preload_probe_source__\", \"docs/planning/AOS-EXECUTION-ROADMAP.md\"); console.log(\"PRELOAD_INACTIVE\"); } catch (error) { console.log(error && error.code === \"EIO\" ? \"PRELOAD_ACTIVE\" : \"PRELOAD_UNEXPECTED:\" + (error && error.code)); }"
+    ], { encoding: "utf8" });
+    if (probe.status !== 0 || !probe.stdout.includes("PRELOAD_ACTIVE")) {
+      t.skip(`--require preload did not take effect on Node ${process.version} (probe exit ${probe.status}: ${probe.stdout.trim() || probe.stderr.trim()}); cannot exercise a rename failure`);
+      return;
+    }
+    const result = spawnSync(process.execPath, ["--require", loaderPath, script], { cwd: fixture, encoding: "utf8" });
+    if (result.status === 0) {
+      t.skip(`--require preload loaded but did not intercept the renderer's renameSync on Node ${process.version} (renderer exited 0 despite drifted surfaces); cannot exercise a rename failure`);
+      return;
+    }
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("cannot write docs/planning/AOS-EXECUTION-ROADMAP.md"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(boardDrift), "rollback did not restore the board to its drift-state bytes after the first rename succeeded");
+    assert.ok(readFileSync(roadmapPath).equals(roadmapDrift), "the roadmap surface changed despite its rename failing");
+    const tempPattern = (surfacePath) => new RegExp(`^\\.${basename(surfacePath).replace(/\./g, "\\.")}\\.render-tmp-`);
+    const boardLeftovers = readdirSync(join(fixture, "docs", "tickets")).filter((entry) => tempPattern(boardPath).test(entry));
+    const roadmapLeftovers = readdirSync(join(fixture, "docs", "planning")).filter((entry) => tempPattern(roadmapPath).test(entry));
+    assert.equal(boardLeftovers.length, 0, `temp files left in docs/tickets: ${boardLeftovers.join(", ")}`);
+    assert.equal(roadmapLeftovers.length, 0, `temp files left in docs/planning: ${roadmapLeftovers.join(", ")}`);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
 test("leading-whitespace-in-a-declared-value-is-a-conflict", () => {
+
   const parent = mkdtempSync(join(tmpdir(), "aos leading whitespace conflict "));
   const fixture = join(parent, "repository");
   try {
@@ -1803,6 +1878,118 @@ test("leading-whitespace-in-a-declared-value-is-a-conflict", () => {
     assert.ok(sizeResult.stderr.includes("DRIFT"), sizeResult.stderr);
     assert.ok(sizeResult.stderr.includes("D0-001"), sizeResult.stderr);
     assert.ok(sizeResult.stderr.includes("size"), sizeResult.stderr);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("missing-ticket-contract-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos missing ticket contract "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const catalogPath = join(fixture, "docs/issues.json");
+    const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+    const target = catalog.tickets.find((ticket) => ticket.id === "D0-001");
+    assert.ok(target, "D0-001 is missing from the catalog");
+    target.ticket_path = "docs/tickets/D0/missing.md";
+    writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const before = readFileSync(boardPath);
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs")], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("ERROR missing ticket contract D0-001 docs/tickets/D0/missing.md"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a missing ticket contract");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("duplicate-declaration-is-a-conflict", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos duplicate declaration "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md");
+    const ticket = readFileSync(ticketPath, "utf8");
+    assert.ok(ticket.includes("- Dependencies: D0-002,D0-004"), "expected dependencies line is missing from D0-011");
+    // A second declaration with a different value: the first line must not shadow it.
+    writeFileSync(ticketPath, ticket.replace("- Dependencies: D0-002,D0-004", "- Dependencies: D0-002,D0-004\n- Dependencies: D0-002"));
+    const different = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(different.status, 1, different.stdout);
+    assert.ok(different.stderr.includes("duplicate"), different.stderr);
+    assert.ok(different.stderr.includes("D0-011"), different.stderr);
+    // The same duplication with agreeing values: still a conflict.
+    writeFileSync(ticketPath, ticket.replace("- Dependencies: D0-002,D0-004", "- Dependencies: D0-002,D0-004\n- Dependencies: D0-002,D0-004"));
+    const same = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(same.status, 1, same.stdout);
+    assert.ok(same.stderr.includes("duplicate"), same.stderr);
+    assert.ok(same.stderr.includes("D0-011"), same.stderr);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("lookalike-start-marker-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos lookalike start marker "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const original = readFileSync(boardPath, "utf8");
+    const startLine = original.split("\n").find((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(startLine, "board-rows start marker is missing");
+    const unique = "UNIQUE_PROSE_UNDER_LOOKALIKE_START_MARKER";
+    writeFileSync(boardPath, original.replace(`${startLine}\n`, `<!-- generated:board-rows starter -->\n${unique}\n`));
+    const before = readFileSync(boardPath);
+    const result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("expected exactly one start marker"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a lookalike start marker");
+    assert.ok(readFileSync(boardPath, "utf8").includes(unique), "prose under the lookalike start marker was deleted");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("mixed-eol-preserves-bytes-outside-markers", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos mixed eol "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const lines = readFileSync(boardPath, "utf8").split("\n");
+    const start = lines.findIndex((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(start >= 2, "board-rows start marker is missing or has no preceding line");
+    // One line above the generated block becomes CRLF, and a row inside the block
+    // drifts: the repair must rewrite only the block, not the outside line's terminator.
+    const crlfLineIndex = 0;
+    lines[crlfLineIndex] = `${lines[crlfLineIndex]}\r`;
+    lines[start + 3] = lines[start + 3].replace("| S0 · Name & Contracts | S |", "| S0 · Name & Contracts | X |");
+    assert.ok(lines[start + 3].includes("| X |"), "tamper did not change the board row");
+    writeFileSync(boardPath, lines.join("\n"));
+    const result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const after = readFileSync(boardPath, "utf8");
+    const afterLines = after.split("\n");
+    assert.ok(afterLines[crlfLineIndex].endsWith("\r"), "the CRLF line outside the markers lost its carriage return");
+    assert.equal((after.match(/\r/g) || []).length, 1, "write mode changed line endings outside the generated block");
+    assert.ok(after.includes("| S0 · Name & Contracts | S |"), "write mode did not repair the drifted row");
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }

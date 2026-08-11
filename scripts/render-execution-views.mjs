@@ -123,16 +123,17 @@ const renderBoardRows = (tickets) => {
 };
 
 const locateGeneratedBlock = (relativePath, marker, lines) => {
-  // Marker lines are matched per line after trimming, never by substring: the start line
-  // by its fixed prefix (the comment tail may vary), the end line by exact equality. Each
-  // marker must occur exactly once in the whole file, and the end after the start.
-  const startPrefix = `<!-- generated:${marker} start`;
+  // Marker lines are matched per line after trimming, never by substring or prefix: the
+  // start line must equal the fixed marker string in full (no variable tail), and so must
+  // the end line. Each marker must occur exactly once in the whole file, and the end
+  // after the start.
+  const startLine = startMarker(marker);
   const endLine = endMarker(marker);
   const starts = [];
   const ends = [];
   lines.forEach((line, index) => {
     const trimmed = line.trim();
-    if (trimmed.startsWith(startPrefix)) starts.push(index);
+    if (trimmed === startLine) starts.push(index);
     if (trimmed === endLine) ends.push(index);
   });
   if (starts.length !== 1) {
@@ -177,10 +178,25 @@ if (renderedContent) {
   for (const surface of SURFACES) {
     const text = readRepositoryFile(surface.path);
     if (text === null) continue;
-    // Remember the file's dominant line ending and restore it on write; a repaired block
-    // must never rewrite unrelated bytes just because the line ending differs.
-    const eol = text.includes("\r\n") ? "\r\n" : "\n";
-    const lines = text.split(/\r\n|\n|\r/);
+    // Split into lines while keeping each line's original terminator: on reassembly the
+    // lines outside the generated block must reproduce their original bytes exactly, and
+    // only the freshly rendered lines inside the block take the file's dominant line
+    // ending. A repaired block must never rewrite unrelated bytes just because the line
+    // ending differs.
+    const parts = text.split(/(\r\n|\n|\r)/);
+    const lines = [];
+    const lineEols = [];
+    for (let index = 0; index < parts.length; index += 2) {
+      lines.push(parts[index]);
+      lineEols.push(parts[index + 1] ?? "");
+    }
+    let crlfCount = 0;
+    let lfCount = 0;
+    for (const terminator of lineEols) {
+      if (terminator === "\r\n") crlfCount += 1;
+      else if (terminator !== "") lfCount += 1;
+    }
+    const eol = crlfCount > lfCount ? "\r\n" : "\n";
     const block = locateGeneratedBlock(surface.path, surface.marker, lines);
     if (!block) continue;
     // The generated block holds table rows and fixed wording; it never holds a heading.
@@ -193,7 +209,7 @@ if (renderedContent) {
     const expected = [startMarker(surface.marker), ...renderedContent.get(surface.marker), endMarker(surface.marker)];
     const drifted = lines.slice(block.start, block.end + 1).join("\n") !== expected.join("\n");
     if (drifted) pushDrift(`DRIFT ${surface.path} ${surface.marker} disk block differs from rendered block`);
-    surfaceStates.push({ surface, lines, block, expected, eol, drifted });
+    surfaceStates.push({ surface, lines, lineEols, block, expected, eol, drifted });
   }
 
   // Byte-for-byte catalog/ticket agreement on size and dependency values. The ticket
@@ -208,7 +224,10 @@ if (renderedContent) {
     const resolved = resolve(root, record.ticket_path);
     const violation = physicalViolation(resolved);
     if (violation === "missing") {
-      pushDrift(`DRIFT ${record.id} ticket_path catalog=${record.ticket_path} ticket=<missing file>`);
+      // A catalog entry whose ticket contract file does not exist would render a broken
+      // link into the board, so a missing file is an authority conflict, not drift:
+      // nothing is written in any mode.
+      pushConflict(`ERROR missing ticket contract ${record.id} ${record.ticket_path}`);
       continue;
     }
     if (violation === "symlink") {
@@ -228,23 +247,41 @@ if (renderedContent) {
     }
     // Exactly one space after the prefix is consumed, and the rest of the line is
     // compared byte-for-byte against the catalog value: leading or trailing whitespace
-    // in the ticket line is a conflict, not something a trim silently heals.
-    const sizeMatch = ticketText.match(/^- Size: (.*)$/m);
-    if (!sizeMatch) {
+    // in the ticket line is a conflict, not something a trim silently heals. Every
+    // declaration of a field is counted first: a field declared more than once is an
+    // error even when the values agree, because the first line must not silently shadow
+    // the rest; the value comparison runs only when there is exactly one declaration.
+    const ticketLines = ticketText.split("\n");
+    const sizeDeclarations = ticketLines.filter((line) => line.startsWith("- Size:"));
+    if (sizeDeclarations.length === 0) {
       pushConflict(`DRIFT ${record.id} size catalog=${record.size} ticket=<missing line>`);
+    } else if (sizeDeclarations.length > 1) {
+      pushConflict(`ERROR duplicate size declaration ${record.id} count=${sizeDeclarations.length}`);
     } else {
-      const ticketSize = sizeMatch[1].replace(/[\r\n]+$/, "");
-      if (ticketSize !== record.size) {
-        pushConflict(`DRIFT ${record.id} size catalog=${record.size} ticket=${ticketSize}`);
+      const sizeMatch = ticketText.match(/^- Size: (.*)$/m);
+      if (!sizeMatch) {
+        pushConflict(`DRIFT ${record.id} size catalog=${record.size} ticket=<missing line>`);
+      } else {
+        const ticketSize = sizeMatch[1].replace(/[\r\n]+$/, "");
+        if (ticketSize !== record.size) {
+          pushConflict(`DRIFT ${record.id} size catalog=${record.size} ticket=${ticketSize}`);
+        }
       }
     }
-    const dependencyMatch = ticketText.match(/^- Dependencies: (.*)$/m);
-    if (!dependencyMatch) {
+    const dependencyDeclarations = ticketLines.filter((line) => line.startsWith("- Dependencies:"));
+    if (dependencyDeclarations.length === 0) {
       pushConflict(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=<missing line>`);
+    } else if (dependencyDeclarations.length > 1) {
+      pushConflict(`ERROR duplicate dependencies declaration ${record.id} count=${dependencyDeclarations.length}`);
     } else {
-      const ticketDependencies = dependencyMatch[1].replace(/[\r\n]+$/, "");
-      if (ticketDependencies !== formatDependencies(record.dependencies)) {
-        pushConflict(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=${ticketDependencies}`);
+      const dependencyMatch = ticketText.match(/^- Dependencies: (.*)$/m);
+      if (!dependencyMatch) {
+        pushConflict(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=<missing line>`);
+      } else {
+        const ticketDependencies = dependencyMatch[1].replace(/[\r\n]+$/, "");
+        if (ticketDependencies !== formatDependencies(record.dependencies)) {
+          pushConflict(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=${ticketDependencies}`);
+        }
       }
     }
   }
@@ -270,13 +307,18 @@ if (errors.length || conflicts.length) {
 
 // Phase 2 — write, only when phase 1 found nothing wrong and writing is requested. Every
 // new content is computed in memory first, and every target directory proves it is
-// writable before any file changes, so a failed second write can never leave the first
-// surface already rewritten. Each write goes through a temp file in the target's own
-// directory and a rename.
+// writable before any file changes. Each write goes through a temp file in the target's
+// own directory; all temp files are written first, then renamed one by one, and a failed
+// rename rolls every already-renamed target back to the original bytes kept in memory.
 if (!checkMode && surfaceStates.some((state) => state.drifted)) {
   for (const state of surfaceStates) {
-    state.lines.splice(state.block.start, state.block.end - state.block.start + 1, ...state.expected);
-    state.newText = state.lines.join(state.eol);
+    if (!state.drifted) continue;
+    const blockLength = state.block.end - state.block.start + 1;
+    state.lines.splice(state.block.start, blockLength, ...state.expected);
+    // Lines outside the generated block keep their original terminators; only the fresh
+    // lines inside the block take the file's dominant line ending.
+    state.lineEols.splice(state.block.start, blockLength, ...state.expected.map(() => state.eol));
+    state.newText = state.lines.map((line, index) => line + state.lineEols[index]).join("");
   }
   const probes = [];
   for (const state of surfaceStates) {
@@ -301,28 +343,65 @@ if (!checkMode && surfaceStates.some((state) => state.drifted)) {
     printSummary();
     process.exit(1);
   }
+  // Keep each target's original bytes in memory before anything moves, so a failed
+  // rename can be undone.
+  const originals = new Map();
+  for (const state of surfaceStates) {
+    if (!state.drifted) continue;
+    originals.set(state.surface.path, readFileSync(resolve(root, state.surface.path)));
+  }
   const tempFiles = [];
+  const tempBySurface = new Map();
+  let writeFailed = false;
   for (const state of surfaceStates) {
     if (!state.drifted) continue;
     const target = resolve(root, state.surface.path);
     const temp = join(dirname(target), `.${basename(target)}.render-tmp-${process.pid}-${Math.random().toString(36).slice(2)}`);
     tempFiles.push(temp);
+    tempBySurface.set(state.surface.path, temp);
     try {
       writeFileSync(temp, state.newText);
-      renameSync(temp, target);
     } catch {
-      for (const leftover of tempFiles) {
-        try {
-          unlinkSync(leftover);
-        } catch {
-          // Temp-file cleanup is best effort; successful renames consumed their temps.
-        }
-      }
-      console.error(`ERROR cannot write ${state.surface.path}`);
-      printSummary();
-      process.exit(1);
+      pushError(`cannot write ${state.surface.path}`);
+      writeFailed = true;
+      break;
     }
-    tempFiles.pop();
+  }
+  if (!writeFailed) {
+    const renamed = [];
+    for (const state of surfaceStates) {
+      if (!state.drifted) continue;
+      const target = resolve(root, state.surface.path);
+      try {
+        renameSync(tempBySurface.get(state.surface.path), target);
+        renamed.push(state.surface.path);
+      } catch {
+        pushError(`cannot write ${state.surface.path}`);
+        // Roll back every target that was already renamed, using the original bytes kept
+        // in memory; name any surface that cannot be restored.
+        for (const renamedPath of renamed) {
+          try {
+            writeFileSync(resolve(root, renamedPath), originals.get(renamedPath));
+          } catch {
+            console.error(`ERROR rollback failed ${renamedPath} — this surface is left modified`);
+          }
+        }
+        writeFailed = true;
+        break;
+      }
+    }
+  }
+  for (const leftover of tempFiles) {
+    try {
+      unlinkSync(leftover);
+    } catch {
+      // Temp-file cleanup is best effort; successful renames consumed their temps.
+    }
+  }
+  if (writeFailed) {
+    for (const error of errors) console.error(`ERROR ${error}`);
+    printSummary();
+    process.exit(1);
   }
 }
 
