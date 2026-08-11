@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { basename, extname, join, relative, resolve, sep } from "node:path";
+import { basename, extname, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -129,7 +129,10 @@ export const fixtureAdmissionGlob = (declaration) => {
   // ticket wrote while silently losing both declarations the item meant.
   const directory = segments.slice(0, -1);
   if (directory.some((segment) => segment.includes("*"))) return null;
-  return { directory: directory.join("/"), predicate };
+  // A declaration names a fixture directory. `fixtures/**` names the root instead, which would
+  // swallow every present and future fixture directory, including `fixtures/OWNERS.md`, and
+  // erase the per-directory boundary the whole rule exists to draw.
+  return directory.length >= 2 ? { directory: directory.join("/"), predicate } : null;
 };
 
 // A declaration heads its ownership item, after at most the list's trailing "and" and before at
@@ -161,24 +164,28 @@ const ticketFixtureDeclarations = (text) => {
 };
 
 const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
-  const absoluteDirectory = resolve(root, directory);
-  if (!existsSync(absoluteDirectory)) return [];
-  if (lstatSync(absoluteDirectory).isSymbolicLink()) return [];
-  // The lstat above refuses the declared directory itself; this refuses a symlink anywhere in
-  // its prefix, which would otherwise place the whole subtree outside the repository.
-  const realDirectory = realpathSync(absoluteDirectory);
-  if (realDirectory !== realRoot && !realDirectory.startsWith(`${realRoot}${sep}`)) return [];
-  if (!lstatSync(realDirectory).isDirectory()) return [];
-  const admit = (current) => readdirSync(current).sort().flatMap((entry) => {
-    const absolutePath = join(current, entry);
+  // Descend one segment at a time from the repository's real root, refusing a symlink at the link
+  // itself. Resolving the whole declared path first would stat outside the repository and only
+  // then reject what it had already touched, and it would leave the walk traversing a path other
+  // than the one containment was checked on.
+  let current = realRoot;
+  for (const segment of directory.split("/")) {
+    const next = join(current, segment);
+    if (!existsSync(next)) return [];
+    const info = lstatSync(next);
+    if (info.isSymbolicLink() || !info.isDirectory()) return [];
+    current = next;
+  }
+  const admit = (walked) => readdirSync(walked).sort().flatMap((entry) => {
+    const absolutePath = join(walked, entry);
     const info = lstatSync(absolutePath);
     if (info.isSymbolicLink()) return [];
     if (info.isDirectory()) return predicate === "subtree" ? admit(absolutePath) : [];
     if (!info.isFile()) return [];
     if (predicate === "json" && extname(entry) !== ".json") return [];
-    return [relative(root, absolutePath).replaceAll("\\", "/")];
+    return [relative(realRoot, absolutePath).replaceAll("\\", "/")];
   });
-  return admit(absoluteDirectory);
+  return admit(current);
 };
 
 export const ticketDeclaredFixtureDirectories = ({ root, catalogTicketPaths, readTicket }) => {
@@ -321,13 +328,16 @@ test("root-private-scripts-and-runnable-surface", () => {
   // D0-011 supersedes the two named carve-outs this comparison used to carry, D0-004's
   // fixtures/operational-state and E0B-003's fixtures/doctor. Admission is now derived from what
   // the catalog's tickets declare, so there is no directory to hardcode and no list to forget to
-  // extend. A ticket that becomes unreadable loses its declarations, which shrinks this set and
-  // fails the comparison rather than widening it.
+  // extend.
   const fixtureCensus = ticketDeclaredFixtureDirectories({
     root: repositoryRoot,
     catalogTicketPaths: readJson("docs/issues.json").tickets.map(({ ticket_path: path }) => path),
     readTicket: (path) => readFileSync(resolve(repositoryRoot, path), "utf8")
   });
+  // Asserted rather than inferred from the admitted set. A ticket that declares no fixture leaves
+  // that set unchanged when it becomes unreadable, so a census built on a partially read corpus
+  // would otherwise compare equal and report a pass it never earned.
+  assert.deepEqual(fixtureCensus.malformed, [], "a catalog-listed ticket could not be read for the fixture census");
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,

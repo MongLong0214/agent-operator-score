@@ -230,6 +230,18 @@ test("malformed-ticket-does-not-admit-or-abort-census", () => {
     assert.equal(typeof result.malformed[0]?.reason, "string", message);
     assert.match(result.malformed[0].reason, /^[a-z][a-z0-9-]*$/, message);
     assert.deepEqual(repeated.malformed, result.malformed, message);
+
+    // The other way a catalog-listed ticket is unreadable, and the one the live integration
+    // actually produces: its read throws rather than returning null. A census that lets the
+    // exception escape aborts the remaining corpus instead of recording the ticket.
+    const throwingPath = "docs/tickets/D0/throws.md";
+    const throwing = census(root, [throwingPath, validPath], (path) => {
+      if (path === throwingPath) throw new Error("EACCES");
+      return ticketText("fixtures/valid/**");
+    });
+    assert.deepEqual(throwing.admitted, ["fixtures/valid/admitted.json"], message);
+    assert.deepEqual(throwing.malformed.map(({ path }) => path), [throwingPath], message);
+    assert.match(throwing.malformed[0].reason, /^[a-z][a-z0-9-]*$/, message);
   });
 });
 
@@ -241,11 +253,19 @@ test("outside-repository-symlinked-fixture-directory-is-not-admitted", () => {
     const outside = mkdtempSync(join(tmpdir(), "aos-fixture-admission-outside-"));
     try {
       writeFixture(outside, "outside.json");
+      writeFixture(outside, "child/deep.json");
       mkdirSync(resolve(root, "fixtures"), { recursive: true });
       symlinkSync(outside, resolve(root, "fixtures/outside"), "dir");
       const result = census(root, ["docs/tickets/D0/outside.md"], () => ticketText("fixtures/outside/**"));
       assert.deepEqual(result.admitted, [], message);
       assertNoMalformedTickets(result);
+
+      // The prefix form: the declared directory is an ordinary directory, but a segment above it
+      // is the link that leaves the repository. An implementation that resolves the whole
+      // declared path before judging it reads outside before refusing what it already read.
+      const prefixed = census(root, ["docs/tickets/D0/prefix.md"], () => ticketText("fixtures/outside/child/**"));
+      assert.deepEqual(prefixed.admitted, [], message);
+      assertNoMalformedTickets(prefixed);
     } finally {
       rmSync(outside, { recursive: true, force: true });
     }
@@ -284,7 +304,10 @@ test("declared-file-predicate-refuses-nonmatching-file", () => {
   );
 
   withTempRoot((root) => {
-    fixtureFiles(root, "fixtures/doctor", ["declared.json", "not-declared.txt"]);
+    // The nested match is the other half of the predicate: `*.json` names this directory's own
+    // files, so a matching file one level down is refused too. Without it, an implementation that
+    // recursed for `*.json` would satisfy every other assertion here.
+    fixtureFiles(root, "fixtures/doctor", ["declared.json", "not-declared.txt", "nested/deep.json"]);
     const result = census(root, ["docs/tickets/D0/doctor.md"], () => ticketText("fixtures/doctor/*.json"));
     assert.deepEqual(result.admitted, ["fixtures/doctor/declared.json"], message);
     assertNoMalformedTickets(result);
