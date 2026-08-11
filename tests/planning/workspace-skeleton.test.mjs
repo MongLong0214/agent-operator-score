@@ -189,7 +189,10 @@ const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
     } catch {
       return [];
     }
-    if (info.isSymbolicLink() || !info.isDirectory()) return [];
+    // lstat resolves the link itself, so a link to a directory reports as not a directory and is
+    // refused here. A separate symlink test would be unreachable, which is how it would read as
+    // protection that is not there.
+    if (!info.isDirectory()) return [];
     current = next;
   }
   const admit = (walked) => readdirSync(walked).sort().flatMap((entry) => {

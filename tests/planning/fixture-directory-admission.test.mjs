@@ -260,7 +260,8 @@ test("malformed-ticket-does-not-admit-or-abort-census", () => {
     const unparsable = [
       ["docs/tickets/D0/open-quote.md", "# t\n\n## Exact ownership\n- `fixtures/broken/**\n\n## Preconditions\n"],
       ["docs/tickets/D0/not-a-list.md", "# t\n\n## Exact ownership\nnot a bullet\n\n## Preconditions\n"],
-      ["docs/tickets/D0/empty-section.md", "# t\n\n## Exact ownership\n\n## Preconditions\n"]
+      ["docs/tickets/D0/empty-section.md", "# t\n\n## Exact ownership\n\n## Preconditions\n"],
+      ["docs/tickets/D0/no-section.md", "# t\n\n## Goal\n\nNo ownership section at all.\n\n## Preconditions\n"]
     ];
     for (const [unparsablePath, body] of unparsable) {
       const result = census(root, [unparsablePath, validPath], (path) =>
@@ -305,9 +306,21 @@ test("outside-repository-symlinked-fixture-directory-is-not-admitted", () => {
       // under a path that looks local.
       writeFixture(root, "fixtures/inside/real.json");
       symlinkSync(resolve(outside, "outside.json"), resolve(root, "fixtures/inside/linked.json"), "file");
+      // And a link that stays inside. It resolves to an admitted file, so containment cannot
+      // refuse it; only the regular-file rule can. Without this the two guards mask each other,
+      // since every other linked entry here is refused by containment first.
+      symlinkSync(resolve(root, "fixtures/inside/real.json"), resolve(root, "fixtures/inside/alias.json"), "file");
       const withLinkedEntry = census(root, ["docs/tickets/D0/inside.md"], () => ticketText("fixtures/inside/**"));
       assert.deepEqual(withLinkedEntry.admitted, ["fixtures/inside/real.json"], message);
       assertNoMalformedTickets(withLinkedEntry);
+
+      // A declared directory that is a link to another directory in the same repository. Nothing
+      // it reaches lies outside, so containment cannot refuse it and only the descent's own rule
+      // can. A declaration names a directory, not a link that happens to lead to one.
+      symlinkSync(resolve(root, "fixtures/inside"), resolve(root, "fixtures/aliased"), "dir");
+      const viaInnerLink = census(root, ["docs/tickets/D0/aliased.md"], () => ticketText("fixtures/aliased/**"));
+      assert.deepEqual(viaInnerLink.admitted, [], message);
+      assertNoMalformedTickets(viaInnerLink);
     } finally {
       rmSync(outside, { recursive: true, force: true });
     }
