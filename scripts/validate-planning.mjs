@@ -838,7 +838,9 @@ for (const path of ticketFiles) {
       if (sourceExtensions.has(extname(candidate))) ticketOwnedPaths.add(candidate);
     }
   }
-  const redTest = /^- Test file: `([^`]+)`\s*$/m.exec(text);
+  // A trailing period is ordinary prose and six of the sixty-eight tickets carry one, so a
+  // pattern that stops at the backtick silently drops their RED file from the owned census.
+  const redTest = /^- Test file: `([^`]+)`\.?\s*$/m.exec(text);
   if (redTest && sourceExtensions.has(extname(redTest[1]))) ticketOwnedPaths.add(redTest[1]);
 }
 
