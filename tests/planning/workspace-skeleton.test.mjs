@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { basename, extname, join, relative, resolve } from "node:path";
+import { basename, extname, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -105,6 +105,103 @@ const ticketOwnedPaths = () => {
 // so the comparison against the validator's census stays whole. Narrowing the comparison instead
 // would discard exactly the paths most likely to expose a divergence between the two parses.
 const ticketOwnedSkeletonPaths = () => ticketOwnedPaths().filter((path) => skeletonRoots.test(path));
+// A fixture directory enters the skeleton because a ticket declared it, never because this file
+// names it. `.` and `..` are refused as segments rather than resolved away: a multi-segment
+// declaration that resolved first would read a directory it never legitimately names, and a
+// declaration whose prefix is a symlink can leave the repository entirely.
+export const fixtureAdmissionSegment = (segment) => segment !== "" && segment !== "." && segment !== "..";
+
+export const fixtureAdmissionGlob = (declaration) => {
+  if (typeof declaration !== "string") return null;
+  // Every rejection below is decided on the declaration's own text, so an absolute, escaping, or
+  // non-fixtures declaration is refused before anything is resolved, read, or stat'd. An absolute
+  // path needs no separate rule: its leading empty segment fails one check and its first real
+  // segment fails the other, which is also how a drive-qualified or backslash-separated
+  // declaration is refused.
+  const segments = declaration.split("/");
+  if (!segments.every((segment) => fixtureAdmissionSegment(segment))) return null;
+  if (segments[0] !== "fixtures") return null;
+  const predicate = { "**": "subtree", "*.json": "json" }[segments.at(-1)];
+  if (!predicate) return null;
+  return { directory: segments.slice(0, -1).join("/"), predicate };
+};
+
+// A declaration heads its ownership item, after at most the list's trailing "and" and before at
+// most a closing sentence. A glob anywhere else in the item is prose about some other ticket's
+// grant, which is exactly what separates D0-004's declaration from D0-011's reference to it.
+const fixtureDeclarationCandidate = (item) => {
+  const head = item.trim().replace(/^and\s+/, "");
+  if (!head.startsWith("`")) return head;
+  const quoted = /^`([^`]+)`([\s\S]*)$/.exec(head);
+  if (!quoted) return null;
+  return quoted[2] === "" || quoted[2].startsWith(".") ? quoted[1] : null;
+};
+
+const ticketFixtureDeclarations = (text) => {
+  const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
+  if (!ownership) return null;
+  const declarations = [];
+  for (const line of ownership[1].split("\n")) {
+    const bullet = /^- (.+)$/.exec(line.trim());
+    if (!bullet) continue;
+    // Split on both separators. Keeping only what precedes the dash drops every declaration
+    // behind it, and the corpus already places one there.
+    for (const item of bullet[1].split(/\s[—–-]\s|;/)) {
+      const candidate = fixtureDeclarationCandidate(item);
+      if (candidate !== null) declarations.push(candidate);
+    }
+  }
+  return declarations;
+};
+
+const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
+  const absoluteDirectory = resolve(root, directory);
+  if (!existsSync(absoluteDirectory)) return [];
+  if (lstatSync(absoluteDirectory).isSymbolicLink()) return [];
+  // The lstat above refuses the declared directory itself; this refuses a symlink anywhere in
+  // its prefix, which would otherwise place the whole subtree outside the repository.
+  const realDirectory = realpathSync(absoluteDirectory);
+  if (realDirectory !== realRoot && !realDirectory.startsWith(`${realRoot}${sep}`)) return [];
+  if (!lstatSync(realDirectory).isDirectory()) return [];
+  const admit = (current) => readdirSync(current).sort().flatMap((entry) => {
+    const absolutePath = join(current, entry);
+    const info = lstatSync(absolutePath);
+    if (info.isSymbolicLink()) return [];
+    if (info.isDirectory()) return predicate === "subtree" ? admit(absolutePath) : [];
+    if (!info.isFile()) return [];
+    if (predicate === "json" && extname(entry) !== ".json") return [];
+    return [relative(root, absolutePath).replaceAll("\\", "/")];
+  });
+  return admit(absoluteDirectory);
+};
+
+export const ticketDeclaredFixtureDirectories = ({ root, catalogTicketPaths, readTicket }) => {
+  const realRoot = realpathSync(root);
+  const admitted = new Set();
+  const malformed = [];
+  for (const path of catalogTicketPaths) {
+    let text;
+    try {
+      text = readTicket(path);
+    } catch {
+      text = null;
+    }
+    const declarations = typeof text === "string" ? ticketFixtureDeclarations(text) : null;
+    if (declarations === null) {
+      // Named and reasoned, not skipped: a bare `catch { continue }` reports the same admitted
+      // set whether the corpus was read or silently lost.
+      malformed.push({ path, reason: typeof text === "string" ? "ownership-section-missing" : "unreadable" });
+      continue;
+    }
+    for (const declaration of declarations) {
+      const glob = fixtureAdmissionGlob(declaration);
+      if (!glob) continue;
+      for (const file of admittedFixtureFiles(root, realRoot, glob)) admitted.add(file);
+    }
+  }
+  return { admitted: [...admitted].sort(), malformed };
+};
+
 const assertRegularFile = (relativePath) => {
   const absolutePath = resolve(repositoryRoot, relativePath);
   assert.ok(existsSync(absolutePath), `${relativePath} is missing`);
@@ -215,23 +312,20 @@ test("root-private-scripts-and-runnable-surface", () => {
     .flatMap((directory) => walkFiles(directory))
     .map(asRepositoryRelative)
     .sort();
-  const operationalStateFiles = walkFiles(resolve(repositoryRoot, "fixtures/operational-state"))
-    .map(asRepositoryRelative)
-    .sort();
-  // E0B-003 carve-out on the precedent D0-004 set for fixtures/operational-state. This ticket
-  // declares `fixtures/doctor/*.json`, so admission is exactly the regular JSON files directly in
-  // that one directory: not its subtree, and not any other ticket's directory. Deriving admission
-  // from every ticket's globs is a repository-wide governance rule that D0-011 owns, and it is
-  // superseded here by that ticket on its acceptance, exactly as D0-004's carve-out is.
-  const doctorFixtureFiles = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
-    .map(asRepositoryRelative)
-    .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path))
-    .sort();
+  // D0-011 supersedes the two named carve-outs this comparison used to carry, D0-004's
+  // fixtures/operational-state and E0B-003's fixtures/doctor. Admission is now derived from what
+  // the catalog's tickets declare, so there is no directory to hardcode and no list to forget to
+  // extend. A ticket that becomes unreadable loses its declarations, which shrinks this set and
+  // fails the comparison rather than widening it.
+  const fixtureCensus = ticketDeclaredFixtureDirectories({
+    root: repositoryRoot,
+    catalogTicketPaths: readJson("docs/issues.json").tickets.map(({ ticket_path: path }) => path),
+    readTicket: (path) => readFileSync(resolve(repositoryRoot, path), "utf8")
+  });
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
-    ...operationalStateFiles,
-    ...doctorFixtureFiles,
+    ...fixtureCensus.admitted,
     ...ticketOwnedSkeletonPaths()
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
