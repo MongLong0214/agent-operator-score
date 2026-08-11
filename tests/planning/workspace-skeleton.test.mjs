@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { basename, extname, join, relative, resolve } from "node:path";
+import { basename, extname, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -123,12 +123,13 @@ export const fixtureAdmissionGlob = (declaration) => {
   if (segments[0] !== "fixtures") return null;
   const predicate = { "**": "subtree", "*.json": "json" }[segments.at(-1)];
   if (!predicate) return null;
-  // Only the final segment may carry the glob. A metacharacter in a directory segment means the
-  // item never held one declaration: "fixtures/a/** and fixtures/b/**" ends in `**` but splits
-  // into a directory segment `** and fixtures`, and admitting that would name a directory no
-  // ticket wrote while silently losing both declarations the item meant.
+  // Only the final segment may carry the glob, and every glob metacharacter counts, not just the
+  // star. A metacharacter in a directory segment means the item never held one declaration:
+  // "fixtures/a/** and fixtures/b/**" ends in `**` but splits into a directory segment
+  // `** and fixtures`. Admitting it would name a directory no ticket wrote, and a segment like
+  // `a?` would match a literal directory of that name while reading as a pattern.
   const directory = segments.slice(0, -1);
-  if (directory.some((segment) => segment.includes("*"))) return null;
+  if (directory.some((segment) => /[*?[\]]/.test(segment))) return null;
   // A declaration names a fixture directory. `fixtures/**` names the root instead, which would
   // swallow every present and future fixture directory, including `fixtures/OWNERS.md`, and
   // erase the per-directory boundary the whole rule exists to draw.
@@ -146,13 +147,22 @@ const fixtureDeclarationCandidate = (item) => {
   return quoted[2] === "" || quoted[2].startsWith(".") ? quoted[1] : null;
 };
 
+// Returns the declarations, or a reason code when the section cannot be parsed as the list it is
+// contractually required to be. A section that yields nothing because it is malformed and one
+// that yields nothing because it declares no fixture are different facts, and reporting them the
+// same way is the silent fallback the contract forbids.
 const ticketFixtureDeclarations = (text) => {
   const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
-  if (!ownership) return null;
+  if (!ownership) return { reason: "ownership-section-missing" };
+  const lines = ownership[1].split("\n").filter((line) => line.trim() !== "");
+  if (!lines.length) return { reason: "ownership-section-empty" };
+  if (!lines.every((line) => /^- .+$/.test(line.trim()))) return { reason: "ownership-section-not-a-list" };
   const declarations = [];
-  for (const line of ownership[1].split("\n")) {
+  for (const line of lines) {
     const bullet = /^- (.+)$/.exec(line.trim());
-    if (!bullet) continue;
+    // An odd count means a quote is left open, so every span after it is read inverted and the
+    // parse cannot be trusted for this ticket.
+    if ((bullet[1].match(/`/g) ?? []).length % 2 !== 0) return { reason: "unbalanced-backtick" };
     // Split on both separators. Keeping only what precedes the dash drops every declaration
     // behind it, and the corpus already places one there.
     for (const item of bullet[1].split(/\s[—–-]\s|;/)) {
@@ -160,7 +170,7 @@ const ticketFixtureDeclarations = (text) => {
       if (candidate !== null) declarations.push(candidate);
     }
   }
-  return declarations;
+  return { declarations };
 };
 
 const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
@@ -171,8 +181,14 @@ const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
   let current = realRoot;
   for (const segment of directory.split("/")) {
     const next = join(current, segment);
-    if (!existsSync(next)) return [];
-    const info = lstatSync(next);
+    // lstat, not an existence check: existsSync stats through a link, so it would read the
+    // outside target before the link below is refused. A throw here is the absent directory.
+    let info;
+    try {
+      info = lstatSync(next);
+    } catch {
+      return [];
+    }
     if (info.isSymbolicLink() || !info.isDirectory()) return [];
     current = next;
   }
@@ -185,6 +201,11 @@ const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
     if (info.isDirectory()) return predicate === "subtree" ? admit(absolutePath) : [];
     if (!info.isFile()) return [];
     if (predicate === "json" && extname(entry) !== ".json") return [];
+    // The descent proved the directory was inside the repository when it was checked; it cannot
+    // prove the same directory was not swapped for a link before this read. Resolving the file
+    // that is about to be reported closes that window at the only point where reporting it would
+    // do harm, which the descent alone cannot do.
+    if (!realpathSync(absolutePath).startsWith(`${realRoot}${sep}`)) return [];
     return [relative(realRoot, absolutePath).replaceAll("\\", "/")];
   });
   return admit(current);
@@ -201,20 +222,25 @@ export const ticketDeclaredFixtureDirectories = ({ root, catalogTicketPaths, rea
     } catch {
       text = null;
     }
-    const declarations = typeof text === "string" ? ticketFixtureDeclarations(text) : null;
-    if (declarations === null) {
+    const parsed = typeof text === "string" ? ticketFixtureDeclarations(text) : { reason: "unreadable" };
+    if (parsed.reason) {
       // Named and reasoned, not skipped: a bare `catch { continue }` reports the same admitted
       // set whether the corpus was read or silently lost.
-      malformed.push({ path, reason: typeof text === "string" ? "ownership-section-missing" : "unreadable" });
+      malformed.push({ path, reason: parsed.reason });
       continue;
     }
-    for (const declaration of declarations) {
+    for (const declaration of parsed.declarations) {
       const glob = fixtureAdmissionGlob(declaration);
       if (!glob) continue;
       for (const file of admittedFixtureFiles(root, realRoot, glob)) admitted.add(file);
     }
   }
-  return { admitted: [...admitted].sort(), malformed };
+  // Both lists are sorted, so a catalog reordered without changing what it lists produces a
+  // byte-identical census rather than the same facts in a different order.
+  return {
+    admitted: [...admitted].sort(),
+    malformed: malformed.sort((left, right) => (left.path < right.path ? -1 : 1))
+  };
 };
 
 const assertRegularFile = (relativePath) => {

@@ -202,6 +202,10 @@ test("non-glob-fixture-declaration-is-not-admitted", () => {
   assert.equal(fixtureAdmissionGlob("fixtures/governance/effective-state"), null, message);
   assert.equal(fixtureAdmissionGlob("fixtures/**"), null, message);
   assert.equal(fixtureAdmissionGlob("fixtures/a/** and fixtures/b/**"), null, message);
+  // Every glob metacharacter, not only the star: a directory segment that reads as a pattern
+  // would match a literal directory of that name and admit what no ticket declared.
+  assert.equal(fixtureAdmissionGlob("fixtures/a?/b/**"), null, message);
+  assert.equal(fixtureAdmissionGlob("fixtures/a[0-9]/b/**"), null, message);
 
   withTempRoot((root) => {
     fixtureFiles(root, "fixtures/operational-state", ["must-not-admit.json"]);
@@ -249,6 +253,28 @@ test("malformed-ticket-does-not-admit-or-abort-census", () => {
     assert.deepEqual(throwing.admitted, ["fixtures/valid/admitted.json"], message);
     assert.deepEqual(throwing.malformed.map(({ path }) => path), [throwingPath], message);
     assert.match(throwing.malformed[0].reason, /^[a-z][a-z0-9-]*$/, message);
+
+    // A ticket that reads cleanly but whose ownership section cannot be parsed as the list it is
+    // required to be. Each of these yields no declaration, which is indistinguishable from a
+    // ticket that declares no fixture unless the malformed state is reported.
+    const unparsable = [
+      ["docs/tickets/D0/open-quote.md", "# t\n\n## Exact ownership\n- `fixtures/broken/**\n\n## Preconditions\n"],
+      ["docs/tickets/D0/not-a-list.md", "# t\n\n## Exact ownership\nnot a bullet\n\n## Preconditions\n"],
+      ["docs/tickets/D0/empty-section.md", "# t\n\n## Exact ownership\n\n## Preconditions\n"]
+    ];
+    for (const [unparsablePath, body] of unparsable) {
+      const result = census(root, [unparsablePath, validPath], (path) =>
+        path === unparsablePath ? body : ticketText("fixtures/valid/**"));
+      assert.deepEqual(result.admitted, ["fixtures/valid/admitted.json"], message);
+      assert.deepEqual(result.malformed.map(({ path }) => path), [unparsablePath], message);
+      assert.match(result.malformed[0].reason, /^[a-z][a-z0-9-]*$/, message);
+    }
+
+    // Reordering the catalog does not reorder the report. The same corpus listed either way is
+    // the same census, so a caller cannot see a difference that is not in the tickets.
+    const two = ["docs/tickets/D0/a.md", "docs/tickets/D0/b.md"];
+    const readNone = () => null;
+    assert.deepEqual(census(root, two, readNone), census(root, [...two].reverse(), readNone), message);
   });
 });
 
@@ -390,5 +416,13 @@ test("repeated-unquoted-fixture-declarations-are-admitted", () => {
     const result = census(root, [ticketPath("E2-004")], readLiveTicket);
     assert.deepEqual(result.admitted, expected, message);
     assertNoMalformedTickets(result);
+
+    // The same directory declared twice contributes one entry, not two. Every declaration in the
+    // bullet above names a different directory, so a census that appended instead of collecting
+    // would agree with the expectation above and disagree only here.
+    const twice = census(root, ["docs/tickets/D0/twice.md"], () =>
+      ["# t", "", "## Exact ownership", "- fixtures/prescription/**; fixtures/prescription/**", "", "## Preconditions", ""].join("\n"));
+    assert.deepEqual(twice.admitted, ["fixtures/prescription/fixture.json"], message);
+    assertNoMalformedTickets(twice);
   });
 });
