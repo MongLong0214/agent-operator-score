@@ -146,12 +146,20 @@ export const fixtureAdmissionGlob = (declaration) => {
 // A declaration heads its ownership item, after at most the list's trailing "and" and before at
 // most a closing sentence. A glob anywhere else in the item is prose about some other ticket's
 // grant, which is exactly what separates D0-004's declaration from D0-011's reference to it.
+// Returns `{ candidate }` for a declaration, `{ candidate: null }` for an item that is legitimately
+// not one, and `{ malformed }` for an item that cannot be read as written at all. Collapsing the
+// last two loses the distinction the contract turns on.
 const fixtureDeclarationCandidate = (item) => {
-  const head = item.trim().replace(/^and\s+/, "");
-  if (!head.startsWith("`")) return head;
+  // A closing sentence is allowed after a declaration, quoted or not, so the two forms are read
+  // the same way rather than one silently dropping what the other accepts.
+  const head = item.trim().replace(/^and\s+/, "").replace(/(\*\*|\*\.json)\.$/, "$1");
+  if (!head.startsWith("`")) return { candidate: head };
+  // A code span that never closes, or that closes with nothing inside it, is neither a
+  // declaration nor prose. Reading it as "no declaration here" reports the same thing as a
+  // ticket that simply declares no fixture.
   const quoted = /^`([^`]+)`([\s\S]*)$/.exec(head);
-  if (!quoted) return null;
-  return quoted[2] === "" || quoted[2].startsWith(".") ? quoted[1] : null;
+  if (!quoted) return { malformed: "unreadable-code-span" };
+  return quoted[2] === "" || quoted[2].startsWith(".") ? { candidate: quoted[1] } : { candidate: null };
 };
 
 // Returns the declarations, or a reason code when the section cannot be parsed as the list it is
@@ -163,17 +171,26 @@ const ticketFixtureDeclarations = (text) => {
   if (!ownership) return { reason: "ownership-section-missing" };
   const lines = ownership[1].split("\n").filter((line) => line.trim() !== "");
   if (!lines.length) return { reason: "ownership-section-empty" };
-  if (!lines.every((line) => /^- .+$/.test(line.trim()))) return { reason: "ownership-section-not-a-list" };
-  const declarations = [];
+  // A list item may wrap across lines; an indented continuation belongs to the bullet above it.
+  // Requiring every line to start a bullet reads an ordinary wrapped list as malformed, which
+  // would refuse a ticket for being formatted the way Markdown lists normally are.
+  const bullets = [];
   for (const line of lines) {
-    const bullet = /^- (.+)$/.exec(line.trim());
+    const started = /^- (.+)$/.exec(line.trim());
+    if (started) bullets.push(started[1]);
+    else if (bullets.length && /^\s/.test(line)) bullets[bullets.length - 1] += ` ${line.trim()}`;
+    else return { reason: "ownership-section-not-a-list" };
+  }
+  const declarations = [];
+  for (const bullet of bullets) {
     // An odd count means a quote is left open, so every span after it is read inverted and the
     // parse cannot be trusted for this ticket.
-    if ((bullet[1].match(/`/g) ?? []).length % 2 !== 0) return { reason: "unbalanced-backtick" };
+    if ((bullet.match(/`/g) ?? []).length % 2 !== 0) return { reason: "unbalanced-backtick" };
     // Split on both separators. Keeping only what precedes the dash drops every declaration
     // behind it, and the corpus already places one there.
-    for (const item of bullet[1].split(/\s[—–-]\s|;/)) {
-      const candidate = fixtureDeclarationCandidate(item);
+    for (const item of bullet.split(/\s[—–-]\s|;/)) {
+      const { candidate, malformed } = fixtureDeclarationCandidate(item);
+      if (malformed) return { reason: malformed };
       if (candidate !== null) declarations.push(candidate);
     }
   }

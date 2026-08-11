@@ -110,6 +110,29 @@ test("fixture-reference-does-not-admit", () => {
     false,
     message
   );
+
+  // The rule the live corpus proves, stated directly on the inputs it turns on. A declaration
+  // ends its item, or ends the sentence its item is. A glob quoted mid-sentence is prose about
+  // some other ticket's grant, and what follows the closing backtick is the only thing that
+  // separates the two.
+  withTempRoot((root) => {
+    fixtureFiles(root, "fixtures/quoted", ["must-not-admit.json"]);
+    const references = [
+      "`fixtures/quoted/**`, and nothing else",
+      "`fixtures/quoted/**`: the whole subtree",
+      "`fixtures/quoted/**` is granted elsewhere",
+      "supersedes `fixtures/quoted/**` for this comparison"
+    ];
+    for (const reference of references) {
+      const referenced = census(root, ["docs/tickets/D0/reference.md"], () => ticketText(reference));
+      assert.deepEqual(referenced.admitted, [], message);
+      assertNoMalformedTickets(referenced);
+    }
+    // The same glob as an actual declaration, so the cases above are shown to fail on position
+    // rather than on the directory being unreachable.
+    const declared = census(root, ["docs/tickets/D0/declare.md"], () => ticketText("`fixtures/quoted/**`."));
+    assert.deepEqual(declared.admitted, ["fixtures/quoted/must-not-admit.json"], message);
+  });
 });
 
 test("ticket-declared-doctor-fixture-directory-is-admitted", () => {
@@ -206,6 +229,11 @@ test("non-glob-fixture-declaration-is-not-admitted", () => {
   // would match a literal directory of that name and admit what no ticket declared.
   assert.equal(fixtureAdmissionGlob("fixtures/a?/b/**"), null, message);
   assert.equal(fixtureAdmissionGlob("fixtures/a[0-9]/b/**"), null, message);
+  // A caller that hands over something that is not a declaration string at all. Splitting a
+  // non-string would throw rather than refuse, so the refusal has to come first.
+  for (const notADeclaration of [null, undefined, 42, ["fixtures/x/**"], { directory: "fixtures/x" }]) {
+    assert.equal(fixtureAdmissionGlob(notADeclaration), null, message);
+  }
 
   withTempRoot((root) => {
     fixtureFiles(root, "fixtures/operational-state", ["must-not-admit.json"]);
@@ -261,7 +289,10 @@ test("malformed-ticket-does-not-admit-or-abort-census", () => {
       ["docs/tickets/D0/open-quote.md", "# t\n\n## Exact ownership\n- `fixtures/broken/**\n\n## Preconditions\n"],
       ["docs/tickets/D0/not-a-list.md", "# t\n\n## Exact ownership\nnot a bullet\n\n## Preconditions\n"],
       ["docs/tickets/D0/empty-section.md", "# t\n\n## Exact ownership\n\n## Preconditions\n"],
-      ["docs/tickets/D0/no-section.md", "# t\n\n## Goal\n\nNo ownership section at all.\n\n## Preconditions\n"]
+      ["docs/tickets/D0/no-section.md", "# t\n\n## Goal\n\nNo ownership section at all.\n\n## Preconditions\n"],
+      // Balanced backticks that still cannot be read: an empty code span. The count check passes,
+      // so without its own reason this reads as a ticket that declares nothing.
+      ["docs/tickets/D0/empty-span.md", "# t\n\n## Exact ownership\n- ``\n\n## Preconditions\n"]
     ];
     for (const [unparsablePath, body] of unparsable) {
       const result = census(root, [unparsablePath, validPath], (path) =>
@@ -270,6 +301,22 @@ test("malformed-ticket-does-not-admit-or-abort-census", () => {
       assert.deepEqual(result.malformed.map(({ path }) => path), [unparsablePath], message);
       assert.match(result.malformed[0].reason, /^[a-z][a-z0-9-]*$/, message);
     }
+
+    // The other direction, and the one that costs more when it is wrong: an ordinary Markdown
+    // list whose item wraps across lines is well formed. Reading each line as its own bullet
+    // reports the whole ticket as malformed and drops every declaration it makes.
+    const wrapped = census(root, ["docs/tickets/D0/wrapped.md"], () => [
+      "# t",
+      "",
+      "## Exact ownership",
+      "- fixtures/valid/**; specs/contract.v0.json",
+      "  and a continuation line that belongs to the bullet above it",
+      "",
+      "## Preconditions",
+      ""
+    ].join("\n"));
+    assert.deepEqual(wrapped.admitted, ["fixtures/valid/admitted.json"], message);
+    assertNoMalformedTickets(wrapped);
 
     // Reordering the catalog does not reorder the report. The same corpus listed either way is
     // the same census, so a caller cannot see a difference that is not in the tickets.
@@ -403,6 +450,13 @@ test("unquoted-final-fixture-declaration-is-admitted", () => {
     const result = census(root, [ticketPath("E0D-003")], readLiveTicket);
     assert.deepEqual(result.admitted, ["fixtures/prescription/prescription.json"], message);
     assertNoMalformedTickets(result);
+
+    // The same declaration ending the sentence it is in. A quoted declaration is already allowed
+    // to be followed by a closing period, and an unquoted one that is not would be dropped for
+    // punctuation alone — silently, since nothing else marks it.
+    const withPeriod = census(root, ["docs/tickets/D0/period.md"], () => ticketText("fixtures/prescription/*.json."));
+    assert.deepEqual(withPeriod.admitted, ["fixtures/prescription/prescription.json"], message);
+    assertNoMalformedTickets(withPeriod);
   });
 });
 
