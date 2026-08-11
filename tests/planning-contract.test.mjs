@@ -2121,3 +2121,147 @@ test("ops-check-detects-generated-view-drift", () => {
     rmSync(parent, { recursive: true, force: true });
   }
 });
+
+test("missing-end-marker-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos missing end marker "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const original = readFileSync(boardPath, "utf8");
+    const endLine = "<!-- generated:board-rows end -->";
+    assert.ok(original.includes(`${endLine}\n`), "board-rows end marker is missing");
+    writeFileSync(boardPath, original.replace(`${endLine}\n`, ""));
+    const before = readFileSync(boardPath);
+    const result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("expected exactly one end marker"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a missing end marker");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("ticket-title-id-mismatch-is-a-conflict", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos title id mismatch "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-001-canonical-identifier-registry.md");
+    const ticket = readFileSync(ticketPath, "utf8");
+    assert.ok(ticket.includes("# D0-001 \u00b7 "), "expected title id is missing from D0-001");
+    writeFileSync(ticketPath, ticket.replace("# D0-001 \u00b7 ", "# D0-999 \u00b7 "));
+    const result = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("DRIFT"), result.stderr);
+    assert.ok(result.stderr.includes("D0-001"), `stderr did not name the conflicted ticket: ${result.stderr}`);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("dependency-order-mismatch-is-a-conflict", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos dependency order mismatch "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md");
+    const ticket = readFileSync(ticketPath, "utf8");
+    assert.ok(ticket.includes("- Dependencies: D0-002,D0-004"), "expected dependencies line is missing from D0-011");
+    writeFileSync(ticketPath, ticket.replace("- Dependencies: D0-002,D0-004", "- Dependencies: D0-004,D0-002"));
+    const result = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("DRIFT"), result.stderr);
+    assert.ok(result.stderr.includes("D0-011"), `stderr did not name the drifted ticket: ${result.stderr}`);
+    assert.ok(result.stderr.includes("dependencies"), `stderr did not name the drifted field: ${result.stderr}`);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("malformed-catalog-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos malformed catalog "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const catalogPath = join(fixture, "docs/issues.json");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const originalCatalog = readFileSync(catalogPath, "utf8");
+
+    // (1) The catalog is JSON null: not an object, so nothing may be written.
+    writeFileSync(catalogPath, "null\n");
+    let before = readFileSync(boardPath);
+    let result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("ERROR catalog is not an object docs/issues.json"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a null catalog");
+
+    // (2) An empty tickets array is not a valid empty catalog: write mode would
+    // delete every rendered row.
+    writeFileSync(catalogPath, '{"tickets":[]}\n');
+    before = readFileSync(boardPath);
+    result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("ERROR catalog holds no ticket records docs/issues.json"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite an empty tickets array");
+
+    // (3) One record loses a rendered field: the catalog is incomplete.
+    const catalog = JSON.parse(originalCatalog);
+    const index = catalog.tickets.findIndex((ticket) => ticket.id === "D0-001");
+    assert.ok(index >= 0, "D0-001 is missing from the catalog");
+    delete catalog.tickets[index].epic;
+    writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    before = readFileSync(boardPath);
+    result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes(`ERROR catalog record is incomplete ${index} epic`), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite an incomplete catalog record");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("captured-authored-table-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos captured authored table "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const original = readFileSync(boardPath, "utf8");
+    const endLine = "<!-- generated:board-rows end -->";
+    assert.ok(original.includes(endLine), "board-rows end marker is missing");
+    // An authored table with a different header and an unknown id, trapped inside the
+    // generated block right before the end marker: write mode must fail closed and
+    // keep it.
+    const authoredTable = ["| Keep | Me |", "|---|---|", "| [ZZZ-999](zzz.md) | KEEP_ME |"].join("\n");
+    writeFileSync(boardPath, original.replace(endLine, `${authoredTable}\n${endLine}`));
+    const before = readFileSync(boardPath);
+    const result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("could not have produced"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a captured authored table");
+    assert.ok(readFileSync(boardPath, "utf8").includes("KEEP_ME"), "captured authored table was deleted");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});

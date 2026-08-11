@@ -126,6 +126,30 @@ const renderBoardRows = (tickets) => {
   return rows;
 };
 
+// A board block is recognized only by the exact shape this renderer produces: the header
+// line in full, then the separator line in full, then rows whose column count matches the
+// rendered rows and whose first cell is a [<id>](<path>) link whose id belongs to the
+// catalog, with no id repeated inside the block. Any other table captured between the
+// markers is content this renderer could not have produced, and fails every mode before
+// anything is written. Empty blocks are allowed: that is the state before the first render.
+const boardBlockForeignLine = (blockLines, renderedRows, catalogIds) => {
+  const content = blockLines.filter((line) => line !== "");
+  if (content.length === 0) return undefined;
+  if (content[0] !== renderedRows[0]) return content[0];
+  if (content.length < 2 || content[1] !== renderedRows[1]) return content[1] ?? content[0];
+  const expectedColumns = renderedRows[2].split("|").length;
+  const seenIds = new Set();
+  for (const line of content.slice(2)) {
+    const cells = line.split("|");
+    if (cells.length !== expectedColumns) return line;
+    const linkMatch = cells[1].trim().match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (!linkMatch || !catalogIds.has(linkMatch[1])) return line;
+    if (seenIds.has(linkMatch[1])) return line;
+    seenIds.add(linkMatch[1]);
+  }
+  return undefined;
+};
+
 const locateGeneratedBlock = (relativePath, marker, lines) => {
   // Marker lines are matched per line after trimming, never by substring or prefix: the
   // start line must equal the fixed marker string in full (no variable tail), and so must
@@ -159,14 +183,50 @@ const locateGeneratedBlock = (relativePath, marker, lines) => {
 const catalogText = readRepositoryFile(CATALOG_PATH);
 let catalog = null;
 if (catalogText !== null) {
+  let parsed = null;
+  const errorsBefore = errors.length;
   try {
-    catalog = JSON.parse(normalizeLf(catalogText));
+    parsed = JSON.parse(normalizeLf(catalogText));
   } catch {
-    pushError(`invalid JSON ${CATALOG_PATH}`);
+    pushError(`catalog is not valid JSON ${CATALOG_PATH}`);
   }
-  if (catalog && !Array.isArray(catalog.tickets)) {
-    pushError(`missing tickets array ${CATALOG_PATH}`);
-    catalog = null;
+  if (errors.length === errorsBefore) {
+    // The catalog shape fails closed: null, an array, a primitive, or an empty tickets
+    // array is never a valid empty input, because write mode would turn it into a
+    // rewrite that deletes every rendered row.
+    const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+    if (!isPlainObject(parsed)) {
+      pushError(`catalog is not an object ${CATALOG_PATH}`);
+    } else if (!Array.isArray(parsed.tickets)) {
+      pushError(`catalog tickets is not an array ${CATALOG_PATH}`);
+    } else if (parsed.tickets.length === 0) {
+      pushError(`catalog holds no ticket records ${CATALOG_PATH}`);
+    } else {
+      const requiredFields = ["id", "issue", "epic", "milestone", "size", "ticket_path", "dependencies"];
+      const seenIds = new Set();
+      for (const [index, record] of parsed.tickets.entries()) {
+        if (!isPlainObject(record)) {
+          pushError(`catalog record is incomplete ${index} id`);
+          continue;
+        }
+        const missingField = requiredFields.find((field) => !(field in record));
+        if (missingField !== undefined) {
+          pushError(`catalog record is incomplete ${index} ${missingField}`);
+          continue;
+        }
+        if (seenIds.has(record.id)) {
+          pushError(`catalog holds a duplicate record id ${record.id}`);
+        } else {
+          seenIds.add(record.id);
+        }
+        if (!Array.isArray(record.dependencies)) {
+          pushError(`catalog record dependencies is not an array ${record.id}`);
+        }
+      }
+    }
+  }
+  if (errors.length === errorsBefore) {
+    catalog = parsed;
   }
 }
 
@@ -179,6 +239,7 @@ const renderedContent = catalog
 
 const surfaceStates = [];
 if (renderedContent) {
+  const catalogIds = new Set(catalog.tickets.map((record) => record.id));
   for (const surface of SURFACES) {
     const text = readRepositoryFile(surface.path);
     if (text === null) continue;
@@ -215,10 +276,9 @@ if (renderedContent) {
     // boundary that moved would capture outside prose and delete it on the rewrite, so
     // any line the renderer cannot produce fails every mode before anything is written.
     // Empty blocks are allowed: that is the state before the first render.
-    const blockShape = surface.marker === "board-rows"
-      ? (line) => /^\|.*\|$/.test(line)
-      : (line) => ROADMAP_HEADER_LINES.has(line);
-    const foreignLine = lines.slice(block.start + 1, block.end).find((line) => line !== "" && !blockShape(line));
+    const foreignLine = surface.marker === "board-rows"
+      ? boardBlockForeignLine(lines.slice(block.start + 1, block.end), renderedContent.get(surface.marker), catalogIds)
+      : lines.slice(block.start + 1, block.end).find((line) => line !== "" && !ROADMAP_HEADER_LINES.has(line));
     if (foreignLine !== undefined) {
       pushError(`${surface.path} ${surface.marker} generated block holds content this renderer could not have produced: ${foreignLine.slice(0, 60)}`);
       continue;
