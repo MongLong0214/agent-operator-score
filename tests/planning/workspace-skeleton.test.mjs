@@ -53,10 +53,27 @@ const workspaceTestScript = "node --test --test-name-pattern";
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
 
+// The validator excludes these from the ticket-owned census and counts them separately, so a
+// re-derivation that keeps them is not deriving the same set. Held here rather than imported,
+// because a shared list would make the two parses agree by construction and prove nothing.
+const controlPlanePaths = new Set([
+  "scripts/validate-planning.mjs",
+  "tests/planning-contract.test.mjs",
+  "scripts/validate-gate-administration.mjs",
+  "tests/gate-administration-contract.test.mjs",
+  "scripts/validate-identity.mjs",
+  "tests/planning/identity.test.mjs",
+  "tests/planning/workspace-skeleton.test.mjs",
+  "scripts/resolve-execution-state.mjs",
+  "scripts/render-execution-views.mjs",
+  "tests/execution-state.test.mjs"
+]);
+const skeletonRoots = /^(packages|adapters|suites|fixtures|conformance)\//;
+
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
-// Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
-// a claim check, not an acceptance check; ticket readiness stays the resolver's job.
-const ticketOwnedSkeletonPaths = () => {
+// Only paths a ticket names exactly, and that exist on disk, are claimed. This is a claim check,
+// not an acceptance check; ticket readiness stays the resolver's job.
+const ticketOwnedPaths = () => {
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const owned = new Set();
   for (const absolutePath of walkFiles(ticketsRoot)) {
@@ -73,15 +90,21 @@ const ticketOwnedSkeletonPaths = () => {
         if (sourceExtensions.has(extname(candidate))) owned.add(candidate);
       }
     }
-    const redTest = /^- Test file: `([^`]+)`\s*$/m.exec(text);
+    // Same pattern the validator uses, trailing period included; a divergence here would make
+    // this re-derivation quietly disagree with the census it exists to mirror.
+    const redTest = /^- Test file: `([^`]+)`\.?\s*$/m.exec(text);
     if (redTest && sourceExtensions.has(extname(redTest[1]))) owned.add(redTest[1]);
   }
-  // Control-plane paths are also ticket-owned; this view is only the skeleton portion.
   return [...owned]
-    .filter((path) => /^(packages|adapters|suites|fixtures|conformance)\//.test(path))
+    .filter((path) => !controlPlanePaths.has(path))
     .filter((path) => existsSync(resolve(repositoryRoot, path)))
     .sort();
 };
+
+// The skeleton portion of that claim. Narrowing happens here, at the one caller that needs it,
+// so the comparison against the validator's census stays whole. Narrowing the comparison instead
+// would discard exactly the paths most likely to expose a divergence between the two parses.
+const ticketOwnedSkeletonPaths = () => ticketOwnedPaths().filter((path) => skeletonRoots.test(path));
 const assertRegularFile = (relativePath) => {
   const absolutePath = resolve(repositoryRoot, relativePath);
   assert.ok(existsSync(absolutePath), `${relativePath} is missing`);
@@ -238,7 +261,10 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   });
   const reported = /ticket_owned_code_paths=(\S+)/.exec(census);
   assert.ok(reported, "census does not report ticket_owned_code_paths");
-  assert.deepEqual(reported[1] === "none" ? [] : reported[1].split(","), owned);
+  // Whole census against whole re-derivation. Filtering both sides to the skeleton would drop a
+  // ticket-owned path outside those roots from the comparison entirely, and a path the census
+  // reports but this derivation misses is precisely the divergence the check exists to catch.
+  assert.deepEqual(reported[1] === "none" ? [] : reported[1].split(","), ticketOwnedPaths());
   assert.match(census, / product_code_files=0 /);
   assert.match(census, / product_code_paths=none /);
 
