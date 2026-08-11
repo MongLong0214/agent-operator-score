@@ -73,6 +73,13 @@ const skeletonRoots = /^(packages|adapters|suites|fixtures|conformance)\//;
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
 // Only paths a ticket names exactly, and that exist on disk, are claimed. This is a claim check,
 // not an acceptance check; ticket readiness stays the resolver's job.
+//
+// How far the comparison below actually reaches: a parsing rule here is observable only through
+// a path that exists on disk, because both sides drop the rest. The claimed set is small and
+// concentrated, so most of the branches below are not exercised by it — the ticket-file filter's
+// separate arms, the extension set beyond the two extensions in use, backtick stripping, and most
+// entries in the control-plane list can each be removed without any case noticing. What the
+// comparison does prove is that for every path that is materialised, the two parses agree.
 const ticketOwnedPaths = () => {
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const owned = new Set();
