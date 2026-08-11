@@ -1737,7 +1737,12 @@ test("write-failure-leaves-no-partial-state", (t) => {
     const roadmapLines = readFileSync(roadmapPath, "utf8").split("\n");
     const roadmapStart = roadmapLines.findIndex((line) => line.startsWith("<!-- generated:roadmap-authority-header start"));
     assert.ok(roadmapStart >= 0, "roadmap-authority-header start marker is missing");
-    roadmapLines[roadmapStart + 1] = "**TAMPERED** roadmap authority header line";
+    // Swapping two lines of the fixed wording keeps every line in the block a line
+    // the renderer can produce, so the shape check passes and the reordered block
+    // is plain drift against the rendered order.
+    [roadmapLines[roadmapStart + 1], roadmapLines[roadmapStart + 2]] =
+      [roadmapLines[roadmapStart + 2], roadmapLines[roadmapStart + 1]];
+    assert.ok(roadmapLines[roadmapStart + 1] !== roadmapLines[roadmapStart + 2], "swap did not change the roadmap header");
     writeFileSync(roadmapPath, roadmapLines.join("\n"));
     // Make the roadmap's directory unwritable so the second surface's write must fail.
     // The permission bits are not enforced for a root user, so prove the removal
@@ -1794,7 +1799,12 @@ test("rename-failure-rolls-back-every-surface", (t) => {
     const roadmapLines = readFileSync(roadmapPath, "utf8").split("\n");
     const roadmapStart = roadmapLines.findIndex((line) => line.startsWith("<!-- generated:roadmap-authority-header start"));
     assert.ok(roadmapStart >= 0, "roadmap-authority-header start marker is missing");
-    roadmapLines[roadmapStart + 1] = "**TAMPERED** roadmap authority header line";
+    // Swapping two lines of the fixed wording keeps every line in the block a line
+    // the renderer can produce, so the shape check passes and the reordered block
+    // is plain drift against the rendered order.
+    [roadmapLines[roadmapStart + 1], roadmapLines[roadmapStart + 2]] =
+      [roadmapLines[roadmapStart + 2], roadmapLines[roadmapStart + 1]];
+    assert.ok(roadmapLines[roadmapStart + 1] !== roadmapLines[roadmapStart + 2], "swap did not change the roadmap header");
     writeFileSync(roadmapPath, roadmapLines.join("\n"));
     const boardDrift = readFileSync(boardPath);
     const roadmapDrift = readFileSync(roadmapPath);
@@ -1990,6 +2000,123 @@ test("mixed-eol-preserves-bytes-outside-markers", () => {
     assert.ok(afterLines[crlfLineIndex].endsWith("\r"), "the CRLF line outside the markers lost its carriage return");
     assert.equal((after.match(/\r/g) || []).length, 1, "write mode changed line endings outside the generated block");
     assert.ok(after.includes("| S0 · Name & Contracts | S |"), "write mode did not repair the drifted row");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("captured-prose-in-a-generated-block-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos captured prose "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const roadmapPath = join(fixture, "docs/planning/AOS-EXECUTION-ROADMAP.md");
+    const lines = readFileSync(roadmapPath, "utf8").split("\n");
+    const endMarkerLine = "<!-- generated:roadmap-authority-header end -->";
+    const end = lines.findIndex((line) => line === endMarkerLine);
+    assert.ok(end >= 0, "roadmap-authority-header end marker is missing");
+    // The prose that follows the block carries no heading, so only the generated-shape
+    // check can see the capture. Moving the end marker below it traps the prose inside
+    // the generated block; write mode must fail closed and keep the prose.
+    const capturedProse = lines[end + 2];
+    assert.ok(capturedProse.trim() !== "" && !/^#{1,6}\s/.test(capturedProse), "expected a heading-free prose line after the end marker");
+    lines.splice(end, 1);
+    lines.splice(end + 2, 0, endMarkerLine);
+    writeFileSync(roadmapPath, lines.join("\n"));
+    const before = readFileSync(roadmapPath);
+    const result = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("could not have produced"), result.stderr);
+    assert.ok(readFileSync(roadmapPath).equals(before), "write mode changed the roadmap despite captured prose");
+    assert.ok(readFileSync(roadmapPath, "utf8").includes(capturedProse), "captured prose was deleted");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("ticket-path-that-is-a-directory-writes-nothing", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos directory ticket path "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const catalogPath = join(fixture, "docs/issues.json");
+    const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+    const target = catalog.tickets.find((ticket) => ticket.id === "D0-001");
+    assert.ok(target, "D0-001 is missing from the catalog");
+    target.ticket_path = "docs/tickets/";
+    writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const before = readFileSync(boardPath);
+    const result = spawnSync(process.execPath, [join(fixture, "scripts/render-execution-views.mjs")], { cwd: fixture, encoding: "utf8" });
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(result.stderr.includes("ERROR ticket contract is not a regular file D0-001 docs/tickets/"), result.stderr);
+    assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a directory ticket_path");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("catalog-epic-or-milestone-disagreement-is-a-conflict", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos epic milestone conflict "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const script = join(fixture, "scripts/render-execution-views.mjs");
+    const catalogPath = join(fixture, "docs/issues.json");
+    const originalCatalog = readFileSync(catalogPath, "utf8");
+    const tamper = (field, value) => {
+      const catalog = JSON.parse(originalCatalog);
+      const target = catalog.tickets.find((ticket) => ticket.id === "D0-001");
+      assert.ok(target, "D0-001 is missing from the catalog");
+      target[field] = value;
+      writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    };
+    tamper("epic", "E1");
+    const epicResult = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(epicResult.status, 1, epicResult.stdout);
+    assert.ok(epicResult.stderr.includes("DRIFT"), epicResult.stderr);
+    assert.ok(epicResult.stderr.includes("D0-001"), epicResult.stderr);
+    assert.ok(epicResult.stderr.includes("epic"), epicResult.stderr);
+    tamper("milestone", "S1 · G0 Scorer Truth");
+    const milestoneResult = spawnSync(process.execPath, [script, "--check"], { cwd: fixture, encoding: "utf8" });
+    assert.equal(milestoneResult.status, 1, milestoneResult.stdout);
+    assert.ok(milestoneResult.stderr.includes("DRIFT"), milestoneResult.stderr);
+    assert.ok(milestoneResult.stderr.includes("D0-001"), milestoneResult.stderr);
+    assert.ok(milestoneResult.stderr.includes("milestone"), milestoneResult.stderr);
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+test("ops-check-detects-generated-view-drift", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos ops check drift "));
+  const fixture = join(parent, "repository");
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    const boardPath = join(fixture, "docs/tickets/BOARD.md");
+    const lines = readFileSync(boardPath, "utf8").split("\n");
+    const start = lines.findIndex((line) => line.startsWith("<!-- generated:board-rows start"));
+    assert.ok(start >= 0, "board-rows start marker is missing");
+    // Tamper with the first rendered data row (D0-001): mutate only its size cell.
+    lines[start + 3] = lines[start + 3].replace("| S0 · Name & Contracts | S |", "| S0 · Name & Contracts | X |");
+    assert.ok(lines[start + 3].includes("| X |"), "tamper did not change the board row");
+    writeFileSync(boardPath, lines.join("\n"));
+    const result = spawnSync("npm", ["run", "ops:check", "--", "--offline"], { cwd: fixture, encoding: "utf8" });
+    assert.notEqual(result.status, 0, `${result.stdout} ${result.stderr}`);
+    assert.ok(result.stderr.includes("docs/tickets/BOARD.md"), `ops:check did not report the drifted board: ${result.stdout} ${result.stderr}`);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }

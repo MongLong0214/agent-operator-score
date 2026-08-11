@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,14 +26,18 @@ const ROADMAP_AUTHORITY_HEADER = [
   "`npm run ops:status -- --strict --ticket <ID>` returning `readiness=ready` does. When a required",
   "external fact is unavailable the ready set is empty, and there is no fallback to this file."
 ];
+// The fixed wording as a line set: a roadmap header block may only hold lines that belong
+// to this set, so captured prose is detected even when it contains no heading.
+const ROADMAP_HEADER_LINES = new Set(ROADMAP_AUTHORITY_HEADER);
 
 const checkMode = process.argv.includes("--check");
 const errors = [];
 const drifts = [];
-// Authority conflicts: the catalog disagrees with a ticket contract about size or
-// dependencies. The ticket is the higher authority, so a conflict is an error in every
-// mode. The line keeps the DRIFT output shape; only the tally moves to the error side,
-// and nothing is written.
+// Authority conflicts: the catalog disagrees with a ticket contract about a field the
+// board renders (id, epic, milestone, size, dependencies), or a ticket contract is
+// missing, not a regular file, or unreadable. The ticket is the higher authority, so a
+// conflict is an error in every mode. The line keeps the DRIFT output shape; only the
+// tally moves to the error side, and nothing is written.
 const conflicts = [];
 const pushError = (message) => errors.push(message);
 const pushDrift = (message) => drifts.push(message);
@@ -206,16 +210,29 @@ if (renderedContent) {
       pushError(`${surface.path} ${surface.marker} generated block contains a heading; markers are misplaced`);
       continue;
     }
+    // The block may only hold content this renderer could have produced: Markdown table
+    // rows for the board, lines of the fixed wording for the roadmap header. A marker
+    // boundary that moved would capture outside prose and delete it on the rewrite, so
+    // any line the renderer cannot produce fails every mode before anything is written.
+    // Empty blocks are allowed: that is the state before the first render.
+    const blockShape = surface.marker === "board-rows"
+      ? (line) => /^\|.*\|$/.test(line)
+      : (line) => ROADMAP_HEADER_LINES.has(line);
+    const foreignLine = lines.slice(block.start + 1, block.end).find((line) => line !== "" && !blockShape(line));
+    if (foreignLine !== undefined) {
+      pushError(`${surface.path} ${surface.marker} generated block holds content this renderer could not have produced: ${foreignLine.slice(0, 60)}`);
+      continue;
+    }
     const expected = [startMarker(surface.marker), ...renderedContent.get(surface.marker), endMarker(surface.marker)];
     const drifted = lines.slice(block.start, block.end + 1).join("\n") !== expected.join("\n");
     if (drifted) pushDrift(`DRIFT ${surface.path} ${surface.marker} disk block differs from rendered block`);
     surfaceStates.push({ surface, lines, lineEols, block, expected, eol, drifted });
   }
 
-  // Byte-for-byte catalog/ticket agreement on size and dependency values. The ticket
-  // contract is the higher authority, so a disagreement is an authority conflict: an
-  // error in every mode, never repaired away by a projection. The line keeps the DRIFT
-  // shape; only the tally changes.
+  // Byte-for-byte catalog/ticket agreement on every field the board renders: id, epic,
+  // milestone, size, and dependencies. The ticket contract is the higher authority, so a
+  // disagreement is an authority conflict: an error in every mode, never repaired away
+  // by a projection. The line keeps the DRIFT shape; only the tally changes.
   for (const record of catalog.tickets) {
     if (!isSafeTicketPath(record.ticket_path)) {
       pushError(`invalid ticket_path ${record.id} ${record.ticket_path}`);
@@ -238,11 +255,25 @@ if (renderedContent) {
       pushError(`path escapes repository ${record.ticket_path}`);
       continue;
     }
+    // A ticket contract must be a regular file the renderer can read: a directory or
+    // device in its place would render a broken link into the board, and a read failure
+    // hides the very contract the catalog claims. Both fail closed in every mode.
+    let ticketStats;
+    try {
+      ticketStats = statSync(resolved);
+    } catch {
+      pushConflict(`ERROR cannot read ticket contract ${record.id} ${record.ticket_path}`);
+      continue;
+    }
+    if (!ticketStats.isFile()) {
+      pushConflict(`ERROR ticket contract is not a regular file ${record.id} ${record.ticket_path}`);
+      continue;
+    }
     let ticketText;
     try {
       ticketText = normalizeLf(readFileSync(resolved, "utf8"));
     } catch {
-      pushDrift(`DRIFT ${record.id} ticket_path catalog=${record.ticket_path} ticket=<unreadable file>`);
+      pushConflict(`ERROR cannot read ticket contract ${record.id} ${record.ticket_path}`);
       continue;
     }
     // Exactly one space after the prefix is consumed, and the rest of the line is
@@ -282,6 +313,53 @@ if (renderedContent) {
         if (ticketDependencies !== formatDependencies(record.dependencies)) {
           pushConflict(`DRIFT ${record.id} dependencies catalog=${formatDependencies(record.dependencies)} ticket=${ticketDependencies}`);
         }
+      }
+    }
+    const epicDeclarations = ticketLines.filter((line) => line.startsWith("- Epic:"));
+    if (epicDeclarations.length === 0) {
+      pushConflict(`DRIFT ${record.id} epic catalog=${record.epic} ticket=<missing line>`);
+    } else if (epicDeclarations.length > 1) {
+      pushConflict(`ERROR duplicate epic declaration ${record.id} count=${epicDeclarations.length}`);
+    } else {
+      const epicMatch = ticketText.match(/^- Epic: (.*)$/m);
+      if (!epicMatch) {
+        pushConflict(`DRIFT ${record.id} epic catalog=${record.epic} ticket=<missing line>`);
+      } else {
+        const ticketEpic = epicMatch[1].replace(/[\r\n]+$/, "");
+        if (ticketEpic !== record.epic) {
+          pushConflict(`DRIFT ${record.id} epic catalog=${record.epic} ticket=${ticketEpic}`);
+        }
+      }
+    }
+    const milestoneDeclarations = ticketLines.filter((line) => line.startsWith("- Milestone:"));
+    if (milestoneDeclarations.length === 0) {
+      pushConflict(`DRIFT ${record.id} milestone catalog=${record.milestone} ticket=<missing line>`);
+    } else if (milestoneDeclarations.length > 1) {
+      pushConflict(`ERROR duplicate milestone declaration ${record.id} count=${milestoneDeclarations.length}`);
+    } else {
+      const milestoneMatch = ticketText.match(/^- Milestone: (.*)$/m);
+      if (!milestoneMatch) {
+        pushConflict(`DRIFT ${record.id} milestone catalog=${record.milestone} ticket=<missing line>`);
+      } else {
+        const ticketMilestone = milestoneMatch[1].replace(/[\r\n]+$/, "");
+        if (ticketMilestone !== record.milestone) {
+          pushConflict(`DRIFT ${record.id} milestone catalog=${record.milestone} ticket=${ticketMilestone}`);
+        }
+      }
+    }
+    // The board renders the id from the catalog, and the ticket document's title line
+    // names the same id, so the two must agree like every other rendered field.
+    const titleDeclarations = ticketLines.filter((line) => /^# /.test(line));
+    if (titleDeclarations.length === 0) {
+      pushConflict(`DRIFT ${record.id} id catalog=${record.id} ticket=<missing line>`);
+    } else if (titleDeclarations.length > 1) {
+      pushConflict(`ERROR duplicate id declaration ${record.id} count=${titleDeclarations.length}`);
+    } else {
+      const titleMatch = titleDeclarations[0].match(/^# (\S+) \u00b7 /);
+      if (!titleMatch) {
+        pushConflict(`DRIFT ${record.id} id catalog=${record.id} ticket=${titleDeclarations[0].slice(0, 60)}`);
+      } else if (titleMatch[1] !== record.id) {
+        pushConflict(`DRIFT ${record.id} id catalog=${record.id} ticket=${titleMatch[1]}`);
       }
     }
   }
