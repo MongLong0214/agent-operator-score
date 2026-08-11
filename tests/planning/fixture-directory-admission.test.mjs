@@ -195,6 +195,13 @@ test("non-glob-fixture-declaration-is-not-admitted", () => {
   const message = "non-glob fixture declaration fixtures/operational-state was admitted";
   assertExported(fixtureAdmissionGlob, message);
   assert.equal(fixtureAdmissionGlob("fixtures/operational-state"), null, message);
+  // The same rule at the other shapes an item can take without naming one directory's glob. A
+  // deeper non-glob path is refused for the same reason as the two-segment one; the fixtures root
+  // is not a fixture directory; and an item that joined two declarations with a word rather than
+  // a separator still ends in `**` but names no directory either ticket wrote.
+  assert.equal(fixtureAdmissionGlob("fixtures/governance/effective-state"), null, message);
+  assert.equal(fixtureAdmissionGlob("fixtures/**"), null, message);
+  assert.equal(fixtureAdmissionGlob("fixtures/a/** and fixtures/b/**"), null, message);
 
   withTempRoot((root) => {
     fixtureFiles(root, "fixtures/operational-state", ["must-not-admit.json"]);
@@ -266,6 +273,15 @@ test("outside-repository-symlinked-fixture-directory-is-not-admitted", () => {
       const prefixed = census(root, ["docs/tickets/D0/prefix.md"], () => ticketText("fixtures/outside/child/**"));
       assert.deepEqual(prefixed.admitted, [], message);
       assertNoMalformedTickets(prefixed);
+
+      // The entry form: the declared directory is legitimately inside the repository, but one
+      // file in it is a link out. Following it would place an outside file into the skeleton
+      // under a path that looks local.
+      writeFixture(root, "fixtures/inside/real.json");
+      symlinkSync(resolve(outside, "outside.json"), resolve(root, "fixtures/inside/linked.json"), "file");
+      const withLinkedEntry = census(root, ["docs/tickets/D0/inside.md"], () => ticketText("fixtures/inside/**"));
+      assert.deepEqual(withLinkedEntry.admitted, ["fixtures/inside/real.json"], message);
+      assertNoMalformedTickets(withLinkedEntry);
     } finally {
       rmSync(outside, { recursive: true, force: true });
     }

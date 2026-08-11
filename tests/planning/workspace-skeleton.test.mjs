@@ -179,7 +179,9 @@ const admittedFixtureFiles = (root, realRoot, { directory, predicate }) => {
   const admit = (walked) => readdirSync(walked).sort().flatMap((entry) => {
     const absolutePath = join(walked, entry);
     const info = lstatSync(absolutePath);
-    if (info.isSymbolicLink()) return [];
+    // lstat, so a symlink reports as neither a directory nor a regular file and is refused by
+    // the two checks below whichever it points at. A separate symlink branch here would be
+    // unreachable, and an unreachable guard reads as protection that is not there.
     if (info.isDirectory()) return predicate === "subtree" ? admit(absolutePath) : [];
     if (!info.isFile()) return [];
     if (predicate === "json" && extname(entry) !== ".json") return [];
