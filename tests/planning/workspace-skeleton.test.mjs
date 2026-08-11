@@ -32,7 +32,8 @@ const expectedScripts = {
   build: "node scripts/validate-planning.mjs --build",
   "docs:check": "node scripts/validate-planning.mjs",
   "ops:status": "node scripts/resolve-execution-state.mjs",
-  "ops:check": "node scripts/resolve-execution-state.mjs --offline"
+  "ops:check": "node scripts/resolve-execution-state.mjs --offline && node scripts/render-execution-views.mjs --check",
+  "ops:render": "node scripts/render-execution-views.mjs"
 };
 const expectedScriptsText = [
   "  \"scripts\": {",
@@ -40,7 +41,8 @@ const expectedScriptsText = [
   "    \"build\": \"node scripts/validate-planning.mjs --build\",",
   "    \"docs:check\": \"node scripts/validate-planning.mjs\",",
   "    \"ops:status\": \"node scripts/resolve-execution-state.mjs\",",
-  "    \"ops:check\": \"node scripts/resolve-execution-state.mjs --offline\"",
+  "    \"ops:check\": \"node scripts/resolve-execution-state.mjs --offline && node scripts/render-execution-views.mjs --check\",",
+  "    \"ops:render\": \"node scripts/render-execution-views.mjs\"",
   "  }"
 ].join("\n");
 const forbiddenManifestFields = [
