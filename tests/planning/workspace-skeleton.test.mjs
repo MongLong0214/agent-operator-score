@@ -123,7 +123,13 @@ export const fixtureAdmissionGlob = (declaration) => {
   if (segments[0] !== "fixtures") return null;
   const predicate = { "**": "subtree", "*.json": "json" }[segments.at(-1)];
   if (!predicate) return null;
-  return { directory: segments.slice(0, -1).join("/"), predicate };
+  // Only the final segment may carry the glob. A metacharacter in a directory segment means the
+  // item never held one declaration: "fixtures/a/** and fixtures/b/**" ends in `**` but splits
+  // into a directory segment `** and fixtures`, and admitting that would name a directory no
+  // ticket wrote while silently losing both declarations the item meant.
+  const directory = segments.slice(0, -1);
+  if (directory.some((segment) => segment.includes("*"))) return null;
+  return { directory: directory.join("/"), predicate };
 };
 
 // A declaration heads its ownership item, after at most the list's trailing "and" and before at
