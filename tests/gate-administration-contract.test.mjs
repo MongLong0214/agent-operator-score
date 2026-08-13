@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,45 @@ import { validateGateAdministration } from "../scripts/validate-gate-administrat
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const canonicalRegistry = "docs/decisions/maintainer-gate-registry.v2.json";
 const fixtureTempPrefix = "aos gate administration";
+
+const stripCensusMarkup = (value) => value
+  .replace(/<!--[\s\S]*?-->/g, () => "")
+  .replace(/<(?:(?:"[^"]*")|(?:'[^']*')|[^'"<>])*>/g, () => "");
+
+const decodeCensusEntities = (value) => stripCensusMarkup(value)
+  .replace(/&amp;/gi, () => "&")
+  .replace(/&#(\d+);/g, (reference, decimal) => {
+    const codePoint = Number(decimal);
+    return Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff
+      ? String.fromCodePoint(codePoint)
+      : reference;
+  });
+
+const normalizeCensusText = (value) => decodeCensusEntities(value)
+  .replace(/\\/g, () => "")
+  .normalize("NFKC")
+  .replace(/[\p{Cf}\u00ad]/gu, () => "")
+  .replace(/[\p{Dash}_*`]/gu, () => "-")
+  .replace(/-+/g, () => "-")
+  .toLowerCase()
+  .replace(/\s+/g, () => "");
+
+const collectTicketSlugs = (directory) => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+  const entryPath = join(directory, entry.name);
+  if (entry.isDirectory()) return collectTicketSlugs(entryPath);
+  return entry.isFile() && entry.name.endsWith(".md")
+    ? [entry.name.slice(0, -".md".length).toLowerCase()]
+    : [];
+});
+
+const normalizeStatusCell = (value) => decodeCensusEntities(value)
+  .normalize("NFKC")
+  .replace(/[\p{Cf}\u00ad]/gu, () => "")
+  .replace(/[*_`]/g, () => "")
+  .replace(/\p{Dash}/gu, () => " ")
+  .replace(/\s+/g, () => " ")
+  .trim()
+  .toUpperCase();
 
 /**
  * Bounded cleanup for exact temporary gate fixtures only (Node 22 ENOTEMPTY on .git).
@@ -222,6 +261,75 @@ test("pre-implementation Gate Administrator is independent of D0-004 and D0-002"
   assert.match(decisionText, /external gate evidence/);
   assert.match(decisionText, /never proof of independent authorization/);
   assert.doesNotMatch(gateValidator, /D0-004|D0-002/);
+});
+
+test("current registry census is byte-exact and exclusive", () => {
+  const decision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
+  const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
+  const generatedCensus = [
+    "| Batch | Registry status |",
+    "| --- | --- |",
+    ...registry.batches.map(({ id, status }) => `| \`${id}\` | ${status} |`),
+    ""
+  ].join("\n");
+
+  // Measured from the corrected document: U+2192 RIGHTWARDS ARROW occurs once.
+  const allowedNonAscii = new Set(["→"]);
+  const unsupportedCharacters = [...decision].filter((character) =>
+    character.codePointAt(0) > 127 && !allowedNonAscii.has(character)
+  );
+  assert.equal(
+    unsupportedCharacters.length,
+    0,
+    `unexpected non-ASCII code points: ${unsupportedCharacters.map((character) => `U+${character.codePointAt(0).toString(16).toUpperCase()}`).join(", ")}`
+  );
+
+  const censusParts = decision.split(generatedCensus);
+  assert.equal(
+    censusParts.length,
+    2,
+    "the control plane must contain the generated registry census block exactly once, including its terminal newline"
+  );
+
+  const outsideCensus = normalizeCensusText(censusParts.join("\n"));
+  const ticketSlugs = new Set(collectTicketSlugs(resolve(root, "docs", "tickets")));
+  const registryIdsOutsideCensus = registry.batches
+    .map(({ id }) => id)
+    .filter((id) => outsideCensus.includes(id));
+  const idShapedOutsideCensus = [...outsideCensus.matchAll(/d0-\d+-(?:[a-z0-9]+(?:-[a-z0-9]+)*)/gi)]
+    .map(([match]) => match);
+  const unapprovedIdShapes = idShapedOutsideCensus.filter((id) => !ticketSlugs.has(id.toLowerCase()));
+  assert.equal(normalizeCensusText("d0-011\\-prerequisites"), "d0-011-prerequisites");
+  assert.equal(normalizeCensusText("d0-011&#45;prerequisites"), "d0-011-prerequisites");
+  assert.equal(
+    registryIdsOutsideCensus.length === 0 && unapprovedIdShapes.length === 0,
+    true,
+    `registry IDs outside census: ${registryIdsOutsideCensus.join(", ")}; unapproved ID-shaped text: ${unapprovedIdShapes.join(", ")}`
+  );
+
+  const censusStatuses = ["PENDING", "PARTIAL", "ACCEPTED", "REJECTED", "INVALIDATED"];
+  const containsCensusStatus = (cell) => {
+    const normalizedCell = normalizeStatusCell(cell);
+    return censusStatuses.some((status) => new RegExp(`(?:^|[^A-Z])${status}(?:$|[^A-Z])`).test(normalizedCell));
+  };
+  const outsideCensusText = censusParts.join("\n");
+  const pipeCells = outsideCensusText
+    .split(/\r?\n/)
+    .filter((line) => line.includes("|"))
+    .flatMap((line) => line.trim().replace(/^\|/, () => "").replace(/\|$/, () => "").split("|"));
+  const htmlCells = [...outsideCensusText.matchAll(/<td\b(?:(?:"[^"]*")|(?:'[^']*')|[^'"<>])*>([\s\S]*?)<\/td\s*>/gi)]
+    .map(([, cell]) => cell);
+  const statusHeaders = outsideCensusText
+    .split(/\r?\n/)
+    .filter((line) => /^\s*-\s+Status\s*:/i.test(line));
+  const outsideStatusCells = [...pipeCells, ...htmlCells, ...statusHeaders].filter(containsCensusStatus);
+  // Status cells are scanned instead of pinning a fixed header; the obsolete Status line is
+  // removed, so a reintroduced header fails within this same non-duplicative assertion.
+  assert.equal(
+    outsideStatusCells.length === 0 && statusHeaders.length === 0,
+    true,
+    `census-status cells outside census: ${outsideStatusCells.join(" | ")}; Status headers: ${statusHeaders.join(" | ")}`
+  );
 });
 
 test("programmatic root or registry options fail closed", () => {
@@ -878,9 +986,6 @@ test("current registry invalidates the stale D0-001 batch and requires renewed e
   assert.doesNotMatch(gateStatus, /53abf77c724bffc785bc9820ef9bbe5ffece89d3/);
   assert.doesNotMatch(gateStatus, /three invalidated D0-001/);
   assert.doesNotMatch(gateStatus, /bounded-RED(?: digest)? renewal/);
-  assert.match(gateDecision, /D0-001 history retains four `PENDING → ACCEPTED → INVALIDATED` batches/);
-  assert.match(gateDecision, /D0-001 implementation completion remains historical post-merge evidence, not a current planning acceptance or execution authority/);
-  assert.match(gateDecision, /D0-004 B-harness carve-out renewal `d0-004-prerequisites-b-harness-carveout-renewal`/);
   assert.match(ticket, /only the numeric `control_plane_code_files` literal within `acceptedValidatorOutput` and `pendingValidatorOutput`/);
   assert.match(ticket, /Gate Administration owns the `gates=<status>` portion and D0-004 owns every remaining portion/);
   assert.match(d0004Ticket, /except the numeric `control_plane_code_files` literal/);
