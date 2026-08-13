@@ -80,6 +80,7 @@ This board owns only ticket IDs, milestone placement, size, and dependency edges
 | [D0-008](D0/D0-008-github-review-acceptance-derivation-inactive.md) | D0 | S0 · Name & Contracts | L | D0-007 |
 | [D0-009](D0/D0-009-authenticated-review-activation.md) | D0 | S0 · Name & Contracts | L | D0-008 |
 | [D0-011](D0/D0-011-ticket-derived-fixture-directory-admission.md) | D0 | S0 · Name & Contracts | M | D0-002,D0-004 |
+| [D0-013](D0/D0-013-restore-execution-view-regression-coverage.md) | D0 | S0 · Name & Contracts | S | D0-002 |
 <!-- generated:board-rows end -->
 
 ## Gate invariant
