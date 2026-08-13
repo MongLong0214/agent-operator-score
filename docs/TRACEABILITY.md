@@ -35,6 +35,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "D0-003",
         "D0-004",
         "D0-011",
+        "D0-012",
         "D0-013"
       ],
       "requirement_to_acceptance": [
@@ -93,6 +94,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
             "D0-002",
             "D0-004",
             "D0-011",
+            "D0-012",
             "D0-013"
           ]
         },
@@ -2420,6 +2422,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "one-owner-per-path",
         "root-private-and-internal-workspaces-private",
         "root-private-scripts-and-runnable-surface",
+        "skeleton-source-requires-an-owning-ticket",
         "workspace-census",
         "workspace-lock-consistency"
       ]
@@ -2889,6 +2892,14 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "test_path": "tests/planning/fixture-directory-admission.test.mjs",
       "cases": [
         "repeated-unquoted-fixture-declarations-are-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-012",
+      "acceptance_id": "AC-D0-012-1",
+      "test_path": "tests/planning/workspace-skeleton.test.mjs",
+      "cases": [
+        "skeleton-source-requires-an-owning-ticket"
       ]
     },
     {
