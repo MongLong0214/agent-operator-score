@@ -42,7 +42,7 @@ Planning:
 - final single source of truth;
 - 13 proposed ADRs;
 - 20 proposed PRDs;
-- 71 atomic implementation tickets;
+- 72 atomic implementation tickets;
 - milestone, dependency, acceptance, and evidence contracts.
 
 Implemented, private and internal:

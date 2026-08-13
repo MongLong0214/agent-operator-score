@@ -1274,6 +1274,113 @@
       }
     },
     {
+      "id": "d0-013-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the D0-013 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-013 ticket at the digests below — so execution-view regression coverage restoration may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "40ea0701887e97868418f6ed4d49d227933c44ec"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md",
+          "sha256": "d248a9871efc9dc4f22b75a213a662449ac7eaf401f49ba0bd3980ac860cc3d1",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md",
+          "sha256": "d248a9871efc9dc4f22b75a213a662449ac7eaf401f49ba0bd3980ac860cc3d1",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-14T00:00:00Z",
+          "recorded_by": "d0-013-execution-view-coverage-gate-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "d0-013-execution-view-coverage-gate-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-14T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
       "id": "d0-011-prerequisites",
       "status": "ACCEPTED",
       "scope": "Accept the D0-011 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-011 ticket at the digests below — so ticket-derived fixture admission may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
