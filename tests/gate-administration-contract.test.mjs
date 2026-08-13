@@ -1044,19 +1044,20 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
   assert.equal(renewal.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
-  // Registry-wide counts, so recording any batch moves them. D0-011's prerequisite batch is the
-  // second acceptance; the set is still pinned exactly, not loosened to a floor.
-  assert.equal(result.batches, 11);
-  assert.equal(result.counts.accepted, 2);
+  // Registry-wide counts, so recording any batch moves them. The D0-004 renewal is the
+  // third acceptance; the set remains pinned exactly, not loosened to a floor.
+  assert.equal(result.batches, 12);
+  assert.equal(result.counts.accepted, 3);
   assert.equal(result.counts.invalidated, 9);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+    "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
     "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
 
-test("D0-004 completion-marker contract amendment invalidates the B-harness carve-out renewal without requiring a Bootstrap renewal", () => {
+test("D0-004 completion-marker contract amendment retains the B-harness record as invalidated history and requires exactly one fresh post-Bootstrap accepted renewal", () => {
   const registry = JSON.parse(readFileSync(resolve(root, canonicalRegistry), "utf8"));
   const gateDecision = readFileSync(resolve(root, "docs/decisions/PRE-IMPLEMENTATION-GATE-ADMINISTRATION.md"), "utf8");
   const prior = registry.batches.find(({ id }) => id === "d0-004-prerequisites-single-owner-bootstrap");
@@ -1096,12 +1097,127 @@ test("D0-004 completion-marker contract amendment invalidates the B-harness carv
   assert.notEqual(batch.preparation.prepared_by, batch.approval.approved_by);
   assert.equal(batch.approval.role, "MAINTAINER");
   assert.match(batch.invalidation.reason, /D0-004 completion-marker contract amendment changed the accepted ticket digest/);
-  assert.match(batch.invalidation.reason, /Bootstrap preserves the prior batch as historical evidence and does not require a renewal batch before D0-004C/);
+  assert.match(
+    batch.invalidation.reason,
+    /Bootstrap preserves the prior batch as historical evidence and does not require a renewal batch before D0-004C/,
+    "the immutable historical invalidation evidence must retain its pre-D0-004C Bootstrap rule"
+  );
   assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
+  const expectedCurrentD0004Renewal = {
+    "id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+    "status": "ACCEPTED",
+    "scope": "Accept the D0-004 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-004 ticket at the digests below — so its semantic planning validator and governance-gate work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+    "target": {
+      "repository": "github.com/MongLong0214/agent-operator-score",
+      "branch": "dev",
+      "reviewed_head": "05f17438d56a54d9df577a089a328ea00113fc48"
+    },
+    "required_artifacts": [
+      {
+        "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+        "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+        "kind": "ADR"
+      },
+      {
+        "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+        "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+        "kind": "ADR"
+      },
+      {
+        "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+        "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+        "kind": "ADR"
+      },
+      {
+        "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+        "kind": "PRD"
+      },
+      {
+        "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+        "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+        "kind": "TICKET"
+      }
+    ],
+    "required_transitions": [
+      "ADR_ACCEPTED",
+      "PRD_ACCEPTED",
+      "TICKET_READY_FOR_RED"
+    ],
+    "artifacts": [
+      {
+        "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+        "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+        "kind": "ADR"
+      },
+      {
+        "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+        "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+        "kind": "ADR"
+      },
+      {
+        "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+        "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+        "kind": "ADR"
+      },
+      {
+        "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+        "kind": "PRD"
+      },
+      {
+        "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+        "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+        "kind": "TICKET"
+      }
+    ],
+    "transitions": [
+      {
+        "type": "ADR_ACCEPTED",
+        "artifact_paths": [
+          "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+        ]
+      },
+      {
+        "type": "PRD_ACCEPTED",
+        "artifact_paths": [
+          "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+        ]
+      },
+      {
+        "type": "TICKET_READY_FOR_RED",
+        "artifact_paths": [
+          "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"
+        ]
+      }
+    ],
+    "events": [
+      {
+        "from": "PENDING",
+        "to": "ACCEPTED",
+        "recorded_at": "2026-08-13T00:00:00Z",
+        "recorded_by": "d0-004-completion-marker-receipt-renewal-candidate"
+      }
+    ],
+    "preparation": {
+      "prepared_by": "d0-004-completion-marker-receipt-renewal-candidate"
+    },
+    "approval": {
+      "approved_by": "MongLong0214",
+      "approved_at": "2026-08-13T00:00:00Z",
+      "role": "MAINTAINER"
+    }
+  };
   const currentAcceptedD0004Batches = registry.batches.filter(({ status, artifacts }) => status === "ACCEPTED" &&
     Array.isArray(artifacts) &&
     artifacts.some(({ path }) => path === "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"));
-  assert.deepEqual(currentAcceptedD0004Batches, [], "no batch may hold a current ACCEPTED D0-004 ticket binding during Bootstrap");
+  assert.deepEqual(
+    currentAcceptedD0004Batches,
+    [expectedCurrentD0004Renewal],
+    "after D0-004C, Bootstrap is inactive: exactly one fresh D0-004 accepted record must bind the current five artifacts while both historical D0-004 rows remain INVALIDATED"
+  );
   assert.match(gateDecision, /D0-004 B-harness carve-out renewal/);
   assert.match(gateDecision, /mutable structural fields.*`not_authorization`/s);
 });
