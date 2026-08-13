@@ -60,6 +60,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-004-prerequisites-single-owner-bootstrap` | INVALIDATED |
 | `d0-004-prerequisites-b-harness-carveout-renewal` | INVALIDATED |
 | `d0-004-prerequisites-completion-marker-receipt-renewal` | ACCEPTED |
+| `d0-013-prerequisites` | ACCEPTED |
 | `d0-011-prerequisites` | ACCEPTED |
 
 ## Operating sequence
