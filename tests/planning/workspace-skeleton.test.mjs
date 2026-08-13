@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { basename, extname, join, relative, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
@@ -54,9 +54,51 @@ const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"])
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
 
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
-// Only paths a ticket names exactly, and that exist on disk, may sit in the skeleton. This is
-// a claim check, not an acceptance check; ticket readiness stays the resolver's job.
-const ticketOwnedSkeletonPaths = () => {
+// Only paths a ticket names exactly, and that exist on disk, are claimed. This is a claim check,
+// not an acceptance check; ticket readiness stays the resolver's job.
+//
+// The comparison below reaches only materialized paths, because both sides drop declarations that
+// have no file on disk. It therefore checks the two independent parsers where their claims can be
+// observed; it does not claim to exercise every unmaterialized declaration branch.
+const ticketOwnedPaths = () => {
+  // The validator counts these separately from ticket-owned code. Keep an independent local copy:
+  // importing validator parsing or its allowlist would make the comparison agree by construction.
+  const controlPlanePaths = new Set([
+    "scripts/validate-planning.mjs",
+    "tests/planning-contract.test.mjs",
+    "scripts/validate-gate-administration.mjs",
+    "tests/gate-administration-contract.test.mjs",
+    "scripts/validate-identity.mjs",
+    "tests/planning/identity.test.mjs",
+    "tests/planning/workspace-skeleton.test.mjs",
+    "scripts/resolve-execution-state.mjs",
+    "scripts/render-execution-views.mjs",
+    "tests/execution-state.test.mjs"
+  ]);
+  const isMaterializedTicketOwnedSource = (path) => {
+    const absolutePath = resolve(repositoryRoot, path);
+    // The validator compares ticket declarations with paths emitted by its in-root regular-file walk.
+    // Do not normalize a declaration into a different path or admit an ignored tree, symlink,
+    // directory, or escape.
+    const relation = relative(repositoryRoot, absolutePath);
+    if (relation === "" || relation === ".." || relation.startsWith(`..${sep}`) || isAbsolute(relation)) return false;
+    if (asRepositoryRelative(absolutePath) !== path) return false;
+    const segments = path.split("/");
+    if ([".git", "node_modules"].includes(segments[0])) return false;
+    let cursor = repositoryRoot;
+    for (let index = 0; index < segments.length; index += 1) {
+      cursor = join(cursor, segments[index]);
+      try {
+        const entry = lstatSync(cursor);
+        if (entry.isSymbolicLink()) return false;
+        if (index < segments.length - 1 && !entry.isDirectory()) return false;
+        if (index === segments.length - 1) return entry.isFile();
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
   const ticketsRoot = resolve(repositoryRoot, "docs/tickets");
   const owned = new Set();
   for (const absolutePath of walkFiles(ticketsRoot)) {
@@ -73,15 +115,19 @@ const ticketOwnedSkeletonPaths = () => {
         if (sourceExtensions.has(extname(candidate))) owned.add(candidate);
       }
     }
-    const redTest = /^- Test file: `([^`]+)`\s*$/m.exec(text);
+    // A final period is ordinary prose and must not remove the RED file from this census.
+    const redTest = /^- Test file: `([^`]+)`\.?\s*$/m.exec(text);
     if (redTest && sourceExtensions.has(extname(redTest[1]))) owned.add(redTest[1]);
   }
-  // Control-plane paths are also ticket-owned; this view is only the skeleton portion.
   return [...owned]
-    .filter((path) => /^(packages|adapters|suites|fixtures|conformance)\//.test(path))
-    .filter((path) => existsSync(resolve(repositoryRoot, path)))
+    .filter((path) => !controlPlanePaths.has(path))
+    .filter(isMaterializedTicketOwnedSource)
     .sort();
 };
+
+// Skeleton narrowing is a projection of the whole re-derivation, never the comparator's input.
+const ticketOwnedSkeletonPaths = () => ticketOwnedPaths()
+  .filter((path) => /^(packages|adapters|suites|fixtures|conformance)\//.test(path));
 const assertRegularFile = (relativePath) => {
   const absolutePath = resolve(repositoryRoot, relativePath);
   assert.ok(existsSync(absolutePath), `${relativePath} is missing`);
@@ -216,6 +262,7 @@ test("root-private-scripts-and-runnable-surface", () => {
 
 test("skeleton-source-requires-an-owning-ticket", () => {
   const owned = ticketOwnedSkeletonPaths();
+  const wholeOwned = ticketOwnedPaths();
   assert.ok(owned.includes("packages/schema/src/metric-registry.ts"), "E0A-001 owned source is unclaimed");
   assert.ok(owned.includes("packages/schema/test/metric-registry.test.ts"), "E0A-001 RED file is unclaimed");
   for (const path of owned) {
@@ -238,53 +285,201 @@ test("skeleton-source-requires-an-owning-ticket", () => {
   });
   const reported = /ticket_owned_code_paths=(\S+)/.exec(census);
   assert.ok(reported, "census does not report ticket_owned_code_paths");
-  assert.deepEqual(reported[1] === "none" ? [] : reported[1].split(","), owned);
+  const reportedPaths = reported[1] === "none" ? [] : reported[1].split(",");
+  const reportedCount = / ticket_owned_code_files=(\d+) /.exec(census);
+  assert.ok(reportedCount, "census does not report ticket_owned_code_files");
+  assert.equal(Number(reportedCount[1]), reportedPaths.length, "census count does not match its reported paths");
+  // The validator reports its whole materialized non-control-plane census. Comparing it with a
+  // skeleton projection would discard precisely the outside-skeleton path this guard must see.
+  assert.deepEqual(
+    reportedPaths,
+    wholeOwned,
+    "catalog-declared outside-skeleton source leaves the validator census unequal to the skeleton-only re-derivation."
+  );
   assert.match(census, / product_code_files=0 /);
   assert.match(census, / product_code_paths=none /);
 
-  // Selectivity, proven against a real unclaimed sibling rather than a path no
-  // implementation could ever return. This runs in a temp copy: writing the intruder into
-  // the live tree would race with the fixture tests that copy this repository.
-  const parent = mkdtempSync(join(tmpdir(), "aos ticket claim census "));
-  const fixture = join(parent, "repository");
-  try {
-    cpSync(repositoryRoot, fixture, {
-      recursive: true,
-      // Sibling tests write transient fixtures into the live tree while this copy runs;
-      // capturing one would fail the fixture validator for an unrelated reason.
-      filter: (source) => basename(source) !== "node_modules" && !basename(source).startsWith(".planning-")
-    });
-    writeFileSync(resolve(fixture, "packages/schema/src/unclaimed-by-any-ticket.ts"), "export {};\n");
-    let failed;
+  const fixtureMarker = "AOS_D0012_CENSUS_FIXTURE_ROOT";
+  const fixturePrefix = "aos-d0012-census-";
+  const outsideSkeletonPath = "tests/planning/catalog-declared-outside-skeleton.mjs";
+  const clip = (value) => {
+    const text = String(value ?? "");
+    return text.length <= 4096 ? text : `${text.slice(0, 4096)}…`;
+  };
+  const fixtureParentIsOwned = (candidate) => {
+    const lexical = resolve(candidate);
+    let entry;
     try {
-      execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+      entry = lstatSync(lexical);
+    } catch {
+      return false;
+    }
+    if (!entry.isDirectory() || entry.isSymbolicLink()) return false;
+
+    let canonical;
+    let canonicalTempRoot;
+    try {
+      canonical = realpathSync(lexical);
+      canonicalTempRoot = realpathSync(resolve(tmpdir()));
+    } catch {
+      return false;
+    }
+    const relation = relative(canonicalTempRoot, canonical);
+    return relation !== ""
+      && relation !== ".."
+      && !relation.startsWith(`..${sep}`)
+      && !isAbsolute(relation)
+      && basename(canonical).startsWith(fixturePrefix);
+  };
+  const cleanupFixtureParent = (candidate) => {
+    try {
+      if (!fixtureParentIsOwned(candidate)) {
+        process.emitWarning("D0-012 census fixture cleanup skipped because its parent could not be verified");
+        return;
+      }
+      // Remove the already-verified lexical parent. A new realpath lookup here could resolve a
+      // path swapped after verification; rmSync unlinks a substituted symlink rather than walking it.
+      rmSync(candidate, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    } catch (error) {
+      process.emitWarning(`D0-012 census fixture cleanup failed: ${clip(error?.message)}`);
+    }
+  };
+  const markerRoot = process.env[fixtureMarker];
+  let fixtureMode = false;
+  if (markerRoot !== undefined) {
+    const canonicalRoot = realpathSync(repositoryRoot);
+    assert.equal(markerRoot, canonicalRoot, "fixture marker does not name this copied repository root");
+    assert.equal(basename(canonicalRoot), "repository", "fixture marker cannot suppress setup outside a copied repository");
+    assert.ok(fixtureParentIsOwned(dirname(canonicalRoot)), "fixture marker parent is not a verified temporary root");
+    fixtureMode = true;
+  }
+  if (fixtureMode) {
+    assert.ok(wholeOwned.includes(outsideSkeletonPath), "fixture whole census omits the outside-skeleton source");
+    assert.equal(owned.includes(outsideSkeletonPath), false, "fixture skeleton projection includes the outside-skeleton source");
+  }
+  if (!fixtureMode) {
+    const parent = mkdtempSync(join(tmpdir(), fixturePrefix));
+    const fixture = join(parent, "repository");
+    const selectivityProbeSource = resolve(repositoryRoot, "packages/schema/src/unclaimed-by-any-ticket.ts");
+    try {
+      assert.ok(fixtureParentIsOwned(parent), `fixture parent is not a verified temporary root: ${parent}`);
+      cpSync(repositoryRoot, fixture, {
+        recursive: true,
+        // Sibling tests can create transient planning fixtures while this test copies the tree.
+        filter: (source) => {
+          const entry = basename(source);
+          return resolve(source) !== selectivityProbeSource
+            && entry !== "node_modules"
+            && !entry.startsWith(".planning-");
+        }
+      });
+      const ticket = resolve(fixture, "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md");
+      const ownershipAnchor = "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts —";
+      const originalTicket = readFileSync(ticket, "utf8");
+      assert.equal(originalTicket.split(ownershipAnchor).length, 2, "fixture ownership anchor is not unique");
+      writeFileSync(
+        ticket,
+        originalTicket.replace(
+          ownershipAnchor,
+          () => "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts; tests/planning/catalog-declared-outside-skeleton.mjs —"
+        )
+      );
+      writeFileSync(resolve(fixture, outsideSkeletonPath), "export {};\n");
+
+      const fixtureCensus = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
         cwd: fixture,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"]
       });
-    } catch (caught) {
-      failed = caught;
-    }
-    assert.ok(failed, "the census accepted source that no ticket claims");
-    assert.match(failed.stderr, /unallowlisted product code: packages\/schema\/src\/unclaimed-by-any-ticket\.ts/);
+      const fixtureReported = /ticket_owned_code_paths=(\S+)/.exec(fixtureCensus);
+      assert.ok(fixtureReported, "fixture census does not report ticket_owned_code_paths");
+      const fixturePaths = fixtureReported[1] === "none" ? [] : fixtureReported[1].split(",");
+      const fixtureCount = / ticket_owned_code_files=(\d+) /.exec(fixtureCensus);
+      assert.ok(fixtureCount, "fixture census does not report ticket_owned_code_files");
+      assert.deepEqual(fixturePaths, [...reportedPaths, outsideSkeletonPath].sort());
+      assert.equal(fixturePaths.length, reportedPaths.length + 1, "fixture census did not add exactly one path");
+      assert.equal(Number(fixtureCount[1]), fixturePaths.length, "fixture census count does not match its reported paths");
 
-    // And the converse: claiming that same path in a ticket admits it.
-    const ticket = resolve(fixture, "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md");
-    writeFileSync(
-      ticket,
-      readFileSync(ticket, "utf8").replace(
-        "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts —",
-        "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts; packages/schema/src/unclaimed-by-any-ticket.ts —"
-      )
-    );
-    const admitted = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
-      cwd: fixture,
-      encoding: "utf8"
-    });
-    assert.match(admitted, /unclaimed-by-any-ticket\.ts/);
-    assert.match(admitted, / product_code_files=0 /);
-  } finally {
-    rmSync(parent, { recursive: true, force: true });
+      const childEnv = { ...process.env };
+      delete childEnv[fixtureMarker];
+      delete childEnv.NODE_TEST_CONTEXT;
+      delete childEnv.NODE_OPTIONS;
+      childEnv[fixtureMarker] = realpathSync(fixture);
+      let child;
+      try {
+        child = execFileSync(process.execPath, [
+          "--test",
+          "--test-reporter=tap",
+          "--test-name-pattern", "^skeleton-source-requires-an-owning-ticket$",
+          "tests/planning/workspace-skeleton.test.mjs"
+        ], {
+          cwd: fixture,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+          env: childEnv
+        });
+      } catch (error) {
+        assert.fail(`fixture focused child failed: ${clip(`${error?.stdout ?? ""}${error?.stderr ?? ""}`)}`);
+      }
+      assert.match(child, /ok 1 - skeleton-source-requires-an-owning-ticket/);
+      assert.match(child, /# tests 1/);
+      assert.match(child, /# pass 1/);
+      assert.match(child, /# fail 0/);
+    } finally {
+      cleanupFixtureParent(parent);
+    }
+  }
+
+  // The copied child above must run the same parser and comparator, but never recursively create
+  // either temporary fixture. The parent still executes this independent selectivity probe.
+  if (!fixtureMode) {
+    // Selectivity, proven against a real unclaimed sibling rather than a path no
+    // implementation could ever return. This runs in a temp copy: writing the intruder into
+    // the live tree would race with the fixture tests that copy this repository.
+    const parent = mkdtempSync(join(tmpdir(), `${fixturePrefix}selectivity-`));
+    const fixture = join(parent, "repository");
+    try {
+      cpSync(repositoryRoot, fixture, {
+        recursive: true,
+        // Sibling tests write transient fixtures into the live tree while this copy runs;
+        // capturing one would fail the fixture validator for an unrelated reason.
+        filter: (source) => basename(source) !== "node_modules" && !basename(source).startsWith(".planning-")
+      });
+      writeFileSync(resolve(fixture, "packages/schema/src/unclaimed-by-any-ticket.ts"), "export {};\n");
+      let failed;
+      try {
+        execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+          cwd: fixture,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"]
+        });
+      } catch (caught) {
+        failed = caught;
+      }
+      assert.ok(failed, "the census accepted source that no ticket claims");
+      assert.match(failed.stderr, /unallowlisted product code: packages\/schema\/src\/unclaimed-by-any-ticket\.ts/);
+
+      // And the converse: claiming that same path in a ticket admits it.
+      const ticket = resolve(fixture, "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md");
+      const ownershipAnchor = "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts —";
+      const originalTicket = readFileSync(ticket, "utf8");
+      assert.equal(originalTicket.split(ownershipAnchor).length, 2, "selectivity ownership anchor is not unique");
+      writeFileSync(
+        ticket,
+        originalTicket.replace(
+          ownershipAnchor,
+          () => "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts; packages/schema/src/unclaimed-by-any-ticket.ts —"
+        )
+      );
+      const admitted = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+        cwd: fixture,
+        encoding: "utf8"
+      });
+      assert.match(admitted, /unclaimed-by-any-ticket\.ts/);
+      assert.match(admitted, / product_code_files=0 /);
+    } finally {
+      cleanupFixtureParent(parent);
+    }
   }
 });
 
