@@ -409,6 +409,7 @@ test("skeleton-source-requires-an-owning-ticket", () => {
       try {
         child = execFileSync(process.execPath, [
           "--test",
+          "--test-reporter=tap",
           "--test-name-pattern", "^skeleton-source-requires-an-owning-ticket$",
           "tests/planning/workspace-skeleton.test.mjs"
         ], {
