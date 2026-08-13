@@ -36,7 +36,7 @@ What it does carry: the catalog's shape, the order records must run in, where la
 each other, and the conditions that stop a lane. Those change when a contract changes, not when
 `dev` moves.
 
-- Ticket records in the catalog: **72** — 71 executable and one superseded, D0-003 / issue #56
+- Ticket records in the catalog: **73** — 72 executable and one superseded, D0-003 / issue #56
 - Ticket record without an owning contract: **D0-010 / issue #167** (see *Records that cannot enter a ready set*)
 - Current milestone: **S0 · Name & Contracts**
 
