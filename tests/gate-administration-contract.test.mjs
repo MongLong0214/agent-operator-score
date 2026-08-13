@@ -1149,15 +1149,16 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
   assert.equal(renewal.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
-  // Registry-wide counts, so recording any batch moves them. The D0-004 renewal is the
-  // third acceptance; the set remains pinned exactly, not loosened to a floor.
-  assert.equal(result.batches, 12);
-  assert.equal(result.counts.accepted, 3);
+  // Registry-wide counts, so recording any batch moves them. D0-013 is the fourth
+  // acceptance; the set remains pinned exactly, not loosened to a floor.
+  assert.equal(result.batches, 13);
+  assert.equal(result.counts.accepted, 4);
   assert.equal(result.counts.invalidated, 9);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
     "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-    "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md"
+    "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md",
+    "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });

@@ -34,7 +34,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "D0-002",
         "D0-003",
         "D0-004",
-        "D0-011"
+        "D0-011",
+        "D0-013"
       ],
       "requirement_to_acceptance": [
         {
@@ -91,7 +92,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
           "ticket_ids": [
             "D0-002",
             "D0-004",
-            "D0-011"
+            "D0-011",
+            "D0-013"
           ]
         },
         {
@@ -2302,6 +2304,15 @@ JSON object key order in this catalog is not schema-significant; validators comp
       ]
     },
     {
+      "path": "tests/execution-views.test.mjs",
+      "cases": [
+        "board-is-not-an-input",
+        "generated-views-are-deterministic",
+        "historical-ledger-is-ignored",
+        "roadmap-is-not-an-input"
+      ]
+    },
+    {
       "path": "tests/gate-effective-state.test.mjs",
       "cases": [
         "accepted-self-authored-row-is-legacy-unauthenticated",
@@ -2878,6 +2889,17 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "test_path": "tests/planning/fixture-directory-admission.test.mjs",
       "cases": [
         "repeated-unquoted-fixture-declarations-are-admitted"
+      ]
+    },
+    {
+      "ticket_id": "D0-013",
+      "acceptance_id": "AC-D0-013-1",
+      "test_path": "tests/execution-views.test.mjs",
+      "cases": [
+        "board-is-not-an-input",
+        "generated-views-are-deterministic",
+        "historical-ledger-is-ignored",
+        "roadmap-is-not-an-input"
       ]
     },
     {
