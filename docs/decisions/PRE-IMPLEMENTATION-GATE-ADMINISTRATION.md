@@ -77,6 +77,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites` | ACCEPTED |
 | `e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites` | ACCEPTED |
 | `e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites` | ACCEPTED |
+| `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites` | ACCEPTED |
 
 ## Operating sequence
 
