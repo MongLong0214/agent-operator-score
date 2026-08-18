@@ -1,0 +1,14 @@
+{
+  "schema_version": 3,
+  "manifest_id": "legacy-v2-unauthenticated-migration",
+  "artifacts": [
+    {
+      "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+      "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+      "kind": "ADR",
+      "source_record_id": "d0-007-owner-direction-prerequisites",
+      "source_record_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "migration_provenance": "legacy-v2-migration"
+    }
+  ]
+}
