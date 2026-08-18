@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { cpSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -244,6 +245,30 @@ const assertRegularFile = (relativePath) => {
 const readRegularFile = (relativePath) => readFileSync(assertRegularFile(relativePath), "utf8");
 const readJson = (relativePath) => JSON.parse(readRegularFile(relativePath));
 
+// Fixture copies rewrite a now-gated ticket; accepted batches fail on that digest
+// before the census assertions run. Local copy of the planning-contract helper —
+// a shared module would be a new control-plane path.
+const setPendingGateRegistry = (fixture) => {
+  const registryPath = join(fixture, "docs/decisions/maintainer-gate-registry.v2.json");
+  const registry = JSON.parse(readFileSync(registryPath, "utf8"));
+  registry.status = "PENDING";
+  for (const batch of registry.batches) {
+    batch.status = "PENDING";
+    delete batch.target.reviewed_head;
+    batch.required_artifacts = batch.required_artifacts.map((artifact) => ({
+      ...artifact,
+      sha256: createHash("sha256").update(readFileSync(join(fixture, artifact.path))).digest("hex")
+    }));
+    batch.artifacts = [];
+    batch.transitions = [];
+    batch.events = [];
+    delete batch.preparation;
+    delete batch.approval;
+    delete batch.invalidation;
+  }
+  writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+};
+
 const walkFiles = (relativeDirectory) => {
   const directory = resolve(repositoryRoot, relativeDirectory);
   assert.ok(existsSync(directory), `${relativeDirectory} is missing`);
@@ -468,6 +493,7 @@ test("skeleton-source-requires-an-owning-ticket", () => {
           const entry = basename(source);
           return resolve(source) !== selectivityProbeSource
             && entry !== "node_modules"
+            && entry !== ".git"
             && !entry.startsWith(".planning-");
         }
       });
@@ -483,6 +509,7 @@ test("skeleton-source-requires-an-owning-ticket", () => {
         )
       );
       writeFileSync(resolve(fixture, outsideSkeletonPath), "export {};\n");
+      setPendingGateRegistry(fixture);
 
       const fixtureCensus = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
         cwd: fixture,
@@ -541,7 +568,7 @@ test("skeleton-source-requires-an-owning-ticket", () => {
         recursive: true,
         // Sibling tests write transient fixtures into the live tree while this copy runs;
         // capturing one would fail the fixture validator for an unrelated reason.
-        filter: (source) => basename(source) !== "node_modules" && !basename(source).startsWith(".planning-")
+        filter: (source) => ![".git", "node_modules"].includes(basename(source)) && !basename(source).startsWith(".planning-")
       });
       writeFileSync(resolve(fixture, "packages/schema/src/unclaimed-by-any-ticket.ts"), "export {};\n");
       let failed;
@@ -569,6 +596,7 @@ test("skeleton-source-requires-an-owning-ticket", () => {
           () => "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts; packages/schema/src/unclaimed-by-any-ticket.ts —"
         )
       );
+      setPendingGateRegistry(fixture);
       const admitted = execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
         cwd: fixture,
         encoding: "utf8"
