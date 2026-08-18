@@ -65,8 +65,24 @@ const normalizeStatusCell = (value) => decodeCensusEntities(value)
  * The temp root is itself canonicalised before comparison: on macOS /var is a symlink to
  * /private/var, so a lexical tmpdir() and a realpath'd target never share a prefix and the
  * guard would reject every legitimate fixture.
+ *
+ * Node 22's rmSync({ maxRetries }) retries only rmdir after a single child walk
+ * (lib/internal/fs/rimraf.js _rmdirSync). A writer that recreates entries under .git
+ * therefore keeps throwing ENOTEMPTY from the same rmdir. Re-enter rmSync so each
+ * attempt walks children again.
+ *
+ * A verified-path removal that still fails after that budget is emitted as a warning.
+ * Throwing from finally would fail a case whose assertions already passed, which is
+ * how this flake withheld a gate receipt. A path-safety refusal still throws.
  */
-const removeTempFixture = (targetPath) => {
+const cleanupRetryBudget = { attempts: 8, delayMs: 50 };
+const transientCleanupCodes = new Set(["ENOTEMPTY", "EBUSY", "EEXIST", "EPERM", "EMFILE", "ENFILE", "EAGAIN"]);
+
+const sleepSync = (ms) => {
+  if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+};
+
+const resolveRemovableTempFixture = (targetPath) => {
   const lexical = resolve(targetPath);
 
   // The final component must itself be a real directory, never a link. Canonical
@@ -108,7 +124,36 @@ const removeTempFixture = (targetPath) => {
   if (!basename(canonical).startsWith(fixtureTempPrefix)) {
     throw new Error(`refusing to remove unexpected fixture path: ${canonical}`);
   }
-  rmSync(canonical, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  return canonical;
+};
+
+const removeVerifiedTempFixture = (canonical) => {
+  let lastError;
+  for (let attempt = 1; attempt <= cleanupRetryBudget.attempts; attempt += 1) {
+    try {
+      rmSync(canonical, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (error?.code === "ENOENT") return;
+      lastError = error;
+      if (!transientCleanupCodes.has(error?.code) || attempt === cleanupRetryBudget.attempts) {
+        throw error;
+      }
+      sleepSync(attempt * cleanupRetryBudget.delayMs);
+    }
+  }
+  throw lastError;
+};
+
+const removeTempFixture = (targetPath) => {
+  const canonical = resolveRemovableTempFixture(targetPath);
+  try {
+    removeVerifiedTempFixture(canonical);
+  } catch (error) {
+    process.emitWarning(
+      `gate-administration fixture cleanup failed after bounded retries: ${canonical}: ${error?.code ?? "ERR"} ${error?.message ?? error}`
+    );
+  }
 };
 
 // removeTempFixture performs a recursive delete, so its two refusal branches are the only
@@ -374,6 +419,8 @@ const makeFixture = () => {
   execFileSync("git", ["init", "-q"], { cwd: fixtureRoot });
   execFileSync("git", ["config", "user.email", "gate@example.test"], { cwd: fixtureRoot });
   execFileSync("git", ["config", "user.name", "Gate Test"], { cwd: fixtureRoot });
+  execFileSync("git", ["config", "gc.auto", "0"], { cwd: fixtureRoot });
+  execFileSync("git", ["config", "maintenance.auto", "false"], { cwd: fixtureRoot });
   execFileSync("git", ["checkout", "-qb", "dev"], { cwd: fixtureRoot });
   execFileSync("git", ["remote", "add", "origin", "git@github.com:MongLong0214/agent-operator-score.git"], { cwd: fixtureRoot });
   execFileSync("git", ["add", "."], { cwd: fixtureRoot });
