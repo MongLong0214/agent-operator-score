@@ -1,0 +1,14 @@
+{
+  "schema_version": 3,
+  "manifest_id": "node-22-18-correction-candidate",
+  "artifacts": [
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "kind": "ADR",
+      "source_record_id": "node-22-18-correction-candidate",
+      "source_record_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "migration_provenance": "unapproved-distinct-candidate"
+    }
+  ]
+}
