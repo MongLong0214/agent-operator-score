@@ -1,0 +1,406 @@
+{
+  "schema_version": 3,
+  "manifest_id": "legacy-v2-unauthenticated-migration",
+  "artifacts": [
+    {
+      "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      "kind": "ADR",
+      "source_record_id": "d0-001-owner-direction-prerequisites",
+      "source_record_sha256": "1e35ab6642458f37d41734cd2a11cdc8d3d93c3592558cffe2abe27d7d129a86",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      "kind": "ADR",
+      "source_record_id": "d0-002-prerequisites-red-census-contract-correction-renewal",
+      "source_record_sha256": "40c6a8a59c2d668506f11ce4f81f0ff43817fd3a49f9c32bbc15f3b08ff51ff5",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      "kind": "ADR",
+      "source_record_id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+      "source_record_sha256": "c6d760a87fdb5ac7c5f6b15e4be06ff82c5c5c19c1a1b70e916321ad65ce3997",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      "kind": "ADR",
+      "source_record_id": "d0-011-census-corrected-prerequisites",
+      "source_record_sha256": "374985ef1fee448437728ee17e94ebe827e911ebb741f68851b73e107f6f7d19",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      "kind": "ADR",
+      "source_record_id": "d0-012-prerequisites",
+      "source_record_sha256": "7849f57c037e33535ed35467ee17b72b95b1d40066b773ea2e0b7da9c5ebd944",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+      "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+      "kind": "ADR",
+      "source_record_id": "d0-013-prerequisites",
+      "source_record_sha256": "1cab6a87612119d9a2616dbd1dc3b733f810f792366b7d121a883331e0cd634e",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      "kind": "ADR",
+      "source_record_id": "d0-001-owner-direction-prerequisites",
+      "source_record_sha256": "1e35ab6642458f37d41734cd2a11cdc8d3d93c3592558cffe2abe27d7d129a86",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      "kind": "ADR",
+      "source_record_id": "d0-002-prerequisites-red-census-contract-correction-renewal",
+      "source_record_sha256": "40c6a8a59c2d668506f11ce4f81f0ff43817fd3a49f9c32bbc15f3b08ff51ff5",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      "kind": "ADR",
+      "source_record_id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+      "source_record_sha256": "c6d760a87fdb5ac7c5f6b15e4be06ff82c5c5c19c1a1b70e916321ad65ce3997",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      "kind": "ADR",
+      "source_record_id": "d0-011-census-corrected-prerequisites",
+      "source_record_sha256": "374985ef1fee448437728ee17e94ebe827e911ebb741f68851b73e107f6f7d19",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      "kind": "ADR",
+      "source_record_id": "d0-012-prerequisites",
+      "source_record_sha256": "7849f57c037e33535ed35467ee17b72b95b1d40066b773ea2e0b7da9c5ebd944",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+      "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+      "kind": "ADR",
+      "source_record_id": "d0-013-prerequisites",
+      "source_record_sha256": "1cab6a87612119d9a2616dbd1dc3b733f810f792366b7d121a883331e0cd634e",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-001-owner-direction-prerequisites",
+      "source_record_sha256": "1e35ab6642458f37d41734cd2a11cdc8d3d93c3592558cffe2abe27d7d129a86",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-002-prerequisites-red-census-contract-correction-renewal",
+      "source_record_sha256": "40c6a8a59c2d668506f11ce4f81f0ff43817fd3a49f9c32bbc15f3b08ff51ff5",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+      "source_record_sha256": "c6d760a87fdb5ac7c5f6b15e4be06ff82c5c5c19c1a1b70e916321ad65ce3997",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-005-owner-direction-prerequisites",
+      "source_record_sha256": "66b3e4e3a605034c6bb47b54b1fd404418680c33652fba051729fb3698e8b723",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-006-owner-direction-prerequisites",
+      "source_record_sha256": "83f26d77bf80700325c072785d126c7592034f1a8608db1e5ccae0788b5cc4f7",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-007-owner-direction-prerequisites",
+      "source_record_sha256": "8180b1a0e3e060ac4287a994ced7c6db556af424e5a50eda31a668cf47326c22",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-008-owner-direction-prerequisites",
+      "source_record_sha256": "e5fdb6c532868d7187ff2d5c450a193194dffebe98754f595e7b75cbfe030404",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-009-owner-direction-prerequisites",
+      "source_record_sha256": "570d73e68a0b843a4afcde00f26daf578c114fb397848d28f2476b47ae19a71c",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-011-census-corrected-prerequisites",
+      "source_record_sha256": "374985ef1fee448437728ee17e94ebe827e911ebb741f68851b73e107f6f7d19",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-012-prerequisites",
+      "source_record_sha256": "7849f57c037e33535ed35467ee17b72b95b1d40066b773ea2e0b7da9c5ebd944",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+      "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+      "kind": "ADR",
+      "source_record_id": "d0-013-prerequisites",
+      "source_record_sha256": "1cab6a87612119d9a2616dbd1dc3b733f810f792366b7d121a883331e0cd634e",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+      "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+      "kind": "ADR",
+      "source_record_id": "d0-005-owner-direction-prerequisites",
+      "source_record_sha256": "66b3e4e3a605034c6bb47b54b1fd404418680c33652fba051729fb3698e8b723",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+      "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+      "kind": "ADR",
+      "source_record_id": "d0-006-owner-direction-prerequisites",
+      "source_record_sha256": "83f26d77bf80700325c072785d126c7592034f1a8608db1e5ccae0788b5cc4f7",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+      "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+      "kind": "ADR",
+      "source_record_id": "d0-007-owner-direction-prerequisites",
+      "source_record_sha256": "8180b1a0e3e060ac4287a994ced7c6db556af424e5a50eda31a668cf47326c22",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+      "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+      "kind": "ADR",
+      "source_record_id": "d0-008-owner-direction-prerequisites",
+      "source_record_sha256": "e5fdb6c532868d7187ff2d5c450a193194dffebe98754f595e7b75cbfe030404",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+      "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+      "kind": "ADR",
+      "source_record_id": "d0-009-owner-direction-prerequisites",
+      "source_record_sha256": "570d73e68a0b843a4afcde00f26daf578c114fb397848d28f2476b47ae19a71c",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+      "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+      "kind": "PRD",
+      "source_record_id": "d0-005-owner-direction-prerequisites",
+      "source_record_sha256": "66b3e4e3a605034c6bb47b54b1fd404418680c33652fba051729fb3698e8b723",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+      "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+      "kind": "PRD",
+      "source_record_id": "d0-006-owner-direction-prerequisites",
+      "source_record_sha256": "83f26d77bf80700325c072785d126c7592034f1a8608db1e5ccae0788b5cc4f7",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+      "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+      "kind": "PRD",
+      "source_record_id": "d0-007-owner-direction-prerequisites",
+      "source_record_sha256": "8180b1a0e3e060ac4287a994ced7c6db556af424e5a50eda31a668cf47326c22",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+      "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+      "kind": "PRD",
+      "source_record_id": "d0-008-owner-direction-prerequisites",
+      "source_record_sha256": "e5fdb6c532868d7187ff2d5c450a193194dffebe98754f595e7b75cbfe030404",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+      "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+      "kind": "PRD",
+      "source_record_id": "d0-009-owner-direction-prerequisites",
+      "source_record_sha256": "570d73e68a0b843a4afcde00f26daf578c114fb397848d28f2476b47ae19a71c",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      "kind": "PRD",
+      "source_record_id": "d0-001-owner-direction-prerequisites",
+      "source_record_sha256": "1e35ab6642458f37d41734cd2a11cdc8d3d93c3592558cffe2abe27d7d129a86",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      "kind": "PRD",
+      "source_record_id": "d0-002-prerequisites-red-census-contract-correction-renewal",
+      "source_record_sha256": "40c6a8a59c2d668506f11ce4f81f0ff43817fd3a49f9c32bbc15f3b08ff51ff5",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      "kind": "PRD",
+      "source_record_id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+      "source_record_sha256": "c6d760a87fdb5ac7c5f6b15e4be06ff82c5c5c19c1a1b70e916321ad65ce3997",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      "kind": "PRD",
+      "source_record_id": "d0-011-census-corrected-prerequisites",
+      "source_record_sha256": "374985ef1fee448437728ee17e94ebe827e911ebb741f68851b73e107f6f7d19",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      "kind": "PRD",
+      "source_record_id": "d0-012-prerequisites",
+      "source_record_sha256": "7849f57c037e33535ed35467ee17b72b95b1d40066b773ea2e0b7da9c5ebd944",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+      "kind": "PRD",
+      "source_record_id": "d0-013-prerequisites",
+      "source_record_sha256": "1cab6a87612119d9a2616dbd1dc3b733f810f792366b7d121a883331e0cd634e",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+      "sha256": "7546826a3d07c869405129cb9cc8984c61f44ae6d99b2d9f5d2874d6cca4d4b3",
+      "kind": "TICKET",
+      "source_record_id": "d0-001-owner-direction-prerequisites",
+      "source_record_sha256": "1e35ab6642458f37d41734cd2a11cdc8d3d93c3592558cffe2abe27d7d129a86",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+      "sha256": "eb83d198df3b2c7fdbdd2f67bc86e396a0454a4d5bd02eaf79744caea8fcdb8d",
+      "kind": "TICKET",
+      "source_record_id": "d0-002-prerequisites-red-census-contract-correction-renewal",
+      "source_record_sha256": "40c6a8a59c2d668506f11ce4f81f0ff43817fd3a49f9c32bbc15f3b08ff51ff5",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+      "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+      "kind": "TICKET",
+      "source_record_id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+      "source_record_sha256": "c6d760a87fdb5ac7c5f6b15e4be06ff82c5c5c19c1a1b70e916321ad65ce3997",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md",
+      "sha256": "354757b00717bc52af7bd876623402033d8ce9397772554d075592297224460a",
+      "kind": "TICKET",
+      "source_record_id": "d0-005-owner-direction-prerequisites",
+      "source_record_sha256": "66b3e4e3a605034c6bb47b54b1fd404418680c33652fba051729fb3698e8b723",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+      "sha256": "da9e279769bdddb84b9e79d521f7731708addd66108592d98f7a87327e909ce7",
+      "kind": "TICKET",
+      "source_record_id": "d0-006-owner-direction-prerequisites",
+      "source_record_sha256": "83f26d77bf80700325c072785d126c7592034f1a8608db1e5ccae0788b5cc4f7",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-007-artifact-manifest-v3-and-legacy-migration.md",
+      "sha256": "95377d5c4163d72d539d17a6a5b01561730f767a298a4bea591c4429567a547b",
+      "kind": "TICKET",
+      "source_record_id": "d0-007-owner-direction-prerequisites",
+      "source_record_sha256": "8180b1a0e3e060ac4287a994ced7c6db556af424e5a50eda31a668cf47326c22",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-008-github-review-acceptance-derivation-inactive.md",
+      "sha256": "33ab14eb9df3ede052b0b497792e85cae6b42d45e83e7306b5d1b29899130684",
+      "kind": "TICKET",
+      "source_record_id": "d0-008-owner-direction-prerequisites",
+      "source_record_sha256": "e5fdb6c532868d7187ff2d5c450a193194dffebe98754f595e7b75cbfe030404",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-009-authenticated-review-activation.md",
+      "sha256": "897e903f0a2c74973e485f3db3584413e64a62dd3801fe33705a5d4cdf2cb06a",
+      "kind": "TICKET",
+      "source_record_id": "d0-009-owner-direction-prerequisites",
+      "source_record_sha256": "570d73e68a0b843a4afcde00f26daf578c114fb397848d28f2476b47ae19a71c",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md",
+      "sha256": "be033f17e135c1a47e5f9988c07543fb849ac642993cb1a67394f363729f4909",
+      "kind": "TICKET",
+      "source_record_id": "d0-011-census-corrected-prerequisites",
+      "source_record_sha256": "374985ef1fee448437728ee17e94ebe827e911ebb741f68851b73e107f6f7d19",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-012-ticket-owned-census-rederivation.md",
+      "sha256": "fca6e03a656a8e286201177dafe323df9681ff2d3db2d2ef4a1c0d167d8e9b26",
+      "kind": "TICKET",
+      "source_record_id": "d0-012-prerequisites",
+      "source_record_sha256": "7849f57c037e33535ed35467ee17b72b95b1d40066b773ea2e0b7da9c5ebd944",
+      "migration_provenance": "legacy-v2-migration"
+    },
+    {
+      "path": "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md",
+      "sha256": "d248a9871efc9dc4f22b75a213a662449ac7eaf401f49ba0bd3980ac860cc3d1",
+      "kind": "TICKET",
+      "source_record_id": "d0-013-prerequisites",
+      "source_record_sha256": "1cab6a87612119d9a2616dbd1dc3b733f810f792366b7d121a883331e0cd634e",
+      "migration_provenance": "legacy-v2-migration"
+    }
+  ]
+}
