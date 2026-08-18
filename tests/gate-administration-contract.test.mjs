@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 25);
-  assert.equal(result.counts.accepted, 15);
+  assert.equal(result.batches, 26);
+  assert.equal(result.counts.accepted, 16);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1230,7 +1230,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
     "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
     "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
-    "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md"
+    "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md",
+    "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+    "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+    "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+    "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
