@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 23);
-  assert.equal(result.counts.accepted, 13);
+  assert.equal(result.batches, 24);
+  assert.equal(result.counts.accepted, 14);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1222,7 +1222,10 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md",
     "docs/tickets/E0-B/E0B-001-define-adapter-capability-schema-and-complete-event-matrix.md",
     "docs/tickets/E0-B/E0B-002-define-controlled-and-imported-session-classification.md",
-    "docs/tickets/E0-B/E0B-003-specify-capability-doctor-output-and-verdict-fixtures.md"
+    "docs/tickets/E0-B/E0B-003-specify-capability-doctor-output-and-verdict-fixtures.md",
+    "docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md",
+    "docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md",
+    "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
