@@ -2298,6 +2298,135 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e0a-001-e0a-002-e0a-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E0A-001, E0A-002, E0A-003 prerequisite set — ADR-0004/ADR-0005/ADR-0006, E0-A, and the exact E0A-001, E0A-002, E0A-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "08c5aae0b335378ab84b9fc3da621a2bc1880ade"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E0A-metric-and-score-issuance-contract.md",
+          "sha256": "472d351bc82d236aa953059197680291d74bbd7b4c6c5eee9171eb68b0dd06dd",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md",
+          "sha256": "9960e63f6796fb0179f0df370bf6d6741a412c3ff48de087ae359f4e8862c692",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md",
+          "sha256": "0f89651ccff78d0a8c9bbf7e807d2ed4f4ce9f2a6cf006bbf97bb0e701c20de7",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md",
+          "sha256": "d1a690f0237615f4ec83f2d3fe7153d4127e2e8feecb05ba080ac0b91932b57f",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E0A-metric-and-score-issuance-contract.md",
+          "sha256": "472d351bc82d236aa953059197680291d74bbd7b4c6c5eee9171eb68b0dd06dd",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md",
+          "sha256": "9960e63f6796fb0179f0df370bf6d6741a412c3ff48de087ae359f4e8862c692",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md",
+          "sha256": "0f89651ccff78d0a8c9bbf7e807d2ed4f4ce9f2a6cf006bbf97bb0e701c20de7",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md",
+          "sha256": "d1a690f0237615f4ec83f2d3fe7153d4127e2e8feecb05ba080ac0b91932b57f",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E0A-metric-and-score-issuance-contract.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E0-A/E0A-001-freeze-m01-m20-metric-registry.md",
+            "docs/tickets/E0-A/E0A-002-freeze-eligibility-and-score-issuance-predicate.md",
+            "docs/tickets/E0-A/E0A-003-freeze-formula-factor-safety-and-display-precision-contract.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e0a-001-e0a-002-e0a-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e0a-001-e0a-002-e0a-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
