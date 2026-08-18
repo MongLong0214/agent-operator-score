@@ -4230,6 +4230,113 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e0d-001-e0d-002-e0d-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E0D-001, E0D-002, E0D-003 prerequisite set — ADR-0010, E0-D, and the exact E0D-001, E0D-002, E0D-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "ca741ca5bd4f5d913451e557170e19953b54728c"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E0D-deterministic-prescription-input-contract.md",
+          "sha256": "cac5763f9f60870967048358637eecf105ab5fc774c944b434fa6358ee692b3a",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E0-D/E0D-001-define-prescription-input-formulas-and-missing-rules.md",
+          "sha256": "a77d804c417304150a424b766366a4259e91b773bd979830555787327996d665",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-D/E0D-002-freeze-treatment-registry-and-safety-remediation.md",
+          "sha256": "9e1227e0c75e13c2034d24057cb534ba1d69aaae56f4b2d6fe7d28e46236e9b8",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-D/E0D-003-implement-deterministic-one-lever-selector-contract.md",
+          "sha256": "fb9bc6176de0e7a30534223699cf4498af43cf051905a370f9d22cfb8bd76b8a",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E0D-deterministic-prescription-input-contract.md",
+          "sha256": "cac5763f9f60870967048358637eecf105ab5fc774c944b434fa6358ee692b3a",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E0-D/E0D-001-define-prescription-input-formulas-and-missing-rules.md",
+          "sha256": "a77d804c417304150a424b766366a4259e91b773bd979830555787327996d665",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-D/E0D-002-freeze-treatment-registry-and-safety-remediation.md",
+          "sha256": "9e1227e0c75e13c2034d24057cb534ba1d69aaae56f4b2d6fe7d28e46236e9b8",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-D/E0D-003-implement-deterministic-one-lever-selector-contract.md",
+          "sha256": "fb9bc6176de0e7a30534223699cf4498af43cf051905a370f9d22cfb8bd76b8a",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0010-prescription-and-retest-attribution.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E0D-deterministic-prescription-input-contract.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E0-D/E0D-001-define-prescription-input-formulas-and-missing-rules.md",
+            "docs/tickets/E0-D/E0D-002-freeze-treatment-registry-and-safety-remediation.md",
+            "docs/tickets/E0-D/E0D-003-implement-deterministic-one-lever-selector-contract.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e0d-001-e0d-002-e0d-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e0d-001-e0d-002-e0d-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
