@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { validateArtifactManifestV3 as validateArtifactManifestV3Module } from "./validate-artifact-manifest.mjs";
 
 const PHASES = new Set([
   "planned",
@@ -388,6 +389,8 @@ const GOVERNANCE_DECLARED_MODES = ["SOLE_OWNER_ADVISORY", "AUTHENTICATED_REVIEW"
 const GOVERNANCE_DECLARED_MODE_SET = new Set(GOVERNANCE_DECLARED_MODES);
 const D0_004_AUTHORITY_MODES = new Set(["single_owner_agent_team", "single_owner_bootstrap"]);
 const GOVERNANCE_MODE_CONTRACT_RELATIVE = "docs/decisions/governance-mode-contract.v1.json";
+const ARTIFACT_MANIFEST_V3_RELATIVE = "docs/decisions/maintainer-gate-artifact-manifest.v3.json";
+const ARTIFACT_MANIFEST_V3_SCHEMA_RELATIVE = "docs/decisions/maintainer-gate-artifact-manifest.schema.v3.json";
 
 const governanceModeContractError = (reason) => new Error(`governance mode contract error: ${reason}`);
 
@@ -1172,6 +1175,65 @@ export const applyEffectiveGateStateToGateFacts = (facts, effectiveState = null)
     ready_set: [],
     effective_gate_state_records: records
   };
+};
+
+export const collectArtifactManifestV3Facts = (root = DEFAULT_ROOT) => {
+  const schemaPath = resolve(root, ARTIFACT_MANIFEST_V3_SCHEMA_RELATIVE);
+  const manifestPath = resolve(root, ARTIFACT_MANIFEST_V3_RELATIVE);
+  let schemaBytes;
+  let manifestBytes;
+  try {
+    schemaBytes = readFileSync(schemaPath);
+    manifestBytes = readFileSync(manifestPath);
+  } catch {
+    return { ok: false, reason: "artifact manifest v3 files unavailable", facts: null };
+  }
+  let schema;
+  let manifest;
+  try {
+    schema = JSON.parse(schemaBytes.toString("utf8"));
+    manifest = JSON.parse(manifestBytes.toString("utf8"));
+  } catch {
+    return { ok: false, reason: "artifact manifest v3 files malformed", facts: null };
+  }
+  return {
+    ok: true,
+    facts: {
+      schema,
+      manifest,
+      schema_path: ARTIFACT_MANIFEST_V3_SCHEMA_RELATIVE,
+      manifest_path: ARTIFACT_MANIFEST_V3_RELATIVE,
+      schema_digest: createHash("sha256").update(schemaBytes).digest("hex"),
+      manifest_digest: createHash("sha256").update(manifestBytes).digest("hex")
+    }
+  };
+};
+
+export const validateArtifactManifestV3ForResolution = (facts) => {
+  if (!plainObject(facts) || !plainObject(facts.manifest)) {
+    return { ok: false, failures: ["artifact manifest v3 facts malformed"] };
+  }
+  try {
+    const validated = validateArtifactManifestV3Module({
+      manifest: facts.manifest,
+      source_registry: facts.source_registry,
+      source_bytes: facts.source_bytes,
+      source_sha256: facts.source_sha256,
+      source_records: facts.source_records
+    });
+    return {
+      ok: true,
+      schema_version: validated.schema_version,
+      manifest_id: validated.manifest_id,
+      artifacts: validated.artifacts,
+      manifest_digest: typeof facts.manifest_digest === "string" ? facts.manifest_digest : null
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      failures: [error instanceof Error ? error.message : String(error)]
+    };
+  }
 };
 
 /**

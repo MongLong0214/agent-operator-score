@@ -76,7 +76,9 @@ const ticketOwnedPaths = () => {
     "scripts/render-execution-views.mjs",
     "tests/execution-state.test.mjs",
     "tests/governance-mode-contract.test.mjs",
-    "tests/gate-effective-state.test.mjs"
+    "tests/gate-effective-state.test.mjs",
+    "scripts/validate-artifact-manifest.mjs",
+    "tests/artifact-manifest-v3.test.mjs"
   ]);
   const isMaterializedTicketOwnedSource = (path) => {
     const absolutePath = resolve(repositoryRoot, path);
