@@ -1135,6 +1135,45 @@ const evaluateTicketGates = (facts, ticketId, ticket) => {
   return { blockers, accepted, mergeSha: ticketGate.pr.merge_commit_sha, postMerge: ci };
 };
 
+export const applyEffectiveGateStateToGateFacts = (facts, effectiveState = null) => {
+  const empty = { freeze_inputs: [], authorization_inputs: [], ready_set: [] };
+  if (!plainObject(facts)) return empty;
+  const batches = Array.isArray(facts.gateBatches) ? facts.gateBatches : [];
+  const records = Array.isArray(effectiveState?.records) ? effectiveState.records : null;
+  if (!records || effectiveState?.ok === false) {
+    return { ...facts, gateBatches: batches, ...empty };
+  }
+  const authorizing = new Set();
+  for (const record of records) {
+    if (!plainObject(record) || typeof record.source_record_id !== "string") continue;
+    if (record.effective_gate_state === "ACCEPTED") authorizing.add(record.source_record_id);
+  }
+  const freezeInputs = [];
+  const authorizationInputs = [];
+  for (const batch of batches) {
+    if (!plainObject(batch) || typeof batch.id !== "string") continue;
+    if (!authorizing.has(batch.id) || batch.status !== "ACCEPTED") continue;
+    for (const artifact of Array.isArray(batch.artifacts) ? batch.artifacts : []) {
+      if (
+        typeof artifact?.path !== "string" ||
+        typeof artifact?.sha256 !== "string" ||
+        typeof artifact?.kind !== "string"
+      ) continue;
+      const token = `${artifact.kind}:${artifact.path}:${artifact.sha256}`;
+      freezeInputs.push(token);
+      authorizationInputs.push(token);
+    }
+  }
+  return {
+    ...facts,
+    gateBatches: batches,
+    freeze_inputs: freezeInputs.sort(),
+    authorization_inputs: authorizationInputs.sort(),
+    ready_set: [],
+    effective_gate_state_records: records
+  };
+};
+
 /**
  * Resolve whole-ticket implementation completion from recorded implementation merge
  * receipts (facts.implementationMerges). A ticket may legitimately accumulate several
