@@ -2910,6 +2910,124 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E4-001, E4-002, E4-003, E4-004 prerequisite set — ADR-0007, E4, and the exact E4-001, E4-002, E4-003, E4-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "7efccafe38b280d22e578ae8f2881fca72b63db5"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E4-codex-adapter.md",
+          "sha256": "baa4fca9bcf3db35cf1ff1a4da94f4f625fdb7c82bdbe01dfd56a177ba4391fd",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+          "sha256": "2bccd9e839d4eb748f252eb993091300cb0b9d74b51094b3e6df10ae3e662393",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+          "sha256": "63572a5ef99f8161c11ad4c625dc1c0a5e5ce548da6b9c0c4c5d414bba2d17f9",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+          "sha256": "8eb21242cbe72451a49c7370612530288a8bec6842282a634dd3d1154ee603d1",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md",
+          "sha256": "99d70a50516af5e92491153a0bc1ada813284ff2c449dba81b7a9857ae59edbc",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E4-codex-adapter.md",
+          "sha256": "baa4fca9bcf3db35cf1ff1a4da94f4f625fdb7c82bdbe01dfd56a177ba4391fd",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+          "sha256": "2bccd9e839d4eb748f252eb993091300cb0b9d74b51094b3e6df10ae3e662393",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+          "sha256": "63572a5ef99f8161c11ad4c625dc1c0a5e5ce548da6b9c0c4c5d414bba2d17f9",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+          "sha256": "8eb21242cbe72451a49c7370612530288a8bec6842282a634dd3d1154ee603d1",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md",
+          "sha256": "99d70a50516af5e92491153a0bc1ada813284ff2c449dba81b7a9857ae59edbc",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0007-adapter-observability-and-session-class.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E4-codex-adapter.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+            "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+            "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+            "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
