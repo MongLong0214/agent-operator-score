@@ -2641,6 +2641,157 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E2-001, E2-002, E2-003, E2-004, E2-005 prerequisite set — ADR-0005/ADR-0006/ADR-0011, E2, and the exact E2-001, E2-002, E2-003, E2-004, E2-005 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "97f488fe102039b873165a509e222f9b4d78bd50"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E2-deterministic-scorer-and-conformance.md",
+          "sha256": "972b7fa785c65af066c3de8cef7bf1a99c0c162f91ef5de29c35e5fdec430022",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+          "sha256": "5af545fe53df537e6d951ba2699d8d02bc7bd28a15774bf4653523eaceac3944",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+          "sha256": "c3a06d22227bd064357038a1fa35daf8478d4c5ffb43424f1eaec1c8da77aa6a",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+          "sha256": "8a6fc72df6db6b397193bc9bcedeeb187d0de88f17bec9f4d20ed8f9b9ca7ebe",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+          "sha256": "de0663638f940424fb35a5515abb6c1b11155e84f5cf9841e4be0c47e775df64",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md",
+          "sha256": "1718a7c3051d30e12865bad27252c6f8cd3cbac4b27258539644161ee7757475",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E2-deterministic-scorer-and-conformance.md",
+          "sha256": "972b7fa785c65af066c3de8cef7bf1a99c0c162f91ef5de29c35e5fdec430022",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+          "sha256": "5af545fe53df537e6d951ba2699d8d02bc7bd28a15774bf4653523eaceac3944",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+          "sha256": "c3a06d22227bd064357038a1fa35daf8478d4c5ffb43424f1eaec1c8da77aa6a",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+          "sha256": "8a6fc72df6db6b397193bc9bcedeeb187d0de88f17bec9f4d20ed8f9b9ca7ebe",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+          "sha256": "de0663638f940424fb35a5515abb6c1b11155e84f5cf9841e4be0c47e775df64",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md",
+          "sha256": "1718a7c3051d30e12865bad27252c6f8cd3cbac4b27258539644161ee7757475",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E2-deterministic-scorer-and-conformance.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+            "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+            "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+            "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+            "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
