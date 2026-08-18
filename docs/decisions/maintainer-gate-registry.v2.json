@@ -3651,6 +3651,146 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e10-001-e10-002-e10-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E10-001, E10-002, E10-003 prerequisite set — ADR-0002/ADR-0004/ADR-0006/ADR-0010, E10, and the exact E10-001, E10-002, E10-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "b352b9e9798b597ffe192f5f5c60ca9f4081b708"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E10-report-and-one-lever.md",
+          "sha256": "a2c23adf06030927c97de4798860fb70cb254bddb602443c8fa6d37bb4c69d69",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+          "sha256": "b6e35d9353212f2d6837028d7c46fd46a1f5145e6d365d61e9ccc83e76df3cb4",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+          "sha256": "059176438eda0473828c938deda7360c6f2811685678bde24f02c443d819f07b",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md",
+          "sha256": "efead0c1225fdce0bd49119438bd471c5368b5618209d08f5f960decd1f70435",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E10-report-and-one-lever.md",
+          "sha256": "a2c23adf06030927c97de4798860fb70cb254bddb602443c8fa6d37bb4c69d69",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+          "sha256": "b6e35d9353212f2d6837028d7c46fd46a1f5145e6d365d61e9ccc83e76df3cb4",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+          "sha256": "059176438eda0473828c938deda7360c6f2811685678bde24f02c443d819f07b",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md",
+          "sha256": "efead0c1225fdce0bd49119438bd471c5368b5618209d08f5f960decd1f70435",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+            "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+            "docs/adr/ADR-0010-prescription-and-retest-attribution.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E10-report-and-one-lever.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+            "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+            "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e10-001-e10-002-e10-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e10-001-e10-002-e10-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
