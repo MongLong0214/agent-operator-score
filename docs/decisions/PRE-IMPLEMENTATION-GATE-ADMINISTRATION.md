@@ -73,6 +73,19 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e0a-001-e0a-002-e0a-003-owner-direction-prerequisites` | ACCEPTED |
 | `e0b-001-e0b-002-e0b-003-owner-direction-prerequisites` | ACCEPTED |
 | `e0c-001-e0c-002-e0c-003-owner-direction-prerequisites` | ACCEPTED |
+| `e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites` | ACCEPTED |
+| `e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites` | ACCEPTED |
+| `e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites` | ACCEPTED |
+| `e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites` | ACCEPTED |
+| `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites` | ACCEPTED |
+| `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites` | ACCEPTED |
+| `e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites` | ACCEPTED |
+| `e9-001-e9-002-e9-003-owner-direction-prerequisites` | ACCEPTED |
+| `e10-001-e10-002-e10-003-owner-direction-prerequisites` | ACCEPTED |
+| `e11-001-e11-002-e11-003-owner-direction-prerequisites` | ACCEPTED |
+| `e12-001-e12-002-e12-003-owner-direction-prerequisites` | ACCEPTED |
+| `e13-001-e13-002-owner-direction-prerequisites` | ACCEPTED |
+| `e14-001-e14-002-e14-003-owner-direction-prerequisites` | ACCEPTED |
 
 ## Operating sequence
 

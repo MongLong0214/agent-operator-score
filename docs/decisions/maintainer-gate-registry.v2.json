@@ -2641,6 +2641,1595 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E2-001, E2-002, E2-003, E2-004, E2-005 prerequisite set — ADR-0005/ADR-0006/ADR-0011, E2, and the exact E2-001, E2-002, E2-003, E2-004, E2-005 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "97f488fe102039b873165a509e222f9b4d78bd50"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E2-deterministic-scorer-and-conformance.md",
+          "sha256": "972b7fa785c65af066c3de8cef7bf1a99c0c162f91ef5de29c35e5fdec430022",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+          "sha256": "5af545fe53df537e6d951ba2699d8d02bc7bd28a15774bf4653523eaceac3944",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+          "sha256": "c3a06d22227bd064357038a1fa35daf8478d4c5ffb43424f1eaec1c8da77aa6a",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+          "sha256": "8a6fc72df6db6b397193bc9bcedeeb187d0de88f17bec9f4d20ed8f9b9ca7ebe",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+          "sha256": "de0663638f940424fb35a5515abb6c1b11155e84f5cf9841e4be0c47e775df64",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md",
+          "sha256": "1718a7c3051d30e12865bad27252c6f8cd3cbac4b27258539644161ee7757475",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E2-deterministic-scorer-and-conformance.md",
+          "sha256": "972b7fa785c65af066c3de8cef7bf1a99c0c162f91ef5de29c35e5fdec430022",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+          "sha256": "5af545fe53df537e6d951ba2699d8d02bc7bd28a15774bf4653523eaceac3944",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+          "sha256": "c3a06d22227bd064357038a1fa35daf8478d4c5ffb43424f1eaec1c8da77aa6a",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+          "sha256": "8a6fc72df6db6b397193bc9bcedeeb187d0de88f17bec9f4d20ed8f9b9ca7ebe",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+          "sha256": "de0663638f940424fb35a5515abb6c1b11155e84f5cf9841e4be0c47e775df64",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md",
+          "sha256": "1718a7c3051d30e12865bad27252c6f8cd3cbac4b27258539644161ee7757475",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E2-deterministic-scorer-and-conformance.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+            "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+            "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+            "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+            "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E3-001, E3-002, E3-003, E3-004 prerequisite set — ADR-0008, E3, and the exact E3-001, E3-002, E3-003, E3-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "30fc38f516cdd8b9291458a6ad1f1801bebe158f"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E3-isolated-controlled-runner.md",
+          "sha256": "d01d38a6806f5b52144733454659b0362445701a9d5fbc430b2c14515894ce32",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+          "sha256": "d9d380fa2886cc04d65fda6437aa68b884f59f628c03bc9b074e0f0d64ca6802",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+          "sha256": "25ca54ee44afc754bada93fcbd188a9bf6c66b5728b35384ad87d8431964810e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+          "sha256": "09b2a589911662879c95f364d73b2a608bd297da09526ea9692aadbf976aa724",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md",
+          "sha256": "d8eb77539e4d34a9856e36aaef1b245cb30375c1cb6fb2da7e36179599b510bb",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E3-isolated-controlled-runner.md",
+          "sha256": "d01d38a6806f5b52144733454659b0362445701a9d5fbc430b2c14515894ce32",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+          "sha256": "d9d380fa2886cc04d65fda6437aa68b884f59f628c03bc9b074e0f0d64ca6802",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+          "sha256": "25ca54ee44afc754bada93fcbd188a9bf6c66b5728b35384ad87d8431964810e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+          "sha256": "09b2a589911662879c95f364d73b2a608bd297da09526ea9692aadbf976aa724",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md",
+          "sha256": "d8eb77539e4d34a9856e36aaef1b245cb30375c1cb6fb2da7e36179599b510bb",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E3-isolated-controlled-runner.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+            "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+            "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+            "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E4-001, E4-002, E4-003, E4-004 prerequisite set — ADR-0007, E4, and the exact E4-001, E4-002, E4-003, E4-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "7efccafe38b280d22e578ae8f2881fca72b63db5"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E4-codex-adapter.md",
+          "sha256": "baa4fca9bcf3db35cf1ff1a4da94f4f625fdb7c82bdbe01dfd56a177ba4391fd",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+          "sha256": "2bccd9e839d4eb748f252eb993091300cb0b9d74b51094b3e6df10ae3e662393",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+          "sha256": "63572a5ef99f8161c11ad4c625dc1c0a5e5ce548da6b9c0c4c5d414bba2d17f9",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+          "sha256": "8eb21242cbe72451a49c7370612530288a8bec6842282a634dd3d1154ee603d1",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md",
+          "sha256": "99d70a50516af5e92491153a0bc1ada813284ff2c449dba81b7a9857ae59edbc",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E4-codex-adapter.md",
+          "sha256": "baa4fca9bcf3db35cf1ff1a4da94f4f625fdb7c82bdbe01dfd56a177ba4391fd",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+          "sha256": "2bccd9e839d4eb748f252eb993091300cb0b9d74b51094b3e6df10ae3e662393",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+          "sha256": "63572a5ef99f8161c11ad4c625dc1c0a5e5ce548da6b9c0c4c5d414bba2d17f9",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+          "sha256": "8eb21242cbe72451a49c7370612530288a8bec6842282a634dd3d1154ee603d1",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md",
+          "sha256": "99d70a50516af5e92491153a0bc1ada813284ff2c449dba81b7a9857ae59edbc",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0007-adapter-observability-and-session-class.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E4-codex-adapter.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+            "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+            "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+            "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E5-001, E5-002, E5-003, E5-004 prerequisite set — ADR-0009, E5, and the exact E5-001, E5-002, E5-003, E5-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "61b75b1674ebead864194c052cd3487d663d3908"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E5-fam4-loop-state-scenarios.md",
+          "sha256": "7e7115efde256c6ffe460466e5c5db83b8725007c81c076d88ee2b556e4266c1",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+          "sha256": "36d339362bf0a9cc964aa9d163443ecddc6f25eafc911e5198bf88a371ce1609",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+          "sha256": "d85f3558345b80474310e72d70c8e693a761418f5c3a6ead7917a255c2c1102c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+          "sha256": "84ca359ab0aec47491d68834294b3ba612b15b428ccabd9ebc4569d197cccd5e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md",
+          "sha256": "1bda7c76f9a95d79b6228ffe7b2b374c91b5428a796ce2a90f6a8471a2049bff",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E5-fam4-loop-state-scenarios.md",
+          "sha256": "7e7115efde256c6ffe460466e5c5db83b8725007c81c076d88ee2b556e4266c1",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+          "sha256": "36d339362bf0a9cc964aa9d163443ecddc6f25eafc911e5198bf88a371ce1609",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+          "sha256": "d85f3558345b80474310e72d70c8e693a761418f5c3a6ead7917a255c2c1102c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+          "sha256": "84ca359ab0aec47491d68834294b3ba612b15b428ccabd9ebc4569d197cccd5e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md",
+          "sha256": "1bda7c76f9a95d79b6228ffe7b2b374c91b5428a796ce2a90f6a8471a2049bff",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E5-fam4-loop-state-scenarios.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+            "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+            "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+            "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E6-001, E6-002, E6-003, E6-004 prerequisite set — ADR-0005/ADR-0006/ADR-0009, E6, and the exact E6-001, E6-002, E6-003, E6-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "9b9b53f05d0f959c67d75b7c2f962d34f05b6ba0"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E6-fam5-false-completion-scenarios.md",
+          "sha256": "6a4e16ce15e429bb14dfd866e4f176604238cc9bbf6e343a73fb7ef1204861dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+          "sha256": "181f7dad0ce8eab75e6543fa90c9cb1cdb50e251206a9e3530a30d801a8f1871",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+          "sha256": "8e188c8bf6372c34d40adb14c75ba2e8128eef532e9e2fbdac9a1d238725039c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+          "sha256": "79e7162a7380ddfde2ba2d518fbb66c2356c19d68642a6ffe2a120b9f7b2098d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md",
+          "sha256": "9f7aa950683d9c2afc44ebcad72b0559427add7b361a6e5dfbe0c002b902c763",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E6-fam5-false-completion-scenarios.md",
+          "sha256": "6a4e16ce15e429bb14dfd866e4f176604238cc9bbf6e343a73fb7ef1204861dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+          "sha256": "181f7dad0ce8eab75e6543fa90c9cb1cdb50e251206a9e3530a30d801a8f1871",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+          "sha256": "8e188c8bf6372c34d40adb14c75ba2e8128eef532e9e2fbdac9a1d238725039c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+          "sha256": "79e7162a7380ddfde2ba2d518fbb66c2356c19d68642a6ffe2a120b9f7b2098d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md",
+          "sha256": "9f7aa950683d9c2afc44ebcad72b0559427add7b361a6e5dfbe0c002b902c763",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E6-fam5-false-completion-scenarios.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+            "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+            "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+            "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E7-001, E7-002, E7-003, E7-004 prerequisite set — ADR-0005/ADR-0008/ADR-0011, E7, and the exact E7-001, E7-002, E7-003, E7-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "e5235a96a2f05cf75734544f22c0b21a44a63d82"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md",
+          "sha256": "c18314010e3d9c78fabb25a0d4265e186c80e53f7d777026447fafc705ab94ff",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+          "sha256": "1322199c167ef230718843d514fa5109f92da6540434b33706ba347a4809737e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+          "sha256": "9265b2a34120f2e4101f063647f0bb8588fe6cda81e2cee0d4f91fb2ccdfa3ed",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+          "sha256": "03cd0cf1c54ebdf583048b12934a67140171feb962b307e401b54485a0263e1e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+          "sha256": "805477a8420faa43a4d543fee256aeced903e15d3f101262d1483bbd269ac05f",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md",
+          "sha256": "c18314010e3d9c78fabb25a0d4265e186c80e53f7d777026447fafc705ab94ff",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+          "sha256": "1322199c167ef230718843d514fa5109f92da6540434b33706ba347a4809737e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+          "sha256": "9265b2a34120f2e4101f063647f0bb8588fe6cda81e2cee0d4f91fb2ccdfa3ed",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+          "sha256": "03cd0cf1c54ebdf583048b12934a67140171feb962b307e401b54485a0263e1e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+          "sha256": "805477a8420faa43a4d543fee256aeced903e15d3f101262d1483bbd269ac05f",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+            "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+            "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+            "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E8-001, E8-002, E8-003, E8-004 prerequisite set — ADR-0009, E8, and the exact E8-001, E8-002, E8-003, E8-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "3aef2a3313a1023e3af727e1f379535c44fcf203"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E8-fam1-3-and-form-a.md",
+          "sha256": "5793eeef748de0ea13e04fd111d67f95b0099a827b7e0f050fdd702b847ef1dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+          "sha256": "166dcc2880f8b79e60177668d1dfd5a75938a780bbfbf862fe47ac3eca041969",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+          "sha256": "4fdc47b6122e9dd97ca5092305395d98c6cbaf5db5aaec8cde0fd6949845b9b1",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+          "sha256": "6de31096514c251f5d12ab51b21e077db852a994a222be871e4be75bf2f149a4",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md",
+          "sha256": "fcaa3361fed323c20c1aa17274683b5226b061386c93d86034e56541585905b1",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E8-fam1-3-and-form-a.md",
+          "sha256": "5793eeef748de0ea13e04fd111d67f95b0099a827b7e0f050fdd702b847ef1dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+          "sha256": "166dcc2880f8b79e60177668d1dfd5a75938a780bbfbf862fe47ac3eca041969",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+          "sha256": "4fdc47b6122e9dd97ca5092305395d98c6cbaf5db5aaec8cde0fd6949845b9b1",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+          "sha256": "6de31096514c251f5d12ab51b21e077db852a994a222be871e4be75bf2f149a4",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md",
+          "sha256": "fcaa3361fed323c20c1aa17274683b5226b061386c93d86034e56541585905b1",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E8-fam1-3-and-form-a.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+            "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+            "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+            "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e9-001-e9-002-e9-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E9-001, E9-002, E9-003 prerequisite set — ADR-0007, E9, and the exact E9-001, E9-002, E9-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "1a1231fa5aa45b5bb126106e40c143ea7f01595a"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E9-claude-code-adapter-and-parity.md",
+          "sha256": "147667cbaea39e06f3010999846a3468883a7f96b29344b932f3cfcf3680f254",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+          "sha256": "2030330160788859d74dd3ef8c6e9ae8c2d3bcc04d79bfe9224d29baa696f8e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+          "sha256": "e6620b8d1dafa9eada2a76edc286a9e29e2ebd4cff6fd7012059574ca627891d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md",
+          "sha256": "3b82658305fd6b85d7d441379e359b7fb149985906942b94697b63f0bde0ad85",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E9-claude-code-adapter-and-parity.md",
+          "sha256": "147667cbaea39e06f3010999846a3468883a7f96b29344b932f3cfcf3680f254",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+          "sha256": "2030330160788859d74dd3ef8c6e9ae8c2d3bcc04d79bfe9224d29baa696f8e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+          "sha256": "e6620b8d1dafa9eada2a76edc286a9e29e2ebd4cff6fd7012059574ca627891d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md",
+          "sha256": "3b82658305fd6b85d7d441379e359b7fb149985906942b94697b63f0bde0ad85",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0007-adapter-observability-and-session-class.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E9-claude-code-adapter-and-parity.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+            "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+            "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e9-001-e9-002-e9-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e9-001-e9-002-e9-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e10-001-e10-002-e10-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E10-001, E10-002, E10-003 prerequisite set — ADR-0002/ADR-0004/ADR-0006/ADR-0010, E10, and the exact E10-001, E10-002, E10-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "b352b9e9798b597ffe192f5f5c60ca9f4081b708"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E10-report-and-one-lever.md",
+          "sha256": "a2c23adf06030927c97de4798860fb70cb254bddb602443c8fa6d37bb4c69d69",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+          "sha256": "b6e35d9353212f2d6837028d7c46fd46a1f5145e6d365d61e9ccc83e76df3cb4",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+          "sha256": "059176438eda0473828c938deda7360c6f2811685678bde24f02c443d819f07b",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md",
+          "sha256": "efead0c1225fdce0bd49119438bd471c5368b5618209d08f5f960decd1f70435",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E10-report-and-one-lever.md",
+          "sha256": "a2c23adf06030927c97de4798860fb70cb254bddb602443c8fa6d37bb4c69d69",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+          "sha256": "b6e35d9353212f2d6837028d7c46fd46a1f5145e6d365d61e9ccc83e76df3cb4",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+          "sha256": "059176438eda0473828c938deda7360c6f2811685678bde24f02c443d819f07b",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md",
+          "sha256": "efead0c1225fdce0bd49119438bd471c5368b5618209d08f5f960decd1f70435",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+            "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+            "docs/adr/ADR-0010-prescription-and-retest-attribution.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E10-report-and-one-lever.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+            "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+            "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e10-001-e10-002-e10-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e10-001-e10-002-e10-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e11-001-e11-002-e11-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E11-001, E11-002, E11-003 prerequisite set — ADR-0009/ADR-0010, E11, and the exact E11-001, E11-002, E11-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "85148c331076cecdde90e0d405542104d8322a60"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E11-form-b-and-retest-modes.md",
+          "sha256": "d44f9d141b55c7baf89d69388b0ff9feacdb010a31a00bb4a1ef30439427c1b8",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+          "sha256": "2505c51876aa4f148a649b4070a353bfc6831be269365fa811b441fa305308e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+          "sha256": "c72f074d299c253fce8e4e33fb6c963297bd3be89c8e992241a96be269a2b0d7",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md",
+          "sha256": "327ffd3163295f2826d2ff4eace527812e817b50a0fb5f1b60fb2cca9fbc2560",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E11-form-b-and-retest-modes.md",
+          "sha256": "d44f9d141b55c7baf89d69388b0ff9feacdb010a31a00bb4a1ef30439427c1b8",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+          "sha256": "2505c51876aa4f148a649b4070a353bfc6831be269365fa811b441fa305308e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+          "sha256": "c72f074d299c253fce8e4e33fb6c963297bd3be89c8e992241a96be269a2b0d7",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md",
+          "sha256": "327ffd3163295f2826d2ff4eace527812e817b50a0fb5f1b60fb2cca9fbc2560",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+            "docs/adr/ADR-0010-prescription-and-retest-attribution.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E11-form-b-and-retest-modes.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+            "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+            "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e11-001-e11-002-e11-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e11-001-e11-002-e11-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e12-001-e12-002-e12-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E12-001, E12-002, E12-003 prerequisite set — ADR-0011, E12, and the exact E12-001, E12-002, E12-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "f9cfb730eff475da6ad2f1fa86398629767c40dd"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E12-human-alpha-and-validation.md",
+          "sha256": "1a19eba3a8ff6e192009d009ee098a8d77c0a9c50164e062f1fc26cabc083c74",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+          "sha256": "79471bc91d69574ae321ee1fd68dd760f8562f15a5a4617cf48b923ffeb468fa",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+          "sha256": "2483f2f217b1ed97e6c9670ae685e40da5c316b246a2c280d73d6c9b69bef29e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md",
+          "sha256": "842e83509171f768b023daea7d7549c8484e5e90f402ca14f2c04147102d1363",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E12-human-alpha-and-validation.md",
+          "sha256": "1a19eba3a8ff6e192009d009ee098a8d77c0a9c50164e062f1fc26cabc083c74",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+          "sha256": "79471bc91d69574ae321ee1fd68dd760f8562f15a5a4617cf48b923ffeb468fa",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+          "sha256": "2483f2f217b1ed97e6c9670ae685e40da5c316b246a2c280d73d6c9b69bef29e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md",
+          "sha256": "842e83509171f768b023daea7d7549c8484e5e90f402ca14f2c04147102d1363",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E12-human-alpha-and-validation.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+            "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+            "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e12-001-e12-002-e12-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e12-001-e12-002-e12-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e13-001-e13-002-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E13-001, E13-002 prerequisite set — ADR-0002, E13, and the exact E13-001, E13-002 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "9a8f2612b383423dc5f7b9089bd75c62d9e72e4b"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E13-snapshot-estimate.md",
+          "sha256": "6008f77144d54e61b3a761bb1413a9cd208d3336e1b75b3ad292ea6bd99dc044",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+          "sha256": "25ca472d0b09e3620d43ea15d9d0aede4c2b2307770090ff8110f79fb13b71e2",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md",
+          "sha256": "3a4ee5c2f3c925d3fbd89d479c3d7aa721f8e3b96815b322b51987ab38193b89",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E13-snapshot-estimate.md",
+          "sha256": "6008f77144d54e61b3a761bb1413a9cd208d3336e1b75b3ad292ea6bd99dc044",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+          "sha256": "25ca472d0b09e3620d43ea15d9d0aede4c2b2307770090ff8110f79fb13b71e2",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md",
+          "sha256": "3a4ee5c2f3c925d3fbd89d479c3d7aa721f8e3b96815b322b51987ab38193b89",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0002-intended-use-scope-and-claims.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E13-snapshot-estimate.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+            "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e13-001-e13-002-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e13-001-e13-002-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E14-001, E14-002, E14-003 prerequisite set — ADR-0001/ADR-0012, E14, and the exact E14-001, E14-002, E14-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "4fc3d49184839423747a50cd8d18de02a7b8e3cc"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "9e61d5ab89f258d3df144473e5aee8ba0a72d44fd74820ad74c7419773504a9c",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "e49728d798073e12808b5c79def390495321e6194b29f8532b1144b935680756",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "9e61d5ab89f258d3df144473e5aee8ba0a72d44fd74820ad74c7419773504a9c",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "e49728d798073e12808b5c79def390495321e6194b29f8532b1144b935680756",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E14-public-oss-and-g4.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+            "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+            "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e14-001-e14-002-e14-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e14-001-e14-002-e14-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {

@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 24);
-  assert.equal(result.counts.accepted, 14);
+  assert.equal(result.batches, 37);
+  assert.equal(result.counts.accepted, 27);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1225,7 +1225,53 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E0-B/E0B-003-specify-capability-doctor-output-and-verdict-fixtures.md",
     "docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md",
     "docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md",
-    "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md"
+    "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md",
+    "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+    "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+    "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md",
+    "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+    "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+    "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md",
+    "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+    "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+    "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md",
+    "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+    "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md",
+    "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+    "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+    "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+    "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
+    "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
+    "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
+    "docs/tickets/E2/E2-004-build-complete-scorer-conformance-fixture-corpus.md",
+    "docs/tickets/E2/E2-005-close-g0-scorer-truth-reproducibility-gate.md",
+    "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+    "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+    "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+    "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md",
+    "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+    "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+    "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+    "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md",
+    "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+    "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+    "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+    "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md",
+    "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+    "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+    "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+    "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md",
+    "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+    "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+    "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+    "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+    "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+    "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+    "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+    "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md",
+    "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+    "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+    "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
