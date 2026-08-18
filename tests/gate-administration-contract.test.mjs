@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 31);
-  assert.equal(result.counts.accepted, 21);
+  assert.equal(result.batches, 32);
+  assert.equal(result.counts.accepted, 22);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1254,7 +1254,10 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
     "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
     "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
-    "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md"
+    "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md",
+    "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+    "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+    "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
