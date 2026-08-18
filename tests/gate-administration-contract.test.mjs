@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 29);
-  assert.equal(result.counts.accepted, 19);
+  assert.equal(result.batches, 30);
+  assert.equal(result.counts.accepted, 20);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1246,7 +1246,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
     "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
     "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
-    "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md"
+    "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md",
+    "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+    "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+    "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+    "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
