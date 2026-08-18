@@ -1202,10 +1202,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 20);
-  assert.equal(result.counts.accepted, 10);
+  assert.equal(result.batches, 21);
+  assert.equal(result.counts.accepted, 11);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
+    "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
     "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
     "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md",
