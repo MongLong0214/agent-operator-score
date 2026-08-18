@@ -4016,6 +4016,102 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e13-001-e13-002-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E13-001, E13-002 prerequisite set — ADR-0002, E13, and the exact E13-001, E13-002 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "9a8f2612b383423dc5f7b9089bd75c62d9e72e4b"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E13-snapshot-estimate.md",
+          "sha256": "6008f77144d54e61b3a761bb1413a9cd208d3336e1b75b3ad292ea6bd99dc044",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+          "sha256": "25ca472d0b09e3620d43ea15d9d0aede4c2b2307770090ff8110f79fb13b71e2",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md",
+          "sha256": "3a4ee5c2f3c925d3fbd89d479c3d7aa721f8e3b96815b322b51987ab38193b89",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E13-snapshot-estimate.md",
+          "sha256": "6008f77144d54e61b3a761bb1413a9cd208d3336e1b75b3ad292ea6bd99dc044",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+          "sha256": "25ca472d0b09e3620d43ea15d9d0aede4c2b2307770090ff8110f79fb13b71e2",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md",
+          "sha256": "3a4ee5c2f3c925d3fbd89d479c3d7aa721f8e3b96815b322b51987ab38193b89",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0002-intended-use-scope-and-claims.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E13-snapshot-estimate.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E13/E13-001-define-and-render-snapshot-estimate-output.md",
+            "docs/tickets/E13/E13-002-implement-explicit-privacy-allowlisted-snapshot-share-artifact.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e13-001-e13-002-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e13-001-e13-002-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
