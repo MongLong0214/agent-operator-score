@@ -816,7 +816,8 @@ const controlPlaneAllowlist = new Set([
   "tests/planning/workspace-skeleton.test.mjs",
   "scripts/resolve-execution-state.mjs",
   "scripts/render-execution-views.mjs",
-  "tests/execution-state.test.mjs"
+  "tests/execution-state.test.mjs",
+  "tests/governance-mode-contract.test.mjs"
 ]);
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 
