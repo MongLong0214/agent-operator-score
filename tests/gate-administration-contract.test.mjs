@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 18);
-  assert.equal(result.counts.accepted, 8);
+  assert.equal(result.batches, 19);
+  assert.equal(result.counts.accepted, 9);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
@@ -1211,6 +1211,7 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md",
     "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
     "docs/tickets/D0/D0-007-artifact-manifest-v3-and-legacy-migration.md",
+    "docs/tickets/D0/D0-008-github-review-acceptance-derivation-inactive.md",
     "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md",
     "docs/tickets/D0/D0-012-ticket-owned-census-rederivation.md",
     "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md"
