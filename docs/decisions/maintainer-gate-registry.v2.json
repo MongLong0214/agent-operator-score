@@ -3791,6 +3791,124 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e11-001-e11-002-e11-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E11-001, E11-002, E11-003 prerequisite set — ADR-0009/ADR-0010, E11, and the exact E11-001, E11-002, E11-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "85148c331076cecdde90e0d405542104d8322a60"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E11-form-b-and-retest-modes.md",
+          "sha256": "d44f9d141b55c7baf89d69388b0ff9feacdb010a31a00bb4a1ef30439427c1b8",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+          "sha256": "2505c51876aa4f148a649b4070a353bfc6831be269365fa811b441fa305308e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+          "sha256": "c72f074d299c253fce8e4e33fb6c963297bd3be89c8e992241a96be269a2b0d7",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md",
+          "sha256": "327ffd3163295f2826d2ff4eace527812e817b50a0fb5f1b60fb2cca9fbc2560",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0010-prescription-and-retest-attribution.md",
+          "sha256": "2c21db6670b08afafe73d168cb4cd83e4c4ec98331d878055c15b80dda2e729f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E11-form-b-and-retest-modes.md",
+          "sha256": "d44f9d141b55c7baf89d69388b0ff9feacdb010a31a00bb4a1ef30439427c1b8",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+          "sha256": "2505c51876aa4f148a649b4070a353bfc6831be269365fa811b441fa305308e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+          "sha256": "c72f074d299c253fce8e4e33fb6c963297bd3be89c8e992241a96be269a2b0d7",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md",
+          "sha256": "327ffd3163295f2826d2ff4eace527812e817b50a0fb5f1b60fb2cca9fbc2560",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+            "docs/adr/ADR-0010-prescription-and-retest-attribution.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E11-form-b-and-retest-modes.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E11/E11-001-build-linked-non-reused-form-b-and-exposure-gate.md",
+            "docs/tickets/E11/E11-002-implement-one-lever-seven-day-sprint-ledger.md",
+            "docs/tickets/E11/E11-003-classify-retest-attribution-and-transfer-signal.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e11-001-e11-002-e11-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e11-001-e11-002-e11-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
