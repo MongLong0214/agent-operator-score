@@ -13,6 +13,8 @@
     "resolved_at",
     "governance_mode",
     "claims_merge_authorization",
+    "claims_separation_of_duties",
+    "artifact_freeze",
     "tickets",
     "readySet",
     "errors"
@@ -28,6 +30,14 @@
     "claims_merge_authorization": {
       "const": false,
       "description": "CTO/CEO review and the owner merge decision are out-of-band process gates, never resolver inputs. This stays false until a genuine external-independence gate (E14-003/G4) exists."
+    },
+    "claims_separation_of_duties": {
+      "const": false,
+      "description": "Advisory and single-owner results never claim separation of duties. Unequal prepared_by and approved_by role strings are not two principals."
+    },
+    "artifact_freeze": {
+      "const": null,
+      "description": "D0-005 introduces this required field as null. D0-009 alone may widen it after live activation."
     },
     "bootstrap": {
       "type": "object",

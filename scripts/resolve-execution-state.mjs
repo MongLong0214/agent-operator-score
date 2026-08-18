@@ -384,6 +384,92 @@ const actorPolicyAgrees = (policy) => {
   return stableJson(policy) === stableJson(expectedActorPolicyFromTicket());
 };
 
+const GOVERNANCE_DECLARED_MODES = ["SOLE_OWNER_ADVISORY", "AUTHENTICATED_REVIEW"];
+const GOVERNANCE_DECLARED_MODE_SET = new Set(GOVERNANCE_DECLARED_MODES);
+const D0_004_AUTHORITY_MODES = new Set(["single_owner_agent_team", "single_owner_bootstrap"]);
+const GOVERNANCE_MODE_CONTRACT_RELATIVE = "docs/decisions/governance-mode-contract.v1.json";
+
+const governanceModeContractError = (reason) => new Error(`governance mode contract error: ${reason}`);
+
+export const parseGovernanceModeContract = (input) => {
+  if (!plainObject(input)) {
+    throw governanceModeContractError("malformed contract");
+  }
+  if (D0_004_AUTHORITY_MODES.has(input.governance_mode)) {
+    throw governanceModeContractError("D0-004 is not an authority source");
+  }
+  if (!Object.hasOwn(input, "current_mode")) {
+    throw governanceModeContractError("missing current_mode");
+  }
+  if (typeof input.current_mode !== "string") {
+    throw governanceModeContractError("malformed contract");
+  }
+  if (!GOVERNANCE_DECLARED_MODE_SET.has(input.current_mode)) {
+    throw governanceModeContractError("unknown mode");
+  }
+  if (!Array.isArray(input.modes) || input.modes.some((mode) => typeof mode !== "string")) {
+    throw governanceModeContractError("malformed contract");
+  }
+  if (input.modes.some((mode) => !GOVERNANCE_DECLARED_MODE_SET.has(mode))) {
+    throw governanceModeContractError("unknown mode");
+  }
+  if (!input.modes.includes(input.current_mode)) {
+    throw governanceModeContractError("contradictory current_mode");
+  }
+  if (input.version !== 1) {
+    throw governanceModeContractError("malformed contract");
+  }
+  if (!plainObject(input.authenticated_review_activation)) {
+    throw governanceModeContractError("malformed contract");
+  }
+  if (input.claims_separation_of_duties !== false) {
+    throw governanceModeContractError("malformed contract");
+  }
+  return {
+    version: 1,
+    modes: [...input.modes],
+    current_mode: input.current_mode,
+    authenticated_review_activation: { ...input.authenticated_review_activation },
+    claims_separation_of_duties: false
+  };
+};
+
+export const loadGovernanceModeContract = (root = DEFAULT_ROOT) => {
+  const path = resolve(root, GOVERNANCE_MODE_CONTRACT_RELATIVE);
+  let text;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    throw governanceModeContractError("malformed contract");
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw governanceModeContractError("malformed contract");
+  }
+  return parseGovernanceModeContract(parsed);
+};
+
+export const resolveGovernanceModeResult = (input, options = {}) => {
+  // Role strings are observations only. Advisory never derives a separation-of-duties claim from them.
+  void options;
+  try {
+    parseGovernanceModeContract(input);
+  } catch {
+    throw governanceModeContractError("invalid contract has no fallback");
+  }
+  return {
+    modes: [...GOVERNANCE_DECLARED_MODES],
+    governance_mode: "SOLE_OWNER_ADVISORY",
+    readySet: [],
+    tickets: {},
+    claims_merge_authorization: false,
+    artifact_freeze: null,
+    claims_separation_of_duties: false
+  };
+};
+
 const extractExactGateBatchField = (body) => {
   if (typeof body !== "string") return { ok: false, reason: "missing body" };
   const matches = [...body.matchAll(/^Gate-Batch:\s*(\S+)\s*$/gm)];
@@ -1408,6 +1494,8 @@ export const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
   resolved_at: now,
   governance_mode: "single_owner_bootstrap",
   claims_merge_authorization: false,
+  claims_separation_of_duties: false,
+  artifact_freeze: null,
   bootstrap: { active: true, d0_004c_merged: false },
   tickets: {},
   readySet: [],
@@ -3660,6 +3748,8 @@ export const resolveExecutionState = (options = {}) => {
     // governance_mode is explicitly the bootstrap mode, never a post-C mode by default.
     governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
     claims_merge_authorization: false,
+    claims_separation_of_duties: false,
+    artifact_freeze: null,
     bootstrap: {
       active: bootstrapActive,
       d0_004c_merged: facts.d0_004c_merged === true
