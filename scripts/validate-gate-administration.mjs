@@ -403,6 +403,115 @@ const deriveRegistryStatus = (batches) => {
   return null;
 };
 
+const stableJson = (value) => {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+
+const asSourceBytes = (value) => {
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (typeof value === "string") return Buffer.from(value, "utf8");
+  return null;
+};
+
+const effectiveStateError = (kind) => new Error(`effective state rejected: ${kind} input`);
+
+const isAuthenticatedGitHubApprovalFact = (fact, batchId) =>
+  plainObject(fact) &&
+  fact.batch_id === batchId &&
+  fact.authenticated === true &&
+  Number.isInteger(fact.github_user_id) &&
+  fact.github_user_id > 0 &&
+  typeof fact.login === "string" &&
+  fact.login.length > 0 &&
+  Number.isInteger(fact.approval_id) &&
+  fact.approval_id > 0 &&
+  typeof fact.html_url === "string" &&
+  /^https:\/\/github\.com\//.test(fact.html_url);
+
+const collectRowPaths = (batch) => {
+  const paths = [];
+  for (const artifact of [...(Array.isArray(batch?.required_artifacts) ? batch.required_artifacts : []),
+    ...(Array.isArray(batch?.artifacts) ? batch.artifacts : [])]) {
+    if (typeof artifact?.path === "string") paths.push(artifact.path);
+  }
+  for (const transition of Array.isArray(batch?.transitions) ? batch.transitions : []) {
+    if (!Array.isArray(transition?.artifact_paths)) continue;
+    for (const path of transition.artifact_paths) {
+      if (typeof path === "string") paths.push(path);
+    }
+  }
+  return paths;
+};
+
+export const deriveEffectiveGateState = (input) => {
+  if (input == null) throw effectiveStateError("missing");
+  if (!plainObject(input)) throw effectiveStateError("malformed");
+  if (!own(input, "source_registry")) throw effectiveStateError("missing");
+  if (typeof input.source_path === "string" && !safeRelativePath(input.source_path)) {
+    throw effectiveStateError("unsafe");
+  }
+  if (!plainObject(input.source_registry)) throw effectiveStateError("malformed");
+  const registry = input.source_registry;
+  if (registry.version !== 2 || !Array.isArray(registry.batches)) {
+    throw effectiveStateError("malformed");
+  }
+  if (own(input, "github_approval_facts") && !Array.isArray(input.github_approval_facts)) {
+    throw effectiveStateError("malformed");
+  }
+  const sourceBytes = own(input, "source_bytes") ? asSourceBytes(input.source_bytes) : null;
+  if (own(input, "source_bytes") && !sourceBytes) throw effectiveStateError("malformed");
+  const claimedDigest = input.source_sha256;
+  if (typeof claimedDigest !== "string" || !hash64(claimedDigest)) {
+    throw effectiveStateError("unverified");
+  }
+  if (sourceBytes) {
+    if (sha256(sourceBytes) !== claimedDigest) throw effectiveStateError("unverified");
+    let parsedBytes;
+    try {
+      parsedBytes = JSON.parse(sourceBytes.toString("utf8"));
+    } catch {
+      throw effectiveStateError("unverified");
+    }
+    if (stableJson(parsedBytes) !== stableJson(registry)) throw effectiveStateError("unverified");
+  } else if (sha256(Buffer.from(JSON.stringify(registry), "utf8")) !== claimedDigest) {
+    throw effectiveStateError("unverified");
+  }
+
+  const approvalFacts = Array.isArray(input.github_approval_facts) ? input.github_approval_facts : [];
+  const seenIds = new Set();
+  const records = [];
+  for (const batch of registry.batches) {
+    if (!plainObject(batch) || typeof batch.id !== "string" || !batch.id) {
+      throw effectiveStateError("malformed");
+    }
+    if (seenIds.has(batch.id)) throw effectiveStateError("duplicate");
+    seenIds.add(batch.id);
+    if (own(batch, "status") && typeof batch.status !== "string") {
+      throw effectiveStateError("malformed");
+    }
+    for (const path of collectRowPaths(batch)) {
+      if (!safeRelativePath(path)) throw effectiveStateError("unsafe");
+    }
+    if (batch.status !== "ACCEPTED") continue;
+    const authenticated = approvalFacts.some((fact) => isAuthenticatedGitHubApprovalFact(fact, batch.id));
+    records.push({
+      source_record_id: batch.id,
+      source_digest: sha256(Buffer.from(stableJson(batch), "utf8")),
+      structural_state: "ACCEPTED",
+      effective_gate_state: authenticated ? "ACCEPTED" : "LEGACY_UNAUTHENTICATED",
+      effective_gate_state_reason: authenticated
+        ? "authenticated GitHub approval fact present"
+        : "no authenticated GitHub approval fact"
+    });
+  }
+  return { ok: true, records, freeze_inputs: [] };
+};
+
 const verifyCanonicalRegistry = (root, errors) => {
   const registryPath = resolve(root, canonicalRegistryRelativePath);
   let realRoot;
