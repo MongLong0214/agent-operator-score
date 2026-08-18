@@ -3286,6 +3286,146 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E7-001, E7-002, E7-003, E7-004 prerequisite set — ADR-0005/ADR-0008/ADR-0011, E7, and the exact E7-001, E7-002, E7-003, E7-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "e5235a96a2f05cf75734544f22c0b21a44a63d82"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md",
+          "sha256": "c18314010e3d9c78fabb25a0d4265e186c80e53f7d777026447fafc705ab94ff",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+          "sha256": "1322199c167ef230718843d514fa5109f92da6540434b33706ba347a4809737e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+          "sha256": "9265b2a34120f2e4101f063647f0bb8588fe6cda81e2cee0d4f91fb2ccdfa3ed",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+          "sha256": "03cd0cf1c54ebdf583048b12934a67140171feb962b307e401b54485a0263e1e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+          "sha256": "805477a8420faa43a4d543fee256aeced903e15d3f101262d1483bbd269ac05f",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md",
+          "sha256": "c18314010e3d9c78fabb25a0d4265e186c80e53f7d777026447fafc705ab94ff",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+          "sha256": "1322199c167ef230718843d514fa5109f92da6540434b33706ba347a4809737e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+          "sha256": "9265b2a34120f2e4101f063647f0bb8588fe6cda81e2cee0d4f91fb2ccdfa3ed",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+          "sha256": "03cd0cf1c54ebdf583048b12934a67140171feb962b307e401b54485a0263e1e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+          "sha256": "805477a8420faa43a4d543fee256aeced903e15d3f101262d1483bbd269ac05f",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+            "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+            "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+            "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
