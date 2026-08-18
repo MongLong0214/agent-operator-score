@@ -593,19 +593,47 @@ test("workspace-lock-consistency", () => {
 });
 
 test("doctor-fixture-admission-honours-the-declared-file-predicate", () => {
-  // The declaration is `fixtures/doctor/*.json`. An earlier revision admitted the directory
-  // itself, so any file dropped into it passed the skeleton gate regardless of the glob. This
-  // case pins the predicate: a non-matching regular file in that directory is not admitted, so
-  // the skeleton comparison sees it as unexplained and fails.
-  const probe = resolve(repositoryRoot, "fixtures/doctor/not-declared-by-the-glob.txt");
-  writeFileSync(probe, "probe\n");
+  // The declaration is `fixtures/doctor/*.json`. The filter that actually admits those
+  // files lives on doctorFixtureFiles inside root-private-scripts-and-runnable-surface.
+  // A second walk that re-applies the same literal cannot fail when that filter is deleted
+  // or widened, and removing the probe in finally hid it from the comparison. Stage the
+  // non-matching file in an isolated copy and assert the real census rejects it.
+  const parent = mkdtempSync(join(tmpdir(), "aos-doctor-admission-"));
+  const fixture = join(parent, "repository");
+  const probeRelative = "fixtures/doctor/not-declared-by-the-glob.txt";
   try {
-    const admitted = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
-      .map(asRepositoryRelative)
-      .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path));
-    assert.equal(admitted.includes("fixtures/doctor/not-declared-by-the-glob.txt"), false);
-    assert.ok(admitted.includes("fixtures/doctor/complete.json"), "declared fixture is not admitted");
+    cpSync(repositoryRoot, fixture, {
+      recursive: true,
+      filter: (source) => basename(source) !== "node_modules" && !basename(source).startsWith(".planning-")
+    });
+    writeFileSync(join(fixture, probeRelative), "probe\n");
+
+    const env = { ...process.env };
+    delete env.NODE_TEST_CONTEXT;
+    delete env.NODE_OPTIONS;
+    let failed;
+    try {
+      execFileSync(process.execPath, [
+        "--test",
+        "--test-reporter=tap",
+        "--test-name-pattern", "^root-private-scripts-and-runnable-surface$",
+        "tests/planning/workspace-skeleton.test.mjs"
+      ], {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env
+      });
+    } catch (caught) {
+      failed = caught;
+    }
+    assert.ok(failed, "skeleton comparison admitted a file the declared glob excludes");
+    assert.match(
+      `${failed.stdout ?? ""}${failed.stderr ?? ""}`,
+      /fixtures\/doctor\/not-declared-by-the-glob\.txt/,
+      "skeleton comparison did not name the unexplained non-JSON probe"
+    );
   } finally {
-    rmSync(probe, { force: true });
+    rmSync(parent, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });
