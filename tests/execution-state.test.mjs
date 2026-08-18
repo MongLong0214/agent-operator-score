@@ -3097,7 +3097,9 @@ test("live-adapter-outage-partial-ambiguous-fail-closed", async () => {
     assert.match(collected.reason, /unavailable|tip/i);
   }
 
-  // Ambiguous gate PR search (two items for one batch).
+  // Two merged PRs that genuinely claim the same structured batch field remain
+  // an abort. Search cardinality alone is not the signal: both bodies parse as
+  // the expected id, so this stays fail-closed after exact-field selection.
   {
     const responses = { ...base };
     const key = Object.keys(responses).find((entry) => entry.startsWith("search/issues?q=") && entry.includes("Gate-Batch"));
@@ -3107,9 +3109,14 @@ test("live-adapter-outage-partial-ambiguous-fail-closed", async () => {
       incomplete_results: false,
       items: [{ number: 200 }, { number: 201 }]
     };
+    responses[`${repoPath}/pulls/201`] = {
+      ...base[`${repoPath}/pulls/200`],
+      number: 201,
+      body: "Gate-Batch: batch-d0-004-fixture\n"
+    };
     const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
     assert.equal(collected.ok, false);
-    assert.match(collected.reason, /ambiguous/i);
+    assert.match(collected.reason, /ambiguous gate PR set for batch batch-d0-004-fixture/i);
   }
 
   // Ambiguous transport signal via fixture marker.
@@ -3123,6 +3130,171 @@ test("live-adapter-outage-partial-ambiguous-fail-closed", async () => {
   // resolveExecutionState without facts still fails closed online (no silent empty corpus).
   const online = resolveExecutionState({ mode: "online-strict", root, facts: null });
   assert.ok(online.errors.some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE"));
+});
+
+const hyphenTokens = (id) => String(id).split("-").filter((token) => token.length > 0);
+
+const isHyphenTokenPrefix = (shorter, longer) => {
+  const prefix = hyphenTokens(shorter);
+  const candidate = hyphenTokens(longer);
+  if (prefix.length === 0 || prefix.length >= candidate.length) return false;
+  return prefix.every((token, index) => token === candidate[index]);
+};
+
+// Hazard class: GitHub search for an ACCEPTED id also returns bodies whose
+// hyphen-token sequence merely extends that id. Only the shorter id receives
+// those false candidates, and only ACCEPTED rows are searched. An INVALIDATED
+// shorter id next to a longer id is therefore out of scope.
+const acceptedIdsThatAreTokenPrefixes = (batches) => {
+  const rows = (Array.isArray(batches) ? batches : []).filter(
+    (batch) => batch && typeof batch.id === "string" && batch.id.length > 0
+  );
+  const collisions = [];
+  for (const accepted of rows.filter((batch) => batch.status === "ACCEPTED")) {
+    for (const other of rows) {
+      if (other.id === accepted.id) continue;
+      if (isHyphenTokenPrefix(accepted.id, other.id)) {
+        collisions.push({
+          acceptedId: accepted.id,
+          otherId: other.id,
+          otherStatus: other.status ?? null
+        });
+      }
+    }
+  }
+  return collisions;
+};
+
+test("gate-receipt-search-false-token-prefix-candidate-does-not-abort-collection", async () => {
+  // Search returns the true receipt plus a longer-id false candidate first.
+  // Today's collector aborts on search cardinality before the exact parser runs.
+  // After the reorder, only the body whose structured field equals the expected
+  // id is kept, and every downstream receipt check still runs on that pull.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = clone(
+    JSON.parse(
+      readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+    )
+  );
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const expectedId = "batch-d0-004-fixture";
+  const falseId = "batch-d0-004-fixture-renewal";
+  const key = Object.keys(responses).find(
+    (entry) => entry.startsWith("search/issues?q=") && entry.includes("Gate-Batch")
+  );
+  assert.ok(key, "fixture gate search key");
+  const trueNumber = 200;
+  const falseNumber = 9201;
+  responses[key] = {
+    total_count: 2,
+    incomplete_results: false,
+    items: [{ number: falseNumber }, { number: trueNumber }]
+  };
+  responses[`${repoPath}/pulls/${falseNumber}`] = {
+    number: falseNumber,
+    body: `Gate-Batch: ${falseId}\n`,
+    base: { ref: "dev" },
+    head: { sha: "dddddddddddddddddddddddddddddddddddddddd" },
+    merged: true,
+    merged_by: { login: "MongLong0214" },
+    merge_commit_sha: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    user: { login: "MongLong0214" }
+  };
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(
+    collected.ok,
+    true,
+    `false prefix candidate must not abort collection, got ${collected.reason}`
+  );
+  assert.ok(collected.facts, "exact-field selection must still produce a facts corpus");
+  const gatePRs = collected.facts.gatePRs;
+  assert.equal(gatePRs.length, 1, `expected one exact receipt, got ${gatePRs.map((pr) => pr.number).join(",")}`);
+  assert.equal(gatePRs[0].number, trueNumber);
+  assert.match(gatePRs[0].body, /^Gate-Batch: batch-d0-004-fixture\s*$/m);
+  assert.equal(
+    gatePRs.some((pr) => pr.number === falseNumber),
+    false,
+    "the longer-id false candidate must not be selected"
+  );
+});
+
+test("gate-receipt-search-only-false-token-prefix-candidate-is-unmatched", async () => {
+  // A search that returns only the longer-id false candidate must become the
+  // same unmatched accepted-row outcome as a zero-result search, not a
+  // whole-resolution abort and not a receipt for the false id.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = clone(
+    JSON.parse(
+      readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+    )
+  );
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const key = Object.keys(responses).find(
+    (entry) => entry.startsWith("search/issues?q=") && entry.includes("Gate-Batch")
+  );
+  assert.ok(key, "fixture gate search key");
+  const falseNumber = 9201;
+  responses[key] = {
+    total_count: 1,
+    incomplete_results: false,
+    items: [{ number: falseNumber }]
+  };
+  responses[`${repoPath}/pulls/${falseNumber}`] = {
+    number: falseNumber,
+    body: "Gate-Batch: batch-d0-004-fixture-renewal\n",
+    base: { ref: "dev" },
+    head: { sha: "dddddddddddddddddddddddddddddddddddddddd" },
+    merged: true,
+    merged_by: { login: "MongLong0214" },
+    merge_commit_sha: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    user: { login: "MongLong0214" }
+  };
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(
+    collected.ok,
+    true,
+    `only-false-candidate search must not abort collection, got ${collected.reason}`
+  );
+  assert.deepEqual(collected.facts.gatePRs, []);
+});
+
+test("accepted-batch-ids-must-not-be-hyphen-token-prefixes-of-any-registry-id", () => {
+  const canary = acceptedIdsThatAreTokenPrefixes([
+    { id: "accepted-short", status: "ACCEPTED" },
+    { id: "accepted-short-extension", status: "INVALIDATED" },
+    { id: "unrelated", status: "ACCEPTED" }
+  ]);
+  assert.deepEqual(
+    canary,
+    [
+      {
+        acceptedId: "accepted-short",
+        otherId: "accepted-short-extension",
+        otherStatus: "INVALIDATED"
+      }
+    ],
+    "the predicate must detect an ACCEPTED id that is a hyphen-token prefix of another id"
+  );
+  assert.deepEqual(
+    acceptedIdsThatAreTokenPrefixes([
+      { id: "historical-short", status: "INVALIDATED" },
+      { id: "historical-short-extension", status: "ACCEPTED" }
+    ]),
+    [],
+    "an INVALIDATED shorter id is outside the searched hazard class"
+  );
+
+  const registry = JSON.parse(
+    readFileSync(resolve(root, "docs/decisions/maintainer-gate-registry.v2.json"), "utf8")
+  );
+  const collisions = acceptedIdsThatAreTokenPrefixes(registry.batches);
+  assert.deepEqual(
+    collisions,
+    [],
+    `ACCEPTED batch ids must not be hyphen-token prefixes of any registry id, got ${JSON.stringify(collisions)}`
+  );
 });
 
 test("online-strict-exits-nonzero-on-ticket-contract-conflict", async () => {
