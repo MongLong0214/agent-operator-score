@@ -3909,6 +3909,113 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e12-001-e12-002-e12-003-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E12-001, E12-002, E12-003 prerequisite set — ADR-0011, E12, and the exact E12-001, E12-002, E12-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "f9cfb730eff475da6ad2f1fa86398629767c40dd"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E12-human-alpha-and-validation.md",
+          "sha256": "1a19eba3a8ff6e192009d009ee098a8d77c0a9c50164e062f1fc26cabc083c74",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+          "sha256": "79471bc91d69574ae321ee1fd68dd760f8562f15a5a4617cf48b923ffeb468fa",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+          "sha256": "2483f2f217b1ed97e6c9670ae685e40da5c316b246a2c280d73d6c9b69bef29e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md",
+          "sha256": "842e83509171f768b023daea7d7549c8484e5e90f402ca14f2c04147102d1363",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E12-human-alpha-and-validation.md",
+          "sha256": "1a19eba3a8ff6e192009d009ee098a8d77c0a9c50164e062f1fc26cabc083c74",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+          "sha256": "79471bc91d69574ae321ee1fd68dd760f8562f15a5a4617cf48b923ffeb468fa",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+          "sha256": "2483f2f217b1ed97e6c9670ae685e40da5c316b246a2c280d73d6c9b69bef29e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md",
+          "sha256": "842e83509171f768b023daea7d7549c8484e5e90f402ca14f2c04147102d1363",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E12-human-alpha-and-validation.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E12/E12-001-freeze-alpha-preregistration-protocol-and-data-dictionary.md",
+            "docs/tickets/E12/E12-002-execute-reference-and-20-person-alpha-with-immutable-provenance.md",
+            "docs/tickets/E12/E12-003-analyze-alpha-and-publish-g1-g2-g3-verdicts.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e12-001-e12-002-e12-003-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e12-001-e12-002-e12-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
