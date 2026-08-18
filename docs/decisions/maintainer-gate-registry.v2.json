@@ -2792,6 +2792,124 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E3-001, E3-002, E3-003, E3-004 prerequisite set — ADR-0008, E3, and the exact E3-001, E3-002, E3-003, E3-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "30fc38f516cdd8b9291458a6ad1f1801bebe158f"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E3-isolated-controlled-runner.md",
+          "sha256": "d01d38a6806f5b52144733454659b0362445701a9d5fbc430b2c14515894ce32",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+          "sha256": "d9d380fa2886cc04d65fda6437aa68b884f59f628c03bc9b074e0f0d64ca6802",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+          "sha256": "25ca54ee44afc754bada93fcbd188a9bf6c66b5728b35384ad87d8431964810e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+          "sha256": "09b2a589911662879c95f364d73b2a608bd297da09526ea9692aadbf976aa724",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md",
+          "sha256": "d8eb77539e4d34a9856e36aaef1b245cb30375c1cb6fb2da7e36179599b510bb",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E3-isolated-controlled-runner.md",
+          "sha256": "d01d38a6806f5b52144733454659b0362445701a9d5fbc430b2c14515894ce32",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+          "sha256": "d9d380fa2886cc04d65fda6437aa68b884f59f628c03bc9b074e0f0d64ca6802",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+          "sha256": "25ca54ee44afc754bada93fcbd188a9bf6c66b5728b35384ad87d8431964810e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+          "sha256": "09b2a589911662879c95f364d73b2a608bd297da09526ea9692aadbf976aa724",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md",
+          "sha256": "d8eb77539e4d34a9856e36aaef1b245cb30375c1cb6fb2da7e36179599b510bb",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E3-isolated-controlled-runner.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
+            "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
+            "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
+            "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
