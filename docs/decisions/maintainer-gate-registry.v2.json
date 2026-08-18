@@ -3146,6 +3146,146 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E6-001, E6-002, E6-003, E6-004 prerequisite set — ADR-0005/ADR-0006/ADR-0009, E6, and the exact E6-001, E6-002, E6-003, E6-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "9b9b53f05d0f959c67d75b7c2f962d34f05b6ba0"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E6-fam5-false-completion-scenarios.md",
+          "sha256": "6a4e16ce15e429bb14dfd866e4f176604238cc9bbf6e343a73fb7ef1204861dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+          "sha256": "181f7dad0ce8eab75e6543fa90c9cb1cdb50e251206a9e3530a30d801a8f1871",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+          "sha256": "8e188c8bf6372c34d40adb14c75ba2e8128eef532e9e2fbdac9a1d238725039c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+          "sha256": "79e7162a7380ddfde2ba2d518fbb66c2356c19d68642a6ffe2a120b9f7b2098d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md",
+          "sha256": "9f7aa950683d9c2afc44ebcad72b0559427add7b361a6e5dfbe0c002b902c763",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+          "sha256": "02d983a9fa467ae88a0485d163807a36bfc99ac3ba2bf7090367473b9ddca536",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E6-fam5-false-completion-scenarios.md",
+          "sha256": "6a4e16ce15e429bb14dfd866e4f176604238cc9bbf6e343a73fb7ef1204861dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+          "sha256": "181f7dad0ce8eab75e6543fa90c9cb1cdb50e251206a9e3530a30d801a8f1871",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+          "sha256": "8e188c8bf6372c34d40adb14c75ba2e8128eef532e9e2fbdac9a1d238725039c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+          "sha256": "79e7162a7380ddfde2ba2d518fbb66c2356c19d68642a6ffe2a120b9f7b2098d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md",
+          "sha256": "9f7aa950683d9c2afc44ebcad72b0559427add7b361a6e5dfbe0c002b902c763",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0006-trace-result-and-deterministic-scoring.md",
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E6-fam5-false-completion-scenarios.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E6/E6-001-build-fam-5-public-green-hidden-fail-scenario.md",
+            "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
+            "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
+            "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
