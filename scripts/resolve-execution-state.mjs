@@ -2601,21 +2601,29 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (rejectPossiblyTruncatedSearch(search, 10, failures, `gate PR search for ${batch.id}`)) {
       return { ok: false, reason: failures.join("; "), facts: null };
     }
-    if (search.items.length === 0) {
-      // No gate PR for this accepted registry row — leave unmatched (gate acceptance fails closed later).
+    // Search is token-based, not a structured-field match. A hyphen-delimited
+    // id whose tokens are a proper prefix of another id, or unrelated prose
+    // carrying the same tokens, is a deterministic false candidate. Select by
+    // the exact parsed Gate-Batch field before applying cardinality.
+    const exactMatches = [];
+    for (const item of search.items) {
+      const number = item?.number;
+      const pull = requireJson(transport, `${repoPath}/pulls/${number}`, failures);
+      if (!pull) return { ok: false, reason: failures.join("; "), facts: null };
+      if (parseGateBatchFromBody(pull.body) === batch.id) {
+        exactMatches.push({ number, pull });
+      }
+    }
+    if (exactMatches.length === 0) {
+      // No exact gate PR for this accepted registry row — leave unmatched
+      // (gate acceptance fails closed later). Same outcome as a zero-result search.
       continue;
     }
-    if (search.items.length !== 1) {
+    if (exactMatches.length !== 1) {
       return { ok: false, reason: `ambiguous gate PR set for batch ${batch.id}`, facts: null };
     }
-    const number = search.items[0].number;
+    const { number, pull } = exactMatches[0];
     if (seenGatePr.has(number)) continue;
-    const pull = requireJson(transport, `${repoPath}/pulls/${number}`, failures);
-    if (!pull) return { ok: false, reason: failures.join("; "), facts: null };
-    const batchField = parseGateBatchFromBody(pull.body);
-    if (batchField !== batch.id) {
-      return { ok: false, reason: `gate PR #${number} lacks exact Gate-Batch ${batch.id}`, facts: null };
-    }
     if (pull.base?.ref !== expected.target_branch || pull.merged !== true) {
       return { ok: false, reason: `gate PR #${number} is not merged into ${expected.target_branch}`, facts: null };
     }
