@@ -5,7 +5,7 @@
 
 ## Purpose and boundary
 
-This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004 implementation, D0-002 implementation, RED, or product code. It does not itself authorize an ADR, PRD, or ticket. The current registry census below is the sole batch-state inventory in this document. A structural record is not authorization to execute; exact-head technical review, existing CI, and explicit CEO production PASS remain required.
+This control plane exists before any product-ticket execution so a Gate Administrator can record an exact-digest Maintainer Gate batch without depending on D0-004 implementation, D0-002 implementation, RED, or product code. It does not itself authorize an ADR, PRD, or ticket. The current registry census below is the sole batch-state inventory in this document. A structural record is not authorization to execute; exact-head technical review, existing CI, and explicit CEO production PASS remain required. Future advisory mode (SOLE_OWNER_ADVISORY) has no authenticated independent-review guarantee, no separation-of-duties claim, no authorization, and no artifact freeze.
 
 It owns only the administration record and its independent fail-closed checker:
 
@@ -23,7 +23,7 @@ The production checker reads only `docs/decisions/maintainer-gate-registry.v2.js
 ## Roles and separate acceptance
 
 - A **Gate Administrator** prepares a batch and runs the independent checker. The role may create only a structurally valid *candidate* record.
-- A **Maintainer** record carries the structural `prepared_by`, `approved_by`, and `recorded_by` fields. Their values must satisfy the checker, but they may be recorded sequentially by the one authenticated repository owner in `single_owner_agent_team` mode. They are mutable structural fields and remain `not_authorization`, never proof of independent authorization.
+- A **Maintainer** record carries the structural `prepared_by`, `approved_by`, and `recorded_by` fields. Their values must satisfy the checker, but they may be recorded sequentially by the one authenticated repository owner in `single_owner_agent_team` mode. They are mutable structural fields and remain `not_authorization`, never proof of independent authorization. Unequal role strings are not two principals and are not a separation-of-duties claim.
 - The **CEO** separately provides explicit production PASS at the final exact candidate head, after cumulative review and CI. That PASS is outside the Maintainer Gate registry and is required before merge. It must not be inferred from this proposed document, a passing checker, or a GitHub issue state.
 - Independent exact-head technical review, existing CI, and explicit CEO production PASS remain required for every accepted candidate. Before D0-004C merges, future resolver/workflow checks are `NOT_REQUIRED_UNTIL_D0_004C`; after that merge their absence fails closed. D0-004 implementation is never a Gate Administrator or approving authority.
 
@@ -79,6 +79,6 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 
 ## Non-authorizations and invalidation
 
-This decision grants no product implementation authority and no D0-001 execution authority. The current registry census above is the sole batch-state inventory in this document; mutable structural approval records are not authenticated authorization, and D0-004 RED remains blocked until its exact-head review, CI, CEO PASS, and execution packet gates are independently satisfied. D0-001 verified post-merge completion remains historical completion evidence only.
+This decision grants no product implementation authority and no D0-001 execution authority. The current registry census above is the sole batch-state inventory in this document; mutable structural approval records are not authenticated authorization, and D0-004 RED remains blocked until its exact-head review, CI, CEO PASS, and execution packet gates are independently satisfied. D0-001 verified post-merge completion remains historical completion evidence only. Advisory mode claims no separation of duties and cannot authorize RED, accept a gate, or freeze an artifact.
 
 The historic accepted digest references are retained only as invalidated evidence. Any prior proposed review, test, CI, or candidate-head evidence for modified planning artifacts is invalidated; no pending item is promoted by that invalidation. A fresh exact-head review of a renewed candidate is the next required action.
