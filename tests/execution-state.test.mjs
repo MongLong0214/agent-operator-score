@@ -5246,6 +5246,112 @@ void stripRuntime;
 void tmpdir;
 void join;
 
+test("github-transport-strips-ambient-colour-variables", async () => {
+  const { createAuthenticatedGitHubTransport } = await importResolver();
+  const saved = {
+    CLICOLOR_FORCE: process.env.CLICOLOR_FORCE,
+    FORCE_COLOR: process.env.FORCE_COLOR,
+    GH_FORCE_TTY: process.env.GH_FORCE_TTY,
+    NO_COLOR: process.env.NO_COLOR
+  };
+  process.env.CLICOLOR_FORCE = "1";
+  process.env.FORCE_COLOR = "1";
+  process.env.GH_FORCE_TTY = "1";
+  delete process.env.NO_COLOR;
+
+  let captured;
+  const execFileSync = (file, args, options) => {
+    captured = { file, args, options };
+    return '{"ok":true}';
+  };
+
+  try {
+    const transport = createAuthenticatedGitHubTransport(root, { execFileSync });
+    assert.deepEqual(transport.getJson("repos/MongLong0214/agent-operator-score"), { ok: true });
+    assert.equal(captured?.file, "gh");
+    // Inheriting the caller env is the defect: an assertion on missing keys of
+    // `undefined` would pass today. The child must receive an explicit map.
+    assert.equal(captured?.options?.env != null && typeof captured.options.env === "object", true);
+    const env = captured.options.env;
+    assert.equal(Object.hasOwn(env, "CLICOLOR_FORCE"), false);
+    assert.equal(Object.hasOwn(env, "FORCE_COLOR"), false);
+    assert.equal(Object.hasOwn(env, "GH_FORCE_TTY"), false);
+    assert.equal(env.NO_COLOR, "1");
+    assert.equal(typeof env.PATH, "string");
+    assert.notEqual(env.PATH, "");
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test("unparseable-transport-response-is-not-reported-as-empty-ready-set", async () => {
+  const {
+    createFixtureTransport,
+    acquireOnlineStrictFacts,
+    emptyFailureState,
+    formatExecutionState,
+    resolveExecutionState
+  } = await importResolver();
+
+  assert.equal(typeof emptyFailureState, "function");
+  assert.equal(typeof formatExecutionState, "function");
+
+  const ansiJson = "\u001b[1;38m{\u001b[m\n  \u001b[1;34m\"id\"\u001b[m\u001b[1;38m:\u001b[m 1\n";
+  const acquired = acquireOnlineStrictFacts(root, {
+    transport: createFixtureTransport({
+      "repos/MongLong0214/agent-operator-score": ansiJson
+    })
+  });
+  assert.equal(acquired.ok, false);
+  assert.match(acquired.reason, /unparseable transport response/i);
+
+  const unresolved = emptyFailureState(
+    "online-strict",
+    "2026-08-19T00:00:00.000Z",
+    {
+      repository: "MongLong0214/agent-operator-score",
+      branch: "dev",
+      head: null
+    },
+    [{ code: "EXTERNAL_STATE_UNAVAILABLE", reason: acquired.reason }]
+  );
+  assert.deepEqual(unresolved.readySet, []);
+  assert.equal(Object.keys(unresolved.tickets).length, 0);
+  const unresolvedText = formatExecutionState(unresolved);
+  assert.match(unresolvedText, /unparseable transport response/i);
+  assert.equal(
+    /^readySet=none$/m.test(unresolvedText),
+    false,
+    "an unparseable transport must not print the readySet=none token a resolved empty set uses"
+  );
+
+  const facts = loadBaselineFacts();
+  facts.tickets["D0-002"].dependencies = ["D0-999"];
+  const blocked = resolveExecutionState({
+    mode: "offline",
+    root,
+    facts,
+    runtimeIdentity: {
+      repository: facts.repository,
+      branch: facts.defaultBranch,
+      head: facts.currentHead
+    }
+  });
+  assert.deepEqual(blocked.readySet, []);
+  assert.ok(Object.keys(blocked.tickets).length > 0);
+  assert.equal(
+    (blocked.errors ?? []).some((entry) => /unparseable/i.test(entry.reason ?? "")),
+    false
+  );
+  const blockedText = formatExecutionState(blocked);
+  assert.match(blockedText, /^readySet=none$/m);
+  assert.doesNotMatch(blockedText, /unparseable transport response/i);
+  assert.notEqual(unresolvedText, blockedText);
+});
+
 test("published-schema-enum-covers-every-emittable-blocker-code", async () => {
   const { BLOCKER_CODES } = await importResolver();
   const schema = JSON.parse(

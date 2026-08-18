@@ -1399,7 +1399,7 @@ export const canonicalExecutionState = (state) => {
   return strip(state);
 };
 
-const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
+export const emptyFailureState = (mode, now, runtimeIdentity, errors) => ({
   schema_version: 1,
   mode,
   repository: runtimeIdentity?.repository ?? expectedActorPolicyFromTicket().repository,
@@ -1433,6 +1433,20 @@ const timeoutError = (reason) => {
   return error;
 };
 
+// Presence, not value, is what forces colour: GH_FORCE_TTY=0 and
+// CLICOLOR_FORCE=false still colour gh api. NO_COLOR does not override
+// CLICOLOR_FORCE. Delete the force class; do not set the keys to 0/false.
+const GH_COLOUR_FORCE_KEYS = ["CLICOLOR_FORCE", "FORCE_COLOR", "GH_FORCE_TTY"];
+
+const sanitiseGhChildEnv = (source = process.env) => {
+  const env = { ...source };
+  for (const key of GH_COLOUR_FORCE_KEYS) {
+    delete env[key];
+  }
+  env.NO_COLOR = "1";
+  return env;
+};
+
 /**
  * Authenticated read-only GitHub transport used by the live collector.
  * Performs zero repository writes. Callers may inject a fixture transport.
@@ -1463,7 +1477,8 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
         maxBuffer: 20 * 1024 * 1024,
-        timeout: callTimeout
+        timeout: callTimeout,
+        env: sanitiseGhChildEnv()
       });
       return raw;
     } catch (error) {
@@ -1916,6 +1931,13 @@ const transportCall = (transport, method, apiPath) => {
         reason: `EXTERNAL_STATE_UNAVAILABLE: collection timeout for ${apiPath}`,
         error,
         timeout: true
+      };
+    }
+    if (error instanceof SyntaxError) {
+      return {
+        ok: false,
+        reason: `unparseable transport response for ${apiPath}`,
+        error
       };
     }
     return {
@@ -3728,6 +3750,31 @@ const parseArgs = (argv) => {
   return options;
 };
 
+export const formatExecutionState = (result, options = {}) => {
+  const asked = Object.keys(result.tickets ?? {}).length > 0;
+  const couldNotAsk =
+    !asked &&
+    (result.errors ?? []).some((entry) => entry.code === "EXTERNAL_STATE_UNAVAILABLE");
+  const readySetDisplay = couldNotAsk ? "unavailable" : (result.readySet.join(",") || "none");
+  const lines = [
+    `EXECUTION_STATE mode=${result.mode} repository=${result.repository} branch=${result.target_branch} head=${result.current_head ?? "unknown"}`,
+    `readySet=${readySetDisplay}`
+  ];
+  for (const [id, state] of Object.entries(result.tickets ?? {})) {
+    if (options.ticket && id !== options.ticket) continue;
+    const codes = (state.blockers ?? []).map((entry) => entry.code).join(",") || "none";
+    lines.push(`${id} phase=${state.phase} readiness=${state.readiness} blockers=${codes}`);
+  }
+  if (result.errors?.length) {
+    lines.push(
+      `errors=${result.errors.map((entry) =>
+        entry.reason ? `${entry.code}: ${entry.reason}` : entry.code
+      ).join("; ")}`
+    );
+  }
+  return lines.join("\n");
+};
+
 const main = () => {
   const args = parseArgs(process.argv.slice(2));
   const isCheck = process.argv[1]?.includes("resolve-execution-state") && (
@@ -3805,19 +3852,7 @@ const main = () => {
       : result;
     console.log(JSON.stringify(payload, null, 2));
   } else {
-    const lines = [
-      `EXECUTION_STATE mode=${result.mode} repository=${result.repository} branch=${result.target_branch} head=${result.current_head ?? "unknown"}`,
-      `readySet=${result.readySet.join(",") || "none"}`
-    ];
-    for (const [id, state] of Object.entries(result.tickets)) {
-      if (args.ticket && id !== args.ticket) continue;
-      const codes = state.blockers.map((entry) => entry.code).join(",") || "none";
-      lines.push(`${id} phase=${state.phase} readiness=${state.readiness} blockers=${codes}`);
-    }
-    if (result.errors?.length) {
-      lines.push(`errors=${result.errors.map((entry) => entry.code).join(",")}`);
-    }
-    console.log(lines.join("\n"));
+    console.log(formatExecutionState(result, { ticket: args.ticket }));
   }
 
   const failed = args.strict
