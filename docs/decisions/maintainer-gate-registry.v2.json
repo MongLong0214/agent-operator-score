@@ -3028,6 +3028,124 @@
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E5-001, E5-002, E5-003, E5-004 prerequisite set — ADR-0009, E5, and the exact E5-001, E5-002, E5-003, E5-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "61b75b1674ebead864194c052cd3487d663d3908"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E5-fam4-loop-state-scenarios.md",
+          "sha256": "7e7115efde256c6ffe460466e5c5db83b8725007c81c076d88ee2b556e4266c1",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+          "sha256": "36d339362bf0a9cc964aa9d163443ecddc6f25eafc911e5198bf88a371ce1609",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+          "sha256": "d85f3558345b80474310e72d70c8e693a761418f5c3a6ead7917a255c2c1102c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+          "sha256": "84ca359ab0aec47491d68834294b3ba612b15b428ccabd9ebc4569d197cccd5e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md",
+          "sha256": "1bda7c76f9a95d79b6228ffe7b2b374c91b5428a796ce2a90f6a8471a2049bff",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E5-fam4-loop-state-scenarios.md",
+          "sha256": "7e7115efde256c6ffe460466e5c5db83b8725007c81c076d88ee2b556e4266c1",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+          "sha256": "36d339362bf0a9cc964aa9d163443ecddc6f25eafc911e5198bf88a371ce1609",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+          "sha256": "d85f3558345b80474310e72d70c8e693a761418f5c3a6ead7917a255c2c1102c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+          "sha256": "84ca359ab0aec47491d68834294b3ba612b15b428ccabd9ebc4569d197cccd5e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md",
+          "sha256": "1bda7c76f9a95d79b6228ffe7b2b374c91b5428a796ce2a90f6a8471a2049bff",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E5-fam4-loop-state-scenarios.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+            "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+            "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+            "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {

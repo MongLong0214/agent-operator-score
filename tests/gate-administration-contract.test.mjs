@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 27);
-  assert.equal(result.counts.accepted, 17);
+  assert.equal(result.batches, 28);
+  assert.equal(result.counts.accepted, 18);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1238,7 +1238,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
     "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
     "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
-    "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md"
+    "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md",
+    "docs/tickets/E5/E5-001-define-sealed-scenario-registry-and-opportunity-audit.md",
+    "docs/tickets/E5/E5-002-build-fam-4-continuity-and-resume-scenario.md",
+    "docs/tickets/E5/E5-003-build-fam-4-retry-transition-and-idempotency-scenario.md",
+    "docs/tickets/E5/E5-004-build-fam-4-stall-termination-and-budget-scenario.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
