@@ -62,7 +62,8 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-004-prerequisites-completion-marker-receipt-renewal` | ACCEPTED |
 | `d0-013-prerequisites` | ACCEPTED |
 | `d0-012-prerequisites` | ACCEPTED |
-| `d0-011-prerequisites` | ACCEPTED |
+| `d0-011-prerequisites` | INVALIDATED |
+| `d0-011-census-corrected-prerequisites` | ACCEPTED |
 
 ## Operating sequence
 
