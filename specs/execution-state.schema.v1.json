@@ -161,6 +161,34 @@
           ]
         }
       }
+    },
+    "effectiveGateState": {
+      "enum": ["LEGACY_UNAUTHENTICATED", "ACCEPTED"]
+    },
+    "effective_gate_state": {
+      "$ref": "#/$defs/effectiveGateState"
+    },
+    "effective_gate_state_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effectiveGateStateRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_record_id",
+        "source_digest",
+        "structural_state",
+        "effective_gate_state",
+        "effective_gate_state_reason"
+      ],
+      "properties": {
+        "source_record_id": { "type": "string", "minLength": 1 },
+        "source_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "structural_state": { "enum": ["ACCEPTED", "PENDING", "REJECTED", "INVALIDATED"] },
+        "effective_gate_state": { "$ref": "#/$defs/effective_gate_state" },
+        "effective_gate_state_reason": { "$ref": "#/$defs/effective_gate_state_reason" }
+      }
     }
   }
 }
