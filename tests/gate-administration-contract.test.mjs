@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 32);
-  assert.equal(result.counts.accepted, 22);
+  assert.equal(result.batches, 33);
+  assert.equal(result.counts.accepted, 23);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1226,6 +1226,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md",
     "docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md",
     "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md",
+    "docs/tickets/E10/E10-001-render-canonical-json-and-markdown-reports.md",
+    "docs/tickets/E10/E10-002-implement-metric-event-artifact-evidence-drill-down.md",
+    "docs/tickets/E10/E10-003-render-deterministic-primary-constraint-and-one-lever.md",
     "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
     "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
     "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
