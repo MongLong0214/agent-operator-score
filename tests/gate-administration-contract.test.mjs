@@ -1196,16 +1196,19 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
   assert.equal(renewal.approval.role, "MAINTAINER");
   assert.equal(result.status, "invalidated");
-  // Registry-wide counts, so recording any batch moves them. D0-012 remains
-  // the fifth distinct accepted ticket; the D0-011 renewal replaced the
-  // invalidated batch rather than adding a sixth. The set remains pinned
-  // exactly, not loosened to a floor.
-  assert.equal(result.batches, 15);
-  assert.equal(result.counts.accepted, 5);
+  // Registry-wide counts, so recording any batch moves them. Any change here
+  // must be made because the registry changed, never to make this case pass:
+  // read the values the validator reports and pin exactly those. The set stays
+  // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
+  // distinct accepted ticket paths, which is not the accepted-batch count once
+  // a renewal replaces an invalidated batch for a ticket already in the list.
+  assert.equal(result.batches, 16);
+  assert.equal(result.counts.accepted, 6);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
     "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+    "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md",
     "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md",
     "docs/tickets/D0/D0-012-ticket-owned-census-rederivation.md",
     "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md"
