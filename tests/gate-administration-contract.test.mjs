@@ -1202,8 +1202,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 26);
-  assert.equal(result.counts.accepted, 16);
+  assert.equal(result.batches, 27);
+  assert.equal(result.counts.accepted, 17);
   assert.equal(result.counts.invalidated, 10);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1234,7 +1234,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E3/E3-001-implement-explicit-root-fresh-workspace-lifecycle.md",
     "docs/tickets/E3/E3-002-separate-worker-oracle-secrets-descriptors-and-ipc.md",
     "docs/tickets/E3/E3-003-implement-atomic-budgets-approvals-and-seeded-fault-replay.md",
-    "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md"
+    "docs/tickets/E3/E3-004-implement-watchdog-process-reconciliation-and-one-terminal-state.md",
+    "docs/tickets/E4/E4-001-define-runtime-adapter-interface-and-controlled-wrapper-lifecycle.md",
+    "docs/tickets/E4/E4-002-implement-codex-identity-and-capability-discovery.md",
+    "docs/tickets/E4/E4-003-normalize-codex-controlled-events-with-bounded-redaction.md",
+    "docs/tickets/E4/E4-004-prove-codex-doctor-conformance-and-session-classification.md"
   ]);
   assert.equal(result.externalGateEvidence, "required");
 });
