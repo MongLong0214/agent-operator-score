@@ -128,6 +128,110 @@ const ticketOwnedPaths = () => {
 // Skeleton narrowing is a projection of the whole re-derivation, never the comparator's input.
 const ticketOwnedSkeletonPaths = () => ticketOwnedPaths()
   .filter((path) => /^(packages|adapters|suites|fixtures|conformance)\//.test(path));
+
+// `.` and `..` are refused as segments of the declaration text. Normalising first would
+// turn `fixtures/./audit/**` into a real glob and would read `fixtures/../etc/*` as `etc/*`,
+// a directory the declaration never names.
+export const fixtureAdmissionSegment = (segment) => segment !== "" && segment !== "." && segment !== "..";
+
+export const fixtureAdmissionGlob = (declaration) => {
+  if (typeof declaration !== "string") return null;
+  const segments = declaration.split("/");
+  if (!segments.every((segment) => fixtureAdmissionSegment(segment))) return null;
+  if (segments[0] !== "fixtures") return null;
+  const predicate = { "**": "subtree", "*.json": "json" }[segments.at(-1)];
+  if (!predicate) return null;
+  const directory = segments.slice(0, -1).join("/");
+  if (directory === "fixtures" || directory === "") return null;
+  return { directory, predicate };
+};
+
+// A declaration heads its ownership item, after at most a leading "and" and before at most
+// a closing sentence. A glob quoted later in the same item is a reference, which is why
+// D0-011's mention of D0-004's grant admits nothing.
+const fixtureDeclarationCandidate = (item) => {
+  const head = item.trim().replace(/^and\s+/, "");
+  if (!head.startsWith("`")) return head;
+  const quoted = /^`([^`]+)`([\s\S]*)$/.exec(head);
+  if (!quoted) return null;
+  return quoted[2] === "" || quoted[2].startsWith(".") ? quoted[1] : null;
+};
+
+const ticketFixtureDeclarations = (text) => {
+  const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
+  if (!ownership) return null;
+  const declarations = [];
+  for (const line of ownership[1].split("\n")) {
+    const bullet = /^- (.+)$/.exec(line.trim());
+    if (!bullet) continue;
+    // Keep every side of both separators. Dropping the dash tail loses E0D-003's final glob.
+    for (const item of bullet[1].split(/\s[—–-]\s|;/)) {
+      const candidate = fixtureDeclarationCandidate(item);
+      if (candidate !== null) declarations.push(candidate);
+    }
+  }
+  return declarations;
+};
+
+const admittedFixtureFiles = (root, { directory, predicate }) => {
+  const segments = directory.split("/");
+  let cursor = root;
+  for (const segment of segments) {
+    cursor = join(cursor, segment);
+    let info;
+    try {
+      info = lstatSync(cursor);
+    } catch {
+      return [];
+    }
+    // lstat, not existsSync/realpath: those follow a prefix link before this guard runs.
+    if (info.isSymbolicLink() || !info.isDirectory()) return [];
+  }
+  const admit = (current) => readdirSync(current).sort().flatMap((entry) => {
+    const absolutePath = join(current, entry);
+    let info;
+    try {
+      info = lstatSync(absolutePath);
+    } catch {
+      return [];
+    }
+    if (info.isSymbolicLink()) return [];
+    if (info.isDirectory()) return predicate === "subtree" ? admit(absolutePath) : [];
+    if (!info.isFile()) return [];
+    if (predicate === "json" && extname(entry) !== ".json") return [];
+    return [relative(root, absolutePath).replaceAll("\\", "/")];
+  });
+  return admit(cursor);
+};
+
+export const ticketDeclaredFixtureDirectories = ({ root, catalogTicketPaths, readTicket }) => {
+  const admitted = new Set();
+  const malformed = [];
+  for (const path of catalogTicketPaths) {
+    let text;
+    try {
+      text = readTicket(path);
+    } catch {
+      text = null;
+    }
+    if (typeof text !== "string") {
+      malformed.push({ path, reason: "unreadable" });
+      continue;
+    }
+    const declarations = ticketFixtureDeclarations(text);
+    if (declarations === null) {
+      malformed.push({ path, reason: "ownership-section-missing" });
+      continue;
+    }
+    for (const declaration of declarations) {
+      const glob = fixtureAdmissionGlob(declaration);
+      if (!glob) continue;
+      for (const file of admittedFixtureFiles(root, glob)) admitted.add(file);
+    }
+  }
+  return { admitted: [...admitted].sort(), malformed };
+};
+
 const assertRegularFile = (relativePath) => {
   const absolutePath = resolve(repositoryRoot, relativePath);
   assert.ok(existsSync(absolutePath), `${relativePath} is missing`);
@@ -238,23 +342,16 @@ test("root-private-scripts-and-runnable-surface", () => {
     .flatMap((directory) => walkFiles(directory))
     .map(asRepositoryRelative)
     .sort();
-  const operationalStateFiles = walkFiles(resolve(repositoryRoot, "fixtures/operational-state"))
-    .map(asRepositoryRelative)
-    .sort();
-  // E0B-003 carve-out on the precedent D0-004 set for fixtures/operational-state. This ticket
-  // declares `fixtures/doctor/*.json`, so admission is exactly the regular JSON files directly in
-  // that one directory: not its subtree, and not any other ticket's directory. Deriving admission
-  // from every ticket's globs is a repository-wide governance rule that D0-011 owns, and it is
-  // superseded here by that ticket on its acceptance, exactly as D0-004's carve-out is.
-  const doctorFixtureFiles = walkFiles(resolve(repositoryRoot, "fixtures/doctor"))
-    .map(asRepositoryRelative)
-    .filter((path) => /^fixtures\/doctor\/[^/]+\.json$/.test(path))
-    .sort();
+  const fixtureCensus = ticketDeclaredFixtureDirectories({
+    root: repositoryRoot,
+    catalogTicketPaths: readJson("docs/issues.json").tickets.map(({ ticket_path: path }) => path),
+    readTicket: (path) => readFileSync(resolve(repositoryRoot, path), "utf8")
+  });
+  assert.deepEqual(fixtureCensus.malformed, [], "live catalog produced a malformed ticket");
   const allowedSkeletonFiles = [
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
-    ...operationalStateFiles,
-    ...doctorFixtureFiles,
+    ...fixtureCensus.admitted,
     ...ticketOwnedSkeletonPaths()
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
