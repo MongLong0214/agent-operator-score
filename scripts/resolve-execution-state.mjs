@@ -2630,41 +2630,6 @@ const collectSearchItems = (transport, queryPath, failures, label) => {
   return items;
 };
 
-const rejectPossiblyTruncatedSearch = (search, perPage, failures, label) => {
-  if (!search || !Array.isArray(search.items)) {
-    failures.push(`${label} missing items array`);
-    return true;
-  }
-  // incomplete_results must be a present boolean; missing/null/string is partial authority.
-  if (typeof search.incomplete_results !== "boolean") {
-    failures.push(`${label} missing or malformed incomplete_results`);
-    return true;
-  }
-  if (search.incomplete_results === true) {
-    failures.push(`${label} incomplete_results=true`);
-    return true;
-  }
-  if (typeof search.total_count !== "number" || !Number.isFinite(search.total_count)) {
-    failures.push(`${label} missing total_count`);
-    return true;
-  }
-  if (search.total_count < 0 || !Number.isInteger(search.total_count)) {
-    failures.push(`${label} invalid total_count`);
-    return true;
-  }
-  if (search.total_count !== search.items.length) {
-    failures.push(
-      `${label} total_count ${search.total_count} disagrees with returned ${search.items.length}`
-    );
-    return true;
-  }
-  if (search.items.length >= perPage) {
-    failures.push(`${label} possibly truncated at ${perPage} items`);
-    return true;
-  }
-  return false;
-};
-
 const requireRaw = (transport, apiPath, failures) => {
   const result = transportCall(transport, "getRaw", apiPath);
   if (!result.ok) {
@@ -3120,36 +3085,52 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     };
   });
 
-  // Collect gate PRs for accepted batches via authenticated search + pull fetch.
+  // Collect gate PRs from one Gate-Batch corpus search, then select each
+  // accepted batch's receipt by the exact parsed field. A per-batch search
+  // grows with the registry and hits GitHub's search rate limit; a truncated
+  // or unavailable corpus is not evidence that a batch has no receipt.
   const gatePRs = [];
   const postMergeCI = [];
   const seenGatePr = new Set();
-  for (const batch of gateBatches) {
-    const q = encodeURIComponent(
-      `repo:${expected.repository} is:pr is:merged "Gate-Batch: ${batch.id}"`
-    );
-    const search = requireJson(transport, `search/issues?q=${q}&per_page=10`, failures);
-    if (!search) return { ok: false, reason: failures.join("; "), facts: null };
-    if (!Array.isArray(search.items)) {
-      return { ok: false, reason: `ambiguous gate PR search for ${batch.id}`, facts: null };
-    }
-    // Require present total_count equal to returned items (authoritative search completeness).
-    if (rejectPossiblyTruncatedSearch(search, 10, failures, `gate PR search for ${batch.id}`)) {
-      return { ok: false, reason: failures.join("; "), facts: null };
-    }
+  const gateSearchItems = collectSearchItems(
+    transport,
+    `search/issues?q=${encodeURIComponent(`repo:${expected.repository} is:pr is:merged "Gate-Batch:"`)}`,
+    failures,
+    "gate PR corpus search"
+  );
+  if (!gateSearchItems) {
+    return { ok: false, reason: failures.join("; ") || "gate PR corpus search unavailable", facts: null };
+  }
+
+  const receiptsByBatchId = new Map();
+  const seenCorpusPr = new Set();
+  for (const item of gateSearchItems) {
     // Search is token-based, not a structured-field match. A hyphen-delimited
     // id whose tokens are a proper prefix of another id, or unrelated prose
-    // carrying the same tokens, is a deterministic false candidate. Select by
-    // the exact parsed Gate-Batch field before applying cardinality.
-    const exactMatches = [];
-    for (const item of search.items) {
-      const number = item?.number;
-      const pull = requireJson(transport, `${repoPath}/pulls/${number}`, failures);
-      if (!pull) return { ok: false, reason: failures.join("; "), facts: null };
-      if (parseGateBatchFromBody(pull.body) === batch.id) {
-        exactMatches.push({ number, pull });
-      }
+    // carrying the same tokens, is a deterministic false candidate. A present
+    // search body that does not parse as exactly one field is that false hit
+    // and is skipped; a missing body is absence of evidence and falls through
+    // to the authoritative pull fetch.
+    if (typeof item?.body === "string" && !extractExactGateBatchField(item.body).ok) {
+      continue;
     }
+    const number = item?.number;
+    if (!Number.isInteger(number)) {
+      return { ok: false, reason: "gate PR corpus search returned a row without an issue number", facts: null };
+    }
+    if (seenCorpusPr.has(number)) continue;
+    seenCorpusPr.add(number);
+    const pull = requireJson(transport, `${repoPath}/pulls/${number}`, failures);
+    if (!pull) return { ok: false, reason: failures.join("; "), facts: null };
+    const claimedId = parseGateBatchFromBody(pull.body);
+    if (!claimedId) continue;
+    const claimed = receiptsByBatchId.get(claimedId) ?? [];
+    claimed.push({ number, pull });
+    receiptsByBatchId.set(claimedId, claimed);
+  }
+
+  for (const batch of gateBatches) {
+    const exactMatches = receiptsByBatchId.get(batch.id) ?? [];
     if (exactMatches.length === 0) {
       // No exact gate PR for this accepted registry row — leave unmatched
       // (gate acceptance fails closed later). Same outcome as a zero-result search.
