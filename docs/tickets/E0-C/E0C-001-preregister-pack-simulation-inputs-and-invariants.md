@@ -13,7 +13,7 @@ Preregister pack simulation inputs and invariants. Deliver only the bounded cont
 
 ## Exact ownership
 
-- specs/pack-simulation.v0.json; fixtures/simulation/assumptions.v0.json; docs/VALIDATION-PREFLIGHT.md
+- specs/pack-simulation.v0.json; fixtures/simulation/*.json; docs/VALIDATION-PREFLIGHT.md
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
 ## Preconditions
