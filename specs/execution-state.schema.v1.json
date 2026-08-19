@@ -189,6 +189,56 @@
         "effective_gate_state": { "$ref": "#/$defs/effective_gate_state" },
         "effective_gate_state_reason": { "$ref": "#/$defs/effective_gate_state_reason" }
       }
+    },
+    "gate_accepted": {
+      "type": "boolean",
+      "description": "D0-008 defines derived gate acceptance. Inactive derivation keeps this false and does not accept a gate."
+    },
+    "inactive_authenticated_review_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "activation",
+        "gate_pr",
+        "batch_id",
+        "exact_head_sha",
+        "target_branch",
+        "merge_commit_sha",
+        "manifest_digest",
+        "manifest_in_head",
+        "author_id",
+        "reviewer_id",
+        "merger_id",
+        "review_state",
+        "reviewer_permission",
+        "red_authorized",
+        "gate_accepted",
+        "artifact_freeze",
+        "readySet"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "status": { "const": "INACTIVE_AUTHENTICATED_REVIEW_CANDIDATE" },
+        "activation": { "const": false },
+        "gate_pr": { "type": "integer", "minimum": 1 },
+        "batch_id": { "type": "string", "minLength": 1 },
+        "exact_head_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "target_branch": { "const": "dev" },
+        "merge_commit_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "manifest_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "manifest_in_head": { "const": true },
+        "author_id": { "type": "integer", "minimum": 1 },
+        "reviewer_id": { "type": "integer", "minimum": 1 },
+        "merger_id": { "type": "integer", "minimum": 1 },
+        "review_state": { "const": "APPROVED" },
+        "reviewer_permission": { "enum": ["write", "maintain", "admin"] },
+        "red_authorized": { "const": false },
+        "gate_accepted": { "$ref": "#/$defs/gate_accepted" },
+        "artifact_freeze": { "const": null },
+        "readySet": { "type": "array", "maxItems": 0 }
+      }
     }
   }
 }
