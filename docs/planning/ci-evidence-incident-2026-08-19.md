@@ -46,17 +46,53 @@ missing evidence:
    E8-004's work in its tree, and the green `CI` run on that commit is the post-merge evidence that
    `9f515bf` never received.
 
-Deleting the wedged run was considered and rejected. `DELETE /actions/runs/32213166652` would have
-left only the successful `Operational State` run on that SHA, and E8-004 would have verified — by
-erasing the evidence that the test suite never ran on it. That inverts the check the ticket exists
-to satisfy.
+Deleting the wedged run was considered and rejected, because it would erase the evidence that the
+test suite never ran on `9f515bf`.
+
+**Correction, 2026-08-19.** The first version of this record justified that refusal with a claim
+that is false: that deleting the run would leave the successful `Operational State` run on the SHA
+and E8-004 would verify. It would not. The collector keeps only the CI workflow:
+
+```js
+const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+```
+
+`Operational State` is never a post-merge input. Deleting the wedged run leaves `ciRuns` empty and
+`postMergeStatus` returns `{ missing: true }` — the same `POST_MERGE_CI_MISSING` the ticket already
+had. The refusal stands on evidence preservation alone; the mechanical reason given for it was
+wrong, and the same error appears in the notes appended to PR #208 and PR #209, which name `CI` and
+`Operational State` together as the post-merge check. Only `CI` counts.
 
 ## Cost of this repair
 
-This completion merge introduces no paths, so its `added_paths` set is empty and the
-`COMPLETION_EFFECT_REVERTED` detector (`scripts/resolve-execution-state.mjs:1638-1668`) no longer
-guards E8-004's real files. A later revert of E8-004's work would not be caught for this ticket.
-No other ticket is affected, because no other ticket's receipt was moved.
+**Correction, 2026-08-19.** The first version of this record said the completion merge "introduces
+no paths, so its `added_paths` set is empty". That is false, and the truth is worse. The collector
+records every file whose status is `added`, with no ownership filter, so the effect set for E8-004
+is now exactly this document:
+
+```
+#275 (this completion merge)  added -> ["docs/planning/ci-evidence-incident-2026-08-19.md"]
+#259 (the merge that did the work) added -> ["conformance/form-a/form-a.test.ts",
+                                             "packages/runner/src/assessment.ts",
+                                             "suites/coding-core-v0/form-a/manifest.json"]
+```
+
+The `COMPLETION_EFFECT_REVERTED` detector is not disabled. It is aimed at a decoy, and it is wrong
+in both directions:
+
+- delete this document and leave Form A intact → E8-004 reports `COMPLETION_EFFECT_REVERTED` — a **false red**
+- revert the three Form A files and leave this document → E8-004 stays verified — a **false green**
+
+The false green is the `#155` failure this check was added to close: ancestry, green CI, and a
+completion marker, with the deliverable absent. E9-001, E10-001, and the E11/E12 chain would then
+treat a missing Form A as a satisfied dependency. The twelve-ticket blast radius used to justify
+moving the receipt applies to the cost as well, and the first version of this record omitted it.
+
+D0-012 carries the same vacancy for a different reason: PR #208 only modified an existing file, so
+its `added_paths` is `[]` and the effect check there is not aimed at anything at all. Issue #274's
+claim that the resolver "independently re-verifies the introduced-path effect" is therefore
+overstated for D0-012. D0-013's receipt on PR #209 does aim at a real added path,
+`tests/execution-views.test.mjs`, and is sound.
 
 ## Alternative not taken
 
