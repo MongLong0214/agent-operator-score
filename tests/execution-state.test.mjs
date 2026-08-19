@@ -2140,9 +2140,64 @@ const COLLECTOR_REPO_PATH = "repos/MongLong0214/agent-operator-score";
 const COLLECTOR_DEV_TIP = "c8937c6c31ef034535f7c2e8276514221a12fd55";
 const COLLECTOR_MERGED_SEARCH_QUERY =
   "search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20is%3Apr%20is%3Amerged%20base%3Adev%20%22Ticket%3A%22";
+const COLLECTOR_GATE_BATCH_SEARCH_QUERY =
+  "search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20is%3Apr%20is%3Amerged%20%22Gate-Batch%3A%22";
 const COLLECTOR_SEARCH_PAGE_SIZE = 100;
 const collectorSearchPageKey = (page) =>
   `${COLLECTOR_MERGED_SEARCH_QUERY}&per_page=${COLLECTOR_SEARCH_PAGE_SIZE}&page=${page}`;
+const collectorGateBatchSearchPageKey = (page) =>
+  `${COLLECTOR_GATE_BATCH_SEARCH_QUERY}&per_page=${COLLECTOR_SEARCH_PAGE_SIZE}&page=${page}`;
+
+const wrapCountingTransport = (inner, searchCalls) => ({
+  kind: inner.kind,
+  getJson(apiPath) {
+    if (typeof apiPath === "string" && apiPath.startsWith("search/issues")) {
+      searchCalls.push(apiPath);
+    }
+    return inner.getJson(apiPath);
+  },
+  getRaw(apiPath) {
+    return inner.getRaw(apiPath);
+  }
+});
+
+const installGateBatchCorpusFromFixture = (responses) => {
+  const sourceKey =
+    Object.keys(responses).find(
+      (entry) =>
+        entry.includes("search/issues") && entry.includes("Gate-Batch") && entry.includes("per_page=10")
+    ) ??
+    Object.keys(responses).find((entry) => entry.includes("search/issues") && entry.includes("Gate-Batch"));
+  assert.ok(sourceKey, "fixture gate search key");
+  const corpusKey = collectorGateBatchSearchPageKey(1);
+  if (!Object.hasOwn(responses, corpusKey)) {
+    responses[corpusKey] = clone(responses[sourceKey]);
+  }
+  return corpusKey;
+};
+
+const addUnmatchedAcceptedBatches = (responses, extraIds) => {
+  const rawKey = `raw:${COLLECTOR_REPO_PATH}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${COLLECTOR_DEV_TIP}`;
+  assert.ok(Object.hasOwn(responses, rawKey), "fixture registry raw key");
+  const registry = JSON.parse(responses[rawKey]);
+  assert.ok(Array.isArray(registry.batches), "fixture registry batches");
+  for (const id of extraIds) {
+    registry.batches.push({
+      id,
+      status: "ACCEPTED",
+      required_artifacts: []
+    });
+    const q = encodeURIComponent(
+      `repo:MongLong0214/agent-operator-score is:pr is:merged "Gate-Batch: ${id}"`
+    );
+    responses[`search/issues?q=${q}&per_page=10`] = {
+      total_count: 0,
+      incomplete_results: false,
+      items: []
+    };
+  }
+  responses[rawKey] = JSON.stringify(registry);
+};
 
 function buildCollectorMergedSearchFixture(items) {
   const responses = JSON.parse(
@@ -3258,6 +3313,74 @@ test("gate-receipt-search-only-false-token-prefix-candidate-is-unmatched", async
     `only-false-candidate search must not abort collection, got ${collected.reason}`
   );
   assert.deepEqual(collected.facts.gatePRs, []);
+});
+
+test("gate-batch-corpus-search-call-count-does-not-grow-with-accepted-batches", async () => {
+  // One search/issues call per accepted batch grows with the registry and hits
+  // GitHub's 30/min search ceiling. The corpus shape is one Gate-Batch search
+  // plus one Ticket search, independent of how many ACCEPTED rows exist.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = clone(
+    JSON.parse(
+      readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+    )
+  );
+  const extraIds = [
+    "batch-extra-unmatched-a",
+    "batch-extra-unmatched-b",
+    "batch-extra-unmatched-c",
+    "batch-extra-unmatched-d",
+    "batch-extra-unmatched-e",
+    "batch-extra-unmatched-f",
+    "batch-extra-unmatched-g",
+    "batch-extra-unmatched-h"
+  ];
+  addUnmatchedAcceptedBatches(responses, extraIds);
+  installGateBatchCorpusFromFixture(responses);
+
+  const searchCalls = [];
+  const collected = collectLiveExecutionFacts(root, {
+    transport: wrapCountingTransport(createFixtureTransport(responses), searchCalls)
+  });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.ok(collected.facts, "corpus collection must still produce a facts corpus");
+  assert.equal(collected.facts.gatePRs.length, 1, "the fixture receipt must still be selected");
+  assert.equal(collected.facts.gatePRs[0].number, 200);
+  assert.equal(
+    searchCalls.length,
+    2,
+    `search/issues calls must stay at 2 (Gate-Batch corpus + Ticket corpus), got ${searchCalls.length}: ${searchCalls.join(" | ")}`
+  );
+  assert.equal(
+    searchCalls.filter((path) => path.includes("Gate-Batch%3A%20")).length,
+    0,
+    `per-batch Gate-Batch searches must not be issued, got ${searchCalls.join(" | ")}`
+  );
+  assert.equal(searchCalls.filter((path) => path.includes("Gate-Batch")).length, 1);
+  assert.equal(searchCalls.filter((path) => path.includes("Ticket")).length, 1);
+});
+
+test("truncated-gate-batch-corpus-fails-closed-not-as-unmatched-receipts", async () => {
+  // An incomplete empty corpus looks like "no receipts". That is the fail-open
+  // the resolver exists to refuse: absence of a complete corpus is not evidence
+  // that every accepted batch is unmatched.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = clone(
+    JSON.parse(
+      readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+    )
+  );
+  const corpusKey = installGateBatchCorpusFromFixture(responses);
+  responses[corpusKey] = {
+    total_count: 0,
+    incomplete_results: true,
+    items: []
+  };
+
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false, "a truncated Gate-Batch corpus must fail the collection closed");
+  assert.equal(collected.facts, null, "a truncated corpus must not resolve as unmatched / no receipts");
+  assert.match(collected.reason, /incomplete|truncat|corpus|gate PR/i);
 });
 
 test("accepted-batch-ids-must-not-be-hyphen-token-prefixes-of-any-registry-id", () => {
@@ -4749,10 +4872,19 @@ function withPostCGateAcceptance(responses) {
     path: "docs/decisions/maintainer-gate-registry.v2.json"
   };
 
-  const searchKey = `search/issues?q=${encodeURIComponent(
-    `repo:MongLong0214/agent-operator-score is:pr is:merged "Gate-Batch: ${GATE_BATCH_ID}"`
-  )}&per_page=10`;
-  responses[searchKey] = { total_count: 1, incomplete_results: false, items: [{ number: GATE_PR_NUMBER }] };
+  const searchKey = collectorGateBatchSearchPageKey(1);
+  const existingCorpus = responses[searchKey] ?? { items: [], total_count: 0, incomplete_results: false };
+  const corpusItems = [
+    ...(Array.isArray(existingCorpus.items) ? existingCorpus.items : []).filter(
+      (item) => item?.number !== GATE_PR_NUMBER
+    ),
+    { number: GATE_PR_NUMBER }
+  ];
+  responses[searchKey] = {
+    total_count: corpusItems.length,
+    incomplete_results: false,
+    items: corpusItems
+  };
 
   responses[`${p}/pulls/${GATE_PR_NUMBER}`] = {
     number: GATE_PR_NUMBER,
