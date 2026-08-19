@@ -36,8 +36,11 @@
       "description": "Advisory and single-owner results never claim separation of duties. Unequal prepared_by and approved_by role strings are not two principals."
     },
     "artifact_freeze": {
-      "const": null,
-      "description": "D0-005 introduces this required field as null. D0-009 alone may widen it after live activation."
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/authenticatedArtifactFreeze" }
+      ],
+      "description": "Null until D0-009 live activation evaluation succeeds. Non-null only as authenticatedArtifactFreeze bound to an exact v3 manifest and current GitHub facts."
     },
     "bootstrap": {
       "type": "object",
@@ -238,6 +241,43 @@
         "gate_accepted": { "$ref": "#/$defs/gate_accepted" },
         "artifact_freeze": { "const": null },
         "readySet": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "activation_blockers": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Fail-closed reasons that keep authenticated review inactive. Empty only when live activation evaluation succeeds."
+    },
+    "authenticated_review_activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active", "activation_blockers"],
+      "properties": {
+        "active": { "type": "boolean" },
+        "mode": { "enum": ["SOLE_OWNER_ADVISORY", "AUTHENTICATED_REVIEW"] },
+        "author_id": { "type": "integer", "minimum": 1 },
+        "reviewer_id": { "type": "integer", "minimum": 1 },
+        "merger_id": { "type": "integer", "minimum": 1 },
+        "exact_head_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "artifact_freeze": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/authenticatedArtifactFreeze" }
+          ]
+        },
+        "activation_blockers": { "$ref": "#/$defs/activation_blockers" }
+      }
+    },
+    "authenticatedArtifactFreeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_id", "path", "sha256", "kind", "exact_head_sha"],
+      "properties": {
+        "manifest_id": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "kind": { "type": "string", "minLength": 1 },
+        "exact_head_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
       }
     }
   }
