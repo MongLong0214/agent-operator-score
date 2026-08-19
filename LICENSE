@@ -1,24 +1,21 @@
-Agent Operator Score — outbound license status
+MIT License
 
 Copyright (c) 2026 the maintainers of MongLong0214/agent-operator-score.
 
-No open-source license has been granted for this repository. All rights are reserved by the copyright holder.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-This repository is public and source-visible so that its specification, its contracts, and its
-governance records can be read and reviewed. Visibility is not a grant. It does not permit use,
-copying, modification, merging, publication, distribution, sublicensing, or sale of this work or
-of any derivative work, and it conveys no patent rights.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-Selecting an outbound open-source license, fixing the terms on which contributions are accepted,
-and setting the conditions under which this work may be redistributed are E14/G4 maintainer
-decisions. Their current state is recorded in docs/decisions/PUBLICATION-CLEARANCE.md; the
-observations behind that record are in docs/clearance/PUBLICATION-LEGAL-CLEARANCE.md.
-
-Until that record reports a CLEARED verdict, redistribution and external contribution acceptance are refused.
-
-The canonical-identity checks in docs/clearance/MINIMUM-NAME-CLEARANCE.md are a separate D0
-decision. They are an input to the records above; they are neither repeated nor superseded here,
-and they establish no legal or trademark clearance.
-
-The maintainers named above are identified by the repository of record on GitHub. This file does
-not establish, and this repository contains no evidence of, the legal identity of that holder.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
