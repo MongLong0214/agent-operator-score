@@ -635,7 +635,11 @@ test("focused-lane-is-not-silently-empty", () => {
   const lanes = [
     ["metric-registry", 19], ["issuance-contract", 13], ["capability", 15],
     ["scoring-contract", 16], ["session-class", 24], ["doctor-contract", 37],
+<<<<<<< HEAD
     ["prescription-input", 11]
+=======
+    ["trace-schema", 15]
+>>>>>>> 88ac0ea (feat: add aos-trace schema, event registry, and parse/canonicalize)
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);
