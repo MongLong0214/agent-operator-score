@@ -543,16 +543,61 @@ const selectLatestRunAttempt = (runs) => {
   return { run: latest };
 };
 
+const sameSha = (left, right) =>
+  typeof left === "string" && typeof right === "string" && left.toLowerCase() === right.toLowerCase();
+
+const ancestryCompareStatus = (facts, base, head) => {
+  if (sameSha(base, head)) return "identical";
+  if (!plainObject(facts?.ancestry)) return null;
+  const direct = facts.ancestry[`${base}...${head}`];
+  return typeof direct === "string" ? direct : null;
+};
+
+const isAuthenticatedAncestor = (facts, ancestor, descendant) => {
+  if (sameSha(ancestor, descendant)) return true;
+  const forward = ancestryCompareStatus(facts, ancestor, descendant);
+  if (forward === "ahead" || forward === "identical") return true;
+  const reverse = ancestryCompareStatus(facts, descendant, ancestor);
+  return reverse === "behind" || reverse === "identical";
+};
+
+const isAuthenticatedDescendantOnLiveLine = (facts, mergeCommitSha, headSha) => {
+  const tip = typeof facts?.currentHead === "string" ? facts.currentHead : null;
+  if (!tip || typeof mergeCommitSha !== "string" || typeof headSha !== "string") return false;
+  return isAuthenticatedAncestor(facts, mergeCommitSha, headSha) && isAuthenticatedAncestor(facts, headSha, tip);
+};
+
+const recordAncestryCompare = (ancestryFacts, base, head, status) => {
+  if (!plainObject(ancestryFacts)) return;
+  if (typeof base !== "string" || typeof head !== "string" || typeof status !== "string") return;
+  ancestryFacts[`${base}...${head}`] = status;
+};
+
 const postMergeStatus = (facts, mergeCommitSha) => {
-  const runs = (facts.postMergeCI ?? []).filter((run) => run.merge_commit_sha === mergeCommitSha);
-  if (!runs.length) return { missing: true };
-  const selected = selectLatestRunAttempt(runs);
-  if (selected.missing || selected.ambiguous || !selected.run) return { missing: true };
-  const latest = selected.run;
-  if (latest.head_sha !== mergeCommitSha) return { missing: true };
-  if (latest.status !== "completed") return { missing: true };
-  if (latest.conclusion === "success") return { ok: true };
-  if (latest.conclusion === "failure" || latest.conclusion === "cancelled") return { failed: true };
+  const all = Array.isArray(facts.postMergeCI) ? facts.postMergeCI : [];
+  const exact = all.filter(
+    (run) => sameSha(run.merge_commit_sha, mergeCommitSha) && sameSha(run.head_sha, mergeCommitSha)
+  );
+  if (exact.length) {
+    const selected = selectLatestRunAttempt(exact);
+    if (selected.ambiguous) return { missing: true };
+    if (selected.run) {
+      const latest = selected.run;
+      if (latest.status === "completed" && latest.conclusion === "success") return { ok: true };
+      if (latest.status === "completed" && (latest.conclusion === "failure" || latest.conclusion === "cancelled")) {
+        return { failed: true };
+      }
+    }
+  }
+  const descendantSuccess = all.some(
+    (run) =>
+      run.status === "completed" &&
+      run.conclusion === "success" &&
+      typeof run.head_sha === "string" &&
+      !sameSha(run.head_sha, mergeCommitSha) &&
+      isAuthenticatedDescendantOnLiveLine(facts, mergeCommitSha, run.head_sha)
+  );
+  if (descendantSuccess) return { ok: true };
   return { missing: true };
 };
 
@@ -2494,7 +2539,7 @@ export const verifyWorkflowShaReachableFromDev = (transport, repoPath, devSha, w
   if (typeof devSha !== "string" || !/^[0-9a-f]{40}$/i.test(devSha)) {
     return { ok: false, reachable: false, reason: "missing live dev tip SHA for workflow ancestry check" };
   }
-  if (workflowSha === devSha) return { ok: true, reachable: true };
+  if (workflowSha === devSha) return { ok: true, reachable: true, status: "identical" };
   const result = transportCall(transport, "getJson", `${repoPath}/compare/${devSha}...${workflowSha}`);
   if (!result.ok) {
     return { ok: false, reachable: false, reason: result.reason || "workflow ancestry compare unavailable" };
@@ -2502,8 +2547,8 @@ export const verifyWorkflowShaReachableFromDev = (transport, repoPath, devSha, w
   const status = result.value?.status;
   // GitHub compare(base=dev, head=workflowSha): "behind"/"identical" means workflowSha is
   // an ancestor of (or equal to) dev; "ahead"/"diverged" means it is not reachable from dev.
-  if (status === "identical" || status === "behind") return { ok: true, reachable: true };
-  if (status === "ahead" || status === "diverged") return { ok: true, reachable: false };
+  if (status === "identical" || status === "behind") return { ok: true, reachable: true, status };
+  if (status === "ahead" || status === "diverged") return { ok: true, reachable: false, status };
   return { ok: false, reachable: false, reason: `unrecognized workflow ancestry compare status ${String(status)}` };
 };
 
@@ -2711,7 +2756,7 @@ export const applyHistoricalImplementationLinkage = (
   repoPath,
   tickets,
   failures,
-  { implementationMerges, postMergeCI, verifiedTickets },
+  { implementationMerges, postMergeCI, verifiedTickets, ancestryFacts },
   liveTip
 ) => {
   for (const [ticketId, link] of Object.entries(HISTORICAL_IMPLEMENTATION_LINKAGE)) {
@@ -2734,6 +2779,7 @@ export const applyHistoricalImplementationLinkage = (
       );
       return false;
     }
+    recordAncestryCompare(ancestryFacts, liveTip, pull.merge_commit_sha, ancestry.status);
     const runs = requireJson(
       transport,
       `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
@@ -3795,6 +3841,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   // Implementation verification receipts: merged PRs with exact Ticket field + post-merge CI.
   const verifiedTickets = [];
   const implementationMerges = [];
+  const ancestryFacts = {};
   const mergedSearchItems = collectSearchItems(
     transport,
     `search/issues?q=${encodeURIComponent(`repo:${expected.repository} is:pr is:merged base:${repo.default_branch} "Ticket:"`)}`,
@@ -3852,6 +3899,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         facts: null
       };
     }
+    recordAncestryCompare(ancestryFacts, liveTip, pull.merge_commit_sha, ancestry.status);
     const runs = requireJson(
       transport,
       `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
@@ -3942,11 +3990,72 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       repoPath,
       tickets,
       failures,
-      { implementationMerges, postMergeCI, verifiedTickets },
+      { implementationMerges, postMergeCI, verifiedTickets, ancestryFacts },
       liveTip
     )
   ) {
     return { ok: false, reason: failures.join("; ") || "historical implementation linkage unavailable", facts: null };
+  }
+
+  const isCollectedCompletionReceipt = (entry) =>
+    classifyCompletionMerge(entry.body ?? "", entry.ticket_id).isCompletion ||
+    isLegacyCompletionBinding(entry.ticket_id, entry);
+  const hasExactShaSuccess = (mergeCommitSha) =>
+    postMergeCI.some(
+      (row) =>
+        sameSha(row.merge_commit_sha, mergeCommitSha) &&
+        sameSha(row.head_sha, mergeCommitSha) &&
+        row.status === "completed" &&
+        row.conclusion === "success"
+    );
+  const completionNeedsDescendantCi = implementationMerges.some(
+    (entry) => isCollectedCompletionReceipt(entry) && entry.reachable === true && !hasExactShaSuccess(entry.merge_commit_sha)
+  );
+  if (completionNeedsDescendantCi) {
+    const tipRuns = requireJson(
+      transport,
+      `${repoPath}/actions/runs?head_sha=${liveTip}&event=push&per_page=20`,
+      failures
+    );
+    if (
+      !tipRuns ||
+      rejectPartialCountPayload(tipRuns, "workflow_runs", 20, failures, `post-merge runs for live tip ${liveTip}`)
+    ) {
+      return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for live tip ${liveTip}`, facts: null };
+    }
+    const tipCiRuns = tipRuns.workflow_runs.filter(
+      (run) => run.name === "CI" || run.path === ".github/workflows/ci.yml"
+    );
+    const tipLatest = selectLatestWorkflowRun(
+      tipCiRuns.map((run) => ({
+        head_sha: run.head_sha,
+        status: run.status,
+        conclusion: run.conclusion,
+        run_id: run.id,
+        run_attempt: run.run_attempt
+      }))
+    );
+    if (tipLatest.ok) {
+      const alreadyRecorded = postMergeCI.some(
+        (row) => row.run_id === tipLatest.run.run_id && row.run_attempt === tipLatest.run.run_attempt
+      );
+      if (!alreadyRecorded) {
+        postMergeCI.push({
+          merge_commit_sha: liveTip,
+          head_sha: tipLatest.run.head_sha,
+          status: tipLatest.run.status,
+          conclusion: tipLatest.run.conclusion,
+          run_id: tipLatest.run.run_id,
+          run_attempt: tipLatest.run.run_attempt
+        });
+      }
+      if (tipLatest.run.status === "completed" && tipLatest.run.conclusion === "success") {
+        for (const entry of implementationMerges) {
+          if (!isCollectedCompletionReceipt(entry) || entry.reachable !== true) continue;
+          if (!verifiedTickets.includes(entry.ticket_id)) verifiedTickets.push(entry.ticket_id);
+        }
+      }
+    }
   }
 
   // Detect D0-004C merge only when the operational-state workflow exists on live tip.
@@ -3999,7 +4108,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     liveDigests,
     activeOwnership,
     projectionSurfaces: {},
-    ancestry: {},
+    ancestry: ancestryFacts,
     exactBasePackets: [],
     registryStrings: {},
     collector: {
