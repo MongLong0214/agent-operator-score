@@ -840,8 +840,14 @@ for (const path of ticketFiles) {
   for (const line of ownership ? ownership[1].split("\n") : []) {
     const bullet = /^- (.+)$/.exec(line.trim());
     if (!bullet) continue;
-    for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
-      const candidate = entry.trim().replace(/^`|`$/g, "");
+    // The grammar is `path — symbol; path — symbol`: the semicolon separates pairs and the em
+    // dash separates a path from its symbol. Splitting the dash first and keeping segment [0]
+    // discarded every path declared after the first symbol, so a ticket that names more than one
+    // pair on a line claimed only its head and the rest failed closed as unallowlisted product
+    // code. Split pairs first, then take each pair's head; the symbol side is still not a path,
+    // so prose written after a dash is still never claimed.
+    for (const pair of bullet[1].split(";")) {
+      const candidate = pair.split(/\s[—–-]\s/)[0].trim().replace(/^`|`$/g, "");
       if (sourceExtensions.has(extname(candidate))) ticketOwnedPaths.add(candidate);
     }
   }
