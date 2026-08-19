@@ -1296,6 +1296,271 @@ export const resolveInactiveGitHubAcceptanceCandidate = (input = {}, options = {
   return deriveGitHubAcceptance({ ...collected.facts, activation: false });
 };
 
+const ACTIVATION_FIXTURE_RELATIVE = "fixtures/governance/authenticated-review-activation";
+const ACTIVATION_ELIGIBLE_PERMISSIONS = new Set(["write", "maintain", "admin"]);
+const ACTIVATION_GIT_SHA = /^[0-9a-f]{40}$/i;
+const ACTIVATION_MANIFEST_DIGEST = /^[a-f0-9]{64}$/;
+const ACTIVATION_INACTIVE = "authenticated review activation is inactive";
+const ACTIVATION_GITHUB_OUTAGE = "authenticated review activation is inactive: github outage";
+const ACTIVATION_PROTECTION_404 = "authenticated review activation is inactive: protection 404";
+const ACTIVATION_PARTIAL_PROTECTION = "authenticated review activation is inactive: partial protection";
+const ACTIVATION_PERMISSION_LOSS = "authenticated review activation is inactive: permission loss";
+const ACTIVATION_ADMIN_ENFORCEMENT =
+  "authenticated review activation is inactive: administrator enforcement is required";
+const ACTIVATION_LAST_PUSH = "authenticated review activation is inactive: last-push approval is required";
+const ACTIVATION_USER_BYPASS = "authenticated review activation is inactive: user bypass";
+const ACTIVATION_TEAM_BYPASS = "authenticated review activation is inactive: team bypass";
+const ACTIVATION_APP_BYPASS = "authenticated review activation is inactive: app bypass";
+const ACTIVATION_WRONG_TARGET = "authenticated review activation is inactive: wrong target";
+const ACTIVATION_IDENTITY_COLLISION = "authenticated review activation is inactive: identity collision";
+const ACTIVATION_ARTIFACT_MISMATCH = "authenticated review activation is inactive: artifact mismatch";
+const ACTIVATION_STALE_REVIEW_DISMISSAL =
+  "authenticated review activation is inactive: stale-review dismissal is required";
+
+const rejectActivation = (message) => {
+  throw new Error(message);
+};
+
+const stableActivationId = (value) => Number.isInteger(value) && value > 0;
+
+const nonemptyBypassList = (value) => Array.isArray(value) && value.length > 0;
+
+/**
+ * Observation collector for D0-009 activation facts. Reuses the existing
+ * authenticated/fixture transport. Issues only GET protection, collaborator
+ * permission, pull, and pull-reviews. Failures are recorded as facts; they
+ * never fail the surrounding live corpus collection.
+ */
+export const collectAuthenticatedReviewActivationFacts = (root = DEFAULT_ROOT, options = {}) => {
+  if (plainObject(options.facts)) {
+    if (options.facts.github_outage === true) {
+      return { ok: false, reason: ACTIVATION_GITHUB_OUTAGE, facts: options.facts };
+    }
+    return { ok: true, facts: options.facts };
+  }
+
+  if (
+    typeof options.fixture === "string" &&
+    options.fixture.length > 0 &&
+    !options.fixture.includes("/") &&
+    !options.fixture.includes("\\")
+  ) {
+    try {
+      const fixturePath = resolve(root, ACTIVATION_FIXTURE_RELATIVE, `${options.fixture}.json`);
+      const facts = JSON.parse(readFileSync(fixturePath, "utf8"));
+      return collectAuthenticatedReviewActivationFacts(root, { facts });
+    } catch {
+      return { ok: false, reason: ACTIVATION_GITHUB_OUTAGE, facts: { github_outage: true } };
+    }
+  }
+
+  const transport = options.transport;
+  if (!transport || typeof transport.getJson !== "function") {
+    return { ok: false, reason: ACTIVATION_GITHUB_OUTAGE, facts: { github_outage: true } };
+  }
+
+  const repository =
+    typeof options.repository === "string" && options.repository.length > 0
+      ? options.repository
+      : expectedActorPolicyFromTicket().repository;
+  const facts = {
+    github_outage: false,
+    target_branch: "dev"
+  };
+
+  const protectionResult = transportCall(transport, "getJson", `repos/${repository}/branches/dev/protection`);
+  if (!protectionResult.ok) {
+    if (isAuthenticatedNotFound(protectionResult)) {
+      facts.protection_status = 404;
+    } else {
+      facts.github_outage = true;
+    }
+  } else {
+    facts.protection_status = 200;
+    const protection = protectionResult.value;
+    const reviews = protection?.required_pull_request_reviews;
+    const bypass = reviews?.bypass_pull_request_allowances;
+    facts.required_approving_review_count = reviews?.required_approving_review_count;
+    facts.dismiss_stale_reviews = reviews?.dismiss_stale_reviews;
+    facts.require_last_push_approval = reviews?.require_last_push_approval;
+    facts.enforce_admins = protection?.enforce_admins?.enabled;
+    facts.user_bypass_allowances = Array.isArray(bypass?.users) ? bypass.users : [];
+    facts.team_bypass_allowances = Array.isArray(bypass?.teams) ? bypass.teams : [];
+    facts.app_bypass_allowances = Array.isArray(bypass?.apps) ? bypass.apps : [];
+  }
+
+  const readJson = (apiPath, assign) => {
+    const result = transportCall(transport, "getJson", apiPath);
+    if (!result.ok) {
+      if (!isAuthenticatedNotFound(result)) facts.github_outage = true;
+      return;
+    }
+    assign(result.value);
+  };
+
+  if (typeof options.reviewerLogin === "string" && options.reviewerLogin.length > 0) {
+    readJson(`repos/${repository}/collaborators/${options.reviewerLogin}/permission`, (value) => {
+      facts.reviewer_permission = value?.permission;
+      if (stableActivationId(value?.user?.id)) facts.reviewer_id = value.user.id;
+    });
+  }
+
+  if (Number.isInteger(options.prNumber) && options.prNumber > 0) {
+    readJson(`repos/${repository}/pulls/${options.prNumber}`, (pull) => {
+      facts.candidate_base = pull?.base?.ref;
+      if (typeof pull?.head?.sha === "string") facts.exact_head_sha = pull.head.sha;
+      if (stableActivationId(pull?.user?.id)) facts.author_id = pull.user.id;
+      if (stableActivationId(pull?.merged_by?.id)) facts.merger_id = pull.merged_by.id;
+    });
+    readJson(`repos/${repository}/pulls/${options.prNumber}/reviews`, (reviews) => {
+      const approved = Array.isArray(reviews)
+        ? [...reviews].reverse().find((review) => review?.state === "APPROVED")
+        : null;
+      if (approved) {
+        facts.review_state = "APPROVED";
+        if (typeof approved.commit_id === "string") facts.review_head_sha = approved.commit_id;
+        if (stableActivationId(approved?.user?.id)) facts.reviewer_id = approved.user.id;
+      }
+    });
+  }
+
+  return { ok: facts.github_outage !== true, facts };
+};
+
+/**
+ * Re-evaluate current GitHub activation facts. Does not inherit D0-008
+ * derivation results. Any missing, stale, bypassable, or ambiguous fact
+ * fails closed.
+ */
+export const evaluateAuthenticatedReviewActivation = (input = {}) => {
+  void input.inherited_github_acceptance;
+  if (!plainObject(input)) rejectActivation(ACTIVATION_IDENTITY_COLLISION);
+  if (input.github_outage === true) rejectActivation(ACTIVATION_GITHUB_OUTAGE);
+  if (input.protection_status === 404) rejectActivation(ACTIVATION_PROTECTION_404);
+  if (input.protection_status !== 200) rejectActivation(ACTIVATION_GITHUB_OUTAGE);
+
+  const hasCount = Object.hasOwn(input, "required_approving_review_count");
+  const hasDismiss = Object.hasOwn(input, "dismiss_stale_reviews");
+  const hasLastPush = Object.hasOwn(input, "require_last_push_approval");
+  const hasEnforce = Object.hasOwn(input, "enforce_admins");
+  const hasUserBypass = Object.hasOwn(input, "user_bypass_allowances");
+  const hasTeamBypass = Object.hasOwn(input, "team_bypass_allowances");
+  const hasAppBypass = Object.hasOwn(input, "app_bypass_allowances");
+  if (!hasCount || !hasDismiss || !hasLastPush || !hasEnforce || !hasUserBypass || !hasTeamBypass || !hasAppBypass) {
+    rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  }
+  if (!Number.isInteger(input.required_approving_review_count)) rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  if (typeof input.dismiss_stale_reviews !== "boolean") rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  if (typeof input.require_last_push_approval !== "boolean") rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  if (typeof input.enforce_admins !== "boolean") rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  if (!Array.isArray(input.user_bypass_allowances)) rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  if (!Array.isArray(input.team_bypass_allowances)) rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+  if (!Array.isArray(input.app_bypass_allowances)) rejectActivation(ACTIVATION_PARTIAL_PROTECTION);
+
+  if (
+    !stableActivationId(input.author_id) ||
+    !stableActivationId(input.reviewer_id) ||
+    !stableActivationId(input.merger_id)
+  ) {
+    rejectActivation(ACTIVATION_IDENTITY_COLLISION);
+  }
+  if (
+    input.author_id === input.reviewer_id ||
+    input.author_id === input.merger_id ||
+    input.reviewer_id === input.merger_id
+  ) {
+    rejectActivation(ACTIVATION_IDENTITY_COLLISION);
+  }
+
+  if (input.target_branch !== "dev" || input.candidate_base !== "dev") {
+    rejectActivation(ACTIVATION_WRONG_TARGET);
+  }
+  if (typeof input.exact_head_sha !== "string" || !ACTIVATION_GIT_SHA.test(input.exact_head_sha)) {
+    rejectActivation(ACTIVATION_WRONG_TARGET);
+  }
+
+  if (!ACTIVATION_ELIGIBLE_PERMISSIONS.has(input.reviewer_permission)) {
+    rejectActivation(ACTIVATION_PERMISSION_LOSS);
+  }
+  if (input.enforce_admins !== true) rejectActivation(ACTIVATION_ADMIN_ENFORCEMENT);
+  if (input.require_last_push_approval !== true) rejectActivation(ACTIVATION_LAST_PUSH);
+  if (input.required_approving_review_count < 1) rejectActivation(ACTIVATION_INACTIVE);
+  if (nonemptyBypassList(input.user_bypass_allowances)) rejectActivation(ACTIVATION_USER_BYPASS);
+  if (nonemptyBypassList(input.team_bypass_allowances)) rejectActivation(ACTIVATION_TEAM_BYPASS);
+  if (nonemptyBypassList(input.app_bypass_allowances)) rejectActivation(ACTIVATION_APP_BYPASS);
+  if (input.dismiss_stale_reviews !== true) rejectActivation(ACTIVATION_STALE_REVIEW_DISMISSAL);
+
+  if (input.review_state !== "APPROVED") rejectActivation(ACTIVATION_INACTIVE);
+  if (typeof input.review_head_sha !== "string" || !ACTIVATION_GIT_SHA.test(input.review_head_sha)) {
+    rejectActivation(ACTIVATION_INACTIVE);
+  }
+  if (input.review_head_sha.toLowerCase() !== input.exact_head_sha.toLowerCase()) {
+    rejectActivation(ACTIVATION_INACTIVE);
+  }
+
+  if (input.manifest_in_head !== true) rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  if (typeof input.manifest_digest !== "string" || !ACTIVATION_MANIFEST_DIGEST.test(input.manifest_digest)) {
+    rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  }
+  if (!plainObject(input.manifest) || !Array.isArray(input.manifest.artifacts) || input.manifest.artifacts.length < 1) {
+    rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  }
+  const digest = createHash("sha256").update(Buffer.from(JSON.stringify(input.manifest), "utf8")).digest("hex");
+  if (digest !== input.manifest_digest) rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  try {
+    validateArtifactManifestV3Module({ manifest: input.manifest });
+  } catch {
+    rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  }
+  const artifact = input.manifest.artifacts[0];
+  if (
+    !plainObject(artifact) ||
+    typeof input.manifest.manifest_id !== "string" ||
+    typeof artifact.path !== "string" ||
+    typeof artifact.sha256 !== "string" ||
+    !ACTIVATION_MANIFEST_DIGEST.test(artifact.sha256) ||
+    typeof artifact.kind !== "string"
+  ) {
+    rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  }
+
+  const exactHead = input.exact_head_sha.toLowerCase();
+  return {
+    active: true,
+    mode: "AUTHENTICATED_REVIEW",
+    author_id: input.author_id,
+    reviewer_id: input.reviewer_id,
+    merger_id: input.merger_id,
+    exact_head_sha: exactHead,
+    artifact_freeze: {
+      manifest_id: input.manifest.manifest_id,
+      path: artifact.path,
+      sha256: artifact.sha256,
+      kind: artifact.kind,
+      exact_head_sha: exactHead
+    },
+    activation_blockers: []
+  };
+};
+
+export const selectActiveGovernanceMode = (evaluation) => {
+  if (evaluation?.active === true && evaluation?.mode === "AUTHENTICATED_REVIEW") {
+    return "AUTHENTICATED_REVIEW";
+  }
+  return "SOLE_OWNER_ADVISORY";
+};
+
+const evaluateLiveArtifactFreeze = (facts) => {
+  try {
+    if (!plainObject(facts?.authenticated_review_activation_facts)) return null;
+    const evaluated = evaluateAuthenticatedReviewActivation(facts.authenticated_review_activation_facts);
+    if (selectActiveGovernanceMode(evaluated) !== "AUTHENTICATED_REVIEW") return null;
+    return evaluated.artifact_freeze ?? null;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Resolve whole-ticket implementation completion from recorded implementation merge
  * receipts (facts.implementationMerges). A ticket may legitimately accumulate several
@@ -3753,6 +4018,20 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     }
   };
 
+  try {
+    const candidatePr = Array.isArray(activeOwnership) ? activeOwnership[0]?.pr_number : null;
+    const activationCollected = collectAuthenticatedReviewActivationFacts(root, {
+      transport,
+      repository: expected.repository,
+      prNumber: Number.isInteger(candidatePr) ? candidatePr : undefined
+    });
+    facts.authenticated_review_activation_facts = plainObject(activationCollected.facts)
+      ? activationCollected.facts
+      : { github_outage: true };
+  } catch {
+    facts.authenticated_review_activation_facts = { github_outage: true };
+  }
+
   const corpus = validateFactsCorpus(facts);
   if (!corpus.ok) {
     return { ok: false, reason: `collected corpus invalid: ${corpus.failures.join("; ")}`, facts: null };
@@ -3910,7 +4189,7 @@ export const resolveExecutionState = (options = {}) => {
     governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
     claims_merge_authorization: false,
     claims_separation_of_duties: false,
-    artifact_freeze: null,
+    artifact_freeze: evaluateLiveArtifactFreeze(facts),
     bootstrap: {
       active: bootstrapActive,
       d0_004c_merged: facts.d0_004c_merged === true
