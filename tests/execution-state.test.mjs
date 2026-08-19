@@ -5620,3 +5620,85 @@ test("published-schema-enum-covers-every-emittable-blocker-code", async () => {
   // but the resolver cannot emit is dead vocabulary.
   assert.deepEqual(published, emittable);
 });
+
+// ---------------------------------------------------------------------------
+// Activation collector: a reviewer's current state, not the newest APPROVED (#270 finding 2).
+// ---------------------------------------------------------------------------
+
+const ACTIVATION_FIXTURE_REPO = "MongLong0214/agent-operator-score";
+
+const activationReviewFixture = (reviews) => ({
+  [`repos/${ACTIVATION_FIXTURE_REPO}/pulls/9270`]: {
+    base: { ref: "dev" },
+    head: { sha: "c270c270c270c270c270c270c270c270c270c270" },
+    user: { id: 4001 },
+    merged_by: { id: 4002 }
+  },
+  [`repos/${ACTIVATION_FIXTURE_REPO}/pulls/9270/reviews`]: reviews
+});
+
+const collectActivationReviewState = async (reviews) => {
+  const { createFixtureTransport, collectAuthenticatedReviewActivationFacts } = await importResolver();
+  const collected = collectAuthenticatedReviewActivationFacts(root, {
+    repository: ACTIVATION_FIXTURE_REPO,
+    prNumber: 9270,
+    transport: createFixtureTransport(activationReviewFixture(reviews))
+  });
+  return collected.facts;
+};
+
+test("a-later-non-approval-by-the-same-reviewer-withdraws-the-approval", async () => {
+  // Scanning the list in reverse for any APPROVED kept a stale approval alive after the same
+  // reviewer requested changes at the same SHA. GitHub's current state for that reviewer is
+  // CHANGES_REQUESTED, so reporting APPROVED misstates a live fact on the wired live path.
+  const sha = "c270c270c270c270c270c270c270c270c270c270";
+  const facts = await collectActivationReviewState([
+    { state: "APPROVED", commit_id: sha, user: { id: 220022 } },
+    { state: "CHANGES_REQUESTED", commit_id: sha, user: { id: 220022 } }
+  ]);
+  assert.equal(facts.review_state, undefined, "a withdrawn approval must not report APPROVED");
+  assert.equal(facts.reviewer_id, undefined);
+});
+
+test("a-dismissed-approval-by-the-same-reviewer-does-not-survive", async () => {
+  const sha = "c270c270c270c270c270c270c270c270c270c270";
+  const facts = await collectActivationReviewState([
+    { state: "APPROVED", commit_id: sha, user: { id: 220022 } },
+    { state: "DISMISSED", commit_id: sha, user: { id: 220022 } }
+  ]);
+  assert.equal(facts.review_state, undefined, "a dismissed approval must not report APPROVED");
+});
+
+test("a-comment-after-an-approval-does-not-withdraw-it", async () => {
+  // COMMENTED and PENDING never replace a reviewer's approval on GitHub, so treating them as
+  // state-changing would fail closed on a PR that is genuinely approved.
+  const sha = "c270c270c270c270c270c270c270c270c270c270";
+  const facts = await collectActivationReviewState([
+    { state: "APPROVED", commit_id: sha, user: { id: 220022 } },
+    { state: "COMMENTED", commit_id: sha, user: { id: 220022 } }
+  ]);
+  assert.equal(facts.review_state, "APPROVED");
+  assert.equal(facts.reviewer_id, 220022);
+  assert.equal(facts.review_head_sha, sha);
+});
+
+test("changes-requested-then-approved-by-the-same-reviewer-is-an-approval", async () => {
+  const sha = "c270c270c270c270c270c270c270c270c270c270";
+  const facts = await collectActivationReviewState([
+    { state: "CHANGES_REQUESTED", commit_id: sha, user: { id: 220022 } },
+    { state: "APPROVED", commit_id: sha, user: { id: 220022 } }
+  ]);
+  assert.equal(facts.review_state, "APPROVED");
+  assert.equal(facts.reviewer_id, 220022);
+});
+
+test("one-reviewers-withdrawal-does-not-cancel-another-reviewers-approval", async () => {
+  const sha = "c270c270c270c270c270c270c270c270c270c270";
+  const facts = await collectActivationReviewState([
+    { state: "APPROVED", commit_id: sha, user: { id: 220022 } },
+    { state: "CHANGES_REQUESTED", commit_id: sha, user: { id: 220022 } },
+    { state: "APPROVED", commit_id: sha, user: { id: 330033 } }
+  ]);
+  assert.equal(facts.review_state, "APPROVED");
+  assert.equal(facts.reviewer_id, 330033, "the approval must come from the reviewer who still approves");
+});
