@@ -28,7 +28,7 @@ AOS-Coding P0 is an **EXPERIMENTAL / PROVISIONAL** score for observed operator p
 
 It is not:
 
-- a stable environment-independent personal ability;
+- a stable personal ability independent of environment;
 - a model or harness benchmark;
 - a percentile, certification, hiring signal, global rank, or industry standard;
 - a SaaS, account, payment, telemetry, or central-data product.
@@ -95,6 +95,22 @@ npx agent-operator-score export --run ./runs/<id> --anonymous
 
 Do not run these commands until the owning tickets are implemented and verified.
 
+## Public verification demo — available now
+
+This is not the planned `aos` CLI and does not run an assessment. The same commands are documented in [examples/README.md](examples/README.md).
+
+```bash
+node scripts/schema-conformance.mjs
+```
+
+Scorer and published fixture-pack verification:
+
+```bash
+node --test packages/scorer/test/score.test.ts
+```
+
+The published formula vector pack is `fixtures/scoring/vectors.json`.
+
 ## Planning map
 
 - [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md)
@@ -104,6 +120,10 @@ Do not run these commands until the owning tickets are implemented and verified.
 - [GitHub issue map](docs/GITHUB-ISSUE-MAP.md)
 - [Milestones](docs/MILESTONES.md)
 - [Traceability](docs/TRACEABILITY.md)
+- [Intended use](docs/INTENDED_USE.md)
+- [Limitations](docs/LIMITATIONS.md)
+- [Validation](docs/VALIDATION.md)
+- [Contributing](CONTRIBUTING.md)
 
 Every ADR and PRD is **PROPOSED**; every ticket not yet verified is **BLOCKED**. Issue creation does not authorize product code.
 
@@ -131,4 +151,4 @@ Verified runs and reports stay local. Default telemetry is OFF. Secret values an
 
 ## License and publication
 
-This is a public, source-visible planning repository. D0 minimum name clearance is a separate canonical-identity decision. No OSS license or public package has been approved, so external contribution acceptance and redistribution are blocked; LICENSE, contribution acceptance, redistribution, npm publication, third-party notices, security policy, formal publication clearance, and independent external reproduction are E14/G4 decisions.
+This is a public, source-visible planning repository. D0 minimum name clearance is a separate canonical-identity decision. MIT is the outbound license in [LICENSE](LICENSE). No public package has been approved. Contribution acceptance, npm publication, a visibility change, and formal publication review remain E14/G4 decisions; contributor terms and formal publication review are still unresolved. MIT grants redistribution of the software. That grant is not contributor terms and is not a publication clearance.
