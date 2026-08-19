@@ -633,9 +633,10 @@ test("focused-lane-is-not-silently-empty", () => {
   // Exact, not a floor: a lane that loses a case must fail here. Every count includes the
   // per-file results the runner emits, so adding a test file shifts all of them at once.
   const lanes = [
-    ["metric-registry", 21], ["issuance-contract", 15], ["capability", 17],
-    ["scoring-contract", 18], ["session-class", 26], ["doctor-contract", 39],
-    ["prescription-input", 13], ["trace-schema", 17], ["result-schema", 17]
+    ["metric-registry", 22], ["issuance-contract", 16], ["capability", 18],
+    ["scoring-contract", 19], ["session-class", 27], ["doctor-contract", 40],
+    ["prescription-input", 14], ["trace-schema", 18], ["result-schema", 18],
+    ["treatment-registry", 14]
   ];
   for (const [pattern, cases] of lanes) {
     const output = run(pattern);
