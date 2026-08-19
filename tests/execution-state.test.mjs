@@ -2161,6 +2161,19 @@ const wrapCountingTransport = (inner, searchCalls) => ({
   }
 });
 
+const wrapCountingPulls = (inner, pullCalls) => ({
+  kind: inner.kind,
+  getJson(apiPath) {
+    if (typeof apiPath === "string" && /\/pulls\/\d+$/.test(apiPath)) {
+      pullCalls.push(apiPath);
+    }
+    return inner.getJson(apiPath);
+  },
+  getRaw(apiPath) {
+    return inner.getRaw(apiPath);
+  }
+});
+
 const installGateBatchCorpusFromFixture = (responses) => {
   const sourceKey =
     Object.keys(responses).find(
@@ -3381,6 +3394,114 @@ test("truncated-gate-batch-corpus-fails-closed-not-as-unmatched-receipts", async
   assert.equal(collected.ok, false, "a truncated Gate-Batch corpus must fail the collection closed");
   assert.equal(collected.facts, null, "a truncated corpus must not resolve as unmatched / no receipts");
   assert.match(collected.reason, /incomplete|truncat|corpus|gate PR/i);
+});
+
+// Search `body` is a snippet, not the pull resource. A present string that does
+// not parse as exactly one field is not evidence that the field is absent on
+// the PR. The load-bearing assertion is the selected receipt (or the ambiguous
+// abort), not collected.ok: the current skip already returns ok=true.
+const GATE_BATCH_SEARCH_SNIPPETS_THAT_ARE_NOT_ABSENCE = [
+  ["empty-body", ""],
+  ["prose-prefix", "This PR accepts the batch.\nThe structured field is further down."],
+  ["truncated-field", "Notes\nGate-Batch:"]
+];
+
+for (const [label, searchBody] of GATE_BATCH_SEARCH_SNIPPETS_THAT_ARE_NOT_ABSENCE) {
+  test(`gate-batch-corpus-search-snippet-is-not-absence-of-receipt-${label}`, async () => {
+    const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+    const responses = clone(
+      JSON.parse(
+        readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+      )
+    );
+    const repoPath = "repos/MongLong0214/agent-operator-score";
+    const corpusKey = collectorGateBatchSearchPageKey(1);
+    assert.ok(Object.hasOwn(responses, corpusKey), "fixture must answer the paged Gate-Batch corpus key");
+    assert.equal(
+      typeof responses[`${repoPath}/pulls/200`]?.body,
+      "string",
+      "the pull resource must still carry the real receipt; otherwise this case cannot fail"
+    );
+    responses[corpusKey] = {
+      total_count: 1,
+      incomplete_results: false,
+      items: [{ number: 200, body: searchBody }]
+    };
+
+    const pullCalls = [];
+    const collected = collectLiveExecutionFacts(root, {
+      transport: wrapCountingPulls(createFixtureTransport(responses), pullCalls)
+    });
+    assert.equal(
+      collected.ok,
+      true,
+      `${label}: collection must still succeed once the pull body is read, got ${collected.reason}`
+    );
+    const gatePRs = collected.facts?.gatePRs ?? [];
+    assert.equal(
+      gatePRs.length,
+      1,
+      `${label}: a search snippet must not drop the real receipt, got ${gatePRs.map((pr) => pr.number).join(",")}`
+    );
+    assert.equal(gatePRs[0].number, 200);
+    assert.match(gatePRs[0].body, /^Gate-Batch: batch-d0-004-fixture\s*$/m);
+    assert.ok(
+      pullCalls.includes(`${repoPath}/pulls/200`),
+      `${label}: the authoritative pull must be fetched; search body is not the receipt`
+    );
+  });
+}
+
+test("gate-batch-corpus-search-snippet-does-not-collapse-ambiguous-receipts", async () => {
+  // Two merged PRs that both claim the same batch must abort. The skip is the
+  // only thing that changes that verdict: an empty search body on #200 drops
+  // it and #201 becomes a unique accept. A case that only restated the
+  // no-body control would already pass and would not pin this defect.
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const base = clone(
+    JSON.parse(
+      readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+    )
+  );
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const corpusKey = collectorGateBatchSearchPageKey(1);
+  assert.ok(Object.hasOwn(base, corpusKey), "fixture must answer the paged Gate-Batch corpus key");
+  const secondClaimant = {
+    ...base[`${repoPath}/pulls/200`],
+    number: 201,
+    body: "Gate-Batch: batch-d0-004-fixture\n"
+  };
+
+  {
+    const responses = clone(base);
+    responses[corpusKey] = {
+      total_count: 2,
+      incomplete_results: false,
+      items: [{ number: 200, body: "" }, { number: 201 }]
+    };
+    responses[`${repoPath}/pulls/201`] = secondClaimant;
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(
+      collected.ok,
+      false,
+      `empty search body must not turn an ambiguous set into a unique accept, got ok=${collected.ok} gatePRs=${(collected.facts?.gatePRs ?? []).map((pr) => pr.number).join(",")}`
+    );
+    assert.equal(collected.facts, null);
+    assert.match(collected.reason, /ambiguous gate PR set for batch batch-d0-004-fixture/i);
+  }
+
+  {
+    const responses = clone(base);
+    responses[corpusKey] = {
+      total_count: 2,
+      incomplete_results: false,
+      items: [{ number: 200 }, { number: 201 }]
+    };
+    responses[`${repoPath}/pulls/201`] = secondClaimant;
+    const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+    assert.equal(collected.ok, false, "control: two claimants with no search bodies must still abort");
+    assert.match(collected.reason, /ambiguous gate PR set for batch batch-d0-004-fixture/i);
+  }
 });
 
 test("accepted-batch-ids-must-not-be-hyphen-token-prefixes-of-any-registry-id", () => {
