@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AOS GitHub acceptance derivation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "gate_pr",
+    "batch_id",
+    "exact_head_sha",
+    "target_branch",
+    "merge_commit_sha",
+    "manifest_digest",
+    "manifest_in_head",
+    "author_id",
+    "reviewer_id",
+    "merger_id",
+    "review_state",
+    "reviewer_permission",
+    "activation"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "gate_pr": { "type": "integer", "minimum": 1 },
+    "batch_id": { "type": "string", "minLength": 1 },
+    "exact_head_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "target_branch": { "const": "dev" },
+    "merge_commit_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "manifest_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "manifest_in_head": { "const": true },
+    "author_id": { "type": "integer", "minimum": 1 },
+    "reviewer_id": { "type": "integer", "minimum": 1 },
+    "merger_id": { "type": "integer", "minimum": 1 },
+    "review_state": { "const": "APPROVED" },
+    "reviewer_permission": { "enum": ["write", "maintain", "admin"] },
+    "activation": { "const": false }
+  }
+}
