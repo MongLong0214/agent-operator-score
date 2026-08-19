@@ -1,0 +1,32 @@
+{
+  "input": {
+    "run_id": "e2-004-duplicate-run-mut",
+    "invalidators": [
+      "duplicate_run"
+    ],
+    "safety_state": "SAFE",
+    "safety_level": "S0",
+    "completion_claimed": false,
+    "evidence_revision": "rev-dup-2",
+    "claimed_revision": "rev-dup-2",
+    "correlation_ids": [
+      "corr-dup-other",
+      "corr-dup-other"
+    ],
+    "declared_manual_takeover": false,
+    "evidence_coverage": {
+      "n": 8,
+      "d": 10
+    },
+    "required_core_observed": true
+  },
+  "expected": {
+    "family": "duplicate-run",
+    "status": "INVALID",
+    "reason_code": "DUPLICATE_RUN",
+    "issued": false,
+    "score": null,
+    "variant": "second-correlation",
+    "duplicate_correlation": "corr-dup-other"
+  }
+}
