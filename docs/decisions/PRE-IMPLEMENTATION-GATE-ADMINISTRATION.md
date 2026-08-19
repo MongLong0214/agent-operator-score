@@ -72,7 +72,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-001-owner-direction-prerequisites` | ACCEPTED |
 | `e0a-001-e0a-002-e0a-003-owner-direction-prerequisites` | ACCEPTED |
 | `e0b-001-e0b-002-e0b-003-owner-direction-prerequisites` | ACCEPTED |
-| `e0c-001-e0c-002-e0c-003-owner-direction-prerequisites` | ACCEPTED |
+| `e0c-001-e0c-002-e0c-003-owner-direction-prerequisites` | INVALIDATED |
 | `e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites` | ACCEPTED |
 | `e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites` | ACCEPTED |
 | `e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites` | ACCEPTED |
@@ -88,6 +88,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e14-001-e14-002-e14-003-owner-direction-prerequisites` | ACCEPTED |
 | `e0d-001-e0d-002-e0d-003-owner-direction-prerequisites` | ACCEPTED |
 | `e1-001-e1-002-e1-003-owner-direction-prerequisites` | ACCEPTED |
+| `e0c-simulation-fixture-glob-renewal` | ACCEPTED |
 
 ## Operating sequence
 
