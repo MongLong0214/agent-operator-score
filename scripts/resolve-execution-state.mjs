@@ -1323,6 +1323,9 @@ const rejectActivation = (message) => {
 
 const stableActivationId = (value) => Number.isInteger(value) && value > 0;
 
+// GitHub review states that replace a reviewer's previous state. COMMENTED and PENDING do not.
+const ACTIVATION_STATE_CHANGING_REVIEWS = new Set(["APPROVED", "CHANGES_REQUESTED", "DISMISSED"]);
+
 const nonemptyBypassList = (value) => Array.isArray(value) && value.length > 0;
 
 /**
@@ -1413,9 +1416,21 @@ export const collectAuthenticatedReviewActivationFacts = (root = DEFAULT_ROOT, o
       if (stableActivationId(pull?.merged_by?.id)) facts.merger_id = pull.merged_by.id;
     });
     readJson(`repos/${repository}/pulls/${options.prNumber}/reviews`, (reviews) => {
-      const approved = Array.isArray(reviews)
-        ? [...reviews].reverse().find((review) => review?.state === "APPROVED")
-        : null;
+      // A reviewer's *current* state is their latest state-changing review, not the newest
+      // APPROVED anywhere in the list. Scanning in reverse for APPROVED kept a stale approval
+      // alive after the same reviewer later requested changes or had the approval dismissed,
+      // which misstates a live GitHub fact. COMMENTED and PENDING never change an approval on
+      // GitHub, so they are not state-changing here either.
+      const latestByReviewer = new Map();
+      for (const review of Array.isArray(reviews) ? reviews : []) {
+        if (!stableActivationId(review?.user?.id)) continue;
+        if (!ACTIVATION_STATE_CHANGING_REVIEWS.has(review?.state)) continue;
+        latestByReviewer.set(review.user.id, review);
+      }
+      let approved = null;
+      for (const review of latestByReviewer.values()) {
+        if (review.state === "APPROVED") approved = review;
+      }
       if (approved) {
         facts.review_state = "APPROVED";
         if (typeof approved.commit_id === "string") facts.review_head_sha = approved.commit_id;
