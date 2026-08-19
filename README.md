@@ -51,7 +51,7 @@ Implemented, private and internal:
 - `@aos/schema` foundation and scoring/adapter contracts — `metric-registry.ts` (the frozen M01–M20 registry), `scoring-contract.ts`, `issuance-contract.ts`, `capability.ts`, and `session-class.ts` — each with its own test lane;
 - the control-plane validators and the operational-state resolver, with CI on Node 22 and 24.
 
-Everything below is still absent. The `agent-operator-score` package, the `aos` CLI, the trace and result schemas, the scorer, the runner, the Codex and Claude Code adapters, the task forms, reports, Snapshot, and any public release do **not** exist yet, and nothing here can run an assessment end to end. Every implemented contract is `private: true` and unpublished.
+The trace schema and its canonical event registry now exist (`specs/aos-trace.schema.json`, `packages/schema/src/trace.ts`), as does one FAM-2 grader (`packages/scorer/src/graders/context.ts`). A single grader is not a scorer. The `agent-operator-score` package, the `aos` CLI, the result schema, the rest of the scorer, the runner, the Codex and Claude Code adapters, the task forms, reports, Snapshot, and any public release do **not** exist yet, and nothing here can run an assessment end to end. Every implemented contract is `private: true` and unpublished.
 
 ## Fixed implementation order
 
