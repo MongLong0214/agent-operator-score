@@ -4,6 +4,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { validateArtifactManifestV3 as validateArtifactManifestV3Module } from "./validate-artifact-manifest.mjs";
+import { deriveGitHubAcceptance } from "./derive-github-acceptance.mjs";
 
 const PHASES = new Set([
   "planned",
@@ -1234,6 +1235,65 @@ export const validateArtifactManifestV3ForResolution = (facts) => {
       failures: [error instanceof Error ? error.message : String(error)]
     };
   }
+};
+
+const GITHUB_ACCEPTANCE_OUTAGE = "github acceptance rejected: github outage";
+const GITHUB_ACCEPTANCE_FIXTURE_RELATIVE = "fixtures/governance/github-acceptance";
+
+/**
+ * Observation-only collector for inactive GitHub-acceptance facts.
+ * Reuses the existing authenticated/fixture transport boundary. Not consulted
+ * by collectLiveExecutionFacts or ready-set derivation.
+ */
+export const collectGitHubAcceptanceFacts = (root = DEFAULT_ROOT, options = {}) => {
+  if (plainObject(options.facts)) {
+    if (options.facts.github_outage === true) {
+      return { ok: false, reason: GITHUB_ACCEPTANCE_OUTAGE, facts: null };
+    }
+    return { ok: true, facts: options.facts };
+  }
+
+  if (typeof options.fixture === "string" && options.fixture.length > 0 && !options.fixture.includes("/") && !options.fixture.includes("\\")) {
+    try {
+      const fixturePath = resolve(root, GITHUB_ACCEPTANCE_FIXTURE_RELATIVE, `${options.fixture}.json`);
+      const facts = JSON.parse(readFileSync(fixturePath, "utf8"));
+      return collectGitHubAcceptanceFacts(root, { facts });
+    } catch {
+      return { ok: false, reason: GITHUB_ACCEPTANCE_OUTAGE, facts: null };
+    }
+  }
+
+  const transport = options.transport;
+  if (!transport || typeof transport.getJson !== "function") {
+    return { ok: false, reason: GITHUB_ACCEPTANCE_OUTAGE, facts: null };
+  }
+  try {
+    if (typeof options.probePath === "string") {
+      transport.getJson(options.probePath);
+    }
+    if (plainObject(options.collected)) {
+      return { ok: true, facts: options.collected };
+    }
+    return { ok: false, reason: GITHUB_ACCEPTANCE_OUTAGE, facts: null };
+  } catch {
+    return { ok: false, reason: GITHUB_ACCEPTANCE_OUTAGE, facts: null };
+  }
+};
+
+/**
+ * Inactive exact-head acceptance candidate. Activation stays false. This result
+ * never authorizes RED, accepts a gate, or freezes an artifact.
+ */
+export const resolveInactiveGitHubAcceptanceCandidate = (input = {}, options = {}) => {
+  const collected = collectGitHubAcceptanceFacts(options.root ?? DEFAULT_ROOT, {
+    facts: input,
+    transport: options.transport,
+    fixture: options.fixture
+  });
+  if (!collected.ok) {
+    throw new Error(collected.reason);
+  }
+  return deriveGitHubAcceptance({ ...collected.facts, activation: false });
 };
 
 /**
