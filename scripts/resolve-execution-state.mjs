@@ -3107,13 +3107,10 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   for (const item of gateSearchItems) {
     // Search is token-based, not a structured-field match. A hyphen-delimited
     // id whose tokens are a proper prefix of another id, or unrelated prose
-    // carrying the same tokens, is a deterministic false candidate. A present
-    // search body that does not parse as exactly one field is that false hit
-    // and is skipped; a missing body is absence of evidence and falls through
-    // to the authoritative pull fetch.
-    if (typeof item?.body === "string" && !extractExactGateBatchField(item.body).ok) {
-      continue;
-    }
+    // carrying the same tokens, is a deterministic false candidate. The search
+    // body is a snippet, not the pull resource: empty, prefix, or truncated
+    // text is not evidence that the field is absent. Fetch every corpus row
+    // and parse pull.body.
     const number = item?.number;
     if (!Number.isInteger(number)) {
       return { ok: false, reason: "gate PR corpus search returned a row without an issue number", facts: null };
