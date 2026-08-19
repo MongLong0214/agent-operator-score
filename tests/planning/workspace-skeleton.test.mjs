@@ -758,7 +758,14 @@ test("focused-lane-is-not-silently-empty", () => {
 test("engine-matrix", () => {
   // Node 20 cannot execute TypeScript. Its test runner does not even discover a .ts test
   // file, so the schema package's cases were silently skipped there rather than failing.
-  // Unflagged type stripping starts at 22.18.0, which is the floor ADR-0003 requires.
+  // Unflagged type stripping starts at 22.18.0, which is what package.json and ci.yml declare.
+  //
+  // This case pins the declared floor, not an approved one. ADR-0003 still states a Node 20
+  // floor with `>=20 <25`, and so do SSOT 9.4, PRD-D0 AC-D0-5, and D0-002 AC-D0-002-5.
+  // PRD-D0-GOV AC-D0-GOV-4 says the 22.18 correction "remains unapproved until it has separate
+  // new-contract approval" and forbids fabricating that approval, so those documents must not be
+  // edited to match this assertion. The gap is real and tracked in #167; do not close it by
+  // rewriting the authority chain to agree with the runtime.
   assert.equal(readJson("package.json").engines.node, ">=22.18 <25");
   const ci = readFileSync(resolve(repositoryRoot, ".github/workflows/ci.yml"), "utf8");
   assert.match(ci, /node: \[22, 24\]/);
