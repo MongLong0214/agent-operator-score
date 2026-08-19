@@ -1,0 +1,120 @@
+{
+  "form": "A",
+  "version": "form-a-v0",
+  "seed": 20260805,
+  "families": [
+    {
+      "family_id": "FAM-1",
+      "scenario_id": "form-a-fam-1",
+      "budget_minutes": 5,
+      "primary_opportunities": [
+        { "opportunity_id": "FAM1-OPP-M01", "metric_id": "M01" },
+        { "opportunity_id": "FAM1-OPP-M02", "metric_id": "M02" },
+        { "opportunity_id": "FAM1-OPP-M03", "metric_id": "M03" },
+        { "opportunity_id": "FAM1-OPP-M04", "metric_id": "M04" }
+      ],
+      "exposure": {
+        "worker_visible": ["worker/FAM-1/prompt", "worker/FAM-1/workspace"],
+        "hidden_oracle": ["oracle/FAM-1/sealed"]
+      }
+    },
+    {
+      "family_id": "FAM-2",
+      "scenario_id": "form-a-fam-2",
+      "budget_minutes": 6,
+      "primary_opportunities": [
+        { "opportunity_id": "FAM2-OPP-M05", "metric_id": "M05" },
+        { "opportunity_id": "FAM2-OPP-M06", "metric_id": "M06" },
+        { "opportunity_id": "FAM2-OPP-M07", "metric_id": "M07" }
+      ],
+      "exposure": {
+        "worker_visible": ["worker/FAM-2/prompt", "worker/FAM-2/workspace"],
+        "hidden_oracle": ["oracle/FAM-2/sealed"]
+      }
+    },
+    {
+      "family_id": "FAM-3",
+      "scenario_id": "form-a-fam-3",
+      "budget_minutes": 8,
+      "primary_opportunities": [
+        { "opportunity_id": "FAM3-OPP-M08", "metric_id": "M08" },
+        { "opportunity_id": "FAM3-OPP-M09", "metric_id": "M09" },
+        { "opportunity_id": "FAM3-OPP-M10", "metric_id": "M10" },
+        { "opportunity_id": "FAM3-OPP-M11", "metric_id": "M11" }
+      ],
+      "exposure": {
+        "worker_visible": ["worker/FAM-3/prompt", "worker/FAM-3/workspace"],
+        "hidden_oracle": ["oracle/FAM-3/sealed"]
+      }
+    },
+    {
+      "family_id": "FAM-4",
+      "scenario_id": "form-a-fam-4",
+      "budget_minutes": 7,
+      "primary_opportunities": [
+        { "opportunity_id": "FAM4-OPP-M12", "metric_id": "M12" },
+        { "opportunity_id": "FAM4-OPP-M13", "metric_id": "M13" },
+        { "opportunity_id": "FAM4-OPP-M14", "metric_id": "M14" }
+      ],
+      "exposure": {
+        "worker_visible": ["worker/FAM-4/prompt", "worker/FAM-4/workspace"],
+        "hidden_oracle": ["oracle/FAM-4/sealed"]
+      }
+    },
+    {
+      "family_id": "FAM-5",
+      "scenario_id": "form-a-fam-5",
+      "budget_minutes": 7,
+      "primary_opportunities": [
+        { "opportunity_id": "FAM5-OPP-M15", "metric_id": "M15" },
+        { "opportunity_id": "FAM5-OPP-M16", "metric_id": "M16" },
+        { "opportunity_id": "FAM5-OPP-M17", "metric_id": "M17" }
+      ],
+      "exposure": {
+        "worker_visible": ["worker/FAM-5/prompt", "worker/FAM-5/workspace"],
+        "hidden_oracle": ["oracle/FAM-5/sealed"]
+      }
+    },
+    {
+      "family_id": "FAM-6",
+      "scenario_id": "form-a-fam-6",
+      "budget_minutes": 7,
+      "primary_opportunities": [
+        { "opportunity_id": "FAM6-OPP-M18", "metric_id": "M18" },
+        { "opportunity_id": "FAM6-OPP-M19", "metric_id": "M19" },
+        { "opportunity_id": "FAM6-OPP-M20", "metric_id": "M20" }
+      ],
+      "exposure": {
+        "worker_visible": ["worker/FAM-6/prompt", "worker/FAM-6/workspace"],
+        "hidden_oracle": ["oracle/FAM-6/sealed"]
+      }
+    }
+  ],
+  "transitions": {
+    "max_minutes": 5,
+    "minutes": 0
+  },
+  "terminal": {
+    "registered": [
+      "completed",
+      "failed",
+      "timeout",
+      "cancelled",
+      "unsafe",
+      "insufficient_evidence",
+      "invalid"
+    ],
+    "reason": "completed"
+  },
+  "prescription": {
+    "path": [
+      "confidence",
+      "normalized_gap",
+      "opportunity_count",
+      "treatment_cost",
+      "permission_delta",
+      "expected_uplift",
+      "transferability"
+    ]
+  }
+}

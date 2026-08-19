@@ -384,7 +384,9 @@ test("root-private-scripts-and-runnable-surface", () => {
     ...expectedWorkspaces.map(([path]) => `${path}/package.json`),
     ...ownerPaths,
     ...fixtureCensus.admitted,
-    ...ticketOwnedSkeletonPaths()
+    ...ticketOwnedSkeletonPaths(),
+    // Exact ownership names this JSON pack file; it is not a source-extension census path.
+    "suites/coding-core-v0/form-a/manifest.json"
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
 });

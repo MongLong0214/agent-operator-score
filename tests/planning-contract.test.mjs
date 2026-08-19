@@ -131,11 +131,14 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
   // The pin moves with the tree, as it did when packages/schema/src landed. What the README
   // now claims present must be present, and the CLI it still calls absent must stay absent.
   assert.match(readme, /A single grader is not a scorer\./);
+  assert.match(readme, /A frozen pack is not an end-to-end assessment\./);
   assert.ok(existsSync(resolve(root, "specs/aos-trace.schema.json")));
   assert.ok(existsSync(resolve(root, "specs/aos-result.schema.json")));
   assert.ok(existsSync(resolve(root, "specs/opportunity-profile.schema.json")));
   assert.ok(existsSync(resolve(root, "packages/schema/src/result.ts")));
   assert.ok(existsSync(resolve(root, "packages/scorer/src/graders/context.ts")));
+  assert.ok(existsSync(resolve(root, "suites/coding-core-v0/form-a/manifest.json")));
+  assert.ok(existsSync(resolve(root, "packages/runner/src/assessment.ts")));
   assert.equal(existsSync(resolve(root, "packages/cli")), false);
   assert.equal(existsSync(resolve(root, "apps/cli")), false);
   assert.match(readme, /Planned CLI — not available yet/);
