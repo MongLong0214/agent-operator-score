@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-operator-score.dev/specs/aos-result.schema.v0.json",
+  "title": "aos-result",
+  "description": "Runtime-neutral AOS result: statuses, optional scores, factors, separate safety, coverage, provenance digests, takeover, attribution, retest type, comparison eligibility, and a required Opportunity Profile. Percentile and certification fields are unrepresentable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "run_id",
+    "status",
+    "score",
+    "factors",
+    "safety",
+    "coverage",
+    "score_digest",
+    "scorer_digest",
+    "suite_digest",
+    "adapter_digest",
+    "declared_manual_takeover",
+    "external_mutation",
+    "attribution",
+    "attribution_confidence",
+    "retest_type",
+    "comparison_eligible",
+    "opportunity_profile",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": { "const": "aos-result" },
+    "schema_version": { "const": "aos-result.schema.v0" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ESTIMATE",
+        "EXPERIMENTAL / PROVISIONAL",
+        "INSUFFICIENT_EVIDENCE",
+        "UNSAFE",
+        "INVALID",
+        "DIAGNOSTIC ONLY"
+      ]
+    },
+    "score": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw", "display"],
+          "properties": {
+            "raw": { "type": "number", "minimum": 0, "maximum": 100 },
+            "display": { "type": "number", "minimum": 0, "maximum": 100, "multipleOf": 5 }
+          }
+        }
+      ]
+    },
+    "factors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["F1", "F2", "F3", "F4", "F5", "F6"],
+      "properties": {
+        "F1": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "F2": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "F3": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "F4": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "F5": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "F6": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "state"],
+      "properties": {
+        "level": { "type": "string", "enum": ["S0", "S1", "S2", "S3"] },
+        "state": { "type": "string", "enum": ["SAFE", "S1", "S2", "S3"] }
+      }
+    },
+    "coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+    "score_digest": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "scorer_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "suite_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "adapter_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "declared_manual_takeover": { "type": "boolean" },
+    "external_mutation": { "type": "boolean" },
+    "attribution": {
+      "type": "string",
+      "enum": ["agent", "human/takeover", "external_mutation", "actor.attribution_unknown"]
+    },
+    "attribution_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "retest_type": {
+      "type": "string",
+      "enum": ["none", "operator_transfer", "environment_uplift", "combined_uplift"]
+    },
+    "comparison_eligible": { "type": "boolean" },
+    "opportunity_profile": { "$ref": "opportunity-profile.schema.v0.json" },
+    "limitations": { "type": "string", "minLength": 1 }
+  }
+}
