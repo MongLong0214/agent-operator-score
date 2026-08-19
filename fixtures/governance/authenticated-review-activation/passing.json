@@ -1,0 +1,36 @@
+{
+  "github_outage": false,
+  "protection_status": 200,
+  "target_branch": "dev",
+  "candidate_base": "dev",
+  "exact_head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "review_head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "review_state": "APPROVED",
+  "author_id": 110011,
+  "reviewer_id": 220022,
+  "merger_id": 330033,
+  "reviewer_permission": "write",
+  "required_approving_review_count": 1,
+  "dismiss_stale_reviews": true,
+  "require_last_push_approval": true,
+  "enforce_admins": true,
+  "user_bypass_allowances": [],
+  "team_bypass_allowances": [],
+  "app_bypass_allowances": [],
+  "manifest": {
+    "schema_version": 3,
+    "manifest_id": "d0-009-authenticated-review-activation",
+    "artifacts": [
+      {
+        "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "kind": "ADR",
+        "source_record_id": "d0-009-activation-source-record",
+        "source_record_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "migration_provenance": "legacy-v2-migration"
+      }
+    ]
+  },
+  "manifest_digest": "0bca8e571bf332d310ea6b5b7f4f2c033d9fc3d8a04c18c2d65ee55392564035",
+  "manifest_in_head": true
+}
