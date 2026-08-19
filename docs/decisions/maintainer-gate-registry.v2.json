@@ -2537,7 +2537,7 @@
     },
     {
       "id": "e0c-001-e0c-002-e0c-003-owner-direction-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the E0C-001, E0C-002, E0C-003 prerequisite set — ADR-0009, E0-C, and the exact E0C-001, E0C-002, E0C-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -2631,6 +2631,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "e0c-001-e0c-002-e0c-003-owner-direction-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e0c-simulation-fixture-glob-invalidation"
         }
       ],
       "preparation": {
@@ -2640,6 +2646,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-19T00:00:00Z",
+        "invalidated_by": "e0c-simulation-fixture-glob-invalidation",
+        "reason": "E0C-001 Exact ownership fixture declaration was amended from a non-glob file path to a D0-011-admitted glob; the prior accepted batch is stale and requires renewed external review."
       }
     },
     {
@@ -4449,6 +4460,113 @@
       ],
       "preparation": {
         "prepared_by": "e1-001-e1-002-e1-003-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e0c-simulation-fixture-glob-renewal",
+      "status": "ACCEPTED",
+      "scope": "Accept the E0C-001, E0C-002, E0C-003 prerequisite set — ADR-0009, E0-C, and the exact E0C-001, E0C-002, E0C-003 tickets at the digests below, after the E0C-001 Exact ownership fixture declaration was amended to a D0-011-admitted glob, so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "d5ec615ab71638040fffd6f030c2a45ea1db79a6"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E0C-pack-time-and-eligibility-simulation.md",
+          "sha256": "f1bf908b19fe1b36412c1e61afa3486fa8afc6b0bd54825c9288ed72893c8a90",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md",
+          "sha256": "1bcc6d9fec85086bc616f934c91af932718a08d3367bca8fd61421155235b205",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md",
+          "sha256": "8775733a91915730a35681b17a7707208200b2b761e7b48facac756b938daa96",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md",
+          "sha256": "458e6a78a02c7e12c077840a1e753c317ca91607ca260a7bfb39b0159a8b77db",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E0C-pack-time-and-eligibility-simulation.md",
+          "sha256": "f1bf908b19fe1b36412c1e61afa3486fa8afc6b0bd54825c9288ed72893c8a90",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md",
+          "sha256": "1bcc6d9fec85086bc616f934c91af932718a08d3367bca8fd61421155235b205",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md",
+          "sha256": "8775733a91915730a35681b17a7707208200b2b761e7b48facac756b938daa96",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md",
+          "sha256": "458e6a78a02c7e12c077840a1e753c317ca91607ca260a7bfb39b0159a8b77db",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E0C-pack-time-and-eligibility-simulation.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E0-C/E0C-001-preregister-pack-simulation-inputs-and-invariants.md",
+            "docs/tickets/E0-C/E0C-002-implement-deterministic-pack-budget-and-eligibility-simulator.md",
+            "docs/tickets/E0-C/E0C-003-emit-preflight-decision-report-and-freeze-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-19T00:00:00Z",
+          "recorded_by": "e0c-simulation-fixture-glob-renewal-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e0c-simulation-fixture-glob-renewal-candidate"
       },
       "approval": {
         "approved_by": "MongLong0214",
