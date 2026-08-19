@@ -54,6 +54,15 @@ const workspaceTestScript = "node --test --test-name-pattern";
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const asRepositoryRelative = (absolutePath) => relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
 
+// One ownership bullet, parsed into the source paths it declares. The grammar is
+// `path — symbol; path — symbol`: the semicolon separates pairs, the em dash separates a path
+// from its symbol. Only the head of each pair is a declaration, so the symbol side never
+// becomes a path and prose written after a dash is never claimed.
+export const ownershipBulletPaths = (bullet) => bullet
+  .split(";")
+  .map((pair) => pair.split(/\s[—–-]\s/)[0].trim().replace(/^`|`$/g, ""))
+  .filter((candidate) => sourceExtensions.has(extname(candidate)));
+
 // Independent re-derivation of the ticket-owned source claim the planning validator enforces.
 // Only paths a ticket names exactly, and that exist on disk, are claimed. This is a claim check,
 // not an acceptance check; ticket readiness stays the resolver's job.
@@ -118,10 +127,7 @@ const ticketOwnedPaths = () => {
     for (const line of ownership ? ownership[1].split("\n") : []) {
       const bullet = /^- (.+)$/.exec(line.trim());
       if (!bullet) continue;
-      for (const entry of bullet[1].split(/\s[—–-]\s/)[0].split(";")) {
-        const candidate = entry.trim().replace(/^`|`$/g, "");
-        if (sourceExtensions.has(extname(candidate))) owned.add(candidate);
-      }
+      for (const candidate of ownershipBulletPaths(bullet[1])) owned.add(candidate);
     }
     // A final period is ordinary prose and must not remove the RED file from this census.
     const redTest = /^- Test file: `([^`]+)`\.?\s*$/m.exec(text);
@@ -391,6 +397,62 @@ test("root-private-scripts-and-runnable-surface", () => {
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
 });
 
+// The ownership grammar is `path — symbol; path — symbol`. Splitting the em dash before the
+// semicolon kept only the head pair, so every path declared after the first symbol was discarded
+// before the semicolon split ever ran and the file failed closed as unallowlisted product code
+// once an implementation materialized it.
+test("ownership-bullet-claims-every-declared-pair", () => {
+  // E0C-002, the first ticket to reach implementation and hit this.
+  assert.deepEqual(
+    ownershipBulletPaths(
+      "packages/scorer/src/simulation/pack-budget.ts — simulatePackBudget; "
+      + "packages/scorer/src/simulation/opportunity-audit.ts — auditOpportunities"
+    ),
+    [
+      "packages/scorer/src/simulation/pack-budget.ts",
+      "packages/scorer/src/simulation/opportunity-audit.ts"
+    ]
+  );
+  // Three pairs behind a leading non-source declaration, as E3-004 writes it.
+  assert.deepEqual(
+    ownershipBulletPaths(
+      "specs/metrics.v0.json; packages/runner/src/lifecycle.ts — RunStateMachine; "
+      + "packages/runner/src/watchdog.ts — Watchdog; packages/runner/src/reconcile.ts — reconcileProcesses"
+    ),
+    [
+      "packages/runner/src/lifecycle.ts",
+      "packages/runner/src/watchdog.ts",
+      "packages/runner/src/reconcile.ts"
+    ]
+  );
+  // The single-pair case is what the repository already relied on; it must not move.
+  assert.deepEqual(
+    ownershipBulletPaths("specs/metrics.v0.json; packages/schema/src/metric-registry.ts — MetricDefinition,validateMetricRegistry"),
+    ["packages/schema/src/metric-registry.ts"]
+  );
+  // Admission must not widen past the grammar: the symbol side is not a declaration, even when
+  // it is spelled exactly like a path.
+  assert.deepEqual(
+    ownershipBulletPaths("packages/schema/src/result.ts — packages/schema/src/never-declared.ts"),
+    ["packages/schema/src/result.ts"]
+  );
+  // Nor is prose that follows a dash and happens to end in a source extension.
+  assert.deepEqual(
+    ownershipBulletPaths("packages/scorer/src/safety.ts — classifySafety, superseding packages/scorer/src/legacy-safety.ts"),
+    ["packages/scorer/src/safety.ts"]
+  );
+  // Backticked declarations, and the en dash and hyphen spellings the separator also accepts.
+  assert.deepEqual(
+    ownershipBulletPaths("`adapters/codex/src/index.ts` – CodexAdapter; `adapters/codex/src/wrapper.ts` - runCodexControlled"),
+    ["adapters/codex/src/index.ts", "adapters/codex/src/wrapper.ts"]
+  );
+  // A bullet that declares nothing with a source extension still claims nothing.
+  assert.deepEqual(
+    ownershipBulletPaths("No other file or symbol may be edited without a replacement ticket and renewed gate."),
+    []
+  );
+});
+
 test("skeleton-source-requires-an-owning-ticket", () => {
   const owned = ticketOwnedSkeletonPaths();
   const wholeOwned = ticketOwnedPaths();
@@ -513,7 +575,9 @@ test("skeleton-source-requires-an-owning-ticket", () => {
         ticket,
         originalTicket.replace(
           ownershipAnchor,
-          () => "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts; tests/planning/catalog-declared-outside-skeleton.mjs —"
+          // Declared as the second `path — symbol` pair, not before the first dash: this is the
+          // shape the old split order discarded, so the validator's own parser is under test here.
+          () => "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts — MetricDefinition; tests/planning/catalog-declared-outside-skeleton.mjs —"
         )
       );
       writeFileSync(resolve(fixture, outsideSkeletonPath), "export {};\n");
@@ -611,6 +675,33 @@ test("skeleton-source-requires-an-owning-ticket", () => {
       });
       assert.match(admitted, /unclaimed-by-any-ticket\.ts/);
       assert.match(admitted, / product_code_files=0 /);
+
+      // And the boundary of that admission: only the head of a pair declares a path. The same
+      // intruder written on the symbol side of a pair must stay unclaimed, or reading every pair
+      // would have widened admission past the grammar rather than restoring it.
+      writeFileSync(
+        ticket,
+        originalTicket.replace(
+          ownershipAnchor,
+          () => "- specs/metrics.v0.json; packages/schema/src/metric-registry.ts — packages/schema/src/unclaimed-by-any-ticket.ts —"
+        )
+      );
+      setPendingGateRegistry(fixture);
+      let symbolPositionRefused;
+      try {
+        execFileSync(process.execPath, ["scripts/validate-planning.mjs"], {
+          cwd: fixture,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"]
+        });
+      } catch (caught) {
+        symbolPositionRefused = caught;
+      }
+      assert.ok(symbolPositionRefused, "the census accepted a path named only on the symbol side of a pair");
+      assert.match(
+        symbolPositionRefused.stderr,
+        /unallowlisted product code: packages\/schema\/src\/unclaimed-by-any-ticket\.ts/
+      );
     } finally {
       cleanupFixtureParent(parent);
     }
