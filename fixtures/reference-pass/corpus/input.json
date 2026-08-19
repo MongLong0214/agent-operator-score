@@ -1,0 +1,21 @@
+{
+  "family": "reference-pass",
+  "canonical": {
+    "run_id": "e2-004-reference-pass",
+    "invalidators": [],
+    "safety_state": "SAFE",
+    "safety_level": "S0",
+    "completion_claimed": true,
+    "evidence_revision": "rev-pass-1",
+    "claimed_revision": "rev-pass-1",
+    "correlation_ids": [
+      "corr-pass-1"
+    ],
+    "declared_manual_takeover": false,
+    "evidence_coverage": {
+      "n": 9,
+      "d": 10
+    },
+    "required_core_observed": true
+  }
+}
