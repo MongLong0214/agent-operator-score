@@ -31,9 +31,9 @@ This record does not repeat the D0 minimum name clearance and does not substitut
 {
   "source": "package.json and the six workspace manifests under packages/ and adapters/",
   "query": "any declared outbound license: a license or licenses field in any manifest, or an SPDX identifier anywhere in the tree",
-  "reviewed_at": "2026-08-19T06:20:42Z",
-  "result": "RESOLVED: no manifest declares a license or licenses field, and the tree contains no SPDX identifier. The absence is consistent across all seven manifests; there is no partial or conflicting declaration to reconcile.",
-  "limits": "Establishes only that nothing is declared. It does not establish what should be declared, and it is not a selection.",
+  "reviewed_at": "2026-08-19T06:52:00Z",
+  "result": "RESOLVED: no manifest declares a license or licenses field, and no file carries an SPDX-License-Identifier tag. The absence is consistent across all seven manifests. LICENSE now contains the MIT license text selected by the owner; that is the outbound grant, not a manifest declaration.",
+  "limits": "Establishes what the manifests declare and that LICENSE carries MIT text. It is not a license-compatibility opinion and is not a substitute for the outbound-license selection record.",
   "status": "RESOLVED"
 }
 ```
@@ -44,10 +44,10 @@ This record does not repeat the D0 minimum name clearance and does not substitut
 {
   "source": "docs/decisions/ and docs/clearance/ in this repository",
   "query": "an accepted maintainer decision selecting an outbound open-source license for this repository",
-  "reviewed_at": "2026-08-19T06:20:42Z",
-  "result": "UNRESOLVED: no such decision exists. E14-001 forbids choosing a license without review, so this lane records the absence and writes the reserved-rights default into LICENSE rather than making the selection itself.",
-  "limits": "A selection needs a maintainer decision and, for anything beyond the default, a review this repository cannot perform on its own behalf. Nothing here should be read as a recommendation of any particular license.",
-  "status": "UNRESOLVED"
+  "reviewed_at": "2026-08-19T06:52:00Z",
+  "result": "RESOLVED: the owner of the repository of record, MongLong0214, selected MIT as the outbound open-source license. LICENSE carries the standard MIT text with the copyright line naming the maintainers of MongLong0214/agent-operator-score and the year 2026 already used in that file.",
+  "limits": "Records the owner's selection and that the text is present. It is not a license-compatibility opinion, a trademark opinion, or a substitute for the formal publication and legal review, which remains open.",
+  "status": "RESOLVED"
 }
 ```
 
@@ -70,10 +70,10 @@ This record does not repeat the D0 minimum name clearance and does not substitut
 {
   "source": "docs/decisions/PUBLICATION-CLEARANCE.md and LICENSE",
   "query": "whether any grant permits redistribution of this work, and on what conditions",
-  "reviewed_at": "2026-08-19T06:20:42Z",
-  "result": "UNRESOLVED: no grant exists. LICENSE reserves all rights, and the conditions recorded in the decision are conditions still to be met, not conditions already satisfied. Redistribution is refused.",
-  "limits": "Records the state of the conditions. Whether the conditions are the right ones is a maintainer judgement, and meeting them is not this lane's work.",
-  "status": "UNRESOLVED"
+  "reviewed_at": "2026-08-19T07:15:00Z",
+  "result": "RESOLVED: LICENSE carries MIT, which is a copyright grant that permits use, copy, modification, publication, distribution, sublicensing, and sale, on the condition that the copyright notice and permission notice are included in all copies or substantial portions. That is the grant and those are its conditions. The grant does not authorize npm publication, a visibility change, or external contribution acceptance.",
+  "limits": "Records the copyright grant and its conditions as they appear in LICENSE. It is not a G4 publication clearance, a license-compatibility opinion, or a substitute for the formal publication and legal review, which remains open.",
+  "status": "RESOLVED"
 }
 ```
 
@@ -110,7 +110,7 @@ This record does not repeat the D0 minimum name clearance and does not substitut
   "source": "docs/clearance/MINIMUM-NAME-CLEARANCE.md",
   "query": "the recorded status of the D0 minimum name clearance, read as an input to this decision",
   "reviewed_at": "2026-08-19T06:20:42Z",
-  "result": "UNRESOLVED: the D0 record carries four checks, three recorded CLEAR and the basic trademark check recorded UNRESOLVED. An UNRESOLVED status there blocks public canonical-brand adoption and public publication, so it blocks here too.",
+  "result": "UNRESOLVED: the D0 record carries four checks, three recorded CLEAR and the basic trademark check recorded UNRESOLVED. An UNRESOLVED status there blocks public canonical-brand adoption. This observation is cited as an input and is not a ledger requirement; the derived verdict is held at BLOCKED by the still-open formal publication review and contributor terms.",
   "limits": "Cited, not re-performed and not substituted; repeating it is outside E14-001. The D0 record is point-in-time and states that it establishes no legal or trademark clearance.",
   "status": "UNRESOLVED"
 }

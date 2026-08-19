@@ -15,11 +15,12 @@ opinion that no artifact here records is `UNRESOLVED`, however obvious its likel
 `CONFLICT` is for a requirement whose evidence contradicts itself and needs correction rather
 than completion.
 
-The verdict is `CLEARED` when every requirement is `RESOLVED`, and `BLOCKED` otherwise. A
-`BLOCKED` verdict refuses publication, redistribution, and external contribution acceptance
-together; there is no partial release. The verdict is not written by hand: it is derived from the
-ledger, and `tests/publication/clearance.test.mjs` re-derives it and fails if the recorded
-verdict differs from the one the ledger implies.
+The verdict is `CLEARED` when every requirement is `RESOLVED`, and `BLOCKED` otherwise. The
+derived `permits_*` flags are all true only on `CLEARED`; a `BLOCKED` verdict is not a G4
+publication release, an npm publication, or an acceptance of external contributions. MIT is the
+outbound copyright grant and remains in force independently of that verdict. The verdict is not
+written by hand: it is derived from the ledger, and `tests/publication/clearance.test.mjs`
+re-derives it and fails if the recorded verdict differs from the one the ledger implies.
 
 The D0 minimum name clearance is a separate canonical-identity decision. It is an input here,
 cited by reference, and is neither repeated nor substituted.
@@ -29,16 +30,16 @@ cited by reference, and is neither repeated nor substituted.
 ```json
 {
   "version": 1,
-  "decided_at": "2026-08-19T06:20:42Z",
+  "decided_at": "2026-08-19T07:15:00Z",
   "name_clearance_reference": "docs/clearance/MINIMUM-NAME-CLEARANCE.md",
   "requirements": [
     {
       "id": "license",
       "title": "Outbound license",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "artifact": "LICENSE",
       "evidence": "Outbound license selection",
-      "reason": "No outbound open-source license has been selected. LICENSE states the reserved-rights default and points here. Selecting one is a reviewed maintainer decision that E14-001 forbids this lane from making."
+      "reason": "The repository owner and sole maintainer, MongLong0214, selected MIT as the outbound license. LICENSE carries the standard MIT text with the copyright line already used in this repository."
     },
     {
       "id": "contributor_terms",
@@ -51,10 +52,10 @@ cited by reference, and is neither repeated nor substituted.
     {
       "id": "redistribution",
       "title": "Redistribution conditions",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "artifact": "docs/decisions/PUBLICATION-CLEARANCE.md",
       "evidence": "Redistribution conditions review",
-      "reason": "The conditions are stated below as conditions still to be met. None of them is met, and no grant permits redistribution."
+      "reason": "MIT is the outbound grant. It permits use, copy, modification, publication, distribution, sublicensing, and sale, on the condition that the copyright notice and permission notice are included in all copies or substantial portions. That grant and that condition are in LICENSE, selected by the owner. This requirement does not authorize npm publication, a visibility change, or external contribution acceptance."
     },
     {
       "id": "third_party_notices",
@@ -88,18 +89,12 @@ cited by reference, and is neither repeated nor substituted.
 
 ```json
 {
-  "granted": false,
+  "granted": true,
   "conditions": [
-    "An outbound license is selected in a reviewed maintainer decision and its full text is placed in LICENSE.",
-    "Inbound contribution terms are fixed and stated in CONTRIBUTING.md.",
-    "THIRD_PARTY_NOTICES.md enumerates every redistributed third-party component at the exact head being published.",
-    "SECURITY.md names a reporting channel that has been confirmed to accept a report.",
-    "A formal publication and legal review is completed and recorded in docs/clearance/PUBLICATION-LEGAL-CLEARANCE.md.",
-    "The D0 minimum name clearance reports no status that blocks public canonical-brand adoption.",
-    "The G4 fail-closed checklist named by PRD E14 is run at the exact head being published."
+    "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
   ],
   "permits": {
-    "redistribution": false,
+    "redistribution": true,
     "external_contribution_acceptance": false,
     "npm_publication": false,
     "public_visibility_change": false
@@ -114,9 +109,7 @@ cited by reference, and is neither repeated nor substituted.
   "verdict": "BLOCKED",
   "blocked_by": [
     "contributor_terms",
-    "formal_publication_review",
-    "license",
-    "redistribution"
+    "formal_publication_review"
   ],
   "permits_publication": false,
   "permits_redistribution": false,
@@ -128,6 +121,7 @@ cited by reference, and is neither repeated nor substituted.
 
 It does not change repository visibility, publish a package, or authorize either. It states no
 opinion on trademark, license compatibility, or the legal identity of the copyright holder. It
-does not repeat or replace the D0 minimum name clearance. Two of its six requirements are
-`RESOLVED` on facts this repository carries; the other four are open, and each one of them is
-enough on its own to hold the verdict at `BLOCKED`.
+does not repeat or replace the D0 minimum name clearance. Four of its six requirements are
+`RESOLVED` (outbound license, redistribution, third-party notices, and security disclosure
+policy); the other two are open, and each one of them is enough on its own to hold the verdict
+at `BLOCKED`.

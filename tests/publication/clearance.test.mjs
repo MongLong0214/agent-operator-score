@@ -137,28 +137,30 @@ test("license", () => {
     "LICENSE does not name a copyright holder grounded in the repository of record"
   );
   assert.ok(
-    license.includes("No open-source license has been granted for this repository."),
-    "LICENSE does not state the outbound grant status"
+    license.includes("Permission is hereby granted, free of charge, to any person obtaining a copy"),
+    "LICENSE does not state the MIT grant"
   );
   assert.ok(
-    license.includes("All rights are reserved by the copyright holder."),
-    "LICENSE does not state the reserved-rights default"
+    license.includes("The above copyright notice and this permission notice shall be included in all"),
+    "LICENSE does not state the MIT notice condition"
   );
-  assert.ok(license.includes(DECISION_PATH), "LICENSE does not point at the clearance decision record");
+  assert.ok(
+    license.includes("THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR"),
+    "LICENSE does not state the MIT warranty disclaimer"
+  );
 
-  // Forbidden scope: choosing a license without review. A grant that appears here without the
-  // ledger recording a reviewed selection is exactly that.
+  // The owner selected MIT. A different OSI grant here would be a different decision.
+  assert.match(license, /Permission is hereby granted, free of charge/);
   for (const grant of [
-    /Permission is hereby granted, free of charge/,
     /Licensed under the Apache License/,
     /GNU GENERAL PUBLIC LICENSE/,
     /Mozilla Public License/,
     /Redistribution and use in source and binary forms/
   ]) {
-    assert.doesNotMatch(license, grant, "LICENSE carries an open-source grant that no reviewed selection authorizes");
+    assert.doesNotMatch(license, grant, "LICENSE carries a different open-source grant than the MIT selection");
   }
 
-  assertRequirement(decision, legal, "license", "UNRESOLVED", LICENSE_PATH);
+  assertRequirement(decision, legal, "license", "RESOLVED", LICENSE_PATH);
 });
 
 test("contributor", () => {
@@ -279,11 +281,11 @@ test("license-contribution-redistribution", () => {
   for (const id of ["license", "contributor_terms", "redistribution"]) {
     assert.ok(decision.byId.has(id), `${DECISION_PATH} ledger omits requirement ${id}`);
   }
-  assertRequirement(decision, legal, "redistribution", "UNRESOLVED", DECISION_PATH);
+  assertRequirement(decision, legal, "redistribution", "RESOLVED", DECISION_PATH);
 
   const redistribution = decision.blocks.get("Redistribution conditions");
   assert.ok(redistribution, `${DECISION_PATH} has no "Redistribution conditions" record`);
-  assert.equal(redistribution.granted, false, "redistribution is granted while its conditions are unresolved");
+  assert.equal(redistribution.granted, true, "MIT is in LICENSE yet the record does not grant redistribution");
   assert.ok(
     Array.isArray(redistribution.conditions) && redistribution.conditions.length > 0,
     "redistribution conditions are not defined"
@@ -291,22 +293,26 @@ test("license-contribution-redistribution", () => {
   for (const condition of redistribution.conditions) {
     assert.ok(typeof condition === "string" && condition.length > 0, "a redistribution condition is not stated");
   }
+  assert.ok(
+    redistribution.conditions.includes(
+      "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software."
+    ),
+    "the redistribution record does not state the MIT notice condition"
+  );
   assert.deepEqual(
     redistribution.permits,
     {
-      redistribution: false,
+      redistribution: true,
       external_contribution_acceptance: false,
       npm_publication: false,
       public_visibility_change: false
     },
-    "the redistribution record permits something its unresolved conditions do not authorize"
+    "the redistribution record permits something MIT does not grant, or withholds the MIT grant"
   );
 
   assert.ok(
-    license.includes(
-      "Until that record reports a CLEARED verdict, redistribution and external contribution acceptance are refused."
-    ),
-    "LICENSE does not carry the joint refusal the unresolved requirements imply"
+    license.includes("to use, copy, modify, merge, publish, distribute, sublicense, and/or sell"),
+    "LICENSE does not grant the MIT redistribution rights"
   );
 
   // The conjunction must propagate: one unresolved member of the trio is enough to block, and it
