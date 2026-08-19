@@ -1,0 +1,104 @@
+{
+  "seed": 20260805,
+  "policy_class": "reference_operator",
+  "thresholds": {
+    "median_minutes_max": 40,
+    "p90_minutes_max": 45,
+    "eligible_metrics_min": 14,
+    "primary_opportunities_per_scenario_max": 4
+  },
+  "scenarios": [
+    {
+      "scenario_id": "form-a-fam-1",
+      "family_id": "FAM-1",
+      "distribution": {
+        "kind": "triangular",
+        "low_minutes": 4,
+        "mode_minutes": 5,
+        "high_minutes": 6
+      },
+      "primary_opportunities": [
+        { "opportunity_id": "FAM1-OPP-M01", "metric_id": "M01" },
+        { "opportunity_id": "FAM1-OPP-M02", "metric_id": "M02" },
+        { "opportunity_id": "FAM1-OPP-M03", "metric_id": "M03" },
+        { "opportunity_id": "FAM1-OPP-M04", "metric_id": "M04" }
+      ]
+    },
+    {
+      "scenario_id": "form-a-fam-2",
+      "family_id": "FAM-2",
+      "distribution": {
+        "kind": "triangular",
+        "low_minutes": 5,
+        "mode_minutes": 6,
+        "high_minutes": 7
+      },
+      "primary_opportunities": [
+        { "opportunity_id": "FAM2-OPP-M05", "metric_id": "M05" },
+        { "opportunity_id": "FAM2-OPP-M06", "metric_id": "M06" },
+        { "opportunity_id": "FAM2-OPP-M07", "metric_id": "M07" }
+      ]
+    },
+    {
+      "scenario_id": "form-a-fam-3",
+      "family_id": "FAM-3",
+      "distribution": {
+        "kind": "triangular",
+        "low_minutes": 7,
+        "mode_minutes": 8,
+        "high_minutes": 9
+      },
+      "primary_opportunities": [
+        { "opportunity_id": "FAM3-OPP-M08", "metric_id": "M08" },
+        { "opportunity_id": "FAM3-OPP-M09", "metric_id": "M09" },
+        { "opportunity_id": "FAM3-OPP-M10", "metric_id": "M10" },
+        { "opportunity_id": "FAM3-OPP-M11", "metric_id": "M11" }
+      ]
+    },
+    {
+      "scenario_id": "form-a-fam-4",
+      "family_id": "FAM-4",
+      "distribution": {
+        "kind": "triangular",
+        "low_minutes": 6,
+        "mode_minutes": 7,
+        "high_minutes": 8
+      },
+      "primary_opportunities": [
+        { "opportunity_id": "FAM4-OPP-M12", "metric_id": "M12" },
+        { "opportunity_id": "FAM4-OPP-M13", "metric_id": "M13" },
+        { "opportunity_id": "FAM4-OPP-M14", "metric_id": "M14" }
+      ]
+    },
+    {
+      "scenario_id": "form-a-fam-5",
+      "family_id": "FAM-5",
+      "distribution": {
+        "kind": "triangular",
+        "low_minutes": 6,
+        "mode_minutes": 7,
+        "high_minutes": 8
+      },
+      "primary_opportunities": [
+        { "opportunity_id": "FAM5-OPP-M15", "metric_id": "M15" },
+        { "opportunity_id": "FAM5-OPP-M16", "metric_id": "M16" },
+        { "opportunity_id": "FAM5-OPP-M17", "metric_id": "M17" }
+      ]
+    },
+    {
+      "scenario_id": "form-a-fam-6",
+      "family_id": "FAM-6",
+      "distribution": {
+        "kind": "triangular",
+        "low_minutes": 6,
+        "mode_minutes": 7,
+        "high_minutes": 8
+      },
+      "primary_opportunities": [
+        { "opportunity_id": "FAM6-OPP-M18", "metric_id": "M18" },
+        { "opportunity_id": "FAM6-OPP-M19", "metric_id": "M19" },
+        { "opportunity_id": "FAM6-OPP-M20", "metric_id": "M20" }
+      ]
+    }
+  ]
+}
