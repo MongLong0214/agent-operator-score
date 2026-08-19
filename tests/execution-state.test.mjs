@@ -1474,6 +1474,168 @@ test("completion-merge-post-merge-ci-missing-fails-closed", async () => {
   assert.ok(blockerCodes(state).includes("POST_MERGE_CI_MISSING"));
 });
 
+// ---------------------------------------------------------------------------
+// Authenticated descendant CI as post-merge fallback (issue #283).
+//
+// Restoring Ticket-Completion: E8-004 onto PR #259 (merge 9f515bf) puts the
+// receipt back on the Form A work. Exact-SHA CI on that merge is permanently
+// queued, so the current exact-SHA-only rule would send the ticket back to
+// POST_MERGE_CI_MISSING. A later successful CI run whose head is authenticated
+// as merge <= head <= live tip is the accepted fallback. A sibling row that
+// merely appears in the same fixture is not a descendant.
+// ---------------------------------------------------------------------------
+
+const WEDGED_E8004_MERGE_SHA = "9f515bfa3a5b284e323baed08de166d88a8d7c88";
+const DESCENDANT_LIVE_TIP_SHA = "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1";
+const SIBLING_CI_SHA = "e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3";
+const AHEAD_OF_TIP_SHA = "f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4f4";
+const FORM_A_INTRODUCED_PATHS = [
+  "conformance/form-a/form-a.test.ts",
+  "packages/runner/src/assessment.ts",
+  "suites/coding-core-v0/form-a/manifest.json"
+];
+
+const makeRestoredWedgedCompletionFacts = ({
+  includeDescendantSuccess = true,
+  authenticateDescendant = true,
+  includeSiblingSuccess = false,
+  authenticateSibling = false,
+  descendantAheadOfTip = false,
+  exactStatus = "queued",
+  exactConclusion = null,
+  descendantConclusion = "success"
+} = {}) => {
+  const facts = makeReadyD0004Facts(loadBaselineFacts());
+  facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
+  facts.currentHead = DESCENDANT_LIVE_TIP_SHA;
+  facts.implementationMerges = [
+    withPresentEffect(
+      facts,
+      {
+        ticket_id: "D0-004",
+        merge_commit_sha: WEDGED_E8004_MERGE_SHA,
+        number: 259,
+        body: "Ticket: D0-004\nTicket-Completion: D0-004",
+        reachable: true
+      },
+      FORM_A_INTRODUCED_PATHS
+    )
+  ];
+  facts.postMergeCI.push({
+    merge_commit_sha: WEDGED_E8004_MERGE_SHA,
+    head_sha: WEDGED_E8004_MERGE_SHA,
+    status: exactStatus,
+    conclusion: exactConclusion,
+    run_id: 32213166652,
+    run_attempt: 1
+  });
+  facts.ancestry = {};
+  if (authenticateDescendant) {
+    facts.ancestry[`${DESCENDANT_LIVE_TIP_SHA}...${WEDGED_E8004_MERGE_SHA}`] = "behind";
+  }
+  if (includeDescendantSuccess) {
+    const descendantHead = descendantAheadOfTip ? AHEAD_OF_TIP_SHA : DESCENDANT_LIVE_TIP_SHA;
+    facts.postMergeCI.push({
+      merge_commit_sha: descendantHead,
+      head_sha: descendantHead,
+      status: "completed",
+      conclusion: descendantConclusion,
+      run_id: 33000000001,
+      run_attempt: 1
+    });
+    if (descendantAheadOfTip) {
+      facts.ancestry[`${WEDGED_E8004_MERGE_SHA}...${AHEAD_OF_TIP_SHA}`] = "ahead";
+      facts.ancestry[`${DESCENDANT_LIVE_TIP_SHA}...${AHEAD_OF_TIP_SHA}`] = "ahead";
+    }
+  }
+  if (includeSiblingSuccess) {
+    facts.postMergeCI.push({
+      merge_commit_sha: SIBLING_CI_SHA,
+      head_sha: SIBLING_CI_SHA,
+      status: "completed",
+      conclusion: "success",
+      run_id: 33000000002,
+      run_attempt: 1
+    });
+    if (authenticateSibling) {
+      facts.ancestry[`${DESCENDANT_LIVE_TIP_SHA}...${SIBLING_CI_SHA}`] = "behind";
+    }
+  }
+  return facts;
+};
+
+test("restored-completion-receipt-on-wedged-exact-sha-accepts-authenticated-descendant-ci", async () => {
+  // Restoring Ticket-Completion onto #259 while leaving the wedged exact-SHA run in
+  // place. A later CI success on the live tip, authenticated as merge <= tip, must
+  // satisfy post-merge CI so the restore does not return POST_MERGE_CI_MISSING.
+  const facts = makeRestoredWedgedCompletionFacts();
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(
+    state.phase,
+    "verified",
+    `authenticated descendant CI must verify the restored receipt, got phase=${state.phase} blockers=${blockerCodes(state).join(",") || "none"}`
+  );
+  assert.equal(state.readiness, "terminal");
+  assert.equal(blockerCodes(state).includes("POST_MERGE_CI_MISSING"), false);
+  assert.deepEqual(blockerCodes(state), []);
+});
+
+test("descendant-ci-unauthenticated-sibling-fails-closed", async () => {
+  // A successful CI row in the same fixture is not a descendant. Both SHAs can even
+  // be ancestors of the tip; without merge <= sibling the fallback must not fire.
+  const facts = makeRestoredWedgedCompletionFacts({
+    includeDescendantSuccess: false,
+    includeSiblingSuccess: true,
+    authenticateSibling: true
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified");
+  assert.ok(
+    blockerCodes(state).includes("POST_MERGE_CI_MISSING"),
+    `unauthenticated sibling must stay POST_MERGE_CI_MISSING, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+test("descendant-ci-ahead-of-live-tip-fails-closed", async () => {
+  // merge <= head is not enough. The run must also sit on the live line: head <= tip.
+  const facts = makeRestoredWedgedCompletionFacts({
+    descendantAheadOfTip: true
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified");
+  assert.ok(
+    blockerCodes(state).includes("POST_MERGE_CI_MISSING"),
+    `a head ahead of the live tip must stay POST_MERGE_CI_MISSING, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+test("exact-sha-post-merge-success-wins-over-descendant-failure", async () => {
+  const facts = makeRestoredWedgedCompletionFacts({
+    exactStatus: "completed",
+    exactConclusion: "success",
+    descendantConclusion: "failure"
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(state.phase, "verified");
+  assert.equal(state.readiness, "terminal");
+  assert.deepEqual(blockerCodes(state), []);
+});
+
+test("exact-sha-post-merge-failure-not-overridden-by-descendant-success", async () => {
+  const facts = makeRestoredWedgedCompletionFacts({
+    exactStatus: "completed",
+    exactConclusion: "failure"
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified");
+  assert.ok(blockerCodes(state).includes("POST_MERGE_CI_FAILED"));
+});
+
 test("completion-merge-post-merge-ci-failed-fails-closed", async () => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
@@ -2273,6 +2435,13 @@ function buildCollectorMergedSearchFixture(items) {
   // through resolveOneTicket's pre-ready-set path (guarded by `!pr`), not swallowed by
   // an in-flight candidate.
   responses[`${COLLECTOR_REPO_PATH}/pulls?state=open&base=dev&per_page=50`] = [];
+  // Completions without exact-SHA success now ask for live-tip CI. Default to an
+  // authenticated empty set so tests that do not model a descendant run fail closed
+  // at the resolver, not as a fixture-missing collection outage.
+  const tipRunsKey = `${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${COLLECTOR_DEV_TIP}&event=push&per_page=20`;
+  if (!Object.hasOwn(responses, tipRunsKey)) {
+    responses[tipRunsKey] = { total_count: 0, workflow_runs: [] };
+  }
   return responses;
 }
 
@@ -2564,6 +2733,130 @@ test("collector-level-latest-ci-attempt-failure-not-masked-by-earlier-success", 
   const d0004 = result.tickets["D0-004"];
   assert.notEqual(d0004.phase, "verified");
   assert.ok((d0004.blockers ?? []).map((b) => b.code).includes("POST_MERGE_CI_FAILED"));
+});
+
+test("collector-accepts-authenticated-live-tip-ci-when-exact-sha-is-wedged", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const mergeSha = WEDGED_E8004_MERGE_SHA;
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 259,
+      merge_commit_sha: mergeSha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      added_paths: FORM_A_INTRODUCED_PATHS,
+      runs: {
+        total_count: 1,
+        workflow_runs: [
+          {
+            id: 32213166652,
+            name: "CI",
+            path: ".github/workflows/ci.yml",
+            head_sha: mergeSha,
+            status: "queued",
+            conclusion: null,
+            run_attempt: 1
+          }
+        ]
+      }
+    }
+  ]);
+  responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${COLLECTOR_DEV_TIP}&event=push&per_page=20`] =
+    collectorSuccessRuns(COLLECTOR_DEV_TIP, 33000000001);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.equal(
+    collected.facts.ancestry?.[`${COLLECTOR_DEV_TIP}...${mergeSha}`],
+    "behind",
+    "collector must record the compare that authenticates merge <= live tip"
+  );
+  assert.ok(
+    (collected.facts.postMergeCI ?? []).some(
+      (row) =>
+        row.head_sha === COLLECTOR_DEV_TIP &&
+        row.status === "completed" &&
+        row.conclusion === "success"
+    ),
+    "collector must keep the authenticated live-tip CI success for the descendant fallback"
+  );
+  const result = await resolveCollectedOnline(collected);
+  const d0004 = result.tickets["D0-004"];
+  assert.equal(
+    d0004.phase,
+    "verified",
+    `live-tip descendant CI must verify the wedged completion, got phase=${d0004.phase} blockers=${(d0004.blockers ?? []).map((b) => b.code).join(",") || "none"}`
+  );
+});
+
+test("collector-does-not-fetch-live-tip-ci-when-exact-sha-succeeds", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 261,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      added_paths: ["docs/effect/261.md"],
+      runs: collectorSuccessRuns(sha, 261001)
+    }
+  ]);
+  delete responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${COLLECTOR_DEV_TIP}&event=push&per_page=20`];
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(
+    collected.ok,
+    true,
+    `exact-SHA success must not require a live-tip CI fetch: ${collected.reason}`
+  );
+});
+
+test("collector-does-not-treat-unauthenticated-sibling-ci-as-descendant", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const mergeSha = WEDGED_E8004_MERGE_SHA;
+  const siblingSha = SIBLING_CI_SHA;
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 259,
+      merge_commit_sha: mergeSha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      added_paths: FORM_A_INTRODUCED_PATHS,
+      runs: {
+        total_count: 1,
+        workflow_runs: [
+          {
+            id: 32213166652,
+            name: "CI",
+            path: ".github/workflows/ci.yml",
+            head_sha: mergeSha,
+            status: "queued",
+            conclusion: null,
+            run_attempt: 1
+          }
+        ]
+      }
+    },
+    {
+      number: 260,
+      merge_commit_sha: siblingSha,
+      body: "Ticket: D0-004\n\nplain contributing merge.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(siblingSha, 33000000002)
+    }
+  ]);
+  responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${COLLECTOR_DEV_TIP}&event=push&per_page=20`] = {
+    total_count: 0,
+    workflow_runs: []
+  };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const result = await resolveCollectedOnline(collected);
+  const d0004 = result.tickets["D0-004"];
+  assert.notEqual(d0004.phase, "verified");
+  assert.ok(
+    (d0004.blockers ?? []).map((b) => b.code).includes("POST_MERGE_CI_MISSING"),
+    `sibling CI without merge<=sibling must stay missing, got ${(d0004.blockers ?? []).map((b) => b.code).join(",") || "none"}`
+  );
 });
 
 test("post-c-technical-check-is-not-independent-approval", async () => {
