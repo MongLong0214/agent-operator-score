@@ -755,6 +755,39 @@ test("focused-lane-is-not-silently-empty", () => {
   );
 });
 
+// A conformance case that stubs the gate it is named for proves nothing. E14-003 shipped
+// `runG0: () => ({ ok: true, errors: [] })` on every passing case, so the slow path -- supported
+// Node, clean lockfile, pinned digest match, every family, killed mutants, formula vectors -- was
+// replaced by a two-key object literal, and a G4_PASS could be minted without any of it. The rule
+// is structural, so it lives with the other repository-shape cases rather than in one suite.
+//
+// Detected shape: an object-literal property whose name is `run<Capital>` bound to an arrow
+// function, inside a conformance test. Passing a real function by reference is untouched; only an
+// inline replacement of a gate is refused.
+const GATE_STUB_PATTERN = /(?:^|[\s{,])(run[A-Z]\w*)\s*:\s*(?:async\s*)?\(/;
+
+test("conformance-cases-do-not-stub-the-gate-they-are-named-for", () => {
+  const conformanceTests = walkFiles("conformance")
+    .filter((absolutePath) => absolutePath.endsWith(".test.ts") || absolutePath.endsWith(".test.mjs"))
+    .map(asRepositoryRelative)
+    .sort();
+  assert.ok(conformanceTests.length > 0, "no conformance tests found; the guard would be vacuous");
+
+  const offenders = [];
+  for (const path of conformanceTests) {
+    const lines = readRegularFile(path).split("\n");
+    lines.forEach((line, index) => {
+      const match = GATE_STUB_PATTERN.exec(line);
+      if (match) offenders.push(`${path}:${index + 1} ${match[1]}`);
+    });
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `a named conformance case must exercise the real gate, not an inline stub:\n  ${offenders.join("\n  ")}`
+  );
+});
+
 test("engine-matrix", () => {
   // Node 20 cannot execute TypeScript. Its test runner does not even discover a .ts test
   // file, so the schema package's cases were silently skipped there rather than failing.
