@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { execFile, execFileSync } from "node:child_process";
+import { existsSync, readFileSync, realpathSync, writeSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { validateArtifactManifestV3 as validateArtifactManifestV3Module } from "./validate-artifact-manifest.mjs";
 import { deriveGitHubAcceptance } from "./derive-github-acceptance.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const PHASES = new Set([
   "planned",
@@ -1996,10 +1999,14 @@ const GITHUB_ACTIONS_APP = { id: 15368, slug: "github-actions", owner: "github" 
  * authoritative fetch per search hit, plus one commit fetch per completion receipt, plus
  * one recursive tree listing. At 35 merged receipts a full run measured 89.5s against the
  * former 90s ceiling, so the budget was being hit by ordinary backlog growth rather than
- * by any outage. The remaining tickets roughly double that, which this headroom covers.
+ * by any outage. Raising the ceiling again would fail at the same place, later; independent
+ * reads run with bounded concurrency instead. The 300s budget stays as a fail-closed cap,
+ * not as the scaling lever.
  */
 const DEFAULT_PER_CALL_TIMEOUT_MS = 15_000;
 const DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS = 300_000;
+export const DEFAULT_COLLECTION_CONCURRENCY = 8;
+const GH_API_POOL_ENV = "AOS_GH_API_POOL";
 
 const timeoutError = (reason) => {
   const error = new Error(reason);
@@ -2021,6 +2028,218 @@ const sanitiseGhChildEnv = (source = process.env) => {
   return env;
 };
 
+export const isGitHubSecondaryRateLimit = (error) => {
+  if (!error) return false;
+  if (error.code === "SECONDARY_RATE_LIMIT") return true;
+  const blob = [error.message, error.stderr, error.stdout].map((value) => String(value ?? "")).join("\n");
+  const status = Number(error.status);
+  const http403 = status === 403 || /\bHTTP\s+403\b/i.test(blob);
+  return http403 && /secondary rate limit/i.test(blob);
+};
+
+const secondaryRateLimitError = (apiPath, error) => {
+  const wrapped = new Error(`GitHub secondary rate limit on ${apiPath}`);
+  wrapped.code = "SECONDARY_RATE_LIMIT";
+  wrapped.cause = error;
+  return wrapped;
+};
+
+const resolveCollectionConcurrency = (value) =>
+  Number.isInteger(value) && value > 0 ? value : DEFAULT_COLLECTION_CONCURRENCY;
+
+/**
+ * Run independent async work with a fixed in-flight cap. Result order matches input
+ * order. Any thrown mapper error stops launching further work (in-flight work still
+ * settles) and is rethrown as the lowest-index error. Per-item HTTP failures must be
+ * returned as values, not thrown, or they would abort the rest of a batch.
+ */
+export const mapWithBoundedConcurrency = async (items, concurrency, mapper) => {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new Error("collection concurrency must be a positive integer");
+  }
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const results = new Array(items.length);
+  const errors = new Array(items.length);
+  let nextIndex = 0;
+  let stopLaunching = false;
+  const runWorker = async () => {
+    while (true) {
+      if (stopLaunching) return;
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      try {
+        results[index] = await mapper(items[index], index);
+      } catch (error) {
+        errors[index] = error;
+        stopLaunching = true;
+      }
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker())
+  );
+  const firstError = errors.find((error) => error != null);
+  if (firstError) throw firstError;
+  return results;
+};
+
+const classifyGhExecError = (apiPath, error) => {
+  if (isGitHubSecondaryRateLimit(error)) {
+    throw secondaryRateLimitError(apiPath, error);
+  }
+  if (
+    error?.code === "ETIMEDOUT" ||
+    error?.killed === true ||
+    /ETIMEDOUT|timed out|TIMEOUT/i.test(String(error?.message ?? ""))
+  ) {
+    throw timeoutError(`per-call timeout for ${apiPath}`);
+  }
+  if (
+    error?.status === 404 ||
+    /\bHTTP\s+404\b/i.test(String(error?.stderr ?? error?.message ?? ""))
+  ) {
+    error.code = "AUTHENTICATED_NOT_FOUND";
+  }
+  return error;
+};
+
+const stdoutFromExecResult = (result) => {
+  if (typeof result === "string") return result;
+  if (result && typeof result.stdout === "string") return result.stdout;
+  return "";
+};
+
+export const executeGhApiPool = async (request, options = {}) => {
+  const execAsync = options.execFile ?? execFileAsync;
+  const calls = Array.isArray(request?.calls) ? request.calls : [];
+  const concurrency = resolveCollectionConcurrency(request?.concurrency);
+  const perCallTimeoutMs =
+    Number.isFinite(request?.perCallTimeoutMs) && request.perCallTimeoutMs > 0
+      ? request.perCallTimeoutMs
+      : DEFAULT_PER_CALL_TIMEOUT_MS;
+  const deadline = Number.isFinite(request?.deadline) ? request.deadline : Number.POSITIVE_INFINITY;
+  const root = request?.root;
+  return mapWithBoundedConcurrency(calls, concurrency, async (call) => {
+    const apiPath = call?.apiPath;
+    if (Date.now() > deadline) {
+      throw timeoutError(`collection total timeout exceeded before ${apiPath}`);
+    }
+    const remaining = deadline - Date.now();
+    const callTimeout = Math.max(1, Math.min(perCallTimeoutMs, remaining));
+    const args = ["api", apiPath];
+    if (call?.accept) args.push("-H", `Accept: ${call.accept}`);
+    try {
+      const raw = await execAsync("gh", args, {
+        cwd: root,
+        encoding: "utf8",
+        maxBuffer: 100 * 1024 * 1024,
+        timeout: callTimeout,
+        env: sanitiseGhChildEnv()
+      });
+      return { ok: true, raw: stdoutFromExecResult(raw) };
+    } catch (error) {
+      try {
+        classifyGhExecError(apiPath, error);
+      } catch (classified) {
+        throw classified;
+      }
+      return {
+        ok: false,
+        apiPath,
+        status: error?.status ?? null,
+        code: error?.code ?? null,
+        killed: error?.killed === true,
+        stderr: String(error?.stderr ?? ""),
+        message: String(error?.message ?? "")
+      };
+    }
+  });
+};
+
+const invokeGhApiPoolProcess = (calls, poolOptions) => {
+  if (typeof poolOptions.runMany === "function") {
+    return poolOptions.runMany(calls, poolOptions);
+  }
+  const payload = {
+    calls,
+    concurrency: poolOptions.concurrency,
+    perCallTimeoutMs: poolOptions.perCallTimeoutMs,
+    deadline: poolOptions.deadline,
+    root: poolOptions.root
+  };
+  const remaining = Math.max(1, poolOptions.deadline - Date.now());
+  let raw;
+  try {
+    raw = poolOptions.exec(
+      process.execPath,
+      [fileURLToPath(import.meta.url)],
+      {
+        input: JSON.stringify(payload),
+        encoding: "utf8",
+        cwd: poolOptions.root,
+        timeout: remaining,
+        maxBuffer: 100 * 1024 * 1024,
+        env: { ...sanitiseGhChildEnv(), [GH_API_POOL_ENV]: "1" }
+      }
+    );
+  } catch (error) {
+    if (isGitHubSecondaryRateLimit(error)) throw secondaryRateLimitError(calls[0]?.apiPath, error);
+    if (
+      error?.code === "ETIMEDOUT" ||
+      error?.killed === true ||
+      /ETIMEDOUT|timed out|TIMEOUT/i.test(String(error?.message ?? ""))
+    ) {
+      throw timeoutError(`collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`);
+    }
+    const stdout = String(error?.stdout ?? "");
+    if (stdout.trim()) raw = stdout;
+    else throw error;
+  }
+  const parsed = JSON.parse(raw);
+  if (parsed && parsed.ok === false) {
+    if (parsed.code === "SECONDARY_RATE_LIMIT") {
+      throw secondaryRateLimitError(parsed.apiPath ?? calls[0]?.apiPath, parsed);
+    }
+    if (parsed.code === "COLLECTION_TIMEOUT") {
+      throw timeoutError(parsed.reason ?? `collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`);
+    }
+    throw new Error(parsed.reason ?? "gh api pool failed");
+  }
+  if (!Array.isArray(parsed) || parsed.length !== calls.length) {
+    throw new Error("gh api pool returned a length-mismatched payload");
+  }
+  return parsed;
+};
+
+const writePoolStdout = (value) => {
+  // writeSync: process.stdout.write of a large JSON payload plus process.exit
+  // truncates at the ~64KiB pipe buffer and the parent then reports a SyntaxError.
+  writeSync(1, JSON.stringify(value));
+};
+
+const runGhApiPoolWorker = async () => {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  const request = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  try {
+    const results = await executeGhApiPool(request);
+    writePoolStdout(results);
+  } catch (error) {
+    writePoolStdout({
+      ok: false,
+      code:
+        error?.code === "SECONDARY_RATE_LIMIT"
+          ? "SECONDARY_RATE_LIMIT"
+          : error?.code === "COLLECTION_TIMEOUT"
+            ? "COLLECTION_TIMEOUT"
+            : "POOL_FAILURE",
+      reason: error?.message ?? "gh api pool failed",
+      apiPath: error?.cause?.apiPath ?? request?.calls?.[0]?.apiPath ?? null
+    });
+  }
+};
+
 /**
  * Authenticated read-only GitHub transport used by the live collector.
  * Performs zero repository writes. Callers may inject a fixture transport.
@@ -2036,6 +2255,7 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
     Number.isFinite(options.totalTimeoutMs) && options.totalTimeoutMs > 0
       ? options.totalTimeoutMs
       : DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS;
+  const concurrency = resolveCollectionConcurrency(options.concurrency);
   const deadline = Date.now() + totalTimeoutMs;
   const ghApi = (apiPath, { accept } = {}) => {
     if (Date.now() > deadline) {
@@ -2050,37 +2270,121 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
         cwd: root,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
-        maxBuffer: 20 * 1024 * 1024,
+        maxBuffer: 100 * 1024 * 1024,
         timeout: callTimeout,
         env: sanitiseGhChildEnv()
       });
       return raw;
     } catch (error) {
-      if (
-        error?.code === "ETIMEDOUT" ||
-        error?.killed === true ||
-        /ETIMEDOUT|timed out|TIMEOUT/i.test(String(error?.message ?? ""))
-      ) {
-        throw timeoutError(`per-call timeout for ${apiPath}`);
-      }
-      if (
-        error?.status === 404 ||
-        /\bHTTP\s+404\b/i.test(String(error?.stderr ?? error?.message ?? ""))
-      ) {
-        error.code = "AUTHENTICATED_NOT_FOUND";
-      }
+      classifyGhExecError(apiPath, error);
       throw error;
     }
+  };
+  const ghApiMany = (calls) => {
+    if (Date.now() > deadline) {
+      throw timeoutError(`collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`);
+    }
+    return invokeGhApiPoolProcess(calls, {
+      exec,
+      runMany: options.runMany,
+      concurrency,
+      perCallTimeoutMs,
+      deadline,
+      root
+    });
+  };
+  const poolErrorToTransport = (apiPath, entry) => {
+    const error = new Error(entry?.message || `unavailable external response for ${apiPath}`);
+    error.code = entry?.code ?? null;
+    error.status = entry?.status ?? null;
+    error.killed = entry?.killed === true;
+    error.stderr = entry?.stderr ?? "";
+    try {
+      classifyGhExecError(apiPath, error);
+    } catch (classified) {
+      throw classified;
+    }
+    return error;
   };
   return {
     kind: "github-authenticated",
     perCallTimeoutMs,
     totalTimeoutMs,
+    concurrency,
     getJson(apiPath) {
       return JSON.parse(ghApi(apiPath));
     },
     getRaw(apiPath) {
       return ghApi(apiPath, { accept: "application/vnd.github.raw" });
+    },
+    getJsonMany(apiPaths) {
+      if (!Array.isArray(apiPaths) || apiPaths.length === 0) return [];
+      const rawResults = ghApiMany(apiPaths.map((apiPath) => ({ apiPath })));
+      return rawResults.map((entry, index) => {
+        const apiPath = apiPaths[index];
+        if (!entry?.ok) {
+          const error = poolErrorToTransport(apiPath, entry ?? {});
+          if (
+            error?.code === "COLLECTION_TIMEOUT" ||
+            error?.code === "ETIMEDOUT" ||
+            error?.killed === true ||
+            /timeout/i.test(String(error?.message ?? ""))
+          ) {
+            return {
+              ok: false,
+              reason: `EXTERNAL_STATE_UNAVAILABLE: collection timeout for ${apiPath}`,
+              error,
+              timeout: true
+            };
+          }
+          if (error instanceof SyntaxError) {
+            return { ok: false, reason: `unparseable transport response for ${apiPath}`, error };
+          }
+          return {
+            ok: false,
+            reason: error?.code === "FIXTURE_AMBIGUOUS"
+              ? `ambiguous external response for ${apiPath}`
+              : `unavailable external response for ${apiPath}`,
+            error
+          };
+        }
+        try {
+          return { ok: true, value: JSON.parse(entry.raw) };
+        } catch (error) {
+          return { ok: false, reason: `unparseable transport response for ${apiPath}`, error };
+        }
+      });
+    },
+    getRawMany(apiPaths) {
+      if (!Array.isArray(apiPaths) || apiPaths.length === 0) return [];
+      const rawResults = ghApiMany(
+        apiPaths.map((apiPath) => ({ apiPath, accept: "application/vnd.github.raw" }))
+      );
+      return rawResults.map((entry, index) => {
+        const apiPath = apiPaths[index];
+        if (!entry?.ok) {
+          const error = poolErrorToTransport(apiPath, entry ?? {});
+          if (
+            error?.code === "COLLECTION_TIMEOUT" ||
+            error?.code === "ETIMEDOUT" ||
+            error?.killed === true ||
+            /timeout/i.test(String(error?.message ?? ""))
+          ) {
+            return {
+              ok: false,
+              reason: `EXTERNAL_STATE_UNAVAILABLE: collection timeout for ${apiPath}`,
+              error,
+              timeout: true
+            };
+          }
+          return {
+            ok: false,
+            reason: `unavailable external response for ${apiPath}`,
+            error
+          };
+        }
+        return { ok: true, value: entry.raw };
+      });
     }
   };
 };
@@ -2097,10 +2401,11 @@ const withCollectionTimeouts = (transport, options = {}) => {
     }
     return transport[method](apiPath);
   };
-  return {
+  const wrapped = {
     kind: transport.kind,
     perCallTimeoutMs: transport.perCallTimeoutMs ?? options.perCallTimeoutMs ?? DEFAULT_PER_CALL_TIMEOUT_MS,
     totalTimeoutMs,
+    concurrency: resolveCollectionConcurrency(options.concurrency ?? transport.concurrency),
     getJson(apiPath) {
       return guard("getJson", apiPath);
     },
@@ -2108,6 +2413,23 @@ const withCollectionTimeouts = (transport, options = {}) => {
       return guard("getRaw", apiPath);
     }
   };
+  if (typeof transport.getJsonMany === "function") {
+    wrapped.getJsonMany = (apiPaths) => {
+      if (Date.now() > deadline) {
+        throw timeoutError(`collection total timeout exceeded before ${apiPaths[0] ?? "batch"}`);
+      }
+      return transport.getJsonMany(apiPaths);
+    };
+  }
+  if (typeof transport.getRawMany === "function") {
+    wrapped.getRawMany = (apiPaths) => {
+      if (Date.now() > deadline) {
+        throw timeoutError(`collection total timeout exceeded before ${apiPaths[0] ?? "batch"}`);
+      }
+      return transport.getRawMany(apiPaths);
+    };
+  }
+  return wrapped;
 };
 
 const extractMarkdownSection = (markdown, heading) => {
@@ -2490,38 +2812,121 @@ export const createFixtureTransport = (responses) => {
   };
 };
 
+const transportFailureFromError = (error, apiPath) => {
+  if (error?.code === "SECONDARY_RATE_LIMIT" || isGitHubSecondaryRateLimit(error)) {
+    return {
+      ok: false,
+      reason: `EXTERNAL_STATE_UNAVAILABLE: GitHub secondary rate limit for ${apiPath}`,
+      error,
+      secondaryRateLimit: true
+    };
+  }
+  if (
+    error?.code === "COLLECTION_TIMEOUT" ||
+    error?.code === "ETIMEDOUT" ||
+    error?.killed === true ||
+    /timeout/i.test(String(error?.message ?? ""))
+  ) {
+    return {
+      ok: false,
+      reason: `EXTERNAL_STATE_UNAVAILABLE: collection timeout for ${apiPath}`,
+      error,
+      timeout: true
+    };
+  }
+  if (error instanceof SyntaxError) {
+    return {
+      ok: false,
+      reason: `unparseable transport response for ${apiPath}`,
+      error
+    };
+  }
+  return {
+    ok: false,
+    reason: error?.code === "FIXTURE_AMBIGUOUS"
+      ? `ambiguous external response for ${apiPath}`
+      : `unavailable external response for ${apiPath}`,
+    error
+  };
+};
+
 const transportCall = (transport, method, apiPath) => {
   try {
     return { ok: true, value: transport[method](apiPath) };
   } catch (error) {
-    if (
-      error?.code === "COLLECTION_TIMEOUT" ||
-      error?.code === "ETIMEDOUT" ||
-      error?.killed === true ||
-      /timeout/i.test(String(error?.message ?? ""))
-    ) {
-      return {
-        ok: false,
-        reason: `EXTERNAL_STATE_UNAVAILABLE: collection timeout for ${apiPath}`,
-        error,
-        timeout: true
-      };
-    }
-    if (error instanceof SyntaxError) {
-      return {
-        ok: false,
-        reason: `unparseable transport response for ${apiPath}`,
-        error
-      };
-    }
-    return {
-      ok: false,
-      reason: error?.code === "FIXTURE_AMBIGUOUS"
-        ? `ambiguous external response for ${apiPath}`
-        : `unavailable external response for ${apiPath}`,
-      error
-    };
+    return transportFailureFromError(error, apiPath);
   }
+};
+
+const callJsonMany = (transport, apiPaths) => {
+  if (!Array.isArray(apiPaths) || apiPaths.length === 0) return [];
+  if (typeof transport.getJsonMany === "function") {
+    try {
+      const results = transport.getJsonMany(apiPaths);
+      if (!Array.isArray(results) || results.length !== apiPaths.length) {
+        return apiPaths.map((apiPath) => ({
+          ok: false,
+          reason: `unavailable external response for ${apiPath}`
+        }));
+      }
+      return results.map((result, index) => {
+        if (result?.ok === true) return result;
+        if (result?.ok === false) return result;
+        return { ok: false, reason: `unavailable external response for ${apiPaths[index]}` };
+      });
+    } catch (error) {
+      const mapped = transportFailureFromError(error, apiPaths[0]);
+      return apiPaths.map((apiPath) =>
+        apiPath === apiPaths[0] ? mapped : transportFailureFromError(error, apiPath)
+      );
+    }
+  }
+  return apiPaths.map((apiPath) => transportCall(transport, "getJson", apiPath));
+};
+
+const callRawMany = (transport, apiPaths) => {
+  if (!Array.isArray(apiPaths) || apiPaths.length === 0) return [];
+  if (typeof transport.getRawMany === "function") {
+    try {
+      const results = transport.getRawMany(apiPaths);
+      if (!Array.isArray(results) || results.length !== apiPaths.length) {
+        return apiPaths.map((apiPath) => ({
+          ok: false,
+          reason: `unavailable external response for ${apiPath}`
+        }));
+      }
+      return results.map((result, index) => {
+        if (result?.ok === true) return result;
+        if (result?.ok === false) return result;
+        return { ok: false, reason: `unavailable external response for ${apiPaths[index]}` };
+      });
+    } catch (error) {
+      return apiPaths.map((apiPath) => transportFailureFromError(error, apiPath));
+    }
+  }
+  return apiPaths.map((apiPath) => transportCall(transport, "getRaw", apiPath));
+};
+
+const requireJsonMany = (transport, apiPaths, failures) => {
+  const results = callJsonMany(transport, apiPaths);
+  const fatal = results.find((result) => result?.secondaryRateLimit || result?.timeout);
+  if (fatal) failures.push(fatal.reason);
+  return results.map((result, index) => {
+    if (result?.ok) return result.value;
+    if (!fatal) failures.push(result?.reason ?? `unavailable external response for ${apiPaths[index]}`);
+    return null;
+  });
+};
+
+const requireRawMany = (transport, apiPaths, failures) => {
+  const results = callRawMany(transport, apiPaths);
+  const fatal = results.find((result) => result?.secondaryRateLimit || result?.timeout);
+  if (fatal) failures.push(fatal.reason);
+  return results.map((result, index) => {
+    if (result?.ok) return result.value;
+    if (!fatal) failures.push(result?.reason ?? `unavailable external response for ${apiPaths[index]}`);
+    return null;
+  });
 };
 
 /**
@@ -2532,6 +2937,14 @@ const transportCall = (transport, method, apiPath) => {
  * lets a non-ancestor commit pass the protected check. Any compare outage or an
  * unrecognized compare status fails closed (never reachable, never a silent pass).
  */
+const interpretGitHubCompareStatus = (status) => {
+  // GitHub compare(base=dev, head=workflowSha): "behind"/"identical" means workflowSha is
+  // an ancestor of (or equal to) dev; "ahead"/"diverged" means it is not reachable from dev.
+  if (status === "identical" || status === "behind") return { ok: true, reachable: true, status };
+  if (status === "ahead" || status === "diverged") return { ok: true, reachable: false, status };
+  return { ok: false, reachable: false, reason: `unrecognized workflow ancestry compare status ${String(status)}` };
+};
+
 export const verifyWorkflowShaReachableFromDev = (transport, repoPath, devSha, workflowSha) => {
   if (typeof workflowSha !== "string" || !/^[0-9a-f]{40}$/i.test(workflowSha)) {
     return { ok: true, reachable: false };
@@ -2544,12 +2957,45 @@ export const verifyWorkflowShaReachableFromDev = (transport, repoPath, devSha, w
   if (!result.ok) {
     return { ok: false, reachable: false, reason: result.reason || "workflow ancestry compare unavailable" };
   }
-  const status = result.value?.status;
-  // GitHub compare(base=dev, head=workflowSha): "behind"/"identical" means workflowSha is
-  // an ancestor of (or equal to) dev; "ahead"/"diverged" means it is not reachable from dev.
-  if (status === "identical" || status === "behind") return { ok: true, reachable: true, status };
-  if (status === "ahead" || status === "diverged") return { ok: true, reachable: false, status };
-  return { ok: false, reachable: false, reason: `unrecognized workflow ancestry compare status ${String(status)}` };
+  return interpretGitHubCompareStatus(result.value?.status);
+};
+
+const resolveAncestryMany = (transport, repoPath, liveTip, shas, failures) => {
+  const results = new Array(shas.length);
+  const pendingIndexes = [];
+  const pendingPaths = [];
+  for (let i = 0; i < shas.length; i += 1) {
+    const sha = shas[i];
+    if (typeof sha !== "string" || !/^[0-9a-f]{40}$/i.test(sha)) {
+      results[i] = { ok: true, reachable: false };
+      continue;
+    }
+    if (typeof liveTip !== "string" || !/^[0-9a-f]{40}$/i.test(liveTip)) {
+      results[i] = { ok: false, reachable: false, reason: "missing live dev tip SHA for workflow ancestry check" };
+      continue;
+    }
+    if (sha === liveTip) {
+      results[i] = { ok: true, reachable: true, status: "identical" };
+      continue;
+    }
+    pendingIndexes.push(i);
+    pendingPaths.push(`${repoPath}/compare/${liveTip}...${sha}`);
+  }
+  const payloads = requireJsonMany(transport, pendingPaths, failures);
+  for (let j = 0; j < pendingIndexes.length; j += 1) {
+    const i = pendingIndexes[j];
+    const payload = payloads[j];
+    if (!payload) {
+      results[i] = {
+        ok: false,
+        reachable: false,
+        reason: failures.at(-1) || "workflow ancestry compare unavailable"
+      };
+      continue;
+    }
+    results[i] = interpretGitHubCompareStatus(payload.status);
+  }
+  return results;
 };
 
 const isAuthenticatedNotFound = (result) =>
@@ -2908,7 +3354,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   const failures = [];
   const timeoutOptions = {
     perCallTimeoutMs: options.perCallTimeoutMs,
-    totalTimeoutMs: options.totalTimeoutMs
+    totalTimeoutMs: options.totalTimeoutMs,
+    concurrency: options.concurrency
   };
   const baseTransport =
     options.transport ??
@@ -2939,9 +3386,33 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     return { ok: false, reason: "live target tip SHA unavailable", facts: null };
   }
 
+  const liveFileTexts = {};
   const readTipFile = (path) => {
+    if (Object.hasOwn(liveFileTexts, path)) return liveFileTexts[path];
     const api = `${repoPath}/contents/${path}?ref=${liveTip}`;
-    return requireRaw(transport, api, failures);
+    const text = requireRaw(transport, api, failures);
+    if (text != null) liveFileTexts[path] = text;
+    return text;
+  };
+  const readTipFiles = (paths) => {
+    const unique = [];
+    const seen = new Set();
+    for (const path of paths) {
+      if (!path || seen.has(path) || Object.hasOwn(liveFileTexts, path)) continue;
+      seen.add(path);
+      unique.push(path);
+    }
+    if (unique.length) {
+      const texts = requireRawMany(
+        transport,
+        unique.map((path) => `${repoPath}/contents/${path}?ref=${liveTip}`),
+        failures
+      );
+      for (let i = 0; i < unique.length; i += 1) {
+        if (texts[i] != null) liveFileTexts[unique[i]] = texts[i];
+      }
+    }
+    return paths.map((path) => (path && Object.hasOwn(liveFileTexts, path) ? liveFileTexts[path] : null));
   };
 
   const registryText = readTipFile("docs/decisions/maintainer-gate-registry.v2.json");
@@ -2972,14 +3443,6 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   }
 
   const liveDigests = {};
-  const digestFile = (path) => {
-    if (liveDigests[path]) return liveDigests[path];
-    const text = readTipFile(path);
-    if (text == null) return null;
-    const digest = sha256Text(text);
-    liveDigests[path] = digest;
-    return digest;
-  };
 
   // Authority paths: TRACEABILITY catalog + tickets + owning PRDs + ADR corpus from INDEX.
   const authorityPaths = new Set();
@@ -3005,10 +3468,15 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   for (const match of adrIndexText.matchAll(/\]\((ADR-\d{4}-[^)\s]+\.md)\)/g)) {
     authorityPaths.add(`docs/adr/${match[1]}`);
   }
-  for (const path of authorityPaths) {
-    if (!digestFile(path)) {
+  const authorityList = [...authorityPaths];
+  const authorityTexts = readTipFiles(authorityList);
+  for (let i = 0; i < authorityList.length; i += 1) {
+    const path = authorityList[i];
+    const text = authorityTexts[i];
+    if (text == null) {
       return { ok: false, reason: failures.join("; ") || `live digest unavailable for ${path}`, facts: null };
     }
+    liveDigests[path] = sha256Text(text);
   }
 
   const tickets = {};
@@ -3093,9 +3561,11 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     };
   }
   const d0_004c_merged_early = opsWorkflowProbe.ok;
-  for (const [ticketId, ticket] of Object.entries(tickets)) {
-    if (ticket.kind !== "executable") continue;
-    const ticketBody = readTipFile(ticket.ticket_path);
+  const executableTickets = Object.entries(tickets).filter(([, ticket]) => ticket.kind === "executable");
+  const executableBodies = readTipFiles(executableTickets.map(([, ticket]) => ticket.ticket_path));
+  for (let i = 0; i < executableTickets.length; i += 1) {
+    const [ticketId, ticket] = executableTickets[i];
+    const ticketBody = executableBodies[i];
     if (ticketBody == null) {
       return {
         ok: false,
@@ -3165,6 +3635,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
 
   const receiptsByBatchId = new Map();
   const seenCorpusPr = new Set();
+  const corpusNumbers = [];
   for (const item of gateSearchItems) {
     // Search is token-based, not a structured-field match. A hyphen-delimited
     // id whose tokens are a proper prefix of another id, or unrelated prose
@@ -3178,7 +3649,16 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     }
     if (seenCorpusPr.has(number)) continue;
     seenCorpusPr.add(number);
-    const pull = requireJson(transport, `${repoPath}/pulls/${number}`, failures);
+    corpusNumbers.push(number);
+  }
+  const corpusPulls = requireJsonMany(
+    transport,
+    corpusNumbers.map((number) => `${repoPath}/pulls/${number}`),
+    failures
+  );
+  for (let i = 0; i < corpusNumbers.length; i += 1) {
+    const number = corpusNumbers[i];
+    const pull = corpusPulls[i];
     if (!pull) return { ok: false, reason: failures.join("; "), facts: null };
     const claimedId = parseGateBatchFromBody(pull.body);
     if (!claimedId) continue;
@@ -3187,6 +3667,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     receiptsByBatchId.set(claimedId, claimed);
   }
 
+  const selectedGates = [];
   for (const batch of gateBatches) {
     const exactMatches = receiptsByBatchId.get(batch.id) ?? [];
     if (exactMatches.length === 0) {
@@ -3211,11 +3692,19 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!gateHeadSha || !/^[0-9a-f]{40}$/i.test(gateHeadSha)) {
       return { ok: false, reason: `gate PR #${number} missing head SHA`, facts: null };
     }
-    const registryAtHead = requireRaw(
-      transport,
-      `${repoPath}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${gateHeadSha}`,
-      failures
-    );
+    seenGatePr.add(number);
+    selectedGates.push({ batch, number, pull, gateHeadSha });
+  }
+  const gateRegistryTexts = requireRawMany(
+    transport,
+    selectedGates.map(
+      (entry) => `${repoPath}/contents/docs/decisions/maintainer-gate-registry.v2.json?ref=${entry.gateHeadSha}`
+    ),
+    failures
+  );
+  for (let i = 0; i < selectedGates.length; i += 1) {
+    const { batch, number, gateHeadSha } = selectedGates[i];
+    const registryAtHead = gateRegistryTexts[i];
     if (registryAtHead == null) {
       return {
         ok: false,
@@ -3230,7 +3719,16 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         facts: null
       };
     }
-    seenGatePr.add(number);
+  }
+  const gateRunPayloads = requireJsonMany(
+    transport,
+    selectedGates.map(
+      (entry) => `${repoPath}/actions/runs?head_sha=${entry.pull.merge_commit_sha}&event=push&per_page=20`
+    ),
+    failures
+  );
+  for (let i = 0; i < selectedGates.length; i += 1) {
+    const { number, pull, gateHeadSha } = selectedGates[i];
     gatePRs.push({
       number,
       base: pull.base.ref,
@@ -3243,11 +3741,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       head_contains_batch: true
     });
 
-    const runs = requireJson(
-      transport,
-      `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
-      failures
-    );
+    const runs = gateRunPayloads[i];
     if (
       !runs ||
       rejectPartialCountPayload(
@@ -3851,6 +4345,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   if (!mergedSearchItems) {
     return { ok: false, reason: failures.join("; ") || "merged PR search unavailable", facts: null };
   }
+  const mergedCandidates = [];
   for (const item of mergedSearchItems) {
     // Three distinct cases, and conflating any two of them is a fail-closed violation:
     //
@@ -3870,8 +4365,17 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // exhausted. A missing or non-string search body is absence of evidence rather than
     // evidence of absence, so it falls through to the authoritative per-PR fetch.
     if (typeof item.body === "string" && !declaresTicketLinkage(item.body)) continue;
-
-    const pull = requireJson(transport, `${repoPath}/pulls/${item.number}`, failures);
+    mergedCandidates.push(item);
+  }
+  const mergedPulls = requireJsonMany(
+    transport,
+    mergedCandidates.map((item) => `${repoPath}/pulls/${item.number}`),
+    failures
+  );
+  const linkedMerged = [];
+  for (let i = 0; i < mergedCandidates.length; i += 1) {
+    const item = mergedCandidates[i];
+    const pull = mergedPulls[i];
     if (!pull?.merged || !pull.merge_commit_sha) continue;
     const body = typeof pull.body === "string" ? pull.body : "";
     if (!declaresTicketLinkage(body)) continue;
@@ -3887,24 +4391,58 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     }
     const ticketId = ticketLines[0][1];
     if (!tickets[ticketId]) continue;
-    // Authenticate the merge commit as reachable from (an ancestor of, or equal to) the
-    // live target branch before trusting it as a candidate completion merge; an outage or
-    // unrecognized compare status fails the whole collection closed rather than leaving
-    // `reachable` unpopulated (which the resolver would otherwise treat as fail-open).
-    const ancestry = verifyWorkflowShaReachableFromDev(transport, repoPath, liveTip, pull.merge_commit_sha);
-    if (!ancestry.ok) {
+    linkedMerged.push({ item, pull, ticketId });
+  }
+  const ancestries = resolveAncestryMany(
+    transport,
+    repoPath,
+    liveTip,
+    linkedMerged.map((entry) => entry.pull.merge_commit_sha),
+    failures
+  );
+  for (let i = 0; i < linkedMerged.length; i += 1) {
+    const { pull } = linkedMerged[i];
+    const ancestry = ancestries[i];
+    if (!ancestry?.ok) {
       return {
         ok: false,
-        reason: ancestry.reason || `implementation merge ancestry unavailable for #${pull.number}`,
+        reason: ancestry?.reason || `implementation merge ancestry unavailable for #${pull.number}`,
         facts: null
       };
     }
     recordAncestryCompare(ancestryFacts, liveTip, pull.merge_commit_sha, ancestry.status);
-    const runs = requireJson(
-      transport,
-      `${repoPath}/actions/runs?head_sha=${pull.merge_commit_sha}&event=push&per_page=20`,
-      failures
-    );
+    linkedMerged[i].ancestry = ancestry;
+  }
+  const mergedRunPayloads = requireJsonMany(
+    transport,
+    linkedMerged.map(
+      (entry) => `${repoPath}/actions/runs?head_sha=${entry.pull.merge_commit_sha}&event=push&per_page=20`
+    ),
+    failures
+  );
+  const completionIndexes = [];
+  for (let i = 0; i < linkedMerged.length; i += 1) {
+    const { pull, ticketId } = linkedMerged[i];
+    const isCompletionReceipt =
+      classifyCompletionMerge(pull.body ?? "", ticketId).isCompletion ||
+      isLegacyCompletionBinding(ticketId, { number: pull.number, merge_commit_sha: pull.merge_commit_sha });
+    linkedMerged[i].isCompletionReceipt = isCompletionReceipt;
+    if (isCompletionReceipt) completionIndexes.push(i);
+  }
+  const completionCommits = requireJsonMany(
+    transport,
+    completionIndexes.map(
+      (index) => `${repoPath}/commits/${linkedMerged[index].pull.merge_commit_sha}`
+    ),
+    failures
+  );
+  const commitsByLinkedIndex = new Map();
+  for (let j = 0; j < completionIndexes.length; j += 1) {
+    commitsByLinkedIndex.set(completionIndexes[j], completionCommits[j]);
+  }
+  for (let i = 0; i < linkedMerged.length; i += 1) {
+    const { item, pull, ticketId, ancestry, isCompletionReceipt } = linkedMerged[i];
+    const runs = mergedRunPayloads[i];
     if (
       !runs ||
       rejectPartialCountPayload(
@@ -3937,11 +4475,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // tree. Record what the completion introduced so the resolver can require it to still
     // be there. Only completion-marked merges pay for the extra request.
     let addedPaths = null;
-    const isCompletionReceipt =
-      classifyCompletionMerge(pull.body ?? "", ticketId).isCompletion ||
-      isLegacyCompletionBinding(ticketId, { number: pull.number, merge_commit_sha: pull.merge_commit_sha });
     if (isCompletionReceipt) {
-      const commit = requireJson(transport, `${repoPath}/commits/${pull.merge_commit_sha}`, failures);
+      const commit = commitsByLinkedIndex.get(i);
       if (!commit || !Array.isArray(commit.files)) {
         return {
           ok: false,
@@ -4116,7 +4651,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       live_tip: liveTip,
       write_actions: 0,
       per_call_timeout_ms: transport.perCallTimeoutMs ?? DEFAULT_PER_CALL_TIMEOUT_MS,
-      total_timeout_ms: transport.totalTimeoutMs ?? DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS
+      total_timeout_ms: transport.totalTimeoutMs ?? DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS,
+      concurrency: transport.concurrency ?? DEFAULT_COLLECTION_CONCURRENCY
     }
   };
 
@@ -4498,7 +5034,17 @@ const main = () => {
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main();
+  if (process.env[GH_API_POOL_ENV] === "1") {
+    runGhApiPoolWorker().then(
+      () => process.exit(process.exitCode ?? 0),
+      (error) => {
+        process.stderr.write(String(error?.stack ?? error));
+        process.exit(1);
+      }
+    );
+  } else {
+    main();
+  }
 }
 
 // Silence unused import warning patterns for path helpers used by CLI consumers.
