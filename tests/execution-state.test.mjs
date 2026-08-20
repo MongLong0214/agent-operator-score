@@ -4324,6 +4324,271 @@ test("live-collector-enforces-per-call-and-total-timeouts", async () => {
   assert.match(total.reason, /timeout|unavailable/i);
 });
 
+test("github-secondary-rate-limit-detector-requires-403-and-message", async () => {
+  const { isGitHubSecondaryRateLimit } = await importResolver();
+  assert.equal(typeof isGitHubSecondaryRateLimit, "function");
+  const secondary403 = new Error("gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. (HTTP 403)");
+  secondary403.status = 1;
+  secondary403.stderr = "gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. (HTTP 403)";
+  assert.equal(isGitHubSecondaryRateLimit(secondary403), true);
+
+  const forbidden403 = new Error("gh: Resource not accessible by integration (HTTP 403)");
+  forbidden403.status = 1;
+  forbidden403.stderr = "gh: Resource not accessible by integration (HTTP 403)";
+  assert.equal(isGitHubSecondaryRateLimit(forbidden403), false);
+
+  const spoofed200 = new Error("You have exceeded a secondary rate limit");
+  spoofed200.status = 0;
+  spoofed200.stderr = "You have exceeded a secondary rate limit";
+  assert.equal(isGitHubSecondaryRateLimit(spoofed200), false);
+});
+
+test("collection-concurrency-mapper-preserves-order-and-caps-in-flight", async () => {
+  const { mapWithBoundedConcurrency, DEFAULT_COLLECTION_CONCURRENCY } = await importResolver();
+  assert.equal(DEFAULT_COLLECTION_CONCURRENCY, 8);
+  assert.ok(DEFAULT_COLLECTION_CONCURRENCY > 1);
+
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const results = await mapWithBoundedConcurrency(items, 4, async (value) => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    inFlight -= 1;
+    return value * 10;
+  });
+  assert.deepEqual(results, items.map((value) => value * 10));
+  assert.equal(maxInFlight, 4);
+});
+
+test("collection-concurrency-mapper-fails-closed-on-secondary-rate-limit-without-retry", async () => {
+  const { mapWithBoundedConcurrency, isGitHubSecondaryRateLimit } = await importResolver();
+  const launched = [];
+  const error = new Error("gh: You have exceeded a secondary rate limit. (HTTP 403)");
+  error.status = 1;
+  error.stderr = "gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. (HTTP 403)";
+  error.code = "SECONDARY_RATE_LIMIT";
+  await assert.rejects(
+    () =>
+      mapWithBoundedConcurrency([1, 2, 3, 4, 5, 6, 7, 8], 2, async (value) => {
+        launched.push(value);
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        if (value === 2) throw error;
+        return value;
+      }),
+    (caught) => caught.code === "SECONDARY_RATE_LIMIT" && isGitHubSecondaryRateLimit(error)
+  );
+  assert.ok(launched.includes(2), "the failing item must have been attempted once");
+  assert.ok(!launched.includes(2) || launched.filter((value) => value === 2).length === 1, "must not retry the failing item");
+  assert.equal(launched.filter((value) => value === 2).length, 1);
+  assert.ok(
+    launched.every((value) => value <= 4),
+    `must stop launching after the secondary rate limit, launched=${launched.join(",")}`
+  );
+});
+
+test("github-transport-getJsonMany-fails-closed-on-secondary-rate-limit-without-retry", async () => {
+  const { createAuthenticatedGitHubTransport } = await importResolver();
+  let runManyCalls = 0;
+  const transport = createAuthenticatedGitHubTransport(root, {
+    execFileSync() {
+      throw new Error("single-call gh api path should not run for getJsonMany");
+    },
+    concurrency: 8,
+    runMany() {
+      runManyCalls += 1;
+      const error = new Error("GitHub secondary rate limit on repos/example");
+      error.code = "SECONDARY_RATE_LIMIT";
+      throw error;
+    }
+  });
+  assert.equal(typeof transport.getJsonMany, "function");
+  assert.throws(
+    () => transport.getJsonMany(["repos/MongLong0214/agent-operator-score", "rate_limit"]),
+    (error) => error.code === "SECONDARY_RATE_LIMIT"
+  );
+  assert.equal(runManyCalls, 1, "a secondary rate limit must fail closed, not retry the batch");
+});
+
+test("github-transport-getJsonMany-accepts-pool-payloads-larger-than-pipe-buffer", async () => {
+  const { createAuthenticatedGitHubTransport } = await importResolver();
+  const bodies = Array.from({ length: 12 }, (_, i) => ({
+    ok: true,
+    raw: JSON.stringify({ i, pad: "p".repeat(6000) })
+  }));
+  const payload = JSON.stringify(bodies);
+  assert.ok(payload.length > 65536, `fixture payload must exceed the 64KiB pipe buffer, got ${payload.length}`);
+  let sawWorker = false;
+  const transport = createAuthenticatedGitHubTransport(root, {
+    execFileSync(file) {
+      if (file === process.execPath) {
+        sawWorker = true;
+        return payload;
+      }
+      throw new Error("single-call gh api path should not run for getJsonMany");
+    }
+  });
+  const results = transport.getJsonMany(bodies.map((_, i) => `item/${i}`));
+  assert.equal(sawWorker, true);
+  assert.equal(results.length, 12);
+  assert.equal(results.every((row) => row.ok === true), true);
+  assert.equal(results[11].value.i, 11);
+});
+
+test("live-collector-batches-independent-merged-pr-bodies", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: sha("1"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("1"), 901)
+    },
+    {
+      number: 902,
+      merge_commit_sha: sha("2"),
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("2"), 902),
+      added_paths: ["docs/effect/902.md"]
+    },
+    {
+      number: 904,
+      merge_commit_sha: sha("4"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("4"), 904)
+    }
+  ]);
+  const inner = createFixtureTransport(responses);
+  const batches = [];
+  const transport = {
+    kind: inner.kind,
+    getJson: inner.getJson.bind(inner),
+    getRaw: inner.getRaw.bind(inner),
+    getJsonMany(apiPaths) {
+      batches.push([...apiPaths]);
+      return apiPaths.map((path) => {
+        try {
+          return { ok: true, value: inner.getJson(path) };
+        } catch (error) {
+          return { ok: false, reason: String(error?.message ?? error), error };
+        }
+      });
+    }
+  };
+  const collected = collectLiveExecutionFacts(root, { transport });
+  assert.equal(collected.ok, true, collected.reason);
+  const pullBatch = batches.find(
+    (batch) => batch.filter((path) => /\/pulls\/(901|902|904)$/.test(path)).length === 3
+  );
+  assert.ok(
+    pullBatch,
+    `independent merged PR bodies must be fetched as one batch, got ${JSON.stringify(batches)}`
+  );
+  const searchReceiptNumbers = collected.facts.implementationMerges
+    .map((row) => row.number)
+    .filter((number) => number === 901 || number === 902 || number === 904);
+  assert.deepEqual(searchReceiptNumbers, [901, 902, 904]);
+});
+
+test("live-collector-batched-receipts-preserve-search-order", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: sha("a"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("a"), 901)
+    },
+    {
+      number: 902,
+      merge_commit_sha: sha("b"),
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("b"), 902),
+      added_paths: ["docs/effect/902-order.md"]
+    },
+    {
+      number: 904,
+      merge_commit_sha: sha("c"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("c"), 904)
+    }
+  ]);
+  const inner = createFixtureTransport(responses);
+  const batches = [];
+  const transport = {
+    kind: inner.kind,
+    getJson: inner.getJson.bind(inner),
+    getRaw: inner.getRaw.bind(inner),
+    getJsonMany(apiPaths) {
+      batches.push([...apiPaths]);
+      const byPath = new Map();
+      for (const path of [...apiPaths].reverse()) {
+        try {
+          byPath.set(path, { ok: true, value: inner.getJson(path) });
+        } catch (error) {
+          byPath.set(path, { ok: false, reason: String(error?.message ?? error), error });
+        }
+      }
+      return apiPaths.map((path) => byPath.get(path));
+    }
+  };
+  const sequential = collectLiveExecutionFacts(root, { transport: inner });
+  const batched = collectLiveExecutionFacts(root, { transport });
+  assert.equal(sequential.ok, true, sequential.reason);
+  assert.equal(batched.ok, true, batched.reason);
+  assert.ok(
+    batches.some((batch) => batch.filter((path) => /\/pulls\/(901|902|904)$/.test(path)).length === 3),
+    "order comparison is only meaningful once independent pulls are actually batched"
+  );
+  assert.deepEqual(
+    batched.facts.implementationMerges.map((row) => ({
+      number: row.number,
+      merge_commit_sha: row.merge_commit_sha,
+      ticket_id: row.ticket_id,
+      added_paths: row.added_paths
+    })),
+    sequential.facts.implementationMerges.map((row) => ({
+      number: row.number,
+      merge_commit_sha: row.merge_commit_sha,
+      ticket_id: row.ticket_id,
+      added_paths: row.added_paths
+    }))
+  );
+});
+
+test("live-collector-fails-closed-on-secondary-rate-limit-without-retry", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const responses = JSON.parse(
+    readFileSync(resolve(root, "fixtures/operational-state/live-adapter/transport-responses.json"), "utf8")
+  );
+  const inner = createFixtureTransport(responses);
+  let manyCalls = 0;
+  const transport = {
+    kind: inner.kind,
+    getJson: inner.getJson.bind(inner),
+    getRaw: inner.getRaw.bind(inner),
+    getJsonMany(apiPaths) {
+      manyCalls += 1;
+      const error = new Error(`GitHub secondary rate limit on ${apiPaths[0]}`);
+      error.code = "SECONDARY_RATE_LIMIT";
+      throw error;
+    }
+  };
+  const collected = collectLiveExecutionFacts(root, { transport });
+  assert.equal(collected.ok, false);
+  assert.match(collected.reason, /secondary rate limit/i);
+  assert.equal(manyCalls, 1, "must not retry or degrade concurrency after a secondary rate limit");
+});
+
 test("candidate-ci-latest-failed-attempt-not-masked-by-stale-check-runs", async () => {
   const {
     createFixtureTransport,
