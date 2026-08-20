@@ -2,6 +2,8 @@
  * Codex/Claude semantic-parity comparator for SSOT §9.2 / E9-003.
  *
  * Parity is semantic normalized equivalence, not identical native logs (ADR-0007).
+ * Native inputs are run through the real adapter normalizers before comparison.
+ * A missing normalizer, missing status, or malformed event fails closed.
  * Shared event projections are canonicalized and compared on required fields.
  * Identity and capability digest fields are reported separately as allowed
  * profile differences. UNAVAILABLE is retained; it is never rewritten to MAPPED
@@ -26,6 +28,11 @@ export type ProfileDifference = {
   field: string;
   left: unknown;
   right: unknown;
+};
+
+export type SemanticParityAdapters = {
+  normalizeClaudeEvent?: (input: unknown) => Record<string, unknown>;
+  normalizeCodexEvent?: (input: unknown) => Record<string, unknown>;
 };
 
 export type SemanticParityResult = {
@@ -78,7 +85,58 @@ const eventList = (trace: Record<string, unknown>, errors: string[], side: strin
     errors.push(`${side} events must be an array`);
     return [];
   }
-  return trace.events.filter(isRecord);
+  const records: Record<string, unknown>[] = [];
+  for (let index = 0; index < trace.events.length; index += 1) {
+    const entry = trace.events[index];
+    if (!isRecord(entry)) {
+      errors.push(`${side} events[${index}] is not an object`);
+      continue;
+    }
+    records.push(entry);
+  }
+  return records;
+};
+
+const normalizerFor = (
+  runtime: unknown,
+  adapters: SemanticParityAdapters
+): ((input: unknown) => Record<string, unknown>) | undefined => {
+  if (runtime === "claude-code") return adapters.normalizeClaudeEvent;
+  if (runtime === "codex") return adapters.normalizeCodexEvent;
+  return undefined;
+};
+
+const eventsFromTrace = (
+  trace: Record<string, unknown>,
+  adapters: SemanticParityAdapters,
+  errors: string[],
+  side: string
+): Record<string, unknown>[] => {
+  if (!Object.prototype.hasOwnProperty.call(trace, "native") || trace.native === undefined) {
+    return eventList(trace, errors, side);
+  }
+  const natives = Array.isArray(trace.native) ? trace.native : [trace.native];
+  const normalize = normalizerFor(trace.runtime, adapters);
+  if (typeof normalize !== "function") {
+    errors.push(`${side} ${String(trace.runtime)} normalizer is unavailable`);
+    return [];
+  }
+  const events: Record<string, unknown>[] = [];
+  for (let index = 0; index < natives.length; index += 1) {
+    let event: unknown;
+    try {
+      event = normalize(natives[index]);
+    } catch {
+      errors.push(`${side} native[${index}] failed to normalize`);
+      continue;
+    }
+    if (!isRecord(event)) {
+      errors.push(`${side} native[${index}] did not produce an object`);
+      continue;
+    }
+    events.push(event);
+  }
+  return events;
 };
 
 const canonicalParent = (event: Record<string, unknown>, events: Record<string, unknown>[]): unknown => {
@@ -91,18 +149,26 @@ const canonicalParent = (event: Record<string, unknown>, events: Record<string, 
 
 const projectEvent = (
   event: Record<string, unknown>,
-  events: Record<string, unknown>[]
-): Record<string, unknown> => ({
-  event_type: event.event_type ?? null,
-  event_group: event.event_group ?? null,
-  status: event.status == null ? "MAPPED" : event.status,
-  actor: event.actor ?? null,
-  task_id: event.task_id ?? null,
-  parent_id: canonicalParent(event, events),
-  redaction_state: event.redaction_state ?? "none",
-  evidence_digest: event.evidence_digest ?? null,
-  payload: event.payload ?? null
-});
+  events: Record<string, unknown>[],
+  errors: string[],
+  side: string,
+  index: number
+): Record<string, unknown> => {
+  if (event.status == null) {
+    errors.push(`${side} event[${index}] status is missing`);
+  }
+  return {
+    event_type: event.event_type ?? null,
+    event_group: event.event_group ?? null,
+    status: event.status ?? null,
+    actor: event.actor ?? null,
+    task_id: event.task_id ?? null,
+    parent_id: canonicalParent(event, events),
+    redaction_state: event.redaction_state ?? "none",
+    evidence_digest: event.evidence_digest ?? null,
+    payload: event.payload ?? null
+  };
+};
 
 const recordProfile = (
   field: string,
@@ -113,16 +179,21 @@ const recordProfile = (
   if (!same(left, right)) differences.push({ field, left, right });
 };
 
-export const compareSemanticTrace = (leftInput: unknown, rightInput: unknown): SemanticParityResult => {
+export const compareSemanticTrace = (
+  leftInput: unknown,
+  rightInput: unknown,
+  adaptersInput: SemanticParityAdapters = {}
+): SemanticParityResult => {
   const errors: string[] = [];
+  const adapters = isRecord(adaptersInput) ? adaptersInput as SemanticParityAdapters : {};
   if (!isRecord(leftInput)) errors.push("left trace must be an object");
   if (!isRecord(rightInput)) errors.push("right trace must be an object");
   const leftTrace = isRecord(leftInput) ? leftInput : {};
   const rightTrace = isRecord(rightInput) ? rightInput : {};
-  const leftEvents = eventList(leftTrace, errors, "left");
-  const rightEvents = eventList(rightTrace, errors, "right");
-  const left = leftEvents.map((event) => projectEvent(event, leftEvents));
-  const right = rightEvents.map((event) => projectEvent(event, rightEvents));
+  const leftEvents = eventsFromTrace(leftTrace, adapters, errors, "left");
+  const rightEvents = eventsFromTrace(rightTrace, adapters, errors, "right");
+  const left = leftEvents.map((event, index) => projectEvent(event, leftEvents, errors, "left", index));
+  const right = rightEvents.map((event, index) => projectEvent(event, rightEvents, errors, "right", index));
 
   const required_field_mismatches: SemanticParityMismatch[] = [];
   const unavailable_differences: UnavailableDifference[] = [];
