@@ -6700,7 +6700,8 @@ test("artifact-freeze-verifies-against-the-manifest-and-blobs-at-head", async ()
   // manifest_in_head, which collection cannot yet establish -- that gap is the separate case
   // below, and stating it here is what keeps this control honest.
   const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
-  const manifest = JSON.parse(gitBlobUtf8(head, ARTIFACT_MANIFEST_V3_PATH));
+  const manifestBytes = gitBlobUtf8(head, ARTIFACT_MANIFEST_V3_PATH);
+  const manifest = JSON.parse(manifestBytes);
   const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
   assert.ok(artifacts.length > 0, "the v3 manifest at HEAD declares no artifacts");
 
@@ -6708,6 +6709,17 @@ test("artifact-freeze-verifies-against-the-manifest-and-blobs-at-head", async ()
   activation.exact_head_sha = head;
   activation.review_head_sha = head;
   activation.manifest = manifest;
+  // Two definitions of manifest_digest exist in this repository and they disagree:
+  //   collector  resolve-execution-state.mjs:1256  sha256(manifest bytes at the commit)
+  //   activation resolve-execution-state.mjs:1587  sha256(JSON.stringify(parsed manifest))
+  // So a digest the collector emits is one activation always rejects. This control supplies the
+  // form activation demands, because its job is to prove the evaluator is not constant-null; the
+  // preimage disagreement is a production defect with its own issue, not a property of this case.
+  assert.notEqual(
+    sha256Utf8(manifestBytes),
+    sha256Utf8(JSON.stringify(manifest)),
+    "the two manifest_digest preimages have converged; the disagreement this case documents is gone"
+  );
   activation.manifest_digest = sha256Utf8(JSON.stringify(manifest));
   activation.manifest_in_head = true;
 

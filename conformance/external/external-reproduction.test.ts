@@ -1127,6 +1127,33 @@ describe("external-reproduction", () => {
     );
   });
 
+  test("publication-derived-blocked-by-with-an-empty-string-entry-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The previous comparison joined blocked_by with NUL, so [""] and [] both serialised to ""
+    // and a malformed nonempty list read as agreement with an empty derived one. Without this
+    // case the fix has no oracle: restoring the join leaves every other case green.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      blocked_by: [""]
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a blocked_by entry that is an empty string minted a publication pass");
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "an empty-string blocked_by entry was treated as agreement with an empty derived list"
+    );
+  });
+
   test("publication-derived-cleared-token-with-an-unenumerated-false-permit-gates", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);
