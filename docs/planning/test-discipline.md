@@ -56,6 +56,33 @@ mints, not what it contains.
 If the real path cannot run in this tree, the case must **fail closed** and say so. An honest
 blocked result is a correct answer.
 
+## Removing a fixture oracle is not the same as removing the check
+
+The rule above says an expected value must not come from the code path under test. Applying it by
+**deleting** the case that was doing that leaves the suite vacuous, which is the same failure wearing
+the opposite mask.
+
+This happened on 2026-08-21. A freeze positive control was asserting against digests the fixture had
+copied in, so it was removed and only refusals were kept, with a note that an honest positive was
+not constructible. A reviewer then mutated the whole evaluator to `() => null`: **all eleven freeze
+cases still passed.** Every refusal was satisfied by a function that refuses everything.
+
+It was constructible. The reviewer built one by parsing the real manifest from `HEAD` and hashing its
+artifact blobs at `HEAD` — nothing minted to match, and a constant-null evaluator now dies against
+it.
+
+So when a case fails the oracle rule, the work is to **re-ground it**, not to drop it:
+
+- find the value's authentic source — the tree at a commit, a pinned constant, a real subprocess —
+  and read it from there;
+- if one input genuinely cannot be obtained (a fact the collector does not gather, a machine that
+  does not exist), supply *that one* and say so in the case, rather than abandoning the control;
+- before trusting a suite of refusals, mutate the thing under test to refuse everything. If nothing
+  dies, the refusals prove nothing.
+
+"I could not build an honest positive control" is a claim to check, not a conclusion to record. It
+was wrong here.
+
 ## One property per case
 
 Each named case should differ from the passing baseline in exactly one compared property. If six
