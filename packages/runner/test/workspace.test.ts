@@ -690,14 +690,16 @@ describe("workspace", () => {
       }
 
       {
-        // An absolute path is not the classified relative path; correlation fails.
+        // The run root is known, so an absolute target inside the workspace resolves and
+        // correlates like any relative one. Treating it as unreadable discarded a correlation
+        // the fixture itself proves is present -- it builds the path from created.root.
         const absolute = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
           traces: [absoluteTrace]
         });
-        accepted(absolute, "an absolute input.path classifies as explicit unknown");
-        if (absolute.ok) assert.equal(absolute.actor, "actor.attribution_unknown", CONTAINED);
+        accepted(absolute, "an absolute input.path inside the workspace correlates");
+        if (absolute.ok) assert.equal(absolute.actor, "agent", CONTAINED);
       }
 
       const unknown = api.classifyWorkspaceMutation({
