@@ -9,10 +9,11 @@
  * from wrapper events plus the live tree. correlation_id must be filled.
  * Correlation is exact equality of the classified relative path against
  * a named field on an object payload (`payload.input.path` or
- * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation. Truncated
- * string payloads and unmatched traces refuse — they are not
- * external_mutation. Create refuses a parent or run root inside source
- * before mkdir.
+ * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation. A truncated
+ * string payload or an unmatched trace yields explicit unknown with the score
+ * withheld — the option E3-001 names alongside external_mutation — because
+ * "not matched" is not evidence of an external actor. Create refuses a parent
+ * or run root inside source before mkdir.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -345,7 +346,13 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
     matching.push(trace);
   }
 
-  if (matching.length === 0) return fail();
+  // SSOT 6.7 and E3-001's own acceptance line say an uncorrelated mutation is classified
+  // `workspace.external_mutation` or explicit unknown. Refusing was a third answer neither
+  // document sanctions. `external_mutation` would still be wrong -- #298 measures that an
+  // ordinary source write truncates past the 2048-character payload bound and stops correlating,
+  // so "not matched" is not evidence of an external actor. Explicit unknown is the option the
+  // ticket already names, and it withholds the score rather than asserting an actor.
+  if (matching.length === 0) return unknownClassification(path);
 
   const actors = new Set<string>();
   for (const trace of matching) {
