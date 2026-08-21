@@ -189,6 +189,15 @@ const recordedOf = (root: unknown): Recorded | null => {
   return registry.get(real) ?? null;
 };
 
+// An absolute payload target is readable: the run root is known, so resolve it. Inside the
+// workspace it correlates like any relative target; outside it names a different file, which is
+// an observation rather than a failure to read.
+const workspaceRelative = (root: string, absolutePath: string): string | null => {
+  const rel = relative(root, absolutePath).replaceAll("\\", "/");
+  if (rel === "" || rel.startsWith("../") || rel === "..") return null;
+  return rel;
+};
+
 const relativePathInside = (root: string, pathValue: unknown): string | null => {
   if (!isFilledString(pathValue) || isAbsolute(pathValue)) return null;
   const posix = pathValue.replaceAll("\\", "/");
@@ -357,14 +366,21 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
     if (!isFilledString(trace.correlation_id)) continue;
     const named = namedPayloadPath(trace.payload);
     // A payload this classifier cannot read a workspace-relative target out of leaves attribution
-    // undetermined rather than uncorrelated: an absolute path may well be this same file, and a
-    // truncated excerpt may have named it before the slice. Neither is an observation that this
-    // path was untouched.
-    if (named === null || isAbsolute(named)) {
+    // undetermined rather than uncorrelated: a truncated excerpt may have named this file before
+    // the slice, and that is not an observation that the path was untouched.
+    //
+    // An absolute path is readable, though. The run root is known, so resolve it: inside the
+    // workspace it correlates like any relative target, and outside it names a different file.
+    if (named === null) {
       unreadablePayload = true;
       continue;
     }
-    if (named !== path) continue;
+    const target = isAbsolute(named) ? workspaceRelative(recorded.root, named) : named;
+    if (target === null) {
+      unreadablePayload = true;
+      continue;
+    }
+    if (target !== path) continue;
     matching.push(trace);
   }
 
