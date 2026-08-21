@@ -764,29 +764,21 @@ test("focused-lane-is-not-silently-empty", () => {
 // Detected shape: an object-literal property whose name is `run<Capital>` bound to an arrow
 // function, inside a conformance test. Passing a real function by reference is untouched; only an
 // inline replacement of a gate is refused.
-const GATE_STUB_PATTERN = /(?:^|[\s{,])(run[A-Z]\w*)\s*:\s*(?:async\s*)?\(/;
-
-const conformanceTestPaths = () =>
-  walkFiles("conformance")
-    .filter((absolutePath) => absolutePath.endsWith(".test.ts") || absolutePath.endsWith(".test.mjs"))
-    .map(asRepositoryRelative)
-    .sort();
-
-const gateStubOffenders = (paths, readText) => {
-  const offenders = [];
-  for (const path of paths) {
-    readText(path).split("\n").forEach((line, index) => {
-      const match = GATE_STUB_PATTERN.exec(line);
-      if (match) offenders.push(`${path}:${index + 1} ${match[1]}`);
-    });
-  }
-  return offenders;
-};
-
-// The conformance-side spelling is only the caller. The seam that made G4_PASS mintable was in
-// production: `const g0 = typeof runG0 === "function" ? runG0() : runG0Gate({ readFile })`, which
-// let any caller hand in a replacement for the gate the script exists to run. Scanning tests would
-// not see that come back.
+// The seam that made G4_PASS mintable was in production:
+//   const g0 = typeof runG0 === "function" ? runG0() : runG0Gate({ readFile });
+// Any caller could then hand in a two-key object and skip supported Node, a clean lockfile, the
+// pinned digest match, every family, killed mutants, and formula vectors.
+//
+// A companion guard over conformance tests was written and removed. It could not tell a stub that
+// bypasses a gate from a stub that proves the bypass is refused: E14-003's corrected tests carry
+// three `runG0: () => ({ ok: true, errors: [] })` probes asserting the injection path must NOT mint
+// G4_PASS, and the guard flagged all three. One extra binding also defeated it --
+// `const stub = () => ...; runG4Gate({ runG0: stub })` is a miss. Refusing correct work to catch a
+// single spelling is a bad trade.
+//
+// This production pattern carries no such ambiguity. A gate script has no legitimate reason to run
+// a caller-supplied replacement for its own gate, and the pattern appears nowhere in scripts/ or
+// packages/ today.
 const GATE_INJECTION_PATTERN = /typeof\s+(\w+)\s*===\s*["']function["']\s*\?\s*\1\s*\(/;
 
 const gateInjectionOffenders = (paths, readText) => {
@@ -822,38 +814,6 @@ test("gate-scripts-do-not-accept-an-injected-replacement-for-their-own-gate", ()
     gateInjectionOffenders(scripts, readRegularFile),
     [],
     "a gate script must run its own gate, not a function the caller supplied"
-  );
-});
-
-test("conformance-cases-do-not-stub-the-gate-they-are-named-for", () => {
-  // E14-003 shipped `runG0: () => ({ ok: true, errors: [] })` on every passing case, so the slow
-  // path -- supported Node, clean lockfile, pinned digest match, every family, killed mutants,
-  // formula vectors -- was replaced by a two-key object literal and a G4_PASS could mint without
-  // any of it.
-  //
-  // Asserting only that today's files are clean would be the very defect this guard exists to
-  // stop: the expected `[]` is a property of the current tree, and the case would still pass if
-  // GATE_STUB_PATTERN never matched anything. So the detector is first run against a planted
-  // violation, in memory, and required to see it.
-  const paths = conformanceTestPaths();
-  assert.ok(paths.length > 0, "no conformance tests found; the guard would be vacuous");
-
-  const plantedPath = paths[0];
-  const planted = gateStubOffenders([plantedPath], (path) =>
-    path === plantedPath
-      ? 'const input = {\n  runG0: () => ({ ok: true, errors: [] })\n};\n'
-      : readRegularFile(path)
-  );
-  assert.deepEqual(
-    planted,
-    [`${plantedPath}:2 runG0`],
-    "the detector must see the exact stub shape E14-003 shipped before its clean result means anything"
-  );
-
-  assert.deepEqual(
-    gateStubOffenders(paths, readRegularFile),
-    [],
-    "a named conformance case must exercise the real gate, not an inline stub"
   );
 });
 
