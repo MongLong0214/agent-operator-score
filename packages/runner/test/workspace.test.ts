@@ -83,6 +83,16 @@ const closeTemp = (temp: Temp) => {
   rmSync(temp.parent, { recursive: true, force: true });
 };
 
+// An array carrying the right properties passes every later check that reads them by name, so
+// only the plain-record guard stands between it and acceptance. A bare string is refused further
+// down for being unusable, which measures a different guard -- that mistake is why the first pass
+// over these guards reported them covered.
+const arrayWithProperties = (properties: Record<string, unknown>): unknown => {
+  const value: unknown[] = [];
+  Object.assign(value, properties);
+  return value;
+};
+
 const request = (temp: Temp, extra: Record<string, unknown> = {}) => ({
   parentRoot: temp.parent,
   sourceRoot: temp.source,
@@ -287,6 +297,35 @@ describe("workspace", () => {
       );
       assert.notEqual(otherEnv.environmentDigest, first.environmentDigest, CONTAINED);
       assert.equal(otherEnv.baseDigest, first.baseDigest, CONTAINED);
+
+      // Every caller pin in this file hands createRunWorkspace the digest it just produced, so
+      // the environment comparison was never given a value it had to reject. A mismatching pin
+      // must fail closed exactly like the base-digest pin above it.
+      refused(
+        api.createRunWorkspace(request(temp, { expectedEnvironmentDigest: "f".repeat(64) })),
+        "create with a caller environment pin that disagrees"
+      );
+
+      // createRunWorkspace reads its input by property name, so an array carrying those
+      // properties reaches every later check intact and is accepted once the record guard goes.
+      refused(
+        api.createRunWorkspace(
+          arrayWithProperties({
+            parentRoot: temp.parent,
+            sourceRoot: temp.source,
+            environment: { ...ENV },
+            runId: "array-shaped-request"
+          })
+        ),
+        "create from an array carrying the request properties"
+      );
+
+      // sealWorkspace records a manifest under the phase it is handed. An unrecognised phase
+      // must be refused rather than sealed, or the manifest names a phase no contract defines.
+      refused(
+        api.sealWorkspace({ root: first.root, phase: "bogus" }),
+        "seal under an unrecognised phase"
+      );
     } finally {
       closeTemp(temp);
     }
@@ -389,6 +428,51 @@ describe("workspace", () => {
         }),
         "verify source as run root"
       );
+      // verifyWorkspace is always re-asked with the parent it was created under, so the
+      // comparison against the recorded parent never had to reject anything. A workspace
+      // presented under a different real parent is a wrong-root claim, not a verification.
+      {
+        const otherParent = mkdtempSync(join(tmpdir(), "aos-e3-001-other-"));
+        try {
+          refused(
+            api.verifyWorkspace({
+              root: created.root,
+              parentRoot: otherParent,
+              environment: { ...ENV }
+            }),
+            "verify under a parent that is not the recorded one"
+          );
+        } finally {
+          rmSync(otherParent, { recursive: true, force: true });
+        }
+      }
+
+      // Same gap on the verify side: the environment pin only ever arrived correct.
+      refused(
+        api.verifyWorkspace({
+          root: created.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV },
+          expectedEnvironmentDigest: "f".repeat(64)
+        }),
+        "verify with a caller environment pin that disagrees"
+      );
+
+      // A blind review isolated these two after I reported them masked: the array helper was
+      // written for createRunWorkspace and classifyWorkspaceMutation and never pointed at the
+      // other two entry points, which accept a property-carrying array once their record guard
+      // is removed.
+      refused(
+        api.verifyWorkspace(
+          arrayWithProperties({ root: created.root, parentRoot: temp.parent, environment: { ...ENV } })
+        ),
+        "verify from an array carrying the request properties"
+      );
+      refused(
+        api.sealWorkspace(arrayWithProperties({ root: created.root, phase: "initial" })),
+        "seal from an array carrying the request properties"
+      );
+
       refused(api.sealWorkspace({ root: cwd, phase: "initial" }), "seal cwd");
       refused(api.sealWorkspace({ root: temp.source, phase: "initial" }), "seal source");
 
@@ -700,6 +784,53 @@ describe("workspace", () => {
         });
         accepted(absolute, "an absolute input.path inside the workspace correlates");
         if (absolute.ok) assert.equal(absolute.actor, "agent", CONTAINED);
+      }
+
+      // Same shape on the classifier: the properties are all present and valid, so nothing
+      // downstream objects once the record guard stops looking at the container.
+      refused(
+        api.classifyWorkspaceMutation(
+          arrayWithProperties({ root: created.root, path: "src/agent.ts", traces: [] })
+        ),
+        "classify from an array carrying the request properties"
+      );
+
+      // A trace that is not a record carries no correlation and no payload. Dropping it leaves a
+      // non-empty observation set, and the mutation is then attributed to an external actor --
+      // an unreadable trace minting evidence about who wrote the file.
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/agent.ts",
+          traces: ["malformed-trace"]
+        }),
+        "classify against a trace that is not a record"
+      );
+
+      // traces must be a list before it can be walked; a record-shaped stand-in is not iterable
+      // and reaches the walk as a thrown TypeError rather than a refusal.
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/agent.ts",
+          traces: { 0: "malformed-trace" }
+        }),
+        "classify with traces that are not a list"
+      );
+
+      // A root the runner never created has no recorded base to correlate against. Without
+      // this refusal the lookup returns null and the classifier reads through it, which is a
+      // thrown TypeError rather than a fail-closed answer.
+      {
+        const unregistered = mkdtempSync(join(tmpdir(), "aos-e3-001-unregistered-"));
+        try {
+          refused(
+            api.classifyWorkspaceMutation({ root: unregistered, path: "src/app.ts", traces: [] }),
+            "classify against a root the runner never created"
+          );
+        } finally {
+          rmSync(unregistered, { recursive: true, force: true });
+        }
       }
 
       const unknown = api.classifyWorkspaceMutation({
