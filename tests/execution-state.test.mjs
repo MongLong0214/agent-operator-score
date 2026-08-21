@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { chmodSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -39,6 +40,51 @@ const stableJson = (value) => {
 };
 
 const importResolver = async () => import(pathToFileURL(resolverPath).href);
+
+const sha256Utf8 = (value) => createHash("sha256").update(value, "utf8").digest("hex");
+
+const LIVE_ACTIVATION_FACTS = Symbol.for("aos.liveCollectedActivationFacts");
+
+const withFakeGh = (options, fn) => {
+  const dir = mkdtempSync(join(tmpdir(), "aos-fake-gh-"));
+  const ghPath = join(dir, "gh");
+  writeFileSync(
+    ghPath,
+    `#!/usr/bin/env node
+const apiPath = process.argv[2] === "api" ? process.argv[3] : process.argv[2];
+if (process.env.AOS_FAKE_GH_MODE === "ratelimit" && apiPath === "repos/limited/second") {
+  process.stderr.write("gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. (HTTP 403)\\n");
+  process.exit(1);
+}
+if (process.env.AOS_FAKE_GH_MODE === "hang-second" && apiPath === "repos/timeout/second") {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
+}
+const pad = "p".repeat(Number(process.env.AOS_FAKE_GH_PAD || "0"));
+process.stdout.write(JSON.stringify({ path: apiPath, pad }));
+`
+  );
+  chmodSync(ghPath, 0o755);
+  const previous = {
+    PATH: process.env.PATH,
+    AOS_FAKE_GH_PAD: process.env.AOS_FAKE_GH_PAD,
+    AOS_FAKE_GH_MODE: process.env.AOS_FAKE_GH_MODE
+  };
+  process.env.PATH = `${dir}${previous.PATH ? `:${previous.PATH}` : ""}`;
+  if (options.pad != null) process.env.AOS_FAKE_GH_PAD = String(options.pad);
+  else delete process.env.AOS_FAKE_GH_PAD;
+  if (options.mode != null) process.env.AOS_FAKE_GH_MODE = options.mode;
+  else delete process.env.AOS_FAKE_GH_MODE;
+  try {
+    return fn();
+  } finally {
+    process.env.PATH = previous.PATH;
+    if (previous.AOS_FAKE_GH_PAD == null) delete process.env.AOS_FAKE_GH_PAD;
+    else process.env.AOS_FAKE_GH_PAD = previous.AOS_FAKE_GH_PAD;
+    if (previous.AOS_FAKE_GH_MODE == null) delete process.env.AOS_FAKE_GH_MODE;
+    else process.env.AOS_FAKE_GH_MODE = previous.AOS_FAKE_GH_MODE;
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
 
 const resolveOffline = async (facts, options = {}) => {
   const { resolveExecutionState, canonicalExecutionState } = await importResolver();
@@ -4377,7 +4423,7 @@ test("collection-concurrency-mapper-fails-closed-on-secondary-rate-limit-without
         if (value === 2) throw error;
         return value;
       }),
-    (caught) => caught.code === "SECONDARY_RATE_LIMIT" && isGitHubSecondaryRateLimit(error)
+    (caught) => caught.code === "SECONDARY_RATE_LIMIT" && isGitHubSecondaryRateLimit(caught)
   );
   assert.ok(launched.includes(2), "the failing item must have been attempted once");
   assert.ok(!launched.includes(2) || launched.filter((value) => value === 2).length === 1, "must not retry the failing item");
@@ -4413,27 +4459,24 @@ test("github-transport-getJsonMany-fails-closed-on-secondary-rate-limit-without-
 
 test("github-transport-getJsonMany-accepts-pool-payloads-larger-than-pipe-buffer", async () => {
   const { createAuthenticatedGitHubTransport } = await importResolver();
-  const bodies = Array.from({ length: 12 }, (_, i) => ({
-    ok: true,
-    raw: JSON.stringify({ i, pad: "p".repeat(6000) })
-  }));
-  const payload = JSON.stringify(bodies);
-  assert.ok(payload.length > 65536, `fixture payload must exceed the 64KiB pipe buffer, got ${payload.length}`);
-  let sawWorker = false;
-  const transport = createAuthenticatedGitHubTransport(root, {
-    execFileSync(file) {
-      if (file === process.execPath) {
-        sawWorker = true;
-        return payload;
-      }
-      throw new Error("single-call gh api path should not run for getJsonMany");
-    }
+  const paths = Array.from({ length: 12 }, (_, i) => `item/${i}`);
+  const results = withFakeGh({ pad: 6000 }, () => {
+    const transport = createAuthenticatedGitHubTransport(root, {
+      totalTimeoutMs: 30_000,
+      perCallTimeoutMs: 10_000
+    });
+    return transport.getJsonMany(paths);
   });
-  const results = transport.getJsonMany(bodies.map((_, i) => `item/${i}`));
-  assert.equal(sawWorker, true);
   assert.equal(results.length, 12);
-  assert.equal(results.every((row) => row.ok === true), true);
-  assert.equal(results[11].value.i, 11);
+  assert.equal(results.every((row) => row.ok === true), true, results.find((row) => !row.ok)?.reason);
+  assert.equal(results[11].value.path, "item/11");
+  const workerPayloadBytes = Buffer.byteLength(
+    JSON.stringify(results.map((row, i) => ({ ok: true, raw: JSON.stringify({ path: paths[i], pad: "p".repeat(6000) }) })))
+  );
+  assert.ok(
+    workerPayloadBytes > 65536,
+    `spawned worker payload must exceed the 64KiB pipe buffer, got ${workerPayloadBytes}`
+  );
 });
 
 test("live-collector-batches-independent-merged-pr-bodies", async () => {
@@ -6259,4 +6302,251 @@ test("one-reviewers-withdrawal-does-not-cancel-another-reviewers-approval", asyn
   ]);
   assert.equal(facts.review_state, "APPROVED");
   assert.equal(facts.reviewer_id, 330033, "the approval must come from the reviewer who still approves");
+});
+
+test("ancestry-batch-failure-names-the-sha-being-classified", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const shaA = "a1".repeat(20);
+  const shaB = "b2".repeat(20);
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 2901,
+      merge_commit_sha: shaA,
+      body: "Ticket: D0-004\n",
+      compare: null,
+      runs: collectorSuccessRuns(shaA, 2901001)
+    },
+    {
+      number: 2902,
+      merge_commit_sha: shaB,
+      body: "Ticket: D0-004\n",
+      compare: null,
+      runs: collectorSuccessRuns(shaB, 2902001)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, false);
+  assert.match(
+    collected.reason,
+    new RegExp(shaA),
+    `first ancestry failure must name SHA ${shaA}, got ${collected.reason}`
+  );
+  assert.equal(
+    collected.reason.includes(shaB),
+    false,
+    `first ancestry failure must not be attributed to later SHA ${shaB}, got ${collected.reason}`
+  );
+});
+
+test("getJsonMany-per-item-timeout-does-not-discard-batch-successes", async () => {
+  const { createAuthenticatedGitHubTransport } = await importResolver();
+  const transport = createAuthenticatedGitHubTransport(root, {
+    execFileSync() {
+      throw new Error("single-call gh api path should not run for getJsonMany");
+    },
+    runMany() {
+      return [
+        { ok: true, raw: JSON.stringify({ id: "ok-first" }) },
+        { ok: false, message: "per-call timeout for repos/timeout/second", code: "ETIMEDOUT", killed: true },
+        { ok: true, raw: JSON.stringify({ id: "ok-third" }) }
+      ];
+    }
+  });
+  let thrown = null;
+  let results;
+  try {
+    results = transport.getJsonMany([
+      "repos/ok/first",
+      "repos/timeout/second",
+      "repos/ok/third"
+    ]);
+  } catch (error) {
+    thrown = error;
+  }
+  assert.equal(
+    thrown,
+    null,
+    `a per-item timeout must not throw for the whole batch, got ${thrown?.message}`
+  );
+  assert.equal(results[0]?.ok, true, "an earlier ok:true result must be kept");
+  assert.equal(results[0].value.id, "ok-first");
+  assert.equal(results[2]?.ok, true, "a later ok:true result must be kept");
+  assert.equal(results[2].value.id, "ok-third");
+  assert.equal(results[1]?.ok, false);
+  assert.equal(results[1]?.timeout, true);
+  assert.match(results[1].reason, /repos\/timeout\/second/);
+  assert.equal(
+    /repos\/ok\/first/.test(results[1].reason),
+    false,
+    `timeout must name the call that timed out, got ${results[1].reason}`
+  );
+});
+
+test("pool-worker-per-item-timeout-keeps-sibling-successes", async () => {
+  const { createAuthenticatedGitHubTransport } = await importResolver();
+  const results = withFakeGh({ mode: "hang-second" }, () => {
+    const transport = createAuthenticatedGitHubTransport(root, {
+      concurrency: 3,
+      totalTimeoutMs: 10_000,
+      perCallTimeoutMs: 400
+    });
+    return transport.getJsonMany([
+      "repos/ok/first",
+      "repos/timeout/second",
+      "repos/ok/third"
+    ]);
+  });
+  assert.equal(results[0]?.ok, true, "the worker must keep an earlier success across a sibling timeout");
+  assert.equal(results[0].value.path, "repos/ok/first");
+  assert.equal(results[2]?.ok, true, "the worker must keep a later success across a sibling timeout");
+  assert.equal(results[2].value.path, "repos/ok/third");
+  assert.equal(results[1]?.ok, false);
+  assert.equal(results[1]?.timeout, true);
+  assert.match(results[1].reason, /repos\/timeout\/second/);
+});
+
+test("pool-worker-secondary-rate-limit-names-the-failing-call", async () => {
+  const { createAuthenticatedGitHubTransport } = await importResolver();
+  withFakeGh({ mode: "ratelimit" }, () => {
+    const transport = createAuthenticatedGitHubTransport(root, {
+      concurrency: 1,
+      totalTimeoutMs: 30_000,
+      perCallTimeoutMs: 10_000
+    });
+    assert.throws(
+      () => transport.getJsonMany(["repos/ok/first", "repos/limited/second"]),
+      (error) =>
+        error.code === "SECONDARY_RATE_LIMIT" &&
+        /repos\/limited\/second/.test(error.message) &&
+        !/repos\/ok\/first/.test(error.message),
+      "the named path must be the call that hit the secondary rate limit"
+    );
+  });
+});
+
+const loadPassingActivationFacts = () =>
+  JSON.parse(
+    readFileSync(resolve(root, "fixtures/governance/authenticated-review-activation/passing.json"), "utf8")
+  );
+
+const gitBlobUtf8 = (sha, path) =>
+  execFileSync("git", ["cat-file", "blob", `${sha}:${path}`], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"]
+  });
+
+test("activation-github-outage-fails-closed-unless-boolean-false", async () => {
+  const { evaluateAuthenticatedReviewActivation } = await importResolver();
+  const values = ["true", 0, null, "omitted"];
+  for (const value of values) {
+    const facts = loadPassingActivationFacts();
+    if (value === "omitted") delete facts.github_outage;
+    else facts.github_outage = value;
+    let message;
+    try {
+      evaluateAuthenticatedReviewActivation(facts);
+      message = undefined;
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    assert.equal(
+      message,
+      "authenticated review activation is inactive: github outage",
+      `github_outage=${JSON.stringify(value)} must fail closed as an outage, got ${message}`
+    );
+  }
+});
+
+test("activation-permission-bound-to-approving-reviewer", async () => {
+  const { createFixtureTransport, collectAuthenticatedReviewActivationFacts } = await importResolver();
+  const sha = "c270c270c270c270c270c270c270c270c270c270";
+  const collected = collectAuthenticatedReviewActivationFacts(root, {
+    repository: ACTIVATION_FIXTURE_REPO,
+    prNumber: 9270,
+    reviewerLogin: "admin-user",
+    transport: createFixtureTransport({
+      [`repos/${ACTIVATION_FIXTURE_REPO}/branches/dev/protection`]: {
+        required_pull_request_reviews: {
+          required_approving_review_count: 1,
+          dismiss_stale_reviews: true,
+          require_last_push_approval: true,
+          bypass_pull_request_allowances: { users: [], teams: [], apps: [] }
+        },
+        enforce_admins: { enabled: true }
+      },
+      [`repos/${ACTIVATION_FIXTURE_REPO}/collaborators/admin-user/permission`]: {
+        permission: "admin",
+        user: { id: 999001, login: "admin-user" }
+      },
+      [`repos/${ACTIVATION_FIXTURE_REPO}/collaborators/approver/permission`]: {
+        permission: "write",
+        user: { id: 220022, login: "approver" }
+      },
+      [`repos/${ACTIVATION_FIXTURE_REPO}/pulls/9270`]: {
+        base: { ref: "dev" },
+        head: { sha },
+        user: { id: 4001 },
+        merged_by: { id: 4002 }
+      },
+      [`repos/${ACTIVATION_FIXTURE_REPO}/pulls/9270/reviews`]: [
+        { state: "APPROVED", commit_id: sha, user: { id: 220022, login: "approver" } }
+      ]
+    })
+  });
+  assert.equal(collected.facts.reviewer_id, 220022);
+  assert.equal(
+    collected.facts.reviewer_permission,
+    "write",
+    "permission must come from the approving reviewer, not from a separately supplied reviewerLogin"
+  );
+  assert.notEqual(collected.facts.reviewer_permission, "admin");
+});
+
+test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
+  const facts = loadBaselineFacts();
+  const activation = loadPassingActivationFacts();
+  const adrPath = activation.manifest.artifacts[0].path;
+  const head = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: root,
+    encoding: "utf8"
+  }).trim();
+  const blob = gitBlobUtf8(head, adrPath);
+  activation.exact_head_sha = head;
+  activation.review_head_sha = head;
+  activation.manifest.artifacts[0].sha256 = sha256Utf8(blob);
+  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
+  activation.manifest_in_head = true;
+  facts.authenticated_review_activation_facts = activation;
+  const { result } = await resolveOffline(facts);
+  assert.equal(
+    result.artifact_freeze,
+    null,
+    "injected facts that match a real git blob still must not freeze"
+  );
+});
+
+test("artifact-freeze-requires-git-blob-digest", async () => {
+  const facts = loadBaselineFacts();
+  const activation = loadPassingActivationFacts();
+  const adrPath = activation.manifest.artifacts[0].path;
+  const head = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: root,
+    encoding: "utf8"
+  }).trim();
+  const blob = gitBlobUtf8(head, adrPath);
+  activation.exact_head_sha = head;
+  activation.review_head_sha = head;
+  activation.manifest.artifacts[0].sha256 = "a".repeat(64);
+  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
+  activation.manifest_in_head = true;
+  facts.authenticated_review_activation_facts = activation;
+  facts[LIVE_ACTIVATION_FACTS] = activation;
+  const { result } = await resolveOffline(facts);
+  assert.notEqual(sha256Utf8(blob), "a".repeat(64), "the compared digest must not be the real blob hash");
+  assert.equal(
+    result.artifact_freeze,
+    null,
+    "a freeze digest must not be copied from input when it does not match the git blob"
+  );
 });
