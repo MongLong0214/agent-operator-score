@@ -314,6 +314,14 @@ export const sealWorkspace = (input: unknown): SealOk | Fail => {
   return { ok: true, phase: input.phase, digest: tree.digest, files: tree.files };
 };
 
+const externalMutationClassification = (path: string): ClassificationOk => ({
+  ok: true,
+  actor: "external_mutation",
+  event_type: "workspace.external_mutation",
+  provenance: RUNNER_PROVENANCE,
+  path
+});
+
 const unknownClassification = (path: string): ClassificationOk => ({
   ok: true,
   actor: "actor.attribution_unknown",
@@ -346,12 +354,16 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
     matching.push(trace);
   }
 
-  // SSOT 6.7 and E3-001's own acceptance line say an uncorrelated mutation is classified
-  // `workspace.external_mutation` or explicit unknown. Refusing was a third answer neither
-  // document sanctions. `external_mutation` would still be wrong -- #298 measures that an
-  // ordinary source write truncates past the 2048-character payload bound and stops correlating,
-  // so "not matched" is not evidence of an external actor. Explicit unknown is the option the
-  // ticket already names, and it withholds the score rather than asserting an actor.
+  // SSOT 6.7 is two rules, not one choice:
+  //   :720  uncorrelated mutation            -> external_mutation
+  //   :721  attribution cannot be determined -> actor.attribution_unknown, score withheld
+  //
+  // No traces at all is the uncorrelated case: nothing the wrapper observed touched this path,
+  // so the mutation came from outside it. Traces present but none correlating is the second
+  // case -- there was wrapper activity and this classifier could not tie it to the path, which
+  // is a failure to determine, not evidence of an external actor. A truncated payload lands
+  // here rather than being asserted as external.
+  if (input.traces.length === 0) return externalMutationClassification(path);
   if (matching.length === 0) return unknownClassification(path);
 
   const actors = new Set<string>();

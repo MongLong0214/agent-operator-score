@@ -623,19 +623,17 @@ describe("workspace", () => {
       }
 
       {
-        // SSOT 6.7 and this ticket's acceptance line allow external_mutation or explicit
-        // unknown for an uncorrelated mutation. Empty traces are not evidence of an external
-        // actor, so the answer is explicit unknown with the score withheld -- not a refusal,
-        // which neither document sanctions.
+        // SSOT 6.7:720 -- no traces at all is the uncorrelated case: nothing the wrapper
+        // observed touched this path, so the mutation came from outside it.
         const uncorrelated = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: []
         });
-        accepted(uncorrelated, "empty traces classify as explicit unknown");
+        accepted(uncorrelated, "no traces classify as external_mutation");
         if (uncorrelated.ok) {
-          assert.equal(uncorrelated.actor, "actor.attribution_unknown", CONTAINED);
-          assert.equal(uncorrelated.score_withheld, true, CONTAINED);
+          assert.equal(uncorrelated.actor, "external_mutation", CONTAINED);
+          assert.equal(uncorrelated.event_type, "workspace.external_mutation", CONTAINED);
         }
       }
 
