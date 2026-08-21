@@ -298,6 +298,21 @@ describe("workspace", () => {
       assert.notEqual(otherEnv.environmentDigest, first.environmentDigest, CONTAINED);
       assert.equal(otherEnv.baseDigest, first.baseDigest, CONTAINED);
 
+      // The environment digest must depend on key names, not only on the ordered values. The keys
+      // are chosen so that sorting them yields the SAME value sequence as ENV -- runtime/suite sort
+      // to "node","coding-core-v0" and so do alpha/beta -- otherwise the digests differ on ordering
+      // alone and a build that dropped key names entirely would still pass this case.
+      assert.deepEqual(
+        Object.keys(ENV).sort().map((key) => (ENV as Record<string, string>)[key]),
+        ["node", "coding-core-v0"],
+        CONTAINED
+      );
+      const sameValuesOtherKeys = asOk(
+        api.createRunWorkspace(request(temp, { environment: { alpha: "node", beta: "coding-core-v0" } })),
+        "same ordered values under different keys"
+      );
+      assert.notEqual(sameValuesOtherKeys.environmentDigest, first.environmentDigest, CONTAINED);
+
       // Every caller pin in this file hands createRunWorkspace the digest it just produced, so
       // the environment comparison was never given a value it had to reject. A mismatching pin
       // must fail closed exactly like the base-digest pin above it.
@@ -388,6 +403,174 @@ describe("workspace", () => {
           environment: { ...ENV, runtime: "other" }
         }),
         "wrong environment object on valid workspace"
+      );
+
+      // A pin is a caller's claim about identity. Absent means no claim; present-but-unusable was
+      // being collapsed into absent, so a caller that pinned the wrong type was told its pin had
+      // been honoured while nothing was compared.
+      for (const malformed of [7, true, {}, [], "", "short"] as unknown[]) {
+        refused(
+          api.createRunWorkspace(request(temp, { expectedEnvironmentDigest: malformed })),
+          `create with an unusable environment pin: ${JSON.stringify(malformed)}`
+        );
+        refused(
+          api.createRunWorkspace(request(temp, { expectedBaseDigest: malformed })),
+          `create with an unusable base pin: ${JSON.stringify(malformed)}`
+        );
+        refused(
+          api.verifyWorkspace({
+            root: untouched.root,
+            parentRoot: temp.parent,
+            environment: { ...ENV },
+            expectedEnvironmentDigest: malformed
+          }),
+          `verify with an unusable environment pin: ${JSON.stringify(malformed)}`
+        );
+      }
+
+      // A review found the first version of this fix accepted an inherited wrong pin, because it
+      // asked Object.hasOwn while every other field on the request is read through the prototype
+      // chain. The old code refused these, so that was a fail-open regression, not a fix.
+      {
+        const inheritedCreate = Object.create({ expectedBaseDigest: "f".repeat(64) }) as Record<string, unknown>;
+        inheritedCreate.parentRoot = temp.parent;
+        inheritedCreate.sourceRoot = temp.source;
+        inheritedCreate.environment = { ...ENV };
+        refused(api.createRunWorkspace(inheritedCreate), "create with an inherited disagreeing base pin");
+
+        const inheritedVerify = Object.create({ expectedEnvironmentDigest: "f".repeat(64) }) as Record<string, unknown>;
+        inheritedVerify.root = untouched.root;
+        inheritedVerify.parentRoot = temp.parent;
+        inheritedVerify.environment = { ...ENV };
+        refused(api.verifyWorkspace(inheritedVerify), "verify with an inherited disagreeing environment pin");
+      }
+
+      // An accessor that answers differently on two reads is not a claim about identity, it is two
+      // claims. Both orders are refused: reading once accepted [correct, wrong] while the guard it
+      // replaced read twice and refused it, and reading twice-then-trusting-the-last accepted
+      // [wrong, correct]. The read count is pinned so neither becomes unbounded re-reading.
+      for (const [label, sequence] of [
+        ["first read disagrees", ["f".repeat(64), untouched.baseDigest]],
+        ["second read disagrees", [untouched.baseDigest, "f".repeat(64)]]
+      ] as [string, string[]][]) {
+        let reads = 0;
+        refused(
+          api.verifyWorkspace({
+            root: untouched.root,
+            parentRoot: temp.parent,
+            environment: { ...ENV },
+            get expectedBaseDigest() {
+              return sequence[Math.min(reads++, sequence.length - 1)];
+            }
+          }),
+          `verify with an unstable pin accessor: ${label}`
+        );
+        assert.equal(reads, 2, CONTAINED);
+      }
+      {
+        // The stable accessor is the control: without it a build that refuses every accessor pin
+        // satisfies both refusals above.
+        let reads = 0;
+        accepted(
+          api.verifyWorkspace({
+            root: untouched.root,
+            parentRoot: temp.parent,
+            environment: { ...ENV },
+            get expectedBaseDigest() {
+              reads += 1;
+              return untouched.baseDigest;
+            }
+          }),
+          "verify with a stable correct pin accessor"
+        );
+        assert.equal(reads, 2, CONTAINED);
+      }
+
+      // A pin accessor that throws is not a claim that can be checked. Letting the exception escape
+      // is not a fail-closed answer, and treating it as absence silently drops the caller's pin.
+      // Built with defineProperty rather than through request(), whose object spread would read the
+      // accessor inside the test and throw before production ever saw it.
+      {
+        const throwing: Record<string, unknown> = {
+          parentRoot: temp.parent,
+          sourceRoot: temp.source,
+          environment: { ...ENV }
+        };
+        Object.defineProperty(throwing, "expectedBaseDigest", {
+          enumerable: true,
+          get() {
+            throw new Error("pin accessor");
+          }
+        });
+        refused(api.createRunWorkspace(throwing), "create with a pin accessor that throws");
+      }
+
+      // Pins are captured before any filesystem work, so caller code cannot run after the digest it
+      // is checked against was computed. Previously the accessor ran after the tree was inspected,
+      // and one that deleted a workspace file still verified against the cached digest.
+      {
+        const victim = join(untouched.root, "src", "app.ts");
+        const preserved = readFileSync(victim, "utf8");
+        const result = api.verifyWorkspace({
+          root: untouched.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV },
+          get expectedBaseDigest() {
+            rmSync(victim, { force: true });
+            return untouched.baseDigest;
+          }
+        });
+        writeFileSync(victim, preserved);
+        assert.equal(result.ok, false, CONTAINED);
+      }
+
+      // The malformed loop above never reached the verify base pin, so reverting that one of the
+      // four migrated guards left the whole suite green.
+      for (const malformed of [7, true, {}, [], "", "short"] as unknown[]) {
+        refused(
+          api.verifyWorkspace({
+            root: untouched.root,
+            parentRoot: temp.parent,
+            environment: { ...ENV },
+            expectedBaseDigest: malformed
+          }),
+          `verify with an unusable base pin: ${JSON.stringify(malformed)}`
+        );
+      }
+
+      // Pairing an accepted correct pin with a refused well-formed wrong one on the SAME entry
+      // point is what stops a build that simply refuses every create pin: the first case dies if
+      // pins stop working, the second dies if they stop being compared.
+      accepted(
+        api.createRunWorkspace(request(temp, { expectedEnvironmentDigest: clean.environmentDigest })),
+        "create with a correct environment pin"
+      );
+      refused(
+        api.createRunWorkspace(request(temp, { expectedEnvironmentDigest: "f".repeat(64) })),
+        "create with a well-formed disagreeing environment pin"
+      );
+
+      // The positive half: an absent pin and an explicitly undefined one are both "no claim", and
+      // a correct pin still passes. Without these the refusals above are satisfied by a build that
+      // refuses every pin, which would be a broken feature rather than a closed hole.
+      accepted(
+        api.verifyWorkspace({
+          root: untouched.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV },
+          expectedEnvironmentDigest: undefined
+        }),
+        "an explicitly undefined pin is no pin"
+      );
+      accepted(
+        api.verifyWorkspace({
+          root: untouched.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV },
+          expectedBaseDigest: untouched.baseDigest,
+          expectedEnvironmentDigest: untouched.environmentDigest
+        }),
+        "correct pins still verify"
       );
     } finally {
       closeTemp(temp);
