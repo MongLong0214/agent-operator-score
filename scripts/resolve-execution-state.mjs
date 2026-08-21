@@ -1364,7 +1364,8 @@ const ACTIVATION_IDENTITY_COLLISION = "authenticated review activation is inacti
 const ACTIVATION_ARTIFACT_MISMATCH = "authenticated review activation is inactive: artifact mismatch";
 const ACTIVATION_STALE_REVIEW_DISMISSAL =
   "authenticated review activation is inactive: stale-review dismissal is required";
-const LIVE_ACTIVATION_FACTS = Symbol.for("aos.liveCollectedActivationFacts");
+// Module-private: Symbol.for is the global registry, so any caller can reconstruct it.
+const LIVE_ACTIVATION_FACTS = Symbol("aos.liveCollectedActivationFacts");
 
 const rejectActivation = (message) => {
   throw new Error(message);

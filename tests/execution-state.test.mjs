@@ -43,8 +43,6 @@ const importResolver = async () => import(pathToFileURL(resolverPath).href);
 
 const sha256Utf8 = (value) => createHash("sha256").update(value, "utf8").digest("hex");
 
-const LIVE_ACTIVATION_FACTS = Symbol.for("aos.liveCollectedActivationFacts");
-
 const withFakeGh = (options, fn) => {
   const dir = mkdtempSync(join(tmpdir(), "aos-fake-gh-"));
   const ghPath = join(dir, "gh");
@@ -6503,8 +6501,7 @@ test("activation-permission-bound-to-approving-reviewer", async () => {
   assert.notEqual(collected.facts.reviewer_permission, "admin");
 });
 
-test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
-  const facts = loadBaselineFacts();
+const activationMatchingHeadBlob = () => {
   const activation = loadPassingActivationFacts();
   const adrPath = activation.manifest.artifacts[0].path;
   const head = execFileSync("git", ["rev-parse", "HEAD"], {
@@ -6517,36 +6514,46 @@ test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
   activation.manifest.artifacts[0].sha256 = sha256Utf8(blob);
   activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
   activation.manifest_in_head = true;
-  facts.authenticated_review_activation_facts = activation;
-  const { result } = await resolveOffline(facts);
-  assert.equal(
-    result.artifact_freeze,
-    null,
-    "injected facts that match a real git blob still must not freeze"
-  );
-});
+  return activation;
+};
 
-test("artifact-freeze-requires-git-blob-digest", async () => {
-  const facts = loadBaselineFacts();
-  const activation = loadPassingActivationFacts();
-  const adrPath = activation.manifest.artifacts[0].path;
-  const head = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: root,
-    encoding: "utf8"
-  }).trim();
-  const blob = gitBlobUtf8(head, adrPath);
-  activation.exact_head_sha = head;
-  activation.review_head_sha = head;
-  activation.manifest.artifacts[0].sha256 = "a".repeat(64);
-  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
-  activation.manifest_in_head = true;
-  facts.authenticated_review_activation_facts = activation;
-  facts[LIVE_ACTIVATION_FACTS] = activation;
-  const { result } = await resolveOffline(facts);
-  assert.notEqual(sha256Utf8(blob), "a".repeat(64), "the compared digest must not be the real blob hash");
-  assert.equal(
-    result.artifact_freeze,
-    null,
-    "a freeze digest must not be copied from input when it does not match the git blob"
-  );
+test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
+  // Caller-reachable keys only. A matching blob digest is the strongest injection:
+  // if the gate still trusted any of these keys, freeze would be non-null.
+  const plants = [
+    {
+      name: "authenticated_review_activation_facts",
+      apply: (facts, activation) => {
+        facts.authenticated_review_activation_facts = activation;
+      }
+    },
+    {
+      name: "Symbol.for(aos.liveCollectedActivationFacts)",
+      apply: (facts, activation) => {
+        facts[Symbol.for("aos.liveCollectedActivationFacts")] = activation;
+      }
+    },
+    {
+      name: "Symbol(aos.liveCollectedActivationFacts)",
+      apply: (facts, activation) => {
+        facts[Symbol("aos.liveCollectedActivationFacts")] = activation;
+      }
+    },
+    {
+      name: "string aos.liveCollectedActivationFacts",
+      apply: (facts, activation) => {
+        facts["aos.liveCollectedActivationFacts"] = activation;
+      }
+    }
+  ];
+  for (const plant of plants) {
+    const facts = loadBaselineFacts();
+    plant.apply(facts, activationMatchingHeadBlob());
+    const { result } = await resolveOffline(facts);
+    assert.equal(
+      result.artifact_freeze,
+      null,
+      `${plant.name} is caller-reachable and must not freeze even when the blob digest would match`
+    );
+  }
 });
