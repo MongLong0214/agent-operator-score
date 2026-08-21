@@ -623,17 +623,17 @@ describe("workspace", () => {
       }
 
       {
-        // SSOT 6.7:720 -- no traces at all is the uncorrelated case: nothing the wrapper
-        // observed touched this path, so the mutation came from outside it.
+        // SSOT 6.7:721 -- no traces is missing evidence, not an observation set this mutation
+        // is absent from, so attribution cannot be determined and the score is withheld.
         const uncorrelated = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: []
         });
-        accepted(uncorrelated, "no traces classify as external_mutation");
+        accepted(uncorrelated, "no traces is missing evidence, not an observation set");
         if (uncorrelated.ok) {
-          assert.equal(uncorrelated.actor, "external_mutation", CONTAINED);
-          assert.equal(uncorrelated.event_type, "workspace.external_mutation", CONTAINED);
+          assert.equal(uncorrelated.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(uncorrelated.score_withheld, true, CONTAINED);
         }
       }
 
@@ -667,15 +667,15 @@ describe("workspace", () => {
       }
 
       {
-        // A path appearing inside file contents is not the write target, so this does not
-        // correlate. Explicit unknown, not a claim that some external actor did it.
+        // SSOT 6.7:720 -- the payload is readable and names a different write target, so the
+        // observation set was seen and this path is not in it. That is the uncorrelated case.
         const mentioned = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: [mentionTrace]
         });
-        accepted(mentioned, "a path in file contents classifies as explicit unknown");
-        if (mentioned.ok) assert.equal(mentioned.actor, "actor.attribution_unknown", CONTAINED);
+        accepted(mentioned, "a readable trace naming another path leaves this one uncorrelated");
+        if (mentioned.ok) assert.equal(mentioned.actor, "external_mutation", CONTAINED);
       }
 
       const readme = api.classifyWorkspaceMutation({
