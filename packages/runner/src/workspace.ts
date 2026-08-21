@@ -3,10 +3,13 @@
  *
  * A run is a unique directory under a caller-supplied parent, never cwd.
  * Source is copied as regular files only. Symlinks, reused roots, and
- * digest mismatch fail closed. Workspace mutations are classified from
- * wrapper events plus the live tree: correlation_id and payload name the
- * path; a dead `path` field is not correlation. Uncorrelated writes are
- * external_mutation.
+ * digest mismatch fail closed. verifyWorkspace always compares a fresh
+ * inspectTree(recorded.root).digest to recorded.baseDigest; a caller pin
+ * is extra and cannot skip that check. Workspace mutations are classified
+ * from wrapper events plus the live tree: correlation_id and canonical
+ * payload name the path; a dead `path` field is not correlation.
+ * Uncorrelated writes, including traces that only carry EVENT_DEAD_FIELD
+ * `path`, are external_mutation.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -261,18 +264,19 @@ export const verifyWorkspace = (input: unknown): WorkspaceOk | Fail => {
   if (environmentDigest === null || environmentDigest !== recorded.environmentDigest) return fail();
   const tree = inspectTree(recorded.root);
   if (!tree.ok) return fail();
-  if (isFilledString(input.expectedBaseDigest) && input.expectedBaseDigest !== recorded.baseDigest) {
+  if (tree.digest !== recorded.baseDigest) return fail();
+  if (isFilledString(input.expectedBaseDigest) && input.expectedBaseDigest !== tree.digest) {
     return fail();
   }
-  if (isFilledString(input.expectedEnvironmentDigest) && input.expectedEnvironmentDigest !== recorded.environmentDigest) {
+  if (isFilledString(input.expectedEnvironmentDigest) && input.expectedEnvironmentDigest !== environmentDigest) {
     return fail();
   }
   return {
     ok: true,
     root: recorded.root,
     runId: recorded.runId,
-    baseDigest: recorded.baseDigest,
-    environmentDigest: recorded.environmentDigest
+    baseDigest: tree.digest,
+    environmentDigest
   };
 };
 
