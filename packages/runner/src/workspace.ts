@@ -4,7 +4,9 @@
  * A run is a unique directory under a caller-supplied parent, never cwd.
  * Source is copied as regular files only. Symlinks, reused roots, and
  * digest mismatch fail closed. Workspace mutations are classified from
- * trace correlation; uncorrelated writes are external_mutation.
+ * wrapper events plus the live tree: correlation_id and payload name the
+ * path; a dead `path` field is not correlation. Uncorrelated writes are
+ * external_mutation.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -46,6 +48,7 @@ type Recorded = {
   sourceRoot: string;
   runId: string;
   baseDigest: string;
+  baseFiles: FileEntry[];
   environmentDigest: string;
 };
 
@@ -181,6 +184,15 @@ const relativePathInside = (root: string, pathValue: unknown): string | null => 
   return posix;
 };
 
+const fileAt = (files: FileEntry[], path: string): FileEntry | undefined =>
+  files.find((file) => file.path === path);
+
+const payloadNamesPath = (payload: unknown, path: string): boolean => {
+  if (!isFilledString(payload)) return false;
+  if (payload === path) return true;
+  return payload.split(/[ \t\n\r]+/).includes(path);
+};
+
 export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
   if (!isPlainRecord(input)) return fail();
   const parentReal = explicitDirectory(input.parentRoot);
@@ -226,6 +238,7 @@ export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
     sourceRoot: sourceReal,
     runId,
     baseDigest: sourceTree.digest,
+    baseFiles: copied.files.map((file) => ({ path: file.path, digest: file.digest })),
     environmentDigest
   };
   registry.set(root, record);
@@ -248,7 +261,7 @@ export const verifyWorkspace = (input: unknown): WorkspaceOk | Fail => {
   if (environmentDigest === null || environmentDigest !== recorded.environmentDigest) return fail();
   const tree = inspectTree(recorded.root);
   if (!tree.ok) return fail();
-  if (isFilledString(input.expectedBaseDigest) && input.expectedBaseDigest !== tree.digest) {
+  if (isFilledString(input.expectedBaseDigest) && input.expectedBaseDigest !== recorded.baseDigest) {
     return fail();
   }
   if (isFilledString(input.expectedEnvironmentDigest) && input.expectedEnvironmentDigest !== recorded.environmentDigest) {
@@ -258,7 +271,7 @@ export const verifyWorkspace = (input: unknown): WorkspaceOk | Fail => {
     ok: true,
     root: recorded.root,
     runId: recorded.runId,
-    baseDigest: tree.digest,
+    baseDigest: recorded.baseDigest,
     environmentDigest: recorded.environmentDigest
   };
 };
@@ -270,6 +283,7 @@ export const sealWorkspace = (input: unknown): SealOk | Fail => {
   if (input.phase !== "initial" && input.phase !== "final") return fail();
   const tree = inspectTree(recorded.root);
   if (!tree.ok) return fail();
+  if (input.phase === "initial" && tree.digest !== recorded.baseDigest) return fail();
   return { ok: true, phase: input.phase, digest: tree.digest, files: tree.files };
 };
 
@@ -289,22 +303,20 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
   if (recorded === null) return fail();
   const path = relativePathInside(recorded.root, input.path);
   if (path === null) return fail();
-  const absolute = join(recorded.root, ...path.split("/"));
-  if (existsSync(absolute)) {
-    let stat;
-    try {
-      stat = lstatSync(absolute);
-    } catch {
-      return fail();
-    }
-    if (stat.isSymbolicLink()) return fail();
-  }
+  const tree = inspectTree(recorded.root);
+  if (!tree.ok) return fail();
+  const live = fileAt(tree.files, path);
+  if (live === undefined) return fail();
+  const base = fileAt(recorded.baseFiles, path);
+  if (base !== undefined && base.digest === live.digest) return fail();
   if (!Array.isArray(input.traces)) return fail();
 
   const matching: Record<string, unknown>[] = [];
   for (const trace of input.traces) {
     if (!isPlainRecord(trace)) return fail();
-    if (trace.path === path) matching.push(trace);
+    if (!isFilledString(trace.correlation_id)) continue;
+    if (!payloadNamesPath(trace.payload, path)) continue;
+    matching.push(trace);
   }
 
   if (matching.length === 0) {
