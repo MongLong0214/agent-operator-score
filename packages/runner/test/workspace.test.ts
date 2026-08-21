@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { describe, test } from "node:test";
+import { normalizeClaudeEvent } from "../../../adapters/claude-code/src/normalize.ts";
 
 // Namespace/dynamic import: a missing module or named export must stay undefined
 // so each case can fail with its pinned message. A static named import would be a
@@ -88,17 +89,60 @@ const request = (temp: Temp, extra: Record<string, unknown> = {}) => ({
   ...extra
 });
 
-const correlated = (
-  actor: string,
-  eventType: string,
-  correlationId: string,
-  payload: string
-): Record<string, string> => ({
-  actor,
-  event_type: eventType,
-  correlation_id: correlationId,
-  payload
-});
+const STAMP = "2026-08-21T00:00:00.000Z";
+
+const mappedNative = (
+  source: string,
+  native: Record<string, unknown>,
+  correlationId: string
+): Record<string, unknown> => {
+  const event = normalizeClaudeEvent({
+    source,
+    native,
+    run_id: "run-e3-001",
+    task_id: "task-e3-001",
+    correlation_id: correlationId,
+    identity: "claude-code|unknown|unknown",
+    timestamp: STAMP,
+    parent_id: null
+  });
+  assert.equal(event !== null && typeof event === "object" && !Array.isArray(event), true, CONTAINED);
+  const record = event as Record<string, unknown>;
+  assert.equal(record.status, "MAPPED", CONTAINED);
+  assert.equal(typeof record.correlation_id, "string", CONTAINED);
+  assert.equal(Object.hasOwn(record, "path"), false, CONTAINED);
+  return record;
+};
+
+const writeToolCall = (path: string, correlationId: string): Record<string, unknown> => {
+  const event = mappedNative("sdkQuery", {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [{
+        type: "tool_use",
+        id: `tool-${correlationId}`,
+        name: "Write",
+        input: { path }
+      }]
+    }
+  }, correlationId);
+  assert.equal(event.event_type, "tool.call", CONTAINED);
+  assert.equal(event.actor, "agent", CONTAINED);
+  assert.equal(event.payload !== null && typeof event.payload === "object" && !Array.isArray(event.payload), true, CONTAINED);
+  return event;
+};
+
+const manualEditDeclared = (path: string, correlationId: string): Record<string, unknown> => {
+  const event = mappedNative("wrapper", {
+    type: "human.manual_edit_declared",
+    path
+  }, correlationId);
+  assert.equal(event.event_type, "human.manual_edit_declared", CONTAINED);
+  assert.equal(event.actor, "human/takeover", CONTAINED);
+  assert.equal(event.payload !== null && typeof event.payload === "object" && !Array.isArray(event.payload), true, CONTAINED);
+  return event;
+};
 
 const verifyRequest = (temp: Temp, created: WorkspaceOk, extra: Record<string, unknown> = {}) => ({
   root: created.root,
@@ -392,7 +436,7 @@ describe("workspace", () => {
         api.classifyWorkspaceMutation({
           root: createdDir.root,
           path: "src/secret.txt",
-          traces: [correlated("agent", "tool.call", "corr-agent", "src/secret.txt")]
+          traces: [writeToolCall("src/secret.txt", "corr-symlink")]
         }),
         "classify directory symlink escape"
       );
@@ -414,6 +458,23 @@ describe("workspace", () => {
       assert.equal(readFileSync(join(temp.source, "README.txt"), "utf8"), SOURCE_README, CONTAINED);
       assert.equal(readFileSync(join(temp.source, "src", "app.ts"), "utf8"), SOURCE_APP, CONTAINED);
       assert.equal(statSync(temp.source).isDirectory(), true, CONTAINED);
+
+      const nestedParent = join(temp.source, "runs");
+      mkdirSync(nestedParent);
+      const sourceBeforeNested = snapshotTree(temp.source);
+      let nestedCreate: WorkspaceResult | { ok: true };
+      try {
+        nestedCreate = api.createRunWorkspace({
+          parentRoot: nestedParent,
+          sourceRoot: temp.source,
+          environment: { ...ENV }
+        });
+      } catch {
+        nestedCreate = { ok: true };
+      }
+      refused(nestedCreate, "parent inside source");
+      assert.deepEqual(snapshotTree(temp.source), sourceBeforeNested, CONTAINED);
+      assert.deepEqual(readdirSync(nestedParent), [], CONTAINED);
     } finally {
       closeTemp(temp);
     }
@@ -462,7 +523,7 @@ describe("workspace", () => {
         api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
-          traces: [correlated("agent", "tool.call", "corr-agent", "src/agent.ts")]
+          traces: [writeToolCall("src/agent.ts", "corr-agent")]
         }),
         "classify before mutation"
       );
@@ -470,7 +531,7 @@ describe("workspace", () => {
         api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/app.ts",
-          traces: [correlated("agent", "tool.call", "corr-app", "src/app.ts")]
+          traces: [writeToolCall("src/app.ts", "corr-app")]
         }),
         "classify unchanged base file"
       );
@@ -480,41 +541,15 @@ describe("workspace", () => {
       writeFileSync(join(created.root, "src", "external.ts"), "uncorrelated write\n");
       writeFileSync(join(created.root, "src", "unknown.ts"), "ambiguous write\n");
 
-      const deadPath = api.classifyWorkspaceMutation({
-        root: created.root,
-        path: "src/agent.ts",
-        traces: [{
-          actor: "agent",
-          event_type: "tool.call",
-          correlation_id: "corr-agent",
-          path: "src/agent.ts",
-          provenance: "wrapper-workspace-correlation"
-        }]
-      });
-      accepted(deadPath, "dead path field is not correlation");
-      if (deadPath.ok) {
-        assert.equal(deadPath.actor, "external_mutation", CONTAINED);
-        assert.equal(deadPath.event_type, "workspace.external_mutation", CONTAINED);
-      }
-
-      const missingCorrelation = api.classifyWorkspaceMutation({
-        root: created.root,
-        path: "src/agent.ts",
-        traces: [{
-          actor: "agent",
-          event_type: "tool.call",
-          payload: "src/agent.ts"
-        }]
-      });
-      accepted(missingCorrelation, "payload without correlation_id");
-      if (missingCorrelation.ok) {
-        assert.equal(missingCorrelation.actor, "external_mutation", CONTAINED);
-      }
+      const agentTrace = writeToolCall("src/agent.ts", "corr-agent");
+      const humanTrace = manualEditDeclared("src/human.ts", "corr-human");
+      const unknownAgentTrace = writeToolCall("src/unknown.ts", "corr-a");
+      const unknownHumanTrace = manualEditDeclared("src/unknown.ts", "corr-b");
 
       const agent = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/agent.ts",
-        traces: [correlated("agent", "tool.call", "corr-agent", "src/agent.ts")]
+        traces: [agentTrace]
       });
       accepted(agent, "agent");
       if (agent.ok) {
@@ -528,7 +563,7 @@ describe("workspace", () => {
       const human = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/human.ts",
-        traces: [correlated("human/takeover", "human.manual_edit_declared", "corr-human", "src/human.ts")]
+        traces: [humanTrace]
       });
       accepted(human, "human");
       if (human.ok) {
@@ -553,10 +588,7 @@ describe("workspace", () => {
       const unknown = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/unknown.ts",
-        traces: [
-          correlated("agent", "tool.call", "corr-a", "src/unknown.ts"),
-          correlated("human/takeover", "human.manual_edit_declared", "corr-b", "src/unknown.ts")
-        ]
+        traces: [unknownAgentTrace, unknownHumanTrace]
       });
       accepted(unknown, "unknown");
       if (unknown.ok) {
