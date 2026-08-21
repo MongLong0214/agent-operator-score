@@ -136,8 +136,8 @@ const makeIndependentReproduction = (
 };
 
 // Comparator input only. Must not carry a caller-minted publication ledger, G1–G3
-// status, or G0 stub — those objects live in the E14 ledger, the E12 feasibility
-// record, and runG0Gate.
+// status, or G0 stub. G1 is the E12 feasibility record; G2 and G3 are deferred
+// calibration studies the n=20 record cannot close; G0 is runG0Gate.
 const completeInput = (canonicalJsonBytes: CanonicalJsonBytes, overrides: Json = {}) => ({
   localEnvironment: VERIFIER,
   headSha: HEAD,
@@ -180,9 +180,10 @@ const resolvedPublicationLedgerText = () => {
   return upsertRecordBlock(text, "Requirement ledger", { ...ledger, requirements });
 };
 
-// The objects runG4Gate actually reads: G4-VERDICT allowlist + Live reproduction,
-// E14 requirement ledger, E12 Gate verdicts. Caller-supplied publicationRequirements,
-// gateStatus, and runG0 are not these objects.
+// Documents the executable reads. E12 may claim G2/G3 PASS_TO_CONTINUE; SSOT §7.3
+// says that n=20 record cannot close those deferred studies, so this world still
+// cannot mint G4_PASS. Caller-supplied publicationRequirements, gateStatus, and
+// runG0 remain ignored.
 const protocolPassWorld = (canonicalJsonBytes: CanonicalJsonBytes) => {
   const reproduction = makeIndependentReproduction(canonicalJsonBytes);
   let verdict = readRepositoryFile(VERDICT_PATH);
@@ -556,8 +557,8 @@ describe("external-reproduction", () => {
     );
     assert.equal(pretendedGates.ok, false, "injected G1–G3 RESOLVED minted G4_PASS");
     assert.ok(has(pretendedGates, "G1"), "injected G1 RESOLVED skipped the live E12 feasibility record");
-    assert.ok(has(pretendedGates, "G2"), "injected G2 RESOLVED skipped the live E12 feasibility record");
-    assert.ok(has(pretendedGates, "G3"), "injected G3 RESOLVED skipped the live E12 feasibility record");
+    assert.ok(has(pretendedGates, "G2"), "injected G2 RESOLVED closed a deferred calibration study");
+    assert.ok(has(pretendedGates, "G3"), "injected G3 RESOLVED closed a deferred calibration study");
 
     const pretendedE12Tokens = run(
       completeInput(canonicalize, {
@@ -573,11 +574,11 @@ describe("external-reproduction", () => {
     const e12Continue = run(completeInput(canonicalize, { readFile: withFeasibility({ G1: E12_CONTINUE, G2: E12_CONTINUE, G3: E12_CONTINUE }) }));
     assert.equal(e12Continue.ok, false, "E12 PASS_TO_CONTINUE closed publication and independence blockers");
     assert.equal(has(e12Continue, "UNRESOLVED_GATE G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
-    assert.equal(has(e12Continue, "UNRESOLVED_GATE G2"), false, "E12 PASS_TO_CONTINUE left G2 unresolved");
-    assert.equal(has(e12Continue, "UNRESOLVED_GATE G3"), false, "E12 PASS_TO_CONTINUE left G3 unresolved");
+    assert.ok(has(e12Continue, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2");
+    assert.ok(has(e12Continue, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3");
     assert.equal(e12Continue.gates?.G1, "RESOLVED", "G4 did not close G1 on E12 PASS_TO_CONTINUE");
-    assert.equal(e12Continue.gates?.G2, "RESOLVED", "G4 did not close G2 on E12 PASS_TO_CONTINUE");
-    assert.equal(e12Continue.gates?.G3, "RESOLVED", "G4 did not close G3 on E12 PASS_TO_CONTINUE");
+    assert.equal(e12Continue.gates?.G2, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed G2");
+    assert.equal(e12Continue.gates?.G3, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed G3");
 
     const e12ResolvedToken = run(
       completeInput(canonicalize, {
@@ -595,11 +596,11 @@ describe("external-reproduction", () => {
     );
     assert.ok(
       has(e12ResolvedToken, "UNRESOLVED_GATE G2"),
-      "E12-forbidden RESOLVED token was treated as a G2 pass"
+      "an E12 token closed deferred G2"
     );
     assert.ok(
       has(e12ResolvedToken, "UNRESOLVED_GATE G3"),
-      "E12-forbidden RESOLVED token was treated as a G3 pass"
+      "an E12 token closed deferred G3"
     );
 
     const e12Inconclusive = run(
@@ -608,14 +609,16 @@ describe("external-reproduction", () => {
       })
     );
     assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G1"), "E12 INCONCLUSIVE was treated as a G1 pass");
-    assert.equal(has(e12Inconclusive, "UNRESOLVED_GATE G2"), false, "G2 PASS_TO_CONTINUE was ignored next to G1 INCONCLUSIVE");
+    assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2 next to G1 INCONCLUSIVE");
+    assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3 next to G1 INCONCLUSIVE");
 
     const e12Pivot = run(
       completeInput(canonicalize, {
         readFile: withFeasibility({ G1: E12_CONTINUE, G2: E12_PIVOT, G3: E12_CONTINUE })
       })
     );
-    assert.ok(has(e12Pivot, "UNRESOLVED_GATE G2"), "E12 PIVOT_REQUIRED was treated as a G2 pass");
+    assert.ok(has(e12Pivot, "UNRESOLVED_GATE G2"), "an E12 token closed deferred G2");
+    assert.ok(has(e12Pivot, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3 next to G2 PIVOT_REQUIRED");
     assert.equal(has(e12Pivot, "UNRESOLVED_GATE G1"), false, "G1 PASS_TO_CONTINUE was ignored next to G2 PIVOT_REQUIRED");
 
     const e12Other = run(
@@ -624,6 +627,8 @@ describe("external-reproduction", () => {
       })
     );
     assert.ok(has(e12Other, "UNRESOLVED_GATE G1"), "a non-empty non-E12 token was treated as a G1 pass");
+    assert.ok(has(e12Other, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2 next to a non-E12 G1 token");
+    assert.ok(has(e12Other, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3 next to a non-E12 G1 token");
 
     const g1Open = run(completeInput(canonicalize));
     assert.equal(g1Open.ok, false, "unresolved G1 did not block");
@@ -726,21 +731,27 @@ describe("external-reproduction", () => {
       headSha: HEAD,
       readFile: world.readFile
     });
-    assert.equal(passed.ok, true, "complete independent reproduction did not pass");
-    assert.equal(passed.verdict, "G4_PASS", "complete independent reproduction did not emit G4_PASS");
-    assert.deepEqual(passed.errors, [], "complete independent reproduction still carried errors");
-    assert.equal(passed.permits_publication, true, "complete independent reproduction did not permit publication");
-    assert.equal(passed.reproduction?.independent, true, "full pass was not independent");
-    assert.equal(passed.reproduction?.signature_ok, true, "full pass failed signature verification");
-    assert.equal(passed.reproduction?.bytes_ok, true, "full pass did not compare exact bytes");
-    assert.equal(passed.reproduction?.head_ok, true, "full pass did not bind the current head");
-    assert.equal(passed.gates?.G0, "RESOLVED", "full pass left G0 unresolved");
-    assert.equal(passed.gates?.G1, "RESOLVED", "full pass left G1 unresolved against E12 PASS_TO_CONTINUE");
-    assert.equal(passed.gates?.G2, "RESOLVED", "full pass left G2 unresolved against E12 PASS_TO_CONTINUE");
-    assert.equal(passed.gates?.G3, "RESOLVED", "full pass left G3 unresolved against E12 PASS_TO_CONTINUE");
-    assert.equal(has(passed, "UNRESOLVED_GATE"), false, "full pass still reported UNRESOLVED_GATE");
-    assert.equal(has(passed, "SELF_ATTESTED"), false, "full pass was treated as self-attested");
-    assert.equal(has(passed, "UNTRUSTED_PRINCIPAL"), false, "full pass refused an allowlisted principal");
+    assert.equal(passed.ok, false, "G4 passed while G2 and G3 deferred studies are absent");
+    assert.equal(passed.verdict, null, "G4 emitted G4_PASS while G2 and G3 deferred studies are absent");
+    assert.equal(passed.permits_publication, false, "G4 permitted publication while G2 and G3 are unresolved");
+    assert.deepEqual(
+      passed.errors,
+      ["UNRESOLVED_GATE G2", "UNRESOLVED_GATE G3"],
+      "the closable G0/G1/reproduction/publication world did not fail specifically on deferred G2 and G3"
+    );
+    assert.equal(passed.reproduction?.independent, true, "full-pass world was not independent");
+    assert.equal(passed.reproduction?.signature_ok, true, "full-pass world failed signature verification");
+    assert.equal(passed.reproduction?.bytes_ok, true, "full-pass world did not compare exact bytes");
+    assert.equal(passed.reproduction?.head_ok, true, "full-pass world did not bind the current head");
+    assert.equal(passed.gates?.G0, "RESOLVED", "full-pass world left G0 unresolved");
+    assert.equal(passed.gates?.G1, "RESOLVED", "full-pass world left G1 unresolved against E12 PASS_TO_CONTINUE");
+    assert.equal(passed.gates?.G2, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed deferred G2");
+    assert.equal(passed.gates?.G3, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed deferred G3");
+    assert.equal(has(passed, "UNRESOLVED_GATE G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
+    assert.ok(has(passed, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2");
+    assert.ok(has(passed, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3");
+    assert.equal(has(passed, "SELF_ATTESTED"), false, "full-pass world was treated as self-attested");
+    assert.equal(has(passed, "UNTRUSTED_PRINCIPAL"), false, "full-pass world refused an allowlisted principal");
     assert.equal(
       existsSync(resolve(root, VERDICT_PATH)),
       true,
