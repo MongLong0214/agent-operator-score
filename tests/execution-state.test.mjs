@@ -6689,24 +6689,30 @@ test("artifact-freeze-exact-head-not-live-current-head-does-not-verify", async (
   assert.equal(freeze, null, message);
 });
 
-test("artifact-freeze-live-tree-listing-control-verifies", async () => {
+test("artifact-freeze-has-no-honest-positive-control-on-this-tree", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const message =
-    "the live-tree freeze cases are not a constant null: when every artifact and the v3 manifest are in facts.liveTreePaths, exact_head equals currentHead, and freeze.sha256 equals facts.liveDigests[path], freeze is non-null";
+    "the freeze cases are all refusals, and that is the true state: collectAuthenticatedReviewActivationFacts gathers protection, PR, review, identity and permission fields but never the manifest document, its digest, or manifest_in_head, so the production path cannot produce a freeze";
   assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
 
+  // A positive control here would have to supply manifest_in_head itself, which is exactly the
+  // fact the collector cannot establish -- the fixture would be asserting against evidence it
+  // produced. The previous control did that and passed even when the supplied manifest's identity
+  // differed from the one at HEAD.
+  //
+  // So this records the absence rather than manufacturing a pass: with every artifact path in the
+  // listing and every digest matching, and manifest_in_head absent as collection leaves it, the
+  // freeze refuses. When collection is extended to gather the manifest, a real positive control
+  // becomes possible and this case should be replaced by it.
   const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  delete activation.manifest_in_head;
   const facts = loadBaselineFacts();
   facts.currentHead = head;
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
   bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
-  assert.equal(facts.liveDigests[firstPath], activation.manifest.artifacts[0].sha256);
+  assert.equal(facts.liveDigests[firstPath], activation.manifest.artifacts[0].sha256, message);
 
-  const freeze = evaluateLiveArtifactFreeze(facts, activation);
-  assert.equal(freeze === null, false, message);
-  assert.equal(freeze.path, firstPath, message);
-  assert.equal(freeze.exact_head_sha, head, message);
-  assert.equal(freeze.sha256, facts.liveDigests[firstPath], message);
+  assert.equal(evaluateLiveArtifactFreeze(facts, activation), null, message);
 });
 
 test("artifact-freeze-refuses-when-the-manifest-document-is-not-bound-to-head", async () => {

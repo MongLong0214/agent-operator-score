@@ -1127,6 +1127,37 @@ describe("external-reproduction", () => {
     );
   });
 
+  test("publication-derived-cleared-token-with-an-unenumerated-false-permit-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The G4 record requires agreement on every permits_* flag. Comparing a list of names
+    // compiled when the code was written let a fourth flag through: all three known permits are
+    // true beside a CLEARED token, and permits_npm_publication is false. Nothing named it.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_npm_publication: false
+    } as unknown as typeof CLEARED_PUBLICATION_VERDICT);
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "CLEARED with an unenumerated false permit minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a permits_* flag the code does not name was not compared"
+    );
+  });
+
   test("publication-derived-cleared-token-with-false-permits-redistribution-gates", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);

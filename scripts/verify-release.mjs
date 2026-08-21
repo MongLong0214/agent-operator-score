@@ -116,15 +116,18 @@ const publicationVerdictAgrees = (recorded, derived) => {
   if (!Array.isArray(recorded.blocked_by)) return false;
   const recordedBlocked = [...recorded.blocked_by].map(String).sort();
   if (recordedBlocked.join("\0") !== derived.blocked_by.join("\0")) return false;
-  // PUBLICATION-CLEARANCE.md: the three permits_* flags are one conjunction
-  // with CLEARED. Binding only permits_publication would clear a Derived
-  // record that withholds redistribution or contribution acceptance.
-  return (
-    recorded.permits_publication === derived.permits_publication &&
-    recorded.permits_redistribution === derived.permits_redistribution &&
-    recorded.permits_external_contribution_acceptance ===
-      derived.permits_external_contribution_acceptance
+  // PUBLICATION-CLEARANCE.md requires agreement on every permits_* flag, not on a list of names
+  // compiled when this was written. Naming three let a fourth -- permits_npm_publication: false
+  // beside a CLEARED verdict -- pass unnoticed. Enumerate both sides so an added flag is compared,
+  // and an unknown flag on either side is a disagreement rather than an omission.
+  const permitKeys = new Set(
+    [...Object.keys(recorded), ...Object.keys(derived)].filter((key) => key.startsWith("permits_"))
   );
+  if (permitKeys.size === 0) return false;
+  for (const key of permitKeys) {
+    if (recorded[key] !== derived[key]) return false;
+  }
+  return true;
 };
 
 const loadTrustedPrincipals = (readFile) => {
