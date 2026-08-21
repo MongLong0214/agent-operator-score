@@ -850,6 +850,16 @@ for (const path of ticketFiles) {
       const candidate = pair.split(/\s[—–-]\s/)[0].trim().replace(/^`|`$/g, "");
       if (sourceExtensions.has(extname(candidate))) ticketOwnedPaths.add(candidate);
     }
+    // Several tickets declare ownership as a sentence rather than as `path — symbol`. A sentence
+    // carries no space-delimited dash, so the split above yields the whole sentence, and because
+    // it ends in a filename its extname passes and the sentence is admitted as a path while the
+    // real path inside it is not. Seven of the seventeen control-plane allowlist entries had no
+    // readable ownership declaration for exactly this reason. Claim every backtick-quoted source
+    // path in the bullet as well; the symbol side is never backtick-quoted as a path, so this
+    // widens the census only to paths a ticket actually wrote.
+    for (const quoted of bullet[1].matchAll(/`([^`\s]+)`/g)) {
+      if (sourceExtensions.has(extname(quoted[1]))) ticketOwnedPaths.add(quoted[1]);
+    }
   }
   // A trailing period is ordinary prose and six of the sixty-eight tickets carry one, so a
   // pattern that stops at the backtick silently drops their RED file from the owned census.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { basename, join, resolve } from "node:path";
+import { basename, extname, join, resolve } from "node:path";
 import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -2278,6 +2278,120 @@ test("captured-authored-table-writes-nothing", () => {
     assert.ok(result.stderr.includes("could not have produced"), result.stderr);
     assert.ok(readFileSync(boardPath).equals(before), "write mode changed the board despite a captured authored table");
     assert.ok(readFileSync(boardPath, "utf8").includes("KEEP_ME"), "captured authored table was deleted");
+  } finally {
+    rmSync(parent, { recursive: true, force: true });
+  }
+});
+
+// The control-plane allowlist is described by its tickets as a narrow carve-out. Remove an entry
+// and the file must still be admitted by an ownership declaration, or it fails closed as unowned
+// product code. Nothing asserted that.
+//
+// This reads the tickets directly rather than through the validator's census, so it is NOT the
+// oracle for the census parser -- `ownership-declared-in-prose-admits-the-path-it-names` is. What
+// this protects is the corpus: that no allowlist entry exists which no ticket claims at all. One
+// does, and it is named below rather than left to the carve-out to absorb.
+test("every-control-plane-allowlist-entry-has-an-ownership-declaration", () => {
+  const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
+  const validator = readFileSync(resolve(root, "scripts/validate-planning.mjs"), "utf8");
+  const allowlistBlock = /const controlPlaneAllowlist = new Set\(\[([\s\S]*?)\]\);/.exec(validator);
+  assert.ok(allowlistBlock, "controlPlaneAllowlist literal not found in the validator");
+  const allowlist = [...allowlistBlock[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
+  assert.ok(allowlist.length > 0, "controlPlaneAllowlist parsed as empty");
+
+  const declared = new Set();
+  const ticketsDirectory = resolve(root, "docs/tickets");
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const full = join(directory, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.endsWith(".md")) continue;
+      const text = readFileSync(full, "utf8");
+      const ownership = /^## Exact ownership\s*$([\s\S]*?)^## /m.exec(text);
+      for (const line of ownership ? ownership[1].split("\n") : []) {
+        const bullet = /^- (.+)$/.exec(line.trim());
+        if (!bullet) continue;
+        for (const quoted of bullet[1].matchAll(/`([^`\s]+)`/g)) {
+          if (sourceExtensions.has(extname(quoted[1]))) declared.add(quoted[1]);
+        }
+        for (const pair of bullet[1].split(";")) {
+          const candidate = pair.split(/\s[—–-]\s/)[0].trim().replace(/^`|`$/g, "");
+          if (sourceExtensions.has(extname(candidate))) declared.add(candidate);
+        }
+      }
+      const redTest = /^- Test file: `([^`]+)`\.?\s*$/m.exec(text);
+      if (redTest && sourceExtensions.has(extname(redTest[1]))) declared.add(redTest[1]);
+    }
+  };
+  walk(ticketsDirectory);
+
+  // One entry genuinely has no declaration: no ticket in the corpus names it anywhere. Naming it
+  // here keeps the gap visible instead of letting the carve-out absorb it silently. Removing this
+  // exception is a ticket edit, which costs a gate renewal, so it is recorded rather than taken.
+  const undeclared = new Set(["tests/gate-administration-contract.test.mjs"]);
+
+  const missing = allowlist.filter((entry) => !declared.has(entry) && !undeclared.has(entry));
+  assert.deepEqual(
+    missing,
+    [],
+    `control-plane allowlist entries with no ticket ownership declaration: ${missing.join(", ")}`
+  );
+  for (const entry of undeclared) {
+    assert.equal(
+      declared.has(entry),
+      false,
+      `${entry} now has an ownership declaration; remove it from the undeclared exception list`
+    );
+  }
+});
+
+// The census fix above is unobservable on this tree, because every path it recovers is also in
+// controlPlaneAllowlist. This runs the validator against a fixture where that is not true: a
+// source file whose only ownership declaration is written as a sentence. Before the fix the
+// sentence itself was admitted as the path and the real path was dropped, so the file failed
+// closed as unowned product code.
+test("ownership-declared-in-prose-admits-the-path-it-names", () => {
+  const parent = mkdtempSync(join(tmpdir(), "aos-prose-ownership-"));
+  const fixture = join(parent, "repository");
+  const probe = "packages/schema/src/prose-owned-probe.ts";
+  try {
+    cpSync(root, fixture, {
+      recursive: true,
+      filter: (source) => ![".git", "node_modules"].includes(basename(source))
+    });
+    writeFileSync(join(fixture, probe), "export const proseOwnedProbe = 1;\n");
+
+    const ticketPath = join(fixture, "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md");
+    const ticket = readFileSync(ticketPath, "utf8");
+    const marker = /^(## Exact ownership\s*\n)/m;
+    assert.match(ticket, marker, "the fixture ticket has no Exact ownership section");
+    // No semicolon and no space-delimited dash: the pair split yields the whole sentence, whose
+    // extname is "." — exactly the shape that used to drop the path it names.
+    writeFileSync(
+      ticketPath,
+      ticket.replace(
+        marker,
+        `$1\n- The future probe surface is exactly \`${probe}\` in this repository.\n`
+      )
+    );
+
+    // setPendingGateRegistry recomputes each pinned artifact digest from the fixture, so the
+    // ticket has to be edited first or the gate invalidates on a digest this test itself changed.
+    setPendingGateRegistry(fixture);
+
+    const script = join(fixture, "scripts/validate-planning.mjs");
+    const run = spawnSync(process.execPath, [script], { cwd: fixture, encoding: "utf8" });
+    assert.equal(
+      run.status,
+      0,
+      `a path declared in prose failed closed as unowned product code: ${run.stderr || run.stdout}`
+    );
+    assert.match(
+      run.stdout,
+      new RegExp(`ticket_owned_code_paths=[^\\s]*${probe.replace(/[.\/]/g, "\\$&")}`),
+      "the prose-declared path is not in the ownership census"
+    );
+    assert.doesNotMatch(run.stdout, /product_code_paths=(?!none)/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
