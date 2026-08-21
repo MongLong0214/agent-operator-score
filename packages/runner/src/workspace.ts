@@ -73,6 +73,47 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 const isFilledString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
 
+// A pin is a caller's claim about identity. Absent means no claim; present-but-unusable is a claim
+// that cannot be checked, and collapsing it into "absent" told the caller its pin had been honoured
+// when nothing was compared. `expectedEnvironmentDigest: 7` was accepted by both create and verify.
+//
+// The value is captured here, before any filesystem work, and every later comparison uses the
+// capture. Two earlier attempts were both fail-open, in opposite directions, and a review found
+// each:
+//
+//   Object.hasOwn + three reads  an inherited pin read as absent although every other field on the
+//                                request is read through the prototype chain, and an accessor could
+//                                show a correct digest to the validation and a different one to the
+//                                comparison.
+//   exactly one read             a Proxy answering [correct, wrong] was accepted, while the guard
+//                                it replaced read twice and refused it.
+//
+// So an unstable pin is refused rather than resolved to whichever read wins: two reads must agree
+// with each other before either is compared to anything. Capturing before the tree is inspected
+// also keeps caller code from running after the digest it is checked against was computed -- an
+// accessor could otherwise delete a workspace file and still be verified against the cached tree.
+const PIN_UNUSABLE = Symbol("aos.unusablePin");
+
+const capturePin = (input: Record<string, unknown>, key: string): string | undefined | symbol => {
+  let first: unknown;
+  let second: unknown;
+  try {
+    first = input[key];
+    second = input[key];
+  } catch {
+    return PIN_UNUSABLE;
+  }
+  if (first === undefined && second === undefined) return undefined;
+  if (first !== second) return PIN_UNUSABLE;
+  if (!isFilledString(first)) return PIN_UNUSABLE;
+  return first;
+};
+
+const pinDisagrees = (pin: string | undefined | symbol, actual: string): boolean => {
+  if (pin === undefined) return false;
+  return typeof pin !== "string" || pin !== actual;
+};
+
 const sha256 = (value: string | Buffer): string =>
   createHash("sha256").update(value).digest("hex");
 
@@ -222,6 +263,8 @@ const namedPayloadPath = (payload: unknown): string | null => {
 
 export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
   if (!isPlainRecord(input)) return fail();
+  const basePin = capturePin(input, "expectedBaseDigest");
+  const environmentPin = capturePin(input, "expectedEnvironmentDigest");
   const parentReal = explicitDirectory(input.parentRoot);
   const sourceReal = explicitDirectory(input.sourceRoot);
   const environmentDigest = environmentDigestOf(input.environment);
@@ -231,12 +274,8 @@ export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
 
   const sourceTree = inspectTree(sourceReal);
   if (!sourceTree.ok) return sourceTree;
-  if (isFilledString(input.expectedBaseDigest) && input.expectedBaseDigest !== sourceTree.digest) {
-    return fail();
-  }
-  if (isFilledString(input.expectedEnvironmentDigest) && input.expectedEnvironmentDigest !== environmentDigest) {
-    return fail();
-  }
+  if (pinDisagrees(basePin, sourceTree.digest)) return fail();
+  if (pinDisagrees(environmentPin, environmentDigest)) return fail();
 
   let runId: string;
   if (input.runId === undefined) {
@@ -292,6 +331,8 @@ export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
 
 export const verifyWorkspace = (input: unknown): WorkspaceOk | Fail => {
   if (!isPlainRecord(input)) return fail();
+  const basePin = capturePin(input, "expectedBaseDigest");
+  const environmentPin = capturePin(input, "expectedEnvironmentDigest");
   const recorded = recordedOf(input.root);
   if (recorded === null) return fail();
   const parentReal = explicitDirectory(input.parentRoot);
@@ -301,12 +342,8 @@ export const verifyWorkspace = (input: unknown): WorkspaceOk | Fail => {
   const tree = inspectTree(recorded.root);
   if (!tree.ok) return fail();
   if (tree.digest !== recorded.baseDigest) return fail();
-  if (isFilledString(input.expectedBaseDigest) && input.expectedBaseDigest !== tree.digest) {
-    return fail();
-  }
-  if (isFilledString(input.expectedEnvironmentDigest) && input.expectedEnvironmentDigest !== environmentDigest) {
-    return fail();
-  }
+  if (pinDisagrees(basePin, tree.digest)) return fail();
+  if (pinDisagrees(environmentPin, environmentDigest)) return fail();
   return {
     ok: true,
     root: recorded.root,
