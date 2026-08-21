@@ -1168,8 +1168,8 @@
     },
     {
       "id": "d0-004-prerequisites-completion-marker-receipt-renewal",
-      "status": "ACCEPTED",
-      "scope": "Accept the D0-004 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-004 ticket at the digests below — so its semantic planning validator and governance-gate work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "status": "INVALIDATED",
+      "scope": "Accept the D0-004 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-004 ticket at the digests below \u2014 so its semantic planning validator and governance-gate work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1262,6 +1262,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-13T00:00:00Z",
           "recorded_by": "d0-004-completion-marker-receipt-renewal-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -1271,12 +1277,17 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-13T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "artifact-correction-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved artifact corrections of 2026-08-22 change this batch's pinned digests; superseded by d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal."
       }
     },
     {
       "id": "d0-013-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-013 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-013 ticket at the digests below — so execution-view regression coverage restoration may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-013 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-013 ticket at the digests below \u2014 so execution-view regression coverage restoration may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1383,7 +1394,7 @@
     {
       "id": "d0-012-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-012 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-012 ticket at the digests below — so ticket-owned census re-derivation may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-012 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-012 ticket at the digests below \u2014 so ticket-owned census re-derivation may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1490,7 +1501,7 @@
     {
       "id": "d0-011-prerequisites",
       "status": "INVALIDATED",
-      "scope": "Accept the D0-011 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-011 ticket at the digests below — so ticket-derived fixture admission may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-011 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-011 ticket at the digests below \u2014 so ticket-derived fixture admission may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1608,7 +1619,7 @@
     {
       "id": "d0-011-census-corrected-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-011 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-011 ticket at the digests below — after the ticket-owned census correction, so ticket-derived fixture admission may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-011 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-011 ticket at the digests below \u2014 after the ticket-owned census correction, so ticket-derived fixture admission may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1715,7 +1726,7 @@
     {
       "id": "d0-005-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-005 prerequisite set — ADR-0012/0013, PRD-D0-GOV, and the exact D0-005 ticket at the digests below — so the governance-mode contract and advisory-boundary work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-005 prerequisite set \u2014 ADR-0012/0013, PRD-D0-GOV, and the exact D0-005 ticket at the digests below \u2014 so the governance-mode contract and advisory-boundary work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1811,7 +1822,7 @@
     {
       "id": "d0-006-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-006 prerequisite set — ADR-0012/0013, PRD-D0-GOV, and the exact D0-006 ticket at the digests below — so the v2 effective-state quarantine work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 remains a verified-on-dev dependency, not a second TICKET artifact in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-006 prerequisite set \u2014 ADR-0012/0013, PRD-D0-GOV, and the exact D0-006 ticket at the digests below \u2014 so the v2 effective-state quarantine work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 remains a verified-on-dev dependency, not a second TICKET artifact in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -1907,7 +1918,7 @@
     {
       "id": "d0-007-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-007 prerequisite set — ADR-0012/0013, PRD-D0-GOV, and the exact D0-007 ticket at the digests below — so the v3 artifact-manifest work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 and D0-006 remain verified-on-dev dependencies, not additional TICKET artifacts in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-007 prerequisite set \u2014 ADR-0012/0013, PRD-D0-GOV, and the exact D0-007 ticket at the digests below \u2014 so the v3 artifact-manifest work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 and D0-006 remain verified-on-dev dependencies, not additional TICKET artifacts in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2003,7 +2014,7 @@
     {
       "id": "d0-008-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-008 prerequisite set — ADR-0012/0013, PRD-D0-GOV, and the exact D0-008 ticket at the digests below — so the inactive exact-head GitHub-review derivation work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 through D0-007 remain verified-on-dev dependencies, not additional TICKET artifacts in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-008 prerequisite set \u2014 ADR-0012/0013, PRD-D0-GOV, and the exact D0-008 ticket at the digests below \u2014 so the inactive exact-head GitHub-review derivation work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 through D0-007 remain verified-on-dev dependencies, not additional TICKET artifacts in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2099,7 +2110,7 @@
     {
       "id": "d0-009-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-009 prerequisite set — ADR-0012/0013, PRD-D0-GOV, and the exact D0-009 ticket at the digests below — so the authenticated-review activation work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 through D0-008 remain verified-on-dev dependencies, not additional TICKET artifacts in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-009 prerequisite set \u2014 ADR-0012/0013, PRD-D0-GOV, and the exact D0-009 ticket at the digests below \u2014 so the authenticated-review activation work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 through D0-008 remain verified-on-dev dependencies, not additional TICKET artifacts in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2195,7 +2206,7 @@
     {
       "id": "d0-001-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the D0-001 prerequisite set — ADR-0001/ADR-0003/ADR-0012, D0, and the exact D0-001 ticket at the digests below so that ticket may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the D0-001 prerequisite set \u2014 ADR-0001/ADR-0003/ADR-0012, D0, and the exact D0-001 ticket at the digests below so that ticket may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2302,7 +2313,7 @@
     {
       "id": "e0a-001-e0a-002-e0a-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E0A-001, E0A-002, E0A-003 prerequisite set — ADR-0004/ADR-0005/ADR-0006, E0-A, and the exact E0A-001, E0A-002, E0A-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E0A-001, E0A-002, E0A-003 prerequisite set \u2014 ADR-0004/ADR-0005/ADR-0006, E0-A, and the exact E0A-001, E0A-002, E0A-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2431,7 +2442,7 @@
     {
       "id": "e0b-001-e0b-002-e0b-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E0B-001, E0B-002, E0B-003 prerequisite set — ADR-0007, E0-B, and the exact E0B-001, E0B-002, E0B-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E0B-001, E0B-002, E0B-003 prerequisite set \u2014 ADR-0007, E0-B, and the exact E0B-001, E0B-002, E0B-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2538,7 +2549,7 @@
     {
       "id": "e0c-001-e0c-002-e0c-003-owner-direction-prerequisites",
       "status": "INVALIDATED",
-      "scope": "Accept the E0C-001, E0C-002, E0C-003 prerequisite set — ADR-0009, E0-C, and the exact E0C-001, E0C-002, E0C-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E0C-001, E0C-002, E0C-003 prerequisite set \u2014 ADR-0009, E0-C, and the exact E0C-001, E0C-002, E0C-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2656,7 +2667,7 @@
     {
       "id": "e2-001-e2-002-e2-003-e2-004-e2-005-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E2-001, E2-002, E2-003, E2-004, E2-005 prerequisite set — ADR-0005/ADR-0006/ADR-0011, E2, and the exact E2-001, E2-002, E2-003, E2-004, E2-005 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E2-001, E2-002, E2-003, E2-004, E2-005 prerequisite set \u2014 ADR-0005/ADR-0006/ADR-0011, E2, and the exact E2-001, E2-002, E2-003, E2-004, E2-005 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2807,7 +2818,7 @@
     {
       "id": "e3-001-e3-002-e3-003-e3-004-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E3-001, E3-002, E3-003, E3-004 prerequisite set — ADR-0008, E3, and the exact E3-001, E3-002, E3-003, E3-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E3-001, E3-002, E3-003, E3-004 prerequisite set \u2014 ADR-0008, E3, and the exact E3-001, E3-002, E3-003, E3-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -2925,7 +2936,7 @@
     {
       "id": "e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E4-001, E4-002, E4-003, E4-004 prerequisite set — ADR-0007, E4, and the exact E4-001, E4-002, E4-003, E4-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E4-001, E4-002, E4-003, E4-004 prerequisite set \u2014 ADR-0007, E4, and the exact E4-001, E4-002, E4-003, E4-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3043,7 +3054,7 @@
     {
       "id": "e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E5-001, E5-002, E5-003, E5-004 prerequisite set — ADR-0009, E5, and the exact E5-001, E5-002, E5-003, E5-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E5-001, E5-002, E5-003, E5-004 prerequisite set \u2014 ADR-0009, E5, and the exact E5-001, E5-002, E5-003, E5-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3161,7 +3172,7 @@
     {
       "id": "e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E6-001, E6-002, E6-003, E6-004 prerequisite set — ADR-0005/ADR-0006/ADR-0009, E6, and the exact E6-001, E6-002, E6-003, E6-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E6-001, E6-002, E6-003, E6-004 prerequisite set \u2014 ADR-0005/ADR-0006/ADR-0009, E6, and the exact E6-001, E6-002, E6-003, E6-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3301,7 +3312,7 @@
     {
       "id": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E7-001, E7-002, E7-003, E7-004 prerequisite set — ADR-0005/ADR-0008/ADR-0011, E7, and the exact E7-001, E7-002, E7-003, E7-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E7-001, E7-002, E7-003, E7-004 prerequisite set \u2014 ADR-0005/ADR-0008/ADR-0011, E7, and the exact E7-001, E7-002, E7-003, E7-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3441,7 +3452,7 @@
     {
       "id": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E8-001, E8-002, E8-003, E8-004 prerequisite set — ADR-0009, E8, and the exact E8-001, E8-002, E8-003, E8-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E8-001, E8-002, E8-003, E8-004 prerequisite set \u2014 ADR-0009, E8, and the exact E8-001, E8-002, E8-003, E8-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3559,7 +3570,7 @@
     {
       "id": "e9-001-e9-002-e9-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E9-001, E9-002, E9-003 prerequisite set — ADR-0007, E9, and the exact E9-001, E9-002, E9-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E9-001, E9-002, E9-003 prerequisite set \u2014 ADR-0007, E9, and the exact E9-001, E9-002, E9-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3666,7 +3677,7 @@
     {
       "id": "e10-001-e10-002-e10-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E10-001, E10-002, E10-003 prerequisite set — ADR-0002/ADR-0004/ADR-0006/ADR-0010, E10, and the exact E10-001, E10-002, E10-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E10-001, E10-002, E10-003 prerequisite set \u2014 ADR-0002/ADR-0004/ADR-0006/ADR-0010, E10, and the exact E10-001, E10-002, E10-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3806,7 +3817,7 @@
     {
       "id": "e11-001-e11-002-e11-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E11-001, E11-002, E11-003 prerequisite set — ADR-0009/ADR-0010, E11, and the exact E11-001, E11-002, E11-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E11-001, E11-002, E11-003 prerequisite set \u2014 ADR-0009/ADR-0010, E11, and the exact E11-001, E11-002, E11-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -3924,7 +3935,7 @@
     {
       "id": "e12-001-e12-002-e12-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E12-001, E12-002, E12-003 prerequisite set — ADR-0011, E12, and the exact E12-001, E12-002, E12-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E12-001, E12-002, E12-003 prerequisite set \u2014 ADR-0011, E12, and the exact E12-001, E12-002, E12-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -4031,7 +4042,7 @@
     {
       "id": "e13-001-e13-002-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E13-001, E13-002 prerequisite set — ADR-0002, E13, and the exact E13-001, E13-002 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E13-001, E13-002 prerequisite set \u2014 ADR-0002, E13, and the exact E13-001, E13-002 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -4127,7 +4138,7 @@
     {
       "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E14-001, E14-002, E14-003 prerequisite set — ADR-0001/ADR-0012, E14, and the exact E14-001, E14-002, E14-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E14-001, E14-002, E14-003 prerequisite set \u2014 ADR-0001/ADR-0012, E14, and the exact E14-001, E14-002, E14-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -4245,7 +4256,7 @@
     {
       "id": "e0d-001-e0d-002-e0d-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E0D-001, E0D-002, E0D-003 prerequisite set — ADR-0010, E0-D, and the exact E0D-001, E0D-002, E0D-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E0D-001, E0D-002, E0D-003 prerequisite set \u2014 ADR-0010, E0-D, and the exact E0D-001, E0D-002, E0D-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -4352,7 +4363,7 @@
     {
       "id": "e1-001-e1-002-e1-003-owner-direction-prerequisites",
       "status": "ACCEPTED",
-      "scope": "Accept the E1-001, E1-002, E1-003 prerequisite set — ADR-0004/ADR-0007, E1, and the exact E1-001, E1-002, E1-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E1-001, E1-002, E1-003 prerequisite set \u2014 ADR-0004/ADR-0007, E1, and the exact E1-001, E1-002, E1-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -4470,7 +4481,7 @@
     {
       "id": "e0c-simulation-fixture-glob-renewal",
       "status": "ACCEPTED",
-      "scope": "Accept the E0C-001, E0C-002, E0C-003 prerequisite set — ADR-0009, E0-C, and the exact E0C-001, E0C-002, E0C-003 tickets at the digests below, after the E0C-001 Exact ownership fixture declaration was amended to a D0-011-admitted glob, so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+      "scope": "Accept the E0C-001, E0C-002, E0C-003 prerequisite set \u2014 ADR-0009, E0-C, and the exact E0C-001, E0C-002, E0C-003 tickets at the digests below, after the E0C-001 Exact ownership fixture declaration was amended to a D0-011-admitted glob, so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
@@ -4571,6 +4582,113 @@
       "approval": {
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal against the owner-approved artifact corrections of 2026-08-22 (#167 engine floor, #266 focused command, #310 wedged-CI exception, #313 ownership restated for the census). Complete replacement: every pinned digest is re-taken at the correction commit, so no verified ticket passes through a partially renewed state.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "39df9002baa52aca87b6f4114f2ca979286e96ac"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+          "sha256": "2bfdfe8733b669b79180c4d2b2b9c6f69f1dc767608cb08861e07cb4482eadaa",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+          "sha256": "2bfdfe8733b669b79180c4d2b2b9c6f69f1dc767608cb08861e07cb4482eadaa",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "artifact-correction-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
         "role": "MAINTAINER"
       }
     }
