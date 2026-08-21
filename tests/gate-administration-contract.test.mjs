@@ -1202,9 +1202,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 40);
+  assert.equal(result.batches, 41);
   assert.equal(result.counts.accepted, 29);
-  assert.equal(result.counts.invalidated, 11);
+  assert.equal(result.counts.invalidated, 12);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
@@ -1329,13 +1329,13 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
   );
   assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
   const expectedCurrentD0004Renewal = {
-    "id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal",
     "status": "ACCEPTED",
-    "scope": "Accept the D0-004 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-004 ticket at the digests below — so its semantic planning validator and governance-gate work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal against the owner-approved artifact corrections of 2026-08-22 (#167 engine floor, #266 focused command, #310 wedged-CI exception, #313 ownership restated for the census). Complete replacement: every pinned digest is re-taken at the correction commit, so no verified ticket passes through a partially renewed state.",
     "target": {
       "repository": "github.com/MongLong0214/agent-operator-score",
       "branch": "dev",
-      "reviewed_head": "05f17438d56a54d9df577a089a328ea00113fc48"
+      "reviewed_head": "39df9002baa52aca87b6f4114f2ca979286e96ac"
     },
     "required_artifacts": [
       {
@@ -1360,7 +1360,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       },
       {
         "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-        "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+        "sha256": "2bfdfe8733b669b79180c4d2b2b9c6f69f1dc767608cb08861e07cb4482eadaa",
         "kind": "TICKET"
       }
     ],
@@ -1392,7 +1392,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       },
       {
         "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-        "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+        "sha256": "2bfdfe8733b669b79180c4d2b2b9c6f69f1dc767608cb08861e07cb4482eadaa",
         "kind": "TICKET"
       }
     ],
@@ -1422,16 +1422,16 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       {
         "from": "PENDING",
         "to": "ACCEPTED",
-        "recorded_at": "2026-08-13T00:00:00Z",
-        "recorded_by": "d0-004-completion-marker-receipt-renewal-candidate"
+        "recorded_at": "2026-08-22T00:00:00Z",
+        "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
       }
     ],
     "preparation": {
-      "prepared_by": "d0-004-completion-marker-receipt-renewal-candidate"
+      "prepared_by": "artifact-correction-renewal-candidate-2026-08-22"
     },
     "approval": {
       "approved_by": "MongLong0214",
-      "approved_at": "2026-08-13T00:00:00Z",
+      "approved_at": "2026-08-22T00:00:00Z",
       "role": "MAINTAINER"
     }
   };
