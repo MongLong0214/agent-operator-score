@@ -32,7 +32,7 @@ Build FAM-5 public-green hidden-fail scenario. Deliver only the bounded contract
 ## RED contract
 
 - Test file: `suites/coding-core-v0/test/fam5-false-completion.test.ts`
-- Focused command: `node --test --test-name-pattern fam5-false-completion 'suites/coding-core-v0/test/*.test.ts'`
+- Focused command: `npm test -w @aos/suite-coding-core -- fam5-false-completion`
 - Expected pre-GREEN failure: public green can support PASSED despite hidden invariant failure.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -50,7 +50,7 @@ Build FAM-5 public-green hidden-fail scenario. Deliver only the bounded contract
 
 ## Verification
 
-1. Focused: `node --test --test-name-pattern fam5-false-completion 'suites/coding-core-v0/test/*.test.ts'`; every named case above passes.
+1. Focused: `npm test -w @aos/suite-coding-core -- fam5-false-completion`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario surface; for runtime/scenario tickets run only the controlled local fixture named by the PRD, never a production target.
