@@ -6709,12 +6709,17 @@ test("artifact-freeze-live-tree-listing-control-verifies", async () => {
   assert.equal(freeze.sha256, facts.liveDigests[firstPath], message);
 });
 
-test("artifact-freeze-manifest-in-head-is-derived-from-the-listing", async () => {
+test("artifact-freeze-refuses-when-the-manifest-document-is-not-bound-to-head", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const message =
-    "input.manifest_in_head is honour-system; a complete live listing must derive true even when the input boolean is false";
+    "artifact paths present with matching live digests do not establish that the evaluated manifest document is the one at HEAD; manifest_in_head must not be forced";
   assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
 
+  // Everything the collection can actually establish is supplied: the manifest pathname and the
+  // artifact path are in the live listing, and every artifact digest matches facts.liveDigests.
+  // The one thing missing is evidence that this manifest document is the one at HEAD -- the
+  // collector never gathers the manifest or its digest. A review obtained a freeze here with a
+  // manifest whose identity differed from HEAD's, because the artifact digests matched.
   const { activation, firstPath, head } = freezeActivationOnLocalHead();
   activation.manifest_in_head = false;
   const facts = loadBaselineFacts();
@@ -6722,8 +6727,7 @@ test("artifact-freeze-manifest-in-head-is-derived-from-the-listing", async () =>
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
   bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
 
-  const freeze = evaluateLiveArtifactFreeze(facts, activation);
-  assert.equal(freeze === null, false, message);
+  assert.equal(evaluateLiveArtifactFreeze(facts, activation), null, message);
 });
 
 test("artifact-freeze-sha256-not-live-digest-does-not-verify", async () => {

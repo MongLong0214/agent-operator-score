@@ -1673,10 +1673,17 @@ export const evaluateLiveArtifactFreeze = (
     if (!freezeArtifactDigestsMatchLive(facts, artifacts)) return null;
     const currentHead = typeof facts?.currentHead === "string" ? facts.currentHead.toLowerCase() : "";
     if (!ACTIVATION_GIT_SHA.test(currentHead)) return null;
-    const evaluated = evaluateAuthenticatedReviewActivation({
-      ...live,
-      manifest_in_head: true
-    });
+    // manifest_in_head is NOT forced. Artifact paths present at the live tip, with digests
+    // matching facts.liveDigests, say the artifacts are there; they say nothing about the
+    // manifest document itself being the one at HEAD. A review supplied a fixture manifest whose
+    // identity differed from HEAD's and still obtained a freeze, because the artifact digests
+    // matched. Forcing true here was the honour-system move the comment above rejects, applied
+    // one level up.
+    //
+    // The collector does not gather the manifest document or its digest, so the fact is simply
+    // not available, and evaluation fails closed on it. That is the true state of the live path
+    // until collection is extended; substituting a derived-looking true would hide it.
+    const evaluated = evaluateAuthenticatedReviewActivation(live);
     if (selectActiveGovernanceMode(evaluated) !== "AUTHENTICATED_REVIEW") return null;
     const freeze = evaluated.artifact_freeze;
     if (!plainObject(freeze) || typeof freeze.path !== "string" || typeof freeze.sha256 !== "string") {
