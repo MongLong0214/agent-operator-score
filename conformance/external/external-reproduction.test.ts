@@ -28,6 +28,9 @@ const FEASIBILITY_PATH = "docs/decisions/FEASIBILITY-VERDICT.md";
 const SCHEMA_PIN_PATH = "specs/aos-result.schema.json";
 const VERIFIER = { id: "verifier-host" };
 const INDEPENDENT = { id: "independent-host", os: "linux", arch: "x64" };
+const NAMED_HOST_A = "named-host-A";
+const NAMED_HOST_B = "named-host-B";
+const CLI_REPRODUCTION_PATH = "reproduction.json";
 const HEAD = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const STALE = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const DIGEST_SHAPE = /^[a-f0-9]{64}$/;
@@ -122,7 +125,7 @@ const makeIndependentReproduction = (
   const environment = (asObject(overrides.environment) ?? INDEPENDENT) as Json;
   const body: Json = {
     version: 1,
-    kind: "independent-reproduction",
+    kind: typeof overrides.kind === "string" ? overrides.kind : "independent-reproduction",
     environment,
     toolchain: asObject(overrides.toolchain) ?? {
       node: "22.18.0",
@@ -151,6 +154,19 @@ const withVerdictRecords = (records: Record<string, Json>) => {
     text = upsertRecordBlock(text, heading, record);
   }
   return (path: string) => (path === VERDICT_PATH ? text : readRepositoryFile(path));
+};
+
+const withAllowlistedPrincipal = (
+  reproduction: Json,
+  principalId: string,
+  extraFiles: Record<string, string> = {}
+) => {
+  const trusted = withVerdictRecords({
+    "Trusted principals": {
+      principals: [{ id: principalId, public_key: reproduction.public_key }]
+    }
+  });
+  return (path: string) => (Object.hasOwn(extraFiles, path) ? extraFiles[path] : trusted(path));
 };
 
 const withDocuments = (files: Record<string, string>) => (path: string) =>
@@ -769,5 +785,176 @@ describe("external-reproduction", () => {
     assert.equal(injectedPass.ok, false, "the library injection path minted G4_PASS");
     assert.equal(injectedPass.permits_publication, false, "the library injection path permitted publication");
     assert.notEqual(injectedPass.verdict, "G4_PASS", "the library injection path emitted G4_PASS");
+  });
+
+  test("cli-kind", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    const wrongKind = makeIndependentReproduction(canonicalize, { kind: "self-report" });
+    const fromCli = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      reproductionPath: CLI_REPRODUCTION_PATH,
+      readFile: withAllowlistedPrincipal(wrongKind, INDEPENDENT.id, {
+        [CLI_REPRODUCTION_PATH]: JSON.stringify(wrongKind)
+      })
+    });
+    assert.equal(
+      fromCli.reproduction?.independent,
+      false,
+      "the CLI path accepted a signed allowlisted manifest whose kind is not independent-reproduction"
+    );
+    assert.ok(
+      has(fromCli, "NO_INDEPENDENT_REPRODUCTION"),
+      "the CLI path did not apply the tree-slot kind check"
+    );
+    assert.equal(
+      has(fromCli, "UNTRUSTED_PRINCIPAL"),
+      false,
+      "a wrong-kind CLI manifest was evaluated as an untrusted principal instead of being refused as not a reproduction"
+    );
+
+    const fromTree = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile: withVerdictRecords({
+        "Live reproduction": wrongKind,
+        "Trusted principals": {
+          principals: [{ id: INDEPENDENT.id, public_key: wrongKind.public_key }]
+        }
+      })
+    });
+    assert.equal(
+      fromTree.reproduction?.independent,
+      false,
+      "the tree slot accepted a signed allowlisted manifest whose kind is not independent-reproduction"
+    );
+    assert.ok(
+      has(fromTree, "NO_INDEPENDENT_REPRODUCTION"),
+      "the tree slot kind check was not applied"
+    );
+
+    const correctKind = makeIndependentReproduction(canonicalize);
+    const cliCorrect = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      reproductionPath: CLI_REPRODUCTION_PATH,
+      readFile: withAllowlistedPrincipal(correctKind, INDEPENDENT.id, {
+        [CLI_REPRODUCTION_PATH]: JSON.stringify(correctKind)
+      })
+    });
+    assert.equal(
+      cliCorrect.reproduction?.independent,
+      true,
+      "the CLI path refused a signed allowlisted independent-reproduction"
+    );
+    assert.equal(
+      has(cliCorrect, "NO_INDEPENDENT_REPRODUCTION"),
+      false,
+      "the CLI path treated a well-kinded independent-reproduction as absent"
+    );
+  });
+
+  test("named-principal", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    const borrowedKey = makeIndependentReproduction(canonicalize, {
+      environment: { ...INDEPENDENT, id: NAMED_HOST_B }
+    });
+    const mismatched = run(
+      completeInput(canonicalize, {
+        reproduction: borrowedKey,
+        readFile: withAllowlistedPrincipal(borrowedKey, NAMED_HOST_A)
+      })
+    );
+    assert.equal(
+      mismatched.reproduction?.signature_ok,
+      true,
+      "the same public key failed to verify when the allowlist id differed from environment.id"
+    );
+    assert.equal(
+      mismatched.reproduction?.independent,
+      false,
+      "an allowlisted key attested a different environment.id as an independent principal"
+    );
+    assert.ok(
+      has(mismatched, "UNTRUSTED_PRINCIPAL"),
+      "a named-host-A key attesting named-host-B was not refused as UNTRUSTED_PRINCIPAL"
+    );
+    assert.equal(
+      has(mismatched, "SELF_ATTESTED"),
+      false,
+      "a different-id same-key attestation was treated as self-attested"
+    );
+
+    const matched = run(
+      completeInput(canonicalize, {
+        reproduction: borrowedKey,
+        readFile: withAllowlistedPrincipal(borrowedKey, NAMED_HOST_B)
+      })
+    );
+    assert.equal(
+      matched.reproduction?.independent,
+      true,
+      "the same key bound to named-host-B was refused when environment.id was named-host-B"
+    );
+    assert.equal(
+      has(matched, "UNTRUSTED_PRINCIPAL"),
+      false,
+      "a matching named host and key was refused as UNTRUSTED_PRINCIPAL"
+    );
+  });
+
+  test("independent-bytes", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    const pin = pinnedOutputDigests();
+    const forged = pin.map((entry, index) =>
+      index === 0 ? { ...entry, bytes_sha256: ZERO_DIGEST } : entry
+    );
+    const wrongBytes = makeIndependentReproduction(canonicalize, { output_digests: forged });
+    const wrong = run(
+      completeInput(canonicalize, {
+        reproduction: wrongBytes,
+        readFile: withAllowlistedPrincipal(wrongBytes, INDEPENDENT.id)
+      })
+    );
+    assert.equal(wrong.reproduction?.signature_ok, true, "the zero-digest manifest failed signature verification");
+    assert.equal(wrong.reproduction?.bytes_ok, false, "a 64-zero first digest was marked bytes-ok");
+    assert.equal(wrong.reproduction?.head_ok, true, "the zero-digest manifest was treated as a stale head");
+    assert.ok(has(wrong, "WRONG_DIGEST"), "a 64-zero first digest was not refused as WRONG_DIGEST");
+    assert.equal(
+      wrong.reproduction?.independent,
+      false,
+      "a signed allowlisted manifest whose first digest is 64 zeros was marked independent"
+    );
+
+    const staleMinted = makeIndependentReproduction(canonicalize, { head_sha: STALE });
+    const stale = run(
+      completeInput(canonicalize, {
+        reproduction: staleMinted,
+        readFile: withAllowlistedPrincipal(staleMinted, INDEPENDENT.id)
+      })
+    );
+    assert.equal(stale.reproduction?.signature_ok, true, "the stale-head allowlisted manifest failed signature verification");
+    assert.equal(stale.reproduction?.bytes_ok, true, "the stale-head allowlisted manifest did not match the G0 pin");
+    assert.equal(stale.reproduction?.head_ok, false, "a stale head was marked head-ok");
+    assert.equal(
+      stale.reproduction?.independent,
+      false,
+      "a signed allowlisted manifest at a stale head was marked independent"
+    );
   });
 });
