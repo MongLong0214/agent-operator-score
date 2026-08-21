@@ -9,10 +9,15 @@
  * from wrapper events plus the live tree. correlation_id must be filled.
  * Correlation is exact equality of the classified relative path against
  * a named field on an object payload (`payload.input.path` or
- * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation. Truncated
- * string payloads and unmatched traces refuse — they are not
- * external_mutation. Create refuses a parent or run root inside source
- * before mkdir.
+ * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation.
+ *
+ * SSOT 6.7 splits the outcome on whether an observation set existed:
+ *   no traces, or a payload with no readable workspace-relative target
+ *     -> actor.attribution_unknown, score withheld (:721)
+ *   readable traces, none naming this path
+ *     -> workspace.external_mutation (:720)
+ *
+ * Create refuses a parent or run root inside source before mkdir.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -184,6 +189,15 @@ const recordedOf = (root: unknown): Recorded | null => {
   return registry.get(real) ?? null;
 };
 
+// An absolute payload target is readable: the run root is known, so resolve it. Inside the
+// workspace it correlates like any relative target; outside it names a different file, which is
+// an observation rather than a failure to read.
+const workspaceRelative = (root: string, absolutePath: string): string | null => {
+  const rel = relative(root, absolutePath).replaceAll("\\", "/");
+  if (rel === "" || rel.startsWith("../") || rel === "..") return null;
+  return rel;
+};
+
 const relativePathInside = (root: string, pathValue: unknown): string | null => {
   if (!isFilledString(pathValue) || isAbsolute(pathValue)) return null;
   const posix = pathValue.replaceAll("\\", "/");
@@ -313,6 +327,14 @@ export const sealWorkspace = (input: unknown): SealOk | Fail => {
   return { ok: true, phase: input.phase, digest: tree.digest, files: tree.files };
 };
 
+const externalMutationClassification = (path: string): ClassificationOk => ({
+  ok: true,
+  actor: "external_mutation",
+  event_type: "workspace.external_mutation",
+  provenance: RUNNER_PROVENANCE,
+  path
+});
+
 const unknownClassification = (path: string): ClassificationOk => ({
   ok: true,
   actor: "actor.attribution_unknown",
@@ -338,14 +360,50 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
   if (!Array.isArray(input.traces)) return fail();
 
   const matching: Record<string, unknown>[] = [];
+  let unreadablePayload = false;
   for (const trace of input.traces) {
     if (!isPlainRecord(trace)) return fail();
     if (!isFilledString(trace.correlation_id)) continue;
-    if (namedPayloadPath(trace.payload) !== path) continue;
+    const named = namedPayloadPath(trace.payload);
+    // A payload this classifier cannot read a workspace-relative target out of leaves attribution
+    // undetermined rather than uncorrelated: a truncated excerpt may have named this file before
+    // the slice, and that is not an observation that the path was untouched.
+    //
+    // An absolute path is readable, though. The run root is known, so resolve it: inside the
+    // workspace it correlates like any relative target, and outside it names a different file.
+    if (named === null) {
+      unreadablePayload = true;
+      continue;
+    }
+    const target = isAbsolute(named) ? workspaceRelative(recorded.root, named) : named;
+    if (target === null) {
+      unreadablePayload = true;
+      continue;
+    }
+    if (target !== path) continue;
     matching.push(trace);
   }
 
-  if (matching.length === 0) return fail();
+  // SSOT 6.7 is two rules, and which one applies turns on whether there was an observation
+  // set to correlate against:
+  //   :720  uncorrelated mutation            -> external_mutation
+  //   :721  attribution cannot be determined -> actor.attribution_unknown, score withheld
+  //
+  // "Uncorrelated" means an observation set existed and this mutation is not in it. Three cases
+  // fall out, and only the middle one is :720:
+  //
+  //   no traces at all              missing evidence, not an observation set     -> :721
+  //   a trace whose payload cannot  the set is unreadable at this point, so
+  //   be read for a path            attribution cannot be determined             -> :721
+  //   readable traces, none naming  the set was observed and this path is not
+  //   this path                     in it                                        -> :720
+  //
+  // The second case is the one #298 measures: an ordinary source write is serialized and sliced
+  // past the 2048-character payload bound, so the path stops being recoverable. Calling that
+  // external would assert an actor from a parsing failure.
+  if (input.traces.length === 0) return unknownClassification(path);
+  if (unreadablePayload) return unknownClassification(path);
+  if (matching.length === 0) return externalMutationClassification(path);
 
   const actors = new Set<string>();
   for (const trace of matching) {
