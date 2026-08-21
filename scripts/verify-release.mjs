@@ -61,9 +61,71 @@ const isPlainRecord = (value) =>
 
 const defaultReadFile = (path) => readFileSync(resolve(root, path), "utf8");
 
+// JSON.parse takes the last of any duplicate member, and a Map takes the last of any repeated
+// heading, so a document can read one way and evaluate another: a ledger showing
+// "permits_publication": false twice over, the second true, evaluates as true. Every comparison
+// downstream operates on the parsed object and is defeated before it runs. Ambiguity is refused
+// here rather than normalised away, which means examining the raw text -- by the time the object
+// exists the evidence is gone.
+const duplicateJsonMember = (json) => {
+  const seen = [new Set()];
+  const member = /"((?:[^"\\]|\\.)*)"\s*:/g;
+  let depth = 0;
+  for (let i = 0; i < json.length; i += 1) {
+    const char = json[i];
+    if (char === '"') {
+      member.lastIndex = i;
+      const match = member.exec(json);
+      if (match && match.index === i) {
+        const scope = seen[depth];
+        if (scope) {
+          // Compare decoded keys, not source spelling. "permits_publication" and
+          // "\u0070ermits_publication" are different bytes and the same member; JSON.parse keeps
+          // the last of them. Comparing raw text would let the second silently replace the first.
+          let key;
+          try {
+            key = JSON.parse(`"${match[1]}"`);
+          } catch {
+            key = match[1];
+          }
+          if (scope.has(key)) return key;
+          scope.add(key);
+        }
+        i = member.lastIndex - 1;
+        continue;
+      }
+      // A string value: skip it so its bytes are never read as members. Unproven: removing this
+      // changed no result on any input tried, because valid JSON escapes quotes inside strings.
+      // Kept as defence for text arriving before JSON.parse has vouched for it.
+      i += 1;
+      while (i < json.length && json[i] !== '"') i += json[i] === "\\" ? 2 : 1;
+      continue;
+    }
+    if (char === "{") {
+      depth += 1;
+      seen[depth] = new Set();
+    } else if (char === "}") {
+      seen[depth] = undefined;
+      depth -= 1;
+    }
+  }
+  return null;
+};
+
 const parseRecordBlocks = (text) => {
   const matches = [...String(text).matchAll(/^## (?<heading>.+)\n\n```json\n(?<json>[\s\S]*?)\n```/gm)];
-  return new Map(matches.map(({ groups }) => [groups.heading, JSON.parse(groups.json)]));
+  const blocks = new Map();
+  for (const { groups } of matches) {
+    if (blocks.has(groups.heading)) {
+      throw new Error(`MANIFEST_MALFORMED record heading ${groups.heading} appears more than once`);
+    }
+    const duplicate = duplicateJsonMember(groups.json);
+    if (duplicate !== null) {
+      throw new Error(`MANIFEST_MALFORMED record ${groups.heading} declares ${duplicate} more than once`);
+    }
+    blocks.set(groups.heading, JSON.parse(groups.json));
+  }
+  return blocks;
 };
 
 const emptyReproductionState = () => ({
@@ -82,10 +144,58 @@ const failClosed = (errors) => ({
   permits_publication: false
 });
 
-const loadLivePublicationRequirements = (readFile) => {
+const loadLivePublicationLedger = (readFile) => {
   const blocks = parseRecordBlocks(readFile(CLEARANCE_PATH));
   const ledger = blocks.get("Requirement ledger");
-  return Array.isArray(ledger?.requirements) ? ledger.requirements : [];
+  const derived = blocks.get("Derived verdict");
+  return {
+    requirements: Array.isArray(ledger?.requirements) ? ledger.requirements : [],
+    derived: isPlainRecord(derived) ? derived : null
+  };
+};
+
+// PUBLICATION-CLEARANCE.md: CLEARED iff every requirement is RESOLVED; permits_*
+// are all true only on CLEARED. tests/publication/clearance.test.mjs re-derives
+// the same shape and fails the document when it disagrees.
+const derivePublicationVerdict = (requirements) => {
+  const blockedBy = (Array.isArray(requirements) ? requirements : [])
+    .filter((requirement) => isPlainRecord(requirement) && typeof requirement.id === "string" && requirement.status !== "RESOLVED")
+    .map((requirement) => requirement.id)
+    .sort();
+  const cleared = blockedBy.length === 0;
+  return {
+    verdict: cleared ? "CLEARED" : "BLOCKED",
+    blocked_by: blockedBy,
+    permits_publication: cleared,
+    permits_redistribution: cleared,
+    permits_external_contribution_acceptance: cleared
+  };
+};
+
+const publicationVerdictAgrees = (recorded, derived) => {
+  if (!isPlainRecord(recorded) || !isPlainRecord(derived)) return false;
+  if (recorded.verdict !== derived.verdict) return false;
+  if (!Array.isArray(recorded.blocked_by)) return false;
+  // Structural comparison. Joining with NUL collided: [] and [""] both serialise to "", so a
+  // malformed nonempty blocked_by read as agreement with an empty derived list. String() also
+  // coerced non-strings into matching text.
+  if (recorded.blocked_by.length !== derived.blocked_by.length) return false;
+  if (!recorded.blocked_by.every((entry) => typeof entry === "string" && entry.length > 0)) return false;
+  const recordedBlocked = [...recorded.blocked_by].sort();
+  const derivedBlocked = [...derived.blocked_by].sort();
+  if (recordedBlocked.some((entry, index) => entry !== derivedBlocked[index])) return false;
+  // PUBLICATION-CLEARANCE.md requires agreement on every permits_* flag, not on a list of names
+  // compiled when this was written. Naming three let a fourth -- permits_npm_publication: false
+  // beside a CLEARED verdict -- pass unnoticed. Enumerate both sides so an added flag is compared,
+  // and an unknown flag on either side is a disagreement rather than an omission.
+  const permitKeys = new Set(
+    [...Object.keys(recorded), ...Object.keys(derived)].filter((key) => key.startsWith("permits_"))
+  );
+  if (permitKeys.size === 0) return false;
+  for (const key of permitKeys) {
+    if (recorded[key] !== derived[key]) return false;
+  }
+  return true;
 };
 
 const loadTrustedPrincipals = (readFile) => {
@@ -131,7 +241,19 @@ const isIndependentReproduction = (value) =>
 const loadTreeResidentReproduction = (readFile, reproductionPath) => {
   if (typeof reproductionPath === "string" && reproductionPath.length > 0) {
     try {
-      const parsed = JSON.parse(readFile(reproductionPath));
+      const text = readFile(reproductionPath);
+      // Same slot as the tree-resident record, so it gets the same ambiguity refusal. Without
+      // this, a signed body carrying "kind": "self-attested" followed by
+      // "kind": "independent-reproduction" parsed last-wins and reported independent: true --
+      // the signature covering the parsed body, not the bytes a reader sees.
+      const duplicate = duplicateJsonMember(text);
+      if (duplicate !== null) {
+        return {
+          reproduction: undefined,
+          error: `NO_INDEPENDENT_REPRODUCTION ${reproductionPath} declares ${duplicate} more than once`
+        };
+      }
+      const parsed = JSON.parse(text);
       if (isIndependentReproduction(parsed)) {
         return { reproduction: parsed, error: null };
       }
@@ -323,8 +445,11 @@ const evaluateG4Gate = (input) => {
   }
 
   let requirements = [];
+  let recordedDerived = null;
   try {
-    requirements = loadLivePublicationRequirements(readFile);
+    const ledger = loadLivePublicationLedger(readFile);
+    requirements = ledger.requirements;
+    recordedDerived = ledger.derived;
   } catch (error) {
     errors.push(`UNREADABLE publication ledger could not be read: ${String(error)}`);
   }
@@ -338,13 +463,24 @@ const evaluateG4Gate = (input) => {
         continue;
       }
       byId.set(requirement.id, requirement);
+      if (requirement.status !== "RESOLVED") {
+        errors.push(`UNRESOLVED_GATE ${requirement.id}`);
+      }
     }
   }
+  // The six ids are a floor, not the whole set: a quietly deleted required
+  // id must not open the gate even if every remaining row is RESOLVED.
   for (const id of G4_PUBLICATION_REQUIREMENT_IDS) {
-    const requirement = byId.get(id);
-    if (!requirement || requirement.status !== "RESOLVED") {
+    if (!byId.has(id)) {
       errors.push(`UNRESOLVED_GATE ${id}`);
     }
+  }
+  // Disagreement fails closed. Rows that are open while Derived says CLEARED
+  // would publish on a false document; rows that are all RESOLVED while
+  // Derived says BLOCKED would publish against the document that governs it.
+  const derivedFromRows = derivePublicationVerdict(requirements);
+  if (!publicationVerdictAgrees(recordedDerived, derivedFromRows)) {
+    errors.push("UNRESOLVED_GATE publication derived verdict disagrees with ledger rows");
   }
 
   const ok = errors.length === 0;
