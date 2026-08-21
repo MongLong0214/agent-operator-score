@@ -1119,7 +1119,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   const batch = registry.batches.find(({ id }) => id === "d0-002-prerequisites");
   const supersededRenewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-adr-0003-renewal");
   const priorRenewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-adr-0003-contract-correction-renewal");
-  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal");
+  const redCensusRenewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal");
+  // The 2026-08-22 owner-approved artifact corrections add a fifth link to this chain: the Node
+  // 22.18 engine floor changes ADR-0003 and D0-002, so the red-census renewal's pinned digests are
+  // stale and a fresh accepted record binds the corrected ones.
+  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal");
   const result = validateGateAdministration();
   const adr = readFileSync(resolve(root, "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"), "utf8");
   const prd = readFileSync(resolve(root, "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"), "utf8");
@@ -1169,13 +1173,23 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "a64e2f24f4c4e2b9c00d415d652ca6254cc4a07198026fc950d2953171892c98"
   );
 
-  assert.ok(renewal, "D0-002 requires a fresh digest-bound renewal after the RED census correction");
+  assert.ok(redCensusRenewal, "the RED census renewal must remain as an invalidated historical batch");
+  assert.equal(redCensusRenewal.status, "INVALIDATED");
+  assert.deepEqual(redCensusRenewal.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
+  assert.match(redCensusRenewal.invalidation.reason, /Owner-approved artifact corrections of 2026-08-22/);
+  assert.equal(
+    redCensusRenewal.target.reviewed_head,
+    "2713d5e8646ff69c979aa1114d6f6ae78d804c7f"
+  );
+
+  assert.ok(renewal, "D0-002 requires a fresh digest-bound renewal after the 2026-08-22 corrections");
   assert.equal(renewal.status, "ACCEPTED");
-  assert.deepEqual(renewal.target, {
-    repository: "github.com/MongLong0214/agent-operator-score",
-    branch: "dev",
-    reviewed_head: "2713d5e8646ff69c979aa1114d6f6ae78d804c7f"
-  });
+  assert.equal(renewal.target.repository, "github.com/MongLong0214/agent-operator-score");
+  assert.equal(renewal.target.branch, "dev");
+  assert.match(renewal.target.reviewed_head, /^[a-f0-9]{40}$/);
   assert.doesNotThrow(() => execFileSync("git", ["merge-base", "--is-ancestor", renewal.target.reviewed_head, "HEAD"], {
     cwd: root,
     stdio: "ignore"
@@ -1195,6 +1209,7 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   ]);
   assert.notEqual(renewal.preparation.prepared_by, renewal.approval.approved_by);
   assert.equal(renewal.approval.role, "MAINTAINER");
+  assert.equal(renewal.approval.approved_by, "MongLong0214");
   assert.equal(result.status, "invalidated");
   // Registry-wide counts, so recording any batch moves them. Any change here
   // must be made because the registry changed, never to make this case pass:
@@ -1202,9 +1217,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 40);
+  assert.equal(result.batches, 55);
   assert.equal(result.counts.accepted, 29);
-  assert.equal(result.counts.invalidated, 11);
+  assert.equal(result.counts.invalidated, 26);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
@@ -1329,13 +1344,13 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
   );
   assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
   const expectedCurrentD0004Renewal = {
-    "id": "d0-004-prerequisites-completion-marker-receipt-renewal",
+    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal",
     "status": "ACCEPTED",
-    "scope": "Accept the D0-004 prerequisite set — ADR-0001/0003/0012, PRD-D0, and the exact D0-004 ticket at the digests below — so its semantic planning validator and governance-gate work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
+    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal against the owner-approved artifact corrections of 2026-08-22 (#167 engine floor, #266 focused command, #310 wedged-CI exception, #313 ownership restated for the census). Complete replacement: every pinned digest is re-taken at the correction commit, so no verified ticket passes through a partially renewed state.",
     "target": {
       "repository": "github.com/MongLong0214/agent-operator-score",
       "branch": "dev",
-      "reviewed_head": "05f17438d56a54d9df577a089a328ea00113fc48"
+      "reviewed_head": "8c9cf6027662412d511fe3f4864567dfda169357"
     },
     "required_artifacts": [
       {
@@ -1345,7 +1360,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       },
       {
         "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
-        "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+        "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
         "kind": "ADR"
       },
       {
@@ -1360,7 +1375,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       },
       {
         "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-        "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+        "sha256": "dd8599fc4edef27486b58cf33602e8a44ac2dd8acb3a9654e4125345c1dfffdb",
         "kind": "TICKET"
       }
     ],
@@ -1377,7 +1392,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       },
       {
         "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
-        "sha256": "8dc3e44df832d6a33813420ecd5f544af14d52c308faf956fbf82f0ab10a72c4",
+        "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
         "kind": "ADR"
       },
       {
@@ -1392,7 +1407,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       },
       {
         "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-        "sha256": "1fa7ff15df45de27d26c087e5641af20ed10f4887b0f8b9b359845bba51e3b9d",
+        "sha256": "dd8599fc4edef27486b58cf33602e8a44ac2dd8acb3a9654e4125345c1dfffdb",
         "kind": "TICKET"
       }
     ],
@@ -1422,16 +1437,16 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       {
         "from": "PENDING",
         "to": "ACCEPTED",
-        "recorded_at": "2026-08-13T00:00:00Z",
-        "recorded_by": "d0-004-completion-marker-receipt-renewal-candidate"
+        "recorded_at": "2026-08-22T00:00:00Z",
+        "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
       }
     ],
     "preparation": {
-      "prepared_by": "d0-004-completion-marker-receipt-renewal-candidate"
+      "prepared_by": "artifact-correction-renewal-candidate-2026-08-22"
     },
     "approval": {
       "approved_by": "MongLong0214",
-      "approved_at": "2026-08-13T00:00:00Z",
+      "approved_at": "2026-08-22T00:00:00Z",
       "role": "MAINTAINER"
     }
   };

@@ -13,6 +13,8 @@ Non-destructively classify every existing v2 structurally `ACCEPTED` row as `LEG
 
 ## Exact ownership
 
+- The bullet below restates, in the form the ownership census reads, exactly the paths this section already names. It adds no scope.
+- scripts/validate-gate-administration.mjs — as declared above; scripts/resolve-execution-state.mjs — as declared above; tests/gate-effective-state.test.mjs — as declared above; scripts/validate-planning.mjs — as declared above; tests/planning-contract.test.mjs — as declared above
 - In `scripts/validate-gate-administration.mjs`, exactly existing `canonicalRegistryRelativePath`, `verifyCanonicalRegistry`, and `validateGateAdministration` plus new `deriveEffectiveGateState`; in `scripts/resolve-execution-state.mjs`, exactly existing `findAcceptedGate` and `evaluateTicketGates` plus new `applyEffectiveGateStateToGateFacts`; only new `effective_gate_state`, `effective_gate_state_reason`, `effectiveGateState`, and `effectiveGateStateRecord` definitions in `specs/execution-state.schema.v1.json`; `tests/gate-effective-state.test.mjs`; and `fixtures/governance/effective-state/**`.
 - The future D0-006 allowlist/census edit is exactly the `controlPlaneAllowlist` literal in `scripts/validate-planning.mjs`, adding only `tests/gate-effective-state.test.mjs`; and both `acceptedValidatorOutput` and `pendingValidatorOutput` literals in `tests/planning-contract.test.mjs`, changing `control_plane_code_files=10` and `control_plane_allowlist=10` to `11` in each literal.
 - The original `docs/decisions/maintainer-gate-registry.v2.json`, its rows, its approval values, digest values, transitions, and events are explicitly excluded.
