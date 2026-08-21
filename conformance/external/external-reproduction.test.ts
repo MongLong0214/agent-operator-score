@@ -1127,6 +1127,81 @@ describe("external-reproduction", () => {
     );
   });
 
+  test("publication-clearance-with-a-duplicate-json-member-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Written as raw text on purpose. JSON.parse keeps the last duplicate member, so an object
+    // fixture cannot express this: by the time the object exists the first value is gone. The
+    // visible document says permits_publication false and blocked_by nonempty; the parsed object
+    // says the opposite, and every comparison downstream would run on the parsed object.
+    const clearance = [
+      "## Requirement ledger",
+      "",
+      "```json",
+      JSON.stringify({ requirements: resolvedPublicationRows() }, null, 2),
+      "```",
+      "",
+      "## Derived verdict",
+      "",
+      "```json",
+      "{",
+      '  "verdict": "CLEARED",',
+      '  "blocked_by": ["contributor_terms"],',
+      '  "blocked_by": [],',
+      '  "permits_publication": false,',
+      '  "permits_publication": true,',
+      '  "permits_redistribution": true,',
+      '  "permits_external_contribution_acceptance": true',
+      "}",
+      "```",
+      ""
+    ].join("\n");
+
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a clearance record with duplicate members minted a publication pass");
+    assert.ok(
+      gated.errors.some((entry) => entry.includes("more than once")),
+      `an ambiguous clearance record was normalised instead of refused: ${gated.errors.join(" | ")}`
+    );
+  });
+
+  test("publication-derived-verdict-token-alone-disagreeing-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The other verdict cases move the token together with blocked_by and the permit flags, so
+    // deleting the verdict comparison alone kills none of them. Here the token is the only
+    // variable: BLOCKED beside an empty blocked_by and all permits true, which the rows derive as
+    // CLEARED.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      verdict: "BLOCKED"
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a disagreeing verdict token alone minted a publication pass");
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "the verdict token was not compared when every other field agreed"
+    );
+  });
+
   test("publication-derived-blocked-by-with-an-empty-string-entry-gates", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);

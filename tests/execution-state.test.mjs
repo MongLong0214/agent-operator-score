@@ -6546,14 +6546,41 @@ test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
       }
     }
   ];
+  // Baseline facts alone yield null before the key boundary is reached, so the plants would all
+  // "pass" against a gate that trusted them. Supply everything a freeze needs -- head, listing,
+  // live digests -- so the activation-key choice is the only independent variable. Verified by
+  // mutating the resolver to read facts.authenticated_review_activation_facts, and separately to
+  // use Symbol.for: both then produce a non-null freeze here.
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const manifest = JSON.parse(gitBlobUtf8(head, ARTIFACT_MANIFEST_V3_PATH));
+  const manifestArtifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+
+  const freezeReadyActivation = () => {
+    const activation = loadPassingActivationFacts();
+    activation.exact_head_sha = head;
+    activation.review_head_sha = head;
+    activation.manifest = manifest;
+    activation.manifest_digest = sha256Utf8(JSON.stringify(manifest));
+    activation.manifest_in_head = true;
+    return activation;
+  };
+
   for (const plant of plants) {
     const facts = loadBaselineFacts();
-    plant.apply(facts, activationMatchingHeadBlob());
+    facts.currentHead = head;
+    facts.liveTreePaths = [ARTIFACT_MANIFEST_V3_PATH, ...manifestArtifacts.map((entry) => entry.path)];
+    facts.liveDigests = {};
+    for (const entry of manifestArtifacts) {
+      if (facts.liveDigests[entry.path] === undefined) {
+        facts.liveDigests[entry.path] = sha256Utf8(gitBlobUtf8(head, entry.path));
+      }
+    }
+    plant.apply(facts, freezeReadyActivation());
     const { result } = await resolveOffline(facts);
     assert.equal(
       result.artifact_freeze,
       null,
-      `${plant.name} is caller-reachable and must not freeze even when the blob digest would match`
+      `${plant.name} is caller-reachable and must not freeze even with a complete freeze-ready world`
     );
   }
 });

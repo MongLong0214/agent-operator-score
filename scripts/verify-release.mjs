@@ -61,9 +61,60 @@ const isPlainRecord = (value) =>
 
 const defaultReadFile = (path) => readFileSync(resolve(root, path), "utf8");
 
+// JSON.parse takes the last of any duplicate member, and a Map takes the last of any repeated
+// heading, so a document can read one way and evaluate another: a ledger showing
+// "permits_publication": false twice over, the second true, evaluates as true. Every comparison
+// downstream operates on the parsed object and is defeated before it runs. Ambiguity is refused
+// here rather than normalised away, which means examining the raw text -- by the time the object
+// exists the evidence is gone.
+const duplicateJsonMember = (json) => {
+  const seen = [new Set()];
+  const member = /"((?:[^"\\]|\\.)*)"\s*:/g;
+  let depth = 0;
+  for (let i = 0; i < json.length; i += 1) {
+    const char = json[i];
+    if (char === '"') {
+      member.lastIndex = i;
+      const match = member.exec(json);
+      if (match && match.index === i) {
+        const scope = seen[depth];
+        if (scope) {
+          if (scope.has(match[1])) return match[1];
+          scope.add(match[1]);
+        }
+        i = member.lastIndex - 1;
+        continue;
+      }
+      // A string value: skip it so its bytes are never read as members.
+      i += 1;
+      while (i < json.length && json[i] !== '"') i += json[i] === "\\" ? 2 : 1;
+      continue;
+    }
+    if (char === "{") {
+      depth += 1;
+      seen[depth] = new Set();
+    } else if (char === "}") {
+      seen[depth] = undefined;
+      depth -= 1;
+    }
+  }
+  return null;
+};
+
 const parseRecordBlocks = (text) => {
   const matches = [...String(text).matchAll(/^## (?<heading>.+)\n\n```json\n(?<json>[\s\S]*?)\n```/gm)];
-  return new Map(matches.map(({ groups }) => [groups.heading, JSON.parse(groups.json)]));
+  const blocks = new Map();
+  for (const { groups } of matches) {
+    if (blocks.has(groups.heading)) {
+      throw new Error(`MANIFEST_MALFORMED record heading ${groups.heading} appears more than once`);
+    }
+    const duplicate = duplicateJsonMember(groups.json);
+    if (duplicate !== null) {
+      throw new Error(`MANIFEST_MALFORMED record ${groups.heading} declares ${duplicate} more than once`);
+    }
+    blocks.set(groups.heading, JSON.parse(groups.json));
+  }
+  return blocks;
 };
 
 const emptyReproductionState = () => ({
