@@ -85,7 +85,9 @@ const duplicateJsonMember = (json) => {
         i = member.lastIndex - 1;
         continue;
       }
-      // A string value: skip it so its bytes are never read as members.
+      // A string value: skip it so its bytes are never read as members. Unproven: removing this
+      // changed no result on any input tried, because valid JSON escapes quotes inside strings.
+      // Kept as defence for text arriving before JSON.parse has vouched for it.
       i += 1;
       while (i < json.length && json[i] !== '"') i += json[i] === "\\" ? 2 : 1;
       continue;

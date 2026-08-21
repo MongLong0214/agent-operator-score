@@ -1127,6 +1127,57 @@ describe("external-reproduction", () => {
     );
   });
 
+  test("publication-clearance-duplicate-detection-does-not-misfire-on-valid-records", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The refusal above is only safe if the detector does not fire on shapes that are legal:
+    // the same key in sibling array elements, the same key in different object scopes, and a
+    // brace or quote sequence inside a string value. A detector that refused these would gate
+    // every honest record, which is worse than the defect it prevents.
+    //
+    // What this case does NOT cover: the detector's string-skip branch. Removing that branch
+    // changes no result here or on any input I could construct -- valid JSON always escapes
+    // quotes inside strings, so the branch is never the reason a member is or is not seen. It is
+    // left in place as defence for text that reaches the detector before JSON.parse has vouched
+    // for it, and it is recorded as unproven rather than presented as guarded.
+    const derived = JSON.stringify({
+      ...CLEARED_PUBLICATION_VERDICT,
+      note: 'a string containing {"verdict": "BLOCKED"} and a quote \\" inside it',
+      scopes: [{ id: "a" }, { id: "b" }],
+      nested: { verdict: "CLEARED" }
+    }, null, 2);
+    const clearance = [
+      "## Requirement ledger",
+      "",
+      "```json",
+      JSON.stringify({ requirements: resolvedPublicationRows() }, null, 2),
+      "```",
+      "",
+      "## Derived verdict",
+      "",
+      "```json",
+      derived,
+      "```",
+      ""
+    ].join("\n");
+
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.errors.some((entry) => entry.includes("more than once")),
+      false,
+      `the duplicate detector misfired on a legal record: ${gated.errors.join(" | ")}`
+    );
+  });
+
   test("publication-clearance-with-a-duplicate-json-member-gates", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);
