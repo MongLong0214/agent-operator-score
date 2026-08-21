@@ -9,7 +9,9 @@
  * pass. G1 closes only on the E12 token PASS_TO_CONTINUE. G2 and G3 are
  * deferred calibration studies; the n=20 feasibility record cannot close
  * them, so this tree cannot emit G4_PASS. Self-attested reproductions and
- * keys missing from the G4-VERDICT allowlist are refused.
+ * named hosts whose (id, public_key) pair is missing from the G4-VERDICT
+ * allowlist are refused. `independent` is true only when the signature,
+ * recorded bytes, and head all check and the named principal matches.
  */
 
 import { spawnSync } from "node:child_process";
@@ -92,7 +94,12 @@ const loadTrustedPrincipals = (readFile) => {
     const record = blocks.get("Trusted principals");
     const principals = Array.isArray(record?.principals) ? record.principals : [];
     return principals.filter(
-      (principal) => isPlainRecord(principal) && typeof principal.public_key === "string" && principal.public_key.length > 0
+      (principal) =>
+        isPlainRecord(principal) &&
+        typeof principal.id === "string" &&
+        principal.id.length > 0 &&
+        typeof principal.public_key === "string" &&
+        principal.public_key.length > 0
     );
   } catch {
     return [];
@@ -118,10 +125,17 @@ const loadLiveGateStatus = (readFile) => {
   }
 };
 
+const isIndependentReproduction = (value) =>
+  isPlainRecord(value) && value.kind === "independent-reproduction";
+
 const loadTreeResidentReproduction = (readFile, reproductionPath) => {
   if (typeof reproductionPath === "string" && reproductionPath.length > 0) {
     try {
-      return { reproduction: JSON.parse(readFile(reproductionPath)), error: null };
+      const parsed = JSON.parse(readFile(reproductionPath));
+      if (isIndependentReproduction(parsed)) {
+        return { reproduction: parsed, error: null };
+      }
+      return { reproduction: undefined, error: null };
     } catch (error) {
       return {
         reproduction: undefined,
@@ -132,7 +146,7 @@ const loadTreeResidentReproduction = (readFile, reproductionPath) => {
   try {
     const blocks = parseRecordBlocks(readFile(VERDICT_PATH));
     const live = blocks.get("Live reproduction");
-    if (isPlainRecord(live) && live.kind === "independent-reproduction") {
+    if (isIndependentReproduction(live)) {
       return { reproduction: live, error: null };
     }
     return { reproduction: undefined, error: null };
@@ -235,13 +249,19 @@ const evaluateG4Gate = (input) => {
     }
   } else if (!isPlainRecord(reproduction)) {
     errors.push("MANIFEST_MALFORMED the reproduction manifest must be an object");
+  } else if (!isIndependentReproduction(reproduction)) {
+    errors.push(
+      "NO_INDEPENDENT_REPRODUCTION no independent environment has reproduced exact public fixture bytes."
+    );
   } else {
     const { signature, ...body } = reproduction;
     const environment = isPlainRecord(body.environment) ? body.environment : {};
     const envId = typeof environment.id === "string" ? environment.id : "";
     const toolchain = isPlainRecord(body.toolchain) ? body.toolchain : {};
     const publicKey = typeof body.public_key === "string" ? body.public_key : "";
-    const allowlisted = principals.some((principal) => principal.public_key === publicKey);
+    const allowlisted = principals.some(
+      (principal) => principal.id === envId && principal.public_key === publicKey
+    );
     if (envId.length === 0) errors.push("MANIFEST_MALFORMED environment.id is required");
     if (typeof toolchain.node !== "string" || toolchain.node.length === 0) {
       errors.push("MANIFEST_MALFORMED toolchain.node is required");
@@ -264,7 +284,9 @@ const evaluateG4Gate = (input) => {
     if (envId.length > 0 && envId === localId) {
       errors.push("SELF_ATTESTED the verifying host attested this reproduction");
     } else if (publicKey.length > 0 && !allowlisted) {
-      errors.push("UNTRUSTED_PRINCIPAL the reproduction key is not in the G4-VERDICT allowlist");
+      errors.push(
+        "UNTRUSTED_PRINCIPAL the named host and key are not a G4-VERDICT allowlisted principal"
+      );
     }
 
     const bytes = compareOutputDigests(body.output_digests);
@@ -281,7 +303,12 @@ const evaluateG4Gate = (input) => {
     }
 
     reproductionState.independent =
-      reproductionState.signature_ok && envId.length > 0 && envId !== localId && allowlisted;
+      reproductionState.signature_ok &&
+      reproductionState.bytes_ok &&
+      reproductionState.head_ok &&
+      envId.length > 0 &&
+      envId !== localId &&
+      allowlisted;
   }
 
   const g0 = runG0Gate({ readFile });
