@@ -6,8 +6,9 @@
  * current bytes), run the live G0–G4 blockers, and emit PASS or FAIL.
  *
  * A caller-supplied publication array, G1–G3 map, or G0 stub cannot mint a
- * pass. Self-attested reproductions and keys missing from the G4-VERDICT
- * allowlist are refused. A protocol PASS is not a live publication clearance.
+ * pass. G1–G3 close only on the E12 token PASS_TO_CONTINUE. Self-attested
+ * reproductions and keys missing from the G4-VERDICT allowlist are refused.
+ * A protocol PASS is not a live publication clearance.
  */
 
 import { spawnSync } from "node:child_process";
@@ -33,6 +34,9 @@ const VERDICT_PATH = "docs/decisions/G4-VERDICT.md";
 const FEASIBILITY_PATH = "docs/decisions/FEASIBILITY-VERDICT.md";
 const GIT_SHA = /^[a-f0-9]{40}$/i;
 const DIGEST_SHAPE = /^[a-f0-9]{64}$/;
+// E12-003 / PRD AC-E12-3 / SSOT G1: the only E12 token that continues.
+// INCONCLUSIVE, PIVOT_REQUIRED, and the G4-local token RESOLVED do not close G1–G3.
+const E12_GATE_PASS = "PASS_TO_CONTINUE";
 
 export const G4_PUBLICATION_REQUIREMENT_IDS = Object.freeze([
   "contributor_terms",
@@ -107,7 +111,7 @@ const loadLiveGateStatus = (readFile) => {
     if (!isPlainRecord(record)) return unresolved;
     const status = { ...unresolved };
     for (const gate of ["G1", "G2", "G3"]) {
-      if (record[gate] === "RESOLVED") status[gate] = "RESOLVED";
+      if (record[gate] === E12_GATE_PASS) status[gate] = "RESOLVED";
     }
     return status;
   } catch {
