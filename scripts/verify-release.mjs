@@ -116,8 +116,14 @@ const publicationVerdictAgrees = (recorded, derived) => {
   if (!Array.isArray(recorded.blocked_by)) return false;
   const recordedBlocked = [...recorded.blocked_by].map(String).sort();
   if (recordedBlocked.join("\0") !== derived.blocked_by.join("\0")) return false;
+  // PUBLICATION-CLEARANCE.md: the three permits_* flags are one conjunction
+  // with CLEARED. Binding only permits_publication would clear a Derived
+  // record that withholds redistribution or contribution acceptance.
   return (
-    recorded.permits_publication === derived.permits_publication
+    recorded.permits_publication === derived.permits_publication &&
+    recorded.permits_redistribution === derived.permits_redistribution &&
+    recorded.permits_external_contribution_acceptance ===
+      derived.permits_external_contribution_acceptance
   );
 };
 

@@ -1127,6 +1127,68 @@ describe("external-reproduction", () => {
     );
   });
 
+  test("publication-derived-cleared-token-with-false-permits-redistribution-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Verdict token and permits_publication match the rows. The clearance
+    // record derives the three permits flags as one conjunction; flipping
+    // only permits_redistribution is still disagreement.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_redistribution: false
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "CLEARED with permits_redistribution false minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a CLEARED token was treated as agreement even though permits_redistribution was false"
+    );
+  });
+
+  test("publication-derived-cleared-token-with-false-permits-external-contribution-acceptance-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Verdict token and the other two permits flags match the rows. The
+    // clearance record derives all three as one conjunction; flipping only
+    // permits_external_contribution_acceptance is still disagreement.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_external_contribution_acceptance: false
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "CLEARED with permits_external_contribution_acceptance false minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a CLEARED token was treated as agreement even though permits_external_contribution_acceptance was false"
+    );
+  });
+
   test("publication-derived-cleared-token-with-blocked-by-gates", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);

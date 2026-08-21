@@ -42,11 +42,13 @@ is still open (they are deferred calibration studies; the n=20 feasibility
 record cannot close them, and this repository carries no such study); or any
 requirement in the E14 ledger in `docs/decisions/PUBLICATION-CLEARANCE.md`
 is not RESOLVED, a required floor id is missing from that ledger, or the
-ledger's `Derived verdict` disagrees with the row statuses. The six floor
+ledger's `Derived verdict` disagrees with the derivation from those rows
+(`verdict`, `blocked_by`, and every `permits_*` flag). The six floor
 ids cannot be deleted to open the gate. Disagreement fails closed: open
 rows next to a derived pass would publish on a false document, and
 all-RESOLVED rows next to a derived block would publish against the
-document that governs them. Extra or duplicate digest paths fail. An
+document that governs them. A derived pass that withholds any `permits_*`
+flag is still disagreement. Extra or duplicate digest paths fail. An
 unreadable gated file is `UNREADABLE` or G0 `STALE_DIGEST`, not an
 exception. The only passing
 verdict token is `G4_PASS`. The live tree does not emit it. E12 is contracted
