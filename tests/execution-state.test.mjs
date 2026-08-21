@@ -6689,30 +6689,44 @@ test("artifact-freeze-exact-head-not-live-current-head-does-not-verify", async (
   assert.equal(freeze, null, message);
 });
 
-test("artifact-freeze-has-no-honest-positive-control-on-this-tree", async () => {
+test("artifact-freeze-verifies-against-the-manifest-and-blobs-at-head", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const message =
-    "the freeze cases are all refusals, and that is the true state: collectAuthenticatedReviewActivationFacts gathers protection, PR, review, identity and permission fields but never the manifest document, its digest, or manifest_in_head, so the production path cannot produce a freeze";
+    "the freeze cases must not accept a constant-null evaluator: with the real v3 manifest at HEAD and every artifact digest hashed from the blob at HEAD, the freeze is non-null";
   assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
 
-  // A positive control here would have to supply manifest_in_head itself, which is exactly the
-  // fact the collector cannot establish -- the fixture would be asserting against evidence it
-  // produced. The previous control did that and passed even when the supplied manifest's identity
-  // differed from the one at HEAD.
-  //
-  // So this records the absence rather than manufacturing a pass: with every artifact path in the
-  // listing and every digest matching, and manifest_in_head absent as collection leaves it, the
-  // freeze refuses. When collection is extended to gather the manifest, a real positive control
-  // becomes possible and this case should be replaced by it.
-  const { activation, firstPath, head } = freezeActivationOnLocalHead();
-  delete activation.manifest_in_head;
+  // Grounded in HEAD rather than in a fixture: the manifest document and every artifact digest
+  // are read from the tree, so nothing here was minted to match. The one supplied fact is
+  // manifest_in_head, which collection cannot yet establish -- that gap is the separate case
+  // below, and stating it here is what keeps this control honest.
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const manifest = JSON.parse(gitBlobUtf8(head, ARTIFACT_MANIFEST_V3_PATH));
+  const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  assert.ok(artifacts.length > 0, "the v3 manifest at HEAD declares no artifacts");
+
+  const activation = loadPassingActivationFacts();
+  activation.exact_head_sha = head;
+  activation.review_head_sha = head;
+  activation.manifest = manifest;
+  activation.manifest_digest = sha256Utf8(JSON.stringify(manifest));
+  activation.manifest_in_head = true;
+
   const facts = loadBaselineFacts();
   facts.currentHead = head;
-  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
-  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
-  assert.equal(facts.liveDigests[firstPath], activation.manifest.artifacts[0].sha256, message);
+  facts.liveTreePaths = [ARTIFACT_MANIFEST_V3_PATH, ...artifacts.map((entry) => entry.path)];
+  facts.liveDigests = {};
+  let hashed = 0;
+  for (const entry of artifacts) {
+    if (facts.liveDigests[entry.path] !== undefined) continue;
+    facts.liveDigests[entry.path] = sha256Utf8(gitBlobUtf8(head, entry.path));
+    hashed += 1;
+  }
+  assert.ok(hashed > 0, "no artifact blob was hashed from HEAD");
 
-  assert.equal(evaluateLiveArtifactFreeze(facts, activation), null, message);
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze === null, false, message);
+  assert.equal(freeze.exact_head_sha, head, message);
+  assert.equal(freeze.sha256, facts.liveDigests[freeze.path], message);
 });
 
 test("artifact-freeze-refuses-when-the-manifest-document-is-not-bound-to-head", async () => {

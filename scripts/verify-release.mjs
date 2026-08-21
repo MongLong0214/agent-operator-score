@@ -114,8 +114,14 @@ const publicationVerdictAgrees = (recorded, derived) => {
   if (!isPlainRecord(recorded) || !isPlainRecord(derived)) return false;
   if (recorded.verdict !== derived.verdict) return false;
   if (!Array.isArray(recorded.blocked_by)) return false;
-  const recordedBlocked = [...recorded.blocked_by].map(String).sort();
-  if (recordedBlocked.join("\0") !== derived.blocked_by.join("\0")) return false;
+  // Structural comparison. Joining with NUL collided: [] and [""] both serialise to "", so a
+  // malformed nonempty blocked_by read as agreement with an empty derived list. String() also
+  // coerced non-strings into matching text.
+  if (recorded.blocked_by.length !== derived.blocked_by.length) return false;
+  if (!recorded.blocked_by.every((entry) => typeof entry === "string" && entry.length > 0)) return false;
+  const recordedBlocked = [...recorded.blocked_by].sort();
+  const derivedBlocked = [...derived.blocked_by].sort();
+  if (recordedBlocked.some((entry, index) => entry !== derivedBlocked[index])) return false;
   // PUBLICATION-CLEARANCE.md requires agreement on every permits_* flag, not on a list of names
   // compiled when this was written. Naming three let a fourth -- permits_npm_publication: false
   // beside a CLEARED verdict -- pass unnoticed. Enumerate both sides so an added flag is compared,
