@@ -257,6 +257,41 @@ describe("isolation", () => {
       refused(api.assertIsolation({ envelope, readPath: planted }), "oracle copied into temp", "UNSAFE");
       refused(api.assertIsolation({ envelope, readPath: join(tmpdir(), "anything.json") }), "system temp is not allowed", "UNSAFE");
 
+      // A workspace may legitimately live under the system temporary directory -- on Linux
+      // tmpdir() is /tmp and CI puts it there. Denying that directory wholesale refused every read
+      // in the workspace it was supposed to protect, and this suite did not catch it because macOS
+      // tmpdir() is not under realpath("/tmp"). Building a bed directly under /tmp reproduces the
+      // condition on both platforms.
+      {
+        const under = mkdtempSync(join("/tmp", "aos-e3-002-under-"));
+        try {
+          const w = join(under, "workspace");
+          const o = join(under, "oracle");
+          const s = join(under, "scratch");
+          mkdirSync(join(w, "src"), { recursive: true });
+          mkdirSync(o, { recursive: true });
+          mkdirSync(s, { recursive: true });
+          writeFileSync(join(w, "src", "app.ts"), "export const n = 1;\n");
+          const oraclePath = join(o, "expected.json");
+          writeFileSync(oraclePath, JSON.stringify({ answer: CANARY }));
+          const nested = asOk(
+            api.buildWorkerEnvelope({ workspaceRoot: w, oraclePath, tempRoot: s, env: { PATH: "/usr/bin" } }),
+            "envelope for a workspace under the system temporary directory"
+          );
+          accepted(
+            api.assertIsolation({ envelope: nested, readPath: join(w, "src", "app.ts") }),
+            "a workspace under the system temporary directory is still readable"
+          );
+          refused(
+            api.assertIsolation({ envelope: nested, readPath: join(s, "copy.json") }),
+            "its declared scratch root is still refused",
+            "UNSAFE"
+          );
+        } finally {
+          rmSync(under, { recursive: true, force: true });
+        }
+      }
+
       // Both refusals above are already satisfied by workspace containment, because this bed puts
       // the scratch root outside the workspace. Put it inside and containment can no longer answer:
       // the temp rule is then the only thing between the worker and a copy placed there.
