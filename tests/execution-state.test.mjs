@@ -6741,6 +6741,47 @@ test("artifact-freeze-verifies-against-the-manifest-and-blobs-at-head", async ()
   assert.equal(freeze.sha256, facts.liveDigests[freeze.path], message);
 });
 
+test("artifact-freeze-refuses-a-manifest-whose-declared-digest-does-not-match-it", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "activation compares manifest_digest against the manifest it was handed; a declared digest that does not match must refuse, or the comparison is unguarded";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  // The positive control supplies the digest production expects, so on its own it cannot tell
+  // whether that comparison runs. Deleting the comparison from the resolver left every case
+  // green. This is its oracle: identical to the control except that the declared digest belongs
+  // to a different document.
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const manifestBytes = gitBlobUtf8(head, ARTIFACT_MANIFEST_V3_PATH);
+  const manifest = JSON.parse(manifestBytes);
+  const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  assert.ok(artifacts.length > 0, "the v3 manifest at HEAD declares no artifacts");
+
+  const activation = loadPassingActivationFacts();
+  activation.exact_head_sha = head;
+  activation.review_head_sha = head;
+  activation.manifest = manifest;
+  activation.manifest_digest = sha256Utf8(JSON.stringify({ ...manifest, artifacts: [] }));
+  activation.manifest_in_head = true;
+  assert.notEqual(
+    activation.manifest_digest,
+    sha256Utf8(JSON.stringify(manifest)),
+    "the independent variable is the digest disagreement"
+  );
+
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = [ARTIFACT_MANIFEST_V3_PATH, ...artifacts.map((entry) => entry.path)];
+  facts.liveDigests = {};
+  for (const entry of artifacts) {
+    if (facts.liveDigests[entry.path] === undefined) {
+      facts.liveDigests[entry.path] = sha256Utf8(gitBlobUtf8(head, entry.path));
+    }
+  }
+
+  assert.equal(evaluateLiveArtifactFreeze(facts, activation), null, message);
+});
+
 test("artifact-freeze-refuses-when-the-manifest-document-is-not-bound-to-head", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const message =
