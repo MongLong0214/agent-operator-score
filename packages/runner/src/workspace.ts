@@ -6,10 +6,11 @@
  * digest mismatch fail closed. verifyWorkspace always compares a fresh
  * inspectTree(recorded.root).digest to recorded.baseDigest; a caller pin
  * is extra and cannot skip that check. Workspace mutations are classified
- * from wrapper events plus the live tree: correlation_id and canonical
- * payload name the path; a dead `path` field is not correlation.
- * Uncorrelated writes, including traces that only carry EVENT_DEAD_FIELD
- * `path`, are external_mutation.
+ * from wrapper events plus the live tree. correlation_id must be filled.
+ * The path is a string value inside canonical `payload` — the object,
+ * array, or string the adapter emits. EVENT_DEAD_FIELD `path` is not
+ * correlation. Uncorrelated writes are external_mutation. Create refuses
+ * a parent or run root inside source before mkdir.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -157,7 +158,11 @@ const copyTree = (source: string, dest: string): boolean => {
     const to = join(dest, entry.name);
     if (entry.isSymbolicLink()) return false;
     if (entry.isDirectory()) {
-      mkdirSync(to);
+      try {
+        mkdirSync(to);
+      } catch {
+        return false;
+      }
       if (!copyTree(from, to)) return false;
       continue;
     }
@@ -191,9 +196,24 @@ const fileAt = (files: FileEntry[], path: string): FileEntry | undefined =>
   files.find((file) => file.path === path);
 
 const payloadNamesPath = (payload: unknown, path: string): boolean => {
-  if (!isFilledString(payload)) return false;
   if (payload === path) return true;
-  return payload.split(/[ \t\n\r]+/).includes(path);
+  if (typeof payload === "string") {
+    if (payload.split(/[ \t\n\r]+/).includes(path)) return true;
+    const trimmed = payload.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
+    try {
+      return payloadNamesPath(JSON.parse(trimmed), path);
+    } catch {
+      return false;
+    }
+  }
+  if (Array.isArray(payload)) {
+    return payload.some((entry) => payloadNamesPath(entry, path));
+  }
+  if (isPlainRecord(payload)) {
+    return Object.values(payload).some((entry) => payloadNamesPath(entry, path));
+  }
+  return false;
 };
 
 export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
@@ -203,6 +223,7 @@ export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
   const environmentDigest = environmentDigestOf(input.environment);
   if (parentReal === null || sourceReal === null || environmentDigest === null) return fail();
   if (parentReal === sourceReal) return fail();
+  if (logicalInside(sourceReal, parentReal)) return fail();
 
   const sourceTree = inspectTree(sourceReal);
   if (!sourceTree.ok) return sourceTree;
@@ -223,9 +244,20 @@ export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
   }
   const root = join(parentReal, runId);
   if (!logicalInside(parentReal, root) || existsSync(root)) return fail();
+  if (logicalInside(sourceReal, root) || root === sourceReal) return fail();
 
-  mkdirSync(root);
-  if (!copyTree(sourceReal, root)) {
+  try {
+    mkdirSync(root);
+  } catch {
+    return fail();
+  }
+  let copiedOk = false;
+  try {
+    copiedOk = copyTree(sourceReal, root);
+  } catch {
+    copiedOk = false;
+  }
+  if (!copiedOk) {
     rmSync(root, { recursive: true, force: true });
     return fail();
   }
