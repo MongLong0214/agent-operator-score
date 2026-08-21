@@ -86,6 +86,10 @@ const allResolvedPublication = () => [
 ];
 
 const resolvedGates = () => ({ G0: "RESOLVED", G1: "RESOLVED", G2: "RESOLVED", G3: "RESOLVED" });
+const E12_CONTINUE = "PASS_TO_CONTINUE";
+const E12_INCONCLUSIVE = "INCONCLUSIVE";
+const E12_PIVOT = "PIVOT_REQUIRED";
+const E12_FORBIDDEN_RESOLVED = "RESOLVED";
 
 const parseRecordBlocks = (text: string) => {
   const matches = [...text.matchAll(/^## (?<heading>.+)\n\n```json\n(?<json>[\s\S]*?)\n```/gm)];
@@ -147,6 +151,57 @@ const withVerdictRecords = (records: Record<string, Json>) => {
     text = upsertRecordBlock(text, heading, record);
   }
   return (path: string) => (path === VERDICT_PATH ? text : readRepositoryFile(path));
+};
+
+const withDocuments = (files: Record<string, string>) => (path: string) =>
+  Object.hasOwn(files, path) ? files[path] : readRepositoryFile(path);
+
+const feasibilityDocument = (gates: { G1: string; G2: string; G3: string }) =>
+  [
+    "# Feasibility verdict",
+    "",
+    "## Gate verdicts",
+    "",
+    "```json",
+    JSON.stringify(gates, null, 2),
+    "```",
+    ""
+  ].join("\n");
+
+const withFeasibility = (gates: { G1: string; G2: string; G3: string }) =>
+  withDocuments({ [FEASIBILITY_PATH]: feasibilityDocument(gates) });
+
+const resolvedPublicationLedgerText = () => {
+  const text = readRepositoryFile(CLEARANCE_PATH);
+  const ledger = parseRecordBlocks(text).get("Requirement ledger");
+  assert.ok(ledger, `${CLEARANCE_PATH} has no Requirement ledger`);
+  const rows = Array.isArray(ledger.requirements) ? (ledger.requirements as Json[]) : [];
+  const requirements = rows.map((row) => ({ ...row, status: "RESOLVED" }));
+  return upsertRecordBlock(text, "Requirement ledger", { ...ledger, requirements });
+};
+
+// The objects runG4Gate actually reads: G4-VERDICT allowlist + Live reproduction,
+// E14 requirement ledger, E12 Gate verdicts. Caller-supplied publicationRequirements,
+// gateStatus, and runG0 are not these objects.
+const protocolPassWorld = (canonicalJsonBytes: CanonicalJsonBytes) => {
+  const reproduction = makeIndependentReproduction(canonicalJsonBytes);
+  let verdict = readRepositoryFile(VERDICT_PATH);
+  verdict = upsertRecordBlock(verdict, "Trusted principals", {
+    principals: [{ id: INDEPENDENT.id, public_key: reproduction.public_key }]
+  });
+  verdict = upsertRecordBlock(verdict, "Live reproduction", reproduction);
+  return {
+    reproduction,
+    readFile: withDocuments({
+      [VERDICT_PATH]: verdict,
+      [CLEARANCE_PATH]: resolvedPublicationLedgerText(),
+      [FEASIBILITY_PATH]: feasibilityDocument({
+        G1: E12_CONTINUE,
+        G2: E12_CONTINUE,
+        G3: E12_CONTINUE
+      })
+    })
+  };
 };
 
 describe("external-reproduction", () => {
@@ -504,6 +559,72 @@ describe("external-reproduction", () => {
     assert.ok(has(pretendedGates, "G2"), "injected G2 RESOLVED skipped the live E12 feasibility record");
     assert.ok(has(pretendedGates, "G3"), "injected G3 RESOLVED skipped the live E12 feasibility record");
 
+    const pretendedE12Tokens = run(
+      completeInput(canonicalize, {
+        gateStatus: { G0: "RESOLVED", G1: E12_CONTINUE, G2: E12_CONTINUE, G3: E12_CONTINUE }
+      })
+    );
+    assert.equal(pretendedE12Tokens.ok, false, "injected G1–G3 PASS_TO_CONTINUE minted G4_PASS");
+    assert.ok(
+      has(pretendedE12Tokens, "UNRESOLVED_GATE G1"),
+      "injected PASS_TO_CONTINUE skipped the live E12 feasibility record"
+    );
+
+    const e12Continue = run(completeInput(canonicalize, { readFile: withFeasibility({ G1: E12_CONTINUE, G2: E12_CONTINUE, G3: E12_CONTINUE }) }));
+    assert.equal(e12Continue.ok, false, "E12 PASS_TO_CONTINUE closed publication and independence blockers");
+    assert.equal(has(e12Continue, "UNRESOLVED_GATE G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
+    assert.equal(has(e12Continue, "UNRESOLVED_GATE G2"), false, "E12 PASS_TO_CONTINUE left G2 unresolved");
+    assert.equal(has(e12Continue, "UNRESOLVED_GATE G3"), false, "E12 PASS_TO_CONTINUE left G3 unresolved");
+    assert.equal(e12Continue.gates?.G1, "RESOLVED", "G4 did not close G1 on E12 PASS_TO_CONTINUE");
+    assert.equal(e12Continue.gates?.G2, "RESOLVED", "G4 did not close G2 on E12 PASS_TO_CONTINUE");
+    assert.equal(e12Continue.gates?.G3, "RESOLVED", "G4 did not close G3 on E12 PASS_TO_CONTINUE");
+
+    const e12ResolvedToken = run(
+      completeInput(canonicalize, {
+        readFile: withFeasibility({
+          G1: E12_FORBIDDEN_RESOLVED,
+          G2: E12_FORBIDDEN_RESOLVED,
+          G3: E12_FORBIDDEN_RESOLVED
+        })
+      })
+    );
+    assert.equal(e12ResolvedToken.ok, false, "E12-forbidden RESOLVED token minted G4_PASS");
+    assert.ok(
+      has(e12ResolvedToken, "UNRESOLVED_GATE G1"),
+      "E12-forbidden RESOLVED token was treated as a G1 pass"
+    );
+    assert.ok(
+      has(e12ResolvedToken, "UNRESOLVED_GATE G2"),
+      "E12-forbidden RESOLVED token was treated as a G2 pass"
+    );
+    assert.ok(
+      has(e12ResolvedToken, "UNRESOLVED_GATE G3"),
+      "E12-forbidden RESOLVED token was treated as a G3 pass"
+    );
+
+    const e12Inconclusive = run(
+      completeInput(canonicalize, {
+        readFile: withFeasibility({ G1: E12_INCONCLUSIVE, G2: E12_CONTINUE, G3: E12_CONTINUE })
+      })
+    );
+    assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G1"), "E12 INCONCLUSIVE was treated as a G1 pass");
+    assert.equal(has(e12Inconclusive, "UNRESOLVED_GATE G2"), false, "G2 PASS_TO_CONTINUE was ignored next to G1 INCONCLUSIVE");
+
+    const e12Pivot = run(
+      completeInput(canonicalize, {
+        readFile: withFeasibility({ G1: E12_CONTINUE, G2: E12_PIVOT, G3: E12_CONTINUE })
+      })
+    );
+    assert.ok(has(e12Pivot, "UNRESOLVED_GATE G2"), "E12 PIVOT_REQUIRED was treated as a G2 pass");
+    assert.equal(has(e12Pivot, "UNRESOLVED_GATE G1"), false, "G1 PASS_TO_CONTINUE was ignored next to G2 PIVOT_REQUIRED");
+
+    const e12Other = run(
+      completeInput(canonicalize, {
+        readFile: withFeasibility({ G1: "YES", G2: E12_CONTINUE, G3: E12_CONTINUE })
+      })
+    );
+    assert.ok(has(e12Other, "UNRESOLVED_GATE G1"), "a non-empty non-E12 token was treated as a G1 pass");
+
     const g1Open = run(completeInput(canonicalize));
     assert.equal(g1Open.ok, false, "unresolved G1 did not block");
     assert.ok(has(g1Open, "UNRESOLVED_GATE"), "unresolved G1 was not UNRESOLVED_GATE");
@@ -599,28 +720,27 @@ describe("external-reproduction", () => {
     const run = runG4Gate as RunG4Gate;
     const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
 
-    const live = run();
-    assert.equal(live.ok, false, "live G4 gate passed without independent reproduction and closed blockers");
-    assert.notEqual(live.verdict, "G4_PASS", "live G4 gate emitted G4_PASS");
-    assert.equal(live.permits_publication, false, "live G4 gate permitted publication");
-    assert.ok(has(live, "NO_INDEPENDENT_REPRODUCTION"), "live G4 did not consume the tree-resident reproduction slot");
-
-    const passed = run(completeInput(canonicalize));
-    assert.equal(passed.ok, false, "RAM-minted comparator input minted G4_PASS");
-    assert.notEqual(passed.verdict, "G4_PASS", "RAM-minted comparator input emitted G4_PASS");
-    assert.equal(passed.permits_publication, false, "RAM-minted comparator input permitted publication");
-    assert.equal(passed.reproduction?.signature_ok, true, "full-pass comparator lost signature verification");
-    assert.equal(passed.reproduction?.bytes_ok, true, "full-pass comparator did not compare the G0 pin");
-    assert.equal(passed.reproduction?.head_ok, true, "full-pass comparator did not bind the current head");
-    assert.equal(
-      passed.reproduction?.independent,
-      false,
-      "full-pass treated a self-chosen embedded key as an independent host"
-    );
-    assert.ok(has(passed, "UNTRUSTED_PRINCIPAL"), "full-pass did not refuse an unallowlisted principal");
-    assert.ok(has(passed, "UNRESOLVED_GATE"), "full-pass skipped live G0–G4 blockers");
-    assert.ok(has(passed, "contributor_terms"), "full-pass skipped the live E14 contributor_terms row");
-    assert.ok(has(passed, "G1"), "full-pass skipped the live E12 G1 record");
+    const world = protocolPassWorld(canonicalize);
+    const passed = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile: world.readFile
+    });
+    assert.equal(passed.ok, true, "complete independent reproduction did not pass");
+    assert.equal(passed.verdict, "G4_PASS", "complete independent reproduction did not emit G4_PASS");
+    assert.deepEqual(passed.errors, [], "complete independent reproduction still carried errors");
+    assert.equal(passed.permits_publication, true, "complete independent reproduction did not permit publication");
+    assert.equal(passed.reproduction?.independent, true, "full pass was not independent");
+    assert.equal(passed.reproduction?.signature_ok, true, "full pass failed signature verification");
+    assert.equal(passed.reproduction?.bytes_ok, true, "full pass did not compare exact bytes");
+    assert.equal(passed.reproduction?.head_ok, true, "full pass did not bind the current head");
+    assert.equal(passed.gates?.G0, "RESOLVED", "full pass left G0 unresolved");
+    assert.equal(passed.gates?.G1, "RESOLVED", "full pass left G1 unresolved against E12 PASS_TO_CONTINUE");
+    assert.equal(passed.gates?.G2, "RESOLVED", "full pass left G2 unresolved against E12 PASS_TO_CONTINUE");
+    assert.equal(passed.gates?.G3, "RESOLVED", "full pass left G3 unresolved against E12 PASS_TO_CONTINUE");
+    assert.equal(has(passed, "UNRESOLVED_GATE"), false, "full pass still reported UNRESOLVED_GATE");
+    assert.equal(has(passed, "SELF_ATTESTED"), false, "full pass was treated as self-attested");
+    assert.equal(has(passed, "UNTRUSTED_PRINCIPAL"), false, "full pass refused an allowlisted principal");
     assert.equal(
       existsSync(resolve(root, VERDICT_PATH)),
       true,
@@ -637,5 +757,6 @@ describe("external-reproduction", () => {
     });
     assert.equal(injectedPass.ok, false, "the library injection path minted G4_PASS");
     assert.equal(injectedPass.permits_publication, false, "the library injection path permitted publication");
+    assert.notEqual(injectedPass.verdict, "G4_PASS", "the library injection path emitted G4_PASS");
   });
 });
