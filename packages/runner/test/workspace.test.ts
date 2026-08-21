@@ -622,14 +622,22 @@ describe("workspace", () => {
         assert.equal(human.path, "src/human.ts", CONTAINED);
       }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // SSOT 6.7 and this ticket's acceptance line allow external_mutation or explicit
+        // unknown for an uncorrelated mutation. Empty traces are not evidence of an external
+        // actor, so the answer is explicit unknown with the score withheld -- not a refusal,
+        // which neither document sanctions.
+        const uncorrelated = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: []
-        }),
-        "empty traces are not external_mutation"
-      );
+        });
+        accepted(uncorrelated, "empty traces classify as explicit unknown");
+        if (uncorrelated.ok) {
+          assert.equal(uncorrelated.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(uncorrelated.score_withheld, true, CONTAINED);
+        }
+      }
 
       const external = api.classifyWorkspaceMutation({
         root: created.root,
@@ -644,23 +652,33 @@ describe("workspace", () => {
         assert.equal(external.path, "src/external.ts", CONTAINED);
       }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // The production shape: a source write past the 2048-character payload bound is
+        // serialized and sliced, so the path is no longer recoverable. That is a correlation
+        // failure, not evidence of an external actor -- explicit unknown, score withheld.
+        const truncated = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
           traces: [truncatedTrace]
-        }),
-        "truncated payload write"
-      );
+        });
+        accepted(truncated, "truncated payload write classifies as explicit unknown");
+        if (truncated.ok) {
+          assert.equal(truncated.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(truncated.score_withheld, true, CONTAINED);
+        }
+      }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // A path appearing inside file contents is not the write target, so this does not
+        // correlate. Explicit unknown, not a claim that some external actor did it.
+        const mentioned = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: [mentionTrace]
-        }),
-        "path mentioned only in file contents"
-      );
+        });
+        accepted(mentioned, "a path in file contents classifies as explicit unknown");
+        if (mentioned.ok) assert.equal(mentioned.actor, "actor.attribution_unknown", CONTAINED);
+      }
 
       const readme = api.classifyWorkspaceMutation({
         root: created.root,
@@ -673,14 +691,16 @@ describe("workspace", () => {
         assert.equal(readme.path, "README.txt", CONTAINED);
       }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // An absolute path is not the classified relative path; correlation fails.
+        const absolute = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
           traces: [absoluteTrace]
-        }),
-        "absolute input.path"
-      );
+        });
+        accepted(absolute, "an absolute input.path classifies as explicit unknown");
+        if (absolute.ok) assert.equal(absolute.actor, "actor.attribution_unknown", CONTAINED);
+      }
 
       const unknown = api.classifyWorkspaceMutation({
         root: created.root,
