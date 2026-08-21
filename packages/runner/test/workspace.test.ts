@@ -622,14 +622,20 @@ describe("workspace", () => {
         assert.equal(human.path, "src/human.ts", CONTAINED);
       }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // SSOT 6.7:721 -- no traces is missing evidence, not an observation set this mutation
+        // is absent from, so attribution cannot be determined and the score is withheld.
+        const uncorrelated = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: []
-        }),
-        "empty traces are not external_mutation"
-      );
+        });
+        accepted(uncorrelated, "no traces is missing evidence, not an observation set");
+        if (uncorrelated.ok) {
+          assert.equal(uncorrelated.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(uncorrelated.score_withheld, true, CONTAINED);
+        }
+      }
 
       const external = api.classifyWorkspaceMutation({
         root: created.root,
@@ -644,23 +650,33 @@ describe("workspace", () => {
         assert.equal(external.path, "src/external.ts", CONTAINED);
       }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // The production shape: a source write past the 2048-character payload bound is
+        // serialized and sliced, so the path is no longer recoverable. That is a correlation
+        // failure, not evidence of an external actor -- explicit unknown, score withheld.
+        const truncated = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
           traces: [truncatedTrace]
-        }),
-        "truncated payload write"
-      );
+        });
+        accepted(truncated, "truncated payload write classifies as explicit unknown");
+        if (truncated.ok) {
+          assert.equal(truncated.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(truncated.score_withheld, true, CONTAINED);
+        }
+      }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // SSOT 6.7:720 -- the payload is readable and names a different write target, so the
+        // observation set was seen and this path is not in it. That is the uncorrelated case.
+        const mentioned = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/external.ts",
           traces: [mentionTrace]
-        }),
-        "path mentioned only in file contents"
-      );
+        });
+        accepted(mentioned, "a readable trace naming another path leaves this one uncorrelated");
+        if (mentioned.ok) assert.equal(mentioned.actor, "external_mutation", CONTAINED);
+      }
 
       const readme = api.classifyWorkspaceMutation({
         root: created.root,
@@ -673,14 +689,18 @@ describe("workspace", () => {
         assert.equal(readme.path, "README.txt", CONTAINED);
       }
 
-      refused(
-        api.classifyWorkspaceMutation({
+      {
+        // The run root is known, so an absolute target inside the workspace resolves and
+        // correlates like any relative one. Treating it as unreadable discarded a correlation
+        // the fixture itself proves is present -- it builds the path from created.root.
+        const absolute = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
           traces: [absoluteTrace]
-        }),
-        "absolute input.path"
-      );
+        });
+        accepted(absolute, "an absolute input.path inside the workspace correlates");
+        if (absolute.ok) assert.equal(absolute.actor, "agent", CONTAINED);
+      }
 
       const unknown = api.classifyWorkspaceMutation({
         root: created.root,
