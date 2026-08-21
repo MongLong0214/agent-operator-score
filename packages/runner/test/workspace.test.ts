@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { describe, test } from "node:test";
 import { normalizeClaudeEvent } from "../../../adapters/claude-code/src/normalize.ts";
+import { BOUNDED_PAYLOAD_MAX_CHARS } from "../../../adapters/claude-code/src/redact.ts";
 
 // Namespace/dynamic import: a missing module or named export must stay undefined
 // so each case can fail with its pinned message. A static named import would be a
@@ -114,7 +115,15 @@ const mappedNative = (
   return record;
 };
 
-const writeToolCall = (path: string, correlationId: string): Record<string, unknown> => {
+const isPlainPayload = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const writeToolCall = (
+  path: string,
+  correlationId: string,
+  contents?: string
+): Record<string, unknown> => {
+  const input: Record<string, unknown> = contents === undefined ? { path } : { path, contents };
   const event = mappedNative("sdkQuery", {
     type: "assistant",
     message: {
@@ -123,13 +132,12 @@ const writeToolCall = (path: string, correlationId: string): Record<string, unkn
         type: "tool_use",
         id: `tool-${correlationId}`,
         name: "Write",
-        input: { path }
+        input
       }]
     }
   }, correlationId);
   assert.equal(event.event_type, "tool.call", CONTAINED);
   assert.equal(event.actor, "agent", CONTAINED);
-  assert.equal(event.payload !== null && typeof event.payload === "object" && !Array.isArray(event.payload), true, CONTAINED);
   return event;
 };
 
@@ -140,7 +148,18 @@ const manualEditDeclared = (path: string, correlationId: string): Record<string,
   }, correlationId);
   assert.equal(event.event_type, "human.manual_edit_declared", CONTAINED);
   assert.equal(event.actor, "human/takeover", CONTAINED);
-  assert.equal(event.payload !== null && typeof event.payload === "object" && !Array.isArray(event.payload), true, CONTAINED);
+  assert.equal(isPlainPayload(event.payload), true, CONTAINED);
+  return event;
+};
+
+const workspaceExternalMutation = (path: string, correlationId: string): Record<string, unknown> => {
+  const event = mappedNative("workspace", {
+    type: "workspace.external_mutation",
+    path
+  }, correlationId);
+  assert.equal(event.event_type, "workspace.external_mutation", CONTAINED);
+  assert.equal(event.actor, "external_mutation", CONTAINED);
+  assert.equal(isPlainPayload(event.payload), true, CONTAINED);
   return event;
 };
 
@@ -538,11 +557,31 @@ describe("workspace", () => {
 
       writeFileSync(join(created.root, "src", "agent.ts"), "agent write\n");
       writeFileSync(join(created.root, "src", "human.ts"), "declared human write\n");
-      writeFileSync(join(created.root, "src", "external.ts"), "uncorrelated write\n");
+      writeFileSync(join(created.root, "src", "external.ts"), "observed external write\n");
       writeFileSync(join(created.root, "src", "unknown.ts"), "ambiguous write\n");
+      writeFileSync(join(created.root, "README.txt"), "please inspect src/external.ts before merge\n");
 
       const agentTrace = writeToolCall("src/agent.ts", "corr-agent");
+      assert.equal(isPlainPayload(agentTrace.payload), true, CONTAINED);
+      const agentBoundedTrace = writeToolCall("src/agent.ts", "corr-1800", "a".repeat(1800));
+      assert.equal(isPlainPayload(agentBoundedTrace.payload), true, CONTAINED);
+      const truncatedTrace = writeToolCall("src/agent.ts", "corr-2500", "b".repeat(2500));
+      assert.equal(typeof truncatedTrace.payload, "string", CONTAINED);
+      assert.equal(
+        typeof truncatedTrace.payload === "string" && truncatedTrace.payload.length === BOUNDED_PAYLOAD_MAX_CHARS,
+        true,
+        CONTAINED
+      );
+      const mentionTrace = writeToolCall(
+        "README.txt",
+        "corr-mention",
+        "please inspect src/external.ts before merge\n"
+      );
+      assert.equal(isPlainPayload(mentionTrace.payload), true, CONTAINED);
+      const absoluteTrace = writeToolCall(join(created.root, "src", "agent.ts"), "corr-abs");
+      assert.equal(isPlainPayload(absoluteTrace.payload), true, CONTAINED);
       const humanTrace = manualEditDeclared("src/human.ts", "corr-human");
+      const observedExternalTrace = workspaceExternalMutation("src/external.ts", "corr-external");
       const unknownAgentTrace = writeToolCall("src/unknown.ts", "corr-a");
       const unknownHumanTrace = manualEditDeclared("src/unknown.ts", "corr-b");
 
@@ -560,6 +599,17 @@ describe("workspace", () => {
         assert.notEqual(agent.actor, "actor.attribution_unknown", CONTAINED);
       }
 
+      const agentBounded = api.classifyWorkspaceMutation({
+        root: created.root,
+        path: "src/agent.ts",
+        traces: [agentBoundedTrace]
+      });
+      accepted(agentBounded, "agent bounded object payload");
+      if (agentBounded.ok) {
+        assert.equal(agentBounded.actor, "agent", CONTAINED);
+        assert.notEqual(agentBounded.actor, "external_mutation", CONTAINED);
+      }
+
       const human = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/human.ts",
@@ -572,18 +622,65 @@ describe("workspace", () => {
         assert.equal(human.path, "src/human.ts", CONTAINED);
       }
 
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/external.ts",
+          traces: []
+        }),
+        "empty traces are not external_mutation"
+      );
+
       const external = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/external.ts",
-        traces: []
+        traces: [observedExternalTrace]
       });
-      accepted(external, "external");
+      accepted(external, "observed external");
       if (external.ok) {
         assert.equal(external.actor, "external_mutation", CONTAINED);
         assert.equal(external.event_type, "workspace.external_mutation", CONTAINED);
         assert.equal(external.provenance, "runner-workspace-correlation", CONTAINED);
         assert.equal(external.path, "src/external.ts", CONTAINED);
       }
+
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/agent.ts",
+          traces: [truncatedTrace]
+        }),
+        "truncated payload write"
+      );
+
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/external.ts",
+          traces: [mentionTrace]
+        }),
+        "path mentioned only in file contents"
+      );
+
+      const readme = api.classifyWorkspaceMutation({
+        root: created.root,
+        path: "README.txt",
+        traces: [mentionTrace]
+      });
+      accepted(readme, "named input.path on object payload");
+      if (readme.ok) {
+        assert.equal(readme.actor, "agent", CONTAINED);
+        assert.equal(readme.path, "README.txt", CONTAINED);
+      }
+
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/agent.ts",
+          traces: [absoluteTrace]
+        }),
+        "absolute input.path"
+      );
 
       const unknown = api.classifyWorkspaceMutation({
         root: created.root,
