@@ -766,25 +766,52 @@ test("focused-lane-is-not-silently-empty", () => {
 // inline replacement of a gate is refused.
 const GATE_STUB_PATTERN = /(?:^|[\s{,])(run[A-Z]\w*)\s*:\s*(?:async\s*)?\(/;
 
-test("conformance-cases-do-not-stub-the-gate-they-are-named-for", () => {
-  const conformanceTests = walkFiles("conformance")
+const conformanceTestPaths = () =>
+  walkFiles("conformance")
     .filter((absolutePath) => absolutePath.endsWith(".test.ts") || absolutePath.endsWith(".test.mjs"))
     .map(asRepositoryRelative)
     .sort();
-  assert.ok(conformanceTests.length > 0, "no conformance tests found; the guard would be vacuous");
 
+const gateStubOffenders = (paths, readText) => {
   const offenders = [];
-  for (const path of conformanceTests) {
-    const lines = readRegularFile(path).split("\n");
-    lines.forEach((line, index) => {
+  for (const path of paths) {
+    readText(path).split("\n").forEach((line, index) => {
       const match = GATE_STUB_PATTERN.exec(line);
       if (match) offenders.push(`${path}:${index + 1} ${match[1]}`);
     });
   }
+  return offenders;
+};
+
+test("conformance-cases-do-not-stub-the-gate-they-are-named-for", () => {
+  // E14-003 shipped `runG0: () => ({ ok: true, errors: [] })` on every passing case, so the slow
+  // path -- supported Node, clean lockfile, pinned digest match, every family, killed mutants,
+  // formula vectors -- was replaced by a two-key object literal and a G4_PASS could mint without
+  // any of it.
+  //
+  // Asserting only that today's files are clean would be the very defect this guard exists to
+  // stop: the expected `[]` is a property of the current tree, and the case would still pass if
+  // GATE_STUB_PATTERN never matched anything. So the detector is first run against a planted
+  // violation, in memory, and required to see it.
+  const paths = conformanceTestPaths();
+  assert.ok(paths.length > 0, "no conformance tests found; the guard would be vacuous");
+
+  const plantedPath = paths[0];
+  const planted = gateStubOffenders([plantedPath], (path) =>
+    path === plantedPath
+      ? 'const input = {\n  runG0: () => ({ ok: true, errors: [] })\n};\n'
+      : readRegularFile(path)
+  );
   assert.deepEqual(
-    offenders,
+    planted,
+    [`${plantedPath}:2 runG0`],
+    "the detector must see the exact stub shape E14-003 shipped before its clean result means anything"
+  );
+
+  assert.deepEqual(
+    gateStubOffenders(paths, readRegularFile),
     [],
-    `a named conformance case must exercise the real gate, not an inline stub:\n  ${offenders.join("\n  ")}`
+    "a named conformance case must exercise the real gate, not an inline stub"
   );
 });
 
