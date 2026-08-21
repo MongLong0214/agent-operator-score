@@ -7,10 +7,12 @@
  * inspectTree(recorded.root).digest to recorded.baseDigest; a caller pin
  * is extra and cannot skip that check. Workspace mutations are classified
  * from wrapper events plus the live tree. correlation_id must be filled.
- * The path is a string value inside canonical `payload` — the object,
- * array, or string the adapter emits. EVENT_DEAD_FIELD `path` is not
- * correlation. Uncorrelated writes are external_mutation. Create refuses
- * a parent or run root inside source before mkdir.
+ * Correlation is exact equality of the classified relative path against
+ * a named field on an object payload (`payload.input.path` or
+ * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation. Truncated
+ * string payloads and unmatched traces refuse — they are not
+ * external_mutation. Create refuses a parent or run root inside source
+ * before mkdir.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -195,25 +197,13 @@ const relativePathInside = (root: string, pathValue: unknown): string | null => 
 const fileAt = (files: FileEntry[], path: string): FileEntry | undefined =>
   files.find((file) => file.path === path);
 
-const payloadNamesPath = (payload: unknown, path: string): boolean => {
-  if (payload === path) return true;
-  if (typeof payload === "string") {
-    if (payload.split(/[ \t\n\r]+/).includes(path)) return true;
-    const trimmed = payload.trim();
-    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
-    try {
-      return payloadNamesPath(JSON.parse(trimmed), path);
-    } catch {
-      return false;
-    }
+const namedPayloadPath = (payload: unknown): string | null => {
+  if (!isPlainRecord(payload)) return null;
+  if (isPlainRecord(payload.input) && isFilledString(payload.input.path)) {
+    return payload.input.path;
   }
-  if (Array.isArray(payload)) {
-    return payload.some((entry) => payloadNamesPath(entry, path));
-  }
-  if (isPlainRecord(payload)) {
-    return Object.values(payload).some((entry) => payloadNamesPath(entry, path));
-  }
-  return false;
+  if (isFilledString(payload.path)) return payload.path;
+  return null;
 };
 
 export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
@@ -351,19 +341,11 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
   for (const trace of input.traces) {
     if (!isPlainRecord(trace)) return fail();
     if (!isFilledString(trace.correlation_id)) continue;
-    if (!payloadNamesPath(trace.payload, path)) continue;
+    if (namedPayloadPath(trace.payload) !== path) continue;
     matching.push(trace);
   }
 
-  if (matching.length === 0) {
-    return {
-      ok: true,
-      actor: "external_mutation",
-      event_type: "workspace.external_mutation",
-      provenance: RUNNER_PROVENANCE,
-      path
-    };
-  }
+  if (matching.length === 0) return fail();
 
   const actors = new Set<string>();
   for (const trace of matching) {
