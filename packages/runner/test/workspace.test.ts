@@ -205,11 +205,18 @@ describe("workspace", () => {
       if (finalMutated.ok) {
         assert.notEqual(finalMutated.digest, first.baseDigest, CONTAINED);
       }
-      const verifiedAfterWrite = asOk(
-        api.verifyWorkspace(verifyRequest(temp, first)),
-        "verify create-time base after mutation"
+      refused(
+        api.verifyWorkspace({
+          root: first.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV }
+        }),
+        "verify after mutation with no caller pin"
       );
-      assert.equal(verifiedAfterWrite.baseDigest, first.baseDigest, CONTAINED);
+      refused(
+        api.verifyWorkspace(verifyRequest(temp, first)),
+        "verify after mutation with create-time pin"
+      );
 
       const otherEnv = asOk(
         api.createRunWorkspace(request(temp, { environment: { ...ENV, runtime: "other" } })),
@@ -241,37 +248,44 @@ describe("workspace", () => {
       assert.equal(restored.baseDigest, clean.baseDigest, CONTAINED);
       assert.notEqual(restored.root, clean.root, CONTAINED);
 
+      writeFileSync(join(clean.root, "README.txt"), "replaced readme\n");
+      writeFileSync(join(clean.root, "src", "app.ts"), "replaced app\n");
       refused(
-        api.verifyWorkspace(verifyRequest(temp, clean, { expectedBaseDigest: "0".repeat(64) })),
-        "wrong expected base digest"
+        api.verifyWorkspace({
+          root: clean.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV }
+        }),
+        "replaced tree with no caller pin"
       );
-
-      writeFileSync(join(clean.root, "src", "agent.ts"), "agent write\n");
-      const liveAfterWrite = api.sealWorkspace({ root: clean.root, phase: "final" });
-      accepted(liveAfterWrite, "final seal after workspace write");
-      if (liveAfterWrite.ok) {
-        assert.notEqual(liveAfterWrite.digest, clean.baseDigest, CONTAINED);
-        refused(
-          api.verifyWorkspace(verifyRequest(temp, clean, { expectedBaseDigest: liveAfterWrite.digest })),
-          "live tree digest is not the recorded base"
-        );
-      }
-
-      const pinnedAfterWrite = asOk(
+      refused(
         api.verifyWorkspace(verifyRequest(temp, clean)),
-        "create-time base pin after workspace write"
+        "replaced tree with create-time pin"
       );
-      assert.equal(pinnedAfterWrite.baseDigest, clean.baseDigest, CONTAINED);
 
-      const omittedPin = asOk(
-        api.verifyWorkspace(verifyRequest(temp, clean, { expectedBaseDigest: undefined })),
-        "omitted base pin after workspace write"
+      const untouched = asOk(api.createRunWorkspace(request(temp)), "untouched create");
+      const noPin = asOk(
+        api.verifyWorkspace({
+          root: untouched.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV }
+        }),
+        "untouched tree with no caller pin"
       );
-      assert.equal(omittedPin.baseDigest, clean.baseDigest, CONTAINED);
+      assert.equal(noPin.baseDigest, untouched.baseDigest, CONTAINED);
 
       refused(
-        api.verifyWorkspace(verifyRequest(temp, clean, { environment: { ...ENV, runtime: "other" } })),
-        "wrong environment object after workspace write"
+        api.verifyWorkspace(verifyRequest(temp, untouched, { expectedBaseDigest: "0".repeat(64) })),
+        "caller pin disagrees with valid workspace"
+      );
+
+      refused(
+        api.verifyWorkspace({
+          root: untouched.root,
+          parentRoot: temp.parent,
+          environment: { ...ENV, runtime: "other" }
+        }),
+        "wrong environment object on valid workspace"
       );
     } finally {
       closeTemp(temp);
