@@ -40,9 +40,17 @@ recorded against a stale head; G0 fixture truth fails; G1 is not the E12
 token `PASS_TO_CONTINUE` in `docs/decisions/FEASIBILITY-VERDICT.md`; G2 or G3
 is still open (they are deferred calibration studies; the n=20 feasibility
 record cannot close them, and this repository carries no such study); or any
-required E14 publication id in `docs/decisions/PUBLICATION-CLEARANCE.md` is
-not RESOLVED. Extra or duplicate digest paths fail. An unreadable gated file
-is `UNREADABLE` or G0 `STALE_DIGEST`, not an exception. The only passing
+requirement in the E14 ledger in `docs/decisions/PUBLICATION-CLEARANCE.md`
+is not RESOLVED, a required floor id is missing from that ledger, or the
+ledger's `Derived verdict` disagrees with the derivation from those rows
+(`verdict`, `blocked_by`, and every `permits_*` flag). The six floor
+ids cannot be deleted to open the gate. Disagreement fails closed: open
+rows next to a derived pass would publish on a false document, and
+all-RESOLVED rows next to a derived block would publish against the
+document that governs them. A derived pass that withholds any `permits_*`
+flag is still disagreement. Extra or duplicate digest paths fail. An
+unreadable gated file is `UNREADABLE` or G0 `STALE_DIGEST`, not an
+exception. The only passing
 verdict token is `G4_PASS`. The live tree does not emit it. E12 is contracted
 to emit exactly `PASS_TO_CONTINUE`, `INCONCLUSIVE`, or `PIVOT_REQUIRED`;
 `INCONCLUSIVE`, `PIVOT_REQUIRED`, and the G4-local token `RESOLVED` do not
