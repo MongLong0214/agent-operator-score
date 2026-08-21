@@ -32,7 +32,7 @@ Build FAM-6 quality-constrained efficiency scenario. Deliver only the bounded co
 ## RED contract
 
 - Test file: `suites/coding-core-v0/test/fam6-efficiency.test.ts`
-- Focused command: `node --test --test-name-pattern fam6-efficiency 'suites/coding-core-v0/test/*.test.ts'`
+- Focused command: `npm test -w @aos/suite-coding-core -- fam6-efficiency`
 - Expected pre-GREEN failure: redundant layers and low-quality cheap route cannot be ranked on a Pareto frontier.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -52,7 +52,7 @@ Build FAM-6 quality-constrained efficiency scenario. Deliver only the bounded co
 
 ## Verification
 
-1. Focused: `node --test --test-name-pattern fam6-efficiency 'suites/coding-core-v0/test/*.test.ts'`; every named case above passes.
+1. Focused: `npm test -w @aos/suite-coding-core -- fam6-efficiency`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario surface; for runtime/scenario tickets run only the controlled local fixture named by the PRD, never a production target.

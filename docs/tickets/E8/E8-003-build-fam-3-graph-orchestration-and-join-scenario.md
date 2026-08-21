@@ -32,7 +32,7 @@ Build FAM-3 graph orchestration and join scenario. Deliver only the bounded cont
 ## RED contract
 
 - Test file: `suites/coding-core-v0/test/fam3-graph.test.ts`
-- Focused command: `node --test --test-name-pattern fam3-graph 'suites/coding-core-v0/test/*.test.ts'`
+- Focused command: `npm test -w @aos/suite-coding-core -- fam3-graph`
 - Expected pre-GREEN failure: atomicity/DAG/routing/join choices lack counterfactual and collision oracle.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -52,7 +52,7 @@ Build FAM-3 graph orchestration and join scenario. Deliver only the bounded cont
 
 ## Verification
 
-1. Focused: `node --test --test-name-pattern fam3-graph 'suites/coding-core-v0/test/*.test.ts'`; every named case above passes.
+1. Focused: `npm test -w @aos/suite-coding-core -- fam3-graph`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario/human surface; otherwise run only the controlled protocol named by the PRD and preserve its exact manifest.
