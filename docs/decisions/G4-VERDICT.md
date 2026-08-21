@@ -28,15 +28,18 @@ node --test conformance/external/external-reproduction.test.ts
 The live run fails closed when any of these is true: the tree-resident or
 CLI-path reproduction is missing, self-attested, unsigned, signed by a key
 that is not in Trusted principals, recorded against a digest other than the
-G0 pin, or recorded against a stale head; G0 fixture truth fails; G1, G2, or
-G3 is not the E12 token `PASS_TO_CONTINUE` in
-`docs/decisions/FEASIBILITY-VERDICT.md`; or any required E14 publication id in
+G0 pin, or recorded against a stale head; G0 fixture truth fails; G1 is not
+the E12 token `PASS_TO_CONTINUE` in `docs/decisions/FEASIBILITY-VERDICT.md`;
+G2 or G3 is still open (they are deferred calibration studies; the n=20
+feasibility record cannot close them, and this repository carries no such
+study); or any required E14 publication id in
 `docs/decisions/PUBLICATION-CLEARANCE.md` is not RESOLVED. Extra or duplicate
 digest paths fail. An unreadable gated file is `UNREADABLE` or G0
 `STALE_DIGEST`, not an exception. The only passing verdict token is
 `G4_PASS`. The live tree does not emit it. E12 is contracted to emit exactly
 `PASS_TO_CONTINUE`, `INCONCLUSIVE`, or `PIVOT_REQUIRED`; `INCONCLUSIVE`,
-`PIVOT_REQUIRED`, and the G4-local token `RESOLVED` do not close G1–G3.
+`PIVOT_REQUIRED`, and the G4-local token `RESOLVED` do not close G1. No E12
+token closes G2 or G3. Because those studies are absent, G4 cannot pass.
 
 ## Live reproduction
 
@@ -69,12 +72,13 @@ digest paths fail. An unreadable gated file is `UNREADABLE` or G0
 ```
 
 G0 fixture truth is a scorer-byte result. It does not authorize public
-evaluation or a package release. G1–G3 remain open because
-`docs/decisions/FEASIBILITY-VERDICT.md` is absent; the n=20 feasibility alpha
-has not been executed here. When that record exists, G4 compares each of
-G1, G2, and G3 to `PASS_TO_CONTINUE` and maps a match onto this document's
-`RESOLVED` blocker slot. Publication requirements are read from the E14
-ledger, not from a caller-supplied array.
+evaluation or a package release. G1 remains open because
+`docs/decisions/FEASIBILITY-VERDICT.md` is absent; when that record exists,
+G4 compares only G1 to `PASS_TO_CONTINUE` and maps a match onto this
+document's `RESOLVED` blocker slot. G2 and G3 remain open because they
+require deferred calibration studies; the n=20 feasibility alpha cannot
+satisfy them, and this tree has no such study artifact. Publication
+requirements are read from the E14 ledger, not from a caller-supplied array.
 
 ## Derived verdict
 

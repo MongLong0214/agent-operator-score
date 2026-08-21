@@ -6,9 +6,10 @@
  * current bytes), run the live G0–G4 blockers, and emit PASS or FAIL.
  *
  * A caller-supplied publication array, G1–G3 map, or G0 stub cannot mint a
- * pass. G1–G3 close only on the E12 token PASS_TO_CONTINUE. Self-attested
- * reproductions and keys missing from the G4-VERDICT allowlist are refused.
- * A protocol PASS is not a live publication clearance.
+ * pass. G1 closes only on the E12 token PASS_TO_CONTINUE. G2 and G3 are
+ * deferred calibration studies; the n=20 feasibility record cannot close
+ * them, so this tree cannot emit G4_PASS. Self-attested reproductions and
+ * keys missing from the G4-VERDICT allowlist are refused.
  */
 
 import { spawnSync } from "node:child_process";
@@ -34,8 +35,9 @@ const VERDICT_PATH = "docs/decisions/G4-VERDICT.md";
 const FEASIBILITY_PATH = "docs/decisions/FEASIBILITY-VERDICT.md";
 const GIT_SHA = /^[a-f0-9]{40}$/i;
 const DIGEST_SHAPE = /^[a-f0-9]{64}$/;
-// E12-003 / PRD AC-E12-3 / SSOT G1: the only E12 token that continues.
-// INCONCLUSIVE, PIVOT_REQUIRED, and the G4-local token RESOLVED do not close G1–G3.
+// E12-003 / PRD AC-E12-3 / SSOT §7.3 G1: the only E12 token that continues.
+// INCONCLUSIVE, PIVOT_REQUIRED, and the G4-local token RESOLVED do not close G1.
+// SSOT §7.3 G2/G3: deferred calibration studies; the n=20 record cannot close them.
 const E12_GATE_PASS = "PASS_TO_CONTINUE";
 
 export const G4_PUBLICATION_REQUIREMENT_IDS = Object.freeze([
@@ -98,24 +100,21 @@ const loadTrustedPrincipals = (readFile) => {
 };
 
 const loadLiveGateStatus = (readFile) => {
-  const unresolved = { G1: "UNRESOLVED", G2: "UNRESOLVED", G3: "UNRESOLVED" };
+  const status = { G1: "UNRESOLVED", G2: "UNRESOLVED", G3: "UNRESOLVED" };
   let text;
   try {
     text = readFile(FEASIBILITY_PATH);
   } catch {
-    return unresolved;
+    return status;
   }
   try {
     const blocks = parseRecordBlocks(text);
     const record = blocks.get("Gate verdicts") ?? blocks.get("Derived verdict") ?? blocks.get("Gate blockers");
-    if (!isPlainRecord(record)) return unresolved;
-    const status = { ...unresolved };
-    for (const gate of ["G1", "G2", "G3"]) {
-      if (record[gate] === E12_GATE_PASS) status[gate] = "RESOLVED";
-    }
+    if (!isPlainRecord(record)) return status;
+    if (record.G1 === E12_GATE_PASS) status.G1 = "RESOLVED";
     return status;
   } catch {
-    return unresolved;
+    return status;
   }
 };
 
