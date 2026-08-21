@@ -9,11 +9,15 @@
  * from wrapper events plus the live tree. correlation_id must be filled.
  * Correlation is exact equality of the classified relative path against
  * a named field on an object payload (`payload.input.path` or
- * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation. A truncated
- * string payload or an unmatched trace yields explicit unknown with the score
- * withheld — the option E3-001 names alongside external_mutation — because
- * "not matched" is not evidence of an external actor. Create refuses a parent
- * or run root inside source before mkdir.
+ * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation.
+ *
+ * SSOT 6.7 splits the outcome on whether an observation set existed:
+ *   no traces, or a payload with no readable workspace-relative target
+ *     -> actor.attribution_unknown, score withheld (:721)
+ *   readable traces, none naming this path
+ *     -> workspace.external_mutation (:720)
+ *
+ * Create refuses a parent or run root inside source before mkdir.
  */
 
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -347,24 +351,43 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
   if (!Array.isArray(input.traces)) return fail();
 
   const matching: Record<string, unknown>[] = [];
+  let unreadablePayload = false;
   for (const trace of input.traces) {
     if (!isPlainRecord(trace)) return fail();
     if (!isFilledString(trace.correlation_id)) continue;
-    if (namedPayloadPath(trace.payload) !== path) continue;
+    const named = namedPayloadPath(trace.payload);
+    // A payload this classifier cannot read a workspace-relative target out of leaves attribution
+    // undetermined rather than uncorrelated: an absolute path may well be this same file, and a
+    // truncated excerpt may have named it before the slice. Neither is an observation that this
+    // path was untouched.
+    if (named === null || isAbsolute(named)) {
+      unreadablePayload = true;
+      continue;
+    }
+    if (named !== path) continue;
     matching.push(trace);
   }
 
-  // SSOT 6.7 is two rules, not one choice:
+  // SSOT 6.7 is two rules, and which one applies turns on whether there was an observation
+  // set to correlate against:
   //   :720  uncorrelated mutation            -> external_mutation
   //   :721  attribution cannot be determined -> actor.attribution_unknown, score withheld
   //
-  // No traces at all is the uncorrelated case: nothing the wrapper observed touched this path,
-  // so the mutation came from outside it. Traces present but none correlating is the second
-  // case -- there was wrapper activity and this classifier could not tie it to the path, which
-  // is a failure to determine, not evidence of an external actor. A truncated payload lands
-  // here rather than being asserted as external.
-  if (input.traces.length === 0) return externalMutationClassification(path);
-  if (matching.length === 0) return unknownClassification(path);
+  // "Uncorrelated" means an observation set existed and this mutation is not in it. Three cases
+  // fall out, and only the middle one is :720:
+  //
+  //   no traces at all              missing evidence, not an observation set     -> :721
+  //   a trace whose payload cannot  the set is unreadable at this point, so
+  //   be read for a path            attribution cannot be determined             -> :721
+  //   readable traces, none naming  the set was observed and this path is not
+  //   this path                     in it                                        -> :720
+  //
+  // The second case is the one #298 measures: an ordinary source write is serialized and sliced
+  // past the 2048-character payload bound, so the path stops being recoverable. Calling that
+  // external would assert an actor from a parsing failure.
+  if (input.traces.length === 0) return unknownClassification(path);
+  if (unreadablePayload) return unknownClassification(path);
+  if (matching.length === 0) return externalMutationClassification(path);
 
   const actors = new Set<string>();
   for (const trace of matching) {
