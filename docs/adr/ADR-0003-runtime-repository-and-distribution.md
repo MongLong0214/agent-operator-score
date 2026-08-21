@@ -10,7 +10,7 @@ The product needs cross-platform schemas, deterministic scoring, subprocess cont
 
 ## Decision
 
-- Use strict TypeScript with Node.js 22.18 as the runtime floor and Node.js 22/24 CI lanes; engines remain `>=22.18 <25`. Node.js 20 is excluded because it cannot execute TypeScript: its test runner does not discover a `.ts` test file, so the schema package's cases were silently skipped there rather than failing. Unflagged type stripping starts at 22.18.0.
+- Use strict TypeScript with Node.js 20 as the runtime floor and Node.js 20/22/24 CI lanes; engines remain `>=20 <25`.
 - Use npm workspaces for exactly the six internal workspaces at `packages/{schema,scorer,runner,reporter}` and `adapters/{codex,claude-code}`. `suites/`, `fixtures/`, and `conformance/` are repository surfaces, not npm workspaces. Every internal `@aos/*` workspace is `private: true`.
 - Only root `agent-operator-score` is the future publish candidate with binary `aos`; it remains non-publishable until E14/G4.
 - No dependency enters production without engine, license, and third-party notice review.
