@@ -1,11 +1,15 @@
 # G4 publication gate verdict — E14-003
 
 The G4 gate accepts a signed environment and toolchain manifest and output
-digests from an independent run, compares those digests to the public schema,
-fixture, and scorer bytes, runs the G0–G4 blockers, and emits PASS or FAIL.
+digests from an independent run, compares those digests to the G0 pin for the
+public schema, fixture, and scorer bytes, runs the live G0–G4 blockers, and
+emits PASS or FAIL.
 
-This document records the live derivation. A protocol PASS produced by injecting
-resolved blockers in the test lane is not a live publication clearance.
+This document is the tree-resident record the live executable reads. The
+`Live reproduction` block is the well-known independent-run slot. The
+`Trusted principals` block is the out-of-band allowlist; a public key that
+lives only inside a signed body is not a principal. Caller-supplied
+publication arrays, G1–G3 maps, and G0 stubs cannot mint a pass.
 MIT is the outbound copyright grant. It is not contributor terms, and it is not a publication clearance.
 Contributor terms and formal publication review remain unresolved.
 No public package has been approved.
@@ -15,16 +19,21 @@ surface is:
 
 ```bash
 node scripts/verify-release.mjs
+node scripts/verify-release.mjs <reproduction-manifest.json>
 node --test conformance/external/external-reproduction.test.ts
 ```
 
 ## How a verdict is derived
 
-The live run fails closed when any of these is true: the reproduction is missing,
-self-attested, unsigned, wrongly digested, or recorded against a stale head; G0
-fixture truth fails; G1, G2, or G3 is unresolved; or any E14 publication
-requirement is not RESOLVED. The only passing verdict token is `G4_PASS`. The
-live tree does not emit it.
+The live run fails closed when any of these is true: the tree-resident or
+CLI-path reproduction is missing, self-attested, unsigned, signed by a key
+that is not in Trusted principals, recorded against a digest other than the
+G0 pin, or recorded against a stale head; G0 fixture truth fails; G1, G2, or
+G3 is not RESOLVED in `docs/decisions/FEASIBILITY-VERDICT.md`; or any required
+E14 publication id in `docs/decisions/PUBLICATION-CLEARANCE.md` is not
+RESOLVED. Extra or duplicate digest paths fail. An unreadable gated file is
+`UNREADABLE` or G0 `STALE_DIGEST`, not an exception. The only passing verdict
+token is `G4_PASS`. The live tree does not emit it.
 
 ## Live reproduction
 
@@ -32,6 +41,14 @@ live tree does not emit it.
 {
   "independent_reproduction": false,
   "reason": "No signed independent environment/toolchain manifest is recorded against this head. A self-attested result is refused."
+}
+```
+
+## Trusted principals
+
+```json
+{
+  "principals": []
 }
 ```
 
@@ -49,8 +66,10 @@ live tree does not emit it.
 ```
 
 G0 fixture truth is a scorer-byte result. It does not authorize public
-evaluation or a package release. G1–G3 remain open because the n=20 feasibility
-alpha has not been executed here.
+evaluation or a package release. G1–G3 remain open because
+`docs/decisions/FEASIBILITY-VERDICT.md` is absent; the n=20 feasibility alpha
+has not been executed here. Publication requirements are read from the E14
+ledger, not from a caller-supplied array.
 
 ## Derived verdict
 
