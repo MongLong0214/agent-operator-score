@@ -118,6 +118,25 @@ describe("isolation", () => {
         "UNSAFE"
       );
       accepted(api.assertIsolation({ envelope, readPath: join(bed.workspace, "src", "app.ts") }), "read inside the workspace");
+
+      // An envelope this module never issued carries no rules to check against. Without this the
+      // registry lookup can be replaced by "trust it" and every case here still passes, because
+      // every case hands back an envelope the module itself produced.
+      refused(
+        api.assertIsolation({
+          envelope: {
+            ok: true,
+            env: {},
+            cwd: bed.workspace,
+            stdio: ["pipe"],
+            allowedPaths: [bed.workspace],
+            ipc: { enabled: false, channels: [] }
+          },
+          readPath: bed.oracle
+        }),
+        "a fabricated envelope",
+        "INVALID"
+      );
     } finally {
       closeBed(bed);
     }
@@ -137,6 +156,16 @@ describe("isolation", () => {
       }
       refused(api.assertIsolation({ envelope, env: { ...envelope.env, [SECRET_ENV]: CANARY } }), "canary re-added", "UNSAFE");
       refused(api.assertIsolation({ envelope, env: { ...envelope.env, RENAMED: CANARY } }), "canary under another name", "UNSAFE");
+
+      // Both cases above are refused on the variable NAME, so the value scan never had to fire and
+      // could be deleted with the suite still green. An allowlisted name carrying the oracle is the
+      // case that needs it: PATH is permitted to cross over, its contents are not.
+      refused(
+        api.assertIsolation({ envelope, env: { PATH: `${envelope.env.PATH ?? "/usr/bin"}:${CANARY}` } }),
+        "an allowlisted variable carrying the canary",
+        "UNSAFE"
+      );
+      accepted(api.assertIsolation({ envelope, env: { PATH: envelope.env.PATH ?? "/usr/bin" } }), "an ordinary PATH");
     } finally {
       closeBed(bed);
     }
@@ -170,6 +199,8 @@ describe("isolation", () => {
       for (const channel of envelope.ipc.channels) assert.equal(channel.includes(CANARY), false, REACHED);
       refused(api.assertIsolation({ envelope, ipcMessage: { answer: CANARY } }), "canary over IPC", "UNSAFE");
       refused(api.assertIsolation({ envelope, ipcMessage: { nested: { deep: [CANARY] } } }), "canary nested in an IPC message", "UNSAFE");
+      // A key is as readable as a value. Scanning only values left that half deletable.
+      refused(api.assertIsolation({ envelope, ipcMessage: { [CANARY]: 1 } }), "canary as an IPC message key", "UNSAFE");
       accepted(api.assertIsolation({ envelope, ipcMessage: { status: "running" } }), "ordinary IPC message");
     } finally {
       closeBed(bed);
@@ -225,6 +256,28 @@ describe("isolation", () => {
       writeFileSync(planted, readFileSync(bed.oracle, "utf8"));
       refused(api.assertIsolation({ envelope, readPath: planted }), "oracle copied into temp", "UNSAFE");
       refused(api.assertIsolation({ envelope, readPath: join(tmpdir(), "anything.json") }), "system temp is not allowed", "UNSAFE");
+
+      // Both refusals above are already satisfied by workspace containment, because this bed puts
+      // the scratch root outside the workspace. Put it inside and containment can no longer answer:
+      // the temp rule is then the only thing between the worker and a copy placed there.
+      {
+        const nested = join(bed.workspace, "scratch");
+        mkdirSync(nested, { recursive: true });
+        writeFileSync(join(nested, "copy.json"), readFileSync(bed.oracle, "utf8"));
+        const inner = asOk(
+          api.buildWorkerEnvelope({ ...request(bed), tempRoot: nested }),
+          "envelope with the scratch root inside the workspace"
+        );
+        refused(
+          api.assertIsolation({ envelope: inner, readPath: join(nested, "copy.json") }),
+          "an in-workspace scratch root is still not readable",
+          "UNSAFE"
+        );
+        accepted(
+          api.assertIsolation({ envelope: inner, readPath: join(bed.workspace, "src", "app.ts") }),
+          "an ordinary workspace file is still readable"
+        );
+      }
     } finally {
       closeBed(bed);
     }
