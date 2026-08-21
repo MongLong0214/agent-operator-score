@@ -79,8 +79,17 @@ const duplicateJsonMember = (json) => {
       if (match && match.index === i) {
         const scope = seen[depth];
         if (scope) {
-          if (scope.has(match[1])) return match[1];
-          scope.add(match[1]);
+          // Compare decoded keys, not source spelling. "permits_publication" and
+          // "\u0070ermits_publication" are different bytes and the same member; JSON.parse keeps
+          // the last of them. Comparing raw text would let the second silently replace the first.
+          let key;
+          try {
+            key = JSON.parse(`"${match[1]}"`);
+          } catch {
+            key = match[1];
+          }
+          if (scope.has(key)) return key;
+          scope.add(key);
         }
         i = member.lastIndex - 1;
         continue;
@@ -232,7 +241,19 @@ const isIndependentReproduction = (value) =>
 const loadTreeResidentReproduction = (readFile, reproductionPath) => {
   if (typeof reproductionPath === "string" && reproductionPath.length > 0) {
     try {
-      const parsed = JSON.parse(readFile(reproductionPath));
+      const text = readFile(reproductionPath);
+      // Same slot as the tree-resident record, so it gets the same ambiguity refusal. Without
+      // this, a signed body carrying "kind": "self-attested" followed by
+      // "kind": "independent-reproduction" parsed last-wins and reported independent: true --
+      // the signature covering the parsed body, not the bytes a reader sees.
+      const duplicate = duplicateJsonMember(text);
+      if (duplicate !== null) {
+        return {
+          reproduction: undefined,
+          error: `NO_INDEPENDENT_REPRODUCTION ${reproductionPath} declares ${duplicate} more than once`
+        };
+      }
+      const parsed = JSON.parse(text);
       if (isIndependentReproduction(parsed)) {
         return { reproduction: parsed, error: null };
       }

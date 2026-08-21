@@ -826,6 +826,44 @@ describe("external-reproduction", () => {
     assert.notEqual(injectedPass.verdict, "G4_PASS", "the library injection path emitted G4_PASS");
   });
 
+  test("cli-reproduction-with-a-duplicate-member-is-refused", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The CLI file and the tree-resident record are the same slot, so they must share the
+    // ambiguity refusal. Without it, a signed body whose visible text says self-attested and
+    // whose parsed form says independent-reproduction reported independent: true -- the signature
+    // covering the parsed body, not the bytes a reader sees.
+    const reproduction = makeIndependentReproduction(canonicalize);
+    const serialised = JSON.stringify(reproduction);
+    const ambiguous = serialised.replace(
+      '"kind":"independent-reproduction"',
+      '"kind":"self-attested","kind":"independent-reproduction"'
+    );
+    assert.notEqual(ambiguous, serialised, "the reproduction body did not carry the expected kind member");
+
+    const fromCli = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      reproductionPath: CLI_REPRODUCTION_PATH,
+      readFile: withAllowlistedPrincipal(reproduction, INDEPENDENT.id, {
+        [CLI_REPRODUCTION_PATH]: ambiguous
+      })
+    });
+    assert.equal(
+      fromCli.reproduction?.independent,
+      false,
+      "the CLI path accepted a reproduction whose bytes declare kind more than once"
+    );
+    assert.ok(
+      fromCli.errors.some((entry) => entry.includes("more than once")),
+      `an ambiguous CLI reproduction was normalised instead of refused: ${fromCli.errors.join(" | ")}`
+    );
+  });
+
   test("cli-kind", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);
@@ -1124,6 +1162,50 @@ describe("external-reproduction", () => {
     assert.ok(
       has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
       "a CLEARED token was treated as agreement even though permits_publication was false"
+    );
+  });
+
+  test("publication-clearance-with-an-escape-spelled-duplicate-member-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Comparing source spelling rather than decoded keys let this through: the two members are
+    // different bytes and the same JSON key, and JSON.parse keeps the second.
+    const clearance = [
+      "## Requirement ledger",
+      "",
+      "```json",
+      JSON.stringify({ requirements: resolvedPublicationRows() }, null, 2),
+      "```",
+      "",
+      "## Derived verdict",
+      "",
+      "```json",
+      "{",
+      '  "verdict": "CLEARED",',
+      '  "blocked_by": [],',
+      '  "permits_publication": false,',
+      '  "\\u0070ermits_publication": true,',
+      '  "permits_redistribution": true,',
+      '  "permits_external_contribution_acceptance": true',
+      "}",
+      "```",
+      ""
+    ].join("\n");
+
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "an escape-spelled duplicate member minted a publication pass");
+    assert.ok(
+      gated.errors.some((entry) => entry.includes("more than once")),
+      `an escape-spelled duplicate was treated as a distinct member: ${gated.errors.join(" | ")}`
     );
   });
 
