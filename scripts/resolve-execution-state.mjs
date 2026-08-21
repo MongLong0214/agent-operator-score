@@ -1629,31 +1629,42 @@ export const selectActiveGovernanceMode = (evaluation) => {
   return "SOLE_OWNER_ADVISORY";
 };
 
-const gitBlobAt = (root, sha, path) => {
-  try {
-    return execFileSync("git", ["cat-file", "blob", `${sha}:${path}`], {
-      cwd: root,
-      stdio: ["ignore", "pipe", "ignore"]
-    });
-  } catch {
-    return null;
+const freezePathsPresentInLiveTree = (facts, artifacts) => {
+  if (!Array.isArray(facts?.liveTreePaths)) return false;
+  const liveSet = new Set(facts.liveTreePaths);
+  if (!liveSet.has(ARTIFACT_MANIFEST_V3_RELATIVE)) return false;
+  if (!Array.isArray(artifacts) || artifacts.length < 1) return false;
+  for (const artifact of artifacts) {
+    if (typeof artifact?.path !== "string" || artifact.path.length === 0) return false;
+    if (!liveSet.has(artifact.path)) return false;
   }
+  return true;
 };
 
-const evaluateLiveArtifactFreeze = (facts, root = DEFAULT_ROOT) => {
+export const evaluateLiveArtifactFreeze = (
+  facts,
+  liveActivation = facts?.[LIVE_ACTIVATION_FACTS]
+) => {
   try {
-    const live = facts?.[LIVE_ACTIVATION_FACTS];
+    const live = liveActivation;
     if (!plainObject(live)) return null;
-    const evaluated = evaluateAuthenticatedReviewActivation(live);
+    const artifacts = Array.isArray(live.manifest?.artifacts) ? live.manifest.artifacts : [];
+    // Derive manifest_in_head from the live tree listing. Honour-system true is
+    // not evidence the document is at the live tip, and honour-system false is
+    // not evidence it is absent.
+    if (!freezePathsPresentInLiveTree(facts, artifacts)) return null;
+    const currentHead = typeof facts?.currentHead === "string" ? facts.currentHead.toLowerCase() : "";
+    if (!ACTIVATION_GIT_SHA.test(currentHead)) return null;
+    const evaluated = evaluateAuthenticatedReviewActivation({
+      ...live,
+      manifest_in_head: true
+    });
     if (selectActiveGovernanceMode(evaluated) !== "AUTHENTICATED_REVIEW") return null;
     const freeze = evaluated.artifact_freeze;
     if (!plainObject(freeze) || typeof freeze.path !== "string" || typeof freeze.sha256 !== "string") {
       return null;
     }
-    const blob = gitBlobAt(root, freeze.exact_head_sha, freeze.path);
-    if (blob == null) return null;
-    const digest = createHash("sha256").update(blob).digest("hex");
-    if (digest !== freeze.sha256) return null;
+    if (freeze.exact_head_sha !== currentHead) return null;
     return freeze;
   } catch {
     return null;
@@ -4914,7 +4925,7 @@ export const resolveExecutionState = (options = {}) => {
     governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
     claims_merge_authorization: false,
     claims_separation_of_duties: false,
-    artifact_freeze: evaluateLiveArtifactFreeze(facts, root),
+    artifact_freeze: evaluateLiveArtifactFreeze(facts),
     bootstrap: {
       active: bootstrapActive,
       d0_004c_merged: facts.d0_004c_merged === true

@@ -82,10 +82,43 @@ const failClosed = (errors) => ({
   permits_publication: false
 });
 
-const loadLivePublicationRequirements = (readFile) => {
+const loadLivePublicationLedger = (readFile) => {
   const blocks = parseRecordBlocks(readFile(CLEARANCE_PATH));
   const ledger = blocks.get("Requirement ledger");
-  return Array.isArray(ledger?.requirements) ? ledger.requirements : [];
+  const derived = blocks.get("Derived verdict");
+  return {
+    requirements: Array.isArray(ledger?.requirements) ? ledger.requirements : [],
+    derived: isPlainRecord(derived) ? derived : null
+  };
+};
+
+// PUBLICATION-CLEARANCE.md: CLEARED iff every requirement is RESOLVED; permits_*
+// are all true only on CLEARED. tests/publication/clearance.test.mjs re-derives
+// the same shape and fails the document when it disagrees.
+const derivePublicationVerdict = (requirements) => {
+  const blockedBy = (Array.isArray(requirements) ? requirements : [])
+    .filter((requirement) => isPlainRecord(requirement) && typeof requirement.id === "string" && requirement.status !== "RESOLVED")
+    .map((requirement) => requirement.id)
+    .sort();
+  const cleared = blockedBy.length === 0;
+  return {
+    verdict: cleared ? "CLEARED" : "BLOCKED",
+    blocked_by: blockedBy,
+    permits_publication: cleared,
+    permits_redistribution: cleared,
+    permits_external_contribution_acceptance: cleared
+  };
+};
+
+const publicationVerdictAgrees = (recorded, derived) => {
+  if (!isPlainRecord(recorded) || !isPlainRecord(derived)) return false;
+  if (recorded.verdict !== derived.verdict) return false;
+  if (!Array.isArray(recorded.blocked_by)) return false;
+  const recordedBlocked = [...recorded.blocked_by].map(String).sort();
+  if (recordedBlocked.join("\0") !== derived.blocked_by.join("\0")) return false;
+  return (
+    recorded.permits_publication === derived.permits_publication
+  );
 };
 
 const loadTrustedPrincipals = (readFile) => {
@@ -323,8 +356,11 @@ const evaluateG4Gate = (input) => {
   }
 
   let requirements = [];
+  let recordedDerived = null;
   try {
-    requirements = loadLivePublicationRequirements(readFile);
+    const ledger = loadLivePublicationLedger(readFile);
+    requirements = ledger.requirements;
+    recordedDerived = ledger.derived;
   } catch (error) {
     errors.push(`UNREADABLE publication ledger could not be read: ${String(error)}`);
   }
@@ -338,13 +374,24 @@ const evaluateG4Gate = (input) => {
         continue;
       }
       byId.set(requirement.id, requirement);
+      if (requirement.status !== "RESOLVED") {
+        errors.push(`UNRESOLVED_GATE ${requirement.id}`);
+      }
     }
   }
+  // The six ids are a floor, not the whole set: a quietly deleted required
+  // id must not open the gate even if every remaining row is RESOLVED.
   for (const id of G4_PUBLICATION_REQUIREMENT_IDS) {
-    const requirement = byId.get(id);
-    if (!requirement || requirement.status !== "RESOLVED") {
+    if (!byId.has(id)) {
       errors.push(`UNRESOLVED_GATE ${id}`);
     }
+  }
+  // Disagreement fails closed. Rows that are open while Derived says CLEARED
+  // would publish on a false document; rows that are all RESOLVED while
+  // Derived says BLOCKED would publish against the document that governs it.
+  const derivedFromRows = derivePublicationVerdict(requirements);
+  if (!publicationVerdictAgrees(recordedDerived, derivedFromRows)) {
+    errors.push("UNRESOLVED_GATE publication derived verdict disagrees with ledger rows");
   }
 
   const ok = errors.length === 0;
