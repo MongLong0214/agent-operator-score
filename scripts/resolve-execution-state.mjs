@@ -1364,6 +1364,7 @@ const ACTIVATION_IDENTITY_COLLISION = "authenticated review activation is inacti
 const ACTIVATION_ARTIFACT_MISMATCH = "authenticated review activation is inactive: artifact mismatch";
 const ACTIVATION_STALE_REVIEW_DISMISSAL =
   "authenticated review activation is inactive: stale-review dismissal is required";
+const LIVE_ACTIVATION_FACTS = Symbol.for("aos.liveCollectedActivationFacts");
 
 const rejectActivation = (message) => {
   throw new Error(message);
@@ -1449,13 +1450,6 @@ export const collectAuthenticatedReviewActivationFacts = (root = DEFAULT_ROOT, o
     assign(result.value);
   };
 
-  if (typeof options.reviewerLogin === "string" && options.reviewerLogin.length > 0) {
-    readJson(`repos/${repository}/collaborators/${options.reviewerLogin}/permission`, (value) => {
-      facts.reviewer_permission = value?.permission;
-      if (stableActivationId(value?.user?.id)) facts.reviewer_id = value.user.id;
-    });
-  }
-
   if (Number.isInteger(options.prNumber) && options.prNumber > 0) {
     readJson(`repos/${repository}/pulls/${options.prNumber}`, (pull) => {
       facts.candidate_base = pull?.base?.ref;
@@ -1483,6 +1477,21 @@ export const collectAuthenticatedReviewActivationFacts = (root = DEFAULT_ROOT, o
         facts.review_state = "APPROVED";
         if (typeof approved.commit_id === "string") facts.review_head_sha = approved.commit_id;
         if (stableActivationId(approved?.user?.id)) facts.reviewer_id = approved.user.id;
+        if (typeof approved?.user?.login === "string" && approved.user.login.length > 0) {
+          facts.reviewer_login = approved.user.login;
+        }
+      }
+    });
+  }
+
+  // Permission is bound to the approving reviewer's identity. A separately supplied
+  // reviewerLogin that names a different collaborator must not attach that
+  // collaborator's permission to the approver's id.
+  if (typeof facts.reviewer_login === "string" && facts.reviewer_login.length > 0) {
+    readJson(`repos/${repository}/collaborators/${facts.reviewer_login}/permission`, (value) => {
+      if (stableActivationId(value?.user?.id) && value.user.id === facts.reviewer_id) {
+        facts.reviewer_permission = value?.permission;
+        facts.reviewer_permission_id = value.user.id;
       }
     });
   }
@@ -1498,7 +1507,7 @@ export const collectAuthenticatedReviewActivationFacts = (root = DEFAULT_ROOT, o
 export const evaluateAuthenticatedReviewActivation = (input = {}) => {
   void input.inherited_github_acceptance;
   if (!plainObject(input)) rejectActivation(ACTIVATION_IDENTITY_COLLISION);
-  if (input.github_outage === true) rejectActivation(ACTIVATION_GITHUB_OUTAGE);
+  if (input.github_outage !== false) rejectActivation(ACTIVATION_GITHUB_OUTAGE);
   if (input.protection_status === 404) rejectActivation(ACTIVATION_PROTECTION_404);
   if (input.protection_status !== 200) rejectActivation(ACTIVATION_GITHUB_OUTAGE);
 
@@ -1542,6 +1551,12 @@ export const evaluateAuthenticatedReviewActivation = (input = {}) => {
     rejectActivation(ACTIVATION_WRONG_TARGET);
   }
 
+  if (
+    stableActivationId(input.reviewer_permission_id) &&
+    input.reviewer_permission_id !== input.reviewer_id
+  ) {
+    rejectActivation(ACTIVATION_IDENTITY_COLLISION);
+  }
   if (!ACTIVATION_ELIGIBLE_PERMISSIONS.has(input.reviewer_permission)) {
     rejectActivation(ACTIVATION_PERMISSION_LOSS);
   }
@@ -1613,12 +1628,32 @@ export const selectActiveGovernanceMode = (evaluation) => {
   return "SOLE_OWNER_ADVISORY";
 };
 
-const evaluateLiveArtifactFreeze = (facts) => {
+const gitBlobAt = (root, sha, path) => {
   try {
-    if (!plainObject(facts?.authenticated_review_activation_facts)) return null;
-    const evaluated = evaluateAuthenticatedReviewActivation(facts.authenticated_review_activation_facts);
+    return execFileSync("git", ["cat-file", "blob", `${sha}:${path}`], {
+      cwd: root,
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return null;
+  }
+};
+
+const evaluateLiveArtifactFreeze = (facts, root = DEFAULT_ROOT) => {
+  try {
+    const live = facts?.[LIVE_ACTIVATION_FACTS];
+    if (!plainObject(live)) return null;
+    const evaluated = evaluateAuthenticatedReviewActivation(live);
     if (selectActiveGovernanceMode(evaluated) !== "AUTHENTICATED_REVIEW") return null;
-    return evaluated.artifact_freeze ?? null;
+    const freeze = evaluated.artifact_freeze;
+    if (!plainObject(freeze) || typeof freeze.path !== "string" || typeof freeze.sha256 !== "string") {
+      return null;
+    }
+    const blob = gitBlobAt(root, freeze.exact_head_sha, freeze.path);
+    if (blob == null) return null;
+    const digest = createHash("sha256").update(blob).digest("hex");
+    if (digest !== freeze.sha256) return null;
+    return freeze;
   } catch {
     return null;
   }
@@ -2008,9 +2043,10 @@ const DEFAULT_TOTAL_COLLECTION_TIMEOUT_MS = 300_000;
 export const DEFAULT_COLLECTION_CONCURRENCY = 8;
 const GH_API_POOL_ENV = "AOS_GH_API_POOL";
 
-const timeoutError = (reason) => {
+const timeoutError = (reason, apiPath) => {
   const error = new Error(reason);
   error.code = "COLLECTION_TIMEOUT";
+  if (typeof apiPath === "string" && apiPath.length > 0) error.apiPath = apiPath;
   return error;
 };
 
@@ -2040,6 +2076,7 @@ export const isGitHubSecondaryRateLimit = (error) => {
 const secondaryRateLimitError = (apiPath, error) => {
   const wrapped = new Error(`GitHub secondary rate limit on ${apiPath}`);
   wrapped.code = "SECONDARY_RATE_LIMIT";
+  wrapped.apiPath = apiPath;
   wrapped.cause = error;
   return wrapped;
 };
@@ -2093,7 +2130,7 @@ const classifyGhExecError = (apiPath, error) => {
     error?.killed === true ||
     /ETIMEDOUT|timed out|TIMEOUT/i.test(String(error?.message ?? ""))
   ) {
-    throw timeoutError(`per-call timeout for ${apiPath}`);
+    throw timeoutError(`per-call timeout for ${apiPath}`, apiPath);
   }
   if (
     error?.status === 404 ||
@@ -2123,7 +2160,12 @@ export const executeGhApiPool = async (request, options = {}) => {
   return mapWithBoundedConcurrency(calls, concurrency, async (call) => {
     const apiPath = call?.apiPath;
     if (Date.now() > deadline) {
-      throw timeoutError(`collection total timeout exceeded before ${apiPath}`);
+      return {
+        ok: false,
+        apiPath,
+        code: "COLLECTION_TIMEOUT",
+        message: `collection total timeout exceeded before ${apiPath}`
+      };
     }
     const remaining = deadline - Date.now();
     const callTimeout = Math.max(1, Math.min(perCallTimeoutMs, remaining));
@@ -2142,6 +2184,17 @@ export const executeGhApiPool = async (request, options = {}) => {
       try {
         classifyGhExecError(apiPath, error);
       } catch (classified) {
+        if (classified?.code === "COLLECTION_TIMEOUT") {
+          return {
+            ok: false,
+            apiPath,
+            status: error?.status ?? null,
+            code: classified.code,
+            killed: error?.killed === true,
+            stderr: String(error?.stderr ?? ""),
+            message: String(classified.message ?? "")
+          };
+        }
         throw classified;
       }
       return {
@@ -2190,7 +2243,10 @@ const invokeGhApiPoolProcess = (calls, poolOptions) => {
       error?.killed === true ||
       /ETIMEDOUT|timed out|TIMEOUT/i.test(String(error?.message ?? ""))
     ) {
-      throw timeoutError(`collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`);
+      throw timeoutError(
+        `collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`,
+        calls[0]?.apiPath
+      );
     }
     const stdout = String(error?.stdout ?? "");
     if (stdout.trim()) raw = stdout;
@@ -2202,7 +2258,10 @@ const invokeGhApiPoolProcess = (calls, poolOptions) => {
       throw secondaryRateLimitError(parsed.apiPath ?? calls[0]?.apiPath, parsed);
     }
     if (parsed.code === "COLLECTION_TIMEOUT") {
-      throw timeoutError(parsed.reason ?? `collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`);
+      throw timeoutError(
+        parsed.reason ?? `collection total timeout exceeded before ${parsed.apiPath ?? calls[0]?.apiPath ?? "batch"}`,
+        parsed.apiPath ?? calls[0]?.apiPath
+      );
     }
     throw new Error(parsed.reason ?? "gh api pool failed");
   }
@@ -2214,8 +2273,17 @@ const invokeGhApiPoolProcess = (calls, poolOptions) => {
 
 const writePoolStdout = (value) => {
   // writeSync: process.stdout.write of a large JSON payload plus process.exit
-  // truncates at the ~64KiB pipe buffer and the parent then reports a SyntaxError.
-  writeSync(1, JSON.stringify(value));
+  // truncates at the ~64KiB pipe buffer. POSIX write of n > PIPE_BUF to a pipe
+  // may also return short; loop until every byte is in the kernel.
+  const bytes = Buffer.from(JSON.stringify(value));
+  let offset = 0;
+  while (offset < bytes.length) {
+    const written = writeSync(1, bytes, offset, bytes.length - offset);
+    if (!Number.isInteger(written) || written < 1) {
+      throw new Error("gh api pool worker short write");
+    }
+    offset += written;
+  }
 };
 
 const runGhApiPoolWorker = async () => {
@@ -2235,7 +2303,7 @@ const runGhApiPoolWorker = async () => {
             ? "COLLECTION_TIMEOUT"
             : "POOL_FAILURE",
       reason: error?.message ?? "gh api pool failed",
-      apiPath: error?.cause?.apiPath ?? request?.calls?.[0]?.apiPath ?? null
+      apiPath: error?.apiPath ?? null
     });
   }
 };
@@ -2259,7 +2327,7 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
   const deadline = Date.now() + totalTimeoutMs;
   const ghApi = (apiPath, { accept } = {}) => {
     if (Date.now() > deadline) {
-      throw timeoutError(`collection total timeout exceeded before ${apiPath}`);
+      throw timeoutError(`collection total timeout exceeded before ${apiPath}`, apiPath);
     }
     const remaining = deadline - Date.now();
     const callTimeout = Math.max(1, Math.min(perCallTimeoutMs, remaining));
@@ -2282,7 +2350,10 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
   };
   const ghApiMany = (calls) => {
     if (Date.now() > deadline) {
-      throw timeoutError(`collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`);
+      throw timeoutError(
+        `collection total timeout exceeded before ${calls[0]?.apiPath ?? "batch"}`,
+        calls[0]?.apiPath
+      );
     }
     return invokeGhApiPoolProcess(calls, {
       exec,
@@ -2299,10 +2370,12 @@ export const createAuthenticatedGitHubTransport = (root = DEFAULT_ROOT, options 
     error.status = entry?.status ?? null;
     error.killed = entry?.killed === true;
     error.stderr = entry?.stderr ?? "";
+    error.apiPath = apiPath;
     try {
       classifyGhExecError(apiPath, error);
     } catch (classified) {
-      throw classified;
+      if (classified && typeof classified === "object") classified.apiPath = classified.apiPath ?? apiPath;
+      return classified;
     }
     return error;
   };
@@ -2397,7 +2470,7 @@ const withCollectionTimeouts = (transport, options = {}) => {
   const deadline = Date.now() + totalTimeoutMs;
   const guard = (method, apiPath) => {
     if (Date.now() > deadline) {
-      throw timeoutError(`collection total timeout exceeded before ${apiPath}`);
+      throw timeoutError(`collection total timeout exceeded before ${apiPath}`, apiPath);
     }
     return transport[method](apiPath);
   };
@@ -2416,7 +2489,10 @@ const withCollectionTimeouts = (transport, options = {}) => {
   if (typeof transport.getJsonMany === "function") {
     wrapped.getJsonMany = (apiPaths) => {
       if (Date.now() > deadline) {
-        throw timeoutError(`collection total timeout exceeded before ${apiPaths[0] ?? "batch"}`);
+        throw timeoutError(
+          `collection total timeout exceeded before ${apiPaths[0] ?? "batch"}`,
+          apiPaths[0]
+        );
       }
       return transport.getJsonMany(apiPaths);
     };
@@ -2424,7 +2500,10 @@ const withCollectionTimeouts = (transport, options = {}) => {
   if (typeof transport.getRawMany === "function") {
     wrapped.getRawMany = (apiPaths) => {
       if (Date.now() > deadline) {
-        throw timeoutError(`collection total timeout exceeded before ${apiPaths[0] ?? "batch"}`);
+        throw timeoutError(
+          `collection total timeout exceeded before ${apiPaths[0] ?? "batch"}`,
+          apiPaths[0]
+        );
       }
       return transport.getRawMany(apiPaths);
     };
@@ -2875,10 +2954,10 @@ const callJsonMany = (transport, apiPaths) => {
         return { ok: false, reason: `unavailable external response for ${apiPaths[index]}` };
       });
     } catch (error) {
-      const mapped = transportFailureFromError(error, apiPaths[0]);
-      return apiPaths.map((apiPath) =>
-        apiPath === apiPaths[0] ? mapped : transportFailureFromError(error, apiPath)
-      );
+      const named = typeof error?.apiPath === "string" && apiPaths.includes(error.apiPath)
+        ? error.apiPath
+        : apiPaths[0];
+      return apiPaths.map((apiPath) => transportFailureFromError(error, named ?? apiPath));
     }
   }
   return apiPaths.map((apiPath) => transportCall(transport, "getJson", apiPath));
@@ -2981,19 +3060,23 @@ const resolveAncestryMany = (transport, repoPath, liveTip, shas, failures) => {
     pendingIndexes.push(i);
     pendingPaths.push(`${repoPath}/compare/${liveTip}...${sha}`);
   }
-  const payloads = requireJsonMany(transport, pendingPaths, failures);
+  const batch = callJsonMany(transport, pendingPaths);
+  const fatal = batch.find((result) => result?.secondaryRateLimit || result?.timeout);
+  if (fatal) failures.push(fatal.reason);
   for (let j = 0; j < pendingIndexes.length; j += 1) {
     const i = pendingIndexes[j];
-    const payload = payloads[j];
-    if (!payload) {
-      results[i] = {
-        ok: false,
-        reachable: false,
-        reason: failures.at(-1) || "workflow ancestry compare unavailable"
-      };
+    const result = batch[j];
+    if (result?.ok) {
+      results[i] = interpretGitHubCompareStatus(result.value?.status);
       continue;
     }
-    results[i] = interpretGitHubCompareStatus(payload.status);
+    const reason = result?.reason ?? `unavailable external response for ${pendingPaths[j]}`;
+    if (!fatal) failures.push(reason);
+    results[i] = {
+      ok: false,
+      reachable: false,
+      reason
+    };
   }
   return results;
 };
@@ -4666,6 +4749,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     facts.authenticated_review_activation_facts = plainObject(activationCollected.facts)
       ? activationCollected.facts
       : { github_outage: true };
+    if (transport.kind === "github-authenticated" && plainObject(activationCollected.facts)) {
+      facts[LIVE_ACTIVATION_FACTS] = structuredClone(activationCollected.facts);
+    }
   } catch {
     facts.authenticated_review_activation_facts = { github_outage: true };
   }
@@ -4827,7 +4913,7 @@ export const resolveExecutionState = (options = {}) => {
     governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
     claims_merge_authorization: false,
     claims_separation_of_duties: false,
-    artifact_freeze: evaluateLiveArtifactFreeze(facts),
+    artifact_freeze: evaluateLiveArtifactFreeze(facts, root),
     bootstrap: {
       active: bootstrapActive,
       d0_004c_merged: facts.d0_004c_merged === true
