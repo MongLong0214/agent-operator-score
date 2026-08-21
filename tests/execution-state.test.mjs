@@ -6557,3 +6557,144 @@ test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
     );
   }
 });
+
+const ARTIFACT_MANIFEST_V3_PATH = "docs/decisions/maintainer-gate-artifact-manifest.v3.json";
+const SECOND_FREEZE_ARTIFACT_PATH = "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md";
+
+const observeLocalBlobDigest = (sha, path) => {
+  const blob = gitBlobUtf8(sha, path);
+  assert.ok(blob.length > 0, `local git blob ${sha}:${path} must exist for this case to isolate the live-tree listing`);
+  return sha256Utf8(blob);
+};
+
+const freezeActivationOnLocalHead = () => {
+  const activation = activationMatchingHeadBlob();
+  const firstPath = activation.manifest.artifacts[0].path;
+  const observed = observeLocalBlobDigest(activation.exact_head_sha, firstPath);
+  assert.equal(
+    observed,
+    activation.manifest.artifacts[0].sha256,
+    "the activation digest must be the local blob, so a git-cat-file freeze would still pass"
+  );
+  return { activation, firstPath, head: activation.exact_head_sha };
+};
+
+const freezeListing = (...paths) => [...new Set(paths)];
+
+test("artifact-freeze-local-blob-absent-from-live-tree-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "a freeze whose local blob matches must not verify when the path is absent from facts.liveTreePaths";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH);
+  assert.equal(facts.liveTreePaths.includes(firstPath), false, `${firstPath} must be absent from the listing`);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-second-artifact-absent-from-live-tree-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "a freeze must not verify when a later artifact path is absent from facts.liveTreePaths even if artifacts[0] is present and its local blob matches";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const secondDigest = observeLocalBlobDigest(head, SECOND_FREEZE_ARTIFACT_PATH);
+  const first = activation.manifest.artifacts[0];
+  activation.manifest.artifacts = [
+    first,
+    {
+      path: SECOND_FREEZE_ARTIFACT_PATH,
+      sha256: secondDigest,
+      kind: "ADR",
+      source_record_id: "d0-009-activation-second-artifact",
+      source_record_sha256: "c".repeat(64),
+      migration_provenance: "legacy-v2-migration"
+    }
+  ];
+  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
+
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  assert.equal(facts.liveTreePaths.includes(firstPath), true);
+  assert.equal(
+    facts.liveTreePaths.includes(SECOND_FREEZE_ARTIFACT_PATH),
+    false,
+    `${SECOND_FREEZE_ARTIFACT_PATH} must be the only absent freeze path`
+  );
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-manifest-document-absent-from-live-tree-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "manifest_in_head must be derived from the live tree listing; a freeze must not verify when the v3 manifest path is absent";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  activation.manifest_in_head = true;
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(firstPath);
+  assert.equal(facts.liveTreePaths.includes(ARTIFACT_MANIFEST_V3_PATH), false);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-exact-head-not-live-current-head-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "a freeze bound to a local candidate SHA that is not facts.currentHead must not verify even when the local blob matches";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const facts = loadBaselineFacts();
+  facts.currentHead = "dddddddddddddddddddddddddddddddddddddddd";
+  assert.notEqual(facts.currentHead, head);
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-live-tree-listing-control-verifies", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "the live-tree freeze cases are not a constant null: when every artifact and the v3 manifest are in facts.liveTreePaths and exact_head equals currentHead, freeze is non-null";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze === null, false, message);
+  assert.equal(freeze.path, firstPath, message);
+  assert.equal(freeze.exact_head_sha, head, message);
+});
+
+test("artifact-freeze-manifest-in-head-is-derived-from-the-listing", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "input.manifest_in_head is honour-system; a complete live listing must derive true even when the input boolean is false";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  activation.manifest_in_head = false;
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze === null, false, message);
+});
