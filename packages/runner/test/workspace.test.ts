@@ -88,6 +88,27 @@ const request = (temp: Temp, extra: Record<string, unknown> = {}) => ({
   ...extra
 });
 
+const correlated = (
+  actor: string,
+  eventType: string,
+  correlationId: string,
+  payload: string
+): Record<string, string> => ({
+  actor,
+  event_type: eventType,
+  correlation_id: correlationId,
+  payload
+});
+
+const verifyRequest = (temp: Temp, created: WorkspaceOk, extra: Record<string, unknown> = {}) => ({
+  root: created.root,
+  parentRoot: temp.parent,
+  expectedBaseDigest: created.baseDigest,
+  expectedEnvironmentDigest: created.environmentDigest,
+  environment: { ...ENV },
+  ...extra
+});
+
 const snapshotTree = (root: string): Record<string, string> => {
   const files: Record<string, string> = {};
   const walk = (directory: string) => {
@@ -162,6 +183,7 @@ describe("workspace", () => {
       if (initial.ok) {
         assert.equal(initial.phase, "initial", CONTAINED);
         assert.match(initial.digest, DIGEST, CONTAINED);
+        assert.equal(initial.digest, first.baseDigest, CONTAINED);
         const paths = initial.files.map((file) => file.path).sort();
         assert.ok(paths.includes("README.txt"), CONTAINED);
         assert.ok(paths.includes("src/app.ts"), CONTAINED);
@@ -173,7 +195,21 @@ describe("workspace", () => {
       if (initial.ok && final.ok) {
         assert.equal(final.phase, "final", CONTAINED);
         assert.equal(final.digest, initial.digest, CONTAINED);
+        assert.equal(final.digest, first.baseDigest, CONTAINED);
       }
+
+      writeFileSync(join(first.root, "README.txt"), "mutated after initial seal\n");
+      refused(api.sealWorkspace({ root: first.root, phase: "initial" }), "initial seal after mutation");
+      const finalMutated = api.sealWorkspace({ root: first.root, phase: "final" });
+      accepted(finalMutated, "final seal after mutation");
+      if (finalMutated.ok) {
+        assert.notEqual(finalMutated.digest, first.baseDigest, CONTAINED);
+      }
+      const verifiedAfterWrite = asOk(
+        api.verifyWorkspace(verifyRequest(temp, first)),
+        "verify create-time base after mutation"
+      );
+      assert.equal(verifiedAfterWrite.baseDigest, first.baseDigest, CONTAINED);
 
       const otherEnv = asOk(
         api.createRunWorkspace(request(temp, { environment: { ...ENV, runtime: "other" } })),
@@ -206,14 +242,36 @@ describe("workspace", () => {
       assert.notEqual(restored.root, clean.root, CONTAINED);
 
       refused(
-        api.verifyWorkspace({
-          root: clean.root,
-          parentRoot: temp.parent,
-          expectedBaseDigest: "0".repeat(64),
-          expectedEnvironmentDigest: clean.environmentDigest,
-          environment: { ...ENV }
-        }),
+        api.verifyWorkspace(verifyRequest(temp, clean, { expectedBaseDigest: "0".repeat(64) })),
         "wrong expected base digest"
+      );
+
+      writeFileSync(join(clean.root, "src", "agent.ts"), "agent write\n");
+      const liveAfterWrite = api.sealWorkspace({ root: clean.root, phase: "final" });
+      accepted(liveAfterWrite, "final seal after workspace write");
+      if (liveAfterWrite.ok) {
+        assert.notEqual(liveAfterWrite.digest, clean.baseDigest, CONTAINED);
+        refused(
+          api.verifyWorkspace(verifyRequest(temp, clean, { expectedBaseDigest: liveAfterWrite.digest })),
+          "live tree digest is not the recorded base"
+        );
+      }
+
+      const pinnedAfterWrite = asOk(
+        api.verifyWorkspace(verifyRequest(temp, clean)),
+        "create-time base pin after workspace write"
+      );
+      assert.equal(pinnedAfterWrite.baseDigest, clean.baseDigest, CONTAINED);
+
+      const omittedPin = asOk(
+        api.verifyWorkspace(verifyRequest(temp, clean, { expectedBaseDigest: undefined })),
+        "omitted base pin after workspace write"
+      );
+      assert.equal(omittedPin.baseDigest, clean.baseDigest, CONTAINED);
+
+      refused(
+        api.verifyWorkspace(verifyRequest(temp, clean, { environment: { ...ENV, runtime: "other" } })),
+        "wrong environment object after workspace write"
       );
     } finally {
       closeTemp(temp);
@@ -304,6 +362,27 @@ describe("workspace", () => {
         "classify symlink escape"
       );
       assert.equal(readFileSync(outside, "utf8"), "secret-must-not-enter-workspace\n", CONTAINED);
+
+      const createdDir = asOk(api.createRunWorkspace(request(temp)), "create for directory symlink");
+      const outsideDir = join(temp.parent, "outside-dir");
+      mkdirSync(outsideDir);
+      writeFileSync(join(outsideDir, "secret.txt"), "secret-must-not-enter-workspace\n");
+      rmSync(join(createdDir.root, "src"), { recursive: true, force: true });
+      symlinkSync(outsideDir, join(createdDir.root, "src"));
+      refused(
+        api.verifyWorkspace(verifyRequest(temp, createdDir)),
+        "workspace directory symlink escape"
+      );
+      refused(api.sealWorkspace({ root: createdDir.root, phase: "final" }), "seal directory symlink escape");
+      refused(
+        api.classifyWorkspaceMutation({
+          root: createdDir.root,
+          path: "src/secret.txt",
+          traces: [correlated("agent", "tool.call", "corr-agent", "src/secret.txt")]
+        }),
+        "classify directory symlink escape"
+      );
+      assert.equal(readFileSync(join(outsideDir, "secret.txt"), "utf8"), "secret-must-not-enter-workspace\n", CONTAINED);
     } finally {
       closeTemp(temp);
     }
@@ -364,12 +443,30 @@ describe("workspace", () => {
     try {
       const created = asOk(api.createRunWorkspace(request(temp)), "create");
       accepted(api.sealWorkspace({ root: created.root, phase: "initial" }), "initial seal");
+
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/agent.ts",
+          traces: [correlated("agent", "tool.call", "corr-agent", "src/agent.ts")]
+        }),
+        "classify before mutation"
+      );
+      refused(
+        api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/app.ts",
+          traces: [correlated("agent", "tool.call", "corr-app", "src/app.ts")]
+        }),
+        "classify unchanged base file"
+      );
+
       writeFileSync(join(created.root, "src", "agent.ts"), "agent write\n");
       writeFileSync(join(created.root, "src", "human.ts"), "declared human write\n");
       writeFileSync(join(created.root, "src", "external.ts"), "uncorrelated write\n");
       writeFileSync(join(created.root, "src", "unknown.ts"), "ambiguous write\n");
 
-      const agent = api.classifyWorkspaceMutation({
+      const deadPath = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/agent.ts",
         traces: [{
@@ -379,6 +476,31 @@ describe("workspace", () => {
           path: "src/agent.ts",
           provenance: "wrapper-workspace-correlation"
         }]
+      });
+      accepted(deadPath, "dead path field is not correlation");
+      if (deadPath.ok) {
+        assert.equal(deadPath.actor, "external_mutation", CONTAINED);
+        assert.equal(deadPath.event_type, "workspace.external_mutation", CONTAINED);
+      }
+
+      const missingCorrelation = api.classifyWorkspaceMutation({
+        root: created.root,
+        path: "src/agent.ts",
+        traces: [{
+          actor: "agent",
+          event_type: "tool.call",
+          payload: "src/agent.ts"
+        }]
+      });
+      accepted(missingCorrelation, "payload without correlation_id");
+      if (missingCorrelation.ok) {
+        assert.equal(missingCorrelation.actor, "external_mutation", CONTAINED);
+      }
+
+      const agent = api.classifyWorkspaceMutation({
+        root: created.root,
+        path: "src/agent.ts",
+        traces: [correlated("agent", "tool.call", "corr-agent", "src/agent.ts")]
       });
       accepted(agent, "agent");
       if (agent.ok) {
@@ -392,13 +514,7 @@ describe("workspace", () => {
       const human = api.classifyWorkspaceMutation({
         root: created.root,
         path: "src/human.ts",
-        traces: [{
-          actor: "human/takeover",
-          event_type: "human.manual_edit_declared",
-          correlation_id: "corr-human",
-          path: "src/human.ts",
-          provenance: "wrapper-workspace-correlation"
-        }]
+        traces: [correlated("human/takeover", "human.manual_edit_declared", "corr-human", "src/human.ts")]
       });
       accepted(human, "human");
       if (human.ok) {
@@ -424,20 +540,8 @@ describe("workspace", () => {
         root: created.root,
         path: "src/unknown.ts",
         traces: [
-          {
-            actor: "agent",
-            event_type: "tool.call",
-            correlation_id: "corr-a",
-            path: "src/unknown.ts",
-            provenance: "wrapper-workspace-correlation"
-          },
-          {
-            actor: "human/takeover",
-            event_type: "human.manual_edit_declared",
-            correlation_id: "corr-b",
-            path: "src/unknown.ts",
-            provenance: "wrapper-workspace-correlation"
-          }
+          correlated("agent", "tool.call", "corr-a", "src/unknown.ts"),
+          correlated("human/takeover", "human.manual_edit_declared", "corr-b", "src/unknown.ts")
         ]
       });
       accepted(unknown, "unknown");
