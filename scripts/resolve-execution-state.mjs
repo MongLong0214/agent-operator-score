@@ -1641,6 +1641,20 @@ const freezePathsPresentInLiveTree = (facts, artifacts) => {
   return true;
 };
 
+const freezeArtifactDigestsMatchLive = (facts, artifacts) => {
+  const liveDigests = facts?.liveDigests;
+  if (!plainObject(liveDigests)) return false;
+  if (!Array.isArray(artifacts) || artifacts.length < 1) return false;
+  for (const artifact of artifacts) {
+    if (typeof artifact?.path !== "string" || artifact.path.length === 0) return false;
+    if (typeof artifact?.sha256 !== "string") return false;
+    const live = liveDigests[artifact.path];
+    if (typeof live !== "string" || live.length === 0) return false;
+    if (live !== artifact.sha256) return false;
+  }
+  return true;
+};
+
 export const evaluateLiveArtifactFreeze = (
   facts,
   liveActivation = facts?.[LIVE_ACTIVATION_FACTS]
@@ -1653,6 +1667,10 @@ export const evaluateLiveArtifactFreeze = (
     // not evidence the document is at the live tip, and honour-system false is
     // not evidence it is absent.
     if (!freezePathsPresentInLiveTree(facts, artifacts)) return null;
+    // Presence is not the freeze. Bind each artifact sha256 to the digest
+    // collection already gathered at facts.currentHead. Missing coverage is a
+    // refusal; do not fall back to the path listing.
+    if (!freezeArtifactDigestsMatchLive(facts, artifacts)) return null;
     const currentHead = typeof facts?.currentHead === "string" ? facts.currentHead.toLowerCase() : "";
     if (!ACTIVATION_GIT_SHA.test(currentHead)) return null;
     const evaluated = evaluateAuthenticatedReviewActivation({
@@ -1665,6 +1683,10 @@ export const evaluateLiveArtifactFreeze = (
       return null;
     }
     if (freeze.exact_head_sha !== currentHead) return null;
+    const freezeLive = facts?.liveDigests?.[freeze.path];
+    if (typeof freezeLive !== "string" || freezeLive.length === 0 || freezeLive !== freeze.sha256) {
+      return null;
+    }
     return freeze;
   } catch {
     return null;

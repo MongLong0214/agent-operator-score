@@ -6581,6 +6581,22 @@ const freezeActivationOnLocalHead = () => {
 
 const freezeListing = (...paths) => [...new Set(paths)];
 
+const UNRELATED_LIVE_DIGEST = "e".repeat(64);
+
+const bindLiveDigestsToArtifacts = (facts, artifacts, overrides = {}) => {
+  facts.liveDigests = { ...(facts.liveDigests ?? {}) };
+  for (const artifact of artifacts) {
+    if (typeof artifact?.path !== "string" || artifact.path.length === 0) continue;
+    if (Object.hasOwn(overrides, artifact.path)) {
+      const next = overrides[artifact.path];
+      if (typeof next === "string") facts.liveDigests[artifact.path] = next;
+      else delete facts.liveDigests[artifact.path];
+      continue;
+    }
+    facts.liveDigests[artifact.path] = artifact.sha256;
+  }
+};
+
 test("artifact-freeze-local-blob-absent-from-live-tree-does-not-verify", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const message =
@@ -6591,7 +6607,9 @@ test("artifact-freeze-local-blob-absent-from-live-tree-does-not-verify", async (
   const facts = loadBaselineFacts();
   facts.currentHead = head;
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
   assert.equal(facts.liveTreePaths.includes(firstPath), false, `${firstPath} must be absent from the listing`);
+  assert.equal(facts.liveDigests[firstPath], activation.manifest.artifacts[0].sha256);
 
   const freeze = evaluateLiveArtifactFreeze(facts, activation);
   assert.equal(freeze, null, message);
@@ -6622,12 +6640,15 @@ test("artifact-freeze-second-artifact-absent-from-live-tree-does-not-verify", as
   const facts = loadBaselineFacts();
   facts.currentHead = head;
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
   assert.equal(facts.liveTreePaths.includes(firstPath), true);
   assert.equal(
     facts.liveTreePaths.includes(SECOND_FREEZE_ARTIFACT_PATH),
     false,
     `${SECOND_FREEZE_ARTIFACT_PATH} must be the only absent freeze path`
   );
+  assert.equal(facts.liveDigests[firstPath], first.sha256);
+  assert.equal(facts.liveDigests[SECOND_FREEZE_ARTIFACT_PATH], secondDigest);
 
   const freeze = evaluateLiveArtifactFreeze(facts, activation);
   assert.equal(freeze, null, message);
@@ -6644,6 +6665,7 @@ test("artifact-freeze-manifest-document-absent-from-live-tree-does-not-verify", 
   const facts = loadBaselineFacts();
   facts.currentHead = head;
   facts.liveTreePaths = freezeListing(firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
   assert.equal(facts.liveTreePaths.includes(ARTIFACT_MANIFEST_V3_PATH), false);
 
   const freeze = evaluateLiveArtifactFreeze(facts, activation);
@@ -6661,6 +6683,7 @@ test("artifact-freeze-exact-head-not-live-current-head-does-not-verify", async (
   facts.currentHead = "dddddddddddddddddddddddddddddddddddddddd";
   assert.notEqual(facts.currentHead, head);
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
 
   const freeze = evaluateLiveArtifactFreeze(facts, activation);
   assert.equal(freeze, null, message);
@@ -6669,18 +6692,21 @@ test("artifact-freeze-exact-head-not-live-current-head-does-not-verify", async (
 test("artifact-freeze-live-tree-listing-control-verifies", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const message =
-    "the live-tree freeze cases are not a constant null: when every artifact and the v3 manifest are in facts.liveTreePaths and exact_head equals currentHead, freeze is non-null";
+    "the live-tree freeze cases are not a constant null: when every artifact and the v3 manifest are in facts.liveTreePaths, exact_head equals currentHead, and freeze.sha256 equals facts.liveDigests[path], freeze is non-null";
   assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
 
   const { activation, firstPath, head } = freezeActivationOnLocalHead();
   const facts = loadBaselineFacts();
   facts.currentHead = head;
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
+  assert.equal(facts.liveDigests[firstPath], activation.manifest.artifacts[0].sha256);
 
   const freeze = evaluateLiveArtifactFreeze(facts, activation);
   assert.equal(freeze === null, false, message);
   assert.equal(freeze.path, firstPath, message);
   assert.equal(freeze.exact_head_sha, head, message);
+  assert.equal(freeze.sha256, facts.liveDigests[firstPath], message);
 });
 
 test("artifact-freeze-manifest-in-head-is-derived-from-the-listing", async () => {
@@ -6694,7 +6720,118 @@ test("artifact-freeze-manifest-in-head-is-derived-from-the-listing", async () =>
   const facts = loadBaselineFacts();
   facts.currentHead = head;
   facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts);
 
   const freeze = evaluateLiveArtifactFreeze(facts, activation);
   assert.equal(freeze === null, false, message);
+});
+
+test("artifact-freeze-sha256-not-live-digest-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "a freeze whose sha256 does not match facts.liveDigests[path] must not verify even when the path is in the live tree listing and exact_head equals currentHead";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const claimed = activation.manifest.artifacts[0].sha256;
+  assert.notEqual(claimed, UNRELATED_LIVE_DIGEST, "the independent variable is the digest disagreement");
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts, { [firstPath]: UNRELATED_LIVE_DIGEST });
+  assert.equal(facts.liveTreePaths.includes(firstPath), true);
+  assert.equal(facts.liveDigests[firstPath], UNRELATED_LIVE_DIGEST);
+  assert.notEqual(claimed, facts.liveDigests[firstPath]);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-live-digest-missing-for-path-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "missing facts.liveDigests coverage for a freeze artifact path is a refusal, not a pass from the live tree listing";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts, { [firstPath]: null });
+  assert.equal(facts.liveTreePaths.includes(firstPath), true);
+  assert.equal(Object.hasOwn(facts.liveDigests, firstPath), false, `${firstPath} must be absent from liveDigests`);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-second-artifact-sha256-not-live-digest-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "a freeze must not verify when a later artifact sha256 disagrees with facts.liveDigests even if artifacts[0] matches";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const secondDigest = observeLocalBlobDigest(head, SECOND_FREEZE_ARTIFACT_PATH);
+  const first = activation.manifest.artifacts[0];
+  activation.manifest.artifacts = [
+    first,
+    {
+      path: SECOND_FREEZE_ARTIFACT_PATH,
+      sha256: secondDigest,
+      kind: "ADR",
+      source_record_id: "d0-009-activation-second-artifact",
+      source_record_sha256: "c".repeat(64),
+      migration_provenance: "legacy-v2-migration"
+    }
+  ];
+  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
+  assert.notEqual(secondDigest, UNRELATED_LIVE_DIGEST);
+
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath, SECOND_FREEZE_ARTIFACT_PATH);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts, {
+    [SECOND_FREEZE_ARTIFACT_PATH]: UNRELATED_LIVE_DIGEST
+  });
+  assert.equal(facts.liveDigests[firstPath], first.sha256);
+  assert.equal(facts.liveDigests[SECOND_FREEZE_ARTIFACT_PATH], UNRELATED_LIVE_DIGEST);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
+});
+
+test("artifact-freeze-second-artifact-live-digest-missing-does-not-verify", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const message =
+    "missing facts.liveDigests coverage for a later artifact path is a refusal even when artifacts[0] matches";
+  assert.equal(typeof evaluateLiveArtifactFreeze, "function", message);
+
+  const { activation, firstPath, head } = freezeActivationOnLocalHead();
+  const secondDigest = observeLocalBlobDigest(head, SECOND_FREEZE_ARTIFACT_PATH);
+  const first = activation.manifest.artifacts[0];
+  activation.manifest.artifacts = [
+    first,
+    {
+      path: SECOND_FREEZE_ARTIFACT_PATH,
+      sha256: secondDigest,
+      kind: "ADR",
+      source_record_id: "d0-009-activation-second-artifact",
+      source_record_sha256: "c".repeat(64),
+      migration_provenance: "legacy-v2-migration"
+    }
+  ];
+  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
+
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = freezeListing(ARTIFACT_MANIFEST_V3_PATH, firstPath, SECOND_FREEZE_ARTIFACT_PATH);
+  bindLiveDigestsToArtifacts(facts, activation.manifest.artifacts, {
+    [SECOND_FREEZE_ARTIFACT_PATH]: null
+  });
+  assert.equal(facts.liveDigests[firstPath], first.sha256);
+  assert.equal(Object.hasOwn(facts.liveDigests, SECOND_FREEZE_ARTIFACT_PATH), false);
+
+  const freeze = evaluateLiveArtifactFreeze(facts, activation);
+  assert.equal(freeze, null, message);
 });
