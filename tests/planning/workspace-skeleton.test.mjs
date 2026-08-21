@@ -783,6 +783,48 @@ const gateStubOffenders = (paths, readText) => {
   return offenders;
 };
 
+// The conformance-side spelling is only the caller. The seam that made G4_PASS mintable was in
+// production: `const g0 = typeof runG0 === "function" ? runG0() : runG0Gate({ readFile })`, which
+// let any caller hand in a replacement for the gate the script exists to run. Scanning tests would
+// not see that come back.
+const GATE_INJECTION_PATTERN = /typeof\s+(\w+)\s*===\s*["']function["']\s*\?\s*\1\s*\(/;
+
+const gateInjectionOffenders = (paths, readText) => {
+  const offenders = [];
+  for (const path of paths) {
+    readText(path).split("\n").forEach((line, index) => {
+      const match = GATE_INJECTION_PATTERN.exec(line);
+      if (match) offenders.push(`${path}:${index + 1} ${match[1]}`);
+    });
+  }
+  return offenders;
+};
+
+test("gate-scripts-do-not-accept-an-injected-replacement-for-their-own-gate", () => {
+  // Same discipline as the case below: prove the detector sees the exact production seam that
+  // shipped before a clean result on the real tree is allowed to mean anything.
+  const scripts = walkFiles("scripts")
+    .filter((absolutePath) => absolutePath.endsWith(".mjs"))
+    .map(asRepositoryRelative)
+    .sort();
+  assert.ok(scripts.length > 0, "no scripts found; the guard would be vacuous");
+
+  const probe = scripts[0];
+  assert.deepEqual(
+    gateInjectionOffenders([probe], () =>
+      '  const g0 = typeof runG0 === "function" ? runG0() : runG0Gate({ readFile });\n'
+    ),
+    [`${probe}:1 runG0`],
+    "the detector must see the exact seam E14-003 shipped before its clean result means anything"
+  );
+
+  assert.deepEqual(
+    gateInjectionOffenders(scripts, readRegularFile),
+    [],
+    "a gate script must run its own gate, not a function the caller supplied"
+  );
+});
+
 test("conformance-cases-do-not-stub-the-gate-they-are-named-for", () => {
   // E14-003 shipped `runG0: () => ({ ok: true, errors: [] })` on every passing case, so the slow
   // path -- supported Node, clean lockfile, pinned digest match, every family, killed mutants,
