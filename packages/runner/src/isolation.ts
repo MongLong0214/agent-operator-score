@@ -153,7 +153,12 @@ export const buildWorkerEnvelope = (input: unknown): EnvelopeOk | Fail => {
     allowedPaths: [workspaceRoot],
     ipc: { enabled: true, channels: ["control"] }
   };
-  registry.set(envelope, { workspaceRoot, oracleReal, tempRoots: [tempRoot, resolveThroughLinks("/tmp")], secrets });
+  // Only the declared run scratch root is denied. An earlier version also denied the system
+  // temporary directory outright, which is wrong wherever a workspace legitimately lives under it:
+  // on Linux `tmpdir()` is `/tmp`, so that rule refused every read in the workspace itself. Paths
+  // elsewhere under the system temp directory are already outside the workspace, so containment
+  // refuses them without a second rule that has to know where temp is.
+  registry.set(envelope, { workspaceRoot, oracleReal, tempRoots: [tempRoot], secrets });
   return envelope;
 };
 
