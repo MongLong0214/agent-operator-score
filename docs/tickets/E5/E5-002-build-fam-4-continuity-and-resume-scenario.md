@@ -32,7 +32,7 @@ Build FAM-4 continuity and resume scenario. Deliver only the bounded contract be
 ## RED contract
 
 - Test file: `suites/coding-core-v0/test/fam4-continuity.test.ts`
-- Focused command: `node --test --test-name-pattern fam4-continuity 'suites/coding-core-v0/test/*.test.ts'`
+- Focused command: `npm test -w @aos/suite-coding-core -- fam4-continuity`
 - Expected pre-GREEN failure: state-loss/stale-resume behavior has no deterministic oracle.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -51,7 +51,7 @@ Build FAM-4 continuity and resume scenario. Deliver only the bounded contract be
 
 ## Verification
 
-1. Focused: `node --test --test-name-pattern fam4-continuity 'suites/coding-core-v0/test/*.test.ts'`; every named case above passes.
+1. Focused: `npm test -w @aos/suite-coding-core -- fam4-continuity`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario surface; for runtime/scenario tickets run only the controlled local fixture named by the PRD, never a production target.
