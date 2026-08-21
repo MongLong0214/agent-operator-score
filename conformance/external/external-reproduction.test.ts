@@ -187,13 +187,52 @@ const feasibilityDocument = (gates: { G1: string; G2: string; G3: string }) =>
 const withFeasibility = (gates: { G1: string; G2: string; G3: string }) =>
   withDocuments({ [FEASIBILITY_PATH]: feasibilityDocument(gates) });
 
-const resolvedPublicationLedgerText = () => {
+const CLEARED_PUBLICATION_VERDICT = {
+  verdict: "CLEARED",
+  blocked_by: [] as string[],
+  permits_publication: true,
+  permits_redistribution: true,
+  permits_external_contribution_acceptance: true
+};
+
+const blockedPublicationVerdict = (blockedBy: string[]) => ({
+  verdict: "BLOCKED",
+  blocked_by: [...blockedBy].sort(),
+  permits_publication: false,
+  permits_redistribution: false,
+  permits_external_contribution_acceptance: false
+});
+
+const livePublicationRows = () => {
   const text = readRepositoryFile(CLEARANCE_PATH);
   const ledger = parseRecordBlocks(text).get("Requirement ledger");
   assert.ok(ledger, `${CLEARANCE_PATH} has no Requirement ledger`);
   const rows = Array.isArray(ledger.requirements) ? (ledger.requirements as Json[]) : [];
-  const requirements = rows.map((row) => ({ ...row, status: "RESOLVED" }));
-  return upsertRecordBlock(text, "Requirement ledger", { ...ledger, requirements });
+  return { text, ledger, rows };
+};
+
+const publicationClearanceDocument = (requirements: Json[], derived: Json) => {
+  const { text, ledger } = livePublicationRows();
+  let next = upsertRecordBlock(text, "Requirement ledger", { ...ledger, requirements });
+  next = upsertRecordBlock(next, "Derived verdict", derived);
+  return next;
+};
+
+const resolvedPublicationRows = () =>
+  livePublicationRows().rows.map((row) => ({ ...row, status: "RESOLVED" }));
+
+const resolvedPublicationLedgerText = () =>
+  publicationClearanceDocument(resolvedPublicationRows(), CLEARED_PUBLICATION_VERDICT);
+
+const withProtocolWorldAndClearance = (
+  canonicalJsonBytes: CanonicalJsonBytes,
+  clearanceText: string
+) => {
+  const world = protocolPassWorld(canonicalJsonBytes);
+  return {
+    world,
+    readFile: (path: string) => (path === CLEARANCE_PATH ? clearanceText : world.readFile(path))
+  };
 };
 
 // Documents the executable reads. E12 may claim G2/G3 PASS_TO_CONTINUE; SSOT §7.3
@@ -787,6 +826,44 @@ describe("external-reproduction", () => {
     assert.notEqual(injectedPass.verdict, "G4_PASS", "the library injection path emitted G4_PASS");
   });
 
+  test("cli-reproduction-with-a-duplicate-member-is-refused", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The CLI file and the tree-resident record are the same slot, so they must share the
+    // ambiguity refusal. Without it, a signed body whose visible text says self-attested and
+    // whose parsed form says independent-reproduction reported independent: true -- the signature
+    // covering the parsed body, not the bytes a reader sees.
+    const reproduction = makeIndependentReproduction(canonicalize);
+    const serialised = JSON.stringify(reproduction);
+    const ambiguous = serialised.replace(
+      '"kind":"independent-reproduction"',
+      '"kind":"self-attested","kind":"independent-reproduction"'
+    );
+    assert.notEqual(ambiguous, serialised, "the reproduction body did not carry the expected kind member");
+
+    const fromCli = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      reproductionPath: CLI_REPRODUCTION_PATH,
+      readFile: withAllowlistedPrincipal(reproduction, INDEPENDENT.id, {
+        [CLI_REPRODUCTION_PATH]: ambiguous
+      })
+    });
+    assert.equal(
+      fromCli.reproduction?.independent,
+      false,
+      "the CLI path accepted a reproduction whose bytes declare kind more than once"
+    );
+    assert.ok(
+      fromCli.errors.some((entry) => entry.includes("more than once")),
+      `an ambiguous CLI reproduction was normalised instead of refused: ${fromCli.errors.join(" | ")}`
+    );
+  });
+
   test("cli-kind", async () => {
     const { canonicalJsonBytes, runG4Gate } = await loadGate();
     assertExported(runG4Gate, PINNED);
@@ -955,6 +1032,485 @@ describe("external-reproduction", () => {
       stale.reproduction?.independent,
       false,
       "a signed allowlisted manifest at a stale head was marked independent"
+    );
+  });
+
+  test("seventh-unresolved-publication-requirement-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The sixth floor ids stay RESOLVED. The independent variable is a seventh
+    // ledger row the frozen id list cannot name because it was not compiled in.
+    const seventhId = "export_control_review";
+    const seventh = {
+      id: seventhId,
+      title: "Export control review",
+      status: "UNRESOLVED",
+      artifact: CLEARANCE_PATH,
+      evidence: "Formal publication and legal review",
+      reason: "A requirement added to the ledger after G4_PUBLICATION_REQUIREMENT_IDS was frozen."
+    };
+    const clearance = publicationClearanceDocument(
+      [...resolvedPublicationRows(), seventh],
+      blockedPublicationVerdict([seventhId])
+    );
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a seventh unresolved ledger row minted a publication pass");
+    assert.ok(
+      has(gated, `UNRESOLVED_GATE ${seventhId}`),
+      `the ledger's seventh unresolved id ${seventhId} was not named; the gate is still walking the frozen six-id list`
+    );
+    assert.equal(
+      has(gated, "UNRESOLVED_GATE contributor_terms"),
+      false,
+      "resolved floor rows were named, so this case is not isolating the seventh row"
+    );
+  });
+
+  test("publication-floor-id-missing-from-ledger-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Remaining rows are RESOLVED and Derived is CLEARED. Deleting a floor id
+    // must still gate — a quiet deletion must not open publication.
+    const floorId = "license";
+    const clearance = publicationClearanceDocument(
+      resolvedPublicationRows().filter((row) => row.id !== floorId),
+      CLEARED_PUBLICATION_VERDICT
+    );
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "deleting a floor publication id from the ledger minted a publication pass");
+    assert.ok(
+      has(gated, `UNRESOLVED_GATE ${floorId}`),
+      `a ledger that silently dropped ${floorId} was not refused as UNRESOLVED_GATE ${floorId}`
+    );
+  });
+
+  test("publication-derived-verdict-disagrees-with-ledger-rows-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Every row is RESOLVED. The document still records BLOCKED. Publication
+    // clearance.md says the verdict is derived from the ledger and the two
+    // must agree; a CLEARED/BLOCKED disagreement is not a publication pass.
+    const clearance = publicationClearanceDocument(
+      resolvedPublicationRows(),
+      blockedPublicationVerdict(["contributor_terms"])
+    );
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "a BLOCKED derived verdict was ignored because every ledger row was RESOLVED"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "the gate did not read Derived verdict, or treated disagreement as a pass"
+    );
+    assert.equal(
+      has(gated, "UNRESOLVED_GATE contributor_terms"),
+      false,
+      "resolved rows were named, so this case is not isolating the derived-verdict disagreement"
+    );
+  });
+
+  test("publication-derived-cleared-token-with-false-permits-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Verdict token matches the rows. permits_publication does not. The
+    // clearance record derives the three permits flags from CLEARED; a
+    // CLEARED token that withholds publication is still disagreement.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_publication: false
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "CLEARED with permits_publication false minted a publication pass");
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a CLEARED token was treated as agreement even though permits_publication was false"
+    );
+  });
+
+  test("publication-clearance-with-an-escape-spelled-duplicate-member-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Comparing source spelling rather than decoded keys let this through: the two members are
+    // different bytes and the same JSON key, and JSON.parse keeps the second.
+    const clearance = [
+      "## Requirement ledger",
+      "",
+      "```json",
+      JSON.stringify({ requirements: resolvedPublicationRows() }, null, 2),
+      "```",
+      "",
+      "## Derived verdict",
+      "",
+      "```json",
+      "{",
+      '  "verdict": "CLEARED",',
+      '  "blocked_by": [],',
+      '  "permits_publication": false,',
+      '  "\\u0070ermits_publication": true,',
+      '  "permits_redistribution": true,',
+      '  "permits_external_contribution_acceptance": true',
+      "}",
+      "```",
+      ""
+    ].join("\n");
+
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "an escape-spelled duplicate member minted a publication pass");
+    assert.ok(
+      gated.errors.some((entry) => entry.includes("more than once")),
+      `an escape-spelled duplicate was treated as a distinct member: ${gated.errors.join(" | ")}`
+    );
+  });
+
+  test("publication-clearance-duplicate-detection-does-not-misfire-on-valid-records", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The refusal above is only safe if the detector does not fire on shapes that are legal:
+    // the same key in sibling array elements, the same key in different object scopes, and a
+    // brace or quote sequence inside a string value. A detector that refused these would gate
+    // every honest record, which is worse than the defect it prevents.
+    //
+    // What this case does NOT cover: the detector's string-skip branch. Removing that branch
+    // changes no result here or on any input I could construct -- valid JSON always escapes
+    // quotes inside strings, so the branch is never the reason a member is or is not seen. It is
+    // left in place as defence for text that reaches the detector before JSON.parse has vouched
+    // for it, and it is recorded as unproven rather than presented as guarded.
+    const derived = JSON.stringify({
+      ...CLEARED_PUBLICATION_VERDICT,
+      note: 'a string containing {"verdict": "BLOCKED"} and a quote \\" inside it',
+      scopes: [{ id: "a" }, { id: "b" }],
+      nested: { verdict: "CLEARED" }
+    }, null, 2);
+    const clearance = [
+      "## Requirement ledger",
+      "",
+      "```json",
+      JSON.stringify({ requirements: resolvedPublicationRows() }, null, 2),
+      "```",
+      "",
+      "## Derived verdict",
+      "",
+      "```json",
+      derived,
+      "```",
+      ""
+    ].join("\n");
+
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.errors.some((entry) => entry.includes("more than once")),
+      false,
+      `the duplicate detector misfired on a legal record: ${gated.errors.join(" | ")}`
+    );
+  });
+
+  test("publication-clearance-with-a-duplicate-json-member-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Written as raw text on purpose. JSON.parse keeps the last duplicate member, so an object
+    // fixture cannot express this: by the time the object exists the first value is gone. The
+    // visible document says permits_publication false and blocked_by nonempty; the parsed object
+    // says the opposite, and every comparison downstream would run on the parsed object.
+    const clearance = [
+      "## Requirement ledger",
+      "",
+      "```json",
+      JSON.stringify({ requirements: resolvedPublicationRows() }, null, 2),
+      "```",
+      "",
+      "## Derived verdict",
+      "",
+      "```json",
+      "{",
+      '  "verdict": "CLEARED",',
+      '  "blocked_by": ["contributor_terms"],',
+      '  "blocked_by": [],',
+      '  "permits_publication": false,',
+      '  "permits_publication": true,',
+      '  "permits_redistribution": true,',
+      '  "permits_external_contribution_acceptance": true',
+      "}",
+      "```",
+      ""
+    ].join("\n");
+
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a clearance record with duplicate members minted a publication pass");
+    assert.ok(
+      gated.errors.some((entry) => entry.includes("more than once")),
+      `an ambiguous clearance record was normalised instead of refused: ${gated.errors.join(" | ")}`
+    );
+  });
+
+  test("publication-derived-verdict-token-alone-disagreeing-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The other verdict cases move the token together with blocked_by and the permit flags, so
+    // deleting the verdict comparison alone kills none of them. Here the token is the only
+    // variable: BLOCKED beside an empty blocked_by and all permits true, which the rows derive as
+    // CLEARED.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      verdict: "BLOCKED"
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a disagreeing verdict token alone minted a publication pass");
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "the verdict token was not compared when every other field agreed"
+    );
+  });
+
+  test("publication-derived-blocked-by-with-an-empty-string-entry-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The previous comparison joined blocked_by with NUL, so [""] and [] both serialised to ""
+    // and a malformed nonempty list read as agreement with an empty derived one. Without this
+    // case the fix has no oracle: restoring the join leaves every other case green.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      blocked_by: [""]
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "a blocked_by entry that is an empty string minted a publication pass");
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "an empty-string blocked_by entry was treated as agreement with an empty derived list"
+    );
+  });
+
+  test("publication-derived-cleared-token-with-an-unenumerated-false-permit-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The G4 record requires agreement on every permits_* flag. Comparing a list of names
+    // compiled when the code was written let a fourth flag through: all three known permits are
+    // true beside a CLEARED token, and permits_npm_publication is false. Nothing named it.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_npm_publication: false
+    } as unknown as typeof CLEARED_PUBLICATION_VERDICT);
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "CLEARED with an unenumerated false permit minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a permits_* flag the code does not name was not compared"
+    );
+  });
+
+  test("publication-derived-block-omitting-a-permit-the-rows-derive-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // The comparison unions the permits_* keys of both records. Every other case here puts the
+    // offending flag on the recorded side, so the derived half of that union was never exercised:
+    // enumerating only Object.keys(recorded) leaves all of them green. Here the document's Derived
+    // verdict block simply omits permits_redistribution while the rows are all RESOLVED, so the
+    // key exists only on the side the code computes. Silence in the record is not agreement.
+    const { permits_redistribution, ...withoutRedistribution } = CLEARED_PUBLICATION_VERDICT;
+    void permits_redistribution;
+    const clearance = publicationClearanceDocument(
+      resolvedPublicationRows(),
+      withoutRedistribution as unknown as typeof CLEARED_PUBLICATION_VERDICT
+    );
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "a Derived verdict block missing a permit the rows derive minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a permits_* flag present only on the derived side was not compared"
+    );
+  });
+
+  test("publication-derived-cleared-token-with-false-permits-redistribution-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Verdict token and permits_publication match the rows. The clearance
+    // record derives the three permits flags as one conjunction; flipping
+    // only permits_redistribution is still disagreement.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_redistribution: false
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "CLEARED with permits_redistribution false minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a CLEARED token was treated as agreement even though permits_redistribution was false"
+    );
+  });
+
+  test("publication-derived-cleared-token-with-false-permits-external-contribution-acceptance-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    // Verdict token and the other two permits flags match the rows. The
+    // clearance record derives all three as one conjunction; flipping only
+    // permits_external_contribution_acceptance is still disagreement.
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      permits_external_contribution_acceptance: false
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(
+      gated.ok,
+      false,
+      "CLEARED with permits_external_contribution_acceptance false minted a publication pass"
+    );
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a CLEARED token was treated as agreement even though permits_external_contribution_acceptance was false"
+    );
+  });
+
+  test("publication-derived-cleared-token-with-blocked-by-gates", async () => {
+    const { canonicalJsonBytes, runG4Gate } = await loadGate();
+    assertExported(runG4Gate, PINNED);
+    assertExported(canonicalJsonBytes, PINNED);
+    const run = runG4Gate as RunG4Gate;
+    const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
+
+    const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
+      ...CLEARED_PUBLICATION_VERDICT,
+      blocked_by: ["contributor_terms"]
+    });
+    const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
+    const gated = run({
+      localEnvironment: VERIFIER,
+      headSha: HEAD,
+      readFile
+    });
+    assert.equal(gated.ok, false, "CLEARED with a nonempty blocked_by minted a publication pass");
+    assert.ok(
+      has(gated, "UNRESOLVED_GATE publication derived verdict disagrees with ledger rows"),
+      "a CLEARED token was treated as agreement even though blocked_by was nonempty"
     );
   });
 });
