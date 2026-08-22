@@ -32,7 +32,7 @@ Prove Codex Claude semantic parity and declared differences. Deliver only the bo
 ## RED contract
 
 - Test file: `conformance/adapters/parity/parity.test.ts`
-- Focused command: `npm run verify:adapter-parity`
+- Focused command: `node --test --experimental-strip-types conformance/adapters/parity/parity.test.ts`
 - Expected pre-GREEN failure: equivalent native inputs are not proven to yield equivalent normalized semantics.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -53,7 +53,7 @@ Prove Codex Claude semantic parity and declared differences. Deliver only the bo
 
 ## Verification
 
-1. Focused: `npm run verify:adapter-parity`; every named case above passes.
+1. Focused: `node --test --experimental-strip-types conformance/adapters/parity/parity.test.ts`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario/human surface; otherwise run only the controlled protocol named by the PRD and preserve its exact manifest.
