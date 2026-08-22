@@ -5161,7 +5161,7 @@
     },
     {
       "id": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites against the owner-approved artifact correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -5288,6 +5288,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-22T00:00:00Z",
           "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -5297,6 +5303,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-22T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "unrunnable-command-correction-candidate-2026-08-22",
+        "reason": "The 2026-08-22 unrunnable-command correction changes this batch's pinned digest; superseded by e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-unrunnable-command-correction-2026-08-22-renewal."
       }
     },
     {
@@ -7216,6 +7227,146 @@
             "docs/tickets/E6/E6-002-build-fam-5-stale-evidence-and-exact-revision-scenario.md",
             "docs/tickets/E6/E6-003-build-fam-5-scope-regression-and-wrong-target-scenario.md",
             "docs/tickets/E6/E6-004-compose-fam-5-claim-evidence-conformance-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "unrunnable-command-correction-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-unrunnable-command-correction-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal against the 2026-08-22 correction of an unrunnable focused command in docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "934391042d7f21013f61a92b2db83a15c7c25549"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md",
+          "sha256": "c18314010e3d9c78fabb25a0d4265e186c80e53f7d777026447fafc705ab94ff",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+          "sha256": "47e41256bb3559ccbeca33a855fa3343bd9c72a82cf7c210957e0040822cfc55",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+          "sha256": "e6734cddccc487e31df1989c87b1a0085e8147f39ababa7047bbf2c3d7c53421",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+          "sha256": "aaf32b7998da7d9982f388b2bd6a488e4b385bd88e7e7dc2e8f418fe54aea0a9",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+          "sha256": "d09e89a848e86a3a15eaba1feaae1253b53bc2cf58b21a16392b6eab0eb05bfc",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+          "sha256": "9544a0b564d0830ab821a2a56e3abbcfd7bb656bea9220039b3bdabb6971df6f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+          "sha256": "14be72e2e68c60e15c99abaa7e9f350f5fbafab5d3ededf1dcd3ee2bedf25293",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md",
+          "sha256": "b01a45ade53d0ea4420f725795b40eeee070f6ddaed7f36eb35e673ef317085f",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md",
+          "sha256": "c18314010e3d9c78fabb25a0d4265e186c80e53f7d777026447fafc705ab94ff",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+          "sha256": "47e41256bb3559ccbeca33a855fa3343bd9c72a82cf7c210957e0040822cfc55",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+          "sha256": "e6734cddccc487e31df1989c87b1a0085e8147f39ababa7047bbf2c3d7c53421",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+          "sha256": "aaf32b7998da7d9982f388b2bd6a488e4b385bd88e7e7dc2e8f418fe54aea0a9",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md",
+          "sha256": "d09e89a848e86a3a15eaba1feaae1253b53bc2cf58b21a16392b6eab0eb05bfc",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0005-metric-opportunity-and-issuance.md",
+            "docs/adr/ADR-0008-runner-isolation-privacy-and-integrity.md",
+            "docs/adr/ADR-0011-validation-gates-and-pivot-rules.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E7-fam6-recovery-safety-efficiency-and-g0.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E7/E7-001-build-fam-6-failure-diagnosis-and-minimum-recovery-scenario.md",
+            "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
+            "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
+            "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md"
           ]
         }
       ],
