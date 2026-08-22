@@ -1708,9 +1708,10 @@ const gitBlobAt = (root, sha, path) => {
   }
 };
 
-// `live` is passed in rather than read here so the rule can be exercised directly. The trust
-// boundary is unchanged and stays at the single call site: only a github-authenticated transport
-// ever populates LIVE_ACTIVATION_FACTS, so a fixture still cannot mint a freeze.
+// `live` is passed in rather than read here so the rule can be exercised directly. That makes the
+// helper itself mintable by any caller; the boundary being preserved is the resolver's, not the
+// helper's -- resolveExecutionState reads LIVE_ACTIVATION_FACTS, which only a github-authenticated
+// transport ever populates, and that is the sole production callsite.
 export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => {
   try {
     if (!plainObject(live)) return null;
@@ -1731,15 +1732,12 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
     if (typeof facts.currentHead !== "string" || !sameSha(freeze.exact_head_sha, facts.currentHead)) {
       return null;
     }
-    const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
-    if (livePaths === null) return null;
-
     for (const artifact of artifacts) {
       if (!plainObject(artifact) || typeof artifact.path !== "string" || typeof artifact.sha256 !== "string") {
         return null;
       }
-      // Present at the live tip, not merely readable at some commit.
-      if (!livePaths.has(artifact.path)) return null;
+      // No separate tree-membership check: reading the blob at this exact SHA already proves the
+      // path is in that tree, and the SHA is pinned to the collected head above.
       const blob = gitBlobAt(root, freeze.exact_head_sha, artifact.path);
       if (blob == null) return null;
       if (createHash("sha256").update(blob).digest("hex") !== artifact.sha256) return null;
@@ -1964,10 +1962,11 @@ const resolveImplementationCompletion = (facts, ticketId) => {
   // ticket's deliverable at all: without it a receipt is verified on whatever unrelated file its
   // merge happened to carry (#347).
   //
-  // Only emptiness is checked here. Whether each delivered path is still present is already
-  // decided above -- an added path by the introduced-set check, a modified one by the changed-set
-  // check -- so repeating it would be a guard no input can reach. Removals are likewise not
-  // consulted: a deletion-only completion returns earlier, on its own confirmed effect.
+  // Presence must be re-checked here, not inherited from the checks above: the changed-set check
+  // runs only when the introduced set is empty, so a merge carrying one surviving added path never
+  // reaches it and an absent modified deliverable goes unexamined. Intersecting against the paths
+  // that survive at the tip closes that. Removals are not consulted: a deletion-only completion
+  // returns earlier, on its own confirmed effect.
   const ownedPaths = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
     ? facts.tickets[ticketId].owned_paths
     : null;
@@ -1976,13 +1975,15 @@ const resolveImplementationCompletion = (facts, ticketId) => {
       ...(Array.isArray(introduced) ? introduced : []),
       ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
     ];
-    if (ownedIntersection(touched, ownedPaths).length === 0) {
+    const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
+    const surviving = livePaths === null ? touched : touched.filter((path) => livePaths.has(path));
+    if (ownedIntersection(surviving, ownedPaths).length === 0) {
       return {
         verified: false,
         blockers: [
           blocker(
             "COMPLETION_EFFECT_UNKNOWN",
-            `${ticketId} completion merge touched none of the paths the ticket declares, so its deliverable is unconfirmed`
+            `${ticketId} completion merge left none of the paths the ticket declares present on the live target branch, so its deliverable is unconfirmed`
           )
         ]
       };

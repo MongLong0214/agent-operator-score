@@ -1914,6 +1914,37 @@ const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, pre
 
 const blockerReason = (state, code) => (state.blockers ?? []).find((entry) => entry.code === code)?.reason ?? "";
 
+// Found by blind review of #384. The changed-set presence check runs only when the introduced set
+// is empty, so one surviving added path that the ticket does not own is enough to skip it, and the
+// ownership intersection then matched a declared path that is no longer in the tree.
+test("completion-effect-unknown-when-a-surviving-added-decoy-hides-an-absent-owned-deliverable", async () => {
+  const DECOY = "docs/effect/decoy.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [DECOY],
+    changedPaths: [DECOY, OWNED_ANCHOR],
+    presentPaths: [DECOY],
+    anchor: false
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== OWNED_ANCHOR);
+  assert.ok(facts.liveTreePaths.includes(DECOY), "the decoy must survive or the case proves nothing");
+  assert.equal(
+    facts.liveTreePaths.includes(OWNED_ANCHOR),
+    false,
+    "the owned deliverable must be absent for this case to mean anything"
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a completion whose owned deliverable is absent must never verify, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
+    `expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
 test("completion-effect-reverted-when-introduced-path-is-absent-from-the-live-tree", async () => {
   // Ancestry says the completion merge is still there; the tree says its deliverable is not.
   const facts = makeCompletionEffectFacts({ addedPaths: REVERTED_DELIVERABLE, presentPaths: [] });
@@ -7231,13 +7262,17 @@ test("artifact-freeze-refuses-a-head-the-collection-did-not-observe", async () =
   );
 });
 
-test("artifact-freeze-refuses-an-artifact-absent-from-the-live-tree", async () => {
+test("artifact-freeze-refuses-an-artifact-missing-from-the-frozen-tree", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const { live, facts } = freezeInputs();
-  facts.liveTreePaths = facts.liveTreePaths.filter((p) => p !== live.manifest.artifacts[0].path);
+  // Absent at the frozen SHA is the reachable state. Removing the path from liveTreePaths while
+  // leaving it readable at the same SHA would assert a disagreement no honest collection produces.
+  live.manifest.artifacts[0].path = "docs/adr/ADR-0000-not-in-this-tree.md";
+  reseal(live);
+  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
   assert.equal(
     evaluateLiveArtifactFreeze(live, facts, root),
     null,
-    "the frozen path must be present at the live tip, not merely readable at a commit"
+    "an artifact that is not a blob at the frozen head cannot be frozen"
   );
 });
