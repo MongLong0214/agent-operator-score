@@ -1119,7 +1119,11 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   const batch = registry.batches.find(({ id }) => id === "d0-002-prerequisites");
   const supersededRenewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-adr-0003-renewal");
   const priorRenewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-adr-0003-contract-correction-renewal");
-  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal");
+  const redCensusRenewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal");
+  // The 2026-08-22 engine-matrix correction adds a fifth link to this chain: D0-002 now states the
+  // 22.18 floor the runtime actually verifies, so the red-census renewal's pinned digest is stale
+  // and a fresh accepted record binds the corrected one.
+  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal");
   const result = validateGateAdministration();
   const adr = readFileSync(resolve(root, "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"), "utf8");
   const prd = readFileSync(resolve(root, "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"), "utf8");
@@ -1169,13 +1173,20 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "a64e2f24f4c4e2b9c00d415d652ca6254cc4a07198026fc950d2953171892c98"
   );
 
-  assert.ok(renewal, "D0-002 requires a fresh digest-bound renewal after the RED census correction");
+  assert.ok(redCensusRenewal, "the RED census renewal must remain as an invalidated historical batch");
+  assert.equal(redCensusRenewal.status, "INVALIDATED");
+  assert.deepEqual(redCensusRenewal.events.map(({ from, to }) => ({ from, to })), [
+    { from: "PENDING", to: "ACCEPTED" },
+    { from: "ACCEPTED", to: "INVALIDATED" }
+  ]);
+  assert.match(redCensusRenewal.invalidation.reason, /Owner-approved artifact correction of 2026-08-22/);
+  assert.equal(redCensusRenewal.target.reviewed_head, "2713d5e8646ff69c979aa1114d6f6ae78d804c7f");
+
+  assert.ok(renewal, "D0-002 requires a fresh digest-bound renewal after the engine-matrix correction");
   assert.equal(renewal.status, "ACCEPTED");
-  assert.deepEqual(renewal.target, {
-    repository: "github.com/MongLong0214/agent-operator-score",
-    branch: "dev",
-    reviewed_head: "2713d5e8646ff69c979aa1114d6f6ae78d804c7f"
-  });
+  assert.equal(renewal.target.repository, "github.com/MongLong0214/agent-operator-score");
+  assert.equal(renewal.target.branch, "dev");
+  assert.match(renewal.target.reviewed_head, /^[a-f0-9]{40}$/);
   assert.doesNotThrow(() => execFileSync("git", ["merge-base", "--is-ancestor", renewal.target.reviewed_head, "HEAD"], {
     cwd: root,
     stdio: "ignore"
@@ -1202,9 +1213,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 50);
+  assert.equal(result.batches, 51);
   assert.equal(result.counts.accepted, 29);
-  assert.equal(result.counts.invalidated, 21);
+  assert.equal(result.counts.invalidated, 22);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
