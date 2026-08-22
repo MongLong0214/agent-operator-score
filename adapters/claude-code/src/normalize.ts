@@ -70,7 +70,6 @@ const unavailable = (
   input: Record<string, unknown>,
   eventType: string | null
 ): Record<string, unknown> => ({
-  status: "UNAVAILABLE",
   event_id: null,
   run_id: input.run_id ?? null,
   task_id: input.task_id ?? null,
@@ -83,7 +82,8 @@ const unavailable = (
   identity: input.identity ?? null,
   evidence_digest: null,
   redaction_state: "none",
-  payload: null
+  payload: null,
+  target_path: null
 });
 
 const eventId = (runId: string, eventType: string, native: Record<string, unknown>): string => {
@@ -119,7 +119,6 @@ const mapped = (
   const provenance = filledString(extra.provenance) ?? filledString(native.provenance);
   const evidence = filledString(extra.evidence_digest) ?? filledString(native.digest);
   return {
-    status: "MAPPED",
     event_id: eventId(runId, eventType, native),
     run_id: runId,
     task_id: filledString(input.task_id),
@@ -135,6 +134,7 @@ const mapped = (
     evidence_digest: evidence && DIGEST.test(evidence) ? evidence : null,
     redaction_state: redacted.redaction_state,
     payload: redacted.payload,
+    target_path: extra.target_path ?? null,
     ...("provenance" in extra || provenance
       ? { provenance: extra.provenance ?? provenance }
       : {}),
@@ -179,7 +179,12 @@ const classify = (
       if (toolUse) {
         return {
           eventType: "tool.call",
-          excerpt: { name: toolUse.name, id: toolUse.id, input: toolUse.input }
+          excerpt: { name: toolUse.name, id: toolUse.id, input: toolUse.input },
+          extra: {
+            target_path: toolUse.name === "Write" && isRecord(toolUse.input)
+              ? toolUse.input.path ?? null
+              : null
+          }
         };
       }
     }
@@ -246,7 +251,7 @@ const classify = (
       return {
         eventType: type,
         excerpt: { path: native.path },
-        extra: { provenance: "wrapper-workspace-correlation" }
+        extra: { provenance: "wrapper-workspace-correlation", target_path: native.path ?? null }
       };
     }
     if (type === "actor.attribution_changed") {
@@ -275,7 +280,7 @@ const classify = (
       return {
         eventType: type,
         excerpt: { path: native.path },
-        extra: { provenance: "runner-workspace-correlation" }
+        extra: { provenance: "runner-workspace-correlation", target_path: native.path ?? null }
       };
     }
     return { eventType: type };

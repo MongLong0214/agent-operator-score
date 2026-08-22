@@ -31,6 +31,7 @@ All bindings are unique positive GitHub issue numbers generated from the verifie
 | E1-001 | [#70](https://github.com/MongLong0214/agent-operator-score/issues/70) | S1 · G0 Scorer Truth |
 | E1-002 | [#71](https://github.com/MongLong0214/agent-operator-score/issues/71) | S1 · G0 Scorer Truth |
 | E1-003 | [#72](https://github.com/MongLong0214/agent-operator-score/issues/72) | S1 · G0 Scorer Truth |
+| E1-004 | [#330](https://github.com/MongLong0214/agent-operator-score/issues/330) | S1 · G0 Scorer Truth |
 | E2-001 | [#73](https://github.com/MongLong0214/agent-operator-score/issues/73) | S1 · G0 Scorer Truth |
 | E2-002 | [#74](https://github.com/MongLong0214/agent-operator-score/issues/74) | S1 · G0 Scorer Truth |
 | E2-003 | [#75](https://github.com/MongLong0214/agent-operator-score/issues/75) | S1 · G0 Scorer Truth |

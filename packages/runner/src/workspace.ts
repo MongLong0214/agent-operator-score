@@ -7,12 +7,11 @@
  * inspectTree(recorded.root).digest to recorded.baseDigest; a caller pin
  * is extra and cannot skip that check. Workspace mutations are classified
  * from wrapper events plus the live tree. correlation_id must be filled.
- * Correlation is exact equality of the classified relative path against
- * a named field on an object payload (`payload.input.path` or
- * `payload.path`). EVENT_DEAD_FIELD `path` is not correlation.
+ * Correlation is exact equality of the classified relative path against the
+ * first-class `target_path` field. EVENT_DEAD_FIELD `path` is not correlation.
  *
  * SSOT 6.7 splits the outcome on whether an observation set existed:
- *   no traces, or a payload with no readable workspace-relative target
+ *   no traces, or a target_path with no readable workspace-relative target
  *     -> actor.attribution_unknown, score withheld (:721)
  *   readable traces, none naming this path
  *     -> workspace.external_mutation (:720)
@@ -230,15 +229,6 @@ const recordedOf = (root: unknown): Recorded | null => {
   return registry.get(real) ?? null;
 };
 
-// An absolute payload target is readable: the run root is known, so resolve it. Inside the
-// workspace it correlates like any relative target; outside it names a different file, which is
-// an observation rather than a failure to read.
-const workspaceRelative = (root: string, absolutePath: string): string | null => {
-  const rel = relative(root, absolutePath).replaceAll("\\", "/");
-  if (rel === "" || rel.startsWith("../") || rel === "..") return null;
-  return rel;
-};
-
 const relativePathInside = (root: string, pathValue: unknown): string | null => {
   if (!isFilledString(pathValue) || isAbsolute(pathValue)) return null;
   const posix = pathValue.replaceAll("\\", "/");
@@ -252,13 +242,13 @@ const relativePathInside = (root: string, pathValue: unknown): string | null => 
 const fileAt = (files: FileEntry[], path: string): FileEntry | undefined =>
   files.find((file) => file.path === path);
 
-const namedPayloadPath = (payload: unknown): string | null => {
-  if (!isPlainRecord(payload)) return null;
-  if (isPlainRecord(payload.input) && isFilledString(payload.input.path)) {
-    return payload.input.path;
+const workspaceRelativeTargetPath = (value: unknown): string | null => {
+  if (!isFilledString(value) || value.includes("\\") || isAbsolute(value) || /^[A-Za-z]:/.test(value)) {
+    return null;
   }
-  if (isFilledString(payload.path)) return payload.path;
-  return null;
+  const segments = value.split("/");
+  if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) return null;
+  return value;
 };
 
 export const createRunWorkspace = (input: unknown): WorkspaceOk | Fail => {
@@ -397,24 +387,16 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
   if (!Array.isArray(input.traces)) return fail();
 
   const matching: Record<string, unknown>[] = [];
-  let unreadablePayload = false;
+  let unreadableTargetPath = false;
   for (const trace of input.traces) {
     if (!isPlainRecord(trace)) return fail();
     if (!isFilledString(trace.correlation_id)) continue;
-    const named = namedPayloadPath(trace.payload);
-    // A payload this classifier cannot read a workspace-relative target out of leaves attribution
-    // undetermined rather than uncorrelated: a truncated excerpt may have named this file before
-    // the slice, and that is not an observation that the path was untouched.
-    //
-    // An absolute path is readable, though. The run root is known, so resolve it: inside the
-    // workspace it correlates like any relative target, and outside it names a different file.
-    if (named === null) {
-      unreadablePayload = true;
-      continue;
-    }
-    const target = isAbsolute(named) ? workspaceRelative(recorded.root, named) : named;
+    const target = workspaceRelativeTargetPath(trace.target_path);
+    // A trace without a readable first-class workspace-relative target leaves attribution
+    // undetermined rather than uncorrelated. A bounded payload is deliberately not parsed as a
+    // fallback because doing so would make attribution depend on redaction length.
     if (target === null) {
-      unreadablePayload = true;
+      unreadableTargetPath = true;
       continue;
     }
     if (target !== path) continue;
@@ -430,16 +412,15 @@ export const classifyWorkspaceMutation = (input: unknown): ClassificationOk | Fa
   // fall out, and only the middle one is :720:
   //
   //   no traces at all              missing evidence, not an observation set     -> :721
-  //   a trace whose payload cannot  the set is unreadable at this point, so
-  //   be read for a path            attribution cannot be determined             -> :721
+  //   a trace whose target_path is  the set is unreadable at this point, so
+  //   not readable                  attribution cannot be determined             -> :721
   //   readable traces, none naming  the set was observed and this path is not
   //   this path                     in it                                        -> :720
   //
-  // The second case is the one #298 measures: an ordinary source write is serialized and sliced
-  // past the 2048-character payload bound, so the path stops being recoverable. Calling that
-  // external would assert an actor from a parsing failure.
+  // target_path is outside the bounded excerpt; an absent or malformed target is still not an
+  // observation that this mutation was external.
   if (input.traces.length === 0) return unknownClassification(path);
-  if (unreadablePayload) return unknownClassification(path);
+  if (unreadableTargetPath) return unknownClassification(path);
   if (matching.length === 0) return externalMutationClassification(path);
 
   const actors = new Set<string>();

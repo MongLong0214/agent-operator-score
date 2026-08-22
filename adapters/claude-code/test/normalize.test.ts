@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // The ticket's pinned pre-GREEN reason, verbatim from E9-002 `## RED contract`.
 const ABSENT = "native/hook/wrapper inputs lack vendor-neutral bounded mapping.";
@@ -28,7 +31,8 @@ const COMMON_FIELDS = [
   "identity",
   "evidence_digest",
   "redaction_state",
-  "payload"
+  "payload",
+  "target_path"
 ] as const;
 
 const ACTORS = [
@@ -91,6 +95,20 @@ const loadRedact = async () => {
   }
 };
 
+const loadTrace = async () => {
+  try {
+    return await import("../../../packages/schema/src/trace.ts");
+  } catch {
+    return {} as Record<string, unknown>;
+  }
+};
+
+const here = dirname(fileURLToPath(import.meta.url));
+const schemaPath = resolve(here, "../../../specs/aos-trace.schema.json");
+const registryPath = resolve(here, "../../../specs/events.v0.json");
+const frozenSchema = () => JSON.parse(readFileSync(schemaPath, "utf8"));
+const frozenRegistry = () => JSON.parse(readFileSync(registryPath, "utf8"));
+
 const requireNormalize = async () => {
   const mod = await loadNormalize();
   assert.equal(typeof mod.normalizeClaudeEvent, "function", ABSENT);
@@ -137,7 +155,7 @@ const assertMapped = (
   eventType: string
 ): Record<string, unknown> => {
   const event = asRecord(value, `${eventType} must be an object`);
-  assert.equal(event.status, "MAPPED", `${eventType} must map from a permitted source`);
+  assert.equal(Object.hasOwn(event, "status"), false, `${eventType} must not emit a dead status field`);
   assert.equal(event.event_type, eventType, `${eventType} event_type`);
   assert.equal(event.event_group, EVENT_GROUP_OF[eventType], `${eventType} event_group`);
   for (const field of COMMON_FIELDS) {
@@ -164,6 +182,11 @@ const assertMapped = (
     payloadChars(event.payload) <= BOUNDED_PAYLOAD_MAX_CHARS,
     `${eventType} payload exceeds the frozen 2048-character bound`
   );
+  assert.equal(
+    event.payload === null || typeof event.payload === "string",
+    true,
+    `${eventType} payload must be a string or null`
+  );
   assert.equal(event.event_type === "tool_use", false, "vendor tool_use must not leak as event_type");
   assert.equal(event.event_type === "SDKMessage", false, "vendor SDKMessage must not leak as event_type");
   assert.equal(event.event_type === "stream-json", false, "vendor stream-json must not leak as event_type");
@@ -172,8 +195,8 @@ const assertMapped = (
 
 const assertUnavailable = (value: unknown, label: string): Record<string, unknown> => {
   const event = asRecord(value, `${label} must be an object`);
-  assert.equal(event.status, "UNAVAILABLE", `${label} must emit UNAVAILABLE rather than invent a mapping`);
-  assert.notEqual(event.status, "MAPPED", `${label} must not be silently synthesized`);
+  assert.equal(Object.hasOwn(event, "status"), false, `${label} must not emit a dead status field`);
+  assert.equal(event.event_id, null, `${label} must remain unavailable rather than invent a mapping`);
   return event;
 };
 
@@ -306,6 +329,44 @@ test("semantic-events", async () => {
   assert.equal(intervention.actor, "human/takeover");
 });
 
+test("normalized-trace-contract", async () => {
+  const normalizeClaudeEvent = await requireNormalize();
+  const { parseTraceEvent } = await loadTrace();
+  assert.equal(typeof parseTraceEvent, "function", ABSENT);
+
+  const normalized = assertMapped(
+    normalizeClaudeEvent(envelope("sdkQuery", {
+      type: "assistant",
+      message: {
+        role: "assistant",
+        content: [{
+          type: "tool_use",
+          id: "write-large",
+          name: "Write",
+          input: { path: "src/app.ts", contents: "x".repeat(100 * 1024) }
+        }]
+      }
+    })),
+    "tool.call"
+  );
+  assert.equal(normalized.target_path, "src/app.ts", "a write target must stay outside the bounded payload");
+  assert.equal(typeof normalized.payload, "string", "a normalized payload must be a bounded string");
+  assert.equal(
+    typeof normalized.payload === "string" && normalized.payload.length,
+    BOUNDED_PAYLOAD_MAX_CHARS,
+    "the payload excerpt must retain the frozen 2048-character bound"
+  );
+  assert.equal(Object.hasOwn(normalized, "status"), false, "a normalized trace event must not emit status");
+
+  const parsed = (parseTraceEvent as (event: unknown, schema: unknown, registry: unknown) => { ok: boolean; errors: string[] })(
+    normalized,
+    frozenSchema(),
+    frozenRegistry()
+  );
+  assert.equal(parsed.ok, true, "normalized Claude output must validate against the frozen trace contract");
+  assert.deepEqual(parsed.errors, [], "normalized Claude output must validate against the frozen trace contract");
+});
+
 test("delegation-gap", async () => {
   const normalizeClaudeEvent = await requireNormalize();
 
@@ -316,7 +377,6 @@ test("delegation-gap", async () => {
     })),
     "inferred subagent return"
   );
-  assert.notEqual(inferredReturn.status, "MAPPED");
 
   const inferredJoin = assertUnavailable(
     normalizeClaudeEvent(envelope("wrapper", {
@@ -325,7 +385,6 @@ test("delegation-gap", async () => {
     })),
     "inferred handoff join"
   );
-  assert.notEqual(inferredJoin.status, "MAPPED");
 
   const returnWithoutSpawn = assertUnavailable(
     normalizeClaudeEvent(envelope("wrapper", {
@@ -334,7 +393,6 @@ test("delegation-gap", async () => {
     }, { known_event_ids: [] })),
     "return without a spawn proof"
   );
-  assert.notEqual(returnWithoutSpawn.status, "MAPPED");
 
   const forbiddenJoin = assertUnavailable(
     normalizeClaudeEvent(envelope("internal-transcript", {
@@ -343,7 +401,6 @@ test("delegation-gap", async () => {
     })),
     "internal transcript join"
   );
-  assert.notEqual(forbiddenJoin.status, "MAPPED");
 
   const spawn = assertMapped(
     normalizeClaudeEvent(envelope("wrapper", {
@@ -393,12 +450,14 @@ test("secret-canary", async () => {
   assert.equal(Object.hasOwn(redacted, "payload"), true, "redactClaudePayload must return payload");
   assert.equal(redacted.redaction_state, "redacted");
   const redactedDump = serialize(redacted);
+  assert.equal(typeof redacted.payload, "string", "redacted payloads must be serialized before storage");
   assert.equal(redactedDump.includes(SECRET_CANARY), false, "raw secret canary must not be stored");
   assert.equal(redactedDump.includes(API_KEY), false, "raw API key must not be stored");
   assert.equal(redactedDump.includes(HIDDEN), false, "hidden reasoning must not be stored");
 
   const clean = asRecord(redactClaudePayload({ text: "safe excerpt" }), "clean redact");
   assert.equal(clean.redaction_state, "none");
+  assert.equal(typeof clean.payload, "string", "clean payloads must be serialized before storage");
   assert.equal(dumpedIncludes(clean.payload, "safe excerpt"), true);
   assert.equal(serialize(clean).includes(SECRET_CANARY), false);
 
@@ -434,6 +493,7 @@ test("oversized", async () => {
     "oversized redact"
   );
   assert.equal(oversized.redaction_state, "redacted");
+  assert.equal(typeof oversized.payload, "string", "oversized payloads must remain strings after truncation");
   assert.ok(
     payloadChars(oversized.payload) <= BOUNDED_PAYLOAD_MAX_CHARS,
     "redactClaudePayload must bound excerpts to 2048 characters"
@@ -486,7 +546,6 @@ test("missing-parent", async () => {
     }, { parent_id: "no-such-event", known_event_ids: [parent.event_id] })),
     "dangling parent_id"
   );
-  assert.notEqual(dangling.status, "MAPPED");
   assert.notEqual(dangling.parent_id, parent.event_id);
 
   const omittedKnown = assertUnavailable(
@@ -499,7 +558,6 @@ test("missing-parent", async () => {
     }, { parent_id: parent.event_id, known_event_ids: [] })),
     "parent_id with empty known_event_ids"
   );
-  assert.notEqual(omittedKnown.status, "MAPPED");
 });
 
 test("tool-error", async () => {
@@ -620,7 +678,7 @@ test("actor-attribution-events", async () => {
   assert.ok(String(unknown.provenance).length > 0);
 
   for (const eventType of ATTRIBUTION_EVENT_TYPES) {
-    const forbidden = assertUnavailable(
+    assertUnavailable(
       normalizeClaudeEvent(envelope("internal-transcript", {
         type: eventType,
         from_actor: "agent",
@@ -629,12 +687,6 @@ test("actor-attribution-events", async () => {
         provenance: "internal transcript"
       })),
       `forbidden source ${eventType}`
-    );
-    assert.notEqual(forbidden.status, "MAPPED");
-    assert.notEqual(
-      forbidden.status === "MAPPED" && forbidden.event_type === "actor.attribution_changed",
-      true,
-      "unsupported sources must never synthesize actor.attribution_changed"
     );
   }
 
@@ -646,5 +698,4 @@ test("actor-attribution-events", async () => {
     })),
     "attribution change without provenance proof"
   );
-  assert.notEqual(guessedChange.status, "MAPPED");
 });

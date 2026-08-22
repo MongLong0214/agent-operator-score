@@ -37,6 +37,12 @@ const COMMON_FIELDS = [
   "parent_id", "correlation_id", "identity", "evidence_digest", "redaction_state", "payload"
 ] as const;
 
+// Allowed but not required. Making it a COMMON_FIELD would require it on every event, which the
+// twenty frozen canonical vectors do not carry -- and those are digest-pinned, so requiring it
+// would have meant reissuing frozen evidence to admit a new field. An event without a target is
+// the case attribution already handles: unknown, score withheld.
+const OPTIONAL_FIELDS = ["target_path"] as const;
+
 const ATTRIBUTION_EVENT_TYPES = [
   "workspace.external_mutation",
   "human.manual_edit_declared",
@@ -45,7 +51,7 @@ const ATTRIBUTION_EVENT_TYPES = [
 ] as const;
 
 const ATTRIBUTION_ONLY_FIELDS = ["provenance", "confidence", "from_actor", "to_actor"] as const;
-const ALLOWED_EVENT_FIELDS = [...COMMON_FIELDS, ...ATTRIBUTION_ONLY_FIELDS];
+const ALLOWED_EVENT_FIELDS = [...COMMON_FIELDS, ...OPTIONAL_FIELDS, ...ATTRIBUTION_ONLY_FIELDS];
 const TRACE_FIELDS = ["schema_id", "schema_version", "run_id", "events"] as const;
 
 const FROZEN_EVENT_VOCABULARY: [string, string][] = [
@@ -96,7 +102,7 @@ const FROZEN_EVENT_VOCABULARY: [string, string][] = [
 const EVENT_GROUP_OF: Record<string, string> = Object.fromEntries(FROZEN_EVENT_VOCABULARY);
 const ACTORS = ["agent", "human/takeover", "external_mutation", "actor.attribution_unknown", "wrapper"];
 const REDACTION_STATES = ["none", "redacted"];
-const NULLABLE_FIELDS = ["task_id", "parent_id", "evidence_digest", "payload"];
+const NULLABLE_FIELDS = ["task_id", "parent_id", "evidence_digest", "payload", "target_path"];
 const IDENTITY_FIELDS = ["event_id", "run_id", "correlation_id", "identity"];
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -106,6 +112,14 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isFilledString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
+
+const isWorkspaceRelativePath = (value: unknown): value is string => {
+  if (!isFilledString(value) || value.includes("\\") || value.startsWith("/") || /^[A-Za-z]:/.test(value)) {
+    return false;
+  }
+  const segments = value.split("/");
+  return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+};
 
 const sameList = (left: unknown, right: readonly string[]): boolean =>
   Array.isArray(left) && left.length === right.length && right.every((entry, index) => left[index] === entry);
@@ -163,6 +177,9 @@ const validateRegistryDocument = (registry: unknown, errors: string[]): Record<s
   }
   if (registry.confidence_drop_threshold !== CONFIDENCE_DROP_THRESHOLD) {
     errors.push(`REGISTRY_CONFIDENCE_THRESHOLD_MISMATCH expected ${CONFIDENCE_DROP_THRESHOLD}`);
+  }
+  if (!sameList(registry.event_optional_fields, OPTIONAL_FIELDS)) {
+    errors.push(`REGISTRY_OPTIONAL_FIELDS_MISMATCH expected ${OPTIONAL_FIELDS.join(",")}`);
   }
   if (!sameList(registry.event_common_fields, COMMON_FIELDS)) {
     errors.push(`REGISTRY_COMMON_FIELDS_MISMATCH expected ${COMMON_FIELDS.join(",")}`);
@@ -288,6 +305,12 @@ const parseOneEvent = (
     if (field === "evidence_digest") {
       if (typeof event.evidence_digest !== "string" || !DIGEST.test(event.evidence_digest)) {
         errors.push("EVENT_DIGEST_INVALID evidence_digest must be a 64-character lowercase hex SHA-256 or null");
+      }
+      continue;
+    }
+    if (field === "target_path") {
+      if (!isWorkspaceRelativePath(event.target_path)) {
+        errors.push("EVENT_TARGET_PATH_INVALID target_path must be a workspace-relative path or null");
       }
       continue;
     }
