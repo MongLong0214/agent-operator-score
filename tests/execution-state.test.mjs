@@ -2801,6 +2801,114 @@ test("modern-collector-records-both-effect-directions-for-a-completion-receipt",
   }
 });
 
+test("collector-refuses-a-commit-file-list-that-may-be-truncated", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts, filesToEffect } = await importResolver();
+  // GitHub truncates a commit's file list at 300 and this collector does not page it. A deletion
+  // past the cut would read as "not deleted", so a completion that deletes more than 300 files and
+  // later has one restored would verify. Blind review reproduced exactly that.
+  const files = Array.from({ length: 300 }, (_, index) => ({
+    filename: `docs/effect/bulk-${index}.md`,
+    status: "removed"
+  }));
+  assert.equal(filesToEffect(files), null, "a full page is possibly truncated and cannot be measured");
+  assert.notEqual(
+    filesToEffect(files.slice(0, 299)),
+    null,
+    "one under the limit is a complete list and must still be usable"
+  );
+
+  const sha = "3003003003003003003003003003003003003003";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 930,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-001\nTicket-Completion: D0-001\n\nD0-001 completion merge.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha, 930930),
+      added_paths: []
+    }
+  ]);
+  responses[`${COLLECTOR_REPO_PATH}/commits/${sha}`] = { sha, files };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  const entry = (collected.facts?.implementationMerges ?? []).find((row) => row.number === 930);
+  if (entry) {
+    assert.equal(entry.changed_paths, null, "a truncated list must not be recorded as a measured set");
+    assert.equal(entry.removed_paths, null, "a truncated list must not be recorded as no removals");
+  }
+});
+
+test("collector-refuses-a-rename-whose-old-path-is-missing", async () => {
+  const { filesToEffect } = await importResolver();
+  // Silently skipping such an entry reports "this merge removed nothing" for a merge that removed
+  // something. Unavailable and empty are different answers and only one of them is honest here.
+  assert.equal(
+    filesToEffect([{ filename: "docs/effect/new-name.md", status: "renamed" }]),
+    null,
+    "a rename with no previous_filename is incomplete evidence, not an empty removed set"
+  );
+  const complete = filesToEffect([
+    { filename: "docs/effect/new-name.md", status: "renamed", previous_filename: "docs/effect/old-name.md" }
+  ]);
+  assert.deepEqual(complete, {
+    changed: ["docs/effect/new-name.md"],
+    removed: ["docs/effect/old-name.md"]
+  });
+  // An entry missing a status is the same class of gap.
+  assert.equal(filesToEffect([{ filename: "docs/effect/x.md" }]), null, "a file with no status cannot be placed");
+});
+
+test("a-path-the-merge-both-removed-and-left-behind-counts-as-surviving", async () => {
+  const { filesToEffect } = await importResolver();
+  // A merge may rename `A` to `B` and add a replacement `A` in the same commit. GitHub then reports
+  // `A` as added and as the rename's previous_filename. `A` is at the tip and belongs there, so
+  // counting it as removed refuses a completion whose effect is entirely intact.
+  const effect = filesToEffect([
+    { filename: "docs/effect/B.md", status: "renamed", previous_filename: "docs/effect/A.md" },
+    { filename: "docs/effect/A.md", status: "added" }
+  ]);
+  assert.deepEqual(effect.changed, ["docs/effect/A.md", "docs/effect/B.md"]);
+  assert.deepEqual(effect.removed, [], "a path the merge left behind is not one it took away");
+  // The control: without the replacement, the old path is genuinely removed.
+  const withoutReplacement = filesToEffect([
+    { filename: "docs/effect/B.md", status: "renamed", previous_filename: "docs/effect/A.md" }
+  ]);
+  assert.deepEqual(withoutReplacement.removed, ["docs/effect/A.md"]);
+});
+
+test("completion-whose-whole-effect-is-a-deletion-verifies", async () => {
+  // Blind review: after the removed-path check passed, an empty added set fell into the changed
+  // fallback, and since removals are excluded from the changed set it was rejected as UNKNOWN. That
+  // makes "delete this" a kind of work that can never verify. My earlier positive test evaded it by
+  // inventing an unrelated added file -- a check aimed at something the fixture itself minted.
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [],
+    removedPaths: ["docs/effect/retired.md"],
+    presentPaths: []
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(
+    state.phase,
+    "verified",
+    `a deletion that held is a confirmed effect, got phase=${state.phase} blockers=${blockerCodes(state).join(",")}`
+  );
+  assert.deepEqual(blockerCodes(state), []);
+
+  // The matching refusal, differing only in whether the deletion held.
+  const undone = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [],
+    removedPaths: ["docs/effect/retired.md"],
+    presentPaths: ["docs/effect/retired.md"]
+  });
+  const { result: undoneResult } = await resolveOffline(undone);
+  assert.ok(
+    blockerCodes(ticketState(undoneResult, "D0-004")).includes("COMPLETION_EFFECT_REVERTED"),
+    "a deletion-only completion whose file came back must not verify"
+  );
+});
+
 test("collector-fails-closed-when-the-merged-receipt-search-cannot-be-completed", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
   // Pagination must not become a silent truncation: a payload that promises more results
