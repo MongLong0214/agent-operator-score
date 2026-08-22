@@ -392,5 +392,23 @@ test("forbidden-source", async () => {
     assert.equal(rowOf(forbidden, group).status, "UNAVAILABLE", FAILURE);
   }
   assert.equal(textOf({ forbiddenIdentity, forbidden }).toLowerCase().includes("websocket"), false, FAILURE);
+
+  // forbiddenSurface() hides its data under a `websocket` key, so `appServer` is absent and the
+  // probe is refused before the transport comparison runs -- the refusal above proves the
+  // missing-key path, not the boundary. Keep the key and change only the transport, so the only
+  // thing that can refuse this is the boundary itself.
+  for (const transport of ["websocket", "http", "app-server-stdio-json-rpc-v2", ""]) {
+    const surface = completeSurface() as Record<string, Record<string, unknown>>;
+    surface.appServer = { ...surface.appServer, transport };
+    const identity = accepted(discoverCodexIdentity(surface));
+    assert.equal(identity.status, "unknown", `${FAILURE} (${transport || "empty"})`);
+    const capabilities = accepted(discoverCodexCapabilities(surface));
+    assert.deepEqual(assertDigest(capabilities).supported_event_groups, [], `${FAILURE} (${transport || "empty"})`);
+  }
+
+  // The control: the permitted transport on the same shape is still exact, so the refusals above
+  // are not satisfied by a discovery that refuses every transport.
+  const stillPermitted = accepted(discoverCodexIdentity(completeSurface()));
+  assert.equal(stillPermitted.status, "exact", FAILURE);
 });
 });
