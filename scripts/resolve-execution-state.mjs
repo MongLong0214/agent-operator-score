@@ -45,6 +45,7 @@ export const BLOCKER_CODES = new Set([
   "POST_MERGE_CI_MISSING",
   "POST_MERGE_CI_FAILED",
   "EXTERNAL_STATE_UNAVAILABLE",
+  "RECEIPT_FIELD_MALFORMED",
   "STALE_DIGEST",
   "WRONG_TARGET",
   "COMPLETION_EFFECT_REVERTED",
@@ -2955,6 +2956,7 @@ export const onlineStrictProcessShouldFail = (result) => {
   if (!result || typeof result !== "object") return true;
   const externalCodes = new Set([
     "EXTERNAL_STATE_UNAVAILABLE",
+    "RECEIPT_FIELD_MALFORMED",
     "WRONG_TARGET",
     "TICKET_CONTRACT_CONFLICT",
     "TICKET_CONTRACT_INCOMPLETE"
@@ -4602,6 +4604,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     failures
   );
   const linkedMerged = [];
+  const malformedReceipts = [];
   for (let i = 0; i < mergedCandidates.length; i += 1) {
     const item = mergedCandidates[i];
     const pull = mergedPulls[i];
@@ -4610,13 +4613,17 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     if (!declaresTicketLinkage(body)) continue;
     const ticketLines = [...body.matchAll(TICKET_FIELD_RE)];
     if (ticketLines.length !== 1) {
-      return {
-        ok: false,
-        reason: ticketLines.length === 0
-          ? `malformed Ticket field on merged PR #${pull.number}`
-          : `duplicated Ticket field on merged PR #${pull.number}`,
-        facts: null
-      };
+      // One unparseable body is a data problem with a known owner and location, not an
+      // availability problem. Aborting the whole collection reported every ticket as
+      // unavailable -- the same code a GitHub outage produces -- because someone wrote
+      // `Ticket: none - ...` in a pull request body. The row is left unmatched instead, as
+      // `9a931970` already records for the search path, so the ticket it would have completed
+      // has no receipt and fails closed on its own terms while the rest of the corpus resolves.
+      malformedReceipts.push({
+        number: pull.number,
+        kind: ticketLines.length === 0 ? "malformed" : "duplicated"
+      });
+      continue;
     }
     const ticketId = ticketLines[0][1];
     if (!tickets[ticketId]) continue;
@@ -4878,6 +4885,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     workflowBlobs,
     liveDigests,
     activeOwnership,
+    malformedReceipts,
     projectionSurfaces: {},
     ancestry: ancestryFacts,
     exactBasePackets: [],
@@ -5073,7 +5081,18 @@ export const resolveExecutionState = (options = {}) => {
     },
     tickets,
     readySet,
-    errors: uniqueBlockers(errors)
+    errors: uniqueBlockers([
+      ...errors,
+      // A malformed receipt is reported, never swallowed: it is skipped during collection so one
+      // bad body cannot make every ticket unavailable, and named here so the pull request that
+      // needs editing is identified rather than left for someone to find by bisection.
+      ...(Array.isArray(facts.malformedReceipts) ? facts.malformedReceipts : []).map((entry) =>
+        blocker(
+          "RECEIPT_FIELD_MALFORMED",
+          `merged PR #${entry.number} has a ${entry.kind} Ticket field; its receipt is not counted`
+        )
+      )
+    ])
   };
 
   if (!schemaLoad.ok) {

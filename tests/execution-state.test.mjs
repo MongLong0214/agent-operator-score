@@ -2777,22 +2777,41 @@ async function resolveCollectedOnline(collected) {
 }
 
 // A body that OPENS a `Ticket:` line but fails to state a usable value is malformed, not
-// unlinked. Skipping it would let a real receipt disappear behind a typo, so each of these
-// must fail the whole collection closed. Distinguishing this from the unlinked case is the
-// point: absence of any `Ticket:` line is a search false positive and is skipped.
+// unlinked. Distinguishing the two is the point: absence of any `Ticket:` line is a search
+// false positive and is silently skipped, while a malformed one must never let a real receipt
+// disappear behind a typo.
+//
+// That invariant used to be enforced by failing the whole collection. It held, at a price
+// measured in production: `Ticket: none - control-plane fix` in one merged body reported all
+// 74 tickets unavailable under EXTERNAL_STATE_UNAVAILABLE, the same code a GitHub outage
+// produces, so it read as "wait and retry" rather than "go fix that pull request".
+//
+// The invariant is kept and the price is not. The row is recorded rather than dropped, it is
+// never counted as a receipt, the resolver names the pull request through
+// RECEIPT_FIELD_MALFORMED, and `--strict` still exits non-zero. Nothing disappears behind a
+// typo; the typo is named, and the other tickets keep resolving.
 for (const [label, body] of [
   ["empty-value", "Ticket:\n"],
   ["whitespace-only-value", "Ticket:   \n"],
   ["trailing-extra-token", "Ticket: D0-001 extra\n"]
 ]) {
-  test(`collector-fails-closed-on-malformed-ticket-field-${label}`, async () => {
+  test(`collector-records-a-malformed-ticket-field-without-counting-it-${label}`, async () => {
     const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
     const responses = buildCollectorMergedSearchFixture([
       { number: 903, merge_commit_sha: "9030903090309030903090309030903090309030", body }
     ]);
     const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
-    assert.equal(collected.ok, false, `${label} must fail closed, not be skipped as unlinked`);
-    assert.match(collected.reason, /malformed Ticket field/i);
+    assert.equal(collected.ok, true, `${label} must not fail the whole collection: ${collected.reason}`);
+    assert.deepEqual(
+      collected.facts?.malformedReceipts,
+      [{ number: 903, kind: "malformed" }],
+      `${label} must be recorded, not skipped as unlinked`
+    );
+    assert.equal(
+      (collected.facts?.implementationMerges ?? []).some((entry) => entry.number === 903),
+      false,
+      `${label} must never be counted as a receipt`
+    );
   });
 }
 
@@ -2979,6 +2998,75 @@ test("completion-whose-whole-effect-is-a-deletion-verifies", async () => {
   );
 });
 
+test("one-malformed-ticket-field-does-not-make-every-ticket-unavailable", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  // A `Ticket:` line is grammar, not prose. Writing `Ticket: none - control-plane fix` in one
+  // merged body used to abort the entire collection, reporting all 74 tickets unavailable with
+  // EXTERNAL_STATE_UNAVAILABLE -- the same code a GitHub outage produces, so it read as "wait and
+  // retry" rather than "go fix that pull request". The bad row is unmatched now, and named.
+  const goodSha = "7107107107107107107107107107107107107107";
+  const badSha = "7207207207207207207207207207207207207207";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 710,
+      merge_commit_sha: goodSha,
+      body: "Ticket: D0-001\n\nplain contributing merge.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(goodSha, 710710)
+    },
+    {
+      number: 720,
+      merge_commit_sha: badSha,
+      body: "Ticket: none - control-plane fix, no gate batch pins any changed file.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(badSha, 720720)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, `one malformed body must not fail collection: ${collected.reason}`);
+  const seen = (collected.facts?.implementationMerges ?? []).map((entry) => entry.number);
+  assert.ok(!seen.includes(720), "the malformed row must not be counted as a receipt");
+  assert.deepEqual(
+    collected.facts?.malformedReceipts,
+    [{ number: 720, kind: "malformed" }],
+    "the malformed row must be recorded so it can be named"
+  );
+});
+
+test("a-duplicated-ticket-field-is-recorded-the-same-way", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "7307307307307307307307307307307307307307";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 730,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-001\nTicket: D0-002\n\ntwo linkages in one body.",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha, 730730)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.deepEqual(collected.facts?.malformedReceipts, [{ number: 730, kind: "duplicated" }]);
+  assert.equal(
+    (collected.facts?.implementationMerges ?? []).some((entry) => entry.number === 730),
+    false,
+    "an ambiguous linkage must not be counted for either ticket"
+  );
+});
+
+test("a-malformed-receipt-is-reported-rather-than-swallowed", async () => {
+  const facts = loadBaselineFacts();
+  facts.malformedReceipts = [{ number: 345, kind: "malformed" }];
+  const { result } = await resolveOffline(facts);
+  const reported = (result.errors ?? []).find((entry) => entry.code === "RECEIPT_FIELD_MALFORMED");
+  assert.ok(reported, `expected RECEIPT_FIELD_MALFORMED, got ${(result.errors ?? []).map((e) => e.code).join(",") || "none"}`);
+  assert.match(reported.reason, /#345/, "the reason must name the pull request that needs editing");
+  // Skipping the row must not make the rest of the corpus unavailable.
+  assert.ok(Object.keys(result.tickets ?? {}).length > 0, "tickets must still resolve");
+  assert.notEqual(result.current_head, null, "the head must still be known");
+});
+
 test("collector-fails-closed-when-the-merged-receipt-search-cannot-be-completed", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
   // Pagination must not become a silent truncation: a payload that promises more results
@@ -3017,7 +3105,7 @@ test("collector-skips-search-false-positive-with-no-anchored-ticket-field", asyn
   assert.equal(receipts.length, 0, "an unlinked search false positive must not become a receipt");
 });
 
-test("collector-fails-closed-on-duplicated-ticket-field-on-searched-receipt", async () => {
+test("collector-records-a-duplicated-ticket-field-without-counting-it", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
   const responses = buildCollectorMergedSearchFixture([
     {
@@ -3027,8 +3115,15 @@ test("collector-fails-closed-on-duplicated-ticket-field-on-searched-receipt", as
     }
   ]);
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
-  assert.equal(collected.ok, false);
-  assert.match(collected.reason, /duplicated Ticket field/i);
+  assert.equal(collected.ok, true, collected.reason);
+  // Two linkages in one body are ambiguous even when they name the same ticket: the receipt
+  // grammar allows exactly one, and counting it would decide which line was meant.
+  assert.deepEqual(collected.facts?.malformedReceipts, [{ number: 902, kind: "duplicated" }]);
+  assert.equal(
+    (collected.facts?.implementationMerges ?? []).some((entry) => entry.number === 902),
+    false,
+    "an ambiguous linkage must never be counted as a receipt"
+  );
 });
 
 test("collector-records-unreachable-completion-merge-and-resolver-fails-closed", async () => {
