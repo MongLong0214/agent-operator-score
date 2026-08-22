@@ -6612,6 +6612,102 @@
         "approved_at": "2026-08-22T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e1-004-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E1-004 prerequisite set \u2014 ADR-0004/ADR-0007, PRD-E1, and the exact E1-004 ticket at the digests below. E1-004 was registered after the E1-001/E1-002/E1-003 batch was accepted, so no batch pinned it and the resolver reported TICKET_GATE_MISSING.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "33ea0a6ba84a0c0d2d066b832495853e0595d175"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E1-trace-and-result-schemas.md",
+          "sha256": "56d237454780faf4240bcfeac49fd7f4cbf693d7f350c0486cb27b4a5a823099",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E1/E1-004-carry-the-write-target-outside-the-redaction-bound.md",
+          "sha256": "d5b2a0d70cc630e4d115a21689fef994d3817a61145367a1fba01052c04f4111",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+          "sha256": "ea8cb2af5490c61496143f2dce2203364cbb934c495cccf94d2729c7df02ac7e",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E1-trace-and-result-schemas.md",
+          "sha256": "56d237454780faf4240bcfeac49fd7f4cbf693d7f350c0486cb27b4a5a823099",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E1/E1-004-carry-the-write-target-outside-the-redaction-bound.md",
+          "sha256": "d5b2a0d70cc630e4d115a21689fef994d3817a61145367a1fba01052c04f4111",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0004-construct-opportunity-and-comparison.md",
+            "docs/adr/ADR-0007-adapter-observability-and-session-class.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E1-trace-and-result-schemas.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E1/E1-004-carry-the-write-target-outside-the-redaction-bound.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "e1-004-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e1-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
