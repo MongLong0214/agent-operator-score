@@ -59,13 +59,13 @@ export const SPEC_DIGEST_MANIFEST = Object.freeze([
   }),
   Object.freeze({
     path: "specs/aos-trace.schema.json",
-    bytes_sha256: "e4c8a2a57e20e2c9c184c8fd0d8d29ff60d152009301b36bc5d65807253323bc",
-    canonical_sha256: "f2bb47e579e233ee27e48b250932d4ad0a4d1172ec23f830fc2854ee6b7ae96a"
+    bytes_sha256: "1bd8ab335e68ec7aad39887661531a2b818cef401bef80bafb70bbb574c3a98e",
+    canonical_sha256: "b52166df14b90af056b9e7e39ad2cb52665ec66def0189ad3ea3374f9b379627"
   }),
   Object.freeze({
     path: "specs/events.v0.json",
-    bytes_sha256: "d08720122b279235f97096321ef9683555170266992c8e84b4e5309d9df86668",
-    canonical_sha256: "989748c9e44a054a7f5ea54fb82c42f5624ec174263c9d8068a6ebf62bd0d620"
+    bytes_sha256: "af671c135903ff11c3f743119cf7ff8052dfa657fee2b760b10710d8dde13e44",
+    canonical_sha256: "b6e5cd941f250c9f2586ac448a260b9c4adf3c2f43267dfe19e39ea61a9f5a1d"
   }),
   Object.freeze({
     path: "specs/opportunity-profile.schema.json",
@@ -76,7 +76,7 @@ export const SPEC_DIGEST_MANIFEST = Object.freeze([
 
 // Pinned for the same reason: editing one recorded digest must break this too.
 export const SPEC_DIGEST_MANIFEST_SHA256 =
-  "4dddc107730066725d596ca5ecd9e3b0dfad5e29458339a54f6dc6c8a7e48739";
+  "9384ec47cbd9e56944fb59191f0b2cbfebe3e713e4657fb830ed5c44714b3797";
 
 const DIGEST_SHAPE = /^[a-f0-9]{64}$/;
 

@@ -28,7 +28,6 @@ This board owns only ticket IDs, milestone placement, size, and dependency edges
 | [E1-001](E1/E1-001-define-aos-trace-schema-and-canonical-event-registry.md) | E1 | S1 · G0 Scorer Truth | L | None |
 | [E1-002](E1/E1-002-define-aos-result-and-opportunity-profile-schemas.md) | E1 | S1 · G0 Scorer Truth | L | E1-001 |
 | [E1-003](E1/E1-003-add-schema-conformance-compatibility-and-digest-gate.md) | E1 | S1 · G0 Scorer Truth | M | E1-001,E1-002 |
-| [E1-004](E1/E1-004-carry-the-write-target-outside-the-redaction-bound.md) | E1 | S1 · G0 Scorer Truth | M | E1-001,E1-003,E3-001,E9-002 |
 | [E2-001](E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md) | E2 | S1 · G0 Scorer Truth | L | E1-003 |
 | [E2-002](E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md) | E2 | S1 · G0 Scorer Truth | L | E2-001 |
 | [E2-003](E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md) | E2 | S1 · G0 Scorer Truth | L | E2-002 |
@@ -83,6 +82,7 @@ This board owns only ticket IDs, milestone placement, size, and dependency edges
 | [D0-011](D0/D0-011-ticket-derived-fixture-directory-admission.md) | D0 | S0 · Name & Contracts | M | D0-002,D0-004 |
 | [D0-013](D0/D0-013-restore-execution-view-regression-coverage.md) | D0 | S0 · Name & Contracts | S | D0-002 |
 | [D0-012](D0/D0-012-ticket-owned-census-rederivation.md) | D0 | S0 · Name & Contracts | M | D0-002 |
+| [E1-004](E1/E1-004-carry-the-write-target-outside-the-redaction-bound.md) | E1 | S1 · G0 Scorer Truth | M | E1-001,E1-003 |
 <!-- generated:board-rows end -->
 
 ## Gate invariant

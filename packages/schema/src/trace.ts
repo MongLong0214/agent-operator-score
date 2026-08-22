@@ -178,6 +178,9 @@ const validateRegistryDocument = (registry: unknown, errors: string[]): Record<s
   if (registry.confidence_drop_threshold !== CONFIDENCE_DROP_THRESHOLD) {
     errors.push(`REGISTRY_CONFIDENCE_THRESHOLD_MISMATCH expected ${CONFIDENCE_DROP_THRESHOLD}`);
   }
+  if (!sameList(registry.event_optional_fields, OPTIONAL_FIELDS)) {
+    errors.push(`REGISTRY_OPTIONAL_FIELDS_MISMATCH expected ${OPTIONAL_FIELDS.join(",")}`);
+  }
   if (!sameList(registry.event_common_fields, COMMON_FIELDS)) {
     errors.push(`REGISTRY_COMMON_FIELDS_MISMATCH expected ${COMMON_FIELDS.join(",")}`);
   }
