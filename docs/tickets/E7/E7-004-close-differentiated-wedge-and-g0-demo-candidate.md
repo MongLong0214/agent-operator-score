@@ -32,7 +32,7 @@ Close differentiated wedge and G0 demo candidate. Deliver only the bounded contr
 ## RED contract
 
 - Test file: `conformance/demos/demo.test.ts`
-- Focused command: `npm run demo:verify`
+- Focused command: `npm test -- 'conformance/demos/*.test.ts'`
 - Expected pre-GREEN failure: no exact artifact binds FAM-4/5/6 behavior to scorer truth.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -51,7 +51,7 @@ Close differentiated wedge and G0 demo candidate. Deliver only the bounded contr
 
 ## Verification
 
-1. Focused: `npm run demo:verify`; every named case above passes.
+1. Focused: `npm test -- 'conformance/demos/*.test.ts'`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario surface; for runtime/scenario tickets run only the controlled local fixture named by the PRD, never a production target.
