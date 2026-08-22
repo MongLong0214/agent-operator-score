@@ -56,7 +56,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-002-prerequisites` | INVALIDATED |
 | `d0-002-prerequisites-adr-0003-renewal` | INVALIDATED |
 | `d0-002-prerequisites-adr-0003-contract-correction-renewal` | INVALIDATED |
-| `d0-002-prerequisites-red-census-contract-correction-renewal` | ACCEPTED |
+| `d0-002-prerequisites-red-census-contract-correction-renewal` | INVALIDATED |
 | `d0-004-prerequisites-single-owner-bootstrap` | INVALIDATED |
 | `d0-004-prerequisites-b-harness-carveout-renewal` | INVALIDATED |
 | `d0-004-prerequisites-completion-marker-receipt-renewal` | INVALIDATED |
@@ -99,6 +99,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-007-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 | `d0-008-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 | `d0-009-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
+| `d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal` | ACCEPTED |
 
 ## Operating sequence
 
