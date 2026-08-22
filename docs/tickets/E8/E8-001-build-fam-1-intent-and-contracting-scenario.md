@@ -32,7 +32,7 @@ Build FAM-1 intent and contracting scenario. Deliver only the bounded contract b
 ## RED contract
 
 - Test file: `suites/coding-core-v0/test/fam1-intent.test.ts`
-- Focused command: `npm test -w @aos/suite-coding-core -- fam1-intent`
+- Focused command: `node --test --test-name-pattern fam1-intent 'suites/coding-core-v0/test/*.test.ts'`
 - Expected pre-GREEN failure: goal/scope/ask-no-ask choices have no sealed outcome oracle.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -52,7 +52,7 @@ Build FAM-1 intent and contracting scenario. Deliver only the bounded contract b
 
 ## Verification
 
-1. Focused: `npm test -w @aos/suite-coding-core -- fam1-intent`; every named case above passes.
+1. Focused: `node --test --test-name-pattern fam1-intent 'suites/coding-core-v0/test/*.test.ts'`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario/human surface; otherwise run only the controlled protocol named by the PRD and preserve its exact manifest.
