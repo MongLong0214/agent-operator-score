@@ -576,6 +576,53 @@ const recordAncestryCompare = (ancestryFacts, base, head, status) => {
   ancestryFacts[`${base}...${head}`] = status;
 };
 
+// A completion's effect has two directions and they must be derived together, because each one
+// decides what the other may claim. Split across two independent filters they cannot see the
+// overlap, and three of the shapes below were wrong for exactly that reason.
+//
+//   surviving  every path the merge leaves behind: added, modified, and a rename's NEW name
+//   removed    every path it takes away: deletions, and a rename's OLD name
+//
+// A path in both is surviving, not removed. A merge may rename `A` to `B` and add a replacement
+// `A` in the same commit; GitHub then reports `A` as added and as a rename's `previous_filename`,
+// and treating it as removed refuses a completion whose effect is entirely intact.
+//
+// Returns null when the response cannot support either answer. That is not the same as an empty
+// set and must not collapse into one: a fail-closed authority owes the difference between "this
+// merge deleted nothing" and "I could not tell what it deleted".
+const COMMIT_FILES_PAGE_LIMIT = 300;
+
+export const filesToEffect = (files) => {
+  if (!Array.isArray(files)) return null;
+  // GitHub truncates a commit's file list at 300 and this collector does not page it. A deletion
+  // past the cut would read as "not deleted", so the whole answer is unavailable rather than
+  // partial. Measured across all 76 completion merges here, the largest carries 38 files.
+  if (files.length >= COMMIT_FILES_PAGE_LIMIT) return null;
+  const surviving = [];
+  const removed = [];
+  for (const file of files) {
+    if (!plainObject(file) || typeof file.filename !== "string" || typeof file.status !== "string") {
+      return null;
+    }
+    if (file.status === "removed") {
+      removed.push(file.filename);
+      continue;
+    }
+    if (file.status === "renamed") {
+      // A rename whose old name is missing is incomplete evidence, not a rename that removed
+      // nothing -- silently skipping it reports "no removals" for a merge that had one.
+      if (typeof file.previous_filename !== "string") return null;
+      removed.push(file.previous_filename);
+    }
+    surviving.push(file.filename);
+  }
+  const survivingSet = new Set(surviving);
+  return {
+    changed: [...surviving].sort(),
+    removed: removed.filter((path) => !survivingSet.has(path)).sort()
+  };
+};
+
 const postMergeStatus = (facts, mergeCommitSha) => {
   const all = Array.isArray(facts.postMergeCI) ? facts.postMergeCI : [];
   const exact = all.filter(
@@ -1767,6 +1814,81 @@ const resolveImplementationCompletion = (facts, ticketId) => {
         )
       ]
     };
+  }
+  // The other direction, and it applies to every completion rather than only to the empty
+  // ones: a path this merge deleted must still be gone. Restoring a file a completion
+  // deliberately removed reverts that completion exactly as deleting a file it added does, and
+  // a check that only looks for presence cannot see it. A rename's old path counts here.
+  const removed = completionEntry.removed_paths;
+  if (!Array.isArray(removed)) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "COMPLETION_EFFECT_UNKNOWN",
+          `${ticketId} completion merge removed-path set is unavailable, so half its effect cannot be confirmed`
+        )
+      ]
+    };
+  }
+  const restored = removed.filter((path) => liveSet.has(path));
+  if (restored.length) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "COMPLETION_EFFECT_REVERTED",
+          `${ticketId} completion merge removed ${restored.join(", ")}, present again on the live target branch`
+        )
+      ]
+    };
+  }
+  // An empty introduced set has nothing that could go absent, so the check above passes on
+  // any evidence at all -- including none. Refactor, deletion and doc-correction completions
+  // are legitimately in that shape, so the answer is not to demand an added path but to check
+  // the effect such a merge does have: the files it changed must still be at the tip.
+  if (introduced.length === 0) {
+    const changed = completionEntry.changed_paths;
+    if (!Array.isArray(changed)) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} completion merge introduced no path and its changed-path set is unavailable, so it has no confirmable effect`
+          )
+        ]
+      };
+    }
+    // A completion whose entire effect is a deletion leaves nothing behind by construction, and
+    // the deletions were confirmed still absent above. That is a confirmed effect, not an absent
+    // one -- refusing it would make "delete this" an unverifiable kind of work.
+    if (changed.length === 0 && removed.length > 0) {
+      return { verified: true, blockers: [] };
+    }
+    if (changed.length === 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} completion merge added and modified no file, so there is no effect to confirm present`
+          )
+        ]
+      };
+    }
+    const changedAbsent = changed.filter((path) => !liveSet.has(path));
+    if (changedAbsent.length) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_REVERTED",
+            `${ticketId} completion merge changed ${changedAbsent.join(", ")}, absent from the live target branch`
+          )
+        ]
+      };
+    }
   }
   const ci = postMergeStatus(facts, completionEntry.merge_commit_sha);
   if (ci.failed) {
@@ -3346,6 +3468,7 @@ export const applyHistoricalImplementationLinkage = (
     }
     // Always record the merge receipt so failed/nonterminal post-merge CI is classified
     // by the resolver (POST_MERGE_CI_FAILED / MISSING), not silently discarded.
+    const legacyEffect = filesToEffect(legacyCommit.files);
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
@@ -3354,7 +3477,9 @@ export const applyHistoricalImplementationLinkage = (
       added_paths: legacyCommit.files
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
-        .sort()
+        .sort(),
+      changed_paths: legacyEffect?.changed ?? null,
+      removed_paths: legacyEffect?.removed ?? null
     });
     if (!latest.ok) continue;
     postMergeCI.push({
@@ -4559,6 +4684,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // tree. Record what the completion introduced so the resolver can require it to still
     // be there. Only completion-marked merges pay for the extra request.
     let addedPaths = null;
+    let changedPaths = null;
+    let removedPaths = null;
     if (isCompletionReceipt) {
       const commit = commitsByLinkedIndex.get(i);
       if (!commit || !Array.isArray(commit.files)) {
@@ -4572,6 +4699,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
         .sort();
+      const effect = filesToEffect(commit.files);
+      changedPaths = effect?.changed ?? null;
+      removedPaths = effect?.removed ?? null;
     }
     implementationMerges.push({
       ticket_id: ticketId,
@@ -4579,7 +4709,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       number: pull.number,
       body: pull.body ?? null,
       reachable: ancestry.reachable,
-      added_paths: addedPaths
+      added_paths: addedPaths,
+      changed_paths: changedPaths,
+      removed_paths: removedPaths
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.

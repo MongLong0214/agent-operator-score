@@ -300,7 +300,8 @@
         "packages/scorer/package.json",
         "suites/coding-core-v0/OWNERS.md",
         "tests/planning/workspace-skeleton.test.mjs"
-      ]
+      ],
+      "removed_paths": []
     },
     {
       "ticket_id": "D0-001",
@@ -311,7 +312,8 @@
         "scripts/validate-identity.mjs",
         "specs/identity.v1.json",
         "tests/planning/identity.test.mjs"
-      ]
+      ],
+      "removed_paths": []
     }
   ],
   "liveTreePaths": [
@@ -392,9 +394,9 @@
   },
   "exactBasePackets": {},
   "projectionSurfaces": {
-    "roadmap": "STATIC DESIGN — NOT INPUT",
-    "board": "STATIC BOARD — NOT INPUT",
-    "ledger": "HISTORICAL LEDGER — NOT INPUT"
+    "roadmap": "STATIC DESIGN \u2014 NOT INPUT",
+    "board": "STATIC BOARD \u2014 NOT INPUT",
+    "ledger": "HISTORICAL LEDGER \u2014 NOT INPUT"
   },
   "activeOwnership": []
 }
