@@ -115,7 +115,17 @@ const blockerCodes = (state) => (state.blockers ?? []).map((b) => b.code);
  * on the receipt and mirrors them into facts.liveTreePaths.
  */
 const withPresentEffect = (facts, entry, paths) => {
-  const introduced = paths ?? [`docs/effect/${entry.merge_commit_sha.slice(0, 8)}.md`];
+  // A completion must touch something the ticket declares. Cases whose subject is post-merge CI,
+  // reachability or marker grammar carry their own illustrative paths, so the owned anchor is
+  // added alongside rather than replacing them.
+  // A completion must touch something the ticket declares, so a case about something else —
+  // post-merge CI, reachability, marker grammar — has to introduce a path inside D0-004's own
+  // ownership rather than an arbitrary one, or it fails on the deliverable check instead of the
+  // requirement it was written for.
+  const base = paths ?? [];
+  const introduced = base.includes("scripts/resolve-execution-state.mjs")
+    ? base
+    : [...base, "scripts/resolve-execution-state.mjs"];
   facts.liveTreePaths = [...(facts.liveTreePaths ?? []), ...introduced];
   // The removed set is the other half of the same evidence and is owed on the same terms: a
   // case about post-merge CI or marker grammar states "this merge deleted nothing" rather
@@ -1863,7 +1873,12 @@ const REVERTED_DELIVERABLE = [".github/workflows/operational-state.yml", "script
  * still carries what it introduced; everything else is held identical between the reverted
  * case and its control so the introduced-path check is the only variable.
  */
-const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, presentPaths }) => {
+// D0-004's fixture ownership is three exact files. A completion must touch one of them or the
+// deliverable check refuses it, so a case whose subject is something else anchors on one and keeps
+// its own synthetic paths for the mechanics it is actually testing.
+const OWNED_ANCHOR = "scripts/resolve-execution-state.mjs";
+
+const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, presentPaths, anchor = true }) => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const sha = "155a155a155a155a155a155a155a155a155a155a";
@@ -1874,8 +1889,12 @@ const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, pre
     body: "Ticket: D0-004\nTicket-Completion: D0-004\n\nD0-004 whole-ticket completion merge.",
     reachable: true
   };
-  const withAdded = addedPaths === undefined ? entry : { ...entry, added_paths: addedPaths };
-  const withChanged = changedPaths === undefined ? withAdded : { ...withAdded, changed_paths: changedPaths };
+  const anchored = (list) =>
+    anchor && Array.isArray(list) && list.length > 0 && !list.includes(OWNED_ANCHOR)
+      ? [...list, OWNED_ANCHOR]
+      : list;
+  const withAdded = addedPaths === undefined ? entry : { ...entry, added_paths: anchored(addedPaths) };
+  const withChanged = changedPaths === undefined ? withAdded : { ...withAdded, changed_paths: anchored(changedPaths) };
   // `removedPaths: null` is how a case asks for the unavailable shape; omitting it means "this
   // merge deleted nothing", which every case that is about something else needs to say.
   facts.implementationMerges = [
@@ -1889,7 +1908,7 @@ const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, pre
     run_id: 155,
     run_attempt: 1
   });
-  facts.liveTreePaths = [...(facts.liveTreePaths ?? []), ...(presentPaths ?? [])];
+  facts.liveTreePaths = [...(facts.liveTreePaths ?? []), ...(presentPaths ?? []), ...(anchor ? [OWNED_ANCHOR] : [])];
   return facts;
 };
 
@@ -2141,6 +2160,62 @@ test("completion-that-introduced-nothing-verifies-on-its-surviving-changed-paths
 // the second one: a file a completion deliberately deleted must still be gone. Blind review
 // named this — excluding removals from the presence check does not make deletion safe, it
 // makes that half of the completion invisible.
+
+// A receipt is verified on the ticket's deliverable, not on whatever its merge happened to carry
+// (#347). Before this, a completion whose merge touched one unrelated file was verified on that
+// file alone.
+
+test("completion-touching-nothing-the-ticket-declares-is-not-a-verified-deliverable", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: ["docs/effect/decoy.md"],
+    presentPaths: ["docs/effect/decoy.md"],
+    anchor: false
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    "a receipt whose merge touched no declared path must not verify on an unrelated file"
+  );
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
+    `expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+  );
+  assert.match(blockerReason(state, "COMPLETION_EFFECT_UNKNOWN"), /none of the paths the ticket declares/);
+});
+
+test("completion-touching-a-declared-path-verifies-on-it", async () => {
+  // The matching acceptance. Only the presence of one owned path differs from the case above.
+  const facts = makeCompletionEffectFacts({
+    addedPaths: ["docs/effect/decoy.md", "scripts/resolve-execution-state.mjs"],
+    presentPaths: ["docs/effect/decoy.md", "scripts/resolve-execution-state.mjs"],
+    anchor: false
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(state.phase, "verified", `blockers=${blockerCodes(state).join(",")}`);
+  assert.deepEqual(blockerCodes(state), []);
+});
+
+test("a-declared-path-the-completion-delivered-must-still-be-present", async () => {
+  // The decoy survives at the tip and the deliverable does not. This is caught by the
+  // introduced-set check rather than by the deliverable check, and it is kept because the scenario
+  // is the one #347 was filed about: before the deliverable rule existed, a receipt in this shape
+  // could be verified on the decoy alone if the decoy were the only introduced path.
+  const facts = makeCompletionEffectFacts({
+    addedPaths: ["docs/effect/decoy.md", "scripts/resolve-execution-state.mjs"],
+    presentPaths: ["docs/effect/decoy.md"],
+    anchor: false
+  });
+  // The baseline tree listing carries the real file, so the deliverable has to be taken out of it
+  // for this case to be about a deleted deliverable rather than about the fixture.
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== "scripts/resolve-execution-state.mjs");
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified", "a deleted deliverable must not stay verified behind a surviving decoy");
+  assert.ok(blockerCodes(state).includes("COMPLETION_EFFECT_REVERTED"));
+});
 
 test("completion-whose-deleted-path-is-restored-is-a-reverted-effect", async () => {
   const facts = makeCompletionEffectFacts({
@@ -2696,7 +2771,21 @@ function buildCollectorMergedSearchFixture(items) {
     // outage/unknown shape; `effect_present: false` models the reverted shape by recording
     // the introduced paths and deliberately leaving them out of the live tree listing.
     if (Object.hasOwn(item, "added_paths")) {
-      const modified = item.modified_paths ?? [];
+      // A completion receipt must touch a path its own ticket declares, so a collector fixture
+      // whose subject is post-merge CI or pagination anchors on one of that ticket's owned paths
+      // and keeps its illustrative paths for the mechanics it is testing. The anchor is derived
+      // from the body's linkage rather than fixed, because a D0-001 path proves nothing for a
+      // D0-004 receipt.
+      const OWNED_ANCHORS = {
+        "D0-001": "scripts/validate-identity.mjs",
+        "D0-002": "tests/planning/workspace-skeleton.test.mjs",
+        "D0-004": "scripts/resolve-execution-state.mjs"
+      };
+      const linked = /^Ticket:\s*(\S+)\s*$/m.exec(item.body ?? "")?.[1];
+      const anchor = OWNED_ANCHORS[linked] ?? "scripts/validate-identity.mjs";
+      const modified = Array.isArray(item.added_paths) && item.added_paths.length > 0
+        ? [...(item.modified_paths ?? []), ...((item.modified_paths ?? []).includes(anchor) ? [] : [anchor])]
+        : (item.modified_paths ?? []);
       responses[`${COLLECTOR_REPO_PATH}/commits/${item.merge_commit_sha}`] =
         item.added_paths === null
           ? { sha: item.merge_commit_sha }
@@ -2876,7 +2965,8 @@ test("modern-collector-records-both-effect-directions-for-a-completion-receipt",
   assert.deepEqual(entry.added_paths, ["docs/effect/new.md"], "added is `added` only");
   assert.deepEqual(
     entry.changed_paths,
-    ["docs/effect/moved-to.md", "docs/effect/new.md", "docs/effect/touched.md"],
+    // the anchor is the fixture's owned path, added so the receipt touches something D0-001 declares
+    ["docs/effect/moved-to.md", "docs/effect/new.md", "docs/effect/touched.md", "scripts/validate-identity.mjs"],
     "changed is everything the merge leaves behind, including a rename's new path"
   );
   assert.deepEqual(

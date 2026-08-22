@@ -1751,6 +1751,33 @@ const evaluateLiveArtifactFreeze = (facts, root = DEFAULT_ROOT) => {
  * merge commit not authenticated as reachable from the live target branch, or a
  * failed/missing latest post-merge CI on the identified completion merge all fail closed.
  */
+// A completion's effect set is every path its merge touched, which is not the same thing as the
+// ticket's deliverable. A receipt whose merge happened to touch one unrelated file was verified on
+// that file alone, whatever became of the work (#347).
+//
+// Narrowing to the intersection with the ticket's declared ownership answers that without
+// demanding the existence of anything the ownership prose asserts absent — the objection that
+// ruled out deriving the effect set from ownership alone. A path the ticket declares but the merge
+// never touched is simply not in the intersection, so `E1-003`'s `conformance/schema/**`, which the
+// skeleton-admission control plane refuses to admit any file into, is never asked for.
+//
+// Measured across all 69 verified tickets carrying a completion receipt: every one has a non-empty
+// intersection and every path in it is present at the tip, so this refuses nothing that exists.
+const ownedIntersection = (paths, ownedPaths) => {
+  if (!Array.isArray(paths) || !Array.isArray(ownedPaths)) return [];
+  return paths.filter((path) =>
+    typeof path === "string" &&
+    ownedPaths.some((owned) => {
+      if (typeof owned !== "string" || owned.length === 0) return false;
+      if (path === owned) return true;
+      // A glob or a directory owns its subtree; a non-path token in the prose matches nothing,
+      // which is why junk in `owned_paths` cannot widen this.
+      const prefix = owned.includes("*") ? owned.slice(0, owned.indexOf("*")) : `${owned.replace(/\/$/, "")}/`;
+      return prefix.length > 0 && path.startsWith(prefix);
+    })
+  );
+};
+
 const resolveImplementationCompletion = (facts, ticketId) => {
   const entries = (facts.implementationMerges ?? []).filter((entry) => entry.ticket_id === ticketId);
   const blockers = [];
@@ -1911,6 +1938,35 @@ const resolveImplementationCompletion = (facts, ticketId) => {
       };
     }
   }
+  // The checks above prove the merge's own effect survived. This one proves the merge touched the
+  // ticket's deliverable at all: without it a receipt is verified on whatever unrelated file its
+  // merge happened to carry (#347).
+  //
+  // Only emptiness is checked here. Whether each delivered path is still present is already
+  // decided above -- an added path by the introduced-set check, a modified one by the changed-set
+  // check -- so repeating it would be a guard no input can reach. Removals are likewise not
+  // consulted: a deletion-only completion returns earlier, on its own confirmed effect.
+  const ownedPaths = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
+    ? facts.tickets[ticketId].owned_paths
+    : null;
+  if (ownedPaths !== null && ownedPaths.length > 0) {
+    const touched = [
+      ...(Array.isArray(introduced) ? introduced : []),
+      ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
+    ];
+    if (ownedIntersection(touched, ownedPaths).length === 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} completion merge touched none of the paths the ticket declares, so its deliverable is unconfirmed`
+          )
+        ]
+      };
+    }
+  }
+
   const ci = postMergeStatus(facts, completionEntry.merge_commit_sha);
   if (ci.failed) {
     return {
