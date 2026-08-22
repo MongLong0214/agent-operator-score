@@ -817,6 +817,47 @@ describe("workspace", () => {
     }
   });
 
+  // E1-004 AC-3. The redaction bound serializes and slices an oversized payload, so before the
+  // write target became a first-class field this write was attributed to nobody: 2013 characters of
+  // contents classified as agent and 2014 did not. The target now sits outside the excerpt.
+  test("attribution-survives-the-payload-bound", async () => {
+    const api = await requireExports();
+    const temp = openTemp();
+    try {
+      const created = asOk(api.createRunWorkspace(request(temp)), "create");
+      accepted(api.sealWorkspace({ root: created.root, phase: "initial" }), "initial seal");
+      writeFileSync(join(created.root, "src", "app.ts"), "mutated by the agent\n");
+
+      for (const size of [10, 2013, 2014, 100_000]) {
+        const trace = writeToolCall("src/app.ts", `corr-${size}`, "a".repeat(size));
+        const result = api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/app.ts",
+          traces: [trace]
+        });
+        accepted(result, `write of ${size} characters`);
+        if (result.ok) assert.equal(result.actor, "agent", `${CONTAINED} (${size})`);
+      }
+
+      // The control: a trace with no target is still unknown with the score withheld. Carrying the
+      // target outside the bound must not turn an absent one into a guess.
+      const targetless = writeToolCall("src/app.ts", "corr-none");
+      delete (targetless as Record<string, unknown>).target_path;
+      const unknown = api.classifyWorkspaceMutation({
+        root: created.root,
+        path: "src/app.ts",
+        traces: [targetless]
+      });
+      accepted(unknown, "a trace carrying no target");
+      if (unknown.ok) {
+        assert.equal(unknown.actor, "actor.attribution_unknown", CONTAINED);
+        assert.equal(unknown.score_withheld, true, CONTAINED);
+      }
+    } finally {
+      closeTemp(temp);
+    }
+  });
+
   test("actor-attribution-classification", async () => {
     const api = await requireExports();
     const temp = openTemp();
