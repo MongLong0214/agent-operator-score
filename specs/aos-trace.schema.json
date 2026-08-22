@@ -33,7 +33,8 @@
         "identity",
         "evidence_digest",
         "redaction_state",
-        "payload"
+        "payload",
+        "target_path"
       ],
       "properties": {
         "event_id": { "type": "string", "minLength": 1 },
@@ -52,6 +53,11 @@
         "evidence_digest": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
         "redaction_state": { "type": "string", "enum": ["none", "redacted"] },
         "payload": { "type": ["string", "null"], "maxLength": 2048 },
+        "target_path": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^/]+(?:/[^/]+)*$"
+        },
         "provenance": { "type": "string", "minLength": 1 },
         "confidence": { "type": "number", "exclusiveMaximum": 0.7, "minimum": 0 },
         "from_actor": { "type": "string", "minLength": 1 },
