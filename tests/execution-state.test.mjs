@@ -3054,6 +3054,35 @@ test("a-path-the-merge-both-removed-and-left-behind-counts-as-surviving", async 
   assert.deepEqual(withoutReplacement.removed, ["docs/effect/A.md"]);
 });
 
+// #386: the deletion-only branch returned verified before the post-merge CI check every other
+// completion shape must pass, and which the owning ticket requires against the exact merge.
+test("completion-whose-whole-effect-is-a-deletion-still-needs-its-own-post-merge-ci", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [],
+    removedPaths: ["docs/effect/retired.md"],
+    presentPaths: []
+  });
+  const sha = facts.implementationMerges[0].merge_commit_sha;
+  facts.postMergeCI = facts.postMergeCI.filter((row) => row.merge_commit_sha !== sha);
+  assert.equal(
+    facts.postMergeCI.some((row) => row.merge_commit_sha === sha),
+    false,
+    "the exact-merge CI row must be gone for this case to mean anything"
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a deletion-only completion with no CI on its merge must not verify, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerCodes(state).includes("POST_MERGE_CI_MISSING"),
+    `expected POST_MERGE_CI_MISSING, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
 test("completion-whose-whole-effect-is-a-deletion-verifies", async () => {
   // Blind review: after the removed-path check passed, an empty added set fell into the changed
   // fallback, and since removals are excluded from the changed set it was rejected as UNKNOWN. That
