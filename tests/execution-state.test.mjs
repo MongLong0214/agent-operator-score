@@ -1522,6 +1522,76 @@ test("completion-merge-post-merge-ci-missing-fails-closed", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// One workflow run recorded twice is not two conflicting runs (issue #339).
+//
+// A pull request that links both a `Gate-Batch` and a `Ticket-Completion` receipt is selected
+// into the gate corpus and into the completion corpus, and each pass fetches and records the
+// same post-merge run. The rows tie on (run_id, run_attempt), which the ambiguity guard read
+// as two runs disagreeing — so BOTH receipts reported POST_MERGE_CI_MISSING while the merge
+// commit's CI was green, and no validator, test or error mentioned it. Measured on #336:
+// removing its single `Gate-Batch:` line, changing nothing else, flipped E3-004 to verified.
+// ---------------------------------------------------------------------------
+
+const makeDuplicateCiFacts = (second) => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: ["docs/effect/dup.md"],
+    presentPaths: ["docs/effect/dup.md"]
+  });
+  const sha = facts.implementationMerges[0].merge_commit_sha;
+  const base = {
+    merge_commit_sha: sha,
+    head_sha: sha,
+    status: "completed",
+    conclusion: "success",
+    run_id: 155,
+    run_attempt: 1
+  };
+  facts.postMergeCI = facts.postMergeCI.filter((row) => !sameShaLike(row.merge_commit_sha, sha));
+  facts.postMergeCI.push(base, { ...base, ...second });
+  return facts;
+};
+
+const sameShaLike = (a, b) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
+
+test("the-same-post-merge-run-recorded-by-both-collection-passes-still-verifies", async () => {
+  // The two rows are byte-identical: one run, observed once, written down twice.
+  const { result } = await resolveOffline(makeDuplicateCiFacts({}));
+  const state = ticketState(result, "D0-004");
+  assert.equal(
+    state.phase,
+    "verified",
+    `one run recorded twice is not ambiguity, got phase=${state.phase} blockers=${blockerCodes(state).join(",")}`
+  );
+  assert.equal(
+    blockerCodes(state).includes("POST_MERGE_CI_MISSING"),
+    false,
+    "a green merge commit must not report its CI missing because two passes both saw it"
+  );
+});
+
+test("two-rows-claiming-one-run-with-different-conclusions-still-fail-closed", async () => {
+  // The matching refusal, and the reason the fix is not "ignore duplicates": two rows that
+  // claim the same run and disagree about how it ended are a real conflict about one fact, and
+  // choosing either answer would be a guess. Only `conclusion` differs from the case above.
+  const { result } = await resolveOffline(makeDuplicateCiFacts({ conclusion: "failure" }));
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified", "disagreeing observations of one run must never verify");
+});
+
+test("two-genuinely-different-runs-without-attempt-ordering-still-fail-closed", async () => {
+  // The pre-existing guard this fix must not remove: rows with no run identity cannot be
+  // ordered, so the latest cannot be chosen and the answer is unavailable.
+  const facts = makeDuplicateCiFacts({ run_id: null, run_attempt: null });
+  facts.postMergeCI = facts.postMergeCI.map((row) =>
+    row.run_id === 155 ? { ...row, run_id: null, run_attempt: null } : row
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified", "unorderable runs must fail closed");
+  assert.ok(blockerCodes(state).includes("POST_MERGE_CI_MISSING"));
+});
+
+// ---------------------------------------------------------------------------
 // Authenticated descendant CI as post-merge fallback (issue #283).
 //
 // Restoring Ticket-Completion: E8-004 onto PR #259 (merge 9f515bf) puts the
