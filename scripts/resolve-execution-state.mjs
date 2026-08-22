@@ -4,7 +4,10 @@ import { existsSync, readFileSync, realpathSync, writeSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { validateArtifactManifestV3 as validateArtifactManifestV3Module } from "./validate-artifact-manifest.mjs";
+import {
+  manifestDigestMatches,
+  validateArtifactManifestV3 as validateArtifactManifestV3Module
+} from "./validate-artifact-manifest.mjs";
 import { deriveGitHubAcceptance } from "./derive-github-acceptance.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -1311,7 +1314,12 @@ export const collectArtifactManifestV3Facts = (root = DEFAULT_ROOT) => {
       schema_path: ARTIFACT_MANIFEST_V3_SCHEMA_RELATIVE,
       manifest_path: ARTIFACT_MANIFEST_V3_RELATIVE,
       schema_digest: createHash("sha256").update(schemaBytes).digest("hex"),
-      manifest_digest: createHash("sha256").update(manifestBytes).digest("hex")
+      manifest_digest: createHash("sha256").update(manifestBytes).digest("hex"),
+      // The digest's preimage is the file's bytes at the commit, so a consumer must be handed
+      // those bytes to check it. Handing over only the parsed object forces the consumer to
+      // reserialize, and JSON round-tripping does not preserve whitespace or the trailing
+      // newline -- so every digest this emitted was one the consumers always rejected.
+      manifest_text: manifestBytes.toString("utf8")
     }
   };
 };
@@ -1642,8 +1650,9 @@ export const evaluateAuthenticatedReviewActivation = (input = {}) => {
   if (!plainObject(input.manifest) || !Array.isArray(input.manifest.artifacts) || input.manifest.artifacts.length < 1) {
     rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
   }
-  const digest = createHash("sha256").update(Buffer.from(JSON.stringify(input.manifest), "utf8")).digest("hex");
-  if (digest !== input.manifest_digest) rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  if (!manifestDigestMatches(input.manifest_text, input.manifest, input.manifest_digest)) {
+    rejectActivation(ACTIVATION_ARTIFACT_MISMATCH);
+  }
   try {
     validateArtifactManifestV3Module({ manifest: input.manifest });
   } catch {
