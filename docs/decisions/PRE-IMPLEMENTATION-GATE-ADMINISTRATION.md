@@ -106,6 +106,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-013-prerequisites-adr-0003-2026-08-22-renewal` | ACCEPTED |
 | `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal` | ACCEPTED |
 | `d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal` | ACCEPTED |
+| `e1-004-owner-direction-prerequisites` | ACCEPTED |
 
 ## Operating sequence
 
