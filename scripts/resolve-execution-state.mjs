@@ -1708,9 +1708,11 @@ const gitBlobAt = (root, sha, path) => {
   }
 };
 
-const evaluateLiveArtifactFreeze = (facts, root = DEFAULT_ROOT) => {
+// `live` is passed in rather than read here so the rule can be exercised directly. The trust
+// boundary is unchanged and stays at the single call site: only a github-authenticated transport
+// ever populates LIVE_ACTIVATION_FACTS, so a fixture still cannot mint a freeze.
+export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => {
   try {
-    const live = facts?.[LIVE_ACTIVATION_FACTS];
     if (!plainObject(live)) return null;
     const evaluated = evaluateAuthenticatedReviewActivation(live);
     if (selectActiveGovernanceMode(evaluated) !== "AUTHENTICATED_REVIEW") return null;
@@ -1718,10 +1720,30 @@ const evaluateLiveArtifactFreeze = (facts, root = DEFAULT_ROOT) => {
     if (!plainObject(freeze) || typeof freeze.path !== "string" || typeof freeze.sha256 !== "string") {
       return null;
     }
-    const blob = gitBlobAt(root, freeze.exact_head_sha, freeze.path);
-    if (blob == null) return null;
-    const digest = createHash("sha256").update(blob).digest("hex");
-    if (digest !== freeze.sha256) return null;
+    // The freeze reports one artifact but the manifest may pin many, and verifying only the
+    // first would let every later artifact drift while the freeze still claimed to hold (#301).
+    const artifacts = Array.isArray(live.manifest?.artifacts) ? live.manifest.artifacts : null;
+    if (artifacts === null || artifacts.length === 0) return null;
+
+    // The freeze must be about the branch this run collected, not about any commit that happens
+    // to survive in the local clone. Without this the check succeeds for an unmerged or
+    // later-reverted candidate SHA, which is the opposite of a freeze.
+    if (typeof facts.currentHead !== "string" || !sameSha(freeze.exact_head_sha, facts.currentHead)) {
+      return null;
+    }
+    const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
+    if (livePaths === null) return null;
+
+    for (const artifact of artifacts) {
+      if (!plainObject(artifact) || typeof artifact.path !== "string" || typeof artifact.sha256 !== "string") {
+        return null;
+      }
+      // Present at the live tip, not merely readable at some commit.
+      if (!livePaths.has(artifact.path)) return null;
+      const blob = gitBlobAt(root, freeze.exact_head_sha, artifact.path);
+      if (blob == null) return null;
+      if (createHash("sha256").update(blob).digest("hex") !== artifact.sha256) return null;
+    }
     return freeze;
   } catch {
     return null;
@@ -5130,7 +5152,7 @@ export const resolveExecutionState = (options = {}) => {
     governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
     claims_merge_authorization: false,
     claims_separation_of_duties: false,
-    artifact_freeze: evaluateLiveArtifactFreeze(facts, root),
+    artifact_freeze: evaluateLiveArtifactFreeze(facts?.[LIVE_ACTIVATION_FACTS], facts, root),
     bootstrap: {
       active: bootstrapActive,
       d0_004c_merged: facts.d0_004c_merged === true

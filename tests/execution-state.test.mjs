@@ -7096,6 +7096,14 @@ test("activation-permission-bound-to-approving-reviewer", async () => {
   assert.notEqual(collected.facts.reviewer_permission, "admin");
 });
 
+// manifestDigestMatches requires manifest_text and hashes it verbatim; without this the built
+// activation is refused for a malformed digest and never reaches the rule under test.
+const sealActivationManifest = (activation) => {
+  activation.manifest_text = JSON.stringify(activation.manifest);
+  activation.manifest_digest = sha256Utf8(activation.manifest_text);
+  return activation;
+};
+
 const activationMatchingHeadBlob = () => {
   const activation = loadPassingActivationFacts();
   const adrPath = activation.manifest.artifacts[0].path;
@@ -7107,9 +7115,8 @@ const activationMatchingHeadBlob = () => {
   activation.exact_head_sha = head;
   activation.review_head_sha = head;
   activation.manifest.artifacts[0].sha256 = sha256Utf8(blob);
-  activation.manifest_digest = sha256Utf8(JSON.stringify(activation.manifest));
   activation.manifest_in_head = true;
-  return activation;
+  return sealActivationManifest(activation);
 };
 
 test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
@@ -7143,7 +7150,12 @@ test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
   ];
   for (const plant of plants) {
     const facts = loadBaselineFacts();
-    plant.apply(facts, activationMatchingHeadBlob());
+    const activation = activationMatchingHeadBlob();
+    // Everything except the trust boundary must be satisfiable, or the plant is refused by the
+    // head/live-tree binding instead and the test stops measuring the gate it names.
+    facts.currentHead = activation.exact_head_sha;
+    facts.liveTreePaths = [...facts.liveTreePaths, ...activation.manifest.artifacts.map((a) => a.path)];
+    plant.apply(facts, activation);
     const { result } = await resolveOffline(facts);
     assert.equal(
       result.artifact_freeze,
@@ -7151,4 +7163,81 @@ test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
       `${plant.name} is caller-reachable and must not freeze even when the blob digest would match`
     );
   }
+});
+
+// #301: the freeze verified only artifacts[0], and read the blob from the local clone at the
+// candidate SHA — so it could hold for a commit that was never merged, or was later reverted,
+// while every artifact after the first drifted unchecked.
+const freezeInputs = () => {
+  const live = activationMatchingHeadBlob();
+  const facts = loadBaselineFacts();
+  facts.currentHead = live.exact_head_sha;
+  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
+  return { live, facts };
+};
+const reseal = (live) => sealActivationManifest(live);
+const addSecondArtifact = (live, { corrupt }) => {
+  // Derived from the tree at the collected head, never written from memory: ADR filenames move.
+  const path = execFileSync("git", ["ls-tree", "--name-only", `${live.exact_head_sha}`, "docs/adr/"], {
+    cwd: root,
+    encoding: "utf8"
+  })
+    .split("\n")
+    .filter((entry) => entry.endsWith(".md") && entry !== live.manifest.artifacts[0].path)[0];
+  const blob = gitBlobUtf8(live.exact_head_sha, path);
+  live.manifest.artifacts.push({
+    ...live.manifest.artifacts[0],
+    path,
+    sha256: corrupt ? "c".repeat(64) : sha256Utf8(blob),
+    source_record_id: "d0-009-activation-source-record-second",
+    source_record_sha256: "d".repeat(64)
+  });
+  return reseal(live);
+};
+
+test("artifact-freeze-holds-when-every-artifact-matches-the-live-tip", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = freezeInputs();
+  addSecondArtifact(live, { corrupt: false });
+  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
+  const freeze = evaluateLiveArtifactFreeze(live, facts, root);
+  assert.ok(freeze, "a manifest whose artifacts all match at the collected head must freeze");
+  assert.equal(freeze.exact_head_sha, facts.currentHead);
+});
+
+test("artifact-freeze-refuses-when-a-later-artifact-digest-drifts", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = freezeInputs();
+  addSecondArtifact(live, { corrupt: true });
+  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "artifacts after the first must be verified too, not carried by artifacts[0]"
+  );
+});
+
+test("artifact-freeze-refuses-a-head-the-collection-did-not-observe", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = freezeInputs();
+  // A real commit that still resolves in this clone, but is not the head the facts were collected
+  // against — the unmerged-or-reverted candidate the freeze is supposed to reject.
+  const other = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
+  facts.currentHead = other;
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "a blob readable at some local commit is not evidence about the head that was collected"
+  );
+});
+
+test("artifact-freeze-refuses-an-artifact-absent-from-the-live-tree", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = freezeInputs();
+  facts.liveTreePaths = facts.liveTreePaths.filter((p) => p !== live.manifest.artifacts[0].path);
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "the frozen path must be present at the live tip, not merely readable at a commit"
+  );
 });
