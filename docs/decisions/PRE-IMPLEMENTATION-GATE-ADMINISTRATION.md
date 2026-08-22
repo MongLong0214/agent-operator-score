@@ -65,7 +65,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-011-prerequisites` | INVALIDATED |
 | `d0-011-census-corrected-prerequisites` | ACCEPTED |
 | `d0-005-owner-direction-prerequisites` | INVALIDATED |
-| `d0-006-owner-direction-prerequisites` | ACCEPTED |
+| `d0-006-owner-direction-prerequisites` | INVALIDATED |
 | `d0-007-owner-direction-prerequisites` | ACCEPTED |
 | `d0-008-owner-direction-prerequisites` | ACCEPTED |
 | `d0-009-owner-direction-prerequisites` | ACCEPTED |
@@ -95,6 +95,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 | `e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 | `d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
+| `d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 
 ## Operating sequence
 
