@@ -62,7 +62,11 @@ const otherwiseValidManifest = (overrides = {}) => ({
   ...overrides
 });
 
-const manifestDigestOf = (manifest) => sha256(Buffer.from(JSON.stringify(manifest), "utf8"));
+// The digest's preimage is the manifest file's bytes, so a fixture must carry the exact
+// text it hashed. Reserializing the object here would reproduce the two-preimage defect
+// this suite exists to keep closed (#306).
+const manifestTextOf = (manifest) => `${JSON.stringify(manifest, null, 2)}\n`;
+const manifestDigestOf = (manifest) => sha256(Buffer.from(manifestTextOf(manifest), "utf8"));
 
 const otherwiseValidActivationFacts = (overrides = {}) => {
   const manifest = Object.hasOwn(overrides, "manifest") ? overrides.manifest : otherwiseValidManifest();
@@ -89,6 +93,7 @@ const otherwiseValidActivationFacts = (overrides = {}) => {
     team_bypass_allowances: [],
     app_bypass_allowances: [],
     manifest,
+    manifest_text: Object.hasOwn(overrides, "manifest_text") ? overrides.manifest_text : manifestTextOf(manifest),
     manifest_digest: digest,
     manifest_in_head: true,
     ...overrides
@@ -103,6 +108,66 @@ const assertEvaluateRejects = (facts, message) => {
     message
   );
 };
+
+// ---------------------------------------------------------------------------
+// manifest_digest has one preimage: the file's bytes (#306).
+//
+// The producers hashed the file bytes and the consumers re-hashed the parsed object.
+// JSON round-tripping preserves key order but not whitespace or the trailing newline, so
+// every digest the producers emitted was one the consumers always refused. Measured on the
+// live manifest: file bytes a820e0e9..., reserialized a017596f....
+//
+// It had not surfaced because the live collector never supplied these fields, so the two
+// halves were never asked to agree on a live path. These cases ask.
+// ---------------------------------------------------------------------------
+
+test("manifest-digest-preimage-is-the-file-bytes-not-a-reserialization", async () => {
+  const { manifestDigestMatches } = await import("../scripts/validate-artifact-manifest.mjs");
+  const manifest = otherwiseValidManifest();
+  const text = manifestTextOf(manifest);
+  const bytesDigest = sha256(Buffer.from(text, "utf8"));
+  const reserializedDigest = sha256(Buffer.from(JSON.stringify(manifest), "utf8"));
+
+  assert.notEqual(bytesDigest, reserializedDigest, "the two preimages must actually differ, or this case proves nothing");
+  assert.equal(manifestDigestMatches(text, manifest, bytesDigest), true, "the digest a producer emits must be accepted");
+  assert.equal(
+    manifestDigestMatches(text, manifest, reserializedDigest),
+    false,
+    "a digest over a reserialization is not this manifest's digest"
+  );
+});
+
+test("manifest-text-that-disagrees-with-the-parsed-manifest-is-refused", async () => {
+  const { manifestDigestMatches } = await import("../scripts/validate-artifact-manifest.mjs");
+  const manifest = otherwiseValidManifest();
+  const text = manifestTextOf(manifest);
+  const digest = sha256(Buffer.from(text, "utf8"));
+  // Bytes that hash correctly beside a different object would pin something the structural
+  // validation never saw.
+  assert.equal(manifestDigestMatches(text, { ...manifest, injected: true }, digest), false);
+  assert.equal(manifestDigestMatches("{not json", manifest, sha256(Buffer.from("{not json", "utf8"))), false);
+  assert.equal(manifestDigestMatches("", manifest, digest), false);
+  // An absent preimage must be a refusal, not a crash: without the type guard
+  // Buffer.from(undefined, "utf8") throws a TypeError out of a fail-closed check, and a
+  // check that throws is not a check that refuses.
+  assert.equal(manifestDigestMatches(undefined, manifest, digest), false);
+  assert.equal(manifestDigestMatches(null, manifest, digest), false);
+  assert.equal(manifestDigestMatches(42, manifest, digest), false);
+  // The control, differing only in that the text and object agree.
+  assert.equal(manifestDigestMatches(text, manifest, digest), true);
+});
+
+test("a-whitespace-only-edit-changes-the-manifest-digest", async () => {
+  const { manifestDigestMatches } = await import("../scripts/validate-artifact-manifest.mjs");
+  const manifest = otherwiseValidManifest();
+  const compact = JSON.stringify(manifest);
+  const spaced = `${JSON.stringify(manifest, null, 4)}\n`;
+  // Byte-pinning is the point of an artifact freeze: two files that parse identically but are
+  // not the same bytes must not share a digest. Hashing the parsed object loses exactly this.
+  assert.notEqual(sha256(Buffer.from(compact, "utf8")), sha256(Buffer.from(spaced, "utf8")));
+  assert.equal(manifestDigestMatches(spaced, manifest, sha256(Buffer.from(spaced, "utf8"))), true);
+  assert.equal(manifestDigestMatches(spaced, manifest, sha256(Buffer.from(compact, "utf8"))), false);
+});
 
 test("activation-requires-second-principal-and-protected-dev", () => {
   assertExported(resolver.evaluateAuthenticatedReviewActivation, INACTIVE_MESSAGE);

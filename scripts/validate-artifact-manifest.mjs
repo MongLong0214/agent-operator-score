@@ -194,6 +194,32 @@ const inspectArtifact = (artifact, seen, sourceRecords) => {
   return canonicalizeArtifact(artifact);
 };
 
+// One preimage for manifest_digest, named once so the two consumers cannot drift apart again.
+// It is the file's bytes at the commit, which is what a reviewer reproduces with
+// `git cat-file blob <sha>:<path> | sha256sum`. The parsed object is not a substitute: JSON
+// round-tripping preserves key order but not whitespace or the trailing newline, so hashing a
+// reserialization refuses every digest the producers emit. Measured on the live manifest:
+//   file bytes    a820e0e9233a60b3b568aa231af86d2a9fa8d155f3f0beee61839698a6244d94
+//   reserialized  a017596fdbad9781f42ef564fe8887958f79a251bc2057ccbc2881e7d7a37616
+//
+// The text and the object are checked against each other so a caller cannot supply bytes that
+// hash correctly alongside a different object -- the digest would then pin something the
+// structural validation never saw.
+export const manifestDigestMatches = (manifestText, manifest, expectedDigest) => {
+  if (typeof manifestText !== "string" || manifestText.length === 0) return false;
+  if (typeof expectedDigest !== "string") return false;
+  if (createHash("sha256").update(Buffer.from(manifestText, "utf8")).digest("hex") !== expectedDigest) {
+    return false;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(manifestText);
+  } catch {
+    return false;
+  }
+  return JSON.stringify(parsed) === JSON.stringify(manifest);
+};
+
 export const validateArtifactManifestV3 = (input) => {
   if (!plainObject(input)) malformed();
   rejectForbiddenKeys(input);
@@ -267,6 +293,8 @@ export const loadCanonicalArtifactManifestV3 = (root) => {
     manifest,
     schema_digest: sha256(schemaBytes),
     manifest_digest: sha256(manifestBytes),
+    // Carried so a consumer can check the digest against the same preimage the producer used.
+    manifest_text: manifestBytes.toString("utf8"),
     schema_path: CANONICAL_SCHEMA_RELATIVE,
     manifest_path: CANONICAL_MANIFEST_RELATIVE
   };
