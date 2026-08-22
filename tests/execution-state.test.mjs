@@ -7513,6 +7513,21 @@ test("artifact-freeze-refuses-a-subset-of-the-committed-manifest", async () => {
   );
 });
 
+test("artifact-freeze-refuses-an-artifact-kind-restated-by-the-caller", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = realManifestFreezeInputs();
+  // kind decides how the artifact is treated downstream, and like the digest it must come from the
+  // committed document rather than from whoever is asking for the freeze.
+  const original = live.manifest.artifacts[0].kind;
+  live.manifest.artifacts[0].kind = original === "ADR" ? "PRD" : "ADR";
+  sealActivationManifest(live);
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "a kind the committed manifest does not declare must not freeze"
+  );
+});
+
 test("artifact-freeze-refuses-a-digest-lowered-to-match-a-drifted-blob", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
   const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
