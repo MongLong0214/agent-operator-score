@@ -848,6 +848,11 @@ for (const path of ticketFiles) {
     // so prose written after a dash is still never claimed.
     for (const pair of bullet[1].split(";")) {
       const candidate = pair.split(/\s[—–-]\s/)[0].trim().replace(/^`|`$/g, "");
+      // A candidate containing whitespace is a sentence the split could not cut, not a path. Twenty
+      // five such entries were in the census and none of them was a real file, so admitting them
+      // recorded prose as ownership: the set said more than it meant, and a check that asked whether
+      // a ticket's owned paths exist could not use it.
+      if (/\s/.test(candidate)) continue;
       if (sourceExtensions.has(extname(candidate))) ticketOwnedPaths.add(candidate);
     }
   }
