@@ -1917,7 +1917,7 @@ const blockerReason = (state, code) => (state.blockers ?? []).find((entry) => en
 // Found by blind review of #384. The changed-set presence check runs only when the introduced set
 // is empty, so one surviving added path that the ticket does not own is enough to skip it, and the
 // ownership intersection then matched a declared path that is no longer in the tree.
-test("completion-effect-unknown-when-a-surviving-added-decoy-hides-an-absent-owned-deliverable", async () => {
+test("completion-effect-reverted-when-a-surviving-added-decoy-hides-an-absent-owned-deliverable", async () => {
   const DECOY = "docs/effect/decoy.md";
   const facts = makeCompletionEffectFacts({
     addedPaths: [DECOY],
@@ -1940,8 +1940,57 @@ test("completion-effect-unknown-when-a-surviving-added-decoy-hides-an-absent-own
     `a completion whose owned deliverable is absent must never verify, got phase=${state.phase}`
   );
   assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_REVERTED"),
+    `expected COMPLETION_EFFECT_REVERTED, got ${blockerCodes(state).join(",") || "none"}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(OWNED_ANCHOR),
+    "the blocker must name the owned path that went missing"
+  );
+});
+
+// Blind review round 2: one surviving owned path must not vouch for a second that disappeared.
+test("completion-effect-reverted-when-one-surviving-owned-path-hides-a-second-absent-one", async () => {
+  const SECOND = "tests/execution-state.test.mjs";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [SECOND],
+    changedPaths: [SECOND, OWNED_ANCHOR],
+    presentPaths: [SECOND],
+    anchor: false
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== OWNED_ANCHOR);
+  assert.ok(facts.liveTreePaths.includes(SECOND), "the surviving owned path must be present");
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a second owned deliverable that vanished must not be vouched for by the first, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(OWNED_ANCHOR),
+    `expected the absent owned path to be named, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+// Blind review round 2: an owned deletion is a confirmed effect, and unowned bookkeeping in the
+// same merge must not discard it.
+test("completion-effect-accepts-an-owned-deletion-carrying-unowned-bookkeeping", async () => {
+  const BOOKKEEPING = "docs/planning/unowned-note.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [BOOKKEEPING],
+    removedPaths: [OWNED_ANCHOR],
+    presentPaths: [BOOKKEEPING],
+    anchor: false
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== OWNED_ANCHOR);
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(
     blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
-    `expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+    false,
+    `an owned deletion that is still absent is a confirmed effect, got ${blockerCodes(state).join(",") || "none"}`
   );
 });
 
@@ -7259,6 +7308,29 @@ test("artifact-freeze-refuses-a-head-the-collection-did-not-observe", async () =
     evaluateLiveArtifactFreeze(live, facts, root),
     null,
     "a blob readable at some local commit is not evidence about the head that was collected"
+  );
+});
+
+// Found by blind review round 2, which refuted round 1's claim that the live-tree check was
+// redundant with the blob read. The manifest validator permits "." segments, so this path resolves
+// as a blob at the frozen SHA while the collected tree lists only the canonical spelling.
+test("artifact-freeze-refuses-a-noncanonical-path-alias-of-a-real-artifact", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = freezeInputs();
+  const canonical = live.manifest.artifacts[0].path;
+  assert.notEqual(
+    gitBlobUtf8(live.exact_head_sha, `./${canonical}`),
+    null,
+    "the alias must read as a blob at the frozen SHA or this case tests nothing"
+  );
+  live.manifest.artifacts[0].path = `./${canonical}`;
+  reseal(live);
+  // The collected tree carries the canonical spelling, which is what a real listing returns.
+  facts.liveTreePaths = [canonical];
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "an artifact path that is not a live-tree identity must not freeze, even though its blob reads"
   );
 });
 

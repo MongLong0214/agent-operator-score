@@ -1732,12 +1732,17 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
     if (typeof facts.currentHead !== "string" || !sameSha(freeze.exact_head_sha, facts.currentHead)) {
       return null;
     }
+    const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
+    if (livePaths === null) return null;
+
     for (const artifact of artifacts) {
       if (!plainObject(artifact) || typeof artifact.path !== "string" || typeof artifact.sha256 !== "string") {
         return null;
       }
-      // No separate tree-membership check: reading the blob at this exact SHA already proves the
-      // path is in that tree, and the SHA is pinned to the collected head above.
+      // Not redundant with the blob read below. The manifest validator permits "." segments, so
+      // `<sha>:./docs/x.md` resolves while the collected tree lists only `docs/x.md` -- the blob
+      // check passes and the freeze would report a path that is not a live-tree identity.
+      if (!livePaths.has(artifact.path)) return null;
       const blob = gitBlobAt(root, freeze.exact_head_sha, artifact.path);
       if (blob == null) return null;
       if (createHash("sha256").update(blob).digest("hex") !== artifact.sha256) return null;
@@ -1971,19 +1976,53 @@ const resolveImplementationCompletion = (facts, ticketId) => {
     ? facts.tickets[ticketId].owned_paths
     : null;
   if (ownedPaths !== null && ownedPaths.length > 0) {
-    const touched = [
-      ...(Array.isArray(introduced) ? introduced : []),
-      ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
-    ];
     const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
-    const surviving = livePaths === null ? touched : touched.filter((path) => livePaths.has(path));
-    if (ownedIntersection(surviving, ownedPaths).length === 0) {
+    if (livePaths === null) {
       return {
         verified: false,
         blockers: [
           blocker(
             "COMPLETION_EFFECT_UNKNOWN",
-            `${ticketId} completion merge left none of the paths the ticket declares present on the live target branch, so its deliverable is unconfirmed`
+            `${ticketId} completion effect cannot be confirmed without the live tree listing`
+          )
+        ]
+      };
+    }
+    const delivered = ownedIntersection(
+      [
+        ...(Array.isArray(introduced) ? introduced : []),
+        ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
+      ],
+      ownedPaths
+    );
+    // A deletion the ticket owns is an effect in its own right. The removal check above already
+    // confirmed these are still absent, so refusing a completion that also carries unowned
+    // bookkeeping would discard a valid, confirmed effect.
+    const retired = ownedIntersection(
+      Array.isArray(completionEntry.removed_paths) ? completionEntry.removed_paths : [],
+      ownedPaths
+    );
+    if (delivered.length === 0 && retired.length === 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} completion merge touched none of the paths the ticket declares, so its deliverable is unconfirmed`
+          )
+        ]
+      };
+    }
+    // Every delivered owned path, not merely one of them: an existential check lets a surviving
+    // owned path mask a second owned deliverable that has since disappeared.
+    const absent = delivered.filter((path) => !livePaths.has(path));
+    if (absent.length > 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_REVERTED",
+            `${ticketId} completion merge delivered ${absent.join(", ")}, absent from the live target branch`
           )
         ]
       };
