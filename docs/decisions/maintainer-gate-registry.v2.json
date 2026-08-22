@@ -1832,7 +1832,7 @@
     },
     {
       "id": "d0-006-owner-direction-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the D0-006 prerequisite set \u2014 ADR-0012/0013, PRD-D0-GOV, and the exact D0-006 ticket at the digests below \u2014 so the v2 effective-state quarantine work may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. D0-005 remains a verified-on-dev dependency, not a second TICKET artifact in this batch. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -1915,6 +1915,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "d0-006-owner-direction-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -1924,6 +1930,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "artifact-correction-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved artifact correction of 2026-08-22 changes this batch's pinned digests; superseded by d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal."
       }
     },
     {
@@ -5339,6 +5350,102 @@
           "type": "TICKET_READY_FOR_RED",
           "artifact_paths": [
             "docs/tickets/D0/D0-005-governance-mode-contract-and-advisory-boundary.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "artifact-correction-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-006-owner-direction-prerequisites against the owner-approved artifact correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "1b944995ddea50a951e95f0b984a2be3812b3089"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+          "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+          "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+          "sha256": "7bee008f5256c601e9d16399a908bde041738b02062f6c48c37c579594a7b721",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md",
+          "sha256": "0b73d2f1527bcb16a8d52c38b4c3ce333e811ad91ea7b5426c6e2a2e60d2dbb6",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md",
+          "sha256": "39d2ee8e6f6b08bc49cd68282ed7d7a667fcc2b0b7215b83d976655a0409711d",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+          "sha256": "7bee008f5256c601e9d16399a908bde041738b02062f6c48c37c579594a7b721",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+            "docs/adr/ADR-0013-authenticated-governance-modes-and-legacy-quarantine.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-GOV-authenticated-governance-repair.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md"
           ]
         }
       ],
