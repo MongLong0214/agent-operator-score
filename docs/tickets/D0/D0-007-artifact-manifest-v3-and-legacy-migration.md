@@ -13,6 +13,8 @@ Create the v3 artifact-manifest schema and fail-closed validator, then migrate l
 
 ## Exact ownership
 
+- The bullet below restates, in the form the ownership census reads, exactly the paths this section already names. It adds no scope.
+- scripts/validate-artifact-manifest.mjs — as declared above; tests/artifact-manifest-v3.test.mjs — as declared above; scripts/resolve-execution-state.mjs — as declared above; scripts/validate-planning.mjs — as declared above; tests/planning-contract.test.mjs — as declared above
 - `docs/decisions/maintainer-gate-artifact-manifest.schema.v3.json` keys `schema_version`, `manifest_id`, `artifacts`, `artifacts[].path`, `artifacts[].sha256`, `artifacts[].kind`, `artifacts[].source_record_id`, `artifacts[].source_record_sha256`, and `artifacts[].migration_provenance`; `docs/decisions/maintainer-gate-artifact-manifest.v3.json`; new `validateArtifactManifestV3` and `migrateLegacyRegistryToArtifactManifestV3` exports in `scripts/validate-artifact-manifest.mjs`; `tests/artifact-manifest-v3.test.mjs`; and `fixtures/governance/artifact-manifest-v3/**`.
 - The only resolver integration is existing `collectLiveExecutionFacts` plus new `collectArtifactManifestV3Facts` and `validateArtifactManifestV3ForResolution` in `scripts/resolve-execution-state.mjs`; no other resolver symbol or behavior.
 - The future D0-007 allowlist/census edit is exactly the `controlPlaneAllowlist` literal in `scripts/validate-planning.mjs`, adding only `scripts/validate-artifact-manifest.mjs` and `tests/artifact-manifest-v3.test.mjs`; and both `acceptedValidatorOutput` and `pendingValidatorOutput` literals in `tests/planning-contract.test.mjs`, changing `control_plane_code_files=11` and `control_plane_allowlist=11` to `13` in each literal.
