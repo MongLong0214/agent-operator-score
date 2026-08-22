@@ -117,3 +117,52 @@ Both halves failed the way this document describes: a check aimed at a spelling,
 check on a property. The reviewable question — *what is this check aimed at, concretely, and what
 value does it compare?* — found four real defects the same day. That question does not fit in a
 regex.
+
+## A mutation sweep tests the rules, not whether the rules are the right ones
+
+E3-002 passed all ten of its acceptance cases, and an eighteen-mutant sweep over its production file
+found nothing that mattered. The module was still not an isolation boundary. It returned ordinary
+`cwd`, `env` and `stdio` values with `allowedPaths` as inert metadata, so a worker spawned with the
+envelope read the oracle; `assertIsolation({ envelope })` reported success with no evidence at all;
+and the envelope stayed mutable after issue, so a caller could turn it inside out and it still
+validated.
+
+None of that was reachable by mutation, because **every mutant assumed the model was right and only
+broke individual rules inside it.** Breaking a rule asks "is this rule enforced?" It never asks "are
+these the rules?"
+
+So a green mutation sweep is evidence about coverage and nothing else. The question it cannot answer
+is the one an adversarial reader asks first: *what would this have to do to be a boundary, and does
+it do that?* On E3-002 the answer came from a review that spawned a real child process and read the
+file the module exists to protect.
+
+## A probe must isolate the guard under test
+
+Probing whether a guard is load-bearing means building an input that is valid in **every** respect
+except the property that guard checks. A probe refused for some other reason is indistinguishable
+from a guard that is already covered.
+
+Measured, on `packages/runner/src/workspace.ts`: probing the plain-record guard with a bare string
+reported it covered, because the string was rejected further down as unusable — an **array carrying
+the request properties** is what reaches every later check intact. Probing trace validation against
+a path that had never been mutated reported it covered, because an earlier guard answered first.
+Fourteen guards were classified as redundant that way; a review found three of them load-bearing,
+and re-probing found more.
+
+The failure mode is the same one this document is about, relocated into the measurement: a check
+aimed at the wrong object. So for each guard, state concretely what the probe input satisfies and
+what it violates, and require the verdict to **flip** — pristine refuses, single-guard-disabled
+accepts. A probe that never flips proves nothing about the guard.
+
+## Redundancy is not a hole, and the difference is measurable
+
+Some survivors are guards that a neighbour already refuses. `packages/runner/src/workspace.ts` has
+several: the reused-`runId` guard is preceded by a non-recursive `mkdirSync` that throws `EEXIST`,
+and in `lifecycle.ts` the two clauses of the exactly-one-terminal check mask each other because
+`finish` sets `state` to the terminal reason.
+
+Report those as redundancy, not as coverage gaps, and show the measurement that distinguishes them:
+remove each clause alone, then both. If either alone leaves the suite green and both together kill
+it, neither is individually necessary and the case is load-bearing for the pair. Saying so is more
+useful than either "covered" or "hole".
+
