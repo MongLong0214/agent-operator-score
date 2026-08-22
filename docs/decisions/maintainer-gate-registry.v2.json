@@ -4291,7 +4291,7 @@
     },
     {
       "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the E14-001, E14-002, E14-003 prerequisite set \u2014 ADR-0001/ADR-0012, E14, and the exact E14-001, E14-002, E14-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -4396,6 +4396,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "e14-001-e14-002-e14-003-owner-direction-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -4405,6 +4411,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "unrunnable-command-correction-candidate-2026-08-22",
+        "reason": "The 2026-08-22 unrunnable-command correction changes this batch's pinned digest; superseded by e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal."
       }
     },
     {
@@ -6702,6 +6713,124 @@
       ],
       "preparation": {
         "prepared_by": "e1-004-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew e14-001-e14-002-e14-003-owner-direction-prerequisites against the 2026-08-22 correction of an unrunnable focused command in docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "73a9f7c71c3e10f5ef8609547d927a8b1d35a0fa"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "9e61d5ab89f258d3df144473e5aee8ba0a72d44fd74820ad74c7419773504a9c",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "16bfead2c0783c8ed7ddeaaf766cc001fb832bf28f723facb8e1dcc8cbde2520",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "9e61d5ab89f258d3df144473e5aee8ba0a72d44fd74820ad74c7419773504a9c",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "16bfead2c0783c8ed7ddeaaf766cc001fb832bf28f723facb8e1dcc8cbde2520",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E14-public-oss-and-g4.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+            "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+            "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "unrunnable-command-correction-candidate-2026-08-22"
       },
       "approval": {
         "approved_by": "MongLong0214",
