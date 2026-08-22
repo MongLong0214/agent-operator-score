@@ -24,7 +24,8 @@
     "identity",
     "evidence_digest",
     "redaction_state",
-    "payload"
+    "payload",
+    "target_path"
   ],
   "attribution_event_types": [
     "workspace.external_mutation",

@@ -119,14 +119,12 @@ const mappedNative = (
   });
   assert.equal(event !== null && typeof event === "object" && !Array.isArray(event), true, CONTAINED);
   const record = event as Record<string, unknown>;
-  assert.equal(record.status, "MAPPED", CONTAINED);
+  assert.equal(Object.hasOwn(record, "status"), false, CONTAINED);
+  assert.equal(typeof record.event_id, "string", CONTAINED);
   assert.equal(typeof record.correlation_id, "string", CONTAINED);
   assert.equal(Object.hasOwn(record, "path"), false, CONTAINED);
   return record;
 };
-
-const isPlainPayload = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const writeToolCall = (
   path: string,
@@ -148,6 +146,25 @@ const writeToolCall = (
   }, correlationId);
   assert.equal(event.event_type, "tool.call", CONTAINED);
   assert.equal(event.actor, "agent", CONTAINED);
+  assert.equal(event.target_path, path, CONTAINED);
+  return event;
+};
+
+const writeWithoutTarget = (correlationId: string): Record<string, unknown> => {
+  const event = mappedNative("sdkQuery", {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [{
+        type: "tool_use",
+        id: `tool-${correlationId}`,
+        name: "Write",
+        input: { contents: "no target" }
+      }]
+    }
+  }, correlationId);
+  assert.equal(event.event_type, "tool.call", CONTAINED);
+  assert.equal(event.target_path, null, CONTAINED);
   return event;
 };
 
@@ -158,7 +175,8 @@ const manualEditDeclared = (path: string, correlationId: string): Record<string,
   }, correlationId);
   assert.equal(event.event_type, "human.manual_edit_declared", CONTAINED);
   assert.equal(event.actor, "human/takeover", CONTAINED);
-  assert.equal(isPlainPayload(event.payload), true, CONTAINED);
+  assert.equal(typeof event.payload, "string", CONTAINED);
+  assert.equal(event.target_path, path, CONTAINED);
   return event;
 };
 
@@ -169,7 +187,8 @@ const workspaceExternalMutation = (path: string, correlationId: string): Record<
   }, correlationId);
   assert.equal(event.event_type, "workspace.external_mutation", CONTAINED);
   assert.equal(event.actor, "external_mutation", CONTAINED);
-  assert.equal(isPlainPayload(event.payload), true, CONTAINED);
+  assert.equal(typeof event.payload, "string", CONTAINED);
+  assert.equal(event.target_path, path, CONTAINED);
   return event;
 };
 
@@ -829,28 +848,30 @@ describe("workspace", () => {
       writeFileSync(join(created.root, "README.txt"), "please inspect src/external.ts before merge\n");
 
       const agentTrace = writeToolCall("src/agent.ts", "corr-agent");
-      assert.equal(isPlainPayload(agentTrace.payload), true, CONTAINED);
+      assert.equal(typeof agentTrace.payload, "string", CONTAINED);
       const agentBoundedTrace = writeToolCall("src/agent.ts", "corr-1800", "a".repeat(1800));
-      assert.equal(isPlainPayload(agentBoundedTrace.payload), true, CONTAINED);
-      const truncatedTrace = writeToolCall("src/agent.ts", "corr-2500", "b".repeat(2500));
-      assert.equal(typeof truncatedTrace.payload, "string", CONTAINED);
+      assert.equal(typeof agentBoundedTrace.payload, "string", CONTAINED);
+      const largeWriteTrace = writeToolCall("src/agent.ts", "corr-100k", "b".repeat(100 * 1024));
+      assert.equal(typeof largeWriteTrace.payload, "string", CONTAINED);
       assert.equal(
-        typeof truncatedTrace.payload === "string" && truncatedTrace.payload.length === BOUNDED_PAYLOAD_MAX_CHARS,
+        typeof largeWriteTrace.payload === "string" && largeWriteTrace.payload.length === BOUNDED_PAYLOAD_MAX_CHARS,
         true,
         CONTAINED
       );
+      assert.equal(largeWriteTrace.target_path, "src/agent.ts", CONTAINED);
       const mentionTrace = writeToolCall(
         "README.txt",
         "corr-mention",
         "please inspect src/external.ts before merge\n"
       );
-      assert.equal(isPlainPayload(mentionTrace.payload), true, CONTAINED);
+      assert.equal(typeof mentionTrace.payload, "string", CONTAINED);
       const absoluteTrace = writeToolCall(join(created.root, "src", "agent.ts"), "corr-abs");
-      assert.equal(isPlainPayload(absoluteTrace.payload), true, CONTAINED);
+      assert.equal(typeof absoluteTrace.payload, "string", CONTAINED);
       const humanTrace = manualEditDeclared("src/human.ts", "corr-human");
       const observedExternalTrace = workspaceExternalMutation("src/external.ts", "corr-external");
       const unknownAgentTrace = writeToolCall("src/unknown.ts", "corr-a");
       const unknownHumanTrace = manualEditDeclared("src/unknown.ts", "corr-b");
+      const missingTargetTrace = writeWithoutTarget("corr-missing-target");
 
       const agent = api.classifyWorkspaceMutation({
         root: created.root,
@@ -871,7 +892,7 @@ describe("workspace", () => {
         path: "src/agent.ts",
         traces: [agentBoundedTrace]
       });
-      accepted(agentBounded, "agent bounded object payload");
+      accepted(agentBounded, "agent bounded payload");
       if (agentBounded.ok) {
         assert.equal(agentBounded.actor, "agent", CONTAINED);
         assert.notEqual(agentBounded.actor, "external_mutation", CONTAINED);
@@ -918,18 +939,18 @@ describe("workspace", () => {
       }
 
       {
-        // The production shape: a source write past the 2048-character payload bound is
-        // serialized and sliced, so the path is no longer recoverable. That is a correlation
-        // failure, not evidence of an external actor -- explicit unknown, score withheld.
-        const truncated = api.classifyWorkspaceMutation({
+        // The 100 KiB write excerpt is still bounded, but its first-class workspace-relative
+        // target sits outside that excerpt and therefore remains attributable.
+        const largeWrite = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
-          traces: [truncatedTrace]
+          traces: [largeWriteTrace]
         });
-        accepted(truncated, "truncated payload write classifies as explicit unknown");
-        if (truncated.ok) {
-          assert.equal(truncated.actor, "actor.attribution_unknown", CONTAINED);
-          assert.equal(truncated.score_withheld, true, CONTAINED);
+        accepted(largeWrite, "large bounded payload write remains attributable");
+        if (largeWrite.ok) {
+          assert.equal(largeWrite.actor, "agent", CONTAINED);
+          assert.notEqual(largeWrite.actor, "actor.attribution_unknown", CONTAINED);
+          assert.notEqual(largeWrite.score_withheld, true, CONTAINED);
         }
       }
 
@@ -957,16 +978,32 @@ describe("workspace", () => {
       }
 
       {
-        // The run root is known, so an absolute target inside the workspace resolves and
-        // correlates like any relative one. Treating it as unreadable discarded a correlation
-        // the fixture itself proves is present -- it builds the path from created.root.
+        // Absolute targets are outside the shared trace contract. The runner must not turn one
+        // into a trusted relative path even when it happens to point inside this workspace.
         const absolute = api.classifyWorkspaceMutation({
           root: created.root,
           path: "src/agent.ts",
           traces: [absoluteTrace]
         });
-        accepted(absolute, "an absolute input.path inside the workspace correlates");
-        if (absolute.ok) assert.equal(absolute.actor, "agent", CONTAINED);
+        accepted(absolute, "an absolute target fails closed");
+        if (absolute.ok) {
+          assert.equal(absolute.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(absolute.score_withheld, true, CONTAINED);
+        }
+      }
+
+      {
+        // Missing target evidence is not a license to guess from the bounded excerpt.
+        const missingTarget = api.classifyWorkspaceMutation({
+          root: created.root,
+          path: "src/agent.ts",
+          traces: [missingTargetTrace]
+        });
+        accepted(missingTarget, "a missing target fails closed");
+        if (missingTarget.ok) {
+          assert.equal(missingTarget.actor, "actor.attribution_unknown", CONTAINED);
+          assert.equal(missingTarget.score_withheld, true, CONTAINED);
+        }
       }
 
       // Same shape on the classifier: the properties are all present and valid, so nothing

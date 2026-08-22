@@ -34,7 +34,7 @@ const CONFIDENCE_DROP_THRESHOLD = 0.7;
 
 const COMMON_FIELDS = [
   "event_id", "run_id", "task_id", "timestamp", "actor", "event_type", "event_group",
-  "parent_id", "correlation_id", "identity", "evidence_digest", "redaction_state", "payload"
+  "parent_id", "correlation_id", "identity", "evidence_digest", "redaction_state", "payload", "target_path"
 ] as const;
 
 const ATTRIBUTION_EVENT_TYPES = [
@@ -96,7 +96,7 @@ const FROZEN_EVENT_VOCABULARY: [string, string][] = [
 const EVENT_GROUP_OF: Record<string, string> = Object.fromEntries(FROZEN_EVENT_VOCABULARY);
 const ACTORS = ["agent", "human/takeover", "external_mutation", "actor.attribution_unknown", "wrapper"];
 const REDACTION_STATES = ["none", "redacted"];
-const NULLABLE_FIELDS = ["task_id", "parent_id", "evidence_digest", "payload"];
+const NULLABLE_FIELDS = ["task_id", "parent_id", "evidence_digest", "payload", "target_path"];
 const IDENTITY_FIELDS = ["event_id", "run_id", "correlation_id", "identity"];
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -106,6 +106,14 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isFilledString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
+
+const isWorkspaceRelativePath = (value: unknown): value is string => {
+  if (!isFilledString(value) || value.includes("\\") || value.startsWith("/") || /^[A-Za-z]:/.test(value)) {
+    return false;
+  }
+  const segments = value.split("/");
+  return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+};
 
 const sameList = (left: unknown, right: readonly string[]): boolean =>
   Array.isArray(left) && left.length === right.length && right.every((entry, index) => left[index] === entry);
@@ -288,6 +296,12 @@ const parseOneEvent = (
     if (field === "evidence_digest") {
       if (typeof event.evidence_digest !== "string" || !DIGEST.test(event.evidence_digest)) {
         errors.push("EVENT_DIGEST_INVALID evidence_digest must be a 64-character lowercase hex SHA-256 or null");
+      }
+      continue;
+    }
+    if (field === "target_path") {
+      if (!isWorkspaceRelativePath(event.target_path)) {
+        errors.push("EVENT_TARGET_PATH_INVALID target_path must be a workspace-relative path or null");
       }
       continue;
     }
