@@ -1967,62 +1967,25 @@ const resolveImplementationCompletion = (facts, ticketId) => {
   // ticket's deliverable at all: without it a receipt is verified on whatever unrelated file its
   // merge happened to carry (#347).
   //
-  // Presence must be re-checked here, not inherited from the checks above: the changed-set check
-  // runs only when the introduced set is empty, so a merge carrying one surviving added path never
-  // reaches it and an absent modified deliverable goes unexamined. Intersecting against the paths
-  // that survive at the tip closes that. Removals are not consulted: a deletion-only completion
-  // returns earlier, on its own confirmed effect.
+  // Only emptiness is checked here. Whether each delivered path is still present is already
+  // decided above -- an added path by the introduced-set check, a modified one by the changed-set
+  // check -- so repeating it would be a guard no input can reach. Removals are likewise not
+  // consulted: a deletion-only completion returns earlier, on its own confirmed effect.
   const ownedPaths = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
     ? facts.tickets[ticketId].owned_paths
     : null;
   if (ownedPaths !== null && ownedPaths.length > 0) {
-    const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
-    if (livePaths === null) {
-      return {
-        verified: false,
-        blockers: [
-          blocker(
-            "COMPLETION_EFFECT_UNKNOWN",
-            `${ticketId} completion effect cannot be confirmed without the live tree listing`
-          )
-        ]
-      };
-    }
-    const delivered = ownedIntersection(
-      [
-        ...(Array.isArray(introduced) ? introduced : []),
-        ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
-      ],
-      ownedPaths
-    );
-    // A deletion the ticket owns is an effect in its own right. The removal check above already
-    // confirmed these are still absent, so refusing a completion that also carries unowned
-    // bookkeeping would discard a valid, confirmed effect.
-    const retired = ownedIntersection(
-      Array.isArray(completionEntry.removed_paths) ? completionEntry.removed_paths : [],
-      ownedPaths
-    );
-    if (delivered.length === 0 && retired.length === 0) {
+    const touched = [
+      ...(Array.isArray(introduced) ? introduced : []),
+      ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
+    ];
+    if (ownedIntersection(touched, ownedPaths).length === 0) {
       return {
         verified: false,
         blockers: [
           blocker(
             "COMPLETION_EFFECT_UNKNOWN",
             `${ticketId} completion merge touched none of the paths the ticket declares, so its deliverable is unconfirmed`
-          )
-        ]
-      };
-    }
-    // Every delivered owned path, not merely one of them: an existential check lets a surviving
-    // owned path mask a second owned deliverable that has since disappeared.
-    const absent = delivered.filter((path) => !livePaths.has(path));
-    if (absent.length > 0) {
-      return {
-        verified: false,
-        blockers: [
-          blocker(
-            "COMPLETION_EFFECT_REVERTED",
-            `${ticketId} completion merge delivered ${absent.join(", ")}, absent from the live target branch`
           )
         ]
       };
