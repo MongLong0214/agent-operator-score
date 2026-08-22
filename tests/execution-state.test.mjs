@@ -1790,7 +1790,7 @@ const REVERTED_DELIVERABLE = [".github/workflows/operational-state.yml", "script
  * still carries what it introduced; everything else is held identical between the reverted
  * case and its control so the introduced-path check is the only variable.
  */
-const makeCompletionEffectFacts = ({ addedPaths, presentPaths }) => {
+const makeCompletionEffectFacts = ({ addedPaths, changedPaths, presentPaths }) => {
   const facts = makeReadyD0004Facts(loadBaselineFacts());
   facts.verifiedTickets = ["D0-001", "D0-002", "D0-004"];
   const sha = "155a155a155a155a155a155a155a155a155a155a";
@@ -1801,7 +1801,10 @@ const makeCompletionEffectFacts = ({ addedPaths, presentPaths }) => {
     body: "Ticket: D0-004\nTicket-Completion: D0-004\n\nD0-004 whole-ticket completion merge.",
     reachable: true
   };
-  facts.implementationMerges = [addedPaths === undefined ? entry : { ...entry, added_paths: addedPaths }];
+  const withAdded = addedPaths === undefined ? entry : { ...entry, added_paths: addedPaths };
+  facts.implementationMerges = [
+    changedPaths === undefined ? withAdded : { ...withAdded, changed_paths: changedPaths }
+  ];
   facts.postMergeCI.push({
     merge_commit_sha: sha,
     head_sha: sha,
@@ -1964,7 +1967,10 @@ test("legacy-completion-binding-is-subject-to-the-same-completion-effect-check",
       files: [
         { filename: "specs/identity.v1.json", status: "added" },
         { filename: "scripts/validate-identity.mjs", status: "added" },
-        { filename: "docs/tickets/D0/D0-001-canonical-identifier-registry.md", status: "modified" }
+        { filename: "docs/tickets/D0/D0-001-canonical-identifier-registry.md", status: "modified" },
+        // A file the merge deleted. It is absent from the tip by construction, so counting it
+        // as a changed path would make every deleting completion report a reverted effect.
+        { filename: "scripts/legacy-identity-check.mjs", status: "removed" }
       ]
     },
     [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
@@ -1998,23 +2004,92 @@ test("legacy-completion-binding-is-subject-to-the-same-completion-effect-check",
     ["scripts/validate-identity.mjs", "specs/identity.v1.json"],
     "the legacy collector must record the introduced paths, sorted, added-only"
   );
+  // The changed set is what a completion with no added path is judged on, so the legacy
+  // collector must record it too — the previous cut of this check missed this collector
+  // entirely. The two sets differ by the modified ticket file, which is what makes this an
+  // oracle rather than a restatement of the assertion above.
+  assert.deepEqual(
+    implementationMerges[0].changed_paths,
+    [
+      "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+      "scripts/validate-identity.mjs",
+      "specs/identity.v1.json"
+    ],
+    "the legacy collector must record added and modified paths, sorted"
+  );
 });
 
-test("completion-that-introduced-nothing-still-verifies", async () => {
-  // A completion merge that only deleted or modified files introduces no path. An empty
-  // introduced set has nothing that could go absent, so it is a pass — not an absent effect
-  // and not an unknown one. Conflating empty with unknown would block every refactor,
-  // deletion, and doc-correction completion in the backlog.
-  const facts = makeCompletionEffectFacts({ addedPaths: [], presentPaths: [] });
+test("completion-that-introduced-nothing-verifies-on-its-surviving-changed-paths", async () => {
+  // A completion merge that only modified files introduces no path, and 28 of this
+  // repository's 76 completion receipts have exactly that shape — refactors, doc
+  // corrections, census repins. They must still verify, so an empty introduced set is not an
+  // absent effect. What it cannot be is unexamined: the effect such a merge does have is the
+  // files it changed, and those must still be at the tip.
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: ["docs/effect/survivor.md"],
+    presentPaths: ["docs/effect/survivor.md"]
+  });
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
   assert.equal(
     state.phase,
     "verified",
-    `an empty introduced set is not an absent effect, got phase=${state.phase} blockers=${blockerCodes(state).join(",")}`
+    `an empty introduced set with a surviving changed path is not an absent effect, got phase=${state.phase} blockers=${blockerCodes(state).join(",")}`
   );
   assert.equal(state.readiness, "terminal");
   assert.deepEqual(blockerCodes(state), []);
+});
+
+// The three cases below are the hole this pair of checks closes: before them, every one of
+// these verified, because an empty introduced set has nothing that could be found absent and
+// the check therefore passed on no evidence at all.
+
+test("completion-that-introduced-nothing-and-changed-nothing-is-not-a-verified-effect", async () => {
+  const facts = makeCompletionEffectFacts({ addedPaths: [], changedPaths: [], presentPaths: [] });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    "a merge that added and modified no file has no effect and must never verify"
+  );
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
+    `expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+  );
+  assert.match(blockerReason(state, "COMPLETION_EFFECT_UNKNOWN"), /added and modified no file/);
+});
+
+test("completion-that-introduced-nothing-fails-closed-when-its-changed-set-is-unavailable", async () => {
+  // `changed_paths` absent is the collector-outage shape. It must not read as "nothing
+  // changed", which would be indistinguishable from the case above and would let an outage
+  // decide a verdict.
+  const facts = makeCompletionEffectFacts({ addedPaths: [], presentPaths: [] });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified", "an unavailable changed set must never verify");
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
+    `expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+  );
+  assert.match(blockerReason(state, "COMPLETION_EFFECT_UNKNOWN"), /changed-path set is unavailable/);
+});
+
+test("completion-that-introduced-nothing-is-reverted-when-its-changed-paths-are-gone", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: ["docs/effect/removed-later.md"],
+    presentPaths: []
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified", "a changed path deleted after the merge is a reverted effect");
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_REVERTED"),
+    `expected COMPLETION_EFFECT_REVERTED, got ${blockerCodes(state).join(",") || "none"}`
+  );
+  assert.match(blockerReason(state, "COMPLETION_EFFECT_REVERTED"), /docs\/effect\/removed-later\.md/);
 });
 
 test("truncated-live-tree-listing-fails-closed-instead-of-being-treated-as-complete", async () => {
@@ -2192,7 +2267,14 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
         number: 143,
         reachable: true,
         // Only `added` files, sorted; a modified file is not an introduced path.
-        added_paths: ["packages/schema/package.json", "tests/planning/workspace-skeleton.test.mjs"]
+        added_paths: ["packages/schema/package.json", "tests/planning/workspace-skeleton.test.mjs"],
+        // ...but it is a changed one, and that is what a completion with no introduced path
+        // is judged on. `package.json` appears here and nowhere above.
+        changed_paths: [
+          "package.json",
+          "packages/schema/package.json",
+          "tests/planning/workspace-skeleton.test.mjs"
+        ]
       }
     ]);
     assert.ok(verifiedTickets.includes("D0-002"));
@@ -2455,15 +2537,23 @@ function buildCollectorMergedSearchFixture(items) {
     // outage/unknown shape; `effect_present: false` models the reverted shape by recording
     // the introduced paths and deliberately leaving them out of the live tree listing.
     if (Object.hasOwn(item, "added_paths")) {
+      const modified = item.modified_paths ?? [];
       responses[`${COLLECTOR_REPO_PATH}/commits/${item.merge_commit_sha}`] =
         item.added_paths === null
           ? { sha: item.merge_commit_sha }
           : {
               sha: item.merge_commit_sha,
-              files: item.added_paths.map((filename) => ({ filename, status: "added" }))
+              files: [
+                ...item.added_paths.map((filename) => ({ filename, status: "added" })),
+                ...modified.map((filename) => ({ filename, status: "modified" })),
+                // A removed file is in the same response and must stay out of the changed set:
+                // it is absent from the tip by construction, so counting it would refuse every
+                // completion that deletes anything.
+                ...(item.removed_paths ?? []).map((filename) => ({ filename, status: "removed" }))
+              ]
             };
       if (Array.isArray(item.added_paths) && item.effect_present !== false) {
-        collectorTreePaths.push(...item.added_paths);
+        collectorTreePaths.push(...item.added_paths, ...modified);
       }
     }
   }
