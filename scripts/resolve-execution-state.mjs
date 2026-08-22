@@ -654,10 +654,15 @@ const postMergeStatus = (facts, mergeCommitSha) => {
       }
     }
   }
-  // Descendant substitution exists for a merge whose own CI ran but cannot finish -- E8-004 has a
-  // completed success and a permanently queued run on the same commit, which read as ambiguous
-  // above. It must not also cover a merge no workflow ran on at all: "CI is stuck here" and "CI
-  // never applied here" are different claims, and only the first is the contract's exception.
+  // Descendant substitution exists for a merge whose own CI ran but cannot finish -- E8-004's
+  // retained CI row is permanently queued, so it is neither a success nor a recognised failure and
+  // falls through to here. (The Operational State success on that same commit never reaches this
+  // decision; the collector keeps only the CI workflow.) It must not also cover a merge no workflow
+  // ran on at all: "CI is stuck here" and "CI never applied here" are different claims, and only
+  // the first is the contract's exception.
+  //
+  // head_sha is GitHub's, merge_commit_sha is assigned locally while collecting. This must read the
+  // reported one, or it asks the collector to vouch for itself.
   const exactRunObserved = all.some(
     (run) => typeof run.head_sha === "string" && sameSha(run.head_sha, mergeCommitSha)
   );

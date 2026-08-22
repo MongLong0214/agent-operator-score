@@ -1622,6 +1622,8 @@ const FORM_A_INTRODUCED_PATHS = [
   "suites/coding-core-v0/form-a/manifest.json"
 ];
 
+const DECOY_UNRELATED_HEAD_SHA = "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00";
+
 const sameShaForTest = (a, b) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
 
 const makeRestoredWedgedCompletionFacts = ({
@@ -1737,6 +1739,24 @@ test("descendant-ci-does-not-cover-a-merge-with-no-run-of-its-own", async () => 
     DESCENDANT_LIVE_TIP_SHA,
     "the descendant must be the live tip for its authentication to hold"
   );
+  // Authentication is the ancestry fact, not the row: merge <= descendant <= live tip. Without
+  // asserting it, the case can report a refusal while the evidence it names is unauthenticated.
+  assert.equal(
+    facts.ancestry?.[`${DESCENDANT_LIVE_TIP_SHA}...${WEDGED_E8004_MERGE_SHA}`],
+    "behind",
+    "the descendant must be authenticated as a descendant of the merge, or the refusal proves nothing"
+  );
+  // A row the collector minted a merge_commit_sha for, whose reported head_sha is a different
+  // commit. The guard must read GitHub's head_sha; aiming it at merge_commit_sha would see this as
+  // a run on the exact merge and let the descendant stand in.
+  facts.postMergeCI.push({
+    merge_commit_sha: WEDGED_E8004_MERGE_SHA,
+    head_sha: DECOY_UNRELATED_HEAD_SHA,
+    status: "completed",
+    conclusion: "success",
+    run_id: 32213166999,
+    run_attempt: 1
+  });
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
   assert.notEqual(
