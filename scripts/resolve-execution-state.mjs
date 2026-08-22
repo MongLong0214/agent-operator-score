@@ -540,9 +540,20 @@ const selectLatestRunAttempt = (runs) => {
     if (!best) return run;
     return compareRunAttempts(best, run) < 0 ? run : best;
   }, null);
-  // Ambiguous when more than one run shares the same latest (run_id, run_attempt).
+  // Ambiguity is disagreement, not repetition. Rows tie on (run_id, run_attempt), and two rows
+  // carrying the same run_id ARE the same run: a pull request that links both a Gate-Batch and a
+  // Ticket-Completion receipt is selected into the gate corpus and the completion corpus, and each
+  // pass fetches and records the same workflow run. Failing closed on that made both receipts
+  // report POST_MERGE_CI_MISSING while the merge commit's CI was green, and nothing warned.
+  //
+  // What must still fail closed is two rows that claim the same run and disagree about how it
+  // ended — that is a real conflict about the same fact, and picking either answer would be a
+  // guess.
   const ties = runs.filter((run) => compareRunAttempts(run, latest) === 0);
-  if (ties.length !== 1) return { ambiguous: true };
+  if (ties.length !== 1) {
+    const observations = new Set(ties.map((run) => `${String(run?.status)}\u0000${String(run?.conclusion)}`));
+    if (observations.size !== 1) return { ambiguous: true };
+  }
   return { run: latest };
 };
 
