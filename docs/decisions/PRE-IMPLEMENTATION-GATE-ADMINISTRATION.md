@@ -78,7 +78,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e4-001-e4-002-e4-003-e4-004-owner-direction-prerequisites` | ACCEPTED |
 | `e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites` | INVALIDATED |
 | `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites` | INVALIDATED |
-| `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites` | ACCEPTED |
+| `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites` | INVALIDATED |
 | `e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites` | ACCEPTED |
 | `e9-001-e9-002-e9-003-owner-direction-prerequisites` | ACCEPTED |
 | `e10-001-e10-002-e10-003-owner-direction-prerequisites` | ACCEPTED |
@@ -92,6 +92,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal` | ACCEPTED |
 | `e5-001-e5-002-e5-003-e5-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 | `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
+| `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
 
 ## Operating sequence
 
