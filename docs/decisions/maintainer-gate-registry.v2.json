@@ -3484,7 +3484,7 @@
     },
     {
       "id": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the E8-001, E8-002, E8-003, E8-004 prerequisite set \u2014 ADR-0009, E8, and the exact E8-001, E8-002, E8-003, E8-004 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -3589,6 +3589,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -3598,6 +3604,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "artifact-correction-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved artifact correction of 2026-08-22 changes this batch's pinned digests; superseded by e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal."
       }
     },
     {
@@ -5103,6 +5114,124 @@
             "docs/tickets/E7/E7-002-build-fam-6-least-privilege-and-safety-scenario.md",
             "docs/tickets/E7/E7-003-build-fam-6-quality-constrained-efficiency-scenario.md",
             "docs/tickets/E7/E7-004-close-differentiated-wedge-and-g0-demo-candidate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "artifact-correction-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites against the owner-approved artifact correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "3cea6b68a3e1c7109bff18f4487250021dea3def"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E8-fam1-3-and-form-a.md",
+          "sha256": "5793eeef748de0ea13e04fd111d67f95b0099a827b7e0f050fdd702b847ef1dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+          "sha256": "c120b2249575ff7bb249bb63446ab0360b53f7f1445560eb37056e65b5c3215c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+          "sha256": "692996e7b6563ec2e6589c66f45b9c40c1a49fc5b4486dbc0aab5b61973b2c9e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+          "sha256": "917b7df51c9e7aeffee0e3a0a23cf27880c6bb7804ce4ce425b0499d481ce667",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md",
+          "sha256": "fcaa3361fed323c20c1aa17274683b5226b061386c93d86034e56541585905b1",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md",
+          "sha256": "606fd8c1c0da8f6dfde1a7b8e3b93c2ee00f19793c1a990aa64838058dd5483d",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E8-fam1-3-and-form-a.md",
+          "sha256": "5793eeef748de0ea13e04fd111d67f95b0099a827b7e0f050fdd702b847ef1dc",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+          "sha256": "c120b2249575ff7bb249bb63446ab0360b53f7f1445560eb37056e65b5c3215c",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+          "sha256": "692996e7b6563ec2e6589c66f45b9c40c1a49fc5b4486dbc0aab5b61973b2c9e",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+          "sha256": "917b7df51c9e7aeffee0e3a0a23cf27880c6bb7804ce4ce425b0499d481ce667",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md",
+          "sha256": "fcaa3361fed323c20c1aa17274683b5226b061386c93d86034e56541585905b1",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0009-scenario-pack-forms-and-build-order.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E8-fam1-3-and-form-a.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E8/E8-001-build-fam-1-intent-and-contracting-scenario.md",
+            "docs/tickets/E8/E8-002-build-fam-2-context-rag-and-decoy-scenario.md",
+            "docs/tickets/E8/E8-003-build-fam-3-graph-orchestration-and-join-scenario.md",
+            "docs/tickets/E8/E8-004-compose-and-freeze-six-family-form-a.md"
           ]
         }
       ],
