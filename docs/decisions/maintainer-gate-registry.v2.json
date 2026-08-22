@@ -3723,7 +3723,7 @@
     },
     {
       "id": "e9-001-e9-002-e9-003-owner-direction-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the E9-001, E9-002, E9-003 prerequisite set \u2014 ADR-0007, E9, and the exact E9-001, E9-002, E9-003 tickets at the digests below so those tickets may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of these tickets. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -3817,6 +3817,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "e9-001-e9-002-e9-003-owner-direction-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -3826,6 +3832,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "unrunnable-command-correction-candidate-2026-08-22",
+        "reason": "The 2026-08-22 unrunnable-command correction changes this batch's pinned digest; superseded by e9-001-e9-002-e9-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal."
       }
     },
     {
@@ -6818,6 +6829,113 @@
             "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
             "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
             "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "unrunnable-command-correction-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e9-001-e9-002-e9-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew e9-001-e9-002-e9-003-owner-direction-prerequisites against the 2026-08-22 correction of an unrunnable focused command in docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "186c8ff06eb81d5aa67fae6c5c0a55eec96a5a4e"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E9-claude-code-adapter-and-parity.md",
+          "sha256": "147667cbaea39e06f3010999846a3468883a7f96b29344b932f3cfcf3680f254",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+          "sha256": "2030330160788859d74dd3ef8c6e9ae8c2d3bcc04d79bfe9224d29baa696f8e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+          "sha256": "e6620b8d1dafa9eada2a76edc286a9e29e2ebd4cff6fd7012059574ca627891d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md",
+          "sha256": "f56ecdccb0e1cd701696a05a9b3d40c90075316651d78dd6b7c829392fb46f17",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0007-adapter-observability-and-session-class.md",
+          "sha256": "e6f35e78011125448ae224b16e3d6ef62dbcc415b8662a31abaacedc1eb021d0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E9-claude-code-adapter-and-parity.md",
+          "sha256": "147667cbaea39e06f3010999846a3468883a7f96b29344b932f3cfcf3680f254",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+          "sha256": "2030330160788859d74dd3ef8c6e9ae8c2d3bcc04d79bfe9224d29baa696f8e6",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+          "sha256": "e6620b8d1dafa9eada2a76edc286a9e29e2ebd4cff6fd7012059574ca627891d",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md",
+          "sha256": "f56ecdccb0e1cd701696a05a9b3d40c90075316651d78dd6b7c829392fb46f17",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0007-adapter-observability-and-session-class.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E9-claude-code-adapter-and-parity.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E9/E9-001-implement-claude-code-identity-capability-and-wrapper-lifecycle.md",
+            "docs/tickets/E9/E9-002-normalize-claude-code-events-with-bounded-redaction.md",
+            "docs/tickets/E9/E9-003-prove-codex-claude-semantic-parity-and-declared-differences.md"
           ]
         }
       ],
