@@ -576,6 +576,18 @@ const recordAncestryCompare = (ancestryFacts, base, head, status) => {
   ancestryFacts[`${base}...${head}`] = status;
 };
 
+// A completion that adds no file still has an effect: the lines it changed in files that
+// already existed. That effect is readable from the same commit response the added set comes
+// from, so widening to it costs no request. Removals are excluded — a path the merge deleted
+// is absent from the tip by construction and would refuse every deletion.
+const filesToChangedPaths = (files) =>
+  files
+    .filter(
+      (file) => (file?.status === "added" || file?.status === "modified") && typeof file.filename === "string"
+    )
+    .map((file) => file.filename)
+    .sort();
+
 const postMergeStatus = (facts, mergeCommitSha) => {
   const all = Array.isArray(facts.postMergeCI) ? facts.postMergeCI : [];
   const exact = all.filter(
@@ -1767,6 +1779,47 @@ const resolveImplementationCompletion = (facts, ticketId) => {
         )
       ]
     };
+  }
+  // An empty introduced set has nothing that could go absent, so the check above passes on
+  // any evidence at all -- including none. Refactor, deletion and doc-correction completions
+  // are legitimately in that shape, so the answer is not to demand an added path but to check
+  // the effect such a merge does have: the files it changed must still be at the tip.
+  if (introduced.length === 0) {
+    const changed = completionEntry.changed_paths;
+    if (!Array.isArray(changed)) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} completion merge introduced no path and its changed-path set is unavailable, so it has no confirmable effect`
+          )
+        ]
+      };
+    }
+    if (changed.length === 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} completion merge added and modified no file, so there is no effect to confirm present`
+          )
+        ]
+      };
+    }
+    const changedAbsent = changed.filter((path) => !liveSet.has(path));
+    if (changedAbsent.length) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_REVERTED",
+            `${ticketId} completion merge changed ${changedAbsent.join(", ")}, absent from the live target branch`
+          )
+        ]
+      };
+    }
   }
   const ci = postMergeStatus(facts, completionEntry.merge_commit_sha);
   if (ci.failed) {
@@ -3368,7 +3421,8 @@ export const applyHistoricalImplementationLinkage = (
       added_paths: legacyCommit.files
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
-        .sort()
+        .sort(),
+      changed_paths: filesToChangedPaths(legacyCommit.files)
     });
     if (!latest.ok) continue;
     postMergeCI.push({
@@ -4573,6 +4627,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // tree. Record what the completion introduced so the resolver can require it to still
     // be there. Only completion-marked merges pay for the extra request.
     let addedPaths = null;
+    let changedPaths = null;
     if (isCompletionReceipt) {
       const commit = commitsByLinkedIndex.get(i);
       if (!commit || !Array.isArray(commit.files)) {
@@ -4586,6 +4641,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
         .sort();
+      changedPaths = filesToChangedPaths(commit.files);
     }
     implementationMerges.push({
       ticket_id: ticketId,
@@ -4593,7 +4649,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       number: pull.number,
       body: pull.body ?? null,
       reachable: ancestry.reachable,
-      added_paths: addedPaths
+      added_paths: addedPaths,
+      changed_paths: changedPaths
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
