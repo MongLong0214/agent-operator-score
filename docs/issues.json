@@ -634,9 +634,7 @@
       "milestone": "S1 \u00b7 G0 Scorer Truth",
       "dependencies": [
         "E1-001",
-        "E1-003",
-        "E3-001",
-        "E9-002"
+        "E1-003"
       ],
       "size": "M",
       "epic": "E1",
@@ -646,7 +644,7 @@
         "phase:S1",
         "size:M"
       ],
-      "body_template": "## Gate state\n\n**BLOCKED \u2014 ADR + PRD + TICKET MAINTAINER GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E1`\n- Milestone: S1 \u00b7 G0 Scorer Truth\n- Size: M\n- Dependencies: E1-001,E1-003,E3-001,E9-002\n- Exact implementation contract: [docs/tickets/E1/E1-004-add-schema-conformance-compatibility-and-digest-gate.md](/docs/tickets/E1/E1-004-add-schema-conformance-compatibility-and-digest-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency."
+      "body_template": "## Gate state\n\n**BLOCKED \u2014 ADR + PRD + TICKET MAINTAINER GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E1`\n- Milestone: S1 \u00b7 G0 Scorer Truth\n- Size: M\n- Dependencies: E1-001,E1-003\n- Exact implementation contract: [docs/tickets/E1/E1-004-add-schema-conformance-compatibility-and-digest-gate.md](/docs/tickets/E1/E1-004-add-schema-conformance-compatibility-and-digest-gate.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency."
     },
     {
       "id": "E2-001",

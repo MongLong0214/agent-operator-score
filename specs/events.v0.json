@@ -24,7 +24,9 @@
     "identity",
     "evidence_digest",
     "redaction_state",
-    "payload",
+    "payload"
+  ],
+  "event_optional_fields": [
     "target_path"
   ],
   "attribution_event_types": [
@@ -34,47 +36,215 @@
     "actor.attribution_unknown"
   ],
   "events": [
-    { "event_type": "assessment.started", "event_group": "run_lifecycle", "ordinal": 1 },
-    { "event_type": "assessment.ended", "event_group": "run_lifecycle", "ordinal": 2 },
-    { "event_type": "adapter.capability_declared", "event_group": "runtime_identity", "ordinal": 3 },
-    { "event_type": "task.started", "event_group": "run_lifecycle", "ordinal": 4 },
-    { "event_type": "task.ended", "event_group": "run_lifecycle", "ordinal": 5 },
-    { "event_type": "user.instruction", "event_group": "user_instruction", "ordinal": 6 },
-    { "event_type": "user.clarification", "event_group": "user_instruction", "ordinal": 7 },
-    { "event_type": "context.selected", "event_group": "context_selection", "ordinal": 8 },
-    { "event_type": "context.injected", "event_group": "context_selection", "ordinal": 9 },
-    { "event_type": "context.compacted", "event_group": "context_selection", "ordinal": 10 },
-    { "event_type": "retrieval.query", "event_group": "retrieval_memory", "ordinal": 11 },
-    { "event_type": "retrieval.result", "event_group": "retrieval_memory", "ordinal": 12 },
-    { "event_type": "memory.read", "event_group": "retrieval_memory", "ordinal": 13 },
-    { "event_type": "memory.written", "event_group": "retrieval_memory", "ordinal": 14 },
-    { "event_type": "memory.invalidated", "event_group": "retrieval_memory", "ordinal": 15 },
-    { "event_type": "tool.call", "event_group": "tool_call", "ordinal": 16 },
-    { "event_type": "tool.result", "event_group": "tool_call", "ordinal": 17 },
-    { "event_type": "tool.error", "event_group": "tool_call", "ordinal": 18 },
-    { "event_type": "agent.delegated", "event_group": "delegation_handoff", "ordinal": 19 },
-    { "event_type": "agent.returned", "event_group": "delegation_handoff", "ordinal": 20 },
-    { "event_type": "handoff.created", "event_group": "delegation_handoff", "ordinal": 21 },
-    { "event_type": "handoff.consumed", "event_group": "delegation_handoff", "ordinal": 22 },
-    { "event_type": "plan.created", "event_group": "plan_state", "ordinal": 23 },
-    { "event_type": "plan.revised", "event_group": "plan_state", "ordinal": 24 },
-    { "event_type": "state.transition", "event_group": "plan_state", "ordinal": 25 },
-    { "event_type": "state.checkpoint", "event_group": "plan_state", "ordinal": 26 },
-    { "event_type": "intervention.occurred", "event_group": "human_active_time", "ordinal": 27 },
-    { "event_type": "approval.requested", "event_group": "approval_safety", "ordinal": 28 },
-    { "event_type": "approval.granted", "event_group": "approval_safety", "ordinal": 29 },
-    { "event_type": "approval.denied", "event_group": "approval_safety", "ordinal": 30 },
-    { "event_type": "evidence.created", "event_group": "evidence_claim", "ordinal": 31 },
-    { "event_type": "evidence.invalidated", "event_group": "evidence_claim", "ordinal": 32 },
-    { "event_type": "completion.claimed", "event_group": "evidence_claim", "ordinal": 33 },
-    { "event_type": "safety.event", "event_group": "approval_safety", "ordinal": 34 },
-    { "event_type": "budget.updated", "event_group": "token_cost", "ordinal": 35 },
-    { "event_type": "run.stalled", "event_group": "plan_state", "ordinal": 36 },
-    { "event_type": "run.resumed", "event_group": "run_lifecycle", "ordinal": 37 },
-    { "event_type": "run.cancelled", "event_group": "run_lifecycle", "ordinal": 38 },
-    { "event_type": "workspace.external_mutation", "event_group": "workspace_diff", "ordinal": 39 },
-    { "event_type": "human.manual_edit_declared", "event_group": "human_active_time", "ordinal": 40 },
-    { "event_type": "actor.attribution_changed", "event_group": "actor_attribution", "ordinal": 41 },
-    { "event_type": "actor.attribution_unknown", "event_group": "actor_attribution", "ordinal": 42 }
+    {
+      "event_type": "assessment.started",
+      "event_group": "run_lifecycle",
+      "ordinal": 1
+    },
+    {
+      "event_type": "assessment.ended",
+      "event_group": "run_lifecycle",
+      "ordinal": 2
+    },
+    {
+      "event_type": "adapter.capability_declared",
+      "event_group": "runtime_identity",
+      "ordinal": 3
+    },
+    {
+      "event_type": "task.started",
+      "event_group": "run_lifecycle",
+      "ordinal": 4
+    },
+    {
+      "event_type": "task.ended",
+      "event_group": "run_lifecycle",
+      "ordinal": 5
+    },
+    {
+      "event_type": "user.instruction",
+      "event_group": "user_instruction",
+      "ordinal": 6
+    },
+    {
+      "event_type": "user.clarification",
+      "event_group": "user_instruction",
+      "ordinal": 7
+    },
+    {
+      "event_type": "context.selected",
+      "event_group": "context_selection",
+      "ordinal": 8
+    },
+    {
+      "event_type": "context.injected",
+      "event_group": "context_selection",
+      "ordinal": 9
+    },
+    {
+      "event_type": "context.compacted",
+      "event_group": "context_selection",
+      "ordinal": 10
+    },
+    {
+      "event_type": "retrieval.query",
+      "event_group": "retrieval_memory",
+      "ordinal": 11
+    },
+    {
+      "event_type": "retrieval.result",
+      "event_group": "retrieval_memory",
+      "ordinal": 12
+    },
+    {
+      "event_type": "memory.read",
+      "event_group": "retrieval_memory",
+      "ordinal": 13
+    },
+    {
+      "event_type": "memory.written",
+      "event_group": "retrieval_memory",
+      "ordinal": 14
+    },
+    {
+      "event_type": "memory.invalidated",
+      "event_group": "retrieval_memory",
+      "ordinal": 15
+    },
+    {
+      "event_type": "tool.call",
+      "event_group": "tool_call",
+      "ordinal": 16
+    },
+    {
+      "event_type": "tool.result",
+      "event_group": "tool_call",
+      "ordinal": 17
+    },
+    {
+      "event_type": "tool.error",
+      "event_group": "tool_call",
+      "ordinal": 18
+    },
+    {
+      "event_type": "agent.delegated",
+      "event_group": "delegation_handoff",
+      "ordinal": 19
+    },
+    {
+      "event_type": "agent.returned",
+      "event_group": "delegation_handoff",
+      "ordinal": 20
+    },
+    {
+      "event_type": "handoff.created",
+      "event_group": "delegation_handoff",
+      "ordinal": 21
+    },
+    {
+      "event_type": "handoff.consumed",
+      "event_group": "delegation_handoff",
+      "ordinal": 22
+    },
+    {
+      "event_type": "plan.created",
+      "event_group": "plan_state",
+      "ordinal": 23
+    },
+    {
+      "event_type": "plan.revised",
+      "event_group": "plan_state",
+      "ordinal": 24
+    },
+    {
+      "event_type": "state.transition",
+      "event_group": "plan_state",
+      "ordinal": 25
+    },
+    {
+      "event_type": "state.checkpoint",
+      "event_group": "plan_state",
+      "ordinal": 26
+    },
+    {
+      "event_type": "intervention.occurred",
+      "event_group": "human_active_time",
+      "ordinal": 27
+    },
+    {
+      "event_type": "approval.requested",
+      "event_group": "approval_safety",
+      "ordinal": 28
+    },
+    {
+      "event_type": "approval.granted",
+      "event_group": "approval_safety",
+      "ordinal": 29
+    },
+    {
+      "event_type": "approval.denied",
+      "event_group": "approval_safety",
+      "ordinal": 30
+    },
+    {
+      "event_type": "evidence.created",
+      "event_group": "evidence_claim",
+      "ordinal": 31
+    },
+    {
+      "event_type": "evidence.invalidated",
+      "event_group": "evidence_claim",
+      "ordinal": 32
+    },
+    {
+      "event_type": "completion.claimed",
+      "event_group": "evidence_claim",
+      "ordinal": 33
+    },
+    {
+      "event_type": "safety.event",
+      "event_group": "approval_safety",
+      "ordinal": 34
+    },
+    {
+      "event_type": "budget.updated",
+      "event_group": "token_cost",
+      "ordinal": 35
+    },
+    {
+      "event_type": "run.stalled",
+      "event_group": "plan_state",
+      "ordinal": 36
+    },
+    {
+      "event_type": "run.resumed",
+      "event_group": "run_lifecycle",
+      "ordinal": 37
+    },
+    {
+      "event_type": "run.cancelled",
+      "event_group": "run_lifecycle",
+      "ordinal": 38
+    },
+    {
+      "event_type": "workspace.external_mutation",
+      "event_group": "workspace_diff",
+      "ordinal": 39
+    },
+    {
+      "event_type": "human.manual_edit_declared",
+      "event_group": "human_active_time",
+      "ordinal": 40
+    },
+    {
+      "event_type": "actor.attribution_changed",
+      "event_group": "actor_attribution",
+      "ordinal": 41
+    },
+    {
+      "event_type": "actor.attribution_unknown",
+      "event_group": "actor_attribution",
+      "ordinal": 42
+    }
   ]
 }

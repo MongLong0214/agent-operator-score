@@ -103,9 +103,11 @@ const COMMON_FIELDS = [
   "identity",
   "evidence_digest",
   "redaction_state",
-  "payload",
-  "target_path"
+  "payload"
 ];
+
+// Allowed on any event but not required, so it is not a common field. See the target-path case.
+const OPTIONAL_FIELDS = ["target_path"];
 
 const assertExported = (value: unknown, message: string) =>
   assert.equal(typeof value, "function", message);
@@ -302,11 +304,24 @@ test("target-path", async () => {
     assert.ok(has(rejected, "EVENT_TARGET_PATH_INVALID"), `${TARGET_PATH_MESSAGE}: ${target_path}`);
   }
 
+  // Omission is allowed. Requiring the field would fail the twenty frozen canonical vectors, which
+  // are digest-pinned, so requiring it would have meant reissuing frozen evidence to admit a new
+  // field. An event with no target is the case attribution already handles: unknown, withheld.
   const missing = validEvent("tool.call", "tool_call", 0);
   delete missing.target_path;
   const omitted = parseTraceEvent(missing, schema, registry);
-  assert.equal(omitted.ok, false, TARGET_PATH_MESSAGE);
-  assert.ok(has(omitted, "EVENT_MISSING_FIELD target_path"), TARGET_PATH_MESSAGE);
+  assert.equal(omitted.ok, true, TARGET_PATH_MESSAGE);
+  assert.deepEqual(omitted.errors, [], TARGET_PATH_MESSAGE);
+
+  // Explicit null is a stated absence and is equally allowed; only a present, unusable value is
+  // refused. Without this pair the refusals above are satisfied by a build that rejects every
+  // target.
+  const nulled = parseTraceEvent(
+    validEvent("tool.call", "tool_call", 0, { target_path: null }),
+    schema,
+    registry
+  );
+  assert.equal(nulled.ok, true, TARGET_PATH_MESSAGE);
 });
 
 test("secret-canary", async () => {

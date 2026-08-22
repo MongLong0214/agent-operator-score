@@ -5,7 +5,7 @@
 - Milestone: S1 · G0 Scorer Truth
 - Owning PRD: [E1](../../prd/PRD-E1-trace-and-result-schemas.md)
 - Size: M
-- Dependencies: E1-001,E1-003,E3-001,E9-002
+- Dependencies: E1-001,E1-003
 
 ## Goal
 
@@ -17,9 +17,14 @@ Two consumers of `payload` required shapes that exclude each other. The canonica
 
 Correcting that reissues frozen evidence — the G0 digest manifest, the canonical vector corpus, and the schema conformance fixtures — which is why it cannot ride as a contributing merge on E1-001, E3-001 or E9-002. Those tickets are complete and their gates were accepted against the current shape.
 
+Gate dependencies are the two E1 tickets whose contracts this extends. The change also edits files
+owned by E3-001 and E9-002 — both `verified` — but that is ownership, declared below, not a gate
+dependency: declaring a cross-epic edge would require a PRD basis PRD-E1 does not carry, and
+PRD-E1 is pinned by an ACCEPTED batch.
+
 ## Exact ownership
 
-- specs/aos-trace.schema.json; specs/events.v0.json; packages/schema/src/trace.ts — parseTraceEvent; adapters/claude-code/src/normalize.ts — normalizeClaudeEvent; adapters/claude-code/src/redact.ts — redactClaudePayload; packages/runner/src/workspace.ts — classifyWorkspaceMutation; scripts/verify-g0.mjs — G0_DIGEST_MANIFEST,G0_DIGEST_MANIFEST_SHA256
+- specs/aos-trace.schema.json; specs/events.v0.json; packages/schema/src/trace.ts — parseTraceEvent; adapters/claude-code/src/normalize.ts — normalizeClaudeEvent; adapters/claude-code/src/redact.ts — redactClaudePayload; packages/runner/src/workspace.ts — classifyWorkspaceMutation; scripts/verify-g0.mjs — G0_DIGEST_MANIFEST,G0_DIGEST_MANIFEST_SHA256; scripts/schema-conformance.mjs — the recorded schema digests only
 - packages/schema/test/trace-schema.test.ts; adapters/claude-code/test/normalize.test.ts; packages/runner/test/workspace.test.ts
 - No other file or symbol may be edited without a replacement ticket and renewed gate.
 
