@@ -80,7 +80,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites` | INVALIDATED |
 | `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites` | INVALIDATED |
 | `e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites` | INVALIDATED |
-| `e9-001-e9-002-e9-003-owner-direction-prerequisites` | ACCEPTED |
+| `e9-001-e9-002-e9-003-owner-direction-prerequisites` | INVALIDATED |
 | `e10-001-e10-002-e10-003-owner-direction-prerequisites` | ACCEPTED |
 | `e11-001-e11-002-e11-003-owner-direction-prerequisites` | ACCEPTED |
 | `e12-001-e12-002-e12-003-owner-direction-prerequisites` | ACCEPTED |
@@ -108,6 +108,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal` | ACCEPTED |
 | `e1-004-owner-direction-prerequisites` | ACCEPTED |
 | `e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal` | ACCEPTED |
+| `e9-001-e9-002-e9-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal` | ACCEPTED |
 
 ## Operating sequence
 
