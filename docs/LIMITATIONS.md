@@ -13,4 +13,21 @@ These limits are part of the public surface, not footnotes. They are not removed
 - Imported sessions are DIAGNOSTIC ONLY.
 - Verified scores require a controlled AOS wrapper from start to finish. That wrapper and the public CLI are not available yet.
 
+## Feasibility alpha boundary
+
+No alpha participant data or study result is present in this repository. The alpha
+analysis can reproduce a preregistered decision only from conserved rows; it cannot fill
+missing rows, infer consent, substitute a favorable subset, or turn a missing review into
+evidence.
+
+The n=20 design is feasibility-only. Even if a future run produces the protocol's
+continue result, it does not validate a personal score, establish precise reliability,
+remove task/session or environment effects, establish runtime fairness, or support a
+population claim. Known-group, agreement, profile, and transfer observations are reported
+to expose uncertainty; they are not calibration or certification results.
+
+G2 facet validation and G3 treatment-transfer validation are separate deferred studies.
+Neither becomes resolved from this alpha-analysis mechanism or from a transfer field in an
+alpha row.
+
 MIT is the outbound copyright grant. It is a redistribution permission. It is not contributor terms, and it is not a publication clearance. Contributor terms and formal publication review remain unresolved. G4 publication is not cleared. No public package has been approved.
