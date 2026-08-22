@@ -654,6 +654,14 @@ const postMergeStatus = (facts, mergeCommitSha) => {
       }
     }
   }
+  // Descendant substitution exists for a merge whose own CI ran but cannot finish -- E8-004 has a
+  // completed success and a permanently queued run on the same commit, which read as ambiguous
+  // above. It must not also cover a merge no workflow ran on at all: "CI is stuck here" and "CI
+  // never applied here" are different claims, and only the first is the contract's exception.
+  const exactRunObserved = all.some(
+    (run) => typeof run.head_sha === "string" && sameSha(run.head_sha, mergeCommitSha)
+  );
+  if (!exactRunObserved) return { missing: true };
   const descendantSuccess = all.some(
     (run) =>
       run.status === "completed" &&

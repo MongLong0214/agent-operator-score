@@ -1622,7 +1622,10 @@ const FORM_A_INTRODUCED_PATHS = [
   "suites/coding-core-v0/form-a/manifest.json"
 ];
 
+const sameShaForTest = (a, b) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
+
 const makeRestoredWedgedCompletionFacts = ({
+  includeExactRun = true,
   includeDescendantSuccess = true,
   authenticateDescendant = true,
   includeSiblingSuccess = false,
@@ -1648,7 +1651,7 @@ const makeRestoredWedgedCompletionFacts = ({
       FORM_A_INTRODUCED_PATHS
     )
   ];
-  facts.postMergeCI.push({
+  if (includeExactRun) facts.postMergeCI.push({
     merge_commit_sha: WEDGED_E8004_MERGE_SHA,
     head_sha: WEDGED_E8004_MERGE_SHA,
     status: exactStatus,
@@ -1706,6 +1709,45 @@ test("restored-completion-receipt-on-wedged-exact-sha-accepts-authenticated-desc
   assert.equal(state.readiness, "terminal");
   assert.equal(blockerCodes(state).includes("POST_MERGE_CI_MISSING"), false);
   assert.deepEqual(blockerCodes(state), []);
+});
+
+// #389: descendant substitution covers a merge whose own CI is wedged. A merge no workflow ran on
+// at all is a different claim -- CI never applied there -- and must not be credited by a later tip.
+test("descendant-ci-does-not-cover-a-merge-with-no-run-of-its-own", async () => {
+  const facts = makeRestoredWedgedCompletionFacts({ includeExactRun: false });
+  assert.equal(
+    facts.postMergeCI.some((row) => sameShaForTest(row.head_sha, WEDGED_E8004_MERGE_SHA)),
+    false,
+    "the exact merge must have no run for this case to mean anything"
+  );
+  // Naming the exact descendant row: the baseline fixture already carries unrelated successes, so
+  // "some row succeeded" is satisfied whether or not the evidence this case is about exists.
+  const descendant = facts.postMergeCI.find(
+    (row) =>
+      sameShaForTest(row.head_sha, DESCENDANT_LIVE_TIP_SHA) &&
+      row.status === "completed" &&
+      row.conclusion === "success"
+  );
+  assert.ok(
+    descendant,
+    "the authenticated descendant success on the live tip must be present, or the refusal proves nothing"
+  );
+  assert.equal(
+    facts.currentHead,
+    DESCENDANT_LIVE_TIP_SHA,
+    "the descendant must be the live tip for its authentication to hold"
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a merge no workflow ran on must not be credited by a later tip, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerCodes(state).includes("POST_MERGE_CI_MISSING"),
+    `expected POST_MERGE_CI_MISSING, got ${blockerCodes(state).join(",") || "none"}`
+  );
 });
 
 test("descendant-ci-unauthenticated-sibling-fails-closed", async () => {
