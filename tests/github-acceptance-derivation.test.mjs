@@ -68,7 +68,11 @@ const otherwiseValidManifest = (overrides = {}) => ({
   ...overrides
 });
 
-const manifestDigestOf = (manifest) => sha256(Buffer.from(JSON.stringify(manifest), "utf8"));
+// The digest's preimage is the manifest file's bytes, so a fixture must carry the exact
+// text it hashed. Reserializing the object here would reproduce the two-preimage defect
+// this suite exists to keep closed (#306).
+const manifestTextOf = (manifest) => `${JSON.stringify(manifest, null, 2)}\n`;
+const manifestDigestOf = (manifest) => sha256(Buffer.from(manifestTextOf(manifest), "utf8"));
 
 const otherwiseValidFacts = (overrides = {}) => {
   const manifest = Object.hasOwn(overrides, "manifest") ? overrides.manifest : otherwiseValidManifest();
@@ -87,6 +91,7 @@ const otherwiseValidFacts = (overrides = {}) => {
     merge_commit_reachable_from_target: true,
     merged: true,
     manifest,
+    manifest_text: Object.hasOwn(overrides, "manifest_text") ? overrides.manifest_text : manifestTextOf(manifest),
     manifest_digest: digest,
     manifest_in_head: true,
     author_id: AUTHOR_ID,
