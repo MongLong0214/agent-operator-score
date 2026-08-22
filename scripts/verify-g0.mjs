@@ -78,8 +78,8 @@ const KIND_OF = Object.fromEntries([
 // Pinned. Regenerating these from the files they gate would make the gate vacuous.
 export const G0_DIGEST_MANIFEST = Object.freeze([
   Object.freeze({ path: "specs/aos-result.schema.json", kind: "schema", bytes_sha256: "905553924eddced6a2038d604447bad761becdea9a1f79b4eaf0d1a0deeec70d" }),
-  Object.freeze({ path: "specs/aos-trace.schema.json", kind: "schema", bytes_sha256: "e4c8a2a57e20e2c9c184c8fd0d8d29ff60d152009301b36bc5d65807253323bc" }),
-  Object.freeze({ path: "specs/events.v0.json", kind: "schema", bytes_sha256: "d08720122b279235f97096321ef9683555170266992c8e84b4e5309d9df86668" }),
+  Object.freeze({ path: "specs/aos-trace.schema.json", kind: "schema", bytes_sha256: "1bd8ab335e68ec7aad39887661531a2b818cef401bef80bafb70bbb574c3a98e" }),
+  Object.freeze({ path: "specs/events.v0.json", kind: "schema", bytes_sha256: "af671c135903ff11c3f743119cf7ff8052dfa657fee2b760b10710d8dde13e44" }),
   Object.freeze({ path: "specs/opportunity-profile.schema.json", kind: "schema", bytes_sha256: "ee7a6ce0a1b5aec0975810176fe3fc11a93c5403e7cdab7e34618af252069913" }),
   Object.freeze({ path: "specs/scoring.v0.json", kind: "schema", bytes_sha256: "2a4169c4175fa59c8bd895ae6c1341e5f117ff33e44f9190cb271615e7c1f5bd" }),
   Object.freeze({ path: "specs/issuance.v0.json", kind: "schema", bytes_sha256: "a99959bb0667af38647fee95f9c04c4c5ca594a0bbbbff6dc9d8fcca86b8eeb3" }),
@@ -156,7 +156,7 @@ export const digestFileText = (text) => sha256Hex(normalizeLf(String(text)));
 
 // Pinned. Editing one recorded digest must break this too.
 export const G0_DIGEST_MANIFEST_SHA256 =
-  "bb1da6b12413a8cce1a02e1a0125fbff9ebd15e60e8f5c1fd1cafaadf9364e52";
+  "eb75a654c105cc65d33381e30672bebf397a51e852f983d205232a8ab4441360";
 
 export const isSupportedNodeVersion = (version) => {
   if (typeof version !== "string") return false;

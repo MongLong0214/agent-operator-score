@@ -15,12 +15,6 @@ const SECRET_PATTERNS = [
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const payloadChars = (payload: unknown): number => {
-  if (payload === null || payload === undefined) return 0;
-  if (typeof payload === "string") return payload.length;
-  return JSON.stringify(payload).length;
-};
-
 const redactString = (value: string): { value: string; redacted: boolean } => {
   let next = value;
   let redacted = false;
@@ -59,11 +53,15 @@ const redactValue = (value: unknown): { value: unknown; redacted: boolean } => {
 
 export const redactClaudePayload = (payload: unknown): Record<string, unknown> => {
   const walked = redactValue(payload);
-  let result = walked.value;
+  const serialized = walked.value === null || walked.value === undefined
+    ? null
+    : typeof walked.value === "string"
+      ? walked.value
+      : JSON.stringify(walked.value) ?? null;
+  let result = serialized;
   let redacted = walked.redacted;
-  if (payloadChars(result) > BOUNDED_PAYLOAD_MAX_CHARS) {
-    const serialized = typeof result === "string" ? result : JSON.stringify(result);
-    result = serialized.slice(0, BOUNDED_PAYLOAD_MAX_CHARS);
+  if (result !== null && result.length > BOUNDED_PAYLOAD_MAX_CHARS) {
+    result = result.slice(0, BOUNDED_PAYLOAD_MAX_CHARS);
     redacted = true;
   }
   return {

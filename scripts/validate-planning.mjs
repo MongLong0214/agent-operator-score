@@ -241,7 +241,7 @@ const prdFiles = allFiles.filter((path) => /^docs\/prd\/PRD-(?:D0|E0[ABCD]|E\d+)
 const ticketFiles = allFiles.filter((path) => /^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(rel(path)));
 if (adrFiles.length !== 13) pushError(`ADR count ${adrFiles.length}, expected 13`);
 if (prdFiles.length !== 20) pushError(`PRD count ${prdFiles.length}, expected 20`);
-if (ticketFiles.length !== 73) pushError(`ticket count ${ticketFiles.length}, expected 73`);
+if (ticketFiles.length !== 74) pushError(`ticket count ${ticketFiles.length}, expected 74`);
 
 const adrs = new Map();
 for (const path of adrFiles) {

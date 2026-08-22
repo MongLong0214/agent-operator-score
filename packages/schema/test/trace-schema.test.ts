@@ -30,6 +30,8 @@ const ATTRIBUTION_EVENTS_MESSAGE =
   "trace schema assertion failed: actor attribution events must parse";
 const CONFIDENCE_DROP_MESSAGE =
   "trace schema rejected: unknown attribution without confidence drop";
+const TARGET_PATH_MESSAGE =
+  "trace schema rejected: target_path outside the workspace-relative contract";
 
 const SECRET_CANARY = "AOS_SECRET_CANARY";
 const BOUNDED_PAYLOAD_MAX_CHARS = 2048;
@@ -104,6 +106,9 @@ const COMMON_FIELDS = [
   "payload"
 ];
 
+// Allowed on any event but not required, so it is not a common field. See the target-path case.
+const OPTIONAL_FIELDS = ["target_path"];
+
 const assertExported = (value: unknown, message: string) =>
   assert.equal(typeof value, "function", message);
 
@@ -150,7 +155,8 @@ const validEvent = (
     identity: IDENTITY,
     evidence_digest: eventType === "evidence.created" ? DIGEST : null,
     redaction_state: "none",
-    payload: null
+    payload: null,
+    target_path: null
   };
   if (eventType === "workspace.external_mutation" || eventType === "human.manual_edit_declared") {
     event.provenance = "runner-workspace-correlation";
@@ -272,6 +278,50 @@ test("oversized", async () => {
   );
   assert.equal(oversized.ok, false, OVERSIZED_MESSAGE);
   assert.ok(has(oversized, "PAYLOAD_UNBOUNDED"), OVERSIZED_MESSAGE);
+});
+
+test("target-path", async () => {
+  const { parseTraceEvent } = await loadTrace();
+  assertExported(parseTraceEvent, TARGET_PATH_MESSAGE);
+  const schema = frozenSchema();
+  const registry = frozenRegistry();
+
+  const accepted = parseTraceEvent(
+    validEvent("tool.call", "tool_call", 0, { target_path: "src/app.ts" }),
+    schema,
+    registry
+  );
+  assert.equal(accepted.ok, true, TARGET_PATH_MESSAGE);
+  assert.deepEqual(accepted.errors, [], TARGET_PATH_MESSAGE);
+
+  for (const target_path of ["/tmp/app.ts", "../outside.ts", "src/../outside.ts", "src//app.ts", "src\\app.ts", "C:/app.ts"]) {
+    const rejected = parseTraceEvent(
+      validEvent("tool.call", "tool_call", 0, { target_path }),
+      schema,
+      registry
+    );
+    assert.equal(rejected.ok, false, `${TARGET_PATH_MESSAGE}: ${target_path}`);
+    assert.ok(has(rejected, "EVENT_TARGET_PATH_INVALID"), `${TARGET_PATH_MESSAGE}: ${target_path}`);
+  }
+
+  // Omission is allowed. Requiring the field would fail the twenty frozen canonical vectors, which
+  // are digest-pinned, so requiring it would have meant reissuing frozen evidence to admit a new
+  // field. An event with no target is the case attribution already handles: unknown, withheld.
+  const missing = validEvent("tool.call", "tool_call", 0);
+  delete missing.target_path;
+  const omitted = parseTraceEvent(missing, schema, registry);
+  assert.equal(omitted.ok, true, TARGET_PATH_MESSAGE);
+  assert.deepEqual(omitted.errors, [], TARGET_PATH_MESSAGE);
+
+  // Explicit null is a stated absence and is equally allowed; only a present, unusable value is
+  // refused. Without this pair the refusals above are satisfied by a build that rejects every
+  // target.
+  const nulled = parseTraceEvent(
+    validEvent("tool.call", "tool_call", 0, { target_path: null }),
+    schema,
+    registry
+  );
+  assert.equal(nulled.ok, true, TARGET_PATH_MESSAGE);
 });
 
 test("secret-canary", async () => {
