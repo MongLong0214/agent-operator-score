@@ -32,7 +32,7 @@ Obtain independent reproduction and close G4 publication gate. Deliver only the 
 ## RED contract
 
 - Test file: `conformance/external/external-reproduction.test.ts`
-- Focused command: `npm run verify:release`
+- Focused command: `node scripts/verify-release.mjs`
 - Expected pre-GREEN failure: no independent environment has reproduced exact public fixture bytes.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -52,7 +52,7 @@ Obtain independent reproduction and close G4 publication gate. Deliver only the 
 
 ## Verification
 
-1. Focused: `npm run verify:release`; every named case above passes.
+1. Focused: `node scripts/verify-release.mjs`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario/human surface; otherwise run only the controlled protocol named by the PRD and preserve its exact manifest.
