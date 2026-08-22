@@ -32,7 +32,7 @@ Build linked non-reused Form B and exposure gate. Deliver only the bounded contr
 ## RED contract
 
 - Test file: `conformance/form-b/form-b.test.ts`
-- Focused command: `npm run verify:form-b`
+- Focused command: `node --test --experimental-strip-types conformance/form-b/form-b.test.ts`
 - Expected pre-GREEN failure: Form B equivalence, distance and exposure are not machine-checked.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
@@ -52,7 +52,7 @@ Build linked non-reused Form B and exposure gate. Deliver only the bounded contr
 
 ## Verification
 
-1. Focused: `npm run verify:form-b`; every named case above passes.
+1. Focused: `node --test --experimental-strip-types conformance/form-b/form-b.test.ts`; every named case above passes.
 2. Full: `npm test`; zero failure, skip only when preregistered by this ticket.
 3. Build/package: `npm run build`; zero warning promoted by policy and deterministic artifact manifest where applicable.
 4. Manual/live: `LIVE_NA` unless the ticket explicitly owns a runtime/scenario/human surface; otherwise run only the controlled protocol named by the PRD and preserve its exact manifest.
