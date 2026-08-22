@@ -528,7 +528,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "ticket_ids": [
         "E1-001",
         "E1-002",
-        "E1-003"
+        "E1-003",
+        "E1-004"
       ],
       "requirement_to_acceptance": [
         {
@@ -562,7 +563,8 @@ JSON object key order in this catalog is not schema-significant; validators comp
           "acceptance_id": "AC-E1-1",
           "ticket_ids": [
             "E1-001",
-            "E1-003"
+            "E1-003",
+            "E1-004"
           ]
         },
         {
@@ -1602,6 +1604,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "actor-attribution-events",
         "delegation-gap",
         "missing-parent",
+        "normalized-trace-contract",
         "oversized",
         "secret-canary",
         "semantic-events",
@@ -1875,6 +1878,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "path": "packages/runner/test/workspace.test.ts",
       "cases": [
         "actor-attribution-classification",
+        "attribution-survives-the-payload-bound",
         "dirty-base",
         "fresh",
         "residue",
@@ -1992,6 +1996,7 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "oversized",
         "secret-canary",
         "stable-bytes",
+        "target-path",
         "unknown-attribution-requires-confidence-drop",
         "unknown-event"
       ]
@@ -3893,6 +3898,30 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "test_path": "packages/schema/test/conformance.test.ts",
       "cases": [
         "cross-node"
+      ]
+    },
+    {
+      "ticket_id": "E1-004",
+      "acceptance_id": "AC-E1-004-1",
+      "test_path": "packages/schema/test/trace-schema.test.ts",
+      "cases": [
+        "target-path"
+      ]
+    },
+    {
+      "ticket_id": "E1-004",
+      "acceptance_id": "AC-E1-004-2",
+      "test_path": "adapters/claude-code/test/normalize.test.ts",
+      "cases": [
+        "normalized-trace-contract"
+      ]
+    },
+    {
+      "ticket_id": "E1-004",
+      "acceptance_id": "AC-E1-004-3",
+      "test_path": "packages/runner/test/workspace.test.ts",
+      "cases": [
+        "attribution-survives-the-payload-bound"
       ]
     },
     {

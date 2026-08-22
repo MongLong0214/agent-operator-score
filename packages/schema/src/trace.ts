@@ -34,8 +34,14 @@ const CONFIDENCE_DROP_THRESHOLD = 0.7;
 
 const COMMON_FIELDS = [
   "event_id", "run_id", "task_id", "timestamp", "actor", "event_type", "event_group",
-  "parent_id", "correlation_id", "identity", "evidence_digest", "redaction_state", "payload", "target_path"
+  "parent_id", "correlation_id", "identity", "evidence_digest", "redaction_state", "payload"
 ] as const;
+
+// Allowed but not required. Making it a COMMON_FIELD would require it on every event, which the
+// twenty frozen canonical vectors do not carry -- and those are digest-pinned, so requiring it
+// would have meant reissuing frozen evidence to admit a new field. An event without a target is
+// the case attribution already handles: unknown, score withheld.
+const OPTIONAL_FIELDS = ["target_path"] as const;
 
 const ATTRIBUTION_EVENT_TYPES = [
   "workspace.external_mutation",
@@ -45,7 +51,7 @@ const ATTRIBUTION_EVENT_TYPES = [
 ] as const;
 
 const ATTRIBUTION_ONLY_FIELDS = ["provenance", "confidence", "from_actor", "to_actor"] as const;
-const ALLOWED_EVENT_FIELDS = [...COMMON_FIELDS, ...ATTRIBUTION_ONLY_FIELDS];
+const ALLOWED_EVENT_FIELDS = [...COMMON_FIELDS, ...OPTIONAL_FIELDS, ...ATTRIBUTION_ONLY_FIELDS];
 const TRACE_FIELDS = ["schema_id", "schema_version", "run_id", "events"] as const;
 
 const FROZEN_EVENT_VOCABULARY: [string, string][] = [
