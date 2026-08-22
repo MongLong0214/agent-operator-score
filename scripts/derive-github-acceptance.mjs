@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { validateArtifactManifestV3 } from "./validate-artifact-manifest.mjs";
+import { manifestDigestMatches, validateArtifactManifestV3 } from "./validate-artifact-manifest.mjs";
 
 const SCHEMA_VERSION = 1;
 const TARGET_BRANCH = "dev";
@@ -40,8 +40,11 @@ const inspectManifest = (facts) => {
   if (typeof facts.manifest_digest !== "string" || !MANIFEST_DIGEST.test(facts.manifest_digest)) {
     reject(MALFORMED_MANIFEST_MESSAGE);
   }
-  const digest = sha256(Buffer.from(JSON.stringify(facts.manifest), "utf8"));
-  if (digest !== facts.manifest_digest) reject(MALFORMED_MANIFEST_MESSAGE);
+  // Same preimage as the producers: the file's bytes at the commit, not a reserialization of
+  // the parsed object. See manifestDigestMatches in resolve-execution-state.mjs.
+  if (!manifestDigestMatches(facts.manifest_text, facts.manifest, facts.manifest_digest)) {
+    reject(MALFORMED_MANIFEST_MESSAGE);
+  }
   try {
     validateArtifactManifestV3({ manifest: facts.manifest });
   } catch {
