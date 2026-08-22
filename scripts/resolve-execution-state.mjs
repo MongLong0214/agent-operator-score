@@ -580,15 +580,31 @@ const recordAncestryCompare = (ancestryFacts, base, head, status) => {
 // existed. That effect is readable from the same commit response the added set comes from, so
 // widening to it costs no request.
 //
-// The predicate is "this path exists after the merge", which is every status except `removed`
-// — a deleted path is absent from the tip by construction, so counting it would refuse every
-// completion that deletes anything. Naming the surviving statuses instead would be narrower
-// than the rule: `renamed` reports the new filename, which does exist, and a rename-only
-// completion listed under no other status would then be refused for having no effect.
+// A merge's effect has two directions and they need separate expectations, because excluding
+// one of them does not make it safe — it makes that half of the completion invisible. A path
+// the merge created or touched must be PRESENT at the tip; a path it deleted must be ABSENT.
+// Restoring a file a completion deliberately deleted reverts that completion just as surely as
+// deleting a file it added, and a one-directional check cannot see it.
+//
+// GitHub reports a move as `renamed`, with `filename` holding the new path and
+// `previous_filename` the old one. Both halves are real: the new path must exist and the old
+// must not, so a rename contributes to each side.
 const filesToChangedPaths = (files) =>
   files
     .filter((file) => file?.status !== "removed" && typeof file?.filename === "string")
     .map((file) => file.filename)
+    .sort();
+
+const filesToRemovedPaths = (files) =>
+  files
+    .flatMap((file) => {
+      if (file?.status === "removed" && typeof file.filename === "string") return [file.filename];
+      // A rename's old path is gone from the tip exactly as a deletion's is.
+      if (file?.status === "renamed" && typeof file.previous_filename === "string") {
+        return [file.previous_filename];
+      }
+      return [];
+    })
     .sort();
 
 const postMergeStatus = (facts, mergeCommitSha) => {
@@ -1779,6 +1795,34 @@ const resolveImplementationCompletion = (facts, ticketId) => {
         blocker(
           "COMPLETION_EFFECT_REVERTED",
           `${ticketId} completion merge introduced ${absent.join(", ")}, absent from the live target branch`
+        )
+      ]
+    };
+  }
+  // The other direction, and it applies to every completion rather than only to the empty
+  // ones: a path this merge deleted must still be gone. Restoring a file a completion
+  // deliberately removed reverts that completion exactly as deleting a file it added does, and
+  // a check that only looks for presence cannot see it. A rename's old path counts here.
+  const removed = completionEntry.removed_paths;
+  if (!Array.isArray(removed)) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "COMPLETION_EFFECT_UNKNOWN",
+          `${ticketId} completion merge removed-path set is unavailable, so half its effect cannot be confirmed`
+        )
+      ]
+    };
+  }
+  const restored = removed.filter((path) => liveSet.has(path));
+  if (restored.length) {
+    return {
+      verified: false,
+      blockers: [
+        blocker(
+          "COMPLETION_EFFECT_REVERTED",
+          `${ticketId} completion merge removed ${restored.join(", ")}, present again on the live target branch`
         )
       ]
     };
@@ -3411,7 +3455,8 @@ export const applyHistoricalImplementationLinkage = (
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
         .sort(),
-      changed_paths: filesToChangedPaths(legacyCommit.files)
+      changed_paths: filesToChangedPaths(legacyCommit.files),
+      removed_paths: filesToRemovedPaths(legacyCommit.files)
     });
     if (!latest.ok) continue;
     postMergeCI.push({
@@ -4617,6 +4662,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // be there. Only completion-marked merges pay for the extra request.
     let addedPaths = null;
     let changedPaths = null;
+    let removedPaths = null;
     if (isCompletionReceipt) {
       const commit = commitsByLinkedIndex.get(i);
       if (!commit || !Array.isArray(commit.files)) {
@@ -4631,6 +4677,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         .map((file) => file.filename)
         .sort();
       changedPaths = filesToChangedPaths(commit.files);
+      removedPaths = filesToRemovedPaths(commit.files);
     }
     implementationMerges.push({
       ticket_id: ticketId,
@@ -4639,7 +4686,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       body: pull.body ?? null,
       reachable: ancestry.reachable,
       added_paths: addedPaths,
-      changed_paths: changedPaths
+      changed_paths: changedPaths,
+      removed_paths: removedPaths
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
