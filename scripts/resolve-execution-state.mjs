@@ -576,15 +576,18 @@ const recordAncestryCompare = (ancestryFacts, base, head, status) => {
   ancestryFacts[`${base}...${head}`] = status;
 };
 
-// A completion that adds no file still has an effect: the lines it changed in files that
-// already existed. That effect is readable from the same commit response the added set comes
-// from, so widening to it costs no request. Removals are excluded — a path the merge deleted
-// is absent from the tip by construction and would refuse every deletion.
+// A completion that adds no file still has an effect: the files it touched that already
+// existed. That effect is readable from the same commit response the added set comes from, so
+// widening to it costs no request.
+//
+// The predicate is "this path exists after the merge", which is every status except `removed`
+// — a deleted path is absent from the tip by construction, so counting it would refuse every
+// completion that deletes anything. Naming the surviving statuses instead would be narrower
+// than the rule: `renamed` reports the new filename, which does exist, and a rename-only
+// completion listed under no other status would then be refused for having no effect.
 const filesToChangedPaths = (files) =>
   files
-    .filter(
-      (file) => (file?.status === "added" || file?.status === "modified") && typeof file.filename === "string"
-    )
+    .filter((file) => file?.status !== "removed" && typeof file?.filename === "string")
     .map((file) => file.filename)
     .sort();
 
