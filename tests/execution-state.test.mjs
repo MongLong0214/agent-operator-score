@@ -1970,7 +1970,11 @@ test("legacy-completion-binding-is-subject-to-the-same-completion-effect-check",
         { filename: "docs/tickets/D0/D0-001-canonical-identifier-registry.md", status: "modified" },
         // A file the merge deleted. It is absent from the tip by construction, so counting it
         // as a changed path would make every deleting completion report a reverted effect.
-        { filename: "scripts/legacy-identity-check.mjs", status: "removed" }
+        { filename: "scripts/legacy-identity-check.mjs", status: "removed" },
+        // A file the merge moved. GitHub reports the new path under `renamed`, not `added` or
+        // `modified`, and that path does exist at the tip — so a rule written as
+        // added-or-modified would refuse a rename-only completion for having no effect.
+        { filename: "specs/identity-registry.v1.json", status: "renamed" }
       ]
     },
     [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
@@ -2013,9 +2017,20 @@ test("legacy-completion-binding-is-subject-to-the-same-completion-effect-check",
     [
       "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
       "scripts/validate-identity.mjs",
+      "specs/identity-registry.v1.json",
       "specs/identity.v1.json"
     ],
-    "the legacy collector must record added and modified paths, sorted"
+    "the legacy collector must record every path the merge leaves behind, sorted"
+  );
+  // Named separately from the array above so the two rules fail apart: the removed path must
+  // be gone because it cannot be at the tip, and the renamed path must be kept because it is.
+  assert.ok(
+    !implementationMerges[0].changed_paths.includes("scripts/legacy-identity-check.mjs"),
+    "a path the merge deleted is absent from the tip and must not be counted as an effect"
+  );
+  assert.ok(
+    implementationMerges[0].changed_paths.includes("specs/identity-registry.v1.json"),
+    "a renamed path exists at the tip and must count as an effect, or a rename-only completion is refused"
   );
 });
 
