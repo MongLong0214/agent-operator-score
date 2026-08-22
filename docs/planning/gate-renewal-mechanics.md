@@ -95,3 +95,42 @@ receipt existed and no batch could ever be confirmed.
    the registry, the registry-wide counts from the validator's own report, and any snapshotted batch
    literal from the registry.
 6. Re-derive `verified` before and after. An unchanged count is the evidence that the renewal held.
+
+## One receipt kind per PR
+
+A merged PR that carries **both** a `Gate-Batch:` and a `Ticket-Completion:` receipt has **neither**
+honoured. Both report `POST_MERGE_CI_MISSING`, while the merge commit's post-merge CI is
+`completed/success`.
+
+Measured across four PRs that landed within minutes of each other, all four merge commits green:
+
+```
+#335  Gate-Batch only                  ->  D0-001  verified
+#337  Gate-Batch only                  ->  D0-012  verified
+#338  Gate-Batch only                  ->  D0-013  verified
+#336  Gate-Batch + Ticket-Completion   ->  D0-011  POST_MERGE_CI_MISSING
+                                           E3-004  POST_MERGE_CI_MISSING
+```
+
+Removing the single `Gate-Batch:` line from #336's body, changing nothing else and re-deriving:
+
+```
+E3-004  phase=verified readiness=terminal blockers=none
+```
+
+**Nothing warns.** Every validator passes, the CI is green, and the blocker points at the one thing
+that is demonstrably fine. Finding it took comparing the PR against three siblings, not reading any
+error.
+
+So: a completion merge carries `Ticket:` and `Ticket-Completion:` and no `Gate-Batch:`; a gate
+renewal carries `Gate-Batch:` and nothing else. That costs an extra PR whenever a renewal and a
+completion would otherwise ride together — which is exactly what the ADR-0003 window creates, and
+why the remaining receipts there go on their own PRs rather than riding on ticket work.
+
+Filed as #339, including the honest limit: I did not isolate which collection pass drops the run.
+`collectLiveExecutionFacts` builds gate PRs and completion merges in two passes, each fetching
+`actions/runs?head_sha=<merge_commit_sha>&event=push` for its own corpus
+(`resolve-execution-state.mjs:3810` and `:4520`), and a PR selected into the gate corpus is added to
+`seenGatePr` while also appearing in `linkedMerged`. The reproduction is what is recorded; the cause
+is not yet.
+
