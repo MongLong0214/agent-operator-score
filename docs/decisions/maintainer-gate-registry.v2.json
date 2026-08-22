@@ -1297,7 +1297,7 @@
     },
     {
       "id": "d0-013-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the D0-013 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-013 ticket at the digests below \u2014 so execution-view regression coverage restoration may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -1391,6 +1391,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-14T00:00:00Z",
           "recorded_by": "d0-013-execution-view-coverage-gate-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -1400,11 +1406,16 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-14T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved ADR-0003 runtime-floor correction of 2026-08-22 changes this batch's pinned digest; superseded by d0-013-prerequisites-adr-0003-2026-08-22-renewal."
       }
     },
     {
       "id": "d0-012-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the D0-012 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-012 ticket at the digests below \u2014 so ticket-owned census re-derivation may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -1498,6 +1509,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-14T01:00:00Z",
           "recorded_by": "d0-012-ticket-owned-census-gate-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -1507,6 +1524,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-14T01:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved ADR-0003 runtime-floor correction of 2026-08-22 changes this batch's pinned digest; superseded by d0-012-prerequisites-adr-0003-2026-08-22-renewal."
       }
     },
     {
@@ -1629,7 +1651,7 @@
     },
     {
       "id": "d0-011-census-corrected-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the D0-011 prerequisite set \u2014 ADR-0001/0003/0012, PRD-D0, and the exact D0-011 ticket at the digests below \u2014 after the ticket-owned census correction, so ticket-derived fixture admission may be executed. Recorded by the repository owner, who is its sole maintainer. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -1723,6 +1745,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "d0-011-census-corrected-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -1732,6 +1760,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved ADR-0003 runtime-floor correction of 2026-08-22 changes this batch's pinned digest; superseded by d0-011-census-corrected-prerequisites-adr-0003-2026-08-22-renewal."
       }
     },
     {
@@ -2271,7 +2304,7 @@
     },
     {
       "id": "d0-001-owner-direction-prerequisites",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Accept the D0-001 prerequisite set \u2014 ADR-0001/ADR-0003/ADR-0012, D0, and the exact D0-001 ticket at the digests below so that ticket may advance only through separately required exact-head technical review, CI, explicit CEO production PASS, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review of this ticket. Technical review is delegated to an adversarial reviewer whose pass is required before merge; this record is not that review and is not merge authorization.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -2365,6 +2398,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-19T00:00:00Z",
           "recorded_by": "d0-001-owner-direction-prerequisites-candidate"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -2374,6 +2413,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-19T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved ADR-0003 runtime-floor correction of 2026-08-22 changes this batch's pinned digest; superseded by d0-001-owner-direction-prerequisites-adr-0003-2026-08-22-renewal."
       }
     },
     {
@@ -4697,7 +4741,7 @@
     },
     {
       "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal against the owner-approved artifact corrections of 2026-08-22 (#167 engine floor, #266 focused command, #310 wedged-CI exception, #313 ownership restated for the census). Complete replacement: every pinned digest is re-taken at the correction commit, so no verified ticket passes through a partially renewed state.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -4791,6 +4835,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-22T00:00:00Z",
           "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
@@ -4800,6 +4850,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-22T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved ADR-0003 runtime-floor correction of 2026-08-22 changes this batch's pinned digest; superseded by d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal."
       }
     },
     {
@@ -5800,7 +5855,7 @@
     },
     {
       "id": "d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew d0-002-prerequisites-red-census-contract-correction-renewal against the owner-approved artifact correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -5894,10 +5949,663 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-22T00:00:00Z",
           "recorded_by": "artifact-correction-renewal-candidate-2026-08-22"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
         }
       ],
       "preparation": {
         "prepared_by": "artifact-correction-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-22T00:00:00Z",
+        "invalidated_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22",
+        "reason": "Owner-approved ADR-0003 runtime-floor correction of 2026-08-22 changes this batch's pinned digest; superseded by d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal."
+      }
+    },
+    {
+      "id": "d0-001-owner-direction-prerequisites-adr-0003-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-001-owner-direction-prerequisites against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+          "sha256": "7546826a3d07c869405129cb9cc8984c61f44ae6d99b2d9f5d2874d6cca4d4b3",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+          "sha256": "7546826a3d07c869405129cb9cc8984c61f44ae6d99b2d9f5d2874d6cca4d4b3",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-001-canonical-identifier-registry.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-011-census-corrected-prerequisites-adr-0003-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-011-census-corrected-prerequisites against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md",
+          "sha256": "be033f17e135c1a47e5f9988c07543fb849ac642993cb1a67394f363729f4909",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md",
+          "sha256": "be033f17e135c1a47e5f9988c07543fb849ac642993cb1a67394f363729f4909",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-011-ticket-derived-fixture-directory-admission.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-012-prerequisites-adr-0003-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-012-prerequisites against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-012-ticket-owned-census-rederivation.md",
+          "sha256": "fca6e03a656a8e286201177dafe323df9681ff2d3db2d2ef4a1c0d167d8e9b26",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-012-ticket-owned-census-rederivation.md",
+          "sha256": "fca6e03a656a8e286201177dafe323df9681ff2d3db2d2ef4a1c0d167d8e9b26",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-012-ticket-owned-census-rederivation.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-013-prerequisites-adr-0003-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-013-prerequisites against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md",
+          "sha256": "d248a9871efc9dc4f22b75a213a662449ac7eaf401f49ba0bd3980ac860cc3d1",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md",
+          "sha256": "d248a9871efc9dc4f22b75a213a662449ac7eaf401f49ba0bd3980ac860cc3d1",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-013-restore-execution-view-regression-coverage.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+          "sha256": "2bfdfe8733b669b79180c4d2b2b9c6f69f1dc767608cb08861e07cb4482eadaa",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+          "sha256": "2bfdfe8733b669b79180c4d2b2b9c6f69f1dc767608cb08861e07cb4482eadaa",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-22T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal",
+      "status": "ACCEPTED",
+      "scope": "Renew d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+          "sha256": "6ad02082355765a04145ba4bb0484fc397f97e531bb57a4e6249669732dc8553",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
+          "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
+          "sha256": "6ad02082355765a04145ba4bb0484fc397f97e531bb57a4e6249669732dc8553",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+            "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-22T00:00:00Z",
+          "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
       },
       "approval": {
         "approved_by": "MongLong0214",
