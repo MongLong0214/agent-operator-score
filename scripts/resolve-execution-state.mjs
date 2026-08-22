@@ -576,36 +576,52 @@ const recordAncestryCompare = (ancestryFacts, base, head, status) => {
   ancestryFacts[`${base}...${head}`] = status;
 };
 
-// A completion that adds no file still has an effect: the files it touched that already
-// existed. That effect is readable from the same commit response the added set comes from, so
-// widening to it costs no request.
+// A completion's effect has two directions and they must be derived together, because each one
+// decides what the other may claim. Split across two independent filters they cannot see the
+// overlap, and three of the shapes below were wrong for exactly that reason.
 //
-// A merge's effect has two directions and they need separate expectations, because excluding
-// one of them does not make it safe — it makes that half of the completion invisible. A path
-// the merge created or touched must be PRESENT at the tip; a path it deleted must be ABSENT.
-// Restoring a file a completion deliberately deleted reverts that completion just as surely as
-// deleting a file it added, and a one-directional check cannot see it.
+//   surviving  every path the merge leaves behind: added, modified, and a rename's NEW name
+//   removed    every path it takes away: deletions, and a rename's OLD name
 //
-// GitHub reports a move as `renamed`, with `filename` holding the new path and
-// `previous_filename` the old one. Both halves are real: the new path must exist and the old
-// must not, so a rename contributes to each side.
-const filesToChangedPaths = (files) =>
-  files
-    .filter((file) => file?.status !== "removed" && typeof file?.filename === "string")
-    .map((file) => file.filename)
-    .sort();
+// A path in both is surviving, not removed. A merge may rename `A` to `B` and add a replacement
+// `A` in the same commit; GitHub then reports `A` as added and as a rename's `previous_filename`,
+// and treating it as removed refuses a completion whose effect is entirely intact.
+//
+// Returns null when the response cannot support either answer. That is not the same as an empty
+// set and must not collapse into one: a fail-closed authority owes the difference between "this
+// merge deleted nothing" and "I could not tell what it deleted".
+const COMMIT_FILES_PAGE_LIMIT = 300;
 
-const filesToRemovedPaths = (files) =>
-  files
-    .flatMap((file) => {
-      if (file?.status === "removed" && typeof file.filename === "string") return [file.filename];
-      // A rename's old path is gone from the tip exactly as a deletion's is.
-      if (file?.status === "renamed" && typeof file.previous_filename === "string") {
-        return [file.previous_filename];
-      }
-      return [];
-    })
-    .sort();
+export const filesToEffect = (files) => {
+  if (!Array.isArray(files)) return null;
+  // GitHub truncates a commit's file list at 300 and this collector does not page it. A deletion
+  // past the cut would read as "not deleted", so the whole answer is unavailable rather than
+  // partial. Measured across all 76 completion merges here, the largest carries 38 files.
+  if (files.length >= COMMIT_FILES_PAGE_LIMIT) return null;
+  const surviving = [];
+  const removed = [];
+  for (const file of files) {
+    if (!plainObject(file) || typeof file.filename !== "string" || typeof file.status !== "string") {
+      return null;
+    }
+    if (file.status === "removed") {
+      removed.push(file.filename);
+      continue;
+    }
+    if (file.status === "renamed") {
+      // A rename whose old name is missing is incomplete evidence, not a rename that removed
+      // nothing -- silently skipping it reports "no removals" for a merge that had one.
+      if (typeof file.previous_filename !== "string") return null;
+      removed.push(file.previous_filename);
+    }
+    surviving.push(file.filename);
+  }
+  const survivingSet = new Set(surviving);
+  return {
+    changed: [...surviving].sort(),
+    removed: removed.filter((path) => !survivingSet.has(path)).sort()
+  };
+};
 
 const postMergeStatus = (facts, mergeCommitSha) => {
   const all = Array.isArray(facts.postMergeCI) ? facts.postMergeCI : [];
@@ -1843,6 +1859,12 @@ const resolveImplementationCompletion = (facts, ticketId) => {
           )
         ]
       };
+    }
+    // A completion whose entire effect is a deletion leaves nothing behind by construction, and
+    // the deletions were confirmed still absent above. That is a confirmed effect, not an absent
+    // one -- refusing it would make "delete this" an unverifiable kind of work.
+    if (changed.length === 0 && removed.length > 0) {
+      return { verified: true, blockers: [] };
     }
     if (changed.length === 0) {
       return {
@@ -3446,6 +3468,7 @@ export const applyHistoricalImplementationLinkage = (
     }
     // Always record the merge receipt so failed/nonterminal post-merge CI is classified
     // by the resolver (POST_MERGE_CI_FAILED / MISSING), not silently discarded.
+    const legacyEffect = filesToEffect(legacyCommit.files);
     implementationMerges.push({
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
@@ -3455,8 +3478,8 @@ export const applyHistoricalImplementationLinkage = (
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
         .sort(),
-      changed_paths: filesToChangedPaths(legacyCommit.files),
-      removed_paths: filesToRemovedPaths(legacyCommit.files)
+      changed_paths: legacyEffect?.changed ?? null,
+      removed_paths: legacyEffect?.removed ?? null
     });
     if (!latest.ok) continue;
     postMergeCI.push({
@@ -4676,8 +4699,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
         .filter((file) => file?.status === "added" && typeof file.filename === "string")
         .map((file) => file.filename)
         .sort();
-      changedPaths = filesToChangedPaths(commit.files);
-      removedPaths = filesToRemovedPaths(commit.files);
+      const effect = filesToEffect(commit.files);
+      changedPaths = effect?.changed ?? null;
+      removedPaths = effect?.removed ?? null;
     }
     implementationMerges.push({
       ticket_id: ticketId,
