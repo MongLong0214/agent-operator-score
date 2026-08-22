@@ -559,7 +559,14 @@ describe("external-reproduction", () => {
     assert.ok(has(live, "G1") || has(live, "G2") || has(live, "G3"), "live unresolved G1-G3 blockers were not named");
     assert.ok(has(live, "NO_INDEPENDENT_REPRODUCTION"), "live tree-resident reproduction absence was not named");
     assert.equal(live.gates?.G0, "RESOLVED", "live G0 is not RESOLVED on this tree");
-    assert.equal(existsSync(resolve(root, FEASIBILITY_PATH)), false, "unexpected E12 feasibility record is present");
+    // E12-003 is contracted to create this record, so its absence is not the property under
+    // test and asserting it made this case fail the moment that ticket landed. What must hold is
+    // that the record's mere presence resolves nothing: G1 is RESOLVED only when the record
+    // carries the E12 gate pass, which a mechanism-only document does not. Checking the gate
+    // rather than the filesystem is also strictly stronger — it survives the file existing.
+    assert.notEqual(live.gates?.G1, "RESOLVED", "live G1 is RESOLVED without a feasibility pass");
+    assert.notEqual(live.gates?.G2, "RESOLVED", "live G2 is RESOLVED without a feasibility pass");
+    assert.notEqual(live.gates?.G3, "RESOLVED", "live G3 is RESOLVED without a feasibility pass");
 
     const fakeRequirement = run(
       completeInput(canonicalize, {
