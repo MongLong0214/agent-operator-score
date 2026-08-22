@@ -1936,7 +1936,26 @@ const resolveImplementationCompletion = (facts, ticketId) => {
     // A completion whose entire effect is a deletion leaves nothing behind by construction, and
     // the deletions were confirmed still absent above. That is a confirmed effect, not an absent
     // one -- refusing it would make "delete this" an unverifiable kind of work.
+    //
+    // The effect is confirmed here, but a completion still has to have passed CI on its own merge:
+    // returning verified from this branch skipped that check, which every other completion shape
+    // must satisfy and which the owning ticket requires (#386).
     if (changed.length === 0 && removed.length > 0) {
+      const deletionCi = postMergeStatus(facts, completionEntry.merge_commit_sha);
+      if (deletionCi.failed) {
+        return {
+          verified: false,
+          blockers: [blocker("POST_MERGE_CI_FAILED", `${ticketId} completion merge post-merge CI failed`)]
+        };
+      }
+      if (deletionCi.missing) {
+        return {
+          verified: false,
+          blockers: [
+            blocker("POST_MERGE_CI_MISSING", `${ticketId} completion merge post-merge CI missing or nonterminal`)
+          ]
+        };
+      }
       return { verified: true, blockers: [] };
     }
     if (changed.length === 0) {
