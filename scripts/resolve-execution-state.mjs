@@ -1749,6 +1749,29 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
     if (typeof facts.currentHead !== "string" || !sameSha(freeze.exact_head_sha, facts.currentHead)) {
       return null;
     }
+    // `manifest_in_head` is a boolean the caller asserts and `manifest_text` is bytes the caller
+    // supplies, so manifestDigestMatches only proves the caller's own fields agree with each other.
+    // The attack that leaves open is a subset or digest-lowered manifest listing only artifacts the
+    // caller knows will match. Bind the count and every digest to the document committed at the
+    // frozen SHA (#385). Paths are deliberately not compared here: a wrong path must still reach
+    // the tree-membership and blob checks below, which is what names the defect for an operator.
+    const committedText = gitBlobAt(root, freeze.exact_head_sha, ARTIFACT_MANIFEST_V3_RELATIVE);
+    if (committedText == null) return null;
+    let committedArtifacts = null;
+    try {
+      const parsed = JSON.parse(committedText.toString("utf8"));
+      committedArtifacts = Array.isArray(parsed?.artifacts) ? parsed.artifacts : null;
+    } catch {
+      return null;
+    }
+    if (committedArtifacts === null || committedArtifacts.length !== artifacts.length) return null;
+    for (let i = 0; i < artifacts.length; i += 1) {
+      const declared = artifacts[i];
+      const committed = committedArtifacts[i];
+      if (!plainObject(declared) || !plainObject(committed)) return null;
+      if (declared.sha256 !== committed.sha256 || declared.kind !== committed.kind) return null;
+    }
+
     const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
     if (livePaths === null) return null;
 
