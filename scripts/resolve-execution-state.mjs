@@ -2629,23 +2629,9 @@ const detectTicketSubtask = (ticketId, markdown, options = {}) => {
 const extractPathsAndSymbolsFromProse = (text) => {
   const owned_paths = [];
   const owned_symbols = [];
-  // A ticket's ownership prose names things that are not repository paths, and admitting them made
-  // owned_paths unusable for asking whether a deliverable is present. Measured over the 47 verified
-  // tickets, seven carried a non-path here: a command, a brace expansion, a JSON pointer, an API
-  // route, a directory, a glob, and a path with a trailing line number. Only the last two are
-  // paths, and the line number is noise on one.
-  const NON_PATH = [
-    /\s/,           // a command or a sentence, never a path in this repository
-    /^#/,           // a JSON pointer such as #/$defs/authenticatedArtifactFreeze
-    /[{}]/,         // a brace expansion or an API route template
-    /^[A-Z]+ \//    // an HTTP verb and route
-  ];
   const pushPath = (token) => {
-    let cleaned = token.replace(/[.,;:]+$/g, "").trim();
+    const cleaned = token.replace(/[.,;:]+$/g, "").trim();
     if (!cleaned) return;
-    // A path may carry a line anchor in prose; the path is the owned thing, the line is not.
-    cleaned = cleaned.replace(/:\d+(-\d+)?$/, "");
-    if (NON_PATH.some((pattern) => pattern.test(cleaned))) return;
     if (cleaned.includes("/") || isOwnedPathToken(cleaned)) {
       if (!owned_paths.includes(cleaned)) owned_paths.push(cleaned);
     }
