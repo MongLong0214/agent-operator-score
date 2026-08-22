@@ -10,11 +10,15 @@
 
 If any item is missing, proposed, stale, ambiguous, or conflicts with a higher authority, stop. GitHub issue state alone is not authorization.
 
+**"Accepted" is decided by `docs/decisions/maintainer-gate-registry.v2.json`, never by a document's own status line.** Every ADR and every PRD in this repository carries `Status: PROPOSED — MAINTAINER GATE REQUIRED`, and every atomic ticket carries `BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED`, regardless of gate state — those lines are static and were never rewritten on acceptance. Reading them as the authority makes the rule above refuse all work, which is what happened to four implementation lanes before this was written down. Find the batch whose `required_artifacts` pin the document and read its `status`, `target.reviewed_head`, and digests; the resolver's blocker list is the second check. This mismatch is tracked as issue #316.
+
 ## Current operational state
 
 Committed Markdown, issue bodies, issue state, labels, and PR comments do not determine the current ready set. Until D0-004 delivers the Execution State Resolver, only a maintainer-approved exact-base execution packet backed by freshly re-read gate-registry, Git ancestry, GitHub merge/check, dependency, and ownership facts may authorize RED. Missing or unavailable external facts yield an empty ready set.
 
-After D0-004 is verified on `dev`, run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet. The roadmap and board remain static dependency and sequencing views; `docs/decisions/MAINTAINER-GATE-STATUS.md`, dated ledgers, and all other status surfaces are projections or historical audit records.
+After D0-004 is verified on `dev`, run `npm run ops:status -- --strict --ticket <ID>`. Only a resolver result with `readiness=ready` may authorize creation of an exact-base execution packet.
+
+Two failure modes of that command are **not** verdicts about the ticket. `EXTERNAL_STATE_UNAVAILABLE` or `readySet=unavailable` means the resolver could not reach GitHub — it fetches many live facts and fails closed, including under a secondary rate limit that leaves `gh api rate_limit` reporting the buckets nearly full. And `--ticket <ID>` can print `unknown ticket <ID>` for a ticket the full run lists; use the full `npm run ops:status -- --strict` output in that case. Neither says anything about authorization. The roadmap and board remain static dependency and sequencing views; `docs/decisions/MAINTAINER-GATE-STATUS.md`, dated ledgers, and all other status surfaces are projections or historical audit records.
 
 ## Per-ticket workflow
 
