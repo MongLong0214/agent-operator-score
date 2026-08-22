@@ -391,10 +391,11 @@ test("root-private-scripts-and-runnable-surface", () => {
     ...ownerPaths,
     ...fixtureCensus.admitted,
     ...ticketOwnedSkeletonPaths(),
-    // Exact ownership names these two JSON files by exact path. Neither is a source-extension
-    // census path, and neither is a `fixtures/...` glob that the declaration census can read,
+    // Exact ownership names these three JSON files by exact path. None is a source-extension
+    // census path, and none is a `fixtures/...` glob that the declaration census can read,
     // so each is admitted here under the exact path its own ticket declares.
     "suites/coding-core-v0/form-a/manifest.json",
+    "suites/coding-core-v0/registry.json",
     "fixtures/scoring/vectors.json"
   ].sort();
   assert.deepEqual(actualSkeletonFiles, allowedSkeletonFiles);
