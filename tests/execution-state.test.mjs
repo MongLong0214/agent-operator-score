@@ -1976,6 +1976,56 @@ const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, pre
 
 const blockerReason = (state, code) => (state.blockers ?? []).find((entry) => entry.code === code)?.reason ?? "";
 
+// Reproduced by blind review of #390. The changed-set presence check runs only when the introduced
+// set is empty, so one surviving added path the ticket does not own skips it, and the ownership
+// intersection then matched a declared path that had been deleted.
+test("a-surviving-added-decoy-cannot-vouch-for-a-modified-deliverable-that-is-gone", async () => {
+  const DECOY = "docs/effect/decoy.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [DECOY],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [DECOY],
+    anchor: false
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== OWNED_ANCHOR);
+  assert.ok(facts.liveTreePaths.includes(DECOY), "the decoy must survive or the case proves nothing");
+  assert.equal(
+    facts.liveTreePaths.includes(OWNED_ANCHOR),
+    false,
+    "the owned deliverable must be absent for this case to mean anything"
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a completion whose owned deliverable is absent must never verify, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(OWNED_ANCHOR),
+    `the blocker must name the absent owned path, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+// One survivor must not vouch for a second owned deliverable that disappeared.
+test("one-surviving-owned-path-cannot-vouch-for-a-second-absent-one", async () => {
+  const SECOND = "tests/execution-state.test.mjs";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [SECOND],
+    changedPaths: [SECOND, OWNED_ANCHOR],
+    presentPaths: [SECOND],
+    anchor: false
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== OWNED_ANCHOR);
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified", `got phase=${state.phase}`);
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(OWNED_ANCHOR),
+    `expected the absent owned path to be named, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
 test("completion-effect-reverted-when-introduced-path-is-absent-from-the-live-tree", async () => {
   // Ancestry says the completion merge is still there; the tree says its deliverable is not.
   const facts = makeCompletionEffectFacts({ addedPaths: REVERTED_DELIVERABLE, presentPaths: [] });
