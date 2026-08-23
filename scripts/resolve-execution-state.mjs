@@ -1707,6 +1707,22 @@ export const evaluateAuthenticatedReviewActivation = (input = {}) => {
   };
 };
 
+// Both halves are required. The contract records the intent; the activation records whether live
+// GitHub facts support it. Either alone would let a document, or facts nobody ratified, move the
+// mode the repository claims to be governed under.
+export const resolveGoverningMode = (contract, liveActivationFacts) => {
+  if (contract?.current_mode !== "AUTHENTICATED_REVIEW") return "SOLE_OWNER_ADVISORY";
+  try {
+    // An inactive activation is signalled by a throw, not by a returned evaluation.
+    const evaluated = evaluateAuthenticatedReviewActivation(liveActivationFacts ?? {});
+    return selectActiveGovernanceMode(evaluated) === "AUTHENTICATED_REVIEW"
+      ? "AUTHENTICATED_REVIEW"
+      : "SOLE_OWNER_ADVISORY";
+  } catch {
+    return "SOLE_OWNER_ADVISORY";
+  }
+};
+
 export const selectActiveGovernanceMode = (evaluation) => {
   if (evaluation?.active === true && evaluation?.mode === "AUTHENTICATED_REVIEW") {
     return "AUTHENTICATED_REVIEW";
@@ -5211,6 +5227,13 @@ export const resolveExecutionState = (options = {}) => {
   }
 
   const bootstrapActive = facts.d0_004c_merged !== true;
+  const governingMode = (() => {
+    try {
+      return resolveGoverningMode(loadGovernanceModeContract(root), facts?.[LIVE_ACTIVATION_FACTS]);
+    } catch {
+      return "SOLE_OWNER_ADVISORY";
+    }
+  })();
 
   const result = {
     schema_version: 1,
@@ -5224,6 +5247,10 @@ export const resolveExecutionState = (options = {}) => {
     // This stays false even when technical readiness is green, and until D0-004C merges
     // governance_mode is explicitly the bootstrap mode, never a post-C mode by default.
     governance_mode: bootstrapActive ? "single_owner_bootstrap" : (policy?.governance_mode ?? "single_owner_agent_team"),
+    // The contract's mode, which `governance_mode` is not: that field names the D0-004 operating
+    // phase, and D0_004_AUTHORITY_MODES exists to refuse it as a governance source. Without this an
+    // operator cannot read from the output which mode the repository is governed under.
+    governing_mode: governingMode,
     claims_merge_authorization: false,
     claims_separation_of_duties: false,
     artifact_freeze: evaluateLiveArtifactFreeze(facts?.[LIVE_ACTIVATION_FACTS], facts, root),

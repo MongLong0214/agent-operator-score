@@ -12,6 +12,7 @@
     "current_head",
     "resolved_at",
     "governance_mode",
+    "governing_mode",
     "claims_merge_authorization",
     "claims_separation_of_duties",
     "artifact_freeze",
@@ -117,6 +118,13 @@
           }
         }
       }
+    },
+    "governing_mode": {
+      "description": "The mode the governance-mode contract declares in force, from docs/decisions/governance-mode-contract.v1.json. Distinct from governance_mode, which names the D0-004 operating phase; D0-004 is refused as an authority source.",
+      "enum": [
+        "SOLE_OWNER_ADVISORY",
+        "AUTHENTICATED_REVIEW"
+      ]
     }
   },
   "$defs": {
