@@ -1227,9 +1227,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // Repinned from the validator's own output as the per-artifact binding decomposition (#167)
   // proceeds: each step invalidates one batch and accepts its replacement, so total and
   // invalidated rise together while accepted holds.
-  assert.equal(result.batches, 77);
+  assert.equal(result.batches, 78);
   assert.equal(result.counts.accepted, 30);
-  assert.equal(result.counts.invalidated, 47);
+  assert.equal(result.counts.invalidated, 48);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
@@ -1355,23 +1355,18 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
   );
   assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
   const expectedCurrentD0004Renewal = {
-    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23",
+    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23",
     "status": "ACCEPTED",
-    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal without docs/adr/ADR-0003-runtime-repository-and-distribution.md, which remains bound by d0-001-owner-direction-prerequisites-adr-0003-2026-08-22-renewal. One batch, one Gate-Batch receipt on the PR that carries it.",
+    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23 without docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md, which remains bound by d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal. One batch, one Gate-Batch receipt on the PR that carries it.",
     "target": {
       "repository": "github.com/MongLong0214/agent-operator-score",
       "branch": "dev",
-      "reviewed_head": "135b25ef699d30fe41ecdbf8b1a5e0b817672c57"
+      "reviewed_head": "8a1b0673924dc10b524919861c1489c2c82021f1"
     },
     "required_artifacts": [
       {
         "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
         "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
-        "kind": "ADR"
-      },
-      {
-        "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
-        "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
         "kind": "ADR"
       },
       {
@@ -1397,11 +1392,6 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
         "kind": "ADR"
       },
       {
-        "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
-        "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
-        "kind": "ADR"
-      },
-      {
         "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
         "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
         "kind": "PRD"
@@ -1416,8 +1406,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       {
         "type": "ADR_ACCEPTED",
         "artifact_paths": [
-          "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
-          "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
+          "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"
         ]
       },
       {

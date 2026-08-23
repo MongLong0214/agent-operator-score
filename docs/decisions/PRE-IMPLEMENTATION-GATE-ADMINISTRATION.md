@@ -115,7 +115,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-011-census-corrected-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23` | INVALIDATED |
 | `d0-012-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23` | INVALIDATED |
 | `d0-013-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23` | INVALIDATED |
-| `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23` | ACCEPTED |
+| `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23` | INVALIDATED |
 | `d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23` | ACCEPTED |
 | `d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-decomposed-2026-08-23` | ACCEPTED |
 | `d0-007-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-decomposed-2026-08-23` | ACCEPTED |
@@ -126,6 +126,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-011-census-corrected-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | ACCEPTED |
 | `d0-012-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | ACCEPTED |
 | `d0-013-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | ACCEPTED |
+| `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | ACCEPTED |
 
 ## Operating sequence
 
