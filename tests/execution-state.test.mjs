@@ -2898,6 +2898,23 @@ function buildCollectorMergedSearchFixture(items) {
   return responses;
 }
 
+// A run that only claims the name. `name:` is written inside the workflow file, so a second
+// workflow can declare it; the required check is defined against the path.
+const collectorImpostorCiRuns = (sha, runId) => ({
+  total_count: 1,
+  workflow_runs: [
+    {
+      id: runId,
+      name: "CI",
+      path: ".github/workflows/unrelated.yml",
+      head_sha: sha,
+      status: "completed",
+      conclusion: "success",
+      run_attempt: 1
+    }
+  ]
+});
+
 const collectorSuccessRuns = (sha, runId) => ({
   total_count: 1,
   workflow_runs: [
@@ -3240,6 +3257,30 @@ test("one-malformed-ticket-field-does-not-make-every-ticket-unavailable", async 
     collected.facts?.malformedReceipts,
     [{ number: 720, kind: "malformed" }],
     "the malformed row must be recorded so it can be named"
+  );
+});
+
+// #390 blind review: the collectors matched `run.name === "CI"` as an alternative to the path, so a
+// second workflow declaring that name satisfied every check that asks whether CI ran on a commit.
+test("a-workflow-that-only-claims-the-ci-name-is-not-ci", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9120912091209120912091209120912091209120";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 912,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: collectorImpostorCiRuns(sha, 912001),
+      added_paths: ["docs/effect/912.md"]
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.equal(
+    (collected.facts?.postMergeCI ?? []).some((row) => sameShaForTest(row.head_sha, sha)),
+    false,
+    "a run from a workflow whose path is not the CI workflow must not be collected as CI evidence"
   );
 });
 

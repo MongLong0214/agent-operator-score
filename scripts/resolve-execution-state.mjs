@@ -398,6 +398,10 @@ const GOVERNANCE_DECLARED_MODE_SET = new Set(GOVERNANCE_DECLARED_MODES);
 const D0_004_AUTHORITY_MODES = new Set(["single_owner_agent_team", "single_owner_bootstrap"]);
 const GOVERNANCE_MODE_CONTRACT_RELATIVE = "docs/decisions/governance-mode-contract.v1.json";
 const ARTIFACT_MANIFEST_V3_RELATIVE = "docs/decisions/maintainer-gate-artifact-manifest.v3.json";
+
+// Workflow identity is the file path, never the `name:` inside it: a second workflow can declare
+// the same name and would otherwise satisfy every check that asks whether CI ran.
+const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
 const ARTIFACT_MANIFEST_V3_SCHEMA_RELATIVE = "docs/decisions/maintainer-gate-artifact-manifest.schema.v3.json";
 
 const governanceModeContractError = (reason) => new Error(`governance mode contract error: ${reason}`);
@@ -3584,7 +3588,7 @@ export const applyHistoricalImplementationLinkage = (
     ) {
       return false;
     }
-    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const ciRuns = runs.workflow_runs.filter((run) => run.path === CI_WORKFLOW_PATH);
     const latest = selectLatestWorkflowRun(
       ciRuns.map((run) => ({
         head_sha: run.head_sha,
@@ -4098,7 +4102,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     ) {
       return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for ${pull.merge_commit_sha}`, facts: null };
     }
-    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const ciRuns = runs.workflow_runs.filter((run) => run.path === CI_WORKFLOW_PATH);
     const latest = selectLatestWorkflowRun(
       ciRuns.map((run) => ({
         merge_commit_sha: pull.merge_commit_sha,
@@ -4804,7 +4808,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     ) {
       return { ok: false, reason: failures.join("; ") || `implementation post-merge runs unavailable for #${item.number}`, facts: null };
     }
-    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const ciRuns = runs.workflow_runs.filter((run) => run.path === CI_WORKFLOW_PATH);
     const latest = selectLatestWorkflowRun(
       ciRuns.map((run) => ({
         head_sha: run.head_sha,
@@ -4915,7 +4919,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for live tip ${liveTip}`, facts: null };
     }
     const tipCiRuns = tipRuns.workflow_runs.filter(
-      (run) => run.name === "CI" || run.path === ".github/workflows/ci.yml"
+      (run) => run.path === CI_WORKFLOW_PATH
     );
     const tipLatest = selectLatestWorkflowRun(
       tipCiRuns.map((run) => ({
