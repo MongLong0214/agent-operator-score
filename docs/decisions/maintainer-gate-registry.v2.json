@@ -6876,7 +6876,7 @@
     },
     {
       "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew e14-001-e14-002-e14-003-owner-direction-prerequisites against the 2026-08-22 correction of an unrunnable focused command in docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md. One batch, one Gate-Batch receipt on the PR that carries it.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -6981,6 +6981,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-22T00:00:00Z",
           "recorded_by": "unrunnable-command-correction-candidate-2026-08-22"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-23T00:00:00Z",
+          "recorded_by": "per-artifact-binding-decomposition-2026-08-23"
         }
       ],
       "preparation": {
@@ -6990,6 +6996,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-22T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-23T00:00:00Z",
+        "invalidated_by": "per-artifact-binding-decomposition-2026-08-23",
+        "reason": "Per-artifact binding decomposition drops docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md from this batch; superseded by e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal-decomposed-2026-08-23."
       }
     },
     {
@@ -8393,6 +8404,113 @@
           "type": "TICKET_READY_FOR_RED",
           "artifact_paths": [
             "docs/tickets/D0/D0-001-canonical-identifier-registry.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-23T00:00:00Z",
+          "recorded_by": "per-artifact-binding-decomposition-2026-08-23"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "per-artifact-binding-decomposition-2026-08-23"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-23T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal-decomposed-2026-08-23",
+      "status": "ACCEPTED",
+      "scope": "Renew e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal without docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md, which remains bound by d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal. One batch, one Gate-Batch receipt on the PR that carries it.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "52822a0811aa0137997e6c2169f0a45b2b974165"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "9e61d5ab89f258d3df144473e5aee8ba0a72d44fd74820ad74c7419773504a9c",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "16bfead2c0783c8ed7ddeaaf766cc001fb832bf28f723facb8e1dcc8cbde2520",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "9e61d5ab89f258d3df144473e5aee8ba0a72d44fd74820ad74c7419773504a9c",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "16bfead2c0783c8ed7ddeaaf766cc001fb832bf28f723facb8e1dcc8cbde2520",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E14-public-oss-and-g4.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+            "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+            "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md"
           ]
         }
       ],
