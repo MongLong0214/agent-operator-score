@@ -398,6 +398,10 @@ const GOVERNANCE_DECLARED_MODE_SET = new Set(GOVERNANCE_DECLARED_MODES);
 const D0_004_AUTHORITY_MODES = new Set(["single_owner_agent_team", "single_owner_bootstrap"]);
 const GOVERNANCE_MODE_CONTRACT_RELATIVE = "docs/decisions/governance-mode-contract.v1.json";
 const ARTIFACT_MANIFEST_V3_RELATIVE = "docs/decisions/maintainer-gate-artifact-manifest.v3.json";
+
+// Workflow identity is the file path, never the `name:` inside it: a second workflow can declare
+// the same name and would otherwise satisfy every check that asks whether CI ran.
+const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
 const ARTIFACT_MANIFEST_V3_SCHEMA_RELATIVE = "docs/decisions/maintainer-gate-artifact-manifest.schema.v3.json";
 
 const governanceModeContractError = (reason) => new Error(`governance mode contract error: ${reason}`);
@@ -654,6 +658,19 @@ const postMergeStatus = (facts, mergeCommitSha) => {
       }
     }
   }
+  // Descendant substitution exists for a merge whose own CI ran but cannot finish -- E8-004's
+  // retained CI row is permanently queued, so it is neither a success nor a recognised failure and
+  // falls through to here. (The Operational State success on that same commit never reaches this
+  // decision; the collector keeps only the CI workflow.) It must not also cover a merge no workflow
+  // ran on at all: "CI is stuck here" and "CI never applied here" are different claims, and only
+  // the first is the contract's exception.
+  //
+  // head_sha is GitHub's, merge_commit_sha is assigned locally while collecting. This must read the
+  // reported one, or it asks the collector to vouch for itself.
+  const exactRunObserved = all.some(
+    (run) => typeof run.head_sha === "string" && sameSha(run.head_sha, mergeCommitSha)
+  );
+  if (!exactRunObserved) return { missing: true };
   const descendantSuccess = all.some(
     (run) =>
       run.status === "completed" &&
@@ -3571,7 +3588,7 @@ export const applyHistoricalImplementationLinkage = (
     ) {
       return false;
     }
-    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const ciRuns = runs.workflow_runs.filter((run) => run.path === CI_WORKFLOW_PATH);
     const latest = selectLatestWorkflowRun(
       ciRuns.map((run) => ({
         head_sha: run.head_sha,
@@ -4085,7 +4102,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     ) {
       return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for ${pull.merge_commit_sha}`, facts: null };
     }
-    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const ciRuns = runs.workflow_runs.filter((run) => run.path === CI_WORKFLOW_PATH);
     const latest = selectLatestWorkflowRun(
       ciRuns.map((run) => ({
         merge_commit_sha: pull.merge_commit_sha,
@@ -4791,7 +4808,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     ) {
       return { ok: false, reason: failures.join("; ") || `implementation post-merge runs unavailable for #${item.number}`, facts: null };
     }
-    const ciRuns = runs.workflow_runs.filter((run) => run.name === "CI" || run.path === ".github/workflows/ci.yml");
+    const ciRuns = runs.workflow_runs.filter((run) => run.path === CI_WORKFLOW_PATH);
     const latest = selectLatestWorkflowRun(
       ciRuns.map((run) => ({
         head_sha: run.head_sha,
@@ -4902,7 +4919,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       return { ok: false, reason: failures.join("; ") || `post-merge runs unavailable for live tip ${liveTip}`, facts: null };
     }
     const tipCiRuns = tipRuns.workflow_runs.filter(
-      (run) => run.name === "CI" || run.path === ".github/workflows/ci.yml"
+      (run) => run.path === CI_WORKFLOW_PATH
     );
     const tipLatest = selectLatestWorkflowRun(
       tipCiRuns.map((run) => ({

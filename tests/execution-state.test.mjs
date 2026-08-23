@@ -1622,7 +1622,12 @@ const FORM_A_INTRODUCED_PATHS = [
   "suites/coding-core-v0/form-a/manifest.json"
 ];
 
+const DECOY_UNRELATED_HEAD_SHA = "c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00";
+
+const sameShaForTest = (a, b) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
+
 const makeRestoredWedgedCompletionFacts = ({
+  includeExactRun = true,
   includeDescendantSuccess = true,
   authenticateDescendant = true,
   includeSiblingSuccess = false,
@@ -1648,7 +1653,7 @@ const makeRestoredWedgedCompletionFacts = ({
       FORM_A_INTRODUCED_PATHS
     )
   ];
-  facts.postMergeCI.push({
+  if (includeExactRun) facts.postMergeCI.push({
     merge_commit_sha: WEDGED_E8004_MERGE_SHA,
     head_sha: WEDGED_E8004_MERGE_SHA,
     status: exactStatus,
@@ -1706,6 +1711,63 @@ test("restored-completion-receipt-on-wedged-exact-sha-accepts-authenticated-desc
   assert.equal(state.readiness, "terminal");
   assert.equal(blockerCodes(state).includes("POST_MERGE_CI_MISSING"), false);
   assert.deepEqual(blockerCodes(state), []);
+});
+
+// #389: descendant substitution covers a merge whose own CI is wedged. A merge no workflow ran on
+// at all is a different claim -- CI never applied there -- and must not be credited by a later tip.
+test("descendant-ci-does-not-cover-a-merge-with-no-run-of-its-own", async () => {
+  const facts = makeRestoredWedgedCompletionFacts({ includeExactRun: false });
+  assert.equal(
+    facts.postMergeCI.some((row) => sameShaForTest(row.head_sha, WEDGED_E8004_MERGE_SHA)),
+    false,
+    "the exact merge must have no run for this case to mean anything"
+  );
+  // Naming the exact descendant row: the baseline fixture already carries unrelated successes, so
+  // "some row succeeded" is satisfied whether or not the evidence this case is about exists.
+  const descendant = facts.postMergeCI.find(
+    (row) =>
+      sameShaForTest(row.head_sha, DESCENDANT_LIVE_TIP_SHA) &&
+      row.status === "completed" &&
+      row.conclusion === "success"
+  );
+  assert.ok(
+    descendant,
+    "the authenticated descendant success on the live tip must be present, or the refusal proves nothing"
+  );
+  assert.equal(
+    facts.currentHead,
+    DESCENDANT_LIVE_TIP_SHA,
+    "the descendant must be the live tip for its authentication to hold"
+  );
+  // Authentication is the ancestry fact, not the row: merge <= descendant <= live tip. Without
+  // asserting it, the case can report a refusal while the evidence it names is unauthenticated.
+  assert.equal(
+    facts.ancestry?.[`${DESCENDANT_LIVE_TIP_SHA}...${WEDGED_E8004_MERGE_SHA}`],
+    "behind",
+    "the descendant must be authenticated as a descendant of the merge, or the refusal proves nothing"
+  );
+  // A row the collector minted a merge_commit_sha for, whose reported head_sha is a different
+  // commit. The guard must read GitHub's head_sha; aiming it at merge_commit_sha would see this as
+  // a run on the exact merge and let the descendant stand in.
+  facts.postMergeCI.push({
+    merge_commit_sha: WEDGED_E8004_MERGE_SHA,
+    head_sha: DECOY_UNRELATED_HEAD_SHA,
+    status: "completed",
+    conclusion: "success",
+    run_id: 32213166999,
+    run_attempt: 1
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a merge no workflow ran on must not be credited by a later tip, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerCodes(state).includes("POST_MERGE_CI_MISSING"),
+    `expected POST_MERGE_CI_MISSING, got ${blockerCodes(state).join(",") || "none"}`
+  );
 });
 
 test("descendant-ci-unauthenticated-sibling-fails-closed", async () => {
@@ -2836,6 +2898,23 @@ function buildCollectorMergedSearchFixture(items) {
   return responses;
 }
 
+// A run that only claims the name. `name:` is written inside the workflow file, so a second
+// workflow can declare it; the required check is defined against the path.
+const collectorImpostorCiRuns = (sha, runId) => ({
+  total_count: 1,
+  workflow_runs: [
+    {
+      id: runId,
+      name: "CI",
+      path: ".github/workflows/unrelated.yml",
+      head_sha: sha,
+      status: "completed",
+      conclusion: "success",
+      run_attempt: 1
+    }
+  ]
+});
+
 const collectorSuccessRuns = (sha, runId) => ({
   total_count: 1,
   workflow_runs: [
@@ -3178,6 +3257,30 @@ test("one-malformed-ticket-field-does-not-make-every-ticket-unavailable", async 
     collected.facts?.malformedReceipts,
     [{ number: 720, kind: "malformed" }],
     "the malformed row must be recorded so it can be named"
+  );
+});
+
+// #390 blind review: the collectors matched `run.name === "CI"` as an alternative to the path, so a
+// second workflow declaring that name satisfied every check that asks whether CI ran on a commit.
+test("a-workflow-that-only-claims-the-ci-name-is-not-ci", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9120912091209120912091209120912091209120";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 912,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: collectorImpostorCiRuns(sha, 912001),
+      added_paths: ["docs/effect/912.md"]
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  assert.equal(
+    (collected.facts?.postMergeCI ?? []).some((row) => sameShaForTest(row.head_sha, sha)),
+    false,
+    "a run from a workflow whose path is not the CI workflow must not be collected as CI evidence"
   );
 });
 
