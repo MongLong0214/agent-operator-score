@@ -2692,6 +2692,66 @@ test("legacy-completion-exception-does-not-extend-to-other-tickets", async () =>
   assert.deepEqual(blockerCodes(d0004), []);
 });
 
+// The modern collector's truncation test cannot reach this one: a synthetic modern row for the
+// same ticket makes the historical path skip entirely, so blind review restored the old legacy
+// expression and the whole suite stayed green. Both collectors owe the same answer.
+test("historical-linkage-collector-reports-a-truncated-commit-as-wholly-unknown", async () => {
+  const { applyHistoricalImplementationLinkage, createFixtureTransport, HISTORICAL_IMPLEMENTATION_LINKAGE } =
+    await importResolver();
+  const legacy = HISTORICAL_IMPLEMENTATION_LINKAGE["D0-002"];
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const mergeSha = legacy.merge_commit_sha;
+  const liveTip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  const responses = {
+    // A full page is possibly truncated, so nothing about this merge's effect is measurable --
+    // including which paths it introduced.
+    [`${repoPath}/commits/${mergeSha}`]: {
+      sha: mergeSha,
+      files: Array.from({ length: 300 }, (_, index) => ({
+        filename: `packages/schema/bulk-${index}.json`,
+        status: "added"
+      }))
+    },
+    [`${repoPath}/pulls/${legacy.pr_number}`]: {
+      number: legacy.pr_number,
+      merged: true,
+      merge_commit_sha: mergeSha,
+      base: { ref: "dev" }
+    },
+    [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "behind" },
+    [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
+      total_count: 1,
+      workflow_runs: [
+        {
+          id: 31084420124,
+          name: "CI",
+          path: ".github/workflows/ci.yml",
+          head_sha: mergeSha,
+          status: "completed",
+          conclusion: "success",
+          run_attempt: 1
+        }
+      ]
+    }
+  };
+  const failures = [];
+  const implementationMerges = [];
+  const ok = applyHistoricalImplementationLinkage(
+    createFixtureTransport(responses),
+    repoPath,
+    { "D0-002": { owned_paths: ["x"], owned_symbols: [] } },
+    failures,
+    { implementationMerges, postMergeCI: [], verifiedTickets: [] },
+    liveTip
+  );
+  assert.equal(ok, true, failures.join("; "));
+  assert.equal(implementationMerges.length, 1);
+  const row = implementationMerges[0];
+  for (const field of ["added_paths", "changed_paths", "removed_paths", "blob_shas"]) {
+    assert.equal(row[field], null, `${field} must be unknown when the file list may be truncated`);
+  }
+});
+
 test("historical-linkage-collector-verifies-real-merge-before-trusting-it", async () => {
   const { applyHistoricalImplementationLinkage, createFixtureTransport } = await importResolver();
   const tickets = { "D0-002": { owned_paths: ["x"], owned_symbols: [] } };
@@ -5887,6 +5947,101 @@ test("live-collector-tolerates-an-absent-contributor-commit-but-not-an-absent-re
     transport: createFixtureTransport(withoutReceipt)
   });
   assert.equal(refused.ok, false, "a receipt's own effect is required and must still fail closed");
+});
+
+// Tolerating an unreadable contributor must not tolerate a rate limit or a timeout. Those do not
+// say "this one merge is unknowable", they say the run is unreliable, and continuing past them
+// would publish a derivation assembled from whatever happened to get through. The suite's existing
+// secondary-limit test throws on the first batch, so it never reaches this fetch at all: blind
+// review deleted this propagation and every test stayed green.
+test("live-collector-fails-closed-when-only-a-contributor-commit-hits-a-limit-or-timeout", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const contributorSha = sha("a");
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: contributorSha,
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(contributorSha, 901)
+    },
+    {
+      number: 902,
+      merge_commit_sha: sha("b"),
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("b"), 902),
+      added_paths: ["docs/effect/902-receipt.md"]
+    }
+  ]);
+
+  // Only the contributor's own commit fails, and only with the fatal kind. Everything else in the
+  // run succeeds, so a collector that treated this as "that row is unknown" would return ok.
+  const failOnlyContributorCommit = (kind) => {
+    const inner = createFixtureTransport(responses);
+    return {
+      kind: inner.kind,
+      getJson: inner.getJson.bind(inner),
+      getRaw: inner.getRaw.bind(inner),
+      getJsonMany(apiPaths) {
+        return apiPaths.map((path) => {
+          if (path.endsWith(`/commits/${contributorSha}`)) {
+            return { ok: false, reason: `${kind} on ${path}`, [kind]: true };
+          }
+          try {
+            return { ok: true, value: inner.getJson(path) };
+          } catch (error) {
+            return { ok: false, reason: String(error?.message ?? error), error };
+          }
+        });
+      }
+    };
+  };
+
+  for (const kind of ["secondaryRateLimit", "timeout"]) {
+    const collected = collectLiveExecutionFacts(root, { transport: failOnlyContributorCommit(kind) });
+    assert.equal(collected.ok, false, `${kind} on a contributor commit must fail the whole run`);
+    assert.match(collected.reason, new RegExp(kind, "i"));
+  }
+});
+
+// A merge can be a completion receipt without carrying the marker: the two pre-convention merges
+// are bound by HISTORICAL_IMPLEMENTATION_LINKAGE. If the collector stops recognising that, their
+// commits become optional and a receipt reaches the resolver with null effects, which the
+// completion check reads as COMPLETION_EFFECT_UNKNOWN rather than as the outage it is.
+test("live-collector-requires-the-commit-of-a-receipt-bound-only-by-legacy-linkage", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts, HISTORICAL_IMPLEMENTATION_LINKAGE } =
+    await importResolver();
+  // D0-001, not D0-002: this fixture's live tree carries only the D0-001 and D0-004 ticket files,
+  // and a merge whose ticket is unknown to the tree is dropped before classification ever runs.
+  const legacy = HISTORICAL_IMPLEMENTATION_LINKAGE["D0-001"];
+  const build = () =>
+    buildCollectorMergedSearchFixture([
+      {
+        number: legacy.pr_number,
+        merge_commit_sha: legacy.merge_commit_sha,
+        // No Ticket-Completion marker: classifyCompletionMerge says contributor, and only the
+        // legacy binding makes this a receipt.
+        body: "Ticket: D0-001\n",
+        compare: { status: "behind" },
+        runs: collectorSuccessRuns(legacy.merge_commit_sha, legacy.pr_number),
+        added_paths: ["scripts/validate-identity.mjs"]
+      }
+    ]);
+  const present = collectLiveExecutionFacts(root, { transport: createFixtureTransport(build()) });
+  assert.equal(present.ok, true, present.reason);
+
+  const withoutCommit = build();
+  delete withoutCommit[`${COLLECTOR_REPO_PATH}/commits/${legacy.merge_commit_sha}`];
+  const refused = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(withoutCommit)
+  });
+  assert.equal(
+    refused.ok,
+    false,
+    "a legacy-bound receipt owes the same effect evidence as a marker-carrying one"
+  );
 });
 
 // The four effect fields answer one question -- what did this merge do -- from one response, so a
