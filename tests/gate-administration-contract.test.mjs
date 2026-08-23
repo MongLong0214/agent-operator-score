@@ -1361,7 +1361,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
     "target": {
       "repository": "github.com/MongLong0214/agent-operator-score",
       "branch": "dev",
-      "reviewed_head": "27c47d50bd9ad043aa5c37ffe3a6438a388ce463"
+      "reviewed_head": "0ab2a0cd872608ba6cc000b27ecfaa7d5d2f67b1"
     },
     "required_artifacts": [
       {
