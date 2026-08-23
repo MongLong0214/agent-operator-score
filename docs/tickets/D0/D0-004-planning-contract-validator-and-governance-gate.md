@@ -148,6 +148,23 @@ The exact D0-004 ticket digest accepted by the Maintainer Gate binds this policy
 
 Expected pre-GREEN failure: at least one named semantic mutant is unexpectedly accepted, and the staged resolver test cannot load the missing resolver module before GREEN.
 
+## Deliverables
+
+The final state this ticket must leave behind. Distinct from **Exact ownership**, which grants edit
+scope and says nothing about what must exist when the work is done: a completion that deletes a path
+named there still satisfies every ownership check, which is the gap this section closes.
+
+One concrete repository path per item. A path named here must be present on the target branch for
+this ticket to verify, whatever any individual merge happened to touch.
+
+- `scripts/validate-planning.mjs`
+- `tests/planning-contract.test.mjs`
+- `scripts/resolve-execution-state.mjs`
+- `specs/execution-state.schema.v1.json`
+- `tests/execution-state.test.mjs`
+- `scripts/render-execution-views.mjs`
+- `.github/workflows/operational-state.yml`
+
 ## Minimum GREEN
 
 - validate the graph `SSOT → owning ADR/PRD → PRD requirement → PRD AC → ticket → ticket AC → test file → named test case`, with orphan count zero and exact owning ADR/PRD links.
