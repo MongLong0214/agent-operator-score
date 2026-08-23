@@ -1758,18 +1758,30 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
     const committedText = gitBlobAt(root, freeze.exact_head_sha, ARTIFACT_MANIFEST_V3_RELATIVE);
     if (committedText == null) return null;
     let committedArtifacts = null;
+    let committedManifestId = null;
     try {
       const parsed = JSON.parse(committedText.toString("utf8"));
       committedArtifacts = Array.isArray(parsed?.artifacts) ? parsed.artifacts : null;
+      committedManifestId = typeof parsed?.manifest_id === "string" ? parsed.manifest_id : null;
     } catch {
       return null;
     }
     if (committedArtifacts === null || committedArtifacts.length !== artifacts.length) return null;
+    if (committedManifestId !== live.manifest.manifest_id) return null;
     for (let i = 0; i < artifacts.length; i += 1) {
       const declared = artifacts[i];
       const committed = committedArtifacts[i];
       if (!plainObject(declared) || !plainObject(committed)) return null;
-      if (declared.sha256 !== committed.sha256 || declared.kind !== committed.kind) return null;
+      // path is bound too. Leaving it caller-chosen let a caller pair a path it picked with a
+      // committed entry whenever the tree held another blob of the same bytes, and the freeze then
+      // reported a path the committed manifest never declared.
+      if (
+        declared.path !== committed.path ||
+        declared.sha256 !== committed.sha256 ||
+        declared.kind !== committed.kind
+      ) {
+        return null;
+      }
     }
 
     const livePaths = Array.isArray(facts.liveTreePaths) ? new Set(facts.liveTreePaths) : null;
@@ -1779,9 +1791,9 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
       if (!plainObject(artifact) || typeof artifact.path !== "string" || typeof artifact.sha256 !== "string") {
         return null;
       }
-      // Not redundant with the blob read below. The manifest validator permits "." segments, so
-      // `<sha>:./docs/x.md` resolves while the collected tree lists only `docs/x.md` -- the blob
-      // check passes and the freeze would report a path that is not a live-tree identity.
+      // Now that the path comes from the committed manifest, this covers a committed manifest that
+      // itself declares a path which is not a live-tree identity -- the validator permits "."
+      // segments, so `<sha>:./docs/x.md` resolves while the tree lists only `docs/x.md`.
       if (!livePaths.has(artifact.path)) return null;
       const blob = gitBlobAt(root, freeze.exact_head_sha, artifact.path);
       if (blob == null) return null;
