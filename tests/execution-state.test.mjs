@@ -2936,7 +2936,14 @@ function buildCollectorMergedSearchFixture(items) {
     ...responses[treeKey],
     tree: [
       ...(responses[treeKey]?.tree ?? []),
-      ...collectorTreePaths.map((path) => ({ path, type: "blob", mode: "100644" }))
+      // GitHub's tree listing always carries `sha`; omitting it here left the collector's blob-sha
+      // retention unexercised by a fixture that otherwise looked complete.
+      ...collectorTreePaths.map((path) => ({
+        path,
+        type: "blob",
+        mode: "100644",
+        sha: sha256Utf8(path).slice(0, 40)
+      }))
     ]
   };
   // Remove the open D0-004 candidate PR so implementation-completion blockers surface
@@ -3164,8 +3171,14 @@ test("collector-refuses-a-rename-whose-old-path-is-missing", async () => {
   ]);
   assert.deepEqual(complete, {
     changed: ["docs/effect/new-name.md"],
-    removed: ["docs/effect/old-name.md"]
+    removed: ["docs/effect/old-name.md"],
+    blobs: {}
   });
+  // The blob sha is kept when GitHub sends one; an entry without one is simply not recorded.
+  const withBlob = filesToEffect([
+    { filename: "docs/effect/new-name.md", status: "modified", sha: "a".repeat(40) }
+  ]);
+  assert.deepEqual(withBlob.blobs, { "docs/effect/new-name.md": "a".repeat(40) });
   // An entry missing a status is the same class of gap.
   assert.equal(filesToEffect([{ filename: "docs/effect/x.md" }]), null, "a file with no status cannot be placed");
 });
@@ -3371,6 +3384,35 @@ test("one-malformed-ticket-field-does-not-make-every-ticket-unavailable", async 
 
 // #390 blind review: the collectors matched `run.name === "CI"` as an alternative to the path, so a
 // second workflow declaring that name satisfied every check that asks whether CI ran on a commit.
+// #396: both blob identities the advisory field needs are already in responses the collection pays
+// for. This is the collector half -- the tree listing carries node.sha and it was being dropped.
+test("collector-keeps-the-blob-sha-the-tree-and-commit-files-already-carry", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = "9130913091309130913091309130913091309130";
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 913,
+      merge_commit_sha: sha,
+      body: "Ticket: D0-004\nTicket-Completion: D0-004",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha, 913001),
+      added_paths: ["docs/effect/913.md"]
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const treeKey = `${COLLECTOR_REPO_PATH}/git/trees/${COLLECTOR_DEV_TIP}?recursive=1`;
+  const blobNodes = (responses[treeKey]?.tree ?? []).filter((node) => node.type === "blob" && node.sha);
+  assert.ok(blobNodes.length > 0, "the tree fixture must carry blob shas or this case tests nothing");
+  for (const node of blobNodes) {
+    assert.equal(
+      collected.facts?.liveTreeBlobs?.[node.path],
+      node.sha,
+      `the collector must keep the blob sha the tree reported for ${node.path}`
+    );
+  }
+});
+
 test("a-workflow-that-only-claims-the-ci-name-is-not-ci", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
   const sha = "9120912091209120912091209120912091209120";
@@ -7440,6 +7482,53 @@ const activationMatchingHeadBlob = () => {
 // #303: the resolver already honours three of ADR-0013's four advisory constraints, but published
 // nothing an operator could read the governing mode from. `governance_mode` is the D0-004 operating
 // phase and is explicitly refused as an authority source, so it cannot stand in.
+// #396: presence says a deliverable's name is still in the tree. This says whether the bytes the
+// completion produced are still there -- the distinction D0-012 exposed, where reverting a file's
+// content leaves its filename behind.
+test("content-survival-is-advisory-and-compares-the-merge-blob-to-the-live-blob", async () => {
+  const { resolveContentSurvival } = await importResolver();
+  const owned = ["scripts/resolve-execution-state.mjs"];
+  const entry = { blob_shas: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } };
+  assert.equal(
+    resolveContentSurvival({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } }, entry, owned),
+    true,
+    "the same blob at the tip is survival"
+  );
+  assert.equal(
+    resolveContentSurvival({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "b".repeat(40) } }, entry, owned),
+    false,
+    "a different blob at the tip is drift, and must not read as survival"
+  );
+  // A path the ticket does not own says nothing about its deliverable.
+  assert.equal(
+    resolveContentSurvival(
+      { liveTreeBlobs: { "docs/effect/other.md": "a".repeat(40) } },
+      { blob_shas: { "docs/effect/other.md": "a".repeat(40) } },
+      owned
+    ),
+    null,
+    "an unowned path is not evidence either way"
+  );
+  // Unavailable is not false: a collection with no blob shas cannot answer the question.
+  assert.equal(resolveContentSurvival({}, entry, owned), null, "no live blobs means unknown");
+  assert.equal(resolveContentSurvival({ liveTreeBlobs: {} }, {}, owned), null, "no merge blobs means unknown");
+});
+
+test("content-survival-gates-nothing", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR]
+  });
+  // Every blob drifted since the merge: the ticket must still verify, with the field saying so.
+  facts.liveTreeBlobs = { [OWNED_ANCHOR]: "b".repeat(40) };
+  facts.implementationMerges[0].blob_shas = { [OWNED_ANCHOR]: "a".repeat(40) };
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(state.phase, "verified", `advisory must not block, got phase=${state.phase}`);
+  assert.equal(state.content_survived, false, "and it must report the drift it observed");
+});
+
 test("governing-mode-is-published-and-is-the-contract-mode-not-the-operating-phase", async () => {
   const facts = loadBaselineFacts();
   const { result } = await resolveOffline(facts);

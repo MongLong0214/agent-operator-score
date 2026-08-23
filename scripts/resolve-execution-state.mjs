@@ -638,7 +638,14 @@ export const filesToEffect = (files) => {
   const survivingSet = new Set(surviving);
   return {
     changed: [...surviving].sort(),
-    removed: removed.filter((path) => !survivingSet.has(path)).sort()
+    removed: removed.filter((path) => !survivingSet.has(path)).sort(),
+    // The blob each surviving path carried at this merge. GitHub already sends it and it was being
+    // dropped; keeping it is what lets content survival be observed without another request.
+    blobs: Object.fromEntries(
+      files
+        .filter((file) => file.status !== "removed" && typeof file.sha === "string")
+        .map((file) => [file.filename, file.sha])
+    )
   };
 };
 
@@ -1869,6 +1876,20 @@ const ownedIntersection = (paths, ownedPaths) => {
       return prefix.length > 0 && path.startsWith(prefix);
     })
   );
+};
+
+// Advisory only. Path presence says a deliverable's name is still in the tree; this says whether the
+// bytes the completion merge produced are still there. It gates nothing: a hard requirement would
+// un-verify correctly completed tickets whose files were legitimately edited later, measured at six
+// of the seventy-two. Reported so that case is visible rather than silently indistinguishable.
+export const resolveContentSurvival = (facts, entry, ownedPaths) => {
+  const liveBlobs = plainObject(facts?.liveTreeBlobs) ? facts.liveTreeBlobs : null;
+  const mergeBlobs = plainObject(entry?.blob_shas) ? entry.blob_shas : null;
+  if (liveBlobs === null || mergeBlobs === null) return null;
+  const owned = Array.isArray(ownedPaths) ? ownedPaths : null;
+  const candidates = ownedIntersection(Object.keys(mergeBlobs), owned ?? []);
+  if (owned === null || owned.length === 0 || candidates.length === 0) return null;
+  return candidates.some((path) => liveBlobs[path] === mergeBlobs[path]);
 };
 
 const resolveImplementationCompletion = (facts, ticketId) => {
@@ -3987,9 +4008,14 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   if (liveTree.truncated === true) {
     return { ok: false, reason: "live tree listing truncated, completion effects cannot be confirmed", facts: null };
   }
-  const liveTreePaths = liveTree.tree
-    .filter((node) => node?.type === "blob" && typeof node.path === "string")
-    .map((node) => node.path);
+  const liveTreeBlobNodes = liveTree.tree.filter(
+    (node) => node?.type === "blob" && typeof node.path === "string"
+  );
+  const liveTreePaths = liveTreeBlobNodes.map((node) => node.path);
+  // Same response, same request. node.sha was being dropped here too.
+  const liveTreeBlobs = Object.fromEntries(
+    liveTreeBlobNodes.filter((node) => typeof node.sha === "string").map((node) => [node.path, node.sha])
+  );
 
   const opsWorkflowProbe = transportCall(
     transport,
@@ -4928,6 +4954,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     let addedPaths = null;
     let changedPaths = null;
     let removedPaths = null;
+    let blobShas = null;
     if (isCompletionReceipt) {
       const commit = commitsByLinkedIndex.get(i);
       if (!commit || !Array.isArray(commit.files)) {
@@ -4944,6 +4971,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       const effect = filesToEffect(commit.files);
       changedPaths = effect?.changed ?? null;
       removedPaths = effect?.removed ?? null;
+      blobShas = effect?.blobs ?? null;
     }
     implementationMerges.push({
       ticket_id: ticketId,
@@ -4953,7 +4981,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       reachable: ancestry.reachable,
       added_paths: addedPaths,
       changed_paths: changedPaths,
-      removed_paths: removedPaths
+      removed_paths: removedPaths,
+      blob_shas: blobShas
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
@@ -5090,6 +5119,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     verifiedTickets,
     implementationMerges,
     liveTreePaths,
+    liveTreeBlobs,
     issues: [],
     prs,
     reviews,
@@ -5236,13 +5266,22 @@ export const resolveExecutionState = (options = {}) => {
   const ticketIds = Object.keys(facts.tickets ?? {}).sort();
   const tickets = {};
   for (const ticketId of ticketIds) {
-    tickets[ticketId] = resolveOneTicket(
+    const state = resolveOneTicket(
       facts,
       ticketId,
       facts.tickets[ticketId],
       policy ?? expectedActorPolicyFromTicket(),
       context
     );
+    // Attached only where it can mean something. On an unverified ticket the question "did the
+    // completion's bytes survive" has no completion to ask about.
+    if (state.phase === "verified") {
+      const entry = (facts.implementationMerges ?? []).find(
+        (merge) => merge?.ticket_id === ticketId && plainObject(merge?.blob_shas)
+      );
+      state.content_survived = resolveContentSurvival(facts, entry, facts.tickets[ticketId]?.owned_paths);
+    }
+    tickets[ticketId] = state;
   }
 
   let readySet = Object.entries(tickets)

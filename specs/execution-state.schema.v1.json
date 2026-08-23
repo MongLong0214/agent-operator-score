@@ -281,6 +281,13 @@
               "type": "null"
             }
           ]
+        },
+        "content_survived": {
+          "description": "Advisory. True when at least one owned path the completion merge produced still carries the same blob at the live tip; false when every one has changed since; null when it cannot be asked. Gates nothing.",
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       }
     },
