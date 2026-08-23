@@ -1981,6 +1981,85 @@ const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, pre
 
 const blockerReason = (state, code) => (state.blockers ?? []).find((entry) => entry.code === code)?.reason ?? "";
 
+// #396: owned_paths grants edit scope and cannot say what must exist afterwards, so a completion
+// that deletes a declared path satisfies every ownership check. A Deliverables section says it.
+test("the-deliverables-parser-reads-the-section-and-distinguishes-absent-from-empty", async () => {
+  const { parseTicketDeliverables } = await importResolver();
+  assert.equal(
+    parseTicketDeliverables("# T\n\n## Exact ownership\n\n- `a/b.md`\n"),
+    null,
+    "a ticket with no Deliverables section is undeclared"
+  );
+  assert.deepEqual(
+    parseTicketDeliverables("# T\n\n## Deliverables\n\n- `specs/x.json`; `scripts/y.mjs`\n\n## Next\n"),
+    ["specs/x.json", "scripts/y.mjs"],
+    "the section is read, and stops at the next heading"
+  );
+  assert.deepEqual(
+    parseTicketDeliverables("# T\n\n## Deliverables\n\nNone.\n"),
+    [],
+    "a section with no path tokens declares an empty set, which is not the same as absent"
+  );
+  // Ownership must not leak in: the two sections answer different questions.
+  assert.deepEqual(
+    parseTicketDeliverables("# T\n\n## Deliverables\n\n- `a/b.md`\n\n## Exact ownership\n\n- `c/d.md`\n"),
+    ["a/b.md"]
+  );
+});
+
+test("a-declared-deliverable-that-is-absent-refuses-however-the-merge-behaved", async () => {
+  const DECLARED = "specs/execution-state.schema.v1.json";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR]
+  });
+  // The merge is impeccable by every ownership measure: it touched an owned path and that path
+  // survives. The ticket's declared deliverable is nonetheless gone.
+  facts.tickets["D0-004"].deliverables = [DECLARED];
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== DECLARED);
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `a declared deliverable that is absent must refuse, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(DECLARED),
+    `the blocker must name the absent deliverable, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+test("a-ticket-with-no-deliverables-section-is-undeclared-not-empty", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR]
+  });
+  // null is what the parser returns for a ticket with no such section, and it must not be read as
+  // "declares nothing" -- every ticket in the repository is in that state today.
+  facts.tickets["D0-004"].deliverables = null;
+  const { result } = await resolveOffline(facts);
+  assert.equal(
+    ticketState(result, "D0-004").phase,
+    "verified",
+    "an undeclared ticket must be unaffected by the deliverables check"
+  );
+});
+
+test("a-declared-deliverable-that-survives-does-not-refuse", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR]
+  });
+  facts.tickets["D0-004"].deliverables = [OWNED_ANCHOR];
+  assert.ok(facts.liveTreePaths.includes(OWNED_ANCHOR), "the declared path must be present");
+  const { result } = await resolveOffline(facts);
+  assert.equal(ticketState(result, "D0-004").phase, "verified");
+});
+
 // Reproduced by blind review of #390. The changed-set presence check runs only when the introduced
 // set is empty, so one surviving added path the ticket does not own skips it, and the ownership
 // intersection then matched a declared path that had been deleted.
