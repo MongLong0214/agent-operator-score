@@ -20,7 +20,7 @@ The explicit authority basis for this exact repair is the **owner-ratified one-t
 
 The repository has exactly two governance modes.
 
-1. `SOLE_OWNER_ADVISORY` is the canonical current fact. It records planning and operational observations but produces no authorization, no artifact freeze, no `READY_FOR_RED`, and no claim of separation of duties. Authenticated-review mode does not activate by implication, by an identity-like string, or because an existing record is structurally valid.
+1. `SOLE_OWNER_ADVISORY` is the canonical current fact. It records planning and operational observations but produces no authorization, no artifact freeze, and no claim of separation of duties. It may still report which planning work is next: `READY_FOR_RED` names a planning phase, not a permission to merge, and reporting it is an observation about planning completeness of exactly the kind advisory mode exists to record. Authenticated-review mode does not activate by implication, by an identity-like string, or because an existing record is structurally valid.
 2. `AUTHENTICATED_REVIEW` may produce authorization and an artifact freeze only after D0-009 verifies and enables every activation precondition from live GitHub facts. Its derivation uses distinct authenticated principals and exact-head GitHub review facts, not mutable registry fields, comments, labels, issue state, or role strings.
 
 The repository claims no separation of duties while `SOLE_OWNER_ADVISORY` is in force. Advisory review may be useful, but it is never a substitute for an authenticated independent reviewer.
@@ -48,7 +48,10 @@ The contract is delivered only in this order: mode contract and claim removal; v
 
 ## Consequences
 
-- The ready set is empty in advisory mode, even if planning artifacts are complete.
+- The ready set carries no authorization in advisory mode. It identifies which tickets are
+  planning-complete; it does not permit a merge, and the derivation says so alongside it with
+  `claims_merge_authorization: false` and `governing_mode: SOLE_OWNER_ADVISORY`. An operator
+  who treats a non-empty ready set as authorization is contradicted by the same output.
 - Existing registry history remains auditable but cannot authorize implementation or freeze artifacts.
 - A v3 manifest makes artifact identity and migration provenance explicit before an acceptance result can be derived; it never stores an effective acceptance state.
 - Live GitHub access becomes a required, fail-closed dependency only for `AUTHENTICATED_REVIEW`; an outage or ambiguous fact leaves activation and authorization unavailable.
