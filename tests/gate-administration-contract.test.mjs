@@ -1123,7 +1123,7 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // The 2026-08-22 engine-matrix correction adds a fifth link to this chain: D0-002 now states the
   // 22.18 floor the runtime actually verifies, so the red-census renewal's pinned digest is stale
   // and a fresh accepted record binds the corrected one.
-  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal");
+  const renewal = registry.batches.find(({ id }) => id === "d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23");
   const result = validateGateAdministration();
   const adr = readFileSync(resolve(root, "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"), "utf8");
   const prd = readFileSync(resolve(root, "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"), "utf8");
@@ -1195,7 +1195,14 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     cwd: root,
     stdio: "ignore"
   }));
-  assert.deepEqual(renewal.required_artifacts.map(({ path, kind }) => ({ path, kind })), batch.required_artifacts.map(({ path, kind }) => ({ path, kind })));
+  // A renewal may bind FEWER artifacts than the batch it renews -- that is what the per-artifact
+  // binding decomposition (#167) does -- but it may never invent one. Subset, not equality.
+  const renewalIdentities = renewal.required_artifacts.map(({ path, kind }) => `${kind}:${path}`);
+  const batchIdentities = new Set(batch.required_artifacts.map(({ path, kind }) => `${kind}:${path}`));
+  assert.ok(renewalIdentities.length > 0, "a renewal that binds nothing accepts nothing");
+  for (const identity of renewalIdentities) {
+    assert.ok(batchIdentities.has(identity), `${identity} is not bound by the batch being renewed`);
+  }
   for (const artifact of renewal.required_artifacts) {
     assert.equal(artifact.sha256, sha256(resolve(root, artifact.path)));
   }
@@ -1220,9 +1227,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // Repinned from the validator's own output as the per-artifact binding decomposition (#167)
   // proceeds: each step invalidates one batch and accepts its replacement, so total and
   // invalidated rise together while accepted holds.
-  assert.equal(result.batches, 67);
+  assert.equal(result.batches, 68);
   assert.equal(result.counts.accepted, 30);
-  assert.equal(result.counts.invalidated, 37);
+  assert.equal(result.counts.invalidated, 38);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
