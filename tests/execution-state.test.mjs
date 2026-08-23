@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -7265,6 +7265,54 @@ const sealActivationManifest = (activation) => {
   return activation;
 };
 
+const MANIFEST_V3_PATH = "docs/decisions/maintainer-gate-artifact-manifest.v3.json";
+
+// The freeze binds the declared artifact set to the manifest committed at the frozen SHA, so these
+// fixtures use the real document rather than one the repository never had. Both commits are found
+// by measurement, never written from memory: the manifest moves and so do the artifacts it pins.
+const manifestAt = (sha) => {
+  const text = gitBlobUtf8(sha, MANIFEST_V3_PATH);
+  if (text == null) return null;
+  try {
+    const manifest = JSON.parse(text);
+    return Array.isArray(manifest?.artifacts) && manifest.artifacts.length > 0 ? { text, manifest } : null;
+  } catch {
+    return null;
+  }
+};
+
+const manifestArtifactsIntact = (sha, manifest) =>
+  manifest.artifacts.every((artifact) => {
+    const blob = gitBlobUtf8(sha, artifact.path);
+    return blob != null && sha256Utf8(blob) === artifact.sha256;
+  });
+
+const commitWhereManifestDescribesItsOwnTree = () => {
+  const shas = execFileSync("git", ["log", "--format=%H", "--", MANIFEST_V3_PATH], {
+    cwd: root,
+    encoding: "utf8"
+  })
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  for (const sha of shas) {
+    const found = manifestAt(sha);
+    if (found && manifestArtifactsIntact(sha, found.manifest)) return { sha, ...found };
+  }
+  return null;
+};
+
+const activationFrozenAt = (sha, found) => {
+  const activation = loadPassingActivationFacts();
+  activation.exact_head_sha = sha;
+  activation.review_head_sha = sha;
+  activation.manifest = found.manifest;
+  activation.manifest_text = found.text;
+  activation.manifest_digest = sha256Utf8(found.text);
+  activation.manifest_in_head = true;
+  return activation;
+};
+
 const activationMatchingHeadBlob = () => {
   const activation = loadPassingActivationFacts();
   const adrPath = activation.manifest.artifacts[0].path;
@@ -7309,13 +7357,26 @@ test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
       }
     }
   ];
+  // The planted activation must be one that WOULD freeze if the boundary were trusted, so it uses
+  // the real committed manifest at the commit where it describes its own tree. A hand-built
+  // manifest is refused by the artifact-set binding first, and the test then measures nothing.
+  const intact = commitWhereManifestDescribesItsOwnTree();
+  assert.ok(intact, "no commit found whose committed manifest describes its own tree");
+  {
+    const { evaluateLiveArtifactFreeze } = await importResolver();
+    const probeFacts = loadBaselineFacts();
+    probeFacts.currentHead = intact.sha;
+    probeFacts.liveTreePaths = intact.manifest.artifacts.map((a) => a.path);
+    assert.ok(
+      evaluateLiveArtifactFreeze(activationFrozenAt(intact.sha, intact), probeFacts, root),
+      "the planted activation must be able to freeze, or the boundary is not what refuses it"
+    );
+  }
   for (const plant of plants) {
     const facts = loadBaselineFacts();
-    const activation = activationMatchingHeadBlob();
-    // Everything except the trust boundary must be satisfiable, or the plant is refused by the
-    // head/live-tree binding instead and the test stops measuring the gate it names.
-    facts.currentHead = activation.exact_head_sha;
-    facts.liveTreePaths = [...facts.liveTreePaths, ...activation.manifest.artifacts.map((a) => a.path)];
+    const activation = activationFrozenAt(intact.sha, intact);
+    facts.currentHead = intact.sha;
+    facts.liveTreePaths = intact.manifest.artifacts.map((a) => a.path);
     plant.apply(facts, activation);
     const { result } = await resolveOffline(facts);
     assert.equal(
@@ -7358,33 +7419,119 @@ const addSecondArtifact = (live, { corrupt }) => {
 
 test("artifact-freeze-holds-when-every-artifact-matches-the-live-tip", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
-  const { live, facts } = freezeInputs();
-  addSecondArtifact(live, { corrupt: false });
-  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
+  const intact = commitWhereManifestDescribesItsOwnTree();
+  assert.ok(intact, "no commit found whose committed manifest describes its own tree");
+  assert.ok(intact.manifest.artifacts.length > 1, "a single-artifact manifest would not exercise the loop");
+  const live = activationFrozenAt(intact.sha, intact);
+  const facts = loadBaselineFacts();
+  facts.currentHead = intact.sha;
+  facts.liveTreePaths = intact.manifest.artifacts.map((a) => a.path);
   const freeze = evaluateLiveArtifactFreeze(live, facts, root);
-  assert.ok(freeze, "a manifest whose artifacts all match at the collected head must freeze");
+  assert.ok(freeze, `the real manifest at ${intact.sha.slice(0, 8)} must freeze, all artifacts matching there`);
   assert.equal(freeze.exact_head_sha, facts.currentHead);
 });
 
 test("artifact-freeze-refuses-when-a-later-artifact-digest-drifts", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
-  const { live, facts } = freezeInputs();
-  addSecondArtifact(live, { corrupt: true });
-  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
+  // No corrupted fixture: the manifest committed at HEAD genuinely pins artifacts whose blobs have
+  // since changed, which is the drift this rule exists to catch.
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const found = manifestAt(head);
+  assert.ok(found, "the manifest must be readable at HEAD");
+  assert.equal(
+    manifestArtifactsIntact(head, found.manifest),
+    false,
+    "this case needs a manifest that has drifted from its tree; renew it and this assertion tells you"
+  );
+  const live = activationFrozenAt(head, found);
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = found.manifest.artifacts.map((a) => a.path);
   assert.equal(
     evaluateLiveArtifactFreeze(live, facts, root),
     null,
-    "artifacts after the first must be verified too, not carried by artifacts[0]"
+    "an artifact whose blob no longer matches its declared digest must refuse the whole freeze"
   );
 });
 
+// Any case that mutates the manifest must reseal manifest_text/manifest_digest, or the activation
+// digest check refuses it before the guard under test is ever reached.
+// The path is bound to the committed manifest now, so a caller cannot construct a bad path -- only
+// a committed manifest can carry one. These guards therefore need a repository whose committed
+// manifest declares the shape under test, which this one never will. Build one.
+const gitBlobUtf8At = (dir, sha, path) => {
+  try {
+    return execFileSync("git", ["cat-file", "blob", `${sha}:${path}`], { cwd: dir, encoding: "utf8" });
+  } catch {
+    return null;
+  }
+};
+
+const buildFreezeRepo = (artifactSpecs, undeclared = []) => {
+  const dir = mkdtempSync(join(tmpdir(), "aos-freeze-"));
+  const git = (...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  git("init", "-q");
+  git("config", "user.email", "fixture@example.invalid");
+  git("config", "user.name", "fixture");
+  const artifacts = [];
+  for (const spec of artifactSpecs) {
+    if (spec.writeAt) {
+      mkdirSync(join(dir, dirname(spec.writeAt)), { recursive: true });
+      writeFileSync(join(dir, spec.writeAt), spec.body);
+    }
+    artifacts.push({
+      path: spec.declaredPath,
+      sha256: spec.body === undefined ? "e".repeat(64) : sha256Utf8(spec.body),
+      kind: "ADR",
+      source_record_id: `fixture-source-${artifacts.length}`,
+      source_record_sha256: `${artifacts.length}`.repeat(64).slice(0, 64),
+      migration_provenance: "legacy-v2-migration"
+    });
+  }
+  for (const extra of undeclared) {
+    mkdirSync(join(dir, dirname(extra.path)), { recursive: true });
+    writeFileSync(join(dir, extra.path), extra.body);
+  }
+  const manifest = { schema_version: 3, manifest_id: "fixture-manifest", artifacts };
+  const text = JSON.stringify(manifest);
+  mkdirSync(join(dir, "docs/decisions"), { recursive: true });
+  writeFileSync(join(dir, MANIFEST_V3_PATH), text);
+  git("add", "-A");
+  git("commit", "-q", "-m", "fixture");
+  const sha = git("rev-parse", "HEAD").trim();
+  const live = loadPassingActivationFacts();
+  live.exact_head_sha = sha;
+  live.review_head_sha = sha;
+  live.manifest = manifest;
+  live.manifest_text = text;
+  live.manifest_digest = sha256Utf8(text);
+  live.manifest_in_head = true;
+  const facts = loadBaselineFacts();
+  facts.currentHead = sha;
+  facts.liveTreePaths = [
+    ...artifactSpecs.filter((spec) => spec.writeAt).map((spec) => spec.writeAt),
+    ...undeclared.map((extra) => extra.path)
+  ];
+  return { dir, live, facts };
+};
+
+const realManifestFreezeInputs = () => {
+  const intact = commitWhereManifestDescribesItsOwnTree();
+  assert.ok(intact, "no commit found whose committed manifest describes its own tree");
+  const live = activationFrozenAt(intact.sha, intact);
+  const facts = loadBaselineFacts();
+  facts.currentHead = intact.sha;
+  facts.liveTreePaths = intact.manifest.artifacts.map((a) => a.path);
+  return { live, facts, sha: intact.sha };
+};
+
 test("artifact-freeze-refuses-a-head-the-collection-did-not-observe", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
-  const { live, facts } = freezeInputs();
+  const { live, facts } = realManifestFreezeInputs();
   // A real commit that still resolves in this clone, but is not the head the facts were collected
-  // against — the unmerged-or-reverted candidate the freeze is supposed to reject.
-  const other = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
-  facts.currentHead = other;
+  // against -- the unmerged-or-reverted candidate the freeze is supposed to reject.
+  facts.currentHead = execFileSync("git", ["rev-parse", "HEAD~1"], { cwd: root, encoding: "utf8" }).trim();
+  assert.notEqual(facts.currentHead, live.exact_head_sha);
   assert.equal(
     evaluateLiveArtifactFreeze(live, facts, root),
     null,
@@ -7392,40 +7539,144 @@ test("artifact-freeze-refuses-a-head-the-collection-did-not-observe", async () =
   );
 });
 
-// Found by blind review round 2, which refuted round 1's claim that the live-tree check was
-// redundant with the blob read. The manifest validator permits "." segments, so this path resolves
-// as a blob at the frozen SHA while the collected tree lists only the canonical spelling.
-test("artifact-freeze-refuses-a-noncanonical-path-alias-of-a-real-artifact", async () => {
+test("artifact-freeze-refuses-a-live-duplicate-path-the-committed-manifest-never-declared", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
-  const { live, facts } = freezeInputs();
-  const canonical = live.manifest.artifacts[0].path;
-  assert.notEqual(
-    gitBlobUtf8(live.exact_head_sha, `./${canonical}`),
-    null,
-    "the alias must read as a blob at the frozen SHA or this case tests nothing"
+  // Reproduced from blind review. The tree holds a second blob with the declared artifact's exact
+  // bytes; a caller substitutes that path, reseals, and every digest still matches. Only binding
+  // the path to the committed document refuses it.
+  const body = "shared bytes\n";
+  const { dir, live, facts } = buildFreezeRepo(
+    [{ declaredPath: "docs/adr/ADR-9003.md", writeAt: "docs/adr/ADR-9003.md", body }],
+    [{ path: "docs/adr/ADR-9003-copy.md", body }]
   );
-  live.manifest.artifacts[0].path = `./${canonical}`;
-  reseal(live);
-  // The collected tree carries the canonical spelling, which is what a real listing returns.
-  facts.liveTreePaths = [canonical];
-  assert.equal(
-    evaluateLiveArtifactFreeze(live, facts, root),
-    null,
-    "an artifact path that is not a live-tree identity must not freeze, even though its blob reads"
-  );
+  try {
+    // Both blobs exist at the frozen commit with identical bytes and both are live-tree identities.
+    // The committed manifest declares only the first, so nothing but the path binding refuses.
+    assert.notEqual(gitBlobUtf8At(dir, live.exact_head_sha, "docs/adr/ADR-9003-copy.md"), null);
+    assert.ok(evaluateLiveArtifactFreeze(live, facts, dir), "the undisturbed fixture must freeze");
+    live.manifest.artifacts[0].path = "docs/adr/ADR-9003-copy.md";
+    live.manifest_text = JSON.stringify(live.manifest);
+    live.manifest_digest = sha256Utf8(live.manifest_text);
+    assert.equal(
+      evaluateLiveArtifactFreeze(live, facts, dir),
+      null,
+      "a path the committed manifest never declared must not freeze, even with matching bytes"
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
-test("artifact-freeze-refuses-an-artifact-missing-from-the-frozen-tree", async () => {
+test("artifact-freeze-refuses-a-caller-minted-manifest-id", async () => {
   const { evaluateLiveArtifactFreeze } = await importResolver();
-  const { live, facts } = freezeInputs();
-  // Absent at the frozen SHA is the reachable state. Removing the path from liveTreePaths while
-  // leaving it readable at the same SHA would assert a disagreement no honest collection produces.
-  live.manifest.artifacts[0].path = "docs/adr/ADR-0000-not-in-this-tree.md";
-  reseal(live);
+  const { dir, live, facts } = buildFreezeRepo([
+    { declaredPath: "docs/adr/ADR-9004.md", writeAt: "docs/adr/ADR-9004.md", body: "id\n" }
+  ]);
+  try {
+    assert.ok(evaluateLiveArtifactFreeze(live, facts, dir), "the unmutated fixture must freeze");
+    live.manifest.manifest_id = "caller-minted-manifest";
+    live.manifest_text = JSON.stringify(live.manifest);
+    live.manifest_digest = sha256Utf8(live.manifest_text);
+    assert.equal(
+      evaluateLiveArtifactFreeze(live, facts, dir),
+      null,
+      "the freeze must report the committed manifest's identity, not one the caller chose"
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("artifact-freeze-refuses-a-committed-path-that-is-not-a-live-tree-identity", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  // The validator permits "." segments, so the committed manifest can declare a path that resolves
+  // as a blob while the tree lists only the canonical spelling.
+  const { dir, live, facts } = buildFreezeRepo([
+    { declaredPath: "./docs/adr/ADR-9001.md", writeAt: "docs/adr/ADR-9001.md", body: "alias\n" }
+  ]);
+  try {
+    assert.notEqual(gitBlobUtf8At(dir, live.exact_head_sha, "./docs/adr/ADR-9001.md"), null);
+    assert.deepEqual(facts.liveTreePaths, ["docs/adr/ADR-9001.md"]);
+    assert.equal(
+      evaluateLiveArtifactFreeze(live, facts, dir),
+      null,
+      "a declared path that is not a live-tree identity must not freeze, even though its blob reads"
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("artifact-freeze-refuses-a-committed-artifact-with-no-blob-at-the-frozen-head", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  // Declared by the committed manifest, never written. The membership check is satisfied so the
+  // blob read is what must refuse.
+  const { dir, live, facts } = buildFreezeRepo([
+    { declaredPath: "docs/adr/ADR-9002.md", body: undefined }
+  ]);
+  try {
+    facts.liveTreePaths = ["docs/adr/ADR-9002.md"];
+    assert.equal(gitBlobUtf8At(dir, live.exact_head_sha, "docs/adr/ADR-9002.md"), null);
+    assert.equal(
+      evaluateLiveArtifactFreeze(live, facts, dir),
+      null,
+      "an artifact with no blob at the frozen head cannot be frozen"
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("artifact-freeze-refuses-a-subset-of-the-committed-manifest", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = realManifestFreezeInputs();
+  // The attack manifest_in_head leaves open: declare only the artifacts known to match.
+  assert.ok(live.manifest.artifacts.length > 1, "a single-artifact manifest cannot express a subset");
+  live.manifest.artifacts = live.manifest.artifacts.slice(0, 1);
+  sealActivationManifest(live);
   facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
   assert.equal(
     evaluateLiveArtifactFreeze(live, facts, root),
     null,
-    "an artifact that is not a blob at the frozen head cannot be frozen"
+    "a manifest listing fewer artifacts than the committed document must not freeze"
+  );
+});
+
+test("artifact-freeze-refuses-an-artifact-kind-restated-by-the-caller", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const { live, facts } = realManifestFreezeInputs();
+  // kind decides how the artifact is treated downstream, and like the digest it must come from the
+  // committed document rather than from whoever is asking for the freeze.
+  const original = live.manifest.artifacts[0].kind;
+  live.manifest.artifacts[0].kind = original === "ADR" ? "PRD" : "ADR";
+  sealActivationManifest(live);
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "a kind the committed manifest does not declare must not freeze"
+  );
+});
+
+test("artifact-freeze-refuses-a-digest-lowered-to-match-a-drifted-blob", async () => {
+  const { evaluateLiveArtifactFreeze } = await importResolver();
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+  const found = manifestAt(head);
+  assert.ok(found, "the manifest must be readable at HEAD");
+  // Restate each declared digest as the blob actually present, which is what a caller supplying its
+  // own manifest_text would do to make a drifted manifest pass the per-artifact loop.
+  const live = activationFrozenAt(head, found);
+  live.manifest = JSON.parse(found.text);
+  for (const artifact of live.manifest.artifacts) {
+    const blob = gitBlobUtf8(head, artifact.path);
+    if (blob != null) artifact.sha256 = sha256Utf8(blob);
+  }
+  sealActivationManifest(live);
+  const facts = loadBaselineFacts();
+  facts.currentHead = head;
+  facts.liveTreePaths = live.manifest.artifacts.map((a) => a.path);
+  assert.equal(
+    evaluateLiveArtifactFreeze(live, facts, root),
+    null,
+    "declared digests must come from the committed manifest, not from the blobs they describe"
   );
 });
