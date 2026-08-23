@@ -134,3 +134,67 @@ Filed as #339, including the honest limit: I did not isolate which collection pa
 `seenGatePr` while also appearing in `linkedMerged`. The reproduction is what is recorded; the cause
 is not yet.
 
+
+## A renewal that corrects an artifact needs two PRs, not one
+
+The checklist above says `reviewed_head` is "the correction commit on the same branch". That is
+right for the validator, which requires an ancestor of the PR head, and wrong for what happens
+next: **squash-merge discards that commit.** The branch is deleted, the squash creates a new
+commit, and the batch is left pointing at an object that no longer exists on `dev`.
+
+Measured on 2026-08-24, correcting the D0-004 ticket to add a `Deliverables` section:
+
+```
+locally      npm run build BUILD_SCAFFOLD_PASS, npm test 901/901
+CI           planning-contract (22) and (24) both fail
+             batch ...-deliverables-declaration reviewed_head is not a resolvable commit
+```
+
+**Every local check passed because the orphaned commit still existed in the local clone.** A fresh
+clone is the only place the defect is visible:
+
+```bash
+git clone https://github.com/MongLong0214/agent-operator-score /tmp/ci-check && cd /tmp/ci-check
+node --input-type=module -e "
+  const m = await import('/tmp/ci-check/scripts/validate-gate-administration.mjs');
+  console.log(m.validateGateAdministration().status);"
+```
+
+`invalid`, with the unresolvable head named. Add this to the checklist for any renewal that changes
+a digest: it is not covered by `npm test`, and it cannot be.
+
+### And the receipt goes on the second PR
+
+The repair PR carried a copy of the same `Gate-Batch`, which made two merged bodies claim one batch:
+
+```
+EXTERNAL_STATE_UNAVAILABLE: ambiguous gate PR set for batch ...
+```
+
+Removing it from the repair PR produced the sharper error, and that one is the rule:
+
+```
+gate PR #418 head registry does not bind identical ACCEPTED batch ...
+```
+
+`registryHeadBindsAcceptedBatch` compares the whole canonical record at the receipt PR's head
+against the live record. The correcting PR's head holds the *superseded* `reviewed_head`, so it can
+never bind identically once the field is repaired. **The PR that fixes the field is the one whose
+head matches, so it is the one that carries the receipt.**
+
+So the shape is:
+
+```
+PR 1   correct the artifact; invalidate and renew the batch; NO receipt
+       merge, and let the squash commit exist
+PR 2   set reviewed_head to that squash commit; carry the Gate-Batch receipt
+```
+
+This is the same decomposition the ADR-0003 section describes as "the other five ride on later real
+PRs", stated for the single-batch case where it is easy to assume one PR is enough.
+
+### Why the sixteen binding-decomposition PRs did not hit this
+
+They trimmed a path from a batch without changing any digest, and their `reviewed_head` was the
+branch point — a commit already on `dev`. Only a renewal that *corrects* an artifact needs a head
+that did not exist before the branch, and that is exactly the case that cannot survive a squash.
