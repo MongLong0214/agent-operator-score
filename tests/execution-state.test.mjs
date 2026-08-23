@@ -3028,10 +3028,30 @@ function buildCollectorMergedSearchFixture(items) {
     if (Object.hasOwn(item, "runs")) {
       responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${item.merge_commit_sha}&event=push&per_page=20`] = item.runs;
     }
-    // A completion receipt costs one extra commit request so the resolver can require what
-    // the merge introduced to still be in the live tree. `added_paths: null` models the
+    // Every linked merge costs one commit request so the resolver can require what any of
+    // them introduced to still be in the live tree. `added_paths: null` models the
     // outage/unknown shape; `effect_present: false` models the reverted shape by recording
     // the introduced paths and deliberately leaving them out of the live tree listing.
+    //
+    // An item that declares no `added_paths` is an ordinary contributing merge, and the
+    // collector now demands a commit for it too. Its file is keyed by PR number rather than
+    // shared, so a commit paired with the wrong merge shows up as a wrong path instead of
+    // passing unnoticed -- the failure mode of addressing a compacted request array through
+    // a separate index list.
+    if (!Object.hasOwn(item, "added_paths")) {
+      const contributed = `docs/contrib/${item.number}.md`;
+      responses[`${COLLECTOR_REPO_PATH}/commits/${item.merge_commit_sha}`] = {
+        sha: item.merge_commit_sha,
+        files: [
+          {
+            filename: contributed,
+            status: "modified",
+            sha: sha256Utf8(`commit:${contributed}`).slice(0, 40)
+          }
+        ]
+      };
+      collectorTreePaths.push(contributed);
+    }
     if (Object.hasOwn(item, "added_paths")) {
       // A completion receipt must touch a path its own ticket declares, so a collector fixture
       // whose subject is post-merge CI or pagination anchors on one of that ticket's owned paths
@@ -5718,6 +5738,67 @@ test("live-collector-batched-receipts-preserve-search-order", async () => {
       ticket_id: row.ticket_id,
       added_paths: row.added_paths
     }))
+  );
+});
+
+// The deliverable a ticket declares is routinely introduced by a contributing merge and only
+// touched by the receipt, so effects collected for receipts alone cannot answer whether that
+// deliverable is still in the tree -- the contributor reaches the resolver with null effects and
+// is silently ignored. Nothing consumes contributor effects yet; this pins that they are
+// collected, so the check that will consume them has something to read.
+test("live-collector-carries-every-linked-merge-effect-not-only-receipts", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: sha("a"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("a"), 901)
+    },
+    {
+      number: 902,
+      merge_commit_sha: sha("b"),
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("b"), 902),
+      added_paths: ["docs/effect/902-receipt.md"]
+    },
+    {
+      number: 904,
+      merge_commit_sha: sha("c"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("c"), 904)
+    }
+  ]);
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+  const byNumber = new Map(
+    (collected.facts?.implementationMerges ?? []).map((entry) => [entry.number, entry])
+  );
+  for (const number of [901, 904]) {
+    const row = byNumber.get(number);
+    assert.ok(row, `contributing merge ${number} must be collected`);
+    // Before the widening these three were null on every non-receipt row.
+    assert.deepEqual(row.added_paths, [], `contributor ${number} added nothing`);
+    assert.deepEqual(
+      row.changed_paths,
+      [`docs/contrib/${number}.md`],
+      `contributor ${number} must carry its own effect, not another merge's`
+    );
+    assert.deepEqual(row.removed_paths, []);
+    assert.deepEqual(Object.keys(row.blob_shas ?? {}), [`docs/contrib/${number}.md`]);
+  }
+  // The receipt keeps exactly what it introduced. Paired with the assertions above this is what
+  // a commit addressed through the wrong index fails: the rows are distinct per merge, so any
+  // shift hands at least one row a path belonging to a different pull request.
+  assert.deepEqual(byNumber.get(902)?.added_paths, ["docs/effect/902-receipt.md"]);
+  assert.equal(
+    byNumber.get(902)?.changed_paths?.includes("docs/contrib/901.md"),
+    false,
+    "the receipt must not inherit a contributor's effect"
   );
 });
 
