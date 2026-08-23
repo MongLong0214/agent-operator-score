@@ -638,7 +638,14 @@ export const filesToEffect = (files) => {
   const survivingSet = new Set(surviving);
   return {
     changed: [...surviving].sort(),
-    removed: removed.filter((path) => !survivingSet.has(path)).sort()
+    removed: removed.filter((path) => !survivingSet.has(path)).sort(),
+    // The blob each surviving path carried at this merge. GitHub already sends it and it was being
+    // dropped; keeping it is what lets content survival be observed without another request.
+    blobs: Object.fromEntries(
+      files
+        .filter((file) => file.status !== "removed" && GIT_OBJECT_ID.test(file.sha ?? ""))
+        .map((file) => [file.filename, file.sha])
+    )
   };
 };
 
@@ -1856,6 +1863,35 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
 //
 // Measured across all 69 verified tickets carrying a completion receipt: every one has a non-empty
 // intersection and every path in it is present at the tip, so this refuses nothing that exists.
+// A git object id, not merely a string. Both collectors were retaining whatever the response
+// carried, so an empty or garbage value compared equal to itself and reported survival.
+const GIT_OBJECT_ID = /^[0-9a-f]{40}$/;
+
+// `**` crosses directory separators, `*` does not, and everything else is literal.
+const GLOB_CACHE = new Map();
+const globToRegExp = (glob) => {
+  const cached = GLOB_CACHE.get(glob);
+  if (cached) return cached;
+  let source = "^";
+  for (let i = 0; i < glob.length; i += 1) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        source += ".*";
+        i += 1;
+        if (glob[i + 1] === "/") i += 1;
+        continue;
+      }
+      source += "[^/]*";
+      continue;
+    }
+    source += char.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+  const compiled = new RegExp(`${source}$`);
+  GLOB_CACHE.set(glob, compiled);
+  return compiled;
+};
+
 const ownedIntersection = (paths, ownedPaths) => {
   if (!Array.isArray(paths) || !Array.isArray(ownedPaths)) return [];
   return paths.filter((path) =>
@@ -1863,12 +1899,49 @@ const ownedIntersection = (paths, ownedPaths) => {
     ownedPaths.some((owned) => {
       if (typeof owned !== "string" || owned.length === 0) return false;
       if (path === owned) return true;
-      // A glob or a directory owns its subtree; a non-path token in the prose matches nothing,
-      // which is why junk in `owned_paths` cannot widen this.
-      const prefix = owned.includes("*") ? owned.slice(0, owned.indexOf("*")) : `${owned.replace(/\/$/, "")}/`;
-      return prefix.length > 0 && path.startsWith(prefix);
+      // A directory owns its subtree. A glob owns what it actually matches: taking the text before
+      // the first star made `fixtures/doctor/*.json` own `fixtures/doctor/not-owned.txt`, and this
+      // helper decides verification as well as the advisory. A non-path token in the prose still
+      // matches nothing, which is why junk in `owned_paths` cannot widen this.
+      if (!owned.includes("*")) {
+        const prefix = `${owned.replace(/\/$/, "")}/`;
+        return prefix.length > 1 && path.startsWith(prefix);
+      }
+      return globToRegExp(owned).test(path);
     })
   );
+};
+
+// Advisory only, and named for exactly what it computes. It does NOT establish that a ticket's
+// content survived: the reduction is existential over the completion merge's own owned paths, so
+// one unchanged path reports true while another owned deliverable in the same merge may have been
+// reverted, and deliverables from earlier contributing merges are not in this map at all.
+//
+// It gates nothing. A hard requirement would un-verify correctly completed tickets whose files were
+// legitimately edited later, measured at five of the seventy-two.
+export const resolveAnyCompletionBlobUnchanged = (facts, entry, ownedPaths) => {
+  const liveBlobs = plainObject(facts?.liveTreeBlobs) ? facts.liveTreeBlobs : null;
+  const mergeBlobs = plainObject(entry?.blob_shas) ? entry.blob_shas : null;
+  if (liveBlobs === null || mergeBlobs === null) return null;
+  const owned = Array.isArray(ownedPaths) ? ownedPaths : null;
+  if (owned === null || owned.length === 0) return null;
+  // The universe is what the completion actually left behind and the ticket declares -- not the
+  // keys of the blob map. Deriving it from the map meant a path the collector had no sha for was
+  // never a candidate, so its absence read as a definite negative instead of an open question.
+  const surviving = Array.isArray(entry?.changed_paths) ? entry.changed_paths : null;
+  if (surviving === null) return null;
+  const candidates = ownedIntersection(surviving, owned);
+  if (candidates.length === 0) return null;
+  // One match settles the existential question. Without a match, any candidate whose merge or live
+  // blob is unknown leaves it open rather than making it false.
+  let unknown = false;
+  for (const path of candidates) {
+    const merged = mergeBlobs[path];
+    const live = liveBlobs[path];
+    if (!GIT_OBJECT_ID.test(merged ?? "") || !GIT_OBJECT_ID.test(live ?? "")) { unknown = true; continue; }
+    if (live === merged) return true;
+  }
+  return unknown ? null : false;
 };
 
 const resolveImplementationCompletion = (facts, ticketId) => {
@@ -2048,7 +2121,7 @@ const resolveImplementationCompletion = (facts, ticketId) => {
           ]
         };
       }
-      return { verified: true, blockers: [] };
+      return { verified: true, blockers: [], entry: completionEntry };
     }
     if (changed.length === 0) {
       return {
@@ -2139,7 +2212,7 @@ const resolveImplementationCompletion = (facts, ticketId) => {
       blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} completion merge post-merge CI missing or nonterminal`)]
     };
   }
-  return { verified: true, blockers: [] };
+  return { verified: true, blockers: [], entry: completionEntry };
 };
 
 /**
@@ -3707,6 +3780,7 @@ export const applyHistoricalImplementationLinkage = (
     // by the resolver (POST_MERGE_CI_FAILED / MISSING), not silently discarded.
     const legacyEffect = filesToEffect(legacyCommit.files);
     implementationMerges.push({
+      blob_shas: legacyEffect?.blobs ?? null,
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number,
@@ -3987,9 +4061,14 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   if (liveTree.truncated === true) {
     return { ok: false, reason: "live tree listing truncated, completion effects cannot be confirmed", facts: null };
   }
-  const liveTreePaths = liveTree.tree
-    .filter((node) => node?.type === "blob" && typeof node.path === "string")
-    .map((node) => node.path);
+  const liveTreeBlobNodes = liveTree.tree.filter(
+    (node) => node?.type === "blob" && typeof node.path === "string"
+  );
+  const liveTreePaths = liveTreeBlobNodes.map((node) => node.path);
+  // Same response, same request. node.sha was being dropped here too.
+  const liveTreeBlobs = Object.fromEntries(
+    liveTreeBlobNodes.filter((node) => GIT_OBJECT_ID.test(node.sha ?? "")).map((node) => [node.path, node.sha])
+  );
 
   const opsWorkflowProbe = transportCall(
     transport,
@@ -4928,6 +5007,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     let addedPaths = null;
     let changedPaths = null;
     let removedPaths = null;
+    let blobShas = null;
     if (isCompletionReceipt) {
       const commit = commitsByLinkedIndex.get(i);
       if (!commit || !Array.isArray(commit.files)) {
@@ -4944,6 +5024,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       const effect = filesToEffect(commit.files);
       changedPaths = effect?.changed ?? null;
       removedPaths = effect?.removed ?? null;
+      blobShas = effect?.blobs ?? null;
     }
     implementationMerges.push({
       ticket_id: ticketId,
@@ -4953,7 +5034,8 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       reachable: ancestry.reachable,
       added_paths: addedPaths,
       changed_paths: changedPaths,
-      removed_paths: removedPaths
+      removed_paths: removedPaths,
+      blob_shas: blobShas
     });
     if (!latest.ok) {
       // Missing/ambiguous run attempt → no postMergeCI row; resolver emits MISSING.
@@ -5090,6 +5172,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     verifiedTickets,
     implementationMerges,
     liveTreePaths,
+    liveTreeBlobs,
     issues: [],
     prs,
     reviews,
@@ -5236,13 +5319,26 @@ export const resolveExecutionState = (options = {}) => {
   const ticketIds = Object.keys(facts.tickets ?? {}).sort();
   const tickets = {};
   for (const ticketId of ticketIds) {
-    tickets[ticketId] = resolveOneTicket(
+    const state = resolveOneTicket(
       facts,
       ticketId,
       facts.tickets[ticketId],
       policy ?? expectedActorPolicyFromTicket(),
       context
     );
+    // Attached only where it can mean something. On an unverified ticket the question "did the
+    // completion's bytes survive" has no completion to ask about.
+    if (state.phase === "verified") {
+      // The completion the authority selected, not the first same-ticket row carrying blob shas:
+      // a plain contributing merge would otherwise answer for a completion that had drifted.
+      const completion = resolveImplementationCompletion(facts, ticketId);
+      state.any_completion_blob_unchanged = resolveAnyCompletionBlobUnchanged(
+        facts,
+        completion.entry,
+        facts.tickets[ticketId]?.owned_paths
+      );
+    }
+    tickets[ticketId] = state;
   }
 
   let readySet = Object.entries(tickets)
