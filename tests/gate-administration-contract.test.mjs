@@ -1220,9 +1220,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // Repinned from the validator's own output as the per-artifact binding decomposition (#167)
   // proceeds: each step invalidates one batch and accepts its replacement, so total and
   // invalidated rise together while accepted holds.
-  assert.equal(result.batches, 66);
+  assert.equal(result.batches, 67);
   assert.equal(result.counts.accepted, 30);
-  assert.equal(result.counts.invalidated, 36);
+  assert.equal(result.counts.invalidated, 37);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
@@ -1348,23 +1348,18 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
   );
   assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
   const expectedCurrentD0004Renewal = {
-    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal",
+    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23",
     "status": "ACCEPTED",
-    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal against the owner-approved ADR-0003 runtime-floor correction of 2026-08-22. One batch, one Gate-Batch receipt on the PR that carries it.",
+    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal without docs/adr/ADR-0003-runtime-repository-and-distribution.md, which remains bound by d0-001-owner-direction-prerequisites-adr-0003-2026-08-22-renewal. One batch, one Gate-Batch receipt on the PR that carries it.",
     "target": {
       "repository": "github.com/MongLong0214/agent-operator-score",
       "branch": "dev",
-      "reviewed_head": "fac5296ed22db4603ead34266a50fbea91347569"
+      "reviewed_head": "135b25ef699d30fe41ecdbf8b1a5e0b817672c57"
     },
     "required_artifacts": [
       {
         "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
         "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
-        "kind": "ADR"
-      },
-      {
-        "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
-        "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
         "kind": "ADR"
       },
       {
@@ -1395,11 +1390,6 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
         "kind": "ADR"
       },
       {
-        "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
-        "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
-        "kind": "ADR"
-      },
-      {
         "path": "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md",
         "sha256": "02ae85f74bf4c1e572c17e1f1832194df710d736dc56a6b3b7dc1c14c68b8459",
         "kind": "ADR"
@@ -1420,7 +1410,6 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
         "type": "ADR_ACCEPTED",
         "artifact_paths": [
           "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
-          "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
           "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md"
         ]
       },
@@ -1441,16 +1430,16 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
       {
         "from": "PENDING",
         "to": "ACCEPTED",
-        "recorded_at": "2026-08-22T00:00:00Z",
-        "recorded_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+        "recorded_at": "2026-08-23T00:00:00Z",
+        "recorded_by": "per-artifact-binding-decomposition-2026-08-23"
       }
     ],
     "preparation": {
-      "prepared_by": "adr-0003-runtime-floor-renewal-candidate-2026-08-22"
+      "prepared_by": "per-artifact-binding-decomposition-2026-08-23"
     },
     "approval": {
       "approved_by": "MongLong0214",
-      "approved_at": "2026-08-22T00:00:00Z",
+      "approved_at": "2026-08-23T00:00:00Z",
       "role": "MAINTAINER"
     }
   };
