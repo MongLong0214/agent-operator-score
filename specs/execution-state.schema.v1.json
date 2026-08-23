@@ -282,8 +282,8 @@
             }
           ]
         },
-        "content_survived": {
-          "description": "Advisory. True when at least one owned path the completion merge produced still carries the same blob at the live tip; false when every one has changed since; null when it cannot be asked. Gates nothing.",
+        "any_completion_blob_unchanged": {
+          "description": "Advisory, existential, and named for what it computes. True when at least one owned path the completion merge produced still carries that same blob at the live tip; false when every comparable one has changed; null when it cannot be asked. It does not establish that the ticket's content survived: another owned path in the same merge may have been reverted, and deliverables from earlier contributing merges are not in the completion's blob map. Gates nothing.",
           "type": [
             "boolean",
             "null"

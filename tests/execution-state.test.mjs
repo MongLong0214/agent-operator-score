@@ -2610,6 +2610,9 @@ test("historical-linkage-collector-verifies-real-merge-before-trusting-it", asyn
     assert.deepEqual(failures, []);
     assert.deepEqual(implementationMerges, [
       {
+        // The legacy path computed these and dropped them, manufacturing an unknown answer for
+        // two tickets whose evidence was already in hand.
+        blob_shas: {},
         ticket_id: "D0-002",
         merge_commit_sha: mergeSha,
         number: 143,
@@ -2909,8 +2912,18 @@ function buildCollectorMergedSearchFixture(items) {
           : {
               sha: item.merge_commit_sha,
               files: [
-                ...item.added_paths.map((filename) => ({ filename, status: "added" })),
-                ...modified.map((filename) => ({ filename, status: "modified" })),
+                // GitHub sends `sha` on every file entry. Omitting it here left the collector's
+                // blob-sha retention unexercised by a fixture that otherwise looked complete.
+                ...item.added_paths.map((filename) => ({
+                  filename,
+                  status: "added",
+                  sha: sha256Utf8(filename).slice(0, 40)
+                })),
+                ...modified.map((filename) => ({
+                  filename,
+                  status: "modified",
+                  sha: sha256Utf8(filename).slice(0, 40)
+                })),
                 // A removed file is in the same response and must stay out of the changed set:
                 // it is absent from the tip by construction, so counting it would refuse every
                 // completion that deletes anything.
@@ -3409,6 +3422,20 @@ test("collector-keeps-the-blob-sha-the-tree-and-commit-files-already-carry", asy
       collected.facts?.liveTreeBlobs?.[node.path],
       node.sha,
       `the collector must keep the blob sha the tree reported for ${node.path}`
+    );
+  }
+  // The commit-file half. Asserting filesToEffect directly proves the helper, not the wiring, and
+  // a mutation restoring the old `blobShas = null` survived every assertion until this one.
+  const merge = (collected.facts?.implementationMerges ?? []).find((entry) => entry.number === 913);
+  assert.ok(merge, "the merge receipt must be collected");
+  const commitFiles = responses[`${COLLECTOR_REPO_PATH}/commits/${sha}`].files;
+  const surviving = commitFiles.filter((file) => file.status !== "removed");
+  assert.ok(surviving.length > 0, "the commit fixture must carry surviving files");
+  for (const file of surviving) {
+    assert.equal(
+      merge.blob_shas?.[file.filename],
+      file.sha,
+      `the collector must keep the blob sha the commit reported for ${file.filename}`
     );
   }
 });
@@ -7485,23 +7512,23 @@ const activationMatchingHeadBlob = () => {
 // #396: presence says a deliverable's name is still in the tree. This says whether the bytes the
 // completion produced are still there -- the distinction D0-012 exposed, where reverting a file's
 // content leaves its filename behind.
-test("content-survival-is-advisory-and-compares-the-merge-blob-to-the-live-blob", async () => {
-  const { resolveContentSurvival } = await importResolver();
+test("any-completion-blob-unchanged-compares-the-merge-blob-to-the-live-blob", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
   const owned = ["scripts/resolve-execution-state.mjs"];
   const entry = { blob_shas: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } };
   assert.equal(
-    resolveContentSurvival({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } }, entry, owned),
+    resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } }, entry, owned),
     true,
     "the same blob at the tip is survival"
   );
   assert.equal(
-    resolveContentSurvival({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "b".repeat(40) } }, entry, owned),
+    resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "b".repeat(40) } }, entry, owned),
     false,
     "a different blob at the tip is drift, and must not read as survival"
   );
   // A path the ticket does not own says nothing about its deliverable.
   assert.equal(
-    resolveContentSurvival(
+    resolveAnyCompletionBlobUnchanged(
       { liveTreeBlobs: { "docs/effect/other.md": "a".repeat(40) } },
       { blob_shas: { "docs/effect/other.md": "a".repeat(40) } },
       owned
@@ -7510,11 +7537,66 @@ test("content-survival-is-advisory-and-compares-the-merge-blob-to-the-live-blob"
     "an unowned path is not evidence either way"
   );
   // Unavailable is not false: a collection with no blob shas cannot answer the question.
-  assert.equal(resolveContentSurvival({}, entry, owned), null, "no live blobs means unknown");
-  assert.equal(resolveContentSurvival({ liveTreeBlobs: {} }, {}, owned), null, "no merge blobs means unknown");
+  assert.equal(resolveAnyCompletionBlobUnchanged({}, entry, owned), null, "no live blobs means unknown");
+  assert.equal(resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: {} }, {}, owned), null, "no merge blobs means unknown");
 });
 
-test("content-survival-gates-nothing", async () => {
+// Blind review: the advisory used the first same-ticket row carrying blob shas, so a plain
+// contributing merge answered for a completion that had drifted.
+test("any-completion-blob-unchanged-reads-the-completion-not-a-contributing-merge", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR]
+  });
+  facts.liveTreeBlobs = { [OWNED_ANCHOR]: "b".repeat(40) };
+  // The completion drifted; an earlier contributing merge still matches the tip.
+  facts.implementationMerges[0].blob_shas = { [OWNED_ANCHOR]: "a".repeat(40) };
+  facts.implementationMerges.unshift({
+    ticket_id: "D0-004",
+    merge_commit_sha: "144a144a144a144a144a144a144a144a144a144a",
+    number: 144,
+    body: "Ticket: D0-004",
+    reachable: true,
+    added_paths: [],
+    changed_paths: [OWNED_ANCHOR],
+    removed_paths: [],
+    blob_shas: { [OWNED_ANCHOR]: "b".repeat(40) }
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(state.phase, "verified", `got phase=${state.phase}`);
+  assert.equal(
+    state.any_completion_blob_unchanged,
+    false,
+    "a contributing merge that still matches must not answer for a completion that drifted"
+  );
+});
+
+test("any-completion-blob-unchanged-reports-unknown-rather-than-inventing-a-negative", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
+  const owned = [OWNED_ANCHOR];
+  const entry = { blob_shas: { [OWNED_ANCHOR]: "a".repeat(40) } };
+  // The path is a candidate but the live tree reported no blob sha for it: unanswerable, not false.
+  assert.equal(
+    resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: { "docs/other.md": "c".repeat(40) } }, entry, owned),
+    null,
+    "a candidate with no live blob cannot be compared, and must not read as drift"
+  );
+  // One match settles the existential question even when a sibling is unknown.
+  const two = { blob_shas: { [OWNED_ANCHOR]: "a".repeat(40), "specs/execution-state.schema.v1.json": "d".repeat(40) } };
+  assert.equal(
+    resolveAnyCompletionBlobUnchanged(
+      { liveTreeBlobs: { [OWNED_ANCHOR]: "a".repeat(40) } },
+      two,
+      [OWNED_ANCHOR, "specs/execution-state.schema.v1.json"]
+    ),
+    true,
+    "an unknown sibling does not undo an observed match"
+  );
+});
+
+test("any-completion-blob-unchanged-gates-nothing", async () => {
   const facts = makeCompletionEffectFacts({
     addedPaths: [OWNED_ANCHOR],
     changedPaths: [OWNED_ANCHOR],
@@ -7526,7 +7608,7 @@ test("content-survival-gates-nothing", async () => {
   const { result } = await resolveOffline(facts);
   const state = ticketState(result, "D0-004");
   assert.equal(state.phase, "verified", `advisory must not block, got phase=${state.phase}`);
-  assert.equal(state.content_survived, false, "and it must report the drift it observed");
+  assert.equal(state.any_completion_blob_unchanged, false, "and it must report the drift it observed");
 });
 
 test("governing-mode-is-published-and-is-the-contract-mode-not-the-operating-phase", async () => {

@@ -1878,18 +1878,30 @@ const ownedIntersection = (paths, ownedPaths) => {
   );
 };
 
-// Advisory only. Path presence says a deliverable's name is still in the tree; this says whether the
-// bytes the completion merge produced are still there. It gates nothing: a hard requirement would
-// un-verify correctly completed tickets whose files were legitimately edited later, measured at six
-// of the seventy-two. Reported so that case is visible rather than silently indistinguishable.
-export const resolveContentSurvival = (facts, entry, ownedPaths) => {
+// Advisory only, and named for exactly what it computes. It does NOT establish that a ticket's
+// content survived: the reduction is existential over the completion merge's own owned paths, so
+// one unchanged path reports true while another owned deliverable in the same merge may have been
+// reverted, and deliverables from earlier contributing merges are not in this map at all.
+//
+// It gates nothing. A hard requirement would un-verify correctly completed tickets whose files were
+// legitimately edited later, measured at five of the seventy-two.
+export const resolveAnyCompletionBlobUnchanged = (facts, entry, ownedPaths) => {
   const liveBlobs = plainObject(facts?.liveTreeBlobs) ? facts.liveTreeBlobs : null;
   const mergeBlobs = plainObject(entry?.blob_shas) ? entry.blob_shas : null;
   if (liveBlobs === null || mergeBlobs === null) return null;
   const owned = Array.isArray(ownedPaths) ? ownedPaths : null;
-  const candidates = ownedIntersection(Object.keys(mergeBlobs), owned ?? []);
-  if (owned === null || owned.length === 0 || candidates.length === 0) return null;
-  return candidates.some((path) => liveBlobs[path] === mergeBlobs[path]);
+  if (owned === null || owned.length === 0) return null;
+  const candidates = ownedIntersection(Object.keys(mergeBlobs), owned);
+  if (candidates.length === 0) return null;
+  // A candidate whose live blob is unknown cannot answer either way. One match still settles the
+  // existential question; without a match, an unknown leaves it open rather than making it false.
+  let unknown = false;
+  for (const path of candidates) {
+    const live = liveBlobs[path];
+    if (typeof live !== "string") { unknown = true; continue; }
+    if (live === mergeBlobs[path]) return true;
+  }
+  return unknown ? null : false;
 };
 
 const resolveImplementationCompletion = (facts, ticketId) => {
@@ -2069,7 +2081,7 @@ const resolveImplementationCompletion = (facts, ticketId) => {
           ]
         };
       }
-      return { verified: true, blockers: [] };
+      return { verified: true, blockers: [], entry: completionEntry };
     }
     if (changed.length === 0) {
       return {
@@ -2160,7 +2172,7 @@ const resolveImplementationCompletion = (facts, ticketId) => {
       blockers: [blocker("POST_MERGE_CI_MISSING", `${ticketId} completion merge post-merge CI missing or nonterminal`)]
     };
   }
-  return { verified: true, blockers: [] };
+  return { verified: true, blockers: [], entry: completionEntry };
 };
 
 /**
@@ -3728,6 +3740,7 @@ export const applyHistoricalImplementationLinkage = (
     // by the resolver (POST_MERGE_CI_FAILED / MISSING), not silently discarded.
     const legacyEffect = filesToEffect(legacyCommit.files);
     implementationMerges.push({
+      blob_shas: legacyEffect?.blobs ?? null,
       ticket_id: ticketId,
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number,
@@ -5276,10 +5289,14 @@ export const resolveExecutionState = (options = {}) => {
     // Attached only where it can mean something. On an unverified ticket the question "did the
     // completion's bytes survive" has no completion to ask about.
     if (state.phase === "verified") {
-      const entry = (facts.implementationMerges ?? []).find(
-        (merge) => merge?.ticket_id === ticketId && plainObject(merge?.blob_shas)
+      // The completion the authority selected, not the first same-ticket row carrying blob shas:
+      // a plain contributing merge would otherwise answer for a completion that had drifted.
+      const completion = resolveImplementationCompletion(facts, ticketId);
+      state.any_completion_blob_unchanged = resolveAnyCompletionBlobUnchanged(
+        facts,
+        completion.entry,
+        facts.tickets[ticketId]?.owned_paths
       );
-      state.content_survived = resolveContentSurvival(facts, entry, facts.tickets[ticketId]?.owned_paths);
     }
     tickets[ticketId] = state;
   }
