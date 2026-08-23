@@ -2082,6 +2082,24 @@ const resolveImplementationCompletion = (facts, ticketId) => {
     // returning verified from this branch skipped that check, which every other completion shape
     // must satisfy and which the owning ticket requires (#386).
     if (changed.length === 0 && removed.length > 0) {
+      // A declared deliverable is a claim about the final state, so a deletion-only completion owes
+      // it exactly as much as any other shape. Returning from this branch skipped it (#396).
+      const declaredForDeletion = facts.tickets?.[ticketId]?.deliverables;
+      if (Array.isArray(declaredForDeletion) && declaredForDeletion.length > 0) {
+        const liveForDeletion = new Set(Array.isArray(facts.liveTreePaths) ? facts.liveTreePaths : []);
+        const gone = declaredForDeletion.filter((path) => !liveForDeletion.has(path));
+        if (gone.length > 0) {
+          return {
+            verified: false,
+            blockers: [
+              blocker(
+                "COMPLETION_EFFECT_REVERTED",
+                `${ticketId} declares ${gone.join(", ")} as a deliverable, absent from the live target branch`
+              )
+            ]
+          };
+        }
+      }
       // The deletion also has to be the ticket's. Returning from here skipped the ownership check
       // every other completion shape passes, so a merge deleting a file the ticket never declared
       // verified it (#386). Only the removals are consulted: this branch has nothing else.
@@ -2167,6 +2185,25 @@ const resolveImplementationCompletion = (facts, ticketId) => {
   // touch. That is the half `owned_paths` cannot express, because edit scope says nothing about
   // what should survive (#396). A ticket with no Deliverables section is undeclared and skips this.
   const declaredDeliverables = facts.tickets?.[ticketId]?.deliverables;
+  // Absent means undeclared and is the state every ticket is in today. Present but malformed is a
+  // corrupt contract, and reading it as undeclared would let a crafted facts corpus switch the
+  // check off silently -- the shape a fail-closed authority must refuse.
+  if (declaredDeliverables !== undefined && declaredDeliverables !== null) {
+    if (
+      !Array.isArray(declaredDeliverables) ||
+      declaredDeliverables.some((path) => typeof path !== "string" || path.length === 0)
+    ) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} declares deliverables in a shape this resolver cannot read, so its final state is unconfirmed`
+          )
+        ]
+      };
+    }
+  }
   if (Array.isArray(declaredDeliverables) && declaredDeliverables.length > 0) {
     const livePathSet = new Set(Array.isArray(facts.liveTreePaths) ? facts.liveTreePaths : []);
     const missing = declaredDeliverables.filter((path) => !livePathSet.has(path));
@@ -3029,8 +3066,25 @@ const detectTicketSubtask = (ticketId, markdown, options = {}) => {
 export const parseTicketDeliverables = (markdown) => {
   const section = extractMarkdownSection(markdown, "Deliverables");
   if (section === null) return null;
-  const { owned_paths } = extractPathsAndSymbolsFromProse(section);
-  return owned_paths;
+  // Deliberately NOT the ownership extractor. That one scans all prose and keeps globs, which here
+  // inverts meaning: `docs/x.md` must NOT exist would parse as a required file, and a glob would
+  // parse as a literal path no blob can equal. A declaration that turns a prohibition into a
+  // requirement is worse than no declaration.
+  const withoutFences = section.replace(/```[\s\S]*?```/g, "");
+  const declared = [];
+  for (const line of withoutFences.split("\n")) {
+    // One deliverable per list item, and only when the line makes no negative claim about it.
+    const item = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (!item) continue;
+    if (/\b(not|never|must not|no longer|absent|removed|deleted)\b/i.test(item[1])) continue;
+    const ticks = [...item[1].matchAll(/`([^`]+)`/g)].map((match) => match[1].trim());
+    if (ticks.length !== 1) continue;
+    const candidate = ticks[0];
+    // A concrete repository path: no globs, no traversal, no leading slash.
+    if (!/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)+$/.test(candidate)) continue;
+    if (!declared.includes(candidate)) declared.push(candidate);
+  }
+  return declared;
 };
 
 const extractPathsAndSymbolsFromProse = (text) => {
