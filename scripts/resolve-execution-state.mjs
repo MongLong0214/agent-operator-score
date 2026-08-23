@@ -643,7 +643,7 @@ export const filesToEffect = (files) => {
     // dropped; keeping it is what lets content survival be observed without another request.
     blobs: Object.fromEntries(
       files
-        .filter((file) => file.status !== "removed" && typeof file.sha === "string")
+        .filter((file) => file.status !== "removed" && GIT_OBJECT_ID.test(file.sha ?? ""))
         .map((file) => [file.filename, file.sha])
     )
   };
@@ -1863,6 +1863,10 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
 //
 // Measured across all 69 verified tickets carrying a completion receipt: every one has a non-empty
 // intersection and every path in it is present at the tip, so this refuses nothing that exists.
+// A git object id, not merely a string. Both collectors were retaining whatever the response
+// carried, so an empty or garbage value compared equal to itself and reported survival.
+const GIT_OBJECT_ID = /^[0-9a-f]{40}$/;
+
 // `**` crosses directory separators, `*` does not, and everything else is literal.
 const GLOB_CACHE = new Map();
 const globToRegExp = (glob) => {
@@ -1934,7 +1938,7 @@ export const resolveAnyCompletionBlobUnchanged = (facts, entry, ownedPaths) => {
   for (const path of candidates) {
     const merged = mergeBlobs[path];
     const live = liveBlobs[path];
-    if (typeof merged !== "string" || typeof live !== "string") { unknown = true; continue; }
+    if (!GIT_OBJECT_ID.test(merged ?? "") || !GIT_OBJECT_ID.test(live ?? "")) { unknown = true; continue; }
     if (live === merged) return true;
   }
   return unknown ? null : false;
@@ -4063,7 +4067,7 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
   const liveTreePaths = liveTreeBlobNodes.map((node) => node.path);
   // Same response, same request. node.sha was being dropped here too.
   const liveTreeBlobs = Object.fromEntries(
-    liveTreeBlobNodes.filter((node) => typeof node.sha === "string").map((node) => [node.path, node.sha])
+    liveTreeBlobNodes.filter((node) => GIT_OBJECT_ID.test(node.sha ?? "")).map((node) => [node.path, node.sha])
   );
 
   const opsWorkflowProbe = transportCall(

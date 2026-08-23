@@ -7568,6 +7568,69 @@ test("any-completion-blob-unchanged-is-unknown-when-one-candidate-has-no-merge-b
 
 // Blind review round 2: the shared ownership helper took the text before the first star, so a glob
 // owned every sibling regardless of what it described. It decides verification, not just this field.
+// Blind review round 3: any string passed as a blob identity, so two empty strings compared equal
+// and reported survival.
+test("a-malformed-blob-identity-is-not-evidence-of-anything", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
+  const owned = [OWNED_ANCHOR];
+  for (const bad of ["", "not-a-sha", "A".repeat(40), "a".repeat(39)]) {
+    assert.equal(
+      resolveAnyCompletionBlobUnchanged(
+        { liveTreeBlobs: { [OWNED_ANCHOR]: bad } },
+        { changed_paths: [OWNED_ANCHOR], blob_shas: { [OWNED_ANCHOR]: bad } },
+        owned
+      ),
+      null,
+      `two equal non-identities (${JSON.stringify(bad)}) must not report survival`
+    );
+  }
+});
+
+// Blind review round 3: the empty branch returned null whether or not the candidate universe
+// honoured changed_paths, because the fixture also supplied an empty blob map.
+test("a-completion-with-no-changed-paths-cannot-be-answered-by-its-blob-map", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
+  const sha = "a".repeat(40);
+  assert.equal(
+    resolveAnyCompletionBlobUnchanged(
+      { liveTreeBlobs: { [OWNED_ANCHOR]: sha } },
+      { changed_paths: [], blob_shas: { [OWNED_ANCHOR]: sha } },
+      [OWNED_ANCHOR]
+    ),
+    null,
+    "a populated matching blob map must not answer for a completion that changed nothing"
+  );
+});
+
+test("owned-glob-matching-follows-the-pattern-not-its-prefix", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
+  const sha = "a".repeat(40);
+  const owns = (owned, path) =>
+    resolveAnyCompletionBlobUnchanged(
+      { liveTreeBlobs: { [path]: sha } },
+      { changed_paths: [path], blob_shas: { [path]: sha } },
+      [owned]
+    ) === true;
+  // `*` does not cross a separator; `**` does.
+  assert.equal(owns("fixtures/doctor/*.json", "fixtures/doctor/a.json"), true);
+  assert.equal(owns("fixtures/doctor/*.json", "fixtures/doctor/nested/a.json"), false, "* must not cross /");
+  assert.equal(owns("fixtures/doctor/**", "fixtures/doctor/nested/a.json"), true, "** must cross /");
+  // A trailing /** describes what is under the directory. The directory node itself is a tree, not
+  // a blob, so it never appears in the listings this compares.
+  assert.equal(owns("fixtures/doctor/**", "fixtures/doctor"), false);
+  assert.equal(owns("docs/**/x.md", "docs/a/b/x.md"), true, "**/ must span intermediate directories");
+  // A slashless glob, and a literal regex character that must not act as one.
+  assert.equal(owns("*.md", "README.md"), true);
+  assert.equal(owns("*.md", "docs/README.md"), false, "a slashless glob does not reach into a directory");
+  // The pattern must contain a star or it never reaches the glob matcher at all.
+  assert.equal(owns("docs/a.b.*", "docs/a.b.md"), true);
+  assert.equal(owns("docs/a.b.*", "docs/aXbXmd"), false, "a dot is a literal, not any-character");
+  assert.equal(owns("docs/x+y.*", "docs/xy.md"), false, "a plus is a literal, not a repetition");
+  // Two patterns in one run: a cache that ignores its key would answer the second with the first.
+  assert.equal(owns("specs/*.json", "specs/x.json"), true);
+  assert.equal(owns("specs/*.yaml", "specs/x.json"), false, "each pattern must compile to its own matcher");
+});
+
 test("an-owned-glob-does-not-own-a-path-its-pattern-excludes", async () => {
   const { resolveAnyCompletionBlobUnchanged } = await importResolver();
   const owned = ["fixtures/doctor/*.json"];
