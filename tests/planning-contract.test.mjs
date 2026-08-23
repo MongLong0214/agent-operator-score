@@ -618,7 +618,7 @@ test("maintainer-gate-digest-invalidation", () => {
       error = caught;
     }
     assert.ok(error);
-    assert.match(error.stderr, /stale digest d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23 docs\/adr\/ADR-0001/);
+    assert.match(error.stderr, /stale digest d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23 docs\/adr\/ADR-0001/);
   } finally {
     rmSync(parent, { recursive: true, force: true });
   }
