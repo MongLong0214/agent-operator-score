@@ -5889,6 +5889,55 @@ test("live-collector-tolerates-an-absent-contributor-commit-but-not-an-absent-re
   assert.equal(refused.ok, false, "a receipt's own effect is required and must still fail closed");
 });
 
+// The four effect fields answer one question -- what did this merge do -- from one response, so a
+// row that answers it for some fields and disclaims it for others is not a partial answer but a
+// contradictory one. That was the defect: added_paths derived from a list the other three had
+// already refused. A check reading these can then treat null as "unknown" for the whole row.
+test("live-collector-effect-fields-are-all-known-or-all-unknown-per-row", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const responses = buildCollectorMergedSearchFixture([
+    { number: 941, merge_commit_sha: sha("d"), body: "Ticket: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("d"), 941) },
+    { number: 942, merge_commit_sha: sha("e"), body: "Ticket: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("e"), 942) },
+    { number: 943, merge_commit_sha: sha("f"), body: "Ticket: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("f"), 943) },
+    { number: 944, merge_commit_sha: sha("1"), body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("1"), 944),
+      added_paths: ["docs/effect/944-receipt.md"] }
+  ]);
+  // 941 keeps its ordinary one-file commit. 942 is truncated at GitHub's cap, 943 has an entry
+  // with no status, 944 is the receipt. Each is a different reason the answer can be unknown.
+  responses[`${COLLECTOR_REPO_PATH}/commits/${sha("e")}`] = {
+    sha: sha("e"),
+    files: Array.from({ length: 300 }, (_, index) => ({ filename: `docs/bulk/${index}.md`, status: "modified" }))
+  };
+  responses[`${COLLECTOR_REPO_PATH}/commits/${sha("f")}`] = {
+    sha: sha("f"),
+    files: [{ filename: "docs/contrib/943.md" }]
+  };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+
+  const rows = collected.facts?.implementationMerges ?? [];
+  assert.ok(rows.length >= 4, "all four merges are collected");
+  for (const row of rows) {
+    const known = ["added_paths", "changed_paths", "removed_paths", "blob_shas"].map(
+      (field) => row[field] !== null && row[field] !== undefined
+    );
+    assert.equal(
+      new Set(known).size,
+      1,
+      `merge #${row.number} mixes known and unknown effect fields: ${JSON.stringify(
+        Object.fromEntries(["added_paths", "changed_paths", "removed_paths", "blob_shas"].map((f) => [f, row[f]]))
+      ).slice(0, 200)}`
+    );
+  }
+  const unknown = rows.filter((row) => row.added_paths === null).map((row) => row.number).sort();
+  assert.deepEqual(unknown, [942, 943], "exactly the two untrustworthy responses are unknown");
+});
+
 test("live-collector-fails-closed-on-secondary-rate-limit-without-retry", async () => {
   const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
   const responses = JSON.parse(
