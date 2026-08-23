@@ -1971,6 +1971,11 @@ const makeCompletionEffectFacts = ({ addedPaths, changedPaths, removedPaths, pre
     run_attempt: 1
   });
   facts.liveTreePaths = [...(facts.liveTreePaths ?? []), ...(presentPaths ?? []), ...(anchor ? [OWNED_ANCHOR] : [])];
+  // A path the merge removed is not in the live tree. Leaving it there made the removed-path check
+  // read the deletion as restored, which is a state no honest collection produces.
+  const restored = new Set(presentPaths ?? []);
+  const removedSet = new Set((Array.isArray(removedPaths) ? removedPaths : []).filter((path) => !restored.has(path)));
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => !removedSet.has(path));
   return facts;
 };
 
@@ -3189,7 +3194,7 @@ test("completion-whose-whole-effect-is-a-deletion-still-needs-its-own-post-merge
   const facts = makeCompletionEffectFacts({
     addedPaths: [],
     changedPaths: [],
-    removedPaths: ["docs/effect/retired.md"],
+    removedPaths: [OWNED_ANCHOR],
     presentPaths: []
   });
   const sha = facts.implementationMerges[0].merge_commit_sha;
@@ -3226,7 +3231,7 @@ test("completion-whose-whole-effect-is-a-deletion-fails-closed-on-a-failed-merge
   const facts = makeCompletionEffectFacts({
     addedPaths: [],
     changedPaths: [],
-    removedPaths: ["docs/effect/retired.md"],
+    removedPaths: [OWNED_ANCHOR],
     presentPaths: []
   });
   const sha = facts.implementationMerges[0].merge_commit_sha;
@@ -3241,15 +3246,69 @@ test("completion-whose-whole-effect-is-a-deletion-fails-closed-on-a-failed-merge
   );
 });
 
+// #386, reproduced by blind review three times: the deletion-only branch returned verified before
+// the ownership check, so a merge deleting a file the ticket never declared verified it.
+test("completion-whose-whole-effect-is-an-unowned-deletion-does-not-verify", async () => {
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [],
+    removedPaths: ["docs/effect/unrelated-retirement.md"],
+    presentPaths: []
+  });
+  assert.equal(
+    (facts.tickets?.["D0-004"]?.owned_paths ?? []).includes("docs/effect/unrelated-retirement.md"),
+    false,
+    "the deleted path must be unowned for this case to mean anything"
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `deleting a file the ticket does not declare is not its deliverable, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerCodes(state).includes("COMPLETION_EFFECT_UNKNOWN"),
+    `expected COMPLETION_EFFECT_UNKNOWN, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+// Blind review of #394: an intersection test let one owned casualty launder arbitrary out-of-scope
+// removals in the same merge.
+test("one-owned-deletion-does-not-launder-unowned-deletions-in-the-same-merge", async () => {
+  const STOWAWAY = "docs/effect/unrelated-retirement.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [],
+    removedPaths: [OWNED_ANCHOR, STOWAWAY],
+    presentPaths: []
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `an out-of-scope removal must not ride along on an owned one, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_UNKNOWN").includes(STOWAWAY),
+    `the blocker must name the out-of-scope removal, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
 test("completion-whose-whole-effect-is-a-deletion-verifies", async () => {
   // Blind review: after the removed-path check passed, an empty added set fell into the changed
   // fallback, and since removals are excluded from the changed set it was rejected as UNKNOWN. That
   // makes "delete this" a kind of work that can never verify. My earlier positive test evaded it by
   // inventing an unrelated added file -- a check aimed at something the fixture itself minted.
+  //
+  // The deleted path must be one the ticket owns: a later review showed this fixture had been
+  // deleting an unrelated file and asserting verification, which codified the very false green the
+  // ownership check exists to refuse.
   const facts = makeCompletionEffectFacts({
     addedPaths: [],
     changedPaths: [],
-    removedPaths: ["docs/effect/retired.md"],
+    removedPaths: [OWNED_ANCHOR],
     presentPaths: []
   });
   const { result } = await resolveOffline(facts);
@@ -3265,8 +3324,8 @@ test("completion-whose-whole-effect-is-a-deletion-verifies", async () => {
   const undone = makeCompletionEffectFacts({
     addedPaths: [],
     changedPaths: [],
-    removedPaths: ["docs/effect/retired.md"],
-    presentPaths: ["docs/effect/retired.md"]
+    removedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR]
   });
   const { result: undoneResult } = await resolveOffline(undone);
   assert.ok(

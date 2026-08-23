@@ -2009,6 +2009,30 @@ const resolveImplementationCompletion = (facts, ticketId) => {
     // returning verified from this branch skipped that check, which every other completion shape
     // must satisfy and which the owning ticket requires (#386).
     if (changed.length === 0 && removed.length > 0) {
+      // The deletion also has to be the ticket's. Returning from here skipped the ownership check
+      // every other completion shape passes, so a merge deleting a file the ticket never declared
+      // verified it (#386). Only the removals are consulted: this branch has nothing else.
+      const ownedForDeletion = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
+        ? facts.tickets[ticketId].owned_paths
+        : null;
+      // Every removed path, not merely one: an intersection test lets a single owned casualty
+      // launder arbitrary out-of-scope removals in the same merge. The ticket contract already
+      // says no other file may be touched without a replacement ticket, so this is that rule.
+      const unownedRemovals =
+        ownedForDeletion === null || ownedForDeletion.length === 0
+          ? []
+          : removed.filter((path) => ownedIntersection([path], ownedForDeletion).length === 0);
+      if (unownedRemovals.length > 0) {
+        return {
+          verified: false,
+          blockers: [
+            blocker(
+              "COMPLETION_EFFECT_UNKNOWN",
+              `${ticketId} completion merge deleted ${unownedRemovals.join(", ")}, which the ticket does not declare, so its deliverable is unconfirmed`
+            )
+          ]
+        };
+      }
       const deletionCi = postMergeStatus(facts, completionEntry.merge_commit_sha);
       if (deletionCi.failed) {
         return {
