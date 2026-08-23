@@ -3428,6 +3428,32 @@ test("collector-keeps-the-blob-sha-the-tree-and-commit-files-already-carry", asy
   // a mutation restoring the old `blobShas = null` survived every assertion until this one.
   const merge = (collected.facts?.implementationMerges ?? []).find((entry) => entry.number === 913);
   assert.ok(merge, "the merge receipt must be collected");
+  // Both retention sites must refuse a value that is not an object id. Without this the guard can
+  // regress undetected, because the comparison downstream rejects such values anyway.
+  const malformedResponses = structuredClone(responses);
+  const commitKey = `${COLLECTOR_REPO_PATH}/commits/${sha}`;
+  malformedResponses[commitKey].files[0].sha = "not-a-sha";
+  const badCommitPath = malformedResponses[commitKey].files[0].filename;
+  malformedResponses[treeKey].tree = malformedResponses[treeKey].tree.map((node, index) =>
+    index === 0 && node.type === "blob" ? { ...node, sha: "" } : node
+  );
+  const badTreePath = malformedResponses[treeKey].tree.find((node) => node.sha === "")?.path;
+  assert.ok(badTreePath, "the tree fixture must expose a node to malform");
+  const withMalformed = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(malformedResponses)
+  });
+  assert.equal(withMalformed.ok, true, withMalformed.reason);
+  const malformedMerge = (withMalformed.facts?.implementationMerges ?? []).find((e) => e.number === 913);
+  assert.equal(
+    Object.hasOwn(malformedMerge?.blob_shas ?? {}, badCommitPath),
+    false,
+    "a commit file whose sha is not an object id must not enter the blob map"
+  );
+  assert.equal(
+    Object.hasOwn(withMalformed.facts?.liveTreeBlobs ?? {}, badTreePath),
+    false,
+    "a tree node whose sha is not an object id must not enter the live blob map"
+  );
   const commitFiles = responses[`${COLLECTOR_REPO_PATH}/commits/${sha}`].files;
   const surviving = commitFiles.filter((file) => file.status !== "removed");
   assert.ok(surviving.length > 0, "the commit fixture must carry surviving files");
@@ -7554,9 +7580,11 @@ test("any-completion-blob-unchanged-is-unknown-when-one-candidate-has-no-merge-b
   const { resolveAnyCompletionBlobUnchanged } = await importResolver();
   const A = OWNED_ANCHOR;
   const B = "specs/execution-state.schema.v1.json";
+  // Valid object ids. Invented values with non-hex characters are refused by the identity check
+  // before the missing-candidate question is reached, which makes this case pass for that reason.
   const result = resolveAnyCompletionBlobUnchanged(
-    { liveTreeBlobs: { [A]: "new".padEnd(40, "0"), [B]: "live".padEnd(40, "0") } },
-    { changed_paths: [A, B], blob_shas: { [A]: "old".padEnd(40, "0") } },
+    { liveTreeBlobs: { [A]: "a".repeat(40), [B]: "b".repeat(40) } },
+    { changed_paths: [A, B], blob_shas: { [A]: "c".repeat(40) } },
     [A, B]
   );
   assert.equal(
