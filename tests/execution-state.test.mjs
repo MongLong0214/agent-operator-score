@@ -1984,6 +1984,101 @@ const blockerReason = (state, code) => (state.blockers ?? []).find((entry) => en
 // Reproduced by blind review of #390. The changed-set presence check runs only when the introduced
 // set is empty, so one surviving added path the ticket does not own skips it, and the ownership
 // intersection then matched a declared path that had been deleted.
+// #396 consequence 3, reproduced by blind review: a ticket delivered across several merges had the
+// earlier ones unexamined, so the completion's own paths vouched for the whole ticket.
+test("a-contributing-merges-owned-deliverable-must-survive-too", async () => {
+  const EARLIER = "specs/execution-state.schema.v1.json";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR],
+    anchor: false
+  });
+  // An earlier merge on the same ticket introduced another owned path, which is now gone.
+  facts.implementationMerges.unshift({
+    ticket_id: "D0-004",
+    merge_commit_sha: "166a166a166a166a166a166a166a166a166a166a",
+    number: 166,
+    body: "Ticket: D0-004",
+    reachable: true,
+    added_paths: [EARLIER],
+    changed_paths: [EARLIER],
+    removed_paths: []
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== EARLIER);
+  assert.ok(facts.liveTreePaths.includes(OWNED_ANCHOR), "the completion's own path must survive");
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `an owned path an earlier merge delivered is still part of the ticket, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_REVERTED").includes(EARLIER),
+    `the blocker must name the absent path, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
+// Another ticket's merge may touch a path this ticket declares. It is not this ticket's delivery,
+// and blaming this ticket for its absence would make one ticket's history refuse another's.
+test("another-tickets-merge-does-not-add-deliverables-to-this-one", async () => {
+  const SHARED = "specs/execution-state.schema.v1.json";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR],
+    anchor: false
+  });
+  facts.implementationMerges.unshift({
+    ticket_id: "D0-001",
+    merge_commit_sha: "168a168a168a168a168a168a168a168a168a168a",
+    number: 168,
+    body: "Ticket: D0-001",
+    reachable: true,
+    added_paths: [SHARED],
+    changed_paths: [SHARED],
+    removed_paths: []
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== SHARED);
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(
+    state.phase,
+    "verified",
+    `a path another ticket's merge touched is not this ticket's deliverable, got phase=${state.phase}`
+  );
+});
+
+// An unreachable contributing merge is not part of the live line and must not be consulted.
+test("an-unreachable-contributing-merge-does-not-add-deliverables", async () => {
+  const ORPHAN = "specs/execution-state.schema.v1.json";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR],
+    anchor: false
+  });
+  facts.implementationMerges.unshift({
+    ticket_id: "D0-004",
+    merge_commit_sha: "167a167a167a167a167a167a167a167a167a167a",
+    number: 167,
+    body: "Ticket: D0-004",
+    reachable: false,
+    added_paths: [ORPHAN],
+    changed_paths: [ORPHAN],
+    removed_paths: []
+  });
+  facts.liveTreePaths = facts.liveTreePaths.filter((path) => path !== ORPHAN);
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.equal(
+    state.phase,
+    "verified",
+    `a merge that is not on the live line delivered nothing to it, got phase=${state.phase}`
+  );
+});
+
 test("a-surviving-added-decoy-cannot-vouch-for-a-modified-deliverable-that-is-gone", async () => {
   const DECOY = "docs/effect/decoy.md";
   const facts = makeCompletionEffectFacts({

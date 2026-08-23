@@ -2169,10 +2169,17 @@ const resolveImplementationCompletion = (facts, ticketId) => {
     // No separate branch for an absent tree listing: resolution returns EXTERNAL_STATE_UNAVAILABLE
     // before reaching here, so that branch would be unreachable. An empty set still fails closed.
     const livePaths = new Set(Array.isArray(facts.liveTreePaths) ? facts.liveTreePaths : []);
-    const touched = [
-      ...(Array.isArray(introduced) ? introduced : []),
-      ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
-    ];
+    // Every merge that declared this ticket, not only the one carrying the receipt. A ticket
+    // delivered across several merges had the earlier ones unexamined, so an owned path a
+    // contributing merge introduced could be deleted and the completion's own paths would still
+    // vouch for the whole ticket (#396).
+    const touched = [];
+    for (const contributor of facts.implementationMerges ?? []) {
+      if (contributor?.ticket_id !== ticketId) continue;
+      if (contributor.reachable !== true) continue;
+      if (Array.isArray(contributor.added_paths)) touched.push(...contributor.added_paths);
+      if (Array.isArray(contributor.changed_paths)) touched.push(...contributor.changed_paths);
+    }
     const delivered = ownedIntersection(touched, ownedPaths);
     if (delivered.length === 0) {
       return {
