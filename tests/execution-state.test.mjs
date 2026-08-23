@@ -3326,10 +3326,14 @@ test("collector-refuses-a-commit-file-list-that-may-be-truncated", async () => {
   responses[`${COLLECTOR_REPO_PATH}/commits/${sha}`] = { sha, files };
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
   const entry = (collected.facts?.implementationMerges ?? []).find((row) => row.number === 930);
-  if (entry) {
-    assert.equal(entry.changed_paths, null, "a truncated list must not be recorded as a measured set");
-    assert.equal(entry.removed_paths, null, "a truncated list must not be recorded as no removals");
-  }
+  assert.ok(entry, "the merge is still collected; only its effect is unmeasurable");
+  assert.equal(entry.changed_paths, null, "a truncated list must not be recorded as a measured set");
+  assert.equal(entry.removed_paths, null, "a truncated list must not be recorded as no removals");
+  // The fourth field used to be derived from the same untrustworthy list while its three
+  // siblings said unknown, publishing a possibly-short set of introduced paths as the complete
+  // one. Blind review named that: the row asserted and disclaimed the same response at once.
+  assert.equal(entry.added_paths, null, "a truncated list must not be recorded as a complete added set");
+  assert.equal(entry.blob_shas, null);
 });
 
 test("collector-refuses-a-rename-whose-old-path-is-missing", async () => {
@@ -5773,33 +5777,116 @@ test("live-collector-carries-every-linked-merge-effect-not-only-receipts", async
       runs: collectorSuccessRuns(sha("c"), 904)
     }
   ]);
-  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
-  assert.equal(collected.ok, true, collected.reason);
-  const byNumber = new Map(
-    (collected.facts?.implementationMerges ?? []).map((entry) => [entry.number, entry])
-  );
-  for (const number of [901, 904]) {
-    const row = byNumber.get(number);
-    assert.ok(row, `contributing merge ${number} must be collected`);
-    // Before the widening these three were null on every non-receipt row.
-    assert.deepEqual(row.added_paths, [], `contributor ${number} added nothing`);
-    assert.deepEqual(
-      row.changed_paths,
-      [`docs/contrib/${number}.md`],
-      `contributor ${number} must carry its own effect, not another merge's`
+  // The expectation is read back out of the response this fixture will actually serve for that
+  // merge, rather than re-deriving the builder's path formula here. Restating the formula would
+  // make the assertion agree with the fixture by construction instead of by collection.
+  const servedFiles = (mergeSha) =>
+    (responses[`${COLLECTOR_REPO_PATH}/commits/${mergeSha}`]?.files ?? []).map((file) => file.filename);
+
+  // Run the same fixture through both transports. `createFixtureTransport` has no getJsonMany,
+  // so on its own this case never reaches the concurrent mapper that production uses -- blind
+  // review reversed that mapper and these assertions survived.
+  const inner = createFixtureTransport(responses);
+  const batched = {
+    kind: inner.kind,
+    getJson: inner.getJson.bind(inner),
+    getRaw: inner.getRaw.bind(inner),
+    getJsonMany(apiPaths) {
+      const byPath = new Map();
+      for (const path of [...apiPaths].reverse()) {
+        try {
+          byPath.set(path, { ok: true, value: inner.getJson(path) });
+        } catch (error) {
+          byPath.set(path, { ok: false, reason: String(error?.message ?? error), error });
+        }
+      }
+      return apiPaths.map((path) => byPath.get(path));
+    }
+  };
+
+  for (const [label, transport] of [["sequential", inner], ["batched", batched]]) {
+    const collected = collectLiveExecutionFacts(root, { transport });
+    assert.equal(collected.ok, true, `${label}: ${collected.reason}`);
+    const byNumber = new Map(
+      (collected.facts?.implementationMerges ?? []).map((entry) => [entry.number, entry])
     );
-    assert.deepEqual(row.removed_paths, []);
-    assert.deepEqual(Object.keys(row.blob_shas ?? {}), [`docs/contrib/${number}.md`]);
+    for (const [number, nibble] of [[901, "a"], [904, "c"]]) {
+      const row = byNumber.get(number);
+      assert.ok(row, `${label}: contributing merge ${number} must be collected`);
+      // Before the widening these were null on every non-receipt row.
+      assert.deepEqual(row.added_paths, [], `${label}: contributor ${number} added nothing`);
+      assert.deepEqual(
+        row.changed_paths,
+        servedFiles(nibble.repeat(40)),
+        `${label}: contributor ${number} must carry its own effect, not another merge's`
+      );
+      assert.deepEqual(row.removed_paths, []);
+      assert.deepEqual(Object.keys(row.blob_shas ?? {}), servedFiles(nibble.repeat(40)));
+    }
+    // The receipt keeps exactly what it introduced. Paired with the assertions above this is what
+    // a commit addressed through the wrong index fails: the rows are distinct per merge, so any
+    // shift hands at least one row a path belonging to a different pull request.
+    assert.deepEqual(byNumber.get(902)?.added_paths, ["docs/effect/902-receipt.md"], label);
+    assert.equal(
+      byNumber.get(902)?.changed_paths?.includes("docs/contrib/901.md"),
+      false,
+      `${label}: the receipt must not inherit a contributor's effect`
+    );
   }
-  // The receipt keeps exactly what it introduced. Paired with the assertions above this is what
-  // a commit addressed through the wrong index fails: the rows are distinct per merge, so any
-  // shift hands at least one row a path belonging to a different pull request.
-  assert.deepEqual(byNumber.get(902)?.added_paths, ["docs/effect/902-receipt.md"]);
-  assert.equal(
-    byNumber.get(902)?.changed_paths?.includes("docs/contrib/901.md"),
-    false,
-    "the receipt must not inherit a contributor's effect"
+});
+
+// Twelve of these fetches are for merges nothing gates on. Making them required would let one 404
+// on an unrelated contributing merge erase all seventy-two ticket states -- a global refusal for
+// evidence no authority decision reads. The receipt's own commit stays required.
+test("live-collector-tolerates-an-absent-contributor-commit-but-not-an-absent-receipt-commit", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const build = () =>
+    buildCollectorMergedSearchFixture([
+      {
+        number: 901,
+        merge_commit_sha: sha("a"),
+        body: "Ticket: D0-004\n",
+        compare: { status: "behind" },
+        runs: collectorSuccessRuns(sha("a"), 901)
+      },
+      {
+        number: 902,
+        merge_commit_sha: sha("b"),
+        body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+        compare: { status: "behind" },
+        runs: collectorSuccessRuns(sha("b"), 902),
+        added_paths: ["docs/effect/902-receipt.md"]
+      }
+    ]);
+
+  const withoutContributor = build();
+  delete withoutContributor[`${COLLECTOR_REPO_PATH}/commits/${sha("a")}`];
+  const tolerated = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(withoutContributor)
+  });
+  assert.equal(tolerated.ok, true, `an unreadable contributor must not fail collection: ${tolerated.reason}`);
+  const contributor = (tolerated.facts?.implementationMerges ?? []).find((row) => row.number === 901);
+  assert.ok(contributor, "the merge is still recorded");
+  // Unknown, not "contributed nothing". A check that reads these must refuse on null rather than
+  // treat it as an empty contribution.
+  assert.equal(contributor.added_paths, null);
+  assert.equal(contributor.changed_paths, null);
+  assert.equal(contributor.removed_paths, null);
+  assert.equal(contributor.blob_shas, null);
+  // The receipt in the same run is unaffected, so the tolerance is scoped to the row that is
+  // missing rather than degrading every row.
+  assert.deepEqual(
+    (tolerated.facts?.implementationMerges ?? []).find((row) => row.number === 902)?.added_paths,
+    ["docs/effect/902-receipt.md"]
   );
+
+  const withoutReceipt = build();
+  delete withoutReceipt[`${COLLECTOR_REPO_PATH}/commits/${sha("b")}`];
+  const refused = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(withoutReceipt)
+  });
+  assert.equal(refused.ok, false, "a receipt's own effect is required and must still fail closed");
 });
 
 test("live-collector-fails-closed-on-secondary-rate-limit-without-retry", async () => {

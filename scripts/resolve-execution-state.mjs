@@ -3871,10 +3871,16 @@ export const applyHistoricalImplementationLinkage = (
       merge_commit_sha: pull.merge_commit_sha,
       number: pull.number,
       reachable: ancestry.reachable,
-      added_paths: legacyCommit.files
-        .filter((file) => file?.status === "added" && typeof file.filename === "string")
-        .map((file) => file.filename)
-        .sort(),
+      // Null when filesToEffect refused the list as a whole (truncated at 300, or an entry
+      // without a status): a short list of introduced paths must not be published as the
+      // complete one while its sibling fields say unknown.
+      added_paths:
+        legacyEffect === null
+          ? null
+          : legacyCommit.files
+              .filter((file) => file?.status === "added" && typeof file.filename === "string")
+              .map((file) => file.filename)
+              .sort(),
       changed_paths: legacyEffect?.changed ?? null,
       removed_paths: legacyEffect?.removed ?? null
     });
@@ -5039,21 +5045,41 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     ),
     failures
   );
+  for (let i = 0; i < linkedMerged.length; i += 1) {
+    const { pull, ticketId } = linkedMerged[i];
+    linkedMerged[i].isCompletionReceipt =
+      classifyCompletionMerge(pull.body ?? "", ticketId).isCompletion ||
+      isLegacyCompletionBinding(ticketId, { number: pull.number, merge_commit_sha: pull.merge_commit_sha });
+  }
   // Every linked merge pays for its commit, not only the completion receipts. A ticket's
   // deliverable is frequently introduced by an earlier contributing merge and merely touched
   // by the receipt, so effects collected for receipts alone cannot answer whether the ticket's
   // declared final state is still in the tree. Measured against this repository: 82 linked
   // merges of which 70 are receipts, so widening costs 12 requests and one second against a
-  // 300s budget. Indexing is positional over `linkedMerged`, identical to `mergedRunPayloads`
-  // above -- the previous two-index scheme (a compacted request array addressed through a
-  // separate index list) is what silently pairs a commit with the wrong merge.
-  const linkedCommits = requireJsonMany(
+  // 300s budget.
+  //
+  // A contributor's commit is best-effort. Nothing gates on it today, so an unavailable one
+  // leaves that row's effects null rather than failing the whole derivation -- `requireJsonMany`
+  // would have made twelve unused fetches into global dependencies, where one 404 erases all
+  // seventy-two ticket states. A receipt's commit is still required, as before. Rate limit and
+  // timeout stay fatal for both, because those say the run is unreliable rather than that one
+  // merge is unknowable.
+  //
+  // Indexing is positional over `linkedMerged`, the same shape `mergedRunPayloads` above uses.
+  // The two-index scheme this replaces was correctly paired; the point is that a compacted
+  // request array addressed through a separate index list has to be kept in step by hand, and
+  // widening the requests alone silently pairs every commit with the wrong merge.
+  const linkedCommitResults = callJsonMany(
     transport,
-    linkedMerged.map((entry) => `${repoPath}/commits/${entry.pull.merge_commit_sha}`),
-    failures
+    linkedMerged.map((entry) => `${repoPath}/commits/${entry.pull.merge_commit_sha}`)
   );
+  const fatalCommitFailure = linkedCommitResults.find(
+    (result) => result?.secondaryRateLimit || result?.timeout
+  );
+  if (fatalCommitFailure) failures.push(fatalCommitFailure.reason);
+  const linkedCommits = linkedCommitResults.map((result) => (result?.ok ? result.value : null));
   for (let i = 0; i < linkedMerged.length; i += 1) {
-    const { item, pull, ticketId, ancestry } = linkedMerged[i];
+    const { item, pull, ticketId, ancestry, isCompletionReceipt } = linkedMerged[i];
     const runs = mergedRunPayloads[i];
     if (
       !runs ||
@@ -5088,18 +5114,26 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
     // still be there -- including contributing merges, because the merge that introduces a
     // deliverable is routinely not the one carrying the receipt.
     const commit = linkedCommits[i];
-    if (!commit || !Array.isArray(commit.files)) {
+    const commitFiles = commit && Array.isArray(commit.files) ? commit.files : null;
+    if (commitFiles === null && isCompletionReceipt) {
       return {
         ok: false,
-        reason: failures.join("; ") || `linked merge ${pull.merge_commit_sha} file list unavailable`,
+        reason: failures.join("; ") || `completion merge ${pull.merge_commit_sha} file list unavailable`,
         facts: null
       };
     }
-    const addedPaths = commit.files
-      .filter((file) => file?.status === "added" && typeof file.filename === "string")
-      .map((file) => file.filename)
-      .sort();
-    const effect = filesToEffect(commit.files);
+    const effect = commitFiles === null ? null : filesToEffect(commitFiles);
+    // `filesToEffect` returns null when the response cannot be trusted as a whole -- a list
+    // GitHub truncated at 300, or an entry missing its status. Deriving added_paths from that
+    // same list anyway would publish a short list of introduced paths as though it were the
+    // complete one, next to three sibling fields that correctly said "unknown".
+    const addedPaths =
+      effect === null
+        ? null
+        : commitFiles
+            .filter((file) => file?.status === "added" && typeof file.filename === "string")
+            .map((file) => file.filename)
+            .sort();
     const changedPaths = effect?.changed ?? null;
     const removedPaths = effect?.removed ?? null;
     const blobShas = effect?.blobs ?? null;
