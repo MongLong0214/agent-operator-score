@@ -2054,25 +2054,48 @@ const resolveImplementationCompletion = (facts, ticketId) => {
   // ticket's deliverable at all: without it a receipt is verified on whatever unrelated file its
   // merge happened to carry (#347).
   //
-  // Only emptiness is checked here. Whether each delivered path is still present is already
-  // decided above -- an added path by the introduced-set check, a modified one by the changed-set
-  // check -- so repeating it would be a guard no input can reach. Removals are likewise not
-  // consulted: a deletion-only completion returns earlier, on its own confirmed effect.
+  // Presence is re-checked here rather than inherited: the changed-set check above runs only when
+  // the introduced set is empty, so a completion carrying one surviving added path never reaches
+  // it and a modified deliverable that has since been deleted goes unexamined (#347).
+  //
+  // Every delivered owned path must survive, not merely one of them -- an existential test lets a
+  // surviving owned path vouch for a second that disappeared. Removals are not consulted here: a
+  // deletion-only completion returns earlier, on its own confirmed effect.
+  //
+  // The cost is recorded and accepted: a later ticket that legitimately moves or renames a file an
+  // earlier completion delivered trips COMPLETION_EFFECT_REVERTED. Nothing in this function can
+  // distinguish that from a revert, and failing closed is the intended direction.
   const ownedPaths = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
     ? facts.tickets[ticketId].owned_paths
     : null;
   if (ownedPaths !== null && ownedPaths.length > 0) {
+    // No separate branch for an absent tree listing: resolution returns EXTERNAL_STATE_UNAVAILABLE
+    // before reaching here, so that branch would be unreachable. An empty set still fails closed.
+    const livePaths = new Set(Array.isArray(facts.liveTreePaths) ? facts.liveTreePaths : []);
     const touched = [
       ...(Array.isArray(introduced) ? introduced : []),
       ...(Array.isArray(completionEntry.changed_paths) ? completionEntry.changed_paths : [])
     ];
-    if (ownedIntersection(touched, ownedPaths).length === 0) {
+    const delivered = ownedIntersection(touched, ownedPaths);
+    if (delivered.length === 0) {
       return {
         verified: false,
         blockers: [
           blocker(
             "COMPLETION_EFFECT_UNKNOWN",
             `${ticketId} completion merge touched none of the paths the ticket declares, so its deliverable is unconfirmed`
+          )
+        ]
+      };
+    }
+    const absent = delivered.filter((path) => !livePaths.has(path));
+    if (absent.length > 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_REVERTED",
+            `${ticketId} completion merge delivered ${absent.join(", ")}, absent from the live target branch`
           )
         ]
       };
