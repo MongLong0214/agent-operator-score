@@ -152,3 +152,24 @@ Verified runs and reports stay local. Default telemetry is OFF. Secret values an
 ## License and publication
 
 This is a public, source-visible planning repository. D0 minimum name clearance is a separate canonical-identity decision. MIT is the outbound license in [LICENSE](LICENSE). No public package has been approved. Contribution acceptance, npm publication, a visibility change, and formal publication review remain E14/G4 decisions; contributor terms and formal publication review are still unresolved. MIT grants redistribution of the software. That grant is not contributor terms and is not a publication clearance.
+
+G4 does not pass, and no work is planned to make it pass. `node scripts/verify-release.mjs` reports
+the reasons against the current tree:
+
+```
+G4_FAIL 6
+- NO_INDEPENDENT_REPRODUCTION no independent environment has reproduced exact public fixture bytes.
+- UNRESOLVED_GATE G1
+- UNRESOLVED_GATE G2
+- UNRESOLVED_GATE G3
+- UNRESOLVED_GATE contributor_terms
+- UNRESOLVED_GATE formal_publication_review
+```
+
+The first is the one that cannot be closed from inside this repository. G4 requires a signed
+environment and toolchain manifest from an independent run, attested by a host whose
+`(id, public_key)` pair is listed in the trusted principals block of
+[docs/decisions/G4-VERDICT.md](docs/decisions/G4-VERDICT.md). No such run exists. A self-attested
+reproduction is refused by construction, and there is no second party. Until someone unaffiliated
+reproduces the public fixture bytes and attests to them, G4 stays open and no publication claim
+rests on it.
