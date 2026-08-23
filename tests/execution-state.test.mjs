@@ -7328,6 +7328,56 @@ const activationMatchingHeadBlob = () => {
   return sealActivationManifest(activation);
 };
 
+// #303: the resolver already honours three of ADR-0013's four advisory constraints, but published
+// nothing an operator could read the governing mode from. `governance_mode` is the D0-004 operating
+// phase and is explicitly refused as an authority source, so it cannot stand in.
+test("governing-mode-is-published-and-is-the-contract-mode-not-the-operating-phase", async () => {
+  const facts = loadBaselineFacts();
+  const { result } = await resolveOffline(facts);
+  assert.equal(result.governing_mode, "SOLE_OWNER_ADVISORY", `got ${result.governing_mode}`);
+  assert.notEqual(
+    result.governing_mode,
+    result.governance_mode,
+    "the two fields are different vocabularies and must not be conflated"
+  );
+  assert.equal(result.claims_merge_authorization, false);
+  assert.equal(result.claims_separation_of_duties, false);
+  assert.equal(result.artifact_freeze, null);
+
+  // Leaving bootstrap does not change what governs the repository. Without this the field could be
+  // a rename of the operating phase and nothing would notice.
+  const settled = loadBaselineFacts();
+  settled.d0_004c_merged = true;
+  const { result: settledResult } = await resolveOffline(settled);
+  assert.notEqual(settledResult.governance_mode, result.governance_mode, "the operating phase must differ");
+  assert.equal(
+    settledResult.governing_mode,
+    "SOLE_OWNER_ADVISORY",
+    "the governing mode follows the contract, not the operating phase"
+  );
+});
+
+test("governing-mode-requires-both-the-contract-and-live-activation", async () => {
+  const { resolveGoverningMode } = await importResolver();
+  const active = activationMatchingHeadBlob();
+  const authenticated = { current_mode: "AUTHENTICATED_REVIEW" };
+  assert.equal(
+    resolveGoverningMode(authenticated, active),
+    "AUTHENTICATED_REVIEW",
+    "both halves present must give the authenticated mode, or the rule refuses everything"
+  );
+  assert.equal(
+    resolveGoverningMode(authenticated, {}),
+    "SOLE_OWNER_ADVISORY",
+    "a ratified document alone must not move the mode"
+  );
+  assert.equal(
+    resolveGoverningMode({ current_mode: "SOLE_OWNER_ADVISORY" }, active),
+    "SOLE_OWNER_ADVISORY",
+    "facts nobody ratified must not move the mode"
+  );
+});
+
 test("injected-activation-facts-cannot-produce-artifact-freeze", async () => {
   // Caller-reachable keys only. A matching blob digest is the strongest injection:
   // if the gate still trusted any of these keys, freeze would be non-null.
