@@ -2692,6 +2692,66 @@ test("legacy-completion-exception-does-not-extend-to-other-tickets", async () =>
   assert.deepEqual(blockerCodes(d0004), []);
 });
 
+// The modern collector's truncation test cannot reach this one: a synthetic modern row for the
+// same ticket makes the historical path skip entirely, so blind review restored the old legacy
+// expression and the whole suite stayed green. Both collectors owe the same answer.
+test("historical-linkage-collector-reports-a-truncated-commit-as-wholly-unknown", async () => {
+  const { applyHistoricalImplementationLinkage, createFixtureTransport, HISTORICAL_IMPLEMENTATION_LINKAGE } =
+    await importResolver();
+  const legacy = HISTORICAL_IMPLEMENTATION_LINKAGE["D0-002"];
+  const repoPath = "repos/MongLong0214/agent-operator-score";
+  const mergeSha = legacy.merge_commit_sha;
+  const liveTip = "c8937c6c31ef034535f7c2e8276514221a12fd55";
+  const responses = {
+    // A full page is possibly truncated, so nothing about this merge's effect is measurable --
+    // including which paths it introduced.
+    [`${repoPath}/commits/${mergeSha}`]: {
+      sha: mergeSha,
+      files: Array.from({ length: 300 }, (_, index) => ({
+        filename: `packages/schema/bulk-${index}.json`,
+        status: "added"
+      }))
+    },
+    [`${repoPath}/pulls/${legacy.pr_number}`]: {
+      number: legacy.pr_number,
+      merged: true,
+      merge_commit_sha: mergeSha,
+      base: { ref: "dev" }
+    },
+    [`${repoPath}/compare/${liveTip}...${mergeSha}`]: { status: "behind" },
+    [`${repoPath}/actions/runs?head_sha=${mergeSha}&event=push&per_page=20`]: {
+      total_count: 1,
+      workflow_runs: [
+        {
+          id: 31084420124,
+          name: "CI",
+          path: ".github/workflows/ci.yml",
+          head_sha: mergeSha,
+          status: "completed",
+          conclusion: "success",
+          run_attempt: 1
+        }
+      ]
+    }
+  };
+  const failures = [];
+  const implementationMerges = [];
+  const ok = applyHistoricalImplementationLinkage(
+    createFixtureTransport(responses),
+    repoPath,
+    { "D0-002": { owned_paths: ["x"], owned_symbols: [] } },
+    failures,
+    { implementationMerges, postMergeCI: [], verifiedTickets: [] },
+    liveTip
+  );
+  assert.equal(ok, true, failures.join("; "));
+  assert.equal(implementationMerges.length, 1);
+  const row = implementationMerges[0];
+  for (const field of ["added_paths", "changed_paths", "removed_paths", "blob_shas"]) {
+    assert.equal(row[field], null, `${field} must be unknown when the file list may be truncated`);
+  }
+});
+
 test("historical-linkage-collector-verifies-real-merge-before-trusting-it", async () => {
   const { applyHistoricalImplementationLinkage, createFixtureTransport } = await importResolver();
   const tickets = { "D0-002": { owned_paths: ["x"], owned_symbols: [] } };
@@ -3028,10 +3088,30 @@ function buildCollectorMergedSearchFixture(items) {
     if (Object.hasOwn(item, "runs")) {
       responses[`${COLLECTOR_REPO_PATH}/actions/runs?head_sha=${item.merge_commit_sha}&event=push&per_page=20`] = item.runs;
     }
-    // A completion receipt costs one extra commit request so the resolver can require what
-    // the merge introduced to still be in the live tree. `added_paths: null` models the
+    // Every linked merge costs one commit request so the resolver can require what any of
+    // them introduced to still be in the live tree. `added_paths: null` models the
     // outage/unknown shape; `effect_present: false` models the reverted shape by recording
     // the introduced paths and deliberately leaving them out of the live tree listing.
+    //
+    // An item that declares no `added_paths` is an ordinary contributing merge, and the
+    // collector now demands a commit for it too. Its file is keyed by PR number rather than
+    // shared, so a commit paired with the wrong merge shows up as a wrong path instead of
+    // passing unnoticed -- the failure mode of addressing a compacted request array through
+    // a separate index list.
+    if (!Object.hasOwn(item, "added_paths")) {
+      const contributed = `docs/contrib/${item.number}.md`;
+      responses[`${COLLECTOR_REPO_PATH}/commits/${item.merge_commit_sha}`] = {
+        sha: item.merge_commit_sha,
+        files: [
+          {
+            filename: contributed,
+            status: "modified",
+            sha: sha256Utf8(`commit:${contributed}`).slice(0, 40)
+          }
+        ]
+      };
+      collectorTreePaths.push(contributed);
+    }
     if (Object.hasOwn(item, "added_paths")) {
       // A completion receipt must touch a path its own ticket declares, so a collector fixture
       // whose subject is post-merge CI or pagination anchors on one of that ticket's owned paths
@@ -3306,10 +3386,14 @@ test("collector-refuses-a-commit-file-list-that-may-be-truncated", async () => {
   responses[`${COLLECTOR_REPO_PATH}/commits/${sha}`] = { sha, files };
   const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
   const entry = (collected.facts?.implementationMerges ?? []).find((row) => row.number === 930);
-  if (entry) {
-    assert.equal(entry.changed_paths, null, "a truncated list must not be recorded as a measured set");
-    assert.equal(entry.removed_paths, null, "a truncated list must not be recorded as no removals");
-  }
+  assert.ok(entry, "the merge is still collected; only its effect is unmeasurable");
+  assert.equal(entry.changed_paths, null, "a truncated list must not be recorded as a measured set");
+  assert.equal(entry.removed_paths, null, "a truncated list must not be recorded as no removals");
+  // The fourth field used to be derived from the same untrustworthy list while its three
+  // siblings said unknown, publishing a possibly-short set of introduced paths as the complete
+  // one. Blind review named that: the row asserted and disclaimed the same response at once.
+  assert.equal(entry.added_paths, null, "a truncated list must not be recorded as a complete added set");
+  assert.equal(entry.blob_shas, null);
 });
 
 test("collector-refuses-a-rename-whose-old-path-is-missing", async () => {
@@ -5719,6 +5803,294 @@ test("live-collector-batched-receipts-preserve-search-order", async () => {
       added_paths: row.added_paths
     }))
   );
+});
+
+// The deliverable a ticket declares is routinely introduced by a contributing merge and only
+// touched by the receipt, so effects collected for receipts alone cannot answer whether that
+// deliverable is still in the tree -- the contributor reaches the resolver with null effects and
+// is silently ignored. Nothing consumes contributor effects yet; this pins that they are
+// collected, so the check that will consume them has something to read.
+test("live-collector-carries-every-linked-merge-effect-not-only-receipts", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: sha("a"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("a"), 901)
+    },
+    {
+      number: 902,
+      merge_commit_sha: sha("b"),
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("b"), 902),
+      added_paths: ["docs/effect/902-receipt.md"]
+    },
+    {
+      number: 904,
+      merge_commit_sha: sha("c"),
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("c"), 904)
+    }
+  ]);
+  // The expectation is read back out of the response this fixture will actually serve for that
+  // merge, rather than re-deriving the builder's path formula here. Restating the formula would
+  // make the assertion agree with the fixture by construction instead of by collection.
+  const servedFiles = (mergeSha) =>
+    (responses[`${COLLECTOR_REPO_PATH}/commits/${mergeSha}`]?.files ?? []).map((file) => file.filename);
+
+  // Run the same fixture through both transports. `createFixtureTransport` has no getJsonMany,
+  // so on its own this case never reaches the concurrent mapper that production uses -- blind
+  // review reversed that mapper and these assertions survived.
+  const inner = createFixtureTransport(responses);
+  const batched = {
+    kind: inner.kind,
+    getJson: inner.getJson.bind(inner),
+    getRaw: inner.getRaw.bind(inner),
+    getJsonMany(apiPaths) {
+      const byPath = new Map();
+      for (const path of [...apiPaths].reverse()) {
+        try {
+          byPath.set(path, { ok: true, value: inner.getJson(path) });
+        } catch (error) {
+          byPath.set(path, { ok: false, reason: String(error?.message ?? error), error });
+        }
+      }
+      return apiPaths.map((path) => byPath.get(path));
+    }
+  };
+
+  for (const [label, transport] of [["sequential", inner], ["batched", batched]]) {
+    const collected = collectLiveExecutionFacts(root, { transport });
+    assert.equal(collected.ok, true, `${label}: ${collected.reason}`);
+    const byNumber = new Map(
+      (collected.facts?.implementationMerges ?? []).map((entry) => [entry.number, entry])
+    );
+    for (const [number, nibble] of [[901, "a"], [904, "c"]]) {
+      const row = byNumber.get(number);
+      assert.ok(row, `${label}: contributing merge ${number} must be collected`);
+      // Before the widening these were null on every non-receipt row.
+      assert.deepEqual(row.added_paths, [], `${label}: contributor ${number} added nothing`);
+      assert.deepEqual(
+        row.changed_paths,
+        servedFiles(nibble.repeat(40)),
+        `${label}: contributor ${number} must carry its own effect, not another merge's`
+      );
+      assert.deepEqual(row.removed_paths, []);
+      assert.deepEqual(Object.keys(row.blob_shas ?? {}), servedFiles(nibble.repeat(40)));
+    }
+    // The receipt keeps exactly what it introduced. Paired with the assertions above this is what
+    // a commit addressed through the wrong index fails: the rows are distinct per merge, so any
+    // shift hands at least one row a path belonging to a different pull request.
+    assert.deepEqual(byNumber.get(902)?.added_paths, ["docs/effect/902-receipt.md"], label);
+    assert.equal(
+      byNumber.get(902)?.changed_paths?.includes("docs/contrib/901.md"),
+      false,
+      `${label}: the receipt must not inherit a contributor's effect`
+    );
+  }
+});
+
+// Twelve of these fetches are for merges nothing gates on. Making them required would let one 404
+// on an unrelated contributing merge erase all seventy-two ticket states -- a global refusal for
+// evidence no authority decision reads. The receipt's own commit stays required.
+test("live-collector-tolerates-an-absent-contributor-commit-but-not-an-absent-receipt-commit", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const build = () =>
+    buildCollectorMergedSearchFixture([
+      {
+        number: 901,
+        merge_commit_sha: sha("a"),
+        body: "Ticket: D0-004\n",
+        compare: { status: "behind" },
+        runs: collectorSuccessRuns(sha("a"), 901)
+      },
+      {
+        number: 902,
+        merge_commit_sha: sha("b"),
+        body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+        compare: { status: "behind" },
+        runs: collectorSuccessRuns(sha("b"), 902),
+        added_paths: ["docs/effect/902-receipt.md"]
+      }
+    ]);
+
+  const withoutContributor = build();
+  delete withoutContributor[`${COLLECTOR_REPO_PATH}/commits/${sha("a")}`];
+  const tolerated = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(withoutContributor)
+  });
+  assert.equal(tolerated.ok, true, `an unreadable contributor must not fail collection: ${tolerated.reason}`);
+  const contributor = (tolerated.facts?.implementationMerges ?? []).find((row) => row.number === 901);
+  assert.ok(contributor, "the merge is still recorded");
+  // Unknown, not "contributed nothing". A check that reads these must refuse on null rather than
+  // treat it as an empty contribution.
+  assert.equal(contributor.added_paths, null);
+  assert.equal(contributor.changed_paths, null);
+  assert.equal(contributor.removed_paths, null);
+  assert.equal(contributor.blob_shas, null);
+  // The receipt in the same run is unaffected, so the tolerance is scoped to the row that is
+  // missing rather than degrading every row.
+  assert.deepEqual(
+    (tolerated.facts?.implementationMerges ?? []).find((row) => row.number === 902)?.added_paths,
+    ["docs/effect/902-receipt.md"]
+  );
+
+  const withoutReceipt = build();
+  delete withoutReceipt[`${COLLECTOR_REPO_PATH}/commits/${sha("b")}`];
+  const refused = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(withoutReceipt)
+  });
+  assert.equal(refused.ok, false, "a receipt's own effect is required and must still fail closed");
+});
+
+// Tolerating an unreadable contributor must not tolerate a rate limit or a timeout. Those do not
+// say "this one merge is unknowable", they say the run is unreliable, and continuing past them
+// would publish a derivation assembled from whatever happened to get through. The suite's existing
+// secondary-limit test throws on the first batch, so it never reaches this fetch at all: blind
+// review deleted this propagation and every test stayed green.
+test("live-collector-fails-closed-when-only-a-contributor-commit-hits-a-limit-or-timeout", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const contributorSha = sha("a");
+  const responses = buildCollectorMergedSearchFixture([
+    {
+      number: 901,
+      merge_commit_sha: contributorSha,
+      body: "Ticket: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(contributorSha, 901)
+    },
+    {
+      number: 902,
+      merge_commit_sha: sha("b"),
+      body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" },
+      runs: collectorSuccessRuns(sha("b"), 902),
+      added_paths: ["docs/effect/902-receipt.md"]
+    }
+  ]);
+
+  // Only the contributor's own commit fails, and only with the fatal kind. Everything else in the
+  // run succeeds, so a collector that treated this as "that row is unknown" would return ok.
+  const failOnlyContributorCommit = (kind) => {
+    const inner = createFixtureTransport(responses);
+    return {
+      kind: inner.kind,
+      getJson: inner.getJson.bind(inner),
+      getRaw: inner.getRaw.bind(inner),
+      getJsonMany(apiPaths) {
+        return apiPaths.map((path) => {
+          if (path.endsWith(`/commits/${contributorSha}`)) {
+            return { ok: false, reason: `${kind} on ${path}`, [kind]: true };
+          }
+          try {
+            return { ok: true, value: inner.getJson(path) };
+          } catch (error) {
+            return { ok: false, reason: String(error?.message ?? error), error };
+          }
+        });
+      }
+    };
+  };
+
+  for (const kind of ["secondaryRateLimit", "timeout"]) {
+    const collected = collectLiveExecutionFacts(root, { transport: failOnlyContributorCommit(kind) });
+    assert.equal(collected.ok, false, `${kind} on a contributor commit must fail the whole run`);
+    assert.match(collected.reason, new RegExp(kind, "i"));
+  }
+});
+
+// A merge can be a completion receipt without carrying the marker: the two pre-convention merges
+// are bound by HISTORICAL_IMPLEMENTATION_LINKAGE. If the collector stops recognising that, their
+// commits become optional and a receipt reaches the resolver with null effects, which the
+// completion check reads as COMPLETION_EFFECT_UNKNOWN rather than as the outage it is.
+test("live-collector-requires-the-commit-of-a-receipt-bound-only-by-legacy-linkage", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts, HISTORICAL_IMPLEMENTATION_LINKAGE } =
+    await importResolver();
+  // D0-001, not D0-002: this fixture's live tree carries only the D0-001 and D0-004 ticket files,
+  // and a merge whose ticket is unknown to the tree is dropped before classification ever runs.
+  const legacy = HISTORICAL_IMPLEMENTATION_LINKAGE["D0-001"];
+  const build = () =>
+    buildCollectorMergedSearchFixture([
+      {
+        number: legacy.pr_number,
+        merge_commit_sha: legacy.merge_commit_sha,
+        // No Ticket-Completion marker: classifyCompletionMerge says contributor, and only the
+        // legacy binding makes this a receipt.
+        body: "Ticket: D0-001\n",
+        compare: { status: "behind" },
+        runs: collectorSuccessRuns(legacy.merge_commit_sha, legacy.pr_number),
+        added_paths: ["scripts/validate-identity.mjs"]
+      }
+    ]);
+  const present = collectLiveExecutionFacts(root, { transport: createFixtureTransport(build()) });
+  assert.equal(present.ok, true, present.reason);
+
+  const withoutCommit = build();
+  delete withoutCommit[`${COLLECTOR_REPO_PATH}/commits/${legacy.merge_commit_sha}`];
+  const refused = collectLiveExecutionFacts(root, {
+    transport: createFixtureTransport(withoutCommit)
+  });
+  assert.equal(
+    refused.ok,
+    false,
+    "a legacy-bound receipt owes the same effect evidence as a marker-carrying one"
+  );
+});
+
+// The four effect fields answer one question -- what did this merge do -- from one response, so a
+// row that answers it for some fields and disclaims it for others is not a partial answer but a
+// contradictory one. That was the defect: added_paths derived from a list the other three had
+// already refused. A check reading these can then treat null as "unknown" for the whole row.
+test("live-collector-effect-fields-are-all-known-or-all-unknown-per-row", async () => {
+  const { createFixtureTransport, collectLiveExecutionFacts } = await importResolver();
+  const sha = (nibble) => nibble.repeat(40);
+  const responses = buildCollectorMergedSearchFixture([
+    { number: 941, merge_commit_sha: sha("d"), body: "Ticket: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("d"), 941) },
+    { number: 942, merge_commit_sha: sha("e"), body: "Ticket: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("e"), 942) },
+    { number: 943, merge_commit_sha: sha("f"), body: "Ticket: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("f"), 943) },
+    { number: 944, merge_commit_sha: sha("1"), body: "Ticket: D0-004\nTicket-Completion: D0-004\n",
+      compare: { status: "behind" }, runs: collectorSuccessRuns(sha("1"), 944),
+      added_paths: ["docs/effect/944-receipt.md"] }
+  ]);
+  // 941 keeps its ordinary one-file commit. 942 is truncated at GitHub's cap, 943 has an entry
+  // with no status, 944 is the receipt. Each is a different reason the answer can be unknown.
+  responses[`${COLLECTOR_REPO_PATH}/commits/${sha("e")}`] = {
+    sha: sha("e"),
+    files: Array.from({ length: 300 }, (_, index) => ({ filename: `docs/bulk/${index}.md`, status: "modified" }))
+  };
+  responses[`${COLLECTOR_REPO_PATH}/commits/${sha("f")}`] = {
+    sha: sha("f"),
+    files: [{ filename: "docs/contrib/943.md" }]
+  };
+  const collected = collectLiveExecutionFacts(root, { transport: createFixtureTransport(responses) });
+  assert.equal(collected.ok, true, collected.reason);
+
+  const rows = collected.facts?.implementationMerges ?? [];
+  assert.ok(rows.length >= 4, "all four merges are collected");
+  for (const row of rows) {
+    const known = ["added_paths", "changed_paths", "removed_paths", "blob_shas"].map(
+      (field) => row[field] !== null && row[field] !== undefined
+    );
+    assert.equal(
+      new Set(known).size,
+      1,
+      `merge #${row.number} mixes known and unknown effect fields: ${JSON.stringify(
+        Object.fromEntries(["added_paths", "changed_paths", "removed_paths", "blob_shas"].map((f) => [f, row[f]]))
+      ).slice(0, 200)}`
+    );
+  }
+  const unknown = rows.filter((row) => row.added_paths === null).map((row) => row.number).sort();
+  assert.deepEqual(unknown, [942, 943], "exactly the two untrustworthy responses are unknown");
 });
 
 test("live-collector-fails-closed-on-secondary-rate-limit-without-retry", async () => {
