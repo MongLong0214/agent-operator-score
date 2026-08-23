@@ -2082,6 +2082,24 @@ const resolveImplementationCompletion = (facts, ticketId) => {
     // returning verified from this branch skipped that check, which every other completion shape
     // must satisfy and which the owning ticket requires (#386).
     if (changed.length === 0 && removed.length > 0) {
+      // A declared deliverable is a claim about the final state, so a deletion-only completion owes
+      // it exactly as much as any other shape. Returning from this branch skipped it (#396).
+      const declaredForDeletion = facts.tickets?.[ticketId]?.deliverables;
+      if (Array.isArray(declaredForDeletion) && declaredForDeletion.length > 0) {
+        const liveForDeletion = new Set(Array.isArray(facts.liveTreePaths) ? facts.liveTreePaths : []);
+        const gone = declaredForDeletion.filter((path) => !liveForDeletion.has(path));
+        if (gone.length > 0) {
+          return {
+            verified: false,
+            blockers: [
+              blocker(
+                "COMPLETION_EFFECT_REVERTED",
+                `${ticketId} declares ${gone.join(", ")} as a deliverable, absent from the live target branch`
+              )
+            ]
+          };
+        }
+      }
       // The deletion also has to be the ticket's. Returning from here skipped the ownership check
       // every other completion shape passes, so a merge deleting a file the ticket never declared
       // verified it (#386). Only the removals are consulted: this branch has nothing else.
@@ -2162,6 +2180,46 @@ const resolveImplementationCompletion = (facts, ticketId) => {
   // The cost is recorded and accepted: a later ticket that legitimately moves or renames a file an
   // earlier completion delivered trips COMPLETION_EFFECT_REVERTED. Nothing in this function can
   // distinguish that from a revert, and failing closed is the intended direction.
+  // Declared deliverables are the final state the ticket must leave behind, and they are checked
+  // for their own sake: a path declared here must exist, whatever the completion merge happened to
+  // touch. That is the half `owned_paths` cannot express, because edit scope says nothing about
+  // what should survive (#396). A ticket with no Deliverables section is undeclared and skips this.
+  const declaredDeliverables = facts.tickets?.[ticketId]?.deliverables;
+  // Absent means undeclared and is the state every ticket is in today. Present but malformed is a
+  // corrupt contract, and reading it as undeclared would let a crafted facts corpus switch the
+  // check off silently -- the shape a fail-closed authority must refuse.
+  if (declaredDeliverables !== undefined && declaredDeliverables !== null) {
+    if (
+      !Array.isArray(declaredDeliverables) ||
+      declaredDeliverables.some((path) => typeof path !== "string" || path.length === 0)
+    ) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} declares deliverables in a shape this resolver cannot read, so its final state is unconfirmed`
+          )
+        ]
+      };
+    }
+  }
+  if (Array.isArray(declaredDeliverables) && declaredDeliverables.length > 0) {
+    const livePathSet = new Set(Array.isArray(facts.liveTreePaths) ? facts.liveTreePaths : []);
+    const missing = declaredDeliverables.filter((path) => !livePathSet.has(path));
+    if (missing.length > 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_REVERTED",
+            `${ticketId} declares ${missing.join(", ")} as a deliverable, absent from the live target branch`
+          )
+        ]
+      };
+    }
+  }
+
   const ownedPaths = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
     ? facts.tickets[ticketId].owned_paths
     : null;
@@ -2999,6 +3057,34 @@ const detectTicketSubtask = (ticketId, markdown, options = {}) => {
   if (options.d0_004c_merged === true && present.includes("D0-004C")) return "D0-004C";
   if (present.includes("D0-004B")) return "D0-004B";
   return present[0] ?? null;
+};
+
+// A ticket's `## Deliverables` section, when it has one, declares the final state the work must
+// leave behind. `owned_paths` is edit scope and answers a different question: it says what may be
+// touched, never what must exist afterwards, which is why a completion that deletes a declared path
+// satisfies every ownership check (#396). Absent section means undeclared, not empty.
+export const parseTicketDeliverables = (markdown) => {
+  const section = extractMarkdownSection(markdown, "Deliverables");
+  if (section === null) return null;
+  // Deliberately NOT the ownership extractor. That one scans all prose and keeps globs, which here
+  // inverts meaning: `docs/x.md` must NOT exist would parse as a required file, and a glob would
+  // parse as a literal path no blob can equal. A declaration that turns a prohibition into a
+  // requirement is worse than no declaration.
+  const withoutFences = section.replace(/```[\s\S]*?```/g, "");
+  const declared = [];
+  for (const line of withoutFences.split("\n")) {
+    // One deliverable per list item, and only when the line makes no negative claim about it.
+    const item = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (!item) continue;
+    if (/\b(not|never|must not|no longer|absent|removed|deleted)\b/i.test(item[1])) continue;
+    const ticks = [...item[1].matchAll(/`([^`]+)`/g)].map((match) => match[1].trim());
+    if (ticks.length !== 1) continue;
+    const candidate = ticks[0];
+    // A concrete repository path: no globs, no traversal, no leading slash.
+    if (!/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)+$/.test(candidate)) continue;
+    if (!declared.includes(candidate)) declared.push(candidate);
+  }
+  return declared;
 };
 
 const extractPathsAndSymbolsFromProse = (text) => {
@@ -4118,6 +4204,9 @@ export const collectLiveExecutionFacts = (root = DEFAULT_ROOT, options = {}) => 
       };
     }
     ticket.owned_paths = ownership.owned_paths;
+    // Advisory until every ticket declares one: a null here means the ticket has no Deliverables
+    // section, which must read as "undeclared" rather than "declares nothing".
+    ticket.deliverables = parseTicketDeliverables(ticketBody);
     ticket.owned_symbols = ownership.owned_symbols;
     ticket.red_command = ownership.red_command;
     delete ticket.ticket_path;
