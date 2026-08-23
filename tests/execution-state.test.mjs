@@ -3273,6 +3273,29 @@ test("completion-whose-whole-effect-is-an-unowned-deletion-does-not-verify", asy
   );
 });
 
+// Blind review of #394: an intersection test let one owned casualty launder arbitrary out-of-scope
+// removals in the same merge.
+test("one-owned-deletion-does-not-launder-unowned-deletions-in-the-same-merge", async () => {
+  const STOWAWAY = "docs/effect/unrelated-retirement.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [],
+    changedPaths: [],
+    removedPaths: [OWNED_ANCHOR, STOWAWAY],
+    presentPaths: []
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(
+    state.phase,
+    "verified",
+    `an out-of-scope removal must not ride along on an owned one, got phase=${state.phase}`
+  );
+  assert.ok(
+    blockerReason(state, "COMPLETION_EFFECT_UNKNOWN").includes(STOWAWAY),
+    `the blocker must name the out-of-scope removal, got ${blockerCodes(state).join(",") || "none"}`
+  );
+});
+
 test("completion-whose-whole-effect-is-a-deletion-verifies", async () => {
   // Blind review: after the removed-path check passed, an empty added set fell into the changed
   // fallback, and since removals are excluded from the changed set it was rejected as UNKNOWN. That

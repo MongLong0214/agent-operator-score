@@ -2015,17 +2015,20 @@ const resolveImplementationCompletion = (facts, ticketId) => {
       const ownedForDeletion = Array.isArray(facts.tickets?.[ticketId]?.owned_paths)
         ? facts.tickets[ticketId].owned_paths
         : null;
-      if (
-        ownedForDeletion !== null &&
-        ownedForDeletion.length > 0 &&
-        ownedIntersection(removed, ownedForDeletion).length === 0
-      ) {
+      // Every removed path, not merely one: an intersection test lets a single owned casualty
+      // launder arbitrary out-of-scope removals in the same merge. The ticket contract already
+      // says no other file may be touched without a replacement ticket, so this is that rule.
+      const unownedRemovals =
+        ownedForDeletion === null || ownedForDeletion.length === 0
+          ? []
+          : removed.filter((path) => ownedIntersection([path], ownedForDeletion).length === 0);
+      if (unownedRemovals.length > 0) {
         return {
           verified: false,
           blockers: [
             blocker(
               "COMPLETION_EFFECT_UNKNOWN",
-              `${ticketId} completion merge deleted only paths the ticket does not declare, so its deliverable is unconfirmed`
+              `${ticketId} completion merge deleted ${unownedRemovals.join(", ")}, which the ticket does not declare, so its deliverable is unconfirmed`
             )
           ]
         };
