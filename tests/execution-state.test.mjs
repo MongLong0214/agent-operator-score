@@ -2917,12 +2917,12 @@ function buildCollectorMergedSearchFixture(items) {
                 ...item.added_paths.map((filename) => ({
                   filename,
                   status: "added",
-                  sha: sha256Utf8(filename).slice(0, 40)
+                  sha: sha256Utf8(`commit:${filename}`).slice(0, 40)
                 })),
                 ...modified.map((filename) => ({
                   filename,
                   status: "modified",
-                  sha: sha256Utf8(filename).slice(0, 40)
+                  sha: sha256Utf8(`commit:${filename}`).slice(0, 40)
                 })),
                 // A removed file is in the same response and must stay out of the changed set:
                 // it is absent from the tip by construction, so counting it would refuse every
@@ -2955,7 +2955,7 @@ function buildCollectorMergedSearchFixture(items) {
         path,
         type: "blob",
         mode: "100644",
-        sha: sha256Utf8(path).slice(0, 40)
+        sha: sha256Utf8(`tree:${path}`).slice(0, 40)
       }))
     ]
   };
@@ -7515,7 +7515,7 @@ const activationMatchingHeadBlob = () => {
 test("any-completion-blob-unchanged-compares-the-merge-blob-to-the-live-blob", async () => {
   const { resolveAnyCompletionBlobUnchanged } = await importResolver();
   const owned = ["scripts/resolve-execution-state.mjs"];
-  const entry = { blob_shas: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } };
+  const entry = { changed_paths: ["scripts/resolve-execution-state.mjs"], blob_shas: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } };
   assert.equal(
     resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: { "scripts/resolve-execution-state.mjs": "a".repeat(40) } }, entry, owned),
     true,
@@ -7530,7 +7530,7 @@ test("any-completion-blob-unchanged-compares-the-merge-blob-to-the-live-blob", a
   assert.equal(
     resolveAnyCompletionBlobUnchanged(
       { liveTreeBlobs: { "docs/effect/other.md": "a".repeat(40) } },
-      { blob_shas: { "docs/effect/other.md": "a".repeat(40) } },
+      { changed_paths: ["docs/effect/other.md"], blob_shas: { "docs/effect/other.md": "a".repeat(40) } },
       owned
     ),
     null,
@@ -7539,10 +7539,60 @@ test("any-completion-blob-unchanged-compares-the-merge-blob-to-the-live-blob", a
   // Unavailable is not false: a collection with no blob shas cannot answer the question.
   assert.equal(resolveAnyCompletionBlobUnchanged({}, entry, owned), null, "no live blobs means unknown");
   assert.equal(resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: {} }, {}, owned), null, "no merge blobs means unknown");
+  assert.equal(
+    resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: {} }, { blob_shas: {} }, owned),
+    null,
+    "a completion with no changed-path evidence cannot be asked"
+  );
 });
 
 // Blind review: the advisory used the first same-ticket row carrying blob shas, so a plain
 // contributing merge answered for a completion that had drifted.
+// Blind review round 2: deriving candidates from the blob map's own keys meant a path the collector
+// had no sha for was never a candidate, so its absence read as a definite negative.
+test("any-completion-blob-unchanged-is-unknown-when-one-candidate-has-no-merge-blob", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
+  const A = OWNED_ANCHOR;
+  const B = "specs/execution-state.schema.v1.json";
+  const result = resolveAnyCompletionBlobUnchanged(
+    { liveTreeBlobs: { [A]: "new".padEnd(40, "0"), [B]: "live".padEnd(40, "0") } },
+    { changed_paths: [A, B], blob_shas: { [A]: "old".padEnd(40, "0") } },
+    [A, B]
+  );
+  assert.equal(
+    result,
+    null,
+    "A mismatched and B unmeasurable is an open question, not an answer of no"
+  );
+});
+
+// Blind review round 2: the shared ownership helper took the text before the first star, so a glob
+// owned every sibling regardless of what it described. It decides verification, not just this field.
+test("an-owned-glob-does-not-own-a-path-its-pattern-excludes", async () => {
+  const { resolveAnyCompletionBlobUnchanged } = await importResolver();
+  const owned = ["fixtures/doctor/*.json"];
+  const outside = "fixtures/doctor/not-owned.txt";
+  assert.equal(
+    resolveAnyCompletionBlobUnchanged(
+      { liveTreeBlobs: { [outside]: "a".repeat(40) } },
+      { changed_paths: [outside], blob_shas: { [outside]: "a".repeat(40) } },
+      owned
+    ),
+    null,
+    "a path the glob does not match is not owned, so it answers nothing"
+  );
+  const inside = "fixtures/doctor/owned.json";
+  assert.equal(
+    resolveAnyCompletionBlobUnchanged(
+      { liveTreeBlobs: { [inside]: "a".repeat(40) } },
+      { changed_paths: [inside], blob_shas: { [inside]: "a".repeat(40) } },
+      owned
+    ),
+    true,
+    "and a path it does match still is"
+  );
+});
+
 test("any-completion-blob-unchanged-reads-the-completion-not-a-contributing-merge", async () => {
   const facts = makeCompletionEffectFacts({
     addedPaths: [OWNED_ANCHOR],
@@ -7576,7 +7626,7 @@ test("any-completion-blob-unchanged-reads-the-completion-not-a-contributing-merg
 test("any-completion-blob-unchanged-reports-unknown-rather-than-inventing-a-negative", async () => {
   const { resolveAnyCompletionBlobUnchanged } = await importResolver();
   const owned = [OWNED_ANCHOR];
-  const entry = { blob_shas: { [OWNED_ANCHOR]: "a".repeat(40) } };
+  const entry = { changed_paths: [OWNED_ANCHOR], blob_shas: { [OWNED_ANCHOR]: "a".repeat(40) } };
   // The path is a candidate but the live tree reported no blob sha for it: unanswerable, not false.
   assert.equal(
     resolveAnyCompletionBlobUnchanged({ liveTreeBlobs: { "docs/other.md": "c".repeat(40) } }, entry, owned),
@@ -7584,7 +7634,10 @@ test("any-completion-blob-unchanged-reports-unknown-rather-than-inventing-a-nega
     "a candidate with no live blob cannot be compared, and must not read as drift"
   );
   // One match settles the existential question even when a sibling is unknown.
-  const two = { blob_shas: { [OWNED_ANCHOR]: "a".repeat(40), "specs/execution-state.schema.v1.json": "d".repeat(40) } };
+  const two = {
+    changed_paths: [OWNED_ANCHOR, "specs/execution-state.schema.v1.json"],
+    blob_shas: { [OWNED_ANCHOR]: "a".repeat(40), "specs/execution-state.schema.v1.json": "d".repeat(40) }
+  };
   assert.equal(
     resolveAnyCompletionBlobUnchanged(
       { liveTreeBlobs: { [OWNED_ANCHOR]: "a".repeat(40) } },

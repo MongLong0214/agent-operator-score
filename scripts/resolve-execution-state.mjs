@@ -1863,6 +1863,31 @@ export const evaluateLiveArtifactFreeze = (live, facts, root = DEFAULT_ROOT) => 
 //
 // Measured across all 69 verified tickets carrying a completion receipt: every one has a non-empty
 // intersection and every path in it is present at the tip, so this refuses nothing that exists.
+// `**` crosses directory separators, `*` does not, and everything else is literal.
+const GLOB_CACHE = new Map();
+const globToRegExp = (glob) => {
+  const cached = GLOB_CACHE.get(glob);
+  if (cached) return cached;
+  let source = "^";
+  for (let i = 0; i < glob.length; i += 1) {
+    const char = glob[i];
+    if (char === "*") {
+      if (glob[i + 1] === "*") {
+        source += ".*";
+        i += 1;
+        if (glob[i + 1] === "/") i += 1;
+        continue;
+      }
+      source += "[^/]*";
+      continue;
+    }
+    source += char.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  }
+  const compiled = new RegExp(`${source}$`);
+  GLOB_CACHE.set(glob, compiled);
+  return compiled;
+};
+
 const ownedIntersection = (paths, ownedPaths) => {
   if (!Array.isArray(paths) || !Array.isArray(ownedPaths)) return [];
   return paths.filter((path) =>
@@ -1870,10 +1895,15 @@ const ownedIntersection = (paths, ownedPaths) => {
     ownedPaths.some((owned) => {
       if (typeof owned !== "string" || owned.length === 0) return false;
       if (path === owned) return true;
-      // A glob or a directory owns its subtree; a non-path token in the prose matches nothing,
-      // which is why junk in `owned_paths` cannot widen this.
-      const prefix = owned.includes("*") ? owned.slice(0, owned.indexOf("*")) : `${owned.replace(/\/$/, "")}/`;
-      return prefix.length > 0 && path.startsWith(prefix);
+      // A directory owns its subtree. A glob owns what it actually matches: taking the text before
+      // the first star made `fixtures/doctor/*.json` own `fixtures/doctor/not-owned.txt`, and this
+      // helper decides verification as well as the advisory. A non-path token in the prose still
+      // matches nothing, which is why junk in `owned_paths` cannot widen this.
+      if (!owned.includes("*")) {
+        const prefix = `${owned.replace(/\/$/, "")}/`;
+        return prefix.length > 1 && path.startsWith(prefix);
+      }
+      return globToRegExp(owned).test(path);
     })
   );
 };
@@ -1891,15 +1921,21 @@ export const resolveAnyCompletionBlobUnchanged = (facts, entry, ownedPaths) => {
   if (liveBlobs === null || mergeBlobs === null) return null;
   const owned = Array.isArray(ownedPaths) ? ownedPaths : null;
   if (owned === null || owned.length === 0) return null;
-  const candidates = ownedIntersection(Object.keys(mergeBlobs), owned);
+  // The universe is what the completion actually left behind and the ticket declares -- not the
+  // keys of the blob map. Deriving it from the map meant a path the collector had no sha for was
+  // never a candidate, so its absence read as a definite negative instead of an open question.
+  const surviving = Array.isArray(entry?.changed_paths) ? entry.changed_paths : null;
+  if (surviving === null) return null;
+  const candidates = ownedIntersection(surviving, owned);
   if (candidates.length === 0) return null;
-  // A candidate whose live blob is unknown cannot answer either way. One match still settles the
-  // existential question; without a match, an unknown leaves it open rather than making it false.
+  // One match settles the existential question. Without a match, any candidate whose merge or live
+  // blob is unknown leaves it open rather than making it false.
   let unknown = false;
   for (const path of candidates) {
+    const merged = mergeBlobs[path];
     const live = liveBlobs[path];
-    if (typeof live !== "string") { unknown = true; continue; }
-    if (live === mergeBlobs[path]) return true;
+    if (typeof merged !== "string" || typeof live !== "string") { unknown = true; continue; }
+    if (live === merged) return true;
   }
   return unknown ? null : false;
 };
