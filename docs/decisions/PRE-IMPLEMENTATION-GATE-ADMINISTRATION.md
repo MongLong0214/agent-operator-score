@@ -94,11 +94,11 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
 | `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
 | `e8-001-e8-002-e8-003-e8-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
-| `d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
-| `d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
-| `d0-007-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
-| `d0-008-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
-| `d0-009-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | ACCEPTED |
+| `d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
+| `d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
+| `d0-007-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
+| `d0-008-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
+| `d0-009-owner-direction-prerequisites-owner-approved-2026-08-22-renewal` | INVALIDATED |
 | `d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal` | INVALIDATED |
 | `d0-001-owner-direction-prerequisites-adr-0003-2026-08-22-renewal` | ACCEPTED |
 | `d0-011-census-corrected-prerequisites-adr-0003-2026-08-22-renewal` | ACCEPTED |
@@ -112,6 +112,11 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `e11-001-e11-002-e11-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal` | ACCEPTED |
 | `e6-001-e6-002-e6-003-e6-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-unrunnable-command-correction-2026-08-22-renewal` | ACCEPTED |
 | `e7-001-e7-002-e7-003-e7-004-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-unrunnable-command-correction-2026-08-22-renewal` | ACCEPTED |
+| `d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-owner-directed-readiness-amendment-2026-08-23` | ACCEPTED |
+| `d0-006-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-owner-directed-readiness-amendment-2026-08-23` | ACCEPTED |
+| `d0-007-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-owner-directed-readiness-amendment-2026-08-23` | ACCEPTED |
+| `d0-008-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-owner-directed-readiness-amendment-2026-08-23` | ACCEPTED |
+| `d0-009-owner-direction-prerequisites-owner-approved-2026-08-22-renewal-owner-directed-readiness-amendment-2026-08-23` | ACCEPTED |
 
 ## Operating sequence
 

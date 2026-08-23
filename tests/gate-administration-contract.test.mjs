@@ -1217,9 +1217,12 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // pinned exactly, not loosened to a floor, and currentAcceptedTickets is the
   // distinct accepted ticket paths, which is not the accepted-batch count once
   // a renewal replaces an invalidated batch for a ticket already in the list.
-  assert.equal(result.batches, 63);
+  // Repinned from the validator's own output after the owner-directed ADR-0013 readiness
+  // amendment of 2026-08-23: five batches binding that artifact were invalidated and five
+  // renewals accepted, so the total and the invalidated count move while accepted does not.
+  assert.equal(result.batches, 68);
   assert.equal(result.counts.accepted, 30);
-  assert.equal(result.counts.invalidated, 33);
+  assert.equal(result.counts.invalidated, 38);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
