@@ -8536,7 +8536,7 @@
     },
     {
       "id": "e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal-decomposed-2026-08-23",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew e14-001-e14-002-e14-003-owner-direction-prerequisites-unrunnable-command-correction-2026-08-22-renewal without docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md, which remains bound by d0-005-owner-direction-prerequisites-owner-approved-2026-08-22-renewal. One batch, one Gate-Batch receipt on the PR that carries it.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -8630,6 +8630,12 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-23T00:00:00Z",
           "recorded_by": "per-artifact-binding-decomposition-2026-08-23"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-24T00:00:00Z",
+          "recorded_by": "e14-source-release-scope-2026-08-24"
         }
       ],
       "preparation": {
@@ -8639,6 +8645,11 @@
         "approved_by": "MongLong0214",
         "approved_at": "2026-08-23T00:00:00Z",
         "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-24T00:00:00Z",
+        "invalidated_by": "e14-source-release-scope-2026-08-24",
+        "reason": "E14 PRD and E14-003 corrected; this batch's pinned digests are stale. Superseded by e14-source-release-scope-renewal-2026-08-24."
       }
     },
     {
@@ -9357,6 +9368,113 @@
       ],
       "preparation": {
         "prepared_by": "advisory-consequence-2026-08-24"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-24T00:00:00Z",
+        "role": "MAINTAINER"
+      }
+    },
+    {
+      "id": "e14-source-release-scope-renewal-2026-08-24",
+      "status": "ACCEPTED",
+      "scope": "Renew the E14 acceptance at the digests below, after scoping G4 to a source release and moving the independent reproduction, the E12 feasibility verdict, the two deferred calibration studies and the formal review into a claim set that every run reports and nothing in this tree satisfies. Recorded by the repository owner, who is its sole maintainer, on the owner's direct direction rather than a fresh digest-by-digest maintainer review. Artifacts whose bytes did not change are carried forward at the identical digests they already held.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "a818656f33354adbd65fcf849ea228e70af1b725"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "174771aaa0a6d63af185ccc944412b196e8ce8b6f35f81a9fa1b9bfe9e77e5b3",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "960e8087dc93078f0d5e1f3d263aaae2566aa7d74f4775fb141da427ce8aac6d",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
+          "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E14-public-oss-and-g4.md",
+          "sha256": "174771aaa0a6d63af185ccc944412b196e8ce8b6f35f81a9fa1b9bfe9e77e5b3",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+          "sha256": "6a787ba7e27ccf1e177c9aba3f3e894ce7cbb4125e663f457aae5665752aaf33",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+          "sha256": "d16ac2e378c67cb1f13eb5a062b74922010191fd812299da6953d1d3b507cde0",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+          "sha256": "960e8087dc93078f0d5e1f3d263aaae2566aa7d74f4775fb141da427ce8aac6d",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E14-public-oss-and-g4.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
+            "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
+            "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-24T00:00:00Z",
+          "recorded_by": "e14-source-release-scope-2026-08-24"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e14-source-release-scope-2026-08-24"
       },
       "approval": {
         "approved_by": "MongLong0214",
