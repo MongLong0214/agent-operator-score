@@ -174,7 +174,8 @@
         "STALE_DIGEST",
         "WRONG_TARGET",
         "COMPLETION_EFFECT_REVERTED",
-        "COMPLETION_EFFECT_UNKNOWN"
+        "COMPLETION_EFFECT_UNKNOWN",
+        "COMPLETION_DELIVERABLE_UNPRODUCED"
       ]
     },
     "blocker": {

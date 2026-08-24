@@ -2123,6 +2123,105 @@ test("a-declared-deliverable-that-survives-does-not-refuse", async () => {
   assert.equal(ticketState(result, "D0-004").phase, "verified");
 });
 
+// Presence in the tree is not production by this ticket. Before this check a ticket could declare
+// a file another ticket wrote, never touch it, and verify on someone else's work -- a completion
+// claim the resolver would have confirmed. #396.
+test("a-declared-deliverable-no-merge-of-the-ticket-produced-does-not-verify", async () => {
+  const OTHERS = "docs/effect/written-by-another-ticket.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR, OTHERS]
+  });
+  // Declared, and really in the tree -- so the existing absent-from-tree check has nothing to say.
+  facts.tickets["D0-004"].deliverables = [OWNED_ANCHOR, OTHERS];
+  assert.ok(facts.liveTreePaths.includes(OTHERS), "the path must be present or this proves nothing");
+  assert.equal(
+    facts.implementationMerges.some((entry) => (entry.changed_paths ?? []).includes(OTHERS)),
+    false,
+    "no merge of this ticket may have touched it, or the case is not the one under test"
+  );
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified");
+  assert.match(
+    blockerReason(state, "COMPLETION_DELIVERABLE_UNPRODUCED"),
+    /produced by no merge of this ticket/,
+    `expected the unproduced blocker, got ${JSON.stringify(state.blockers)}`
+  );
+});
+
+// The reason collection was widened past the receipt (#421): the merge that introduces a
+// deliverable is routinely an earlier contributing merge, and before the widening it reached the
+// resolver with null effects. If this refuses, the check is answerable only by tickets whose
+// receipt happens to touch everything they declare.
+test("a-declared-deliverable-produced-by-a-contributing-merge-verifies", async () => {
+  const CONTRIBUTED = "docs/effect/from-a-contributor.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR, CONTRIBUTED]
+  });
+  facts.tickets["D0-004"].deliverables = [OWNED_ANCHOR, CONTRIBUTED];
+  // An ordinary contributing merge of the same ticket: no receipt marker, and it is the only
+  // thing that ever touched the declared path.
+  facts.implementationMerges.push({
+    ticket_id: "D0-004",
+    merge_commit_sha: "1cc01cc01cc01cc01cc01cc01cc01cc01cc01cc0",
+    number: 154,
+    body: "Ticket: D0-004\n",
+    reachable: true,
+    added_paths: [CONTRIBUTED],
+    changed_paths: [CONTRIBUTED],
+    removed_paths: [],
+    blob_shas: {}
+  });
+  const { result } = await resolveOffline(facts);
+  assert.equal(
+    ticketState(result, "D0-004").phase,
+    "verified",
+    JSON.stringify(ticketState(result, "D0-004").blockers)
+  );
+});
+
+// A row whose effect could not be measured makes the produced set a lower bound. Reading a lower
+// bound as "this ticket produced nothing else" is how silence becomes a verdict, and it would
+// refuse for the wrong reason -- naming a false declaration where the truth is an outage.
+test("an-unmeasured-merge-makes-the-produced-set-unknown-not-empty", async () => {
+  const CONTRIBUTED = "docs/effect/from-a-contributor.md";
+  const facts = makeCompletionEffectFacts({
+    addedPaths: [OWNED_ANCHOR],
+    changedPaths: [OWNED_ANCHOR],
+    presentPaths: [OWNED_ANCHOR, CONTRIBUTED]
+  });
+  facts.tickets["D0-004"].deliverables = [OWNED_ANCHOR, CONTRIBUTED];
+  facts.implementationMerges.push({
+    ticket_id: "D0-004",
+    merge_commit_sha: "1cc01cc01cc01cc01cc01cc01cc01cc01cc01cc0",
+    number: 154,
+    body: "Ticket: D0-004\n",
+    reachable: true,
+    // The shape an unreadable commit or a list truncated at GitHub's 300-file cap produces.
+    added_paths: null,
+    changed_paths: null,
+    removed_paths: null,
+    blob_shas: null
+  });
+  const { result } = await resolveOffline(facts);
+  const state = ticketState(result, "D0-004");
+  assert.notEqual(state.phase, "verified");
+  assert.match(
+    blockerReason(state, "COMPLETION_EFFECT_UNKNOWN"),
+    /could not be measured/,
+    `an outage must not be reported as a false declaration, got ${JSON.stringify(state.blockers)}`
+  );
+  assert.equal(
+    (state.blockers ?? []).some((entry) => entry.code === "COMPLETION_DELIVERABLE_UNPRODUCED"),
+    false,
+    "unknown must not be reported as unproduced"
+  );
+});
+
 // Reproduced by blind review of #390. The changed-set presence check runs only when the introduced
 // set is empty, so one surviving added path the ticket does not own skips it, and the ownership
 // intersection then matched a declared path that had been deleted.

@@ -49,7 +49,8 @@ export const BLOCKER_CODES = new Set([
   "STALE_DIGEST",
   "WRONG_TARGET",
   "COMPLETION_EFFECT_REVERTED",
-  "COMPLETION_EFFECT_UNKNOWN"
+  "COMPLETION_EFFECT_UNKNOWN",
+  "COMPLETION_DELIVERABLE_UNPRODUCED"
 ]);
 
 const RUNTIME_KEYS = new Set(["current_head", "resolved_at", "runtime"]);
@@ -2214,6 +2215,48 @@ const resolveImplementationCompletion = (facts, ticketId) => {
           blocker(
             "COMPLETION_EFFECT_REVERTED",
             `${ticketId} declares ${missing.join(", ")} as a deliverable, absent from the live target branch`
+          )
+        ]
+      };
+    }
+    // Presence is not production. The check above asks only whether the path is in the tree, so a
+    // ticket could declare a file another ticket wrote and verify on someone else's work -- the
+    // false-completion shape this resolver exists to catch. Ask the ticket's own merges what they
+    // left behind. This is what widening collection past the receipt bought (#396): the merge that
+    // introduces a deliverable is routinely not the one carrying the receipt, so before the
+    // widening every contributor reached here with nothing to say.
+    const ticketMerges = entries.filter((entry) => entry?.reachable === true);
+    // A row whose effect could not be measured -- an unreadable commit, or a file list GitHub may
+    // have truncated -- makes the produced set a lower bound, not a set. Reading a lower bound as
+    // "this ticket produced nothing else" is the reduction that turns silence into a verdict.
+    const unmeasured = ticketMerges.filter(
+      (entry) => !Array.isArray(entry.changed_paths) || entry.changed_paths.some((path) => typeof path !== "string")
+    );
+    if (ticketMerges.length === 0 || unmeasured.length > 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_EFFECT_UNKNOWN",
+            `${ticketId} declares deliverables, but ${
+              ticketMerges.length === 0
+                ? "no reachable merge of this ticket is recorded"
+                : `the effect of ${unmeasured.map((entry) => `#${entry.number}`).join(", ")} could not be measured`
+            }, so what this ticket produced is unconfirmed`
+          )
+        ]
+      };
+    }
+    const produced = new Set();
+    for (const entry of ticketMerges) for (const path of entry.changed_paths) produced.add(path);
+    const unproduced = declaredDeliverables.filter((path) => !produced.has(path));
+    if (unproduced.length > 0) {
+      return {
+        verified: false,
+        blockers: [
+          blocker(
+            "COMPLETION_DELIVERABLE_UNPRODUCED",
+            `${ticketId} declares ${unproduced.join(", ")} as a deliverable, present in the tree but produced by no merge of this ticket`
           )
         ]
       };
