@@ -1227,9 +1227,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // Repinned from the validator's own output as the per-artifact binding decomposition (#167)
   // proceeds: each step invalidates one batch and accepts its replacement, so total and
   // invalidated rise together while accepted holds.
-  assert.equal(result.batches, 80);
+  assert.equal(result.batches, 81);
   assert.equal(result.counts.accepted, 30);
-  assert.equal(result.counts.invalidated, 50);
+  assert.equal(result.counts.invalidated, 51);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
@@ -1355,66 +1355,32 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
   );
   assert.equal(batch.invalidation.invalidated_by, "d0-004-completion-contract-amendment");
   const expectedCurrentD0004Renewal = {
-    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration",
+    "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration-blocker-vocabulary-2026-08-24",
     "status": "ACCEPTED",
-    "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23 against the corrected docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md. One batch, one Gate-Batch receipt on the PR that carries it.",
+    "scope": "Renew the D0-004 ticket acceptance at the digest below, after listing the blocker codes the resolver already emits. RECEIPT_FIELD_MALFORMED, COMPLETION_EFFECT_REVERTED and COMPLETION_EFFECT_UNKNOWN shipped without being added to the ticket's authorised vocabulary; this record accepts the corrected list. Recorded by the repository owner, who is its sole maintainer. This record binds only the ticket artifact it renews: ADR-0001 and PRD-D0-name-migration keep their acceptance through their own batches, and re-binding them here would assert a review this record did not perform.",
     "target": {
       "repository": "github.com/MongLong0214/agent-operator-score",
       "branch": "dev",
-      "reviewed_head": "0ab2a0cd872608ba6cc000b27ecfaa7d5d2f67b1"
+      "reviewed_head": "2f798056b9ce145fec495482eedc20e0487e38bc"
     },
     "required_artifacts": [
       {
-        "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
-        "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
-        "kind": "ADR"
-      },
-      {
-        "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
-        "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
-        "kind": "PRD"
-      },
-      {
         "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-        "sha256": "08b12c3a9fc9ba48cf8728cc891a1b3554a803b1a503344a86a7597f2249aa44",
+        "sha256": "217cbbbb3c4c26236725bc123a43947034008cfbdc8bd085459d0bcb99788180",
         "kind": "TICKET"
       }
     ],
     "required_transitions": [
-      "ADR_ACCEPTED",
-      "PRD_ACCEPTED",
       "TICKET_READY_FOR_RED"
     ],
     "artifacts": [
       {
-        "path": "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md",
-        "sha256": "88c84ba1db660d2630be4d3203c20a32c81915f1b8485a61eb5f4bc28293a108",
-        "kind": "ADR"
-      },
-      {
-        "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
-        "sha256": "54176e5e87b72e27069ddd277291982019a96621218860e8546e0259e32e9115",
-        "kind": "PRD"
-      },
-      {
         "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
-        "sha256": "08b12c3a9fc9ba48cf8728cc891a1b3554a803b1a503344a86a7597f2249aa44",
+        "sha256": "217cbbbb3c4c26236725bc123a43947034008cfbdc8bd085459d0bcb99788180",
         "kind": "TICKET"
       }
     ],
     "transitions": [
-      {
-        "type": "ADR_ACCEPTED",
-        "artifact_paths": [
-          "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md"
-        ]
-      },
-      {
-        "type": "PRD_ACCEPTED",
-        "artifact_paths": [
-          "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md"
-        ]
-      },
       {
         "type": "TICKET_READY_FOR_RED",
         "artifact_paths": [
@@ -1427,11 +1393,11 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
         "from": "PENDING",
         "to": "ACCEPTED",
         "recorded_at": "2026-08-24T00:00:00Z",
-        "recorded_by": "deliverables-declaration-2026-08-24"
+        "recorded_by": "blocker-vocabulary-2026-08-24"
       }
     ],
     "preparation": {
-      "prepared_by": "deliverables-declaration-2026-08-24"
+      "prepared_by": "blocker-vocabulary-2026-08-24"
     },
     "approval": {
       "approved_by": "MongLong0214",
@@ -1445,7 +1411,7 @@ test("D0-004 completion-marker contract amendment retains the B-harness record a
   assert.deepEqual(
     currentAcceptedD0004Batches,
     [expectedCurrentD0004Renewal],
-    "after D0-004C, Bootstrap is inactive: exactly one fresh D0-004 accepted record must bind the current five artifacts while both historical D0-004 rows remain INVALIDATED"
+    "after D0-004C, Bootstrap is inactive: exactly one fresh D0-004 accepted record must bind the ticket artifact, while every superseded D0-004 row remains INVALIDATED"
   );
   assert.match(gateDecision, /D0-004 B-harness carve-out renewal/);
   assert.match(gateDecision, /mutable structural fields.*`not_authorization`/s);
