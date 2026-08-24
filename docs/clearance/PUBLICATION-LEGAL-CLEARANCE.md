@@ -57,10 +57,23 @@ This record does not repeat the D0 minimum name clearance and does not substitut
 {
   "source": "CONTRIBUTING.md, .github/, and docs/decisions/ in this repository",
   "query": "inbound contribution terms: a contributor license agreement, a developer certificate of origin, or any stated inbound license",
-  "reviewed_at": "2026-08-19T06:20:42Z",
-  "result": "UNRESOLVED: none of the three exists in the tree. CONTRIBUTING.md refuses external contribution acceptance until this gate clears, which is a refusal rather than a term.",
-  "limits": "Covers terms written into this repository. Terms agreed elsewhere, if any exist, are not observable from the tree.",
-  "status": "UNRESOLVED"
+  "reviewed_at": "2026-08-24T00:00:00Z",
+  "result": "RESOLVED: CONTRIBUTING.md states the Developer Certificate of Origin 1.1 as the inbound regime, requires a per-commit Signed-off-by line, and licenses contributions inbound on the same MIT terms shipped outbound. Selected by the repository owner and sole maintainer.",
+  "limits": "This is an observation of what the tree states, not a legal opinion. No qualified reviewer has examined this repository; formal_publication_review records that separately and remains UNRESOLVED. Terms agreed elsewhere, if any exist, are not observable from the tree.",
+  "status": "RESOLVED"
+}
+```
+
+## Owner publication decision
+
+```json
+{
+  "source": "docs/decisions/PUBLICATION-CLEARANCE.md and the repository owner's direction",
+  "query": "whether the owner has decided to publish this tree as source-visible MIT",
+  "reviewed_at": "2026-08-24T00:00:00Z",
+  "result": "RESOLVED: the repository owner and sole maintainer decided to publish the source under MIT. This is a maintainer decision, not a legal opinion.",
+  "limits": "Covers source publication only. It is not a review of publication risk, and it says nothing about npm publication, which is a separate decision, or about any claim regarding what the metric measures.",
+  "status": "RESOLVED"
 }
 ```
 

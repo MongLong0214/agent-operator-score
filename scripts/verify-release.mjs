@@ -58,13 +58,10 @@ export const G4_PUBLICATION_REQUIREMENT_IDS = Object.freeze([
 // Recorded, never required by the source-release verdict. Each names a real-world event this
 // repository cannot perform on itself; manufacturing any of them is the false-completion defect
 // this gate exists to catch.
-export const G4_CLAIM_REQUIREMENT_IDS = Object.freeze([
-  "calibration_g2",
-  "calibration_g3",
-  "feasibility_verdict",
-  "formal_publication_review",
-  "independent_reproduction"
-]);
+// Only what a ledger row is the *only* evidence for. G1, G2 and G3 come from the feasibility
+// record, and independence comes from the reproduction manifest, so they are read from those and
+// never from a status word -- otherwise a calibration study could be closed by writing a row.
+export const G4_CLAIM_REQUIREMENT_IDS = Object.freeze(["formal_publication_review"]);
 
 const PINNED_DIGESTS = Object.freeze(
   Object.fromEntries(G0_DIGEST_MANIFEST.map((entry) => [entry.path, entry.bytes_sha256]))
@@ -174,15 +171,23 @@ const loadLivePublicationLedger = (readFile) => {
 // PUBLICATION-CLEARANCE.md: CLEARED iff every requirement is RESOLVED; permits_*
 // are all true only on CLEARED. tests/publication/clearance.test.mjs re-derives
 // the same shape and fails the document when it disagrees.
-const derivePublicationVerdict = (requirements) => {
+export const derivePublicationVerdict = (requirements) => {
   const blockedBy = (Array.isArray(requirements) ? requirements : [])
     .filter((requirement) => isPlainRecord(requirement) && typeof requirement.id === "string" && requirement.status !== "RESOLVED")
     .map((requirement) => requirement.id)
     .sort();
   const cleared = blockedBy.length === 0;
+  // npm publication is a separate outward act -- E14-003's forbidden scope names "repo/npm publish
+  // without separate authorization" -- so it never follows from source clearance. It has its own
+  // row and stays false until that row is RESOLVED.
+  const npmRow = (Array.isArray(requirements) ? requirements : []).find(
+    (requirement) => isPlainRecord(requirement) && requirement.id === "npm_publication_decision"
+  );
+  const npmCleared = cleared && isPlainRecord(npmRow) && npmRow.status === "RESOLVED";
   return {
     verdict: cleared ? "CLEARED" : "BLOCKED",
     blocked_by: blockedBy,
+    permits_npm_publication: npmCleared,
     permits_publication: cleared,
     permits_redistribution: cleared,
     permits_external_contribution_acceptance: cleared
@@ -303,6 +308,11 @@ const loadTreeResidentReproduction = (readFile, reproductionPath) => {
   }
 };
 
+const isAncestorOfHead = (sha) => {
+  const result = spawnSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { cwd: root });
+  return result.status === 0;
+};
+
 const readHeadSha = () => {
   const result = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });
   if (result.status !== 0) return "";
@@ -419,11 +429,16 @@ const evaluateG4Gate = (input) => {
     const bytes = compareOutputDigests(body.output_digests);
     errors.push(...bytes.errors);
     reproductionState.bytes_ok = bytes.bytes_ok;
+    // Reachable from HEAD, not equal to it. A record pinned to the exact tip goes stale the moment
+    // it is committed -- the commit carrying the record is never the commit that was reproduced --
+    // which would make the gate unpassable rather than strict. What keeps the claim current is the
+    // byte comparison above: if any gated source changed, the pinned digests stop matching and
+    // bytes_ok fails, whatever the recorded commit says.
     const recordedHead = typeof body.head_sha === "string" ? body.head_sha : "";
-    if (recordedHead.length === 0 || !GIT_SHA.test(recordedHead) || recordedHead !== expectedHead) {
-      errors.push(
-        `STALE_HEAD recorded ${recordedHead || "none"} but current head is ${expectedHead || "none"}`
-      );
+    if (recordedHead.length === 0 || !GIT_SHA.test(recordedHead)) {
+      errors.push(`STALE_HEAD recorded ${recordedHead || "none"} is not a commit id`);
+    } else if (!isAncestorOfHead(recordedHead)) {
+      errors.push(`STALE_HEAD recorded ${recordedHead} is not reachable from the current head`);
     } else {
       reproductionState.head_ok = true;
     }
@@ -523,7 +538,10 @@ const evaluateG4Gate = (input) => {
         continue;
       }
       byId.set(requirement.id, requirement);
-      if (requirement.status !== "RESOLVED" && G4_PUBLICATION_REQUIREMENT_IDS.includes(requirement.id)) {
+      // Any open row blocks the source release except the claim ids, which are open by design.
+      // Filtering to the known source list instead would walk a frozen set and let a seventh id
+      // the ledger declares pass unread -- the defect this loop already existed to prevent.
+      if (requirement.status !== "RESOLVED" && !G4_CLAIM_REQUIREMENT_IDS.includes(requirement.id)) {
         errors.push(`UNRESOLVED_GATE ${requirement.id}`);
       }
     }
@@ -544,7 +562,7 @@ const evaluateG4Gate = (input) => {
   // would publish on a false document; rows that are all RESOLVED while
   // Derived says BLOCKED would publish against the document that governs it.
   const sourceRows = (Array.isArray(requirements) ? requirements : []).filter(
-    (requirement) => isPlainRecord(requirement) && G4_PUBLICATION_REQUIREMENT_IDS.includes(requirement.id)
+    (requirement) => isPlainRecord(requirement) && !G4_CLAIM_REQUIREMENT_IDS.includes(requirement.id)
   );
   const derivedFromRows = derivePublicationVerdict(sourceRows);
   if (!publicationVerdictAgrees(recordedDerived, derivedFromRows)) {

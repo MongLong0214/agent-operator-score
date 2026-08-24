@@ -54,15 +54,18 @@ const NO_HIDDEN_ANSWERS =
   "Hidden task answers and gold solutions are not published on the public surface.";
 const NO_GENERATED_ATTRIBUTION =
   "Do not add generated attribution or internal agent, model, session, or routing metadata to public GitHub surfaces.";
-const CONTRIBUTION_STILL_BLOCKED =
-  "Contribution acceptance and redistribution remain blocked until the E14/G4 LICENSE and publication gate clears.";
+// The source gate has cleared, so what CONTRIBUTING.md must now carry is the pair that keeps that
+// clearance from being read as more than it is: the inbound regime that replaced the refusal, and
+// the sentence naming what clearance does not cover.
+const CONTRIBUTION_SCOPE_LIMIT =
+  "That clearance covers shipping source and nothing else \u2014 it is not a legal review, and it is not a claim that the metric measures what it is named for.";
 const G4_NOT_CLEARED = "G4 publication is not cleared.";
 const NOT_CALIBRATION = "This document is not a human-calibration result.";
 const DEMO_IS_NOT_AN_ASSESSMENT =
   "This demo does not run an assessment and is not the aos CLI.";
 const NO_PUBLIC_PACKAGE = "No public package has been approved.";
 const ADAPTER_ROUTE_TEXT =
-  "These routes document where an adapter or scenario would land. They do not accept external contributions while contributor terms are unresolved.";
+  "These routes document where an adapter or scenario lands. Contributions arrive under the DCO sign-off above.";
 
 const STALE_LICENSE_CLAIMS = [
   "No OSS license has been selected",
@@ -292,8 +295,13 @@ test("links", () => {
   );
   assertContains(
     contributing,
-    CONTRIBUTION_STILL_BLOCKED,
-    "CONTRIBUTING.md no longer refuses contribution acceptance while contributor terms are unresolved"
+    CONTRIBUTION_SCOPE_LIMIT,
+    "CONTRIBUTING.md states the source gate cleared without saying what that clearance does not cover"
+  );
+  assertContains(
+    contributing,
+    "Developer Certificate of Origin",
+    "CONTRIBUTING.md accepts contributions without naming the inbound regime"
   );
 
   const surface = loadOwnedSurface();

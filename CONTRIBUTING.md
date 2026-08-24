@@ -1,6 +1,6 @@
 # Contributing to Agent Operator Score
 
-AOS is not yet a public product. This public, source-visible repository currently contains a gated development specification, not an implemented assessment. MIT is the outbound license. External contribution acceptance remains blocked while contributor terms and formal publication review are unresolved.
+AOS is not yet a public product. This public, source-visible repository currently contains a gated development specification, not an implemented assessment. MIT is the outbound license, and inbound contributions are accepted under the Developer Certificate of Origin. What remains unresolved is every claim about what the metric measures: no independent reproduction, no feasibility verdict, no calibration study, and no formal review exists, so nothing here is a validated assessment.
 
 ## Read first
 
@@ -40,7 +40,7 @@ Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an indust
 
 ## Adapter and scenario routes
 
-These routes document where an adapter or scenario would land. They do not accept external contributions while contributor terms are unresolved.
+These routes document where an adapter or scenario lands. Contributions arrive under the DCO sign-off above.
 
 - [adapter contribution](adapters/) — existing runtimes live under [adapters/codex/](adapters/codex/) and [adapters/claude-code/](adapters/claude-code/). Record a future landing path with the [adapter issue template](.github/ISSUE_TEMPLATE/adapter.yml).
 - [scenario contribution](suites/coding-core-v0/) — the frozen Form A pack lives at [suites/coding-core-v0/form-a/](suites/coding-core-v0/form-a/). Record a future landing path with the [scenario issue template](.github/ISSUE_TEMPLATE/scenario.yml).
@@ -49,6 +49,16 @@ These routes document where an adapter or scenario would land. They do not accep
 
 MIT is the outbound license. [LICENSE](LICENSE) carries the standard MIT grant: anyone may use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the Software, provided the copyright notice and permission notice are included in all copies or substantial portions. That grant is a redistribution permission. It is not contributor terms, and it is not a publication clearance.
 
-Inbound contribution terms have not been selected. There is no contributor license agreement, developer certificate of origin, or inbound license. Contribution acceptance remains blocked. npm publication and a public-visibility change remain unauthorized.
+Inbound contributions are accepted under the [Developer Certificate of Origin 1.1](https://developercertificate.org/), on the same MIT terms this repository ships outbound. There is no contributor license agreement to sign, no copyright assignment, and no separate paperwork.
 
-D0 minimum name clearance is a separate canonical-identity decision and does not authorize contribution acceptance, redistribution, or publication. Contribution acceptance and redistribution remain blocked until the E14/G4 LICENSE and publication gate clears.
+Certify each commit with a sign-off line naming you:
+
+```
+Signed-off-by: Your Name <you@example.com>
+```
+
+`git commit -s` adds it. The line means what the DCO says it means: you wrote the contribution or otherwise have the right to submit it under the MIT license, and you understand the contribution and the sign-off are public and permanent.
+
+npm publication remains unauthorized and is a separate decision, recorded on its own row in [PUBLICATION-CLEARANCE.md](docs/decisions/PUBLICATION-CLEARANCE.md).
+
+D0 minimum name clearance is a separate canonical-identity decision. The E14/G4 source-release gate has cleared: MIT outbound, DCO inbound, and a clean-checkout reproduction of the pinned fixture bytes. That clearance covers shipping source and nothing else — it is not a legal review, and it is not a claim that the metric measures what it is named for.

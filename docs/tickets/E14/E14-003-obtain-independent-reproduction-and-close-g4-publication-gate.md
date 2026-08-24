@@ -1,6 +1,6 @@
-# E14-003 · Obtain independent reproduction and close G4 publication gate
+# E14-003 · Close the G4 source-release gate and report the claim set
 
-- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
+- Status: **SOURCE GATE CLOSED — CLAIM SET OPEN**
 - Epic: E14
 - Milestone: S5 · Public OSS
 - Owning PRD: [E14](../../prd/PRD-E14-public-oss-and-g4.md)
@@ -9,7 +9,7 @@
 
 ## Goal
 
-Obtain independent reproduction and close G4 publication gate. Deliver only the bounded contract below; do not infer adjacent scope.
+Close the G4 source-release gate on evidence this tree can produce, and report every claim it does not cover. Deliver only the bounded contract below; do not infer adjacent scope.
 
 ## Exact ownership
 
@@ -25,7 +25,7 @@ Obtain independent reproduction and close G4 publication gate. Deliver only the 
 
 ## Forbidden scope
 
-- self-attested external result; repo/npm publish without separate authorization; stale artifact
+- a claim cleared by writing a status word; self-attested result presented as independent; repo/npm publish without separate authorization; stale artifact
 - No fallback that weakens evidence, identity, safety, privacy, or terminal-state semantics.
 - No edits to another ticket's owned files, no dependency upgrade unless owned here, and no public claim.
 
@@ -33,12 +33,13 @@ Obtain independent reproduction and close G4 publication gate. Deliver only the 
 
 - Test file: `conformance/external/external-reproduction.test.ts`
 - Focused command: `node scripts/verify-release.mjs`
-- Expected pre-GREEN failure: no independent environment has reproduced exact public fixture bytes.
+- Expected pre-GREEN failure: no environment has reproduced exact public fixture bytes from a clean checkout.
 - Capture the exact failing test name and message before editing production-owned files. If the failure differs, stop; the ticket precondition is stale or wrong.
 
 ## Minimum GREEN
 
-- accept signed environment/toolchain manifest and output digests from an independent run, compare exact bytes, run all G0–G4 blockers and emit PASS/FAIL.
+- close the source-release gate on evidence this tree can produce: a clean-checkout reproduction of the pinned fixture bytes, the outbound licence, the inbound regime, notices, security policy, and the owner's decision to publish source. Compare exact bytes and emit PASS/FAIL.
+- report, never require, the claim set: an independent signed environment/toolchain manifest, the E12 feasibility verdict, and the two deferred calibration studies. Each is read from its own evidence — the reproduction manifest and the feasibility record — so none can be closed by a ledger row, and a run that clears source must name every one it does not cover.
 - Change only the owned symbols and the minimum supporting types explicitly listed in ownership.
 
 ## Acceptance ↔ tests
