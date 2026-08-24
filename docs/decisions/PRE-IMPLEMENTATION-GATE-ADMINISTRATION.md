@@ -128,7 +128,8 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-013-prerequisites-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | ACCEPTED |
 | `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | INVALIDATED |
 | `d0-002-prerequisites-red-census-contract-correction-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23` | ACCEPTED |
-| `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration` | ACCEPTED |
+| `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration` | INVALIDATED |
+| `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration-blocker-vocabulary-2026-08-24` | ACCEPTED |
 
 ## Operating sequence
 
