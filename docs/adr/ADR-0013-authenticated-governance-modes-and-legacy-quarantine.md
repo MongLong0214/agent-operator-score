@@ -48,7 +48,7 @@ The contract is delivered only in this order: mode contract and claim removal; v
 
 ## Consequences
 
-- The ready set is empty in advisory mode, even if planning artifacts are complete.
+- Advisory mode confers no authenticated authorization: structural registry fields and self-authored role strings never produce a ready-set member, a separation-of-duties claim, an artifact freeze, or merge authorization. A ready set in advisory mode rests on the sole maintainer's direct direction, recorded per batch, and is never an authenticated-review result.
 - Existing registry history remains auditable but cannot authorize implementation or freeze artifacts.
 - A v3 manifest makes artifact identity and migration provenance explicit before an acceptance result can be derived; it never stores an effective acceptance state.
 - Live GitHub access becomes a required, fail-closed dependency only for `AUTHENTICATED_REVIEW`; an outage or ambiguous fact leaves activation and authorization unavailable.
