@@ -9382,7 +9382,7 @@
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
         "branch": "dev",
-        "reviewed_head": "408c1c14f6b8cfd902951eed1544bc35e054c8a2"
+        "reviewed_head": "a818656f33354adbd65fcf849ea228e70af1b725"
       },
       "required_artifacts": [
         {
@@ -9407,7 +9407,7 @@
         },
         {
           "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
-          "sha256": "04eb02819472c5d3ddb44962235c98641f3569f129c56eb50323fcbda6b31b96",
+          "sha256": "960e8087dc93078f0d5e1f3d263aaae2566aa7d74f4775fb141da427ce8aac6d",
           "kind": "TICKET"
         }
       ],
@@ -9439,7 +9439,7 @@
         },
         {
           "path": "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
-          "sha256": "04eb02819472c5d3ddb44962235c98641f3569f129c56eb50323fcbda6b31b96",
+          "sha256": "960e8087dc93078f0d5e1f3d263aaae2566aa7d74f4775fb141da427ce8aac6d",
           "kind": "TICKET"
         }
       ],
