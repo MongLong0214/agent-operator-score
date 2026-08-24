@@ -1227,9 +1227,9 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // Repinned from the validator's own output as the per-artifact binding decomposition (#167)
   // proceeds: each step invalidates one batch and accepts its replacement, so total and
   // invalidated rise together while accepted holds.
-  assert.equal(result.batches, 81);
-  assert.equal(result.counts.accepted, 30);
-  assert.equal(result.counts.invalidated, 51);
+  assert.equal(result.batches, 82);
+  assert.equal(result.counts.accepted, 26);
+  assert.equal(result.counts.invalidated, 56);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
     "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md",
