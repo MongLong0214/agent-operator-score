@@ -9024,7 +9024,7 @@
     },
     {
       "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration",
-      "status": "ACCEPTED",
+      "status": "INVALIDATED",
       "scope": "Renew d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23 against the corrected docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md. One batch, one Gate-Batch receipt on the PR that carries it.",
       "target": {
         "repository": "github.com/MongLong0214/agent-operator-score",
@@ -9096,10 +9096,72 @@
           "to": "ACCEPTED",
           "recorded_at": "2026-08-24T00:00:00Z",
           "recorded_by": "deliverables-declaration-2026-08-24"
+        },
+        {
+          "from": "ACCEPTED",
+          "to": "INVALIDATED",
+          "recorded_at": "2026-08-24T00:00:00Z",
+          "recorded_by": "blocker-vocabulary-2026-08-24"
         }
       ],
       "preparation": {
         "prepared_by": "deliverables-declaration-2026-08-24"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-24T00:00:00Z",
+        "role": "MAINTAINER"
+      },
+      "invalidation": {
+        "invalidated_at": "2026-08-24T00:00:00Z",
+        "invalidated_by": "blocker-vocabulary-2026-08-24",
+        "reason": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md corrected; this batch's pinned digest is stale. Superseded by d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration-blocker-vocabulary-2026-08-24."
+      }
+    },
+    {
+      "id": "d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration-blocker-vocabulary-2026-08-24",
+      "status": "ACCEPTED",
+      "scope": "Renew the D0-004 ticket acceptance at the digest below, after listing the blocker codes the resolver already emits. RECEIPT_FIELD_MALFORMED, COMPLETION_EFFECT_REVERTED and COMPLETION_EFFECT_UNKNOWN shipped without being added to the ticket's authorised vocabulary; this record accepts the corrected list. Recorded by the repository owner, who is its sole maintainer. This record binds only the ticket artifact it renews: ADR-0001 and PRD-D0-name-migration keep their acceptance through their own batches, and re-binding them here would assert a review this record did not perform.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "2f798056b9ce145fec495482eedc20e0487e38bc"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+          "sha256": "217cbbbb3c4c26236725bc123a43947034008cfbdc8bd085459d0bcb99788180",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md",
+          "sha256": "217cbbbb3c4c26236725bc123a43947034008cfbdc8bd085459d0bcb99788180",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-24T00:00:00Z",
+          "recorded_by": "blocker-vocabulary-2026-08-24"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "blocker-vocabulary-2026-08-24"
       },
       "approval": {
         "approved_by": "MongLong0214",
