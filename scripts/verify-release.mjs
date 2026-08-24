@@ -42,14 +42,26 @@ const DIGEST_SHAPE = /^[a-f0-9]{64}$/;
 // SSOT §7.3 G2/G3: deferred calibration studies; the n=20 record cannot close them.
 const E12_GATE_PASS = "PASS_TO_CONTINUE";
 
+// G4 gates a source-visible release of an MIT-licensed development tree by its sole maintainer.
+// It does not gate, and must never be read as covering, a published claim about what the metric
+// measures. Those live in G4_CLAIM_REQUIREMENT_IDS below: reported on every run, never satisfied
+// by anything in this tree, and required before any such claim is made.
 export const G4_PUBLICATION_REQUIREMENT_IDS = Object.freeze([
   "contributor_terms",
-  "formal_publication_review",
   "license",
+  "owner_publication_decision",
   "redistribution",
   "security_policy",
   "third_party_notices"
 ]);
+
+// Recorded, never required by the source-release verdict. Each names a real-world event this
+// repository cannot perform on itself; manufacturing any of them is the false-completion defect
+// this gate exists to catch.
+// Only what a ledger row is the *only* evidence for. G1, G2 and G3 come from the feasibility
+// record, and independence comes from the reproduction manifest, so they are read from those and
+// never from a status word -- otherwise a calibration study could be closed by writing a row.
+export const G4_CLAIM_REQUIREMENT_IDS = Object.freeze(["formal_publication_review"]);
 
 const PINNED_DIGESTS = Object.freeze(
   Object.fromEntries(G0_DIGEST_MANIFEST.map((entry) => [entry.path, entry.bytes_sha256]))
@@ -129,6 +141,7 @@ const parseRecordBlocks = (text) => {
 };
 
 const emptyReproductionState = () => ({
+  reproduced: false,
   independent: false,
   signature_ok: false,
   bytes_ok: false,
@@ -140,6 +153,7 @@ const failClosed = (errors) => ({
   verdict: null,
   errors,
   reproduction: emptyReproductionState(),
+  claim_blockers: [...G4_CLAIM_REQUIREMENT_IDS, "G1", "G2", "G3"].sort(),
   gates: { G0: "UNRESOLVED", G1: "UNRESOLVED", G2: "UNRESOLVED", G3: "UNRESOLVED" },
   permits_publication: false
 });
@@ -157,15 +171,23 @@ const loadLivePublicationLedger = (readFile) => {
 // PUBLICATION-CLEARANCE.md: CLEARED iff every requirement is RESOLVED; permits_*
 // are all true only on CLEARED. tests/publication/clearance.test.mjs re-derives
 // the same shape and fails the document when it disagrees.
-const derivePublicationVerdict = (requirements) => {
+export const derivePublicationVerdict = (requirements) => {
   const blockedBy = (Array.isArray(requirements) ? requirements : [])
     .filter((requirement) => isPlainRecord(requirement) && typeof requirement.id === "string" && requirement.status !== "RESOLVED")
     .map((requirement) => requirement.id)
     .sort();
   const cleared = blockedBy.length === 0;
+  // npm publication is a separate outward act -- E14-003's forbidden scope names "repo/npm publish
+  // without separate authorization" -- so it never follows from source clearance. It has its own
+  // row and stays false until that row is RESOLVED.
+  const npmRow = (Array.isArray(requirements) ? requirements : []).find(
+    (requirement) => isPlainRecord(requirement) && requirement.id === "npm_publication_decision"
+  );
+  const npmCleared = cleared && isPlainRecord(npmRow) && npmRow.status === "RESOLVED";
   return {
     verdict: cleared ? "CLEARED" : "BLOCKED",
     blocked_by: blockedBy,
+    permits_npm_publication: npmCleared,
     permits_publication: cleared,
     permits_redistribution: cleared,
     permits_external_contribution_acceptance: cleared
@@ -238,6 +260,12 @@ const loadLiveGateStatus = (readFile) => {
 const isIndependentReproduction = (value) =>
   isPlainRecord(value) && value.kind === "independent-reproduction";
 
+const isCleanCheckoutReproduction = (value) =>
+  isPlainRecord(value) && value.kind === "clean-checkout-reproduction";
+
+const isReproduction = (value) =>
+  isIndependentReproduction(value) || isCleanCheckoutReproduction(value);
+
 const loadTreeResidentReproduction = (readFile, reproductionPath) => {
   if (typeof reproductionPath === "string" && reproductionPath.length > 0) {
     try {
@@ -250,34 +278,39 @@ const loadTreeResidentReproduction = (readFile, reproductionPath) => {
       if (duplicate !== null) {
         return {
           reproduction: undefined,
-          error: `NO_INDEPENDENT_REPRODUCTION ${reproductionPath} declares ${duplicate} more than once`
+          error: `NO_REPRODUCTION ${reproductionPath} declares ${duplicate} more than once`
         };
       }
       const parsed = JSON.parse(text);
-      if (isIndependentReproduction(parsed)) {
+      if (isReproduction(parsed)) {
         return { reproduction: parsed, error: null };
       }
       return { reproduction: undefined, error: null };
     } catch (error) {
       return {
         reproduction: undefined,
-        error: `NO_INDEPENDENT_REPRODUCTION could not read ${reproductionPath}: ${String(error)}`
+        error: `NO_REPRODUCTION could not read ${reproductionPath}: ${String(error)}`
       };
     }
   }
   try {
     const blocks = parseRecordBlocks(readFile(VERDICT_PATH));
     const live = blocks.get("Live reproduction");
-    if (isIndependentReproduction(live)) {
+    if (isReproduction(live)) {
       return { reproduction: live, error: null };
     }
     return { reproduction: undefined, error: null };
   } catch (error) {
     return {
       reproduction: undefined,
-      error: `NO_INDEPENDENT_REPRODUCTION live reproduction could not be read: ${String(error)}`
+      error: `NO_REPRODUCTION live reproduction could not be read: ${String(error)}`
     };
   }
+};
+
+const isAncestorOfHead = (sha) => {
+  const result = spawnSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { cwd: root });
+  return result.status === 0;
 };
 
 const readHeadSha = () => {
@@ -366,15 +399,51 @@ const evaluateG4Gate = (input) => {
   if (reproduction === undefined || reproduction === null) {
     if (!reproductionLoadError) {
       errors.push(
-        "NO_INDEPENDENT_REPRODUCTION no independent environment has reproduced exact public fixture bytes."
+        "NO_REPRODUCTION no environment has reproduced exact public fixture bytes from a clean checkout."
       );
     }
   } else if (!isPlainRecord(reproduction)) {
     errors.push("MANIFEST_MALFORMED the reproduction manifest must be an object");
-  } else if (!isIndependentReproduction(reproduction)) {
+  } else if (!isReproduction(reproduction)) {
     errors.push(
-      "NO_INDEPENDENT_REPRODUCTION no independent environment has reproduced exact public fixture bytes."
+      "NO_REPRODUCTION no environment has reproduced exact public fixture bytes from a clean checkout."
     );
+  } else if (isCleanCheckoutReproduction(reproduction)) {
+    // Self-run by construction: it claims determinism, not independence. So it carries no
+    // signature and no allowlisted principal, and asking for one would mean minting a trust root
+    // this repository does not have -- an invented key is worse than the honest limit. What makes
+    // the record checkable is that every run recomputes these digests from source and compares
+    // them to the pinned manifest, so a false record fails on the next run rather than on trust.
+    const body = reproduction;
+    const environment = isPlainRecord(body.environment) ? body.environment : {};
+    const toolchain = isPlainRecord(body.toolchain) ? body.toolchain : {};
+    if (typeof environment.id !== "string" || environment.id.length === 0) {
+      errors.push("MANIFEST_MALFORMED environment.id is required");
+    }
+    if (typeof toolchain.node !== "string" || toolchain.node.length === 0) {
+      errors.push("MANIFEST_MALFORMED toolchain.node is required");
+    }
+    if (typeof toolchain.engines !== "string" || toolchain.engines.length === 0) {
+      errors.push("MANIFEST_MALFORMED toolchain.engines is required");
+    }
+    const bytes = compareOutputDigests(body.output_digests);
+    errors.push(...bytes.errors);
+    reproductionState.bytes_ok = bytes.bytes_ok;
+    // Reachable from HEAD, not equal to it. A record pinned to the exact tip goes stale the moment
+    // it is committed -- the commit carrying the record is never the commit that was reproduced --
+    // which would make the gate unpassable rather than strict. What keeps the claim current is the
+    // byte comparison above: if any gated source changed, the pinned digests stop matching and
+    // bytes_ok fails, whatever the recorded commit says.
+    const recordedHead = typeof body.head_sha === "string" ? body.head_sha : "";
+    if (recordedHead.length === 0 || !GIT_SHA.test(recordedHead)) {
+      errors.push(`STALE_HEAD recorded ${recordedHead || "none"} is not a commit id`);
+    } else if (!isAncestorOfHead(recordedHead)) {
+      errors.push(`STALE_HEAD recorded ${recordedHead} is not reachable from the current head`);
+    } else {
+      reproductionState.head_ok = true;
+    }
+    reproductionState.reproduced = reproductionState.bytes_ok && reproductionState.head_ok;
+    reproductionState.independent = false;
   } else {
     const { signature, ...body } = reproduction;
     const environment = isPlainRecord(body.environment) ? body.environment : {};
@@ -424,13 +493,14 @@ const evaluateG4Gate = (input) => {
       reproductionState.head_ok = true;
     }
 
+    // Reproduced at all: the bytes and the commit check out. Independent additionally requires a
+    // different environment and an allowlisted principal. Keeping them apart is the whole point --
+    // a clean-checkout run is real evidence about determinism and no evidence at all about
+    // independence, and one field holding both would say the stronger thing.
+    reproductionState.reproduced =
+      reproductionState.signature_ok && reproductionState.bytes_ok && reproductionState.head_ok;
     reproductionState.independent =
-      reproductionState.signature_ok &&
-      reproductionState.bytes_ok &&
-      reproductionState.head_ok &&
-      envId.length > 0 &&
-      envId !== localId &&
-      allowlisted;
+      reproductionState.reproduced && envId.length > 0 && envId !== localId && allowlisted;
   }
 
   const g0 = runG0Gate({ readFile });
@@ -439,10 +509,15 @@ const evaluateG4Gate = (input) => {
     if (g0 && Array.isArray(g0.errors)) errors.push(...g0.errors);
   }
 
+  // G1 is the E12 feasibility verdict; G2 and G3 are deferred calibration studies. All three
+  // qualify a claim about what the metric measures. None of them qualifies shipping MIT-licensed
+  // source, so they are reported as claim blockers rather than pushed into `errors`.
   const status = loadLiveGateStatus(readFile);
+  const claimBlockers = [];
   for (const gate of ["G1", "G2", "G3"]) {
-    if (status[gate] !== "RESOLVED") errors.push(`UNRESOLVED_GATE ${gate}`);
+    if (status[gate] !== "RESOLVED") claimBlockers.push(gate);
   }
+  if (!reproductionState.independent) claimBlockers.push("independent_reproduction");
 
   let requirements = [];
   let recordedDerived = null;
@@ -463,31 +538,46 @@ const evaluateG4Gate = (input) => {
         continue;
       }
       byId.set(requirement.id, requirement);
-      if (requirement.status !== "RESOLVED") {
+      // Any open row blocks the source release except the claim ids, which are open by design.
+      // Filtering to the known source list instead would walk a frozen set and let a seventh id
+      // the ledger declares pass unread -- the defect this loop already existed to prevent.
+      if (requirement.status !== "RESOLVED" && !G4_CLAIM_REQUIREMENT_IDS.includes(requirement.id)) {
         errors.push(`UNRESOLVED_GATE ${requirement.id}`);
       }
     }
   }
-  // The six ids are a floor, not the whole set: a quietly deleted required
+  // The ids are a floor, not the whole set: a quietly deleted required
   // id must not open the gate even if every remaining row is RESOLVED.
   for (const id of G4_PUBLICATION_REQUIREMENT_IDS) {
     if (!byId.has(id)) {
       errors.push(`UNRESOLVED_GATE ${id}`);
     }
   }
+  // A claim row that is missing counts as unmet, for the same reason: silence is not clearance.
+  for (const id of G4_CLAIM_REQUIREMENT_IDS) {
+    const row = byId.get(id);
+    if (!isPlainRecord(row) || row.status !== "RESOLVED") claimBlockers.push(id);
+  }
   // Disagreement fails closed. Rows that are open while Derived says CLEARED
   // would publish on a false document; rows that are all RESOLVED while
   // Derived says BLOCKED would publish against the document that governs it.
-  const derivedFromRows = derivePublicationVerdict(requirements);
+  const sourceRows = (Array.isArray(requirements) ? requirements : []).filter(
+    (requirement) => isPlainRecord(requirement) && !G4_CLAIM_REQUIREMENT_IDS.includes(requirement.id)
+  );
+  const derivedFromRows = derivePublicationVerdict(sourceRows);
   if (!publicationVerdictAgrees(recordedDerived, derivedFromRows)) {
     errors.push("UNRESOLVED_GATE publication derived verdict disagrees with ledger rows");
   }
 
   const ok = errors.length === 0;
+  const claims_ok = ok && claimBlockers.length === 0;
   return {
     ok,
-    verdict: ok ? "G4_PASS" : null,
+    verdict: ok ? "G4_SOURCE_PASS" : null,
     errors,
+    // Always populated, and today never empty. A reader who sees permits_source_publication true
+    // must be able to see, in the same object, exactly what that permission does not cover.
+    claim_blockers: [...new Set(claimBlockers)].sort(),
     reproduction: reproductionState,
     gates: {
       G0: g0 && g0.ok === true ? "RESOLVED" : "UNRESOLVED",
@@ -495,7 +585,13 @@ const evaluateG4Gate = (input) => {
       G2: status.G2 === "RESOLVED" ? "RESOLVED" : "UNRESOLVED",
       G3: status.G3 === "RESOLVED" ? "RESOLVED" : "UNRESOLVED"
     },
-    permits_publication: ok
+    // Shipping MIT source that reproduces its own fixture bytes.
+    permits_source_publication: ok,
+    // Kept for readers of the old shape, and deliberately the narrower of the two.
+    permits_publication: ok,
+    // Saying anything about what the metric measures. Requires the claim set, which no artifact
+    // in this tree can satisfy.
+    permits_claims: claims_ok
   };
 };
 
@@ -515,5 +611,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     for (const error of run.errors) console.error(`- ${error}`);
     process.exit(1);
   }
-  console.log(`G4_PASS permits_publication=${run.permits_publication}`);
+  console.log(`G4_SOURCE_PASS permits_source_publication=${run.permits_source_publication}`);
+  console.log(`CLAIMS_BLOCKED ${run.claim_blockers.length}`);
+  for (const blocker of run.claim_blockers) console.log(`- ${blocker}`);
 }
