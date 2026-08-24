@@ -23,14 +23,24 @@ export interface Projection {
 
 /** Per-event allowlists. A field absent here cannot be stored, whatever it contains. */
 export const PAYLOAD_ALLOWLIST: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  "tool.call": Object.freeze(["tool_name", "target_path", "argument_count", "input_digest"]),
-  "tool.result": Object.freeze(["success", "byte_count", "output_digest"]),
-  "user.instruction": Object.freeze(["character_count", "instruction_digest"]),
-  "context.selected": Object.freeze(["item_count", "digests"]),
+  "approval.denied": Object.freeze(["action_class", "decision"]),
+  "approval.granted": Object.freeze(["action_class", "decision"]),
   "approval.requested": Object.freeze(["action_class", "decision"]),
-  "approval.decided": Object.freeze(["action_class", "decision"]),
+  "context.compacted": Object.freeze(["item_count", "before_digest", "after_digest"]),
+  "context.injected": Object.freeze(["item_count", "digests"]),
+  "context.selected": Object.freeze(["item_count", "digests"]),
   "evidence.created": Object.freeze(["evidence_digest"]),
-  "workspace.mutated": Object.freeze(["target_path", "before_digest", "after_digest"])
+  "evidence.invalidated": Object.freeze(["evidence_digest"]),
+  "memory.read": Object.freeze(["item_count", "digests"]),
+  "memory.written": Object.freeze(["item_count", "digests"]),
+  "retrieval.query": Object.freeze(["query_digest", "result_count"]),
+  "retrieval.result": Object.freeze(["result_count", "digests"]),
+  "tool.call": Object.freeze(["tool_name", "target_path", "argument_count", "input_digest"]),
+  "tool.error": Object.freeze(["tool_name", "error_class"]),
+  "tool.result": Object.freeze(["success", "byte_count", "output_digest"]),
+  "user.clarification": Object.freeze(["character_count", "instruction_digest"]),
+  "user.instruction": Object.freeze(["character_count", "instruction_digest"]),
+  "workspace.external_mutation": Object.freeze(["target_path", "before_digest", "after_digest"])
 });
 
 export const MAX_NESTING = 32;
@@ -49,7 +59,7 @@ const SECRET_PATTERNS: readonly RegExp[] = Object.freeze([
   /-----BEGIN[A-Z ]*PRIVATE KEY-----/,               // private key header
   /\b[A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD)\s*=\s*\S+/i,
   /\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:[^\s@/]+@/i,    // credentials in a database URL
-  /AOS_CANARY_[A-Z0-9]+/,                            // fixed test canary
+  /AOS_SECRET_CANARY/,                             // fixed canary, from specs/events.v0.json
   /<\s*(?:thinking|antml:thinking|reasoning)\s*>/i   // hidden reasoning marker
 ]);
 

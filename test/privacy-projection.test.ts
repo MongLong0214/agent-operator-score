@@ -10,7 +10,8 @@ import {
   refusalReason
 } from "../src/trace/privacy-projection.ts";
 
-const CANARY = "AOS_CANARY_D41D8CD98F";
+// The contract declares the canary value; guessing its shape is how a detector misses it.
+const CANARY = "AOS_SECRET_CANARY";
 
 describe("privacy projection: default deny", () => {
   test("an event type with no allowlist keeps nothing", () => {
@@ -89,6 +90,14 @@ describe("privacy projection: detector floor", () => {
     ] as [string, string][]) {
       assert.equal(looksSecret(sample), true, `${label} is not detected`);
     }
+  });
+
+  test("the canary the contract declares is the canary the detector looks for", async () => {
+    const contract = JSON.parse(
+      await import("node:fs").then((fs) => fs.readFileSync(new URL("../specs/events.v0.json", import.meta.url), "utf8"))
+    ) as { secret_canary: string };
+    assert.equal(CANARY, contract.secret_canary);
+    assert.equal(looksSecret(contract.secret_canary), true, "the declared canary is not detected");
   });
 
   test("ordinary content is not swept up", () => {
