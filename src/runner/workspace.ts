@@ -23,6 +23,8 @@ import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSy
 import { createHash, randomUUID } from "node:crypto";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
+import { resolveLimits } from "./resource-limits.ts";
+
 const CONTAINED = "dirty/wrong-root/symlink/cross-run residue is not contained.";
 const CONFIDENCE_DROP = 0.69;
 const RUNNER_PROVENANCE = "runner-workspace-correlation";
@@ -163,32 +165,43 @@ const environmentDigestOf = (value: unknown): string | null => {
 
 const inspectTree = (root: string): TreeOk | Fail => {
   const files: FileEntry[] = [];
-  const walk = (directory: string): boolean => {
+  // Explicit stack, not recursion: a deep tree in an untrusted workspace would otherwise exhaust
+  // the call stack, and a RangeError there is indistinguishable from the process dying for an
+  // unrelated reason. The depth limit is enforced here rather than trusted to the stack running out.
+  const limits = resolveLimits(null).limits;
+  const stack: { directory: string; depth: number }[] = [{ directory: root, depth: 0 }];
+  let totalBytes = 0;
+
+  while (stack.length > 0) {
+    const current = stack.pop() as { directory: string; depth: number };
+    if (current.depth > limits.maxDirectoryDepth) return fail();
     let entries;
     try {
-      entries = readdirSync(directory, { withFileTypes: true });
+      entries = readdirSync(current.directory, { withFileTypes: true });
     } catch {
-      return false;
+      return fail();
     }
     for (const entry of entries) {
-      const absolute = join(directory, entry.name);
-      if (entry.isSymbolicLink()) return false;
+      const absolute = join(current.directory, entry.name);
+      if (entry.isSymbolicLink()) return fail();
       if (entry.isDirectory()) {
-        if (!walk(absolute)) return false;
+        stack.push({ directory: absolute, depth: current.depth + 1 });
         continue;
       }
-      if (!entry.isFile()) return false;
+      if (!entry.isFile()) return fail();
+      if (files.length >= limits.maxFiles) return fail();
       let bytes;
       try {
         bytes = readFileSync(absolute);
       } catch {
-        return false;
+        return fail();
       }
+      if (bytes.byteLength > limits.maxFileBytes) return fail();
+      totalBytes += bytes.byteLength;
+      if (totalBytes > limits.maxWorkspaceBytes) return fail();
       files.push({ path: posixRel(root, absolute), digest: sha256(bytes) });
     }
-    return true;
-  };
-  if (!walk(root)) return fail();
+  }
   files.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   return { ok: true, files, digest: sha256(files.map((file) => `${file.path}:${file.digest}`).join("\n")) };
 };
