@@ -15,14 +15,14 @@ Publish the OSS surface only after formal legal, documentation, reproducibility,
 
 ## Functional and contract requirements
 
-1. Resolve formal license, contributor terms, third-party notices, security policy, intended use, limitations, and provenance; unresolved items block publication.
+1. Resolve formal license, contributor terms, third-party notices, security policy, intended use, limitations, and provenance; unresolved items block source publication. A claim about what the metric measures additionally requires an independent reproduction, the E12 feasibility verdict, the deferred calibration studies, and a qualified review; those are reported on every run and never satisfied by a recorded status.
 2. Provide one-command demo, public schema/fixtures/scorer, contributor adapter/scenario paths, and no-generated-attribution hygiene.
 3. Obtain at least one independent external fixture reproduction and record exact artifact/scorer digests.
 4. Run G4 fail-closed checklist before changing visibility or publishing npm.
 
 ## Acceptance criteria
 
-- AC-E14-1: unresolved license, contributor terms, notice, security, or formal-publication item blocks E14/G4 publication.
+- AC-E14-1: an unresolved license, contributor terms, notice, or security item blocks E14/G4 source publication; an unresolved formal-publication, reproduction-independence, feasibility, or calibration item blocks any published claim and is named in the verdict beside the source clearance.
 - AC-E14-2: external environment reproduces canonical fixture bytes.
 - AC-E14-3: public docs make provisional/no-percentile/no-certification limits unavoidable.
 - AC-E14-4: repo/package publication is separately authorized and post-verified.

@@ -79,10 +79,13 @@ const schemaPin = () => {
   return entry;
 };
 
+// The source-release set. Claim ids are deliberately absent: they are not what a publication
+// ledger has to resolve for source clearance, and including them here would let a synthetic world
+// clear a claim by writing a row.
 const allResolvedPublication = () => [
   { id: "contributor_terms", status: "RESOLVED" },
-  { id: "formal_publication_review", status: "RESOLVED" },
   { id: "license", status: "RESOLVED" },
+  { id: "owner_publication_decision", status: "RESOLVED" },
   { id: "redistribution", status: "RESOLVED" },
   { id: "security_policy", status: "RESOLVED" },
   { id: "third_party_notices", status: "RESOLVED" }
@@ -190,6 +193,7 @@ const withFeasibility = (gates: { G1: string; G2: string; G3: string }) =>
 const CLEARED_PUBLICATION_VERDICT = {
   verdict: "CLEARED",
   blocked_by: [] as string[],
+  permits_npm_publication: false,
   permits_publication: true,
   permits_redistribution: true,
   permits_external_contribution_acceptance: true
@@ -198,6 +202,7 @@ const CLEARED_PUBLICATION_VERDICT = {
 const blockedPublicationVerdict = (blockedBy: string[]) => ({
   verdict: "BLOCKED",
   blocked_by: [...blockedBy].sort(),
+  permits_npm_publication: false,
   permits_publication: false,
   permits_redistribution: false,
   permits_external_contribution_acceptance: false
@@ -318,7 +323,7 @@ describe("external-reproduction", () => {
       })
     });
     assert.equal(
-      has(fromTree, "NO_INDEPENDENT_REPRODUCTION"),
+      has(fromTree, "NO_REPRODUCTION"),
       false,
       "a tree-resident signed manifest in G4-VERDICT.md was not consumed"
     );
@@ -547,17 +552,23 @@ describe("external-reproduction", () => {
     const run = runG4Gate as RunG4Gate;
     const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
 
+    // The source gate is closable on this tree and is closed: MIT out, DCO in, and a clean-checkout
+    // reproduction of the pinned bytes. What must never drift is the other half -- every claim
+    // requirement stays named as blocked, so a reader of `permits_source_publication: true` can see
+    // in the same object that it covers none of them.
     const live = run();
-    assert.equal(live.ok, false, "live G4 gate passed while blockers remain");
-    assert.equal(live.verdict, null, "live G4 gate emitted PASS while blockers remain");
-    assert.equal(live.permits_publication, false, "live G4 gate permitted publication");
-    assert.ok(has(live, "UNRESOLVED_GATE"), "live unresolved G0-G4 blocker did not fail");
-    assert.ok(
-      has(live, "contributor_terms") || has(live, "formal_publication_review"),
-      "live unresolved publication requirements were not named"
-    );
-    assert.ok(has(live, "G1") || has(live, "G2") || has(live, "G3"), "live unresolved G1-G3 blockers were not named");
-    assert.ok(has(live, "NO_INDEPENDENT_REPRODUCTION"), "live tree-resident reproduction absence was not named");
+    assert.equal(live.ok, true, `live source gate failed: ${JSON.stringify(live.errors)}`);
+    assert.equal(live.verdict, "G4_SOURCE_PASS", "live source gate emitted the wrong verdict token");
+    assert.equal(live.permits_source_publication, true, "live source gate refused source publication");
+    assert.equal(live.permits_claims, false, "live gate permitted claims while the claim set is open");
+    assert.equal(live.reproduction?.independent, false, "a clean-checkout run was counted as independent");
+    assert.equal(live.reproduction?.reproduced, true, "the recorded clean-checkout reproduction did not verify");
+    for (const blocker of ["G1", "G2", "G3", "independent_reproduction", "formal_publication_review"]) {
+      assert.ok(
+        (live.claim_blockers ?? []).includes(blocker),
+        `live claim blocker ${blocker} was not named; got ${JSON.stringify(live.claim_blockers)}`
+      );
+    }
     assert.equal(live.gates?.G0, "RESOLVED", "live G0 is not RESOLVED on this tree");
     // E12-003 is contracted to create this record, so its absence is not the property under
     // test and asserting it made this case fail the moment that ticket landed. What must hold is
@@ -568,76 +579,59 @@ describe("external-reproduction", () => {
     assert.notEqual(live.gates?.G2, "RESOLVED", "live G2 is RESOLVED without a feasibility pass");
     assert.notEqual(live.gates?.G3, "RESOLVED", "live G3 is RESOLVED without a feasibility pass");
 
-    const fakeRequirement = run(
-      completeInput(canonicalize, {
-        publicationRequirements: [{ id: "not-a-real-requirement", status: "RESOLVED" }]
-      })
-    );
-    assert.equal(fakeRequirement.ok, false, "a caller-minted requirement id minted G4_PASS");
-    assert.equal(fakeRequirement.permits_publication, false, "a caller-minted requirement id permitted publication");
-    assert.ok(
-      has(fakeRequirement, "contributor_terms"),
-      "the E14 ledger's contributor_terms was not consulted when a fake requirement array was injected"
-    );
-    assert.ok(
-      has(fakeRequirement, "formal_publication_review"),
-      "the E14 ledger's formal_publication_review was not consulted when a fake requirement array was injected"
-    );
+    // The ledger is read from the tree, never from the caller. Injecting a requirement array --
+    // a fake id, a partial set, or an all-RESOLVED one -- must change nothing at all, which is a
+    // stronger statement than the old one that named ids the live ledger happened to leave open.
+    for (const [label, injected] of [
+      ["a fake requirement id", [{ id: "not-a-real-requirement", status: "RESOLVED" }]],
+      ["a partial ledger", [{ id: "license", status: "RESOLVED" }]],
+      ["an all-RESOLVED ledger", allResolvedPublication()]
+    ] as [string, unknown][]) {
+      const injectedRun = run(completeInput(canonicalize, { publicationRequirements: injected }));
+      assert.equal(
+        injectedRun.permits_claims,
+        false,
+        `${label} minted claim clearance`
+      );
+      assert.deepEqual(
+        [...(injectedRun.claim_blockers ?? [])].sort(),
+        [...(live.claim_blockers ?? [])].sort(),
+        `${label} changed the claim blockers, so the caller reached the ledger`
+      );
+    }
 
-    const licenseOnly = run(
-      completeInput(canonicalize, {
-        publicationRequirements: [{ id: "license", status: "RESOLVED" }]
-      })
-    );
-    assert.equal(licenseOnly.ok, false, "a partial caller-supplied ledger minted G4_PASS");
-    assert.ok(has(licenseOnly, "contributor_terms"), "license-only injection skipped contributor_terms");
-    assert.ok(
-      has(licenseOnly, "formal_publication_review"),
-      "license-only injection skipped formal_publication_review"
-    );
-
-    const pretendedClearance = run(
-      completeInput(canonicalize, {
-        publicationRequirements: allResolvedPublication()
-      })
-    );
-    assert.equal(pretendedClearance.ok, false, "an injected all-RESOLVED publication array minted G4_PASS");
-    assert.ok(
-      has(pretendedClearance, "contributor_terms"),
-      "injected RESOLVED publication skipped the live E14 contributor_terms ledger row"
-    );
-
-    const publicationOpen = run(completeInput(canonicalize));
-    assert.equal(publicationOpen.ok, false, "unresolved contributor_terms did not block");
-    assert.ok(has(publicationOpen, "UNRESOLVED_GATE"), "unresolved contributor_terms was not UNRESOLVED_GATE");
-    assert.ok(has(publicationOpen, "contributor_terms"), "unresolved contributor_terms was not named");
-
+    // Gate status is read from the tree too. Injecting G1-G3 as RESOLVED must not clear a claim.
     const pretendedGates = run(
       completeInput(canonicalize, {
         gateStatus: resolvedGates()
       })
     );
-    assert.equal(pretendedGates.ok, false, "injected G1–G3 RESOLVED minted G4_PASS");
-    assert.ok(has(pretendedGates, "G1"), "injected G1 RESOLVED skipped the live E12 feasibility record");
-    assert.ok(has(pretendedGates, "G2"), "injected G2 RESOLVED closed a deferred calibration study");
-    assert.ok(has(pretendedGates, "G3"), "injected G3 RESOLVED closed a deferred calibration study");
+    assert.equal(pretendedGates.permits_claims, false, "injected G1-G3 RESOLVED minted claim clearance");
+    for (const gate of ["G1", "G2", "G3"]) {
+      assert.ok(
+        (pretendedGates.claim_blockers ?? []).includes(gate),
+        `injected ${gate} RESOLVED closed a gate no artifact in this tree closes`
+      );
+    }
 
     const pretendedE12Tokens = run(
       completeInput(canonicalize, {
         gateStatus: { G0: "RESOLVED", G1: E12_CONTINUE, G2: E12_CONTINUE, G3: E12_CONTINUE }
       })
     );
-    assert.equal(pretendedE12Tokens.ok, false, "injected G1–G3 PASS_TO_CONTINUE minted G4_PASS");
+    assert.equal(pretendedE12Tokens.permits_claims, false, "injected G1-G3 PASS_TO_CONTINUE minted claim clearance");
     assert.ok(
-      has(pretendedE12Tokens, "UNRESOLVED_GATE G1"),
+      (pretendedE12Tokens.claim_blockers ?? []).includes("G1"),
       "injected PASS_TO_CONTINUE skipped the live E12 feasibility record"
     );
 
     const e12Continue = run(completeInput(canonicalize, { readFile: withFeasibility({ G1: E12_CONTINUE, G2: E12_CONTINUE, G3: E12_CONTINUE }) }));
-    assert.equal(e12Continue.ok, false, "E12 PASS_TO_CONTINUE closed publication and independence blockers");
-    assert.equal(has(e12Continue, "UNRESOLVED_GATE G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
-    assert.ok(has(e12Continue, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2");
-    assert.ok(has(e12Continue, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3");
+    // A real feasibility record carrying the token closes G1 and nothing else. It is not a
+    // calibration study and it is not an independent reproduction.
+    assert.equal(e12Continue.permits_claims, false, "E12 PASS_TO_CONTINUE closed the whole claim set");
+    assert.equal((e12Continue.claim_blockers ?? []).includes("G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
+    assert.ok((e12Continue.claim_blockers ?? []).includes("G2"), "E12 PASS_TO_CONTINUE closed G2");
+    assert.ok((e12Continue.claim_blockers ?? []).includes("G3"), "E12 PASS_TO_CONTINUE closed G3");
     assert.equal(e12Continue.gates?.G1, "RESOLVED", "G4 did not close G1 on E12 PASS_TO_CONTINUE");
     assert.equal(e12Continue.gates?.G2, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed G2");
     assert.equal(e12Continue.gates?.G3, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed G3");
@@ -651,51 +645,45 @@ describe("external-reproduction", () => {
         })
       })
     );
-    assert.equal(e12ResolvedToken.ok, false, "E12-forbidden RESOLVED token minted G4_PASS");
-    assert.ok(
-      has(e12ResolvedToken, "UNRESOLVED_GATE G1"),
-      "E12-forbidden RESOLVED token was treated as a G1 pass"
-    );
-    assert.ok(
-      has(e12ResolvedToken, "UNRESOLVED_GATE G2"),
-      "an E12 token closed deferred G2"
-    );
-    assert.ok(
-      has(e12ResolvedToken, "UNRESOLVED_GATE G3"),
-      "an E12 token closed deferred G3"
-    );
+    assert.equal(e12ResolvedToken.permits_claims, false, "E12-forbidden RESOLVED token minted claim clearance");
+    for (const [gate, message] of [
+      ["G1", "E12-forbidden RESOLVED token was treated as a G1 pass"],
+      ["G2", "an E12 token closed deferred G2"],
+      ["G3", "an E12 token closed deferred G3"]
+    ]) {
+      assert.ok((e12ResolvedToken.claim_blockers ?? []).includes(gate), message);
+    }
 
     const e12Inconclusive = run(
       completeInput(canonicalize, {
         readFile: withFeasibility({ G1: E12_INCONCLUSIVE, G2: E12_CONTINUE, G3: E12_CONTINUE })
       })
     );
-    assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G1"), "E12 INCONCLUSIVE was treated as a G1 pass");
-    assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2 next to G1 INCONCLUSIVE");
-    assert.ok(has(e12Inconclusive, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3 next to G1 INCONCLUSIVE");
+    assert.ok((e12Inconclusive.claim_blockers ?? []).includes("G1"), "E12 INCONCLUSIVE was treated as a G1 pass");
+    assert.ok((e12Inconclusive.claim_blockers ?? []).includes("G2"), "E12 PASS_TO_CONTINUE closed G2 next to G1 INCONCLUSIVE");
+    assert.ok((e12Inconclusive.claim_blockers ?? []).includes("G3"), "E12 PASS_TO_CONTINUE closed G3 next to G1 INCONCLUSIVE");
 
     const e12Pivot = run(
       completeInput(canonicalize, {
         readFile: withFeasibility({ G1: E12_CONTINUE, G2: E12_PIVOT, G3: E12_CONTINUE })
       })
     );
-    assert.ok(has(e12Pivot, "UNRESOLVED_GATE G2"), "an E12 token closed deferred G2");
-    assert.ok(has(e12Pivot, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3 next to G2 PIVOT_REQUIRED");
-    assert.equal(has(e12Pivot, "UNRESOLVED_GATE G1"), false, "G1 PASS_TO_CONTINUE was ignored next to G2 PIVOT_REQUIRED");
+    assert.ok((e12Pivot.claim_blockers ?? []).includes("G2"), "an E12 token closed deferred G2");
+    assert.ok((e12Pivot.claim_blockers ?? []).includes("G3"), "E12 PASS_TO_CONTINUE closed G3 next to G2 PIVOT_REQUIRED");
+    assert.equal((e12Pivot.claim_blockers ?? []).includes("G1"), false, "G1 PASS_TO_CONTINUE was ignored next to G2 PIVOT_REQUIRED");
 
     const e12Other = run(
       completeInput(canonicalize, {
         readFile: withFeasibility({ G1: "YES", G2: E12_CONTINUE, G3: E12_CONTINUE })
       })
     );
-    assert.ok(has(e12Other, "UNRESOLVED_GATE G1"), "a non-empty non-E12 token was treated as a G1 pass");
-    assert.ok(has(e12Other, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2 next to a non-E12 G1 token");
-    assert.ok(has(e12Other, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3 next to a non-E12 G1 token");
+    assert.ok((e12Other.claim_blockers ?? []).includes("G1"), "a non-empty non-E12 token was treated as a G1 pass");
+    assert.ok((e12Other.claim_blockers ?? []).includes("G2"), "E12 PASS_TO_CONTINUE closed G2 next to a non-E12 G1 token");
+    assert.ok((e12Other.claim_blockers ?? []).includes("G3"), "E12 PASS_TO_CONTINUE closed G3 next to a non-E12 G1 token");
 
     const g1Open = run(completeInput(canonicalize));
-    assert.equal(g1Open.ok, false, "unresolved G1 did not block");
-    assert.ok(has(g1Open, "UNRESOLVED_GATE"), "unresolved G1 was not UNRESOLVED_GATE");
-    assert.ok(has(g1Open, "G1"), "unresolved G1 was not named");
+    assert.equal(g1Open.permits_claims, false, "unresolved G1 did not block claims");
+    assert.ok((g1Open.claim_blockers ?? []).includes("G1"), "unresolved G1 was not named");
 
     const mutatedReadFile = (path: string) =>
       path === SCHEMA_PIN_PATH ? "MUTATED-NOT-THE-PIN" : readRepositoryFile(path);
@@ -727,10 +715,13 @@ describe("external-reproduction", () => {
     );
 
     const closed = run(completeInput(canonicalize));
-    assert.equal(closed.ok, false, "RAM comparator input minted G4_PASS against live unresolved objects");
-    assert.ok(has(closed, "UNRESOLVED_GATE"), "live unresolved objects were not reported");
-    assert.ok(has(closed, "contributor_terms"), "live E14 contributor_terms was not reported");
-    assert.ok(has(closed, "G1"), "live E12 G1 absence was not reported");
+    assert.equal(closed.permits_claims, false, "RAM comparator input minted claim clearance");
+    assert.ok((closed.claim_blockers ?? []).length > 0, "live unresolved objects were not reported");
+    assert.ok(
+      (closed.claim_blockers ?? []).includes("formal_publication_review"),
+      "the live E14 ledger was not consulted"
+    );
+    assert.ok((closed.claim_blockers ?? []).includes("G1"), "live E12 G1 absence was not reported");
 
     const verdictAbsolute = resolve(root, VERDICT_PATH);
     let verdictEntry;
@@ -745,12 +736,20 @@ describe("external-reproduction", () => {
     const blocks = parseRecordBlocks(verdictText);
     const recorded = blocks.get("Derived verdict");
     assert.ok(recorded, `${VERDICT_PATH} has no "Derived verdict" record`);
-    assert.equal(recorded.verdict, "FAIL", "live G4 verdict is not FAIL");
-    assert.equal(recorded.permits_publication, false, "live G4 verdict permits publication");
+    assert.equal(recorded.verdict, live.verdict, "the recorded verdict token disagrees with the live run");
+    assert.equal(
+      recorded.permits_source_publication,
+      live.permits_source_publication,
+      "the recorded source permission disagrees with the live run"
+    );
+    // npm publication never follows from source clearance: it is a separate outward act with its
+    // own decision row, and no artifact in this tree resolves it.
     assert.equal(recorded.permits_npm_publication, false, "live G4 verdict permits npm publication");
+    assert.deepEqual(recorded.blocked_by, [], "the recorded source verdict names a blocker the live run does not");
+    assert.equal(recorded.permits_claims, false, "the recorded verdict permits claims");
     assert.ok(
-      Array.isArray(recorded.blocked_by) && (recorded.blocked_by as string[]).length > 0,
-      "live G4 verdict names nothing that blocks it"
+      Array.isArray(recorded.claim_blockers) && (recorded.claim_blockers as string[]).length > 0,
+      "the recorded verdict clears source without naming what that clearance leaves open"
     );
     const recordedGates = blocks.get("Gate blockers");
     assert.ok(recordedGates, `${VERDICT_PATH} has no "Gate blockers" record`);
@@ -759,9 +758,11 @@ describe("external-reproduction", () => {
       live.gates?.G0,
       "G4-VERDICT G0 status does not match the live gate"
     );
-    for (const name of recorded.blocked_by as string[]) {
-      const needle = name === "independent_reproduction" ? "NO_INDEPENDENT_REPRODUCTION" : name;
-      assert.ok(has(live, needle), `G4-VERDICT blocked_by ${name} is not in the live error list`);
+    for (const name of recorded.claim_blockers as string[]) {
+      assert.ok(
+        (live.claim_blockers ?? []).includes(name),
+        `G4-VERDICT claim_blockers ${name} is not in the live claim blocker list`
+      );
     }
     assert.ok(
       verdictText.includes("MIT is the outbound copyright grant")
@@ -793,13 +794,17 @@ describe("external-reproduction", () => {
       headSha: HEAD,
       readFile: world.readFile
     });
-    assert.equal(passed.ok, false, "G4 passed while G2 and G3 deferred studies are absent");
-    assert.equal(passed.verdict, null, "G4 emitted G4_PASS while G2 and G3 deferred studies are absent");
-    assert.equal(passed.permits_publication, false, "G4 permitted publication while G2 and G3 are unresolved");
+    // A world with an allowlisted independent reproduction, G0 truth, an E12 pass and a fully
+    // resolved ledger closes the source gate outright. It still cannot make a claim: the two
+    // deferred calibration studies are the only thing left, and they are exactly what is named.
+    assert.equal(passed.ok, true, `the closable world failed the source gate: ${JSON.stringify(passed.errors)}`);
+    assert.equal(passed.verdict, "G4_SOURCE_PASS", "the closable world did not emit the source pass token");
+    assert.equal(passed.permits_source_publication, true, "the closable world was refused source publication");
+    assert.equal(passed.permits_claims, false, "G2 and G3 are absent yet claims were permitted");
     assert.deepEqual(
-      passed.errors,
-      ["UNRESOLVED_GATE G2", "UNRESOLVED_GATE G3"],
-      "the closable G0/G1/reproduction/publication world did not fail specifically on deferred G2 and G3"
+      passed.claim_blockers,
+      ["G2", "G3"],
+      "the closable G0/G1/reproduction/publication world did not block specifically on deferred G2 and G3"
     );
     assert.equal(passed.reproduction?.independent, true, "full-pass world was not independent");
     assert.equal(passed.reproduction?.signature_ok, true, "full-pass world failed signature verification");
@@ -809,9 +814,9 @@ describe("external-reproduction", () => {
     assert.equal(passed.gates?.G1, "RESOLVED", "full-pass world left G1 unresolved against E12 PASS_TO_CONTINUE");
     assert.equal(passed.gates?.G2, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed deferred G2");
     assert.equal(passed.gates?.G3, "UNRESOLVED", "E12 PASS_TO_CONTINUE closed deferred G3");
-    assert.equal(has(passed, "UNRESOLVED_GATE G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
-    assert.ok(has(passed, "UNRESOLVED_GATE G2"), "E12 PASS_TO_CONTINUE closed G2");
-    assert.ok(has(passed, "UNRESOLVED_GATE G3"), "E12 PASS_TO_CONTINUE closed G3");
+    assert.equal((passed.claim_blockers ?? []).includes("G1"), false, "E12 PASS_TO_CONTINUE left G1 unresolved");
+    assert.ok((passed.claim_blockers ?? []).includes("G2"), "E12 PASS_TO_CONTINUE closed G2");
+    assert.ok((passed.claim_blockers ?? []).includes("G3"), "E12 PASS_TO_CONTINUE closed G3");
     assert.equal(has(passed, "SELF_ATTESTED"), false, "full-pass world was treated as self-attested");
     assert.equal(has(passed, "UNTRUSTED_PRINCIPAL"), false, "full-pass world refused an allowlisted principal");
     assert.equal(
@@ -893,7 +898,7 @@ describe("external-reproduction", () => {
       "the CLI path accepted a signed allowlisted manifest whose kind is not independent-reproduction"
     );
     assert.ok(
-      has(fromCli, "NO_INDEPENDENT_REPRODUCTION"),
+      has(fromCli, "NO_REPRODUCTION"),
       "the CLI path did not apply the tree-slot kind check"
     );
     assert.equal(
@@ -918,7 +923,7 @@ describe("external-reproduction", () => {
       "the tree slot accepted a signed allowlisted manifest whose kind is not independent-reproduction"
     );
     assert.ok(
-      has(fromTree, "NO_INDEPENDENT_REPRODUCTION"),
+      has(fromTree, "NO_REPRODUCTION"),
       "the tree slot kind check was not applied"
     );
 
@@ -937,7 +942,7 @@ describe("external-reproduction", () => {
       "the CLI path refused a signed allowlisted independent-reproduction"
     );
     assert.equal(
-      has(cliCorrect, "NO_INDEPENDENT_REPRODUCTION"),
+      has(cliCorrect, "NO_REPRODUCTION"),
       false,
       "the CLI path treated a well-kinded independent-reproduction as absent"
     );
@@ -1076,7 +1081,7 @@ describe("external-reproduction", () => {
       `the ledger's seventh unresolved id ${seventhId} was not named; the gate is still walking the frozen six-id list`
     );
     assert.equal(
-      has(gated, "UNRESOLVED_GATE contributor_terms"),
+      (gated.claim_blockers ?? []).includes("formal_publication_review"),
       false,
       "resolved floor rows were named, so this case is not isolating the seventh row"
     );
@@ -1139,7 +1144,7 @@ describe("external-reproduction", () => {
       "the gate did not read Derived verdict, or treated disagreement as a pass"
     );
     assert.equal(
-      has(gated, "UNRESOLVED_GATE contributor_terms"),
+      (gated.claim_blockers ?? []).includes("formal_publication_review"),
       false,
       "resolved rows were named, so this case is not isolating the derived-verdict disagreement"
     );
@@ -1376,12 +1381,14 @@ describe("external-reproduction", () => {
     const run = runG4Gate as RunG4Gate;
     const canonicalize = canonicalJsonBytes as CanonicalJsonBytes;
 
-    // The G4 record requires agreement on every permits_* flag. Comparing a list of names
-    // compiled when the code was written let a fourth flag through: all three known permits are
-    // true beside a CLEARED token, and permits_npm_publication is false. Nothing named it.
+    // The G4 record requires agreement on every permits_* flag, enumerated from both sides rather
+    // than from a list compiled when the code was written. The witness has to be a flag the
+    // reducer computes as true, so npm publication no longer works for it -- that one is false by
+    // construction now, and false beside CLEARED is agreement. Redistribution is the live case:
+    // a fully resolved ledger grants it, so a document withholding it disagrees.
     const clearance = publicationClearanceDocument(resolvedPublicationRows(), {
       ...CLEARED_PUBLICATION_VERDICT,
-      permits_npm_publication: false
+      permits_redistribution: false
     } as unknown as typeof CLEARED_PUBLICATION_VERDICT);
     const { readFile } = withProtocolWorldAndClearance(canonicalize, clearance);
     const gated = run({

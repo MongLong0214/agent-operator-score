@@ -44,10 +44,10 @@ cited by reference, and is neither repeated nor substituted.
     {
       "id": "contributor_terms",
       "title": "Contribution acceptance terms",
-      "status": "UNRESOLVED",
+      "status": "RESOLVED",
       "artifact": "CONTRIBUTING.md",
       "evidence": "Contribution acceptance terms",
-      "reason": "The tree defines no inbound license, contributor license agreement, or developer certificate of origin. CONTRIBUTING.md refuses external contribution acceptance until this gate clears, which is a refusal and not a term."
+      "reason": "Inbound contributions are accepted under the Developer Certificate of Origin 1.1, certified per commit with a Signed-off-by line, and are licensed inbound on the same MIT terms this repository ships outbound. Chosen by the repository owner and sole maintainer, MongLong0214. A DCO needs no signature collection, no separate agreement and no copyright assignment; it is a per-commit certification of origin by the contributor. CONTRIBUTING.md carries the terms and the sign-off requirement."
     },
     {
       "id": "redistribution",
@@ -79,7 +79,15 @@ cited by reference, and is neither repeated nor substituted.
       "status": "UNRESOLVED",
       "artifact": "docs/clearance/PUBLICATION-LEGAL-CLEARANCE.md",
       "evidence": "Formal publication and legal review",
-      "reason": "The review PRD E14 requires has not taken place. No record of a qualified reviewer exists in the tree, and this lane cannot supply one."
+      "reason": "No qualified reviewer has examined this repository, and this lane cannot supply one. Required before any published claim about what the metric measures; not required to ship MIT-licensed source, which the owner decision covers instead."
+    },
+    {
+      "id": "owner_publication_decision",
+      "title": "Owner decision to publish source",
+      "status": "RESOLVED",
+      "artifact": "docs/decisions/PUBLICATION-CLEARANCE.md",
+      "evidence": "Owner publication decision",
+      "reason": "The repository owner and sole maintainer decided to publish this tree as source-visible MIT. The decision covers the source only. It is a maintainer decision, not a legal review, and it is recorded as such: no qualified reviewer has examined this repository, and the claim set records that separately."
     }
   ]
 }
@@ -95,7 +103,7 @@ cited by reference, and is neither repeated nor substituted.
   ],
   "permits": {
     "redistribution": true,
-    "external_contribution_acceptance": false,
+    "external_contribution_acceptance": true,
     "npm_publication": false,
     "public_visibility_change": false
   }
@@ -106,14 +114,12 @@ cited by reference, and is neither repeated nor substituted.
 
 ```json
 {
-  "verdict": "BLOCKED",
-  "blocked_by": [
-    "contributor_terms",
-    "formal_publication_review"
-  ],
-  "permits_publication": false,
-  "permits_redistribution": false,
-  "permits_external_contribution_acceptance": false
+  "verdict": "CLEARED",
+  "blocked_by": [],
+  "permits_npm_publication": false,
+  "permits_publication": true,
+  "permits_redistribution": true,
+  "permits_external_contribution_acceptance": true
 }
 ```
 

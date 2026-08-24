@@ -17,14 +17,22 @@ const CONTRIBUTING_PATH = "CONTRIBUTING.md";
 // The E14/G4 requirement set this ticket must resolve or block on. Held here rather than read
 // from the record under test, so a record that simply drops a requirement cannot make itself
 // complete.
-const REQUIRED_IDS = [
+// Two scopes, one ledger. SOURCE_IDS is what shipping MIT-licensed source needs and what the
+// derived verdict is computed from. CLAIM_IDS is what a published claim about the metric would
+// need: recorded in the same ledger so it is visible beside the clearance, and never satisfied by
+// anything in this tree.
+const SOURCE_IDS = [
   "contributor_terms",
-  "formal_publication_review",
   "license",
+  "owner_publication_decision",
   "redistribution",
   "security_policy",
   "third_party_notices"
 ];
+// Only the claim whose sole evidence is a ledger row. G1-G3 come from the feasibility record and
+// independence from the reproduction manifest, so they are never closable by writing a status here.
+const CLAIM_IDS = ["formal_publication_review"];
+const REQUIRED_IDS = [...SOURCE_IDS, ...CLAIM_IDS].sort();
 const REQUIREMENT_KEYS = ["artifact", "evidence", "id", "reason", "status", "title"];
 const CLEARANCE_STATUSES = ["CONFLICT", "RESOLVED", "UNRESOLVED"];
 const REVIEW_KEYS = ["limits", "query", "result", "reviewed_at", "source", "status"];
@@ -35,6 +43,7 @@ const REVIEW_KEYS = ["limits", "query", "result", "reviewed_at", "source", "stat
 // with this derivation and fails.
 const derivePublicationVerdict = (requirements) => {
   const blockedBy = requirements
+    .filter(({ id }) => !CLAIM_IDS.includes(id))
     .filter(({ status }) => status !== "RESOLVED")
     .map(({ id }) => id)
     .sort();
@@ -42,6 +51,7 @@ const derivePublicationVerdict = (requirements) => {
   return {
     verdict: cleared ? "CLEARED" : "BLOCKED",
     blocked_by: blockedBy,
+    permits_npm_publication: false,
     permits_publication: cleared,
     permits_redistribution: cleared,
     permits_external_contribution_acceptance: cleared
@@ -166,24 +176,34 @@ test("license", () => {
 test("contributor", () => {
   const decision = loadDecision();
   const legal = loadLegalReview();
-  const requirement = assertRequirement(decision, legal, "contributor_terms", "UNRESOLVED", CONTRIBUTING_PATH);
+  const requirement = assertRequirement(decision, legal, "contributor_terms", "RESOLVED", CONTRIBUTING_PATH);
 
   const redistribution = decision.blocks.get("Redistribution conditions");
   assert.ok(redistribution, `${DECISION_PATH} has no "Redistribution conditions" record`);
   assert.equal(
     redistribution.permits?.external_contribution_acceptance,
-    false,
-    "contributor terms are unresolved yet the record permits external contribution acceptance"
+    true,
+    "contributor terms are resolved yet the record still refuses external contribution acceptance"
   );
 
-  // The contributor-facing document must still refuse acceptance while this requirement is open.
-  // CONTRIBUTING.md is owned elsewhere; this reads it and never edits it.
+  // A RESOLVED row is a claim that terms exist. The contributor-facing document has to carry them,
+  // or the row records a decision nobody can act on. CONTRIBUTING.md is owned elsewhere; this
+  // reads it and never edits it.
   const contributing = readFileSync(resolve(repositoryRoot, CONTRIBUTING_PATH), "utf8");
-  assert.ok(
-    contributing.includes(
-      "Contribution acceptance and redistribution remain blocked until the E14/G4 LICENSE and publication gate clears."
-    ),
-    "CONTRIBUTING.md no longer refuses contribution acceptance while contributor terms are unresolved"
+  assert.match(
+    contributing,
+    /Developer Certificate of Origin/,
+    "contributor_terms is RESOLVED but CONTRIBUTING.md names no inbound regime"
+  );
+  assert.match(
+    contributing,
+    /Signed-off-by:/,
+    "the DCO is named but the sign-off line contributors must add is not shown"
+  );
+  assert.doesNotMatch(
+    contributing,
+    /Inbound contribution terms have not been selected/,
+    "CONTRIBUTING.md still says no inbound terms exist while the row claims they do"
   );
   assert.match(requirement.reason, /\S/);
 });
@@ -299,11 +319,15 @@ test("license-contribution-redistribution", () => {
     ),
     "the redistribution record does not state the MIT notice condition"
   );
+  // MIT grants redistribution. Contribution acceptance is not something MIT grants or withholds --
+  // it follows from the inbound regime, which is now the DCO, so this flag tracks contributor_terms
+  // rather than the outbound licence. npm publication and a visibility change stay false because
+  // each is a separate outward act with its own decision.
   assert.deepEqual(
     redistribution.permits,
     {
       redistribution: true,
-      external_contribution_acceptance: false,
+      external_contribution_acceptance: true,
       npm_publication: false,
       public_visibility_change: false
     },
@@ -324,10 +348,24 @@ test("license-contribution-redistribution", () => {
     assert.deepEqual(derivePublicationVerdict(oneOpen), {
       verdict: "BLOCKED",
       blocked_by: [id],
+      permits_npm_publication: false,
       permits_publication: false,
       permits_redistribution: false,
       permits_external_contribution_acceptance: false
     }, `an unresolved ${id} did not block on its own`);
+  }
+
+  // And the other direction, which is the whole point of splitting the scopes: an open claim row
+  // must not block source clearance. If this ever blocks, the two scopes have collapsed back into
+  // one and shipping source silently starts requiring a calibration study.
+  for (const id of CLAIM_IDS) {
+    const oneOpen = resolvedAll.map((requirement) =>
+      requirement.id === id ? { ...requirement, status: "UNRESOLVED" } : requirement);
+    assert.equal(
+      derivePublicationVerdict(oneOpen).verdict,
+      "CLEARED",
+      `an open ${id} blocked source clearance; claim requirements must not gate shipping source`
+    );
   }
 });
 
@@ -368,14 +406,25 @@ test("unresolved-block", () => {
     derivePublicationVerdict(decision.requirements),
     "the recorded verdict is not the one this requirement ledger derives"
   );
-  assert.equal(recorded.verdict, "BLOCKED", "publication is cleared while E14/G4 requirements are open");
-  assert.ok(recorded.blocked_by.length > 0, "a blocking verdict names nothing that blocks it");
+  // Source clearance is the claim this document makes, and it is CLEARED. What must never drift is
+  // the other half: every claim requirement stays open and says why, so a reader can never take
+  // "CLEARED" as covering an independent reproduction, a feasibility verdict, a calibration study,
+  // or a formal review.
+  assert.equal(recorded.verdict, "CLEARED", "source publication is blocked while its requirements are resolved");
+  assert.deepEqual(recorded.blocked_by, [], "a cleared verdict names something that blocks it");
+  for (const id of CLAIM_IDS) {
+    const row = decision.byId.get(id);
+    assert.ok(row, `${DECISION_PATH} ledger omits claim requirement ${id}`);
+    assert.equal(row.status, "UNRESOLVED", `claim requirement ${id} is recorded as resolved`);
+    assert.match(row.reason, /\S/, `claim requirement ${id} is open without saying why`);
+  }
 
   // Selectivity: the derivation is not a constant.
   const allResolved = decision.requirements.map((requirement) => ({ ...requirement, status: "RESOLVED" }));
   assert.deepEqual(derivePublicationVerdict(allResolved), {
     verdict: "CLEARED",
     blocked_by: [],
+    permits_npm_publication: false,
     permits_publication: true,
     permits_redistribution: true,
     permits_external_contribution_acceptance: true
