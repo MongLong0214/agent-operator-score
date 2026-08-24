@@ -82,7 +82,7 @@ as machine-checked reproduction.
     "node": "v22.23.2",
     "engines": ">=22.18 <25"
   },
-  "head_sha": "8f868b884c9695d329c5d1f2d70bd7efebb7f9ec",
+  "head_sha": "b9ea2eb46030fd55f3eb556257f463f31335c9d9",
   "method": "git clone of this repository into a scratch directory, checkout of head_sha, then node scripts/verify-g0.mjs",
   "output_digests": [
     {
@@ -110,43 +110,43 @@ as machine-checked reproduction.
       "bytes_sha256": "a99959bb0667af38647fee95f9c04c4c5ca594a0bbbbff6dc9d8fcca86b8eeb3"
     },
     {
-      "path": "packages/scorer/src/diagnosis/select-lever.ts",
+      "path": "src/reporter/diagnosis/select-lever.ts",
       "bytes_sha256": "dbb1a7fa388ba4483732fa265a7e3ac1792b38b52576091a3ddf4e20b10af645"
     },
     {
-      "path": "packages/scorer/src/eligibility.ts",
+      "path": "src/scorer/eligibility.ts",
       "bytes_sha256": "b21dbd6bb6c7223c6affcffe8f30f717a8b5f0987170ccc940ea40650fd1f4f8"
     },
     {
-      "path": "packages/scorer/src/graders/context.ts",
+      "path": "src/scorer/graders/context.ts",
       "bytes_sha256": "3905231b0cfc5c75523a988af5dc9728ec01700852c6657b02442e86a2d7a3a5"
     },
     {
-      "path": "packages/scorer/src/graders/graph.ts",
+      "path": "src/scorer/graders/graph.ts",
       "bytes_sha256": "293cf17af4c143ef982256b135b98260ce943823c2649fa49df7f4a043fdbd3c"
     },
     {
-      "path": "packages/scorer/src/graders/intent.ts",
+      "path": "src/scorer/graders/intent.ts",
       "bytes_sha256": "d0d8937756e557d58fa0057cc3cdee0cd484ba8e6bec87465331ece01e676598"
     },
     {
-      "path": "packages/scorer/src/issuance.ts",
+      "path": "src/scorer/issuance.ts",
       "bytes_sha256": "fada45bf5be4c55e5d0999dbb8dd7d3aac517875a9a9e9da7ff45df8d302d78e"
     },
     {
-      "path": "packages/scorer/src/safety.ts",
+      "path": "src/scorer/safety.ts",
       "bytes_sha256": "4f5f76266de00dd250735f0d84e78ec00039210b601538ecedd34bc07386a61d"
     },
     {
-      "path": "packages/scorer/src/score.ts",
+      "path": "src/scorer/score.ts",
       "bytes_sha256": "8b06f970bc481ee4c87fa8e1de7fc95dcf09417a6d0c8443094ea5ebb9fa8966"
     },
     {
-      "path": "packages/scorer/src/simulation/opportunity-audit.ts",
+      "path": "src/_deferred/opportunity-audit.ts",
       "bytes_sha256": "c8a8685f7e94ceb0368158a7222503b8feba3a600db0d6ff2578498932c00edd"
     },
     {
-      "path": "packages/scorer/src/simulation/pack-budget.ts",
+      "path": "src/_deferred/pack-budget.ts",
       "bytes_sha256": "ced578b4e577770aa132af8eb48272b83de0c5588ad47bacb9fa6710563ccc11"
     },
     {

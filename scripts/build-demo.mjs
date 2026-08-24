@@ -3,28 +3,28 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { gradeStateContinuity } from "../packages/scorer/src/graders/state-continuity.ts";
-import { gradeIdempotency } from "../packages/scorer/src/graders/idempotency.ts";
-import { gradeStallHandling } from "../packages/scorer/src/graders/stall.ts";
-import { gradeCompletionClaim } from "../packages/scorer/src/graders/completion-claim.ts";
-import { gradeRecovery } from "../packages/scorer/src/graders/recovery.ts";
-import { gradeSafeAutonomy } from "../packages/scorer/src/graders/safety.ts";
-import { gradeEfficiency } from "../packages/scorer/src/graders/efficiency.ts";
+import { gradeStateContinuity } from "../src/scorer/graders/state-continuity.ts";
+import { gradeIdempotency } from "../src/scorer/graders/idempotency.ts";
+import { gradeStallHandling } from "../src/scorer/graders/stall.ts";
+import { gradeCompletionClaim } from "../src/scorer/graders/completion-claim.ts";
+import { gradeRecovery } from "../src/scorer/graders/recovery.ts";
+import { gradeSafeAutonomy } from "../src/scorer/graders/safety.ts";
+import { gradeEfficiency } from "../src/scorer/graders/efficiency.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_VERSION = "g0-demo-v1";
 
 const GRADER_PATHS = Object.freeze([
-  "packages/scorer/src/graders/state-continuity.ts",
-  "packages/scorer/src/graders/idempotency.ts",
-  "packages/scorer/src/graders/stall.ts",
-  "packages/scorer/src/graders/outcome.ts",
-  "packages/scorer/src/graders/scope-regression.ts",
-  "packages/scorer/src/graders/evidence-freshness.ts",
-  "packages/scorer/src/graders/completion-claim.ts",
-  "packages/scorer/src/graders/recovery.ts",
-  "packages/scorer/src/graders/safety.ts",
-  "packages/scorer/src/graders/efficiency.ts"
+  "src/scorer/graders/state-continuity.ts",
+  "src/scorer/graders/idempotency.ts",
+  "src/scorer/graders/stall.ts",
+  "src/scorer/graders/outcome.ts",
+  "src/scorer/graders/scope-regression.ts",
+  "src/scorer/graders/evidence-freshness.ts",
+  "src/scorer/graders/completion-claim.ts",
+  "src/scorer/graders/recovery.ts",
+  "src/scorer/graders/safety.ts",
+  "src/scorer/graders/efficiency.ts"
 ]);
 
 const FRESH_EVIDENCE = Object.freeze({

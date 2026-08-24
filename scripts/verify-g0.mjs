@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { scoreAosCodingP0 } from "../packages/scorer/src/score.ts";
+import { scoreAosCodingP0 } from "../src/scorer/score.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -41,16 +41,16 @@ const SCHEMA_PATHS = Object.freeze([
 ]);
 
 const SCORER_PATHS = Object.freeze([
-  "packages/scorer/src/diagnosis/select-lever.ts",
-  "packages/scorer/src/eligibility.ts",
-  "packages/scorer/src/graders/context.ts",
-  "packages/scorer/src/graders/graph.ts",
-  "packages/scorer/src/graders/intent.ts",
-  "packages/scorer/src/issuance.ts",
-  "packages/scorer/src/safety.ts",
-  "packages/scorer/src/score.ts",
-  "packages/scorer/src/simulation/opportunity-audit.ts",
-  "packages/scorer/src/simulation/pack-budget.ts"
+  "src/reporter/diagnosis/select-lever.ts",
+  "src/scorer/eligibility.ts",
+  "src/scorer/graders/context.ts",
+  "src/scorer/graders/graph.ts",
+  "src/scorer/graders/intent.ts",
+  "src/scorer/issuance.ts",
+  "src/scorer/safety.ts",
+  "src/scorer/score.ts",
+  "src/_deferred/opportunity-audit.ts",
+  "src/_deferred/pack-budget.ts"
 ]);
 
 const CORPUS_FILES = Object.freeze(["manifest.json", "input.json", "expected.json", "mutation.json"]);
@@ -83,16 +83,16 @@ export const G0_DIGEST_MANIFEST = Object.freeze([
   Object.freeze({ path: "specs/opportunity-profile.schema.json", kind: "schema", bytes_sha256: "ee7a6ce0a1b5aec0975810176fe3fc11a93c5403e7cdab7e34618af252069913" }),
   Object.freeze({ path: "specs/scoring.v0.json", kind: "schema", bytes_sha256: "2a4169c4175fa59c8bd895ae6c1341e5f117ff33e44f9190cb271615e7c1f5bd" }),
   Object.freeze({ path: "specs/issuance.v0.json", kind: "schema", bytes_sha256: "a99959bb0667af38647fee95f9c04c4c5ca594a0bbbbff6dc9d8fcca86b8eeb3" }),
-  Object.freeze({ path: "packages/scorer/src/diagnosis/select-lever.ts", kind: "scorer", bytes_sha256: "dbb1a7fa388ba4483732fa265a7e3ac1792b38b52576091a3ddf4e20b10af645" }),
-  Object.freeze({ path: "packages/scorer/src/eligibility.ts", kind: "scorer", bytes_sha256: "b21dbd6bb6c7223c6affcffe8f30f717a8b5f0987170ccc940ea40650fd1f4f8" }),
-  Object.freeze({ path: "packages/scorer/src/graders/context.ts", kind: "scorer", bytes_sha256: "3905231b0cfc5c75523a988af5dc9728ec01700852c6657b02442e86a2d7a3a5" }),
-  Object.freeze({ path: "packages/scorer/src/graders/graph.ts", kind: "scorer", bytes_sha256: "293cf17af4c143ef982256b135b98260ce943823c2649fa49df7f4a043fdbd3c" }),
-  Object.freeze({ path: "packages/scorer/src/graders/intent.ts", kind: "scorer", bytes_sha256: "d0d8937756e557d58fa0057cc3cdee0cd484ba8e6bec87465331ece01e676598" }),
-  Object.freeze({ path: "packages/scorer/src/issuance.ts", kind: "scorer", bytes_sha256: "fada45bf5be4c55e5d0999dbb8dd7d3aac517875a9a9e9da7ff45df8d302d78e" }),
-  Object.freeze({ path: "packages/scorer/src/safety.ts", kind: "scorer", bytes_sha256: "4f5f76266de00dd250735f0d84e78ec00039210b601538ecedd34bc07386a61d" }),
-  Object.freeze({ path: "packages/scorer/src/score.ts", kind: "scorer", bytes_sha256: "8b06f970bc481ee4c87fa8e1de7fc95dcf09417a6d0c8443094ea5ebb9fa8966" }),
-  Object.freeze({ path: "packages/scorer/src/simulation/opportunity-audit.ts", kind: "scorer", bytes_sha256: "c8a8685f7e94ceb0368158a7222503b8feba3a600db0d6ff2578498932c00edd" }),
-  Object.freeze({ path: "packages/scorer/src/simulation/pack-budget.ts", kind: "scorer", bytes_sha256: "ced578b4e577770aa132af8eb48272b83de0c5588ad47bacb9fa6710563ccc11" }),
+  Object.freeze({ path: "src/reporter/diagnosis/select-lever.ts", kind: "scorer", bytes_sha256: "dbb1a7fa388ba4483732fa265a7e3ac1792b38b52576091a3ddf4e20b10af645" }),
+  Object.freeze({ path: "src/scorer/eligibility.ts", kind: "scorer", bytes_sha256: "b21dbd6bb6c7223c6affcffe8f30f717a8b5f0987170ccc940ea40650fd1f4f8" }),
+  Object.freeze({ path: "src/scorer/graders/context.ts", kind: "scorer", bytes_sha256: "3905231b0cfc5c75523a988af5dc9728ec01700852c6657b02442e86a2d7a3a5" }),
+  Object.freeze({ path: "src/scorer/graders/graph.ts", kind: "scorer", bytes_sha256: "293cf17af4c143ef982256b135b98260ce943823c2649fa49df7f4a043fdbd3c" }),
+  Object.freeze({ path: "src/scorer/graders/intent.ts", kind: "scorer", bytes_sha256: "d0d8937756e557d58fa0057cc3cdee0cd484ba8e6bec87465331ece01e676598" }),
+  Object.freeze({ path: "src/scorer/issuance.ts", kind: "scorer", bytes_sha256: "fada45bf5be4c55e5d0999dbb8dd7d3aac517875a9a9e9da7ff45df8d302d78e" }),
+  Object.freeze({ path: "src/scorer/safety.ts", kind: "scorer", bytes_sha256: "4f5f76266de00dd250735f0d84e78ec00039210b601538ecedd34bc07386a61d" }),
+  Object.freeze({ path: "src/scorer/score.ts", kind: "scorer", bytes_sha256: "8b06f970bc481ee4c87fa8e1de7fc95dcf09417a6d0c8443094ea5ebb9fa8966" }),
+  Object.freeze({ path: "src/_deferred/opportunity-audit.ts", kind: "scorer", bytes_sha256: "c8a8685f7e94ceb0368158a7222503b8feba3a600db0d6ff2578498932c00edd" }),
+  Object.freeze({ path: "src/_deferred/pack-budget.ts", kind: "scorer", bytes_sha256: "ced578b4e577770aa132af8eb48272b83de0c5588ad47bacb9fa6710563ccc11" }),
   Object.freeze({ path: "fixtures/reference-pass/corpus/manifest.json", kind: "fixture", bytes_sha256: "03ba91981a863fc85090fd3fbbf88f52753ebc55b16fc9f32f8ac3f261dba6fa" }),
   Object.freeze({ path: "fixtures/reference-pass/corpus/input.json", kind: "fixture", bytes_sha256: "0b92a238660875c6766b40e7078c16edcc4a059b1667efdc6c016594c52a42ea" }),
   Object.freeze({ path: "fixtures/reference-pass/corpus/expected.json", kind: "fixture", bytes_sha256: "e7fda02b53e51fd379e32b163c64b5c6d0a3ee16fb71760f59c08bf926177d1c" }),
@@ -156,7 +156,7 @@ export const digestFileText = (text) => sha256Hex(normalizeLf(String(text)));
 
 // Pinned. Editing one recorded digest must break this too.
 export const G0_DIGEST_MANIFEST_SHA256 =
-  "eb75a654c105cc65d33381e30672bebf397a51e852f983d205232a8ab4441360";
+  "0a5b3f30447d5aab01abe8e9113ecc68443f7afdc48937bc2e6e87ae4fac4327";
 
 export const isSupportedNodeVersion = (version) => {
   if (typeof version !== "string") return false;
