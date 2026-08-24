@@ -1,6 +1,0 @@
-{
-  "mode": "auto",
-  "unattended": true,
-  "max_records_per_commit": 1,
-  "require_verified_evidence": true
-}
