@@ -1,6 +1,6 @@
 # E14-003 · Close the G4 source-release gate and report the claim set
 
-- Status: **SOURCE GATE CLOSED — CLAIM SET OPEN**
+- Status: **BLOCKED — ADR + PRD + TICKET MAINTAINER GATES REQUIRED**
 - Epic: E14
 - Milestone: S5 · Public OSS
 - Owning PRD: [E14](../../prd/PRD-E14-public-oss-and-g4.md)
