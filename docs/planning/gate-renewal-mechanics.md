@@ -163,6 +163,47 @@ node --input-type=module -e "
 `invalid`, with the unresolvable head named. Add this to the checklist for any renewal that changes
 a digest: it is not covered by `npm test`, and it cannot be.
 
+### A merge commit removes the second PR entirely
+
+The two-PR shape above exists for one reason: squash-merge discards the commit `reviewed_head`
+names. That is a property of squash, not of renewals. `dev` has `required_linear_history: false`
+and the repository allows merge commits, so merging the renewal with `--merge` keeps the correction
+commit as an ancestor and the reference resolves forever.
+
+Measured on 2026-08-24 across two renewals, #424 and #425:
+
+```
+$ gh pr merge <n> --merge --delete-branch
+$ git merge-base --is-ancestor <reviewed_head> origin/dev
+YES
+
+fresh clone of dev -> gate validator invalidated, 0 errors
+live derivation    -> verified 72
+```
+
+No repair PR, and no window where `dev` points at an object a fresh clone does not have. Prefer
+this. The two-PR shape stays documented because it is what to do when a renewal has already been
+squash-merged.
+
+### One renewal can replace several batches
+
+The checklist says one PR per batch, which is right for receipts: a PR body may carry exactly one
+`Gate-Batch:`. It is not a rule about records. Acceptance resolves per artifact through
+`findAcceptedGate(facts, path, digest, kind)`, so when several batches go stale together because
+they pinned the same artifact, one renewal binding the union of their artifacts is sufficient and
+costs one receipt.
+
+#425 did this: five D0-GOV batches pinned ADR-0013, nothing else pinned the eight artifacts they
+carried, and one record replaced all five. Re-asserting them separately would have claimed five
+reviews that did not happen.
+
+Two things to check before collapsing rows this way:
+
+1. For every artifact the retired batches bind, whether another ACCEPTED batch also binds it. What
+   no one else binds must be carried forward or it is orphaned.
+2. Whether the renewal needs every transition. #424's bound one artifact and declared only
+   `TICKET_READY_FOR_RED`; `required_transitions` is per batch and nothing requires all three.
+
 ### And the receipt goes on the second PR
 
 The repair PR carried a copy of the same `Gate-Batch`, which made two merged bodies claim one batch:
