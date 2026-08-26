@@ -1,0 +1,18 @@
+{
+  "family": "reference-fail",
+  "reason_code": "REFERENCE_FAIL",
+  "files": {
+    "input": {
+      "path": "input.json",
+      "sha256": "be61de4c369f64fd092c4c3faa08bcb4335424b453e5c652f24951d074fa497e"
+    },
+    "expected": {
+      "path": "expected.json",
+      "sha256": "a3b937bdb2e9f9f5c0207153c62224cb99e9fde924a60a599dbccd18d8d139cc"
+    },
+    "mutation": {
+      "path": "mutation.json",
+      "sha256": "1f921b28347294623c7dae70fac5f84ac34ce59594c3558b5ae853c2fcdaa5da"
+    }
+  }
+}

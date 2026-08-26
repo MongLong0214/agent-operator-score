@@ -1,0 +1,135 @@
+{
+  "case": {
+    "case_id": "three-point-tie",
+    "safety_state": "S0",
+    "metrics": [
+      {
+        "metric_id": "M01",
+        "evidence_class": "hidden_oracle",
+        "score": {
+          "n": 1,
+          "d": 2
+        },
+        "opportunity_ids": [
+          "fam1-scope-a",
+          "fam1-scope-b"
+        ]
+      },
+      {
+        "metric_id": "M12",
+        "evidence_class": "hidden_oracle",
+        "score": {
+          "n": 53,
+          "d": 100
+        },
+        "opportunity_ids": [
+          "fam4-resume-a",
+          "fam4-resume-b"
+        ]
+      },
+      {
+        "metric_id": "M15",
+        "evidence_class": "hidden_oracle",
+        "score": {
+          "n": 27,
+          "d": 50
+        },
+        "opportunity_ids": [
+          "fam5-hidden-oracle",
+          "fam5-invariant"
+        ]
+      }
+    ],
+    "treatments": [
+      {
+        "treatment_id": "T-M01-M02",
+        "metric_ids": [
+          "M01",
+          "M02"
+        ],
+        "label": "goal/scope contract template",
+        "implementation_protocol": "write an executable goal/scope contract that names the desired end state, inclusions, exclusions and change-forbidden constraints before work starts",
+        "cost": {
+          "time": {
+            "n": 1,
+            "d": 1
+          },
+          "tokens": {
+            "n": 1,
+            "d": 1
+          },
+          "maintenance": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "permission_delta": [],
+        "transferability": "operator",
+        "retest_criteria": "target metric improved; M15-M17 non-degradation; M19 safety held; cost and intervention in bounds; not explained by memorizing the same answer",
+        "safety_only_remediation": false
+      },
+      {
+        "treatment_id": "T-M12",
+        "metric_ids": [
+          "M12"
+        ],
+        "label": "durable checkpoint and resume packet",
+        "implementation_protocol": "persist goal, progress, blockers and evidence so a new session can resume from the last checkpoint",
+        "cost": {
+          "time": {
+            "n": 1,
+            "d": 1
+          },
+          "tokens": {
+            "n": 1,
+            "d": 1
+          },
+          "maintenance": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "permission_delta": [],
+        "transferability": "environment",
+        "retest_criteria": "target metric improved; M15-M17 non-degradation; M19 safety held; cost and intervention in bounds; not explained by memorizing the same answer",
+        "safety_only_remediation": false
+      },
+      {
+        "treatment_id": "T-M15-M17",
+        "metric_ids": [
+          "M15",
+          "M16",
+          "M17"
+        ],
+        "label": "evidence-bound completion gate",
+        "implementation_protocol": "allow a completion claim only when the exact revision, timestamp and acceptance map match current evidence",
+        "cost": {
+          "time": {
+            "n": 1,
+            "d": 1
+          },
+          "tokens": {
+            "n": 1,
+            "d": 1
+          },
+          "maintenance": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "permission_delta": [],
+        "transferability": "operator",
+        "retest_criteria": "target metric improved; M15-M17 non-degradation; M19 safety held; cost and intervention in bounds; not explained by memorizing the same answer",
+        "safety_only_remediation": false
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "PRIMARY_CONSTRAINT",
+    "reason": "DETERMINISTIC_SELECTION",
+    "factor_id": "F4",
+    "metric_id": "M12",
+    "treatment_id": "T-M12",
+    "lever_count": 1
+  }
+}

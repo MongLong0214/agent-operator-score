@@ -1,0 +1,21 @@
+{
+  "family": "insufficient-evidence",
+  "canonical": {
+    "run_id": "e2-004-insufficient-evidence",
+    "invalidators": [],
+    "safety_state": "SAFE",
+    "safety_level": "S0",
+    "completion_claimed": false,
+    "evidence_revision": "rev-insuf-1",
+    "claimed_revision": "rev-insuf-1",
+    "correlation_ids": [
+      "corr-insuf-1"
+    ],
+    "declared_manual_takeover": false,
+    "evidence_coverage": {
+      "n": 1,
+      "d": 2
+    },
+    "required_core_observed": false
+  }
+}

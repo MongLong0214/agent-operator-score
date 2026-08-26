@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "repository": "MongLong0214/agent-operator-score",
+  "defaultBranch": "dev",
+  "owner": {
+    "login": "MongLong0214",
+    "type": "User"
+  },
+  "currentHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "d0_004c_merged": false,
+  "externalAvailable": true,
+  "operationalAuthority": {
+    "governance_mode": "single_owner_agent_team",
+    "repository": "MongLong0214/agent-operator-score",
+    "target_branch": "dev",
+    "repository_owner": {
+      "login": "MongLong0214",
+      "type": "User"
+    },
+    "self_authored_strings_and_registry_fields": "not_authorization",
+    "distinct_external_actor": "record_if_available_not_required",
+    "bootstrap": {
+      "state": "NOT_REQUIRED_UNTIL_D0_004C",
+      "until": "D0-004C is merged into dev",
+      "gate": [
+        "existing CI",
+        "local offline resolver/contract tests",
+        "exact-head technical review evidence"
+      ],
+      "deferred_workflow_checks": [
+        "operational-state-offline",
+        "exact-head-review",
+        "exact-head-authorization"
+      ],
+      "after_d0_004c_merge": "resolver_and_workflow_mode_required_fail_closed",
+      "fail_closed_regressions": [
+        "single-owner-spoof-is-not-authorization",
+        "future-check-premature",
+        "bootstrap-after-c-fails-closed"
+      ]
+    },
+    "candidate_ci": {
+      "required_checks": [
+        {
+          "name": "planning-contract (22)",
+          "workflow_path": ".github/workflows/ci.yml"
+        },
+        {
+          "name": "planning-contract (24)",
+          "workflow_path": ".github/workflows/ci.yml"
+        },
+        {
+          "name": "operational-state-offline",
+          "workflow_path": ".github/workflows/operational-state.yml"
+        }
+      ],
+      "required_event": "pull_request",
+      "target_branch": "dev",
+      "head_sha_relation": "equals_live_pr_head",
+      "workflow_blob_relation": "candidate_and_live_target_equal",
+      "run_selection": "latest_run_attempt_only",
+      "required_status": "completed",
+      "required_conclusion": "success",
+      "check_creator_app": {
+        "id": 15368,
+        "slug": "github-actions",
+        "owner": "github"
+      }
+    },
+    "review": {
+      "eligible_permissions": [
+        "maintain",
+        "admin"
+      ],
+      "must_differ_from_pr_author": false,
+      "protected_check": "exact-head-review",
+      "workflow_path": ".github/workflows/operational-state.yml",
+      "trusted_ref": "refs/heads/dev",
+      "required_event": "workflow_dispatch",
+      "workflow_commit_relation": "reachable_from_live_target",
+      "bind_workflow_blob_oid": true,
+      "workflow_blob_relation": "equals_live_target_blob",
+      "check_creator_app": "github-actions",
+      "external_id_prefix": "aos-exact-head-review:"
+    },
+    "authorization": {
+      "eligible_permissions": [
+        "maintain",
+        "admin"
+      ],
+      "must_differ_from_pr_author": false,
+      "protected_check": "exact-head-authorization",
+      "workflow_path": ".github/workflows/operational-state.yml",
+      "trusted_ref": "refs/heads/dev",
+      "required_event": "workflow_dispatch",
+      "workflow_commit_relation": "reachable_from_live_target",
+      "bind_workflow_blob_oid": true,
+      "workflow_blob_relation": "equals_live_target_blob",
+      "check_creator_app": "github-actions",
+      "external_id_prefix": "aos-exact-head-authorization:"
+    }
+  },
+  "tickets": {
+    "D0-001": {
+      "kind": "executable",
+      "dependencies": [],
+      "owned_paths": [
+        "scripts/validate-identity.mjs",
+        "specs/identity.v1.json"
+      ],
+      "owned_symbols": [
+        "validateIdentity"
+      ],
+      "red_command": "npm test -- tests/planning/identity.test.mjs",
+      "digests": {
+        "ticket": "1111111111111111111111111111111111111111111111111111111111111111",
+        "prd": "2222222222222222222222222222222222222222222222222222222222222222",
+        "adrs": {
+          "ADR-0001": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {
+          "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
+        }
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {
+        "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
+      }
+    },
+    "D0-002": {
+      "kind": "executable",
+      "dependencies": [
+        "D0-001"
+      ],
+      "owned_paths": [
+        "tests/planning/workspace-skeleton.test.mjs"
+      ],
+      "owned_symbols": [
+        "workspace-census"
+      ],
+      "red_command": "npm test -- tests/planning/workspace-skeleton.test.mjs",
+      "digests": {
+        "ticket": "4444444444444444444444444444444444444444444444444444444444444444",
+        "prd": "2222222222222222222222222222222222222222222222222222222222222222",
+        "adrs": {
+          "ADR-0001": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {
+          "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
+        }
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {
+        "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
+      }
+    },
+    "D0-003": {
+      "kind": "superseded",
+      "dependencies": [
+        "D0-001"
+      ],
+      "owned_paths": [],
+      "owned_symbols": [],
+      "red_command": null,
+      "digests": {
+        "ticket": "5555555555555555555555555555555555555555555555555555555555555555",
+        "prd": "2222222222222222222222222222222222222222222222222222222222222222",
+        "adrs": {},
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {}
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {}
+    },
+    "D0-004": {
+      "kind": "executable",
+      "dependencies": [
+        "D0-002"
+      ],
+      "owned_paths": [
+        "scripts/resolve-execution-state.mjs",
+        "specs/execution-state.schema.v1.json",
+        "tests/execution-state.test.mjs"
+      ],
+      "owned_symbols": [
+        "resolveExecutionState"
+      ],
+      "red_command": "node --test tests/execution-state.test.mjs",
+      "digests": {
+        "ticket": "6666666666666666666666666666666666666666666666666666666666666666",
+        "prd": "2222222222222222222222222222222222222222222222222222222222222222",
+        "adrs": {
+          "ADR-0001": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+        "adr_paths": {
+          "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
+        }
+      },
+      "prd_path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+      "adr_paths": {
+        "ADR-0001": "docs/adr/ADR-0001-canonical-identity.md"
+      }
+    }
+  },
+  "liveDigests": {
+    "docs/tickets/D0/D0-001-canonical-identifier-registry.md": "1111111111111111111111111111111111111111111111111111111111111111",
+    "docs/tickets/D0/D0-002-repository-and-npm-workspace-skeleton.md": "4444444444444444444444444444444444444444444444444444444444444444",
+    "docs/tickets/D0/D0-003-active-documentation-and-legacy-boundary-migration.md": "5555555555555555555555555555555555555555555555555555555555555555",
+    "docs/tickets/D0/D0-004-planning-contract-validator-and-governance-gate.md": "6666666666666666666666666666666666666666666666666666666666666666",
+    "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md": "2222222222222222222222222222222222222222222222222222222222222222",
+    "docs/adr/ADR-0001-canonical-identity.md": "3333333333333333333333333333333333333333333333333333333333333333",
+    "docs/adr/ADR-0001-product-identity-and-legacy-boundary.md": "3333333333333333333333333333333333333333333333333333333333333333",
+    "docs/adr/ADR-0003-runtime-repository-and-distribution.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "docs/adr/ADR-0012-planning-tdd-and-exact-head-governance.md": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "gateBatches": [
+    {
+      "id": "batch-d0-001",
+      "status": "ACCEPTED",
+      "required_artifacts": [
+        {
+          "path": "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "kind": "TICKET"
+        },
+        {
+          "path": "docs/prd/PRD-D0-name-migration-and-repository-skeleton.md",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/adr/ADR-0001-canonical-identity.md",
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+          "kind": "ADR"
+        }
+      ]
+    }
+  ],
+  "gatePRs": [
+    {
+      "number": 100,
+      "base": "dev",
+      "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "body": "Gate-Batch: batch-d0-001",
+      "merged": true,
+      "merged_by": "MongLong0214",
+      "merge_commit_sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "author": "MongLong0214",
+      "head_contains_batch": true
+    }
+  ],
+  "postMergeCI": [
+    {
+      "merge_commit_sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "cccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "merge_commit_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      "run_id": 31063416513,
+      "run_attempt": 1
+    },
+    {
+      "merge_commit_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+      "run_id": 31084420124,
+      "run_attempt": 1
+    }
+  ],
+  "implementationMerges": [
+    {
+      "ticket_id": "D0-002",
+      "merge_commit_sha": "782946e96baa4a3f2734a2ad6b42210d289bebb7",
+      "number": 143,
+      "reachable": true,
+      "added_paths": [
+        "adapters/claude-code/OWNERS.md",
+        "adapters/claude-code/package.json",
+        "adapters/codex/OWNERS.md",
+        "adapters/codex/package.json",
+        "conformance/OWNERS.md",
+        "docs/clearance/MINIMUM-NAME-CLEARANCE.md",
+        "fixtures/OWNERS.md",
+        "packages/reporter/OWNERS.md",
+        "packages/reporter/package.json",
+        "packages/runner/OWNERS.md",
+        "packages/runner/package.json",
+        "packages/schema/OWNERS.md",
+        "packages/schema/package.json",
+        "packages/scorer/OWNERS.md",
+        "packages/scorer/package.json",
+        "suites/coding-core-v0/OWNERS.md",
+        "tests/planning/workspace-skeleton.test.mjs"
+      ],
+      "removed_paths": []
+    },
+    {
+      "ticket_id": "D0-001",
+      "merge_commit_sha": "6e872ccf2387067b49217a27a7c255343ad2eb8d",
+      "number": 130,
+      "reachable": true,
+      "added_paths": [
+        "scripts/validate-identity.mjs",
+        "specs/identity.v1.json",
+        "tests/planning/identity.test.mjs"
+      ],
+      "removed_paths": []
+    }
+  ],
+  "liveTreePaths": [
+    ".github/workflows/ci.yml",
+    "README.md",
+    "adapters/claude-code/OWNERS.md",
+    "adapters/claude-code/package.json",
+    "adapters/codex/OWNERS.md",
+    "adapters/codex/package.json",
+    "conformance/OWNERS.md",
+    "docs/clearance/MINIMUM-NAME-CLEARANCE.md",
+    "fixtures/OWNERS.md",
+    "package.json",
+    "packages/reporter/OWNERS.md",
+    "packages/reporter/package.json",
+    "packages/runner/OWNERS.md",
+    "packages/runner/package.json",
+    "packages/schema/OWNERS.md",
+    "packages/schema/package.json",
+    "packages/scorer/OWNERS.md",
+    "packages/scorer/package.json",
+    "scripts/resolve-execution-state.mjs",
+    "scripts/validate-identity.mjs",
+    "specs/identity.v1.json",
+    "suites/coding-core-v0/OWNERS.md",
+    "tests/planning/identity.test.mjs",
+    "tests/planning/workspace-skeleton.test.mjs"
+  ],
+  "verifiedTickets": [
+    "D0-001"
+  ],
+  "issues": [
+    {
+      "number": 54,
+      "ticket_id": "D0-001",
+      "state": "closed",
+      "labels": [
+        "status:done",
+        "epic:D0"
+      ]
+    },
+    {
+      "number": 55,
+      "ticket_id": "D0-002",
+      "state": "open",
+      "labels": [
+        "status:ready",
+        "epic:D0"
+      ]
+    }
+  ],
+  "prs": [],
+  "reviews": [],
+  "authorizations": [],
+  "checkRuns": [],
+  "workflowRuns": [],
+  "permissions": {
+    "MongLong0214": "admin"
+  },
+  "workflowBlobs": {
+    ".github/workflows/ci.yml": {
+      "dev": "ci-blob-dev",
+      "heads": {}
+    },
+    ".github/workflows/operational-state.yml": {
+      "dev": "ops-blob-dev",
+      "heads": {}
+    }
+  },
+  "ancestry": {
+    "cccccccccccccccccccccccccccccccccccccccc": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]
+  },
+  "registryStrings": {
+    "prepared_by": "MongLong0214",
+    "approved_by": "MongLong0214"
+  },
+  "exactBasePackets": {},
+  "projectionSurfaces": {
+    "roadmap": "STATIC DESIGN \u2014 NOT INPUT",
+    "board": "STATIC BOARD \u2014 NOT INPUT",
+    "ledger": "HISTORICAL LEDGER \u2014 NOT INPUT"
+  },
+  "activeOwnership": []
+}

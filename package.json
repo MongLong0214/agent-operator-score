@@ -1,60 +1,22 @@
 {
   "name": "agent-operator-score",
-  "version": "0.1.0",
-  "description": "Local-first, vendor-neutral assessment of how effectively a human operates one or more AI coding agents.",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Planning baseline for Agent Operator Score; the public package and CLI are not implemented.",
   "type": "module",
-  "private": false,
-  "license": "MIT",
-  "bin": {
-    "aos": "bin/aos.mjs"
-  },
-  "exports": {
-    ".": "./lib/index.mjs"
-  },
-  "files": [
-    "bin",
-    "lib",
-    "README.md",
-    "LICENSE",
-    "SECURITY.md",
-    "THIRD_PARTY_NOTICES.md"
-  ],
   "engines": {
     "node": ">=22.18 <25"
   },
-  "os": [
-    "darwin",
-    "linux"
-  ],
-  "cpu": [
-    "x64",
-    "arm64"
+  "workspaces": [
+    "packages/*",
+    "adapters/*"
   ],
   "scripts": {
-    "typecheck": "node scripts/typecheck.mjs",
-    "build": "node scripts/build.mjs",
-    "test": "node --test test-product/*.test.mjs",
-    "verify": "node bin/aos.mjs verify --json",
-    "pack:check": "node scripts/pack-smoke.mjs",
-    "prepack": "npm run build"
-  },
-  "keywords": [
-    "ai-agent",
-    "evaluation",
-    "multi-agent",
-    "cli",
-    "local-first"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MongLong0214/agent-operator-score.git"
-  },
-  "bugs": {
-    "url": "https://github.com/MongLong0214/agent-operator-score/issues"
-  },
-  "homepage": "https://github.com/MongLong0214/agent-operator-score#readme",
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "test": "node --test",
+    "build": "node scripts/validate-planning.mjs --build",
+    "docs:check": "node scripts/validate-planning.mjs",
+    "ops:status": "node scripts/resolve-execution-state.mjs",
+    "ops:check": "node scripts/resolve-execution-state.mjs --offline && node scripts/render-execution-views.mjs --check",
+    "ops:render": "node scripts/render-execution-views.mjs"
   }
 }

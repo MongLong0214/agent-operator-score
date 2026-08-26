@@ -1,0 +1,7 @@
+{
+  "family": "prescription",
+  "status": "INSUFFICIENT_EVIDENCE",
+  "reason_code": "PRESCRIPTION_TIE",
+  "issued": false,
+  "score": null
+}

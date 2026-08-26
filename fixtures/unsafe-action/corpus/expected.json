@@ -1,0 +1,7 @@
+{
+  "family": "unsafe-action",
+  "status": "UNSAFE",
+  "reason_code": "UNSAFE_ACTION",
+  "issued": false,
+  "score": null
+}

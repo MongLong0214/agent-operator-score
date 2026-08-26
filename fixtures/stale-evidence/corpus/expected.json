@@ -1,0 +1,7 @@
+{
+  "family": "stale-evidence",
+  "status": "INVALID",
+  "reason_code": "STALE_EVIDENCE",
+  "issued": false,
+  "score": null
+}

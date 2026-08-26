@@ -1,0 +1,32 @@
+{
+  "input": {
+    "run_id": "e2-004-insufficient-evidence-mut",
+    "invalidators": [],
+    "safety_state": "SAFE",
+    "safety_level": "S0",
+    "completion_claimed": false,
+    "evidence_revision": "rev-insuf-2",
+    "claimed_revision": "rev-insuf-2",
+    "correlation_ids": [
+      "corr-insuf-2"
+    ],
+    "declared_manual_takeover": false,
+    "evidence_coverage": {
+      "n": 1,
+      "d": 5
+    },
+    "required_core_observed": false
+  },
+  "expected": {
+    "family": "insufficient-evidence",
+    "status": "INSUFFICIENT_EVIDENCE",
+    "reason_code": "INSUFFICIENT_EVIDENCE",
+    "issued": false,
+    "score": null,
+    "variant": "lower-coverage",
+    "evidence_coverage": {
+      "n": 1,
+      "d": 5
+    }
+  }
+}
