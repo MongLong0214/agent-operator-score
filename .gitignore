@@ -1,13 +1,5 @@
 node_modules/
-dist/
-coverage/
 .aos/
-*.log
+*.tgz
 .DS_Store
-
-
-# Local tool configuration. Never tracked: .claude/ carries agent and model routing that
-# AGENTS.md forbids on public GitHub surfaces, and the rest is per-machine setup.
-.claude/
-.mcp.json
-.commitlore-policy.json
+npm-debug.log*
