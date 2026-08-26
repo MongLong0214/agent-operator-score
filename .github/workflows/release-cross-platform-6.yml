@@ -1,0 +1,103 @@
+name: Release cross-platform 6
+
+on:
+  push:
+    branches: [production-cli-phase-b]
+    paths:
+      - docs/RELEASE_HEAD_TRIGGER_6.md
+      - .github/workflows/release-cross-platform-6.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: aos-release-cross-platform
+  cancel-in-progress: true
+
+jobs:
+  planning-contract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Assert finalized operator-valid tree
+        run: |
+          test -f .release-ready.json
+          node -e "const r=require('./.release-ready.json'); if(r.operator_contract_required!==true) process.exit(1)"
+          test "$(node -p "require('./package.json').name")" = "agent-operator-score"
+          test "$(node -p "require('./package.json').version")" = "0.1.0"
+          test "$(node -p "require('./package.json').private")" = "false"
+          test -x bin/aos.mjs
+          test -f lib/operator-plan.mjs
+          test -f test-product/operator-plan.test.mjs
+          test -f test-product/surface.test.mjs
+          test -f test-product/supervision.test.mjs
+          test -f test-product/recovery.test.mjs
+          test ! -e scripts/finalize-production.py
+          test ! -e scripts/fix-production.py
+          for n in 2 3 4 5 6 7 8 9 10 11 12 13; do test ! -e "scripts/fix-production-$n.py"; done
+          test ! -e release-final.log
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run verify
+
+  macos:
+    name: integration / macos / node-22
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: test -f .release-ready.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:product
+      - run: npm run verify
+      - run: npm run pack:check
+
+  package:
+    name: package / clean-install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: test -f .release-ready.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run pack:check
+
+  promote:
+    name: promote exact verified head
+    needs: [planning-contract, macos, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or reuse PR and squash-merge exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          pr=$(gh pr list --repo "${{ github.repository }}" --head production-cli-phase-b --base dev --state open --json number --jq '.[0].number // empty')
+          if [ -z "$pr" ]; then
+            url=$(gh pr create --repo "${{ github.repository }}" --head production-cli-phase-b --base dev --title "feat: ship operator-valid multi-agent AOS CLI v0.1.0" --body "Production-ready local-first CLI that requires operator-authored goal, context, routing, handoff, checkpoint, recovery, safety and budget evidence in addition to verified agent outcomes. Exact HEAD validated on Linux Node 22/24, macOS Node 22, deterministic E2E, collaboration bridge, process cleanup, trace/crash recovery, privacy, and clean tarball installation. AOS-Coding P0 remains EXPERIMENTAL / PROVISIONAL. Closes #433.")
+            pr=${url##*/}
+          fi
+          gh pr ready "$pr" --repo "${{ github.repository }}" || true
+          gh pr merge "$pr" --repo "${{ github.repository }}" --squash --match-head-commit "$HEAD_SHA"
+          gh issue comment 433 --repo "${{ github.repository }}" --body "AOS v0.1.0 merged from exact operator-valid head $HEAD_SHA after Linux Node 22/24, macOS Node 22, operator-plan + outcome E2E, collaboration bridge, process cleanup, recovery/privacy, and clean tarball checks passed."
