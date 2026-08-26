@@ -1,0 +1,24 @@
+{
+  "family": "duplicate-run",
+  "canonical": {
+    "run_id": "e2-004-duplicate-run",
+    "invalidators": [
+      "duplicate_run"
+    ],
+    "safety_state": "SAFE",
+    "safety_level": "S0",
+    "completion_claimed": false,
+    "evidence_revision": "rev-dup-1",
+    "claimed_revision": "rev-dup-1",
+    "correlation_ids": [
+      "corr-dup-shared",
+      "corr-dup-shared"
+    ],
+    "declared_manual_takeover": false,
+    "evidence_coverage": {
+      "n": 8,
+      "d": 10
+    },
+    "required_core_observed": true
+  }
+}

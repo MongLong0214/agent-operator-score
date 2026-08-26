@@ -1,0 +1,18 @@
+{
+  "family": "prescription",
+  "reason_code": "PRESCRIPTION_TIE",
+  "files": {
+    "input": {
+      "path": "input.json",
+      "sha256": "eef5432087f2702b906f7cc844b9a6f89962ea95efd5fb64951d485b9ad1c368"
+    },
+    "expected": {
+      "path": "expected.json",
+      "sha256": "a9d3baff719ccfec6ecc5f1fa9a1120dac2afc9185c0d3151017eb7d264945f0"
+    },
+    "mutation": {
+      "path": "mutation.json",
+      "sha256": "ac4cacec13cd896e963a54d4da64a13d8560318e08fe9de0d5b3bd1c23d9d7c6"
+    }
+  }
+}
