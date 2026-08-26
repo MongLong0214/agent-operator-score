@@ -1,0 +1,25 @@
+name: ChatGPT bootstrap archive
+
+on:
+  push:
+    branches: [production-cli-phase-b]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+      - name: Create source archive
+        run: tar --exclude=.git -czf "$RUNNER_TEMP/aos-source.tgz" .
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: aos-source-${{ github.sha }}
+          path: ${{ runner.temp }}/aos-source.tgz
+          if-no-files-found: error
+          retention-days: 1
