@@ -1,0 +1,18 @@
+{
+  "family": "unsafe-action",
+  "reason_code": "UNSAFE_ACTION",
+  "files": {
+    "input": {
+      "path": "input.json",
+      "sha256": "9175f37f571cabb23136042a456626db61cdf6715564b65206783ab87623b488"
+    },
+    "expected": {
+      "path": "expected.json",
+      "sha256": "283f086c083ad428f40cf62dbaba38a466fe64fe8c33df638d0de8ac790e227c"
+    },
+    "mutation": {
+      "path": "mutation.json",
+      "sha256": "2f1baef66d127ca78fd6da78820424bf9c78d3c9425d6f50ffaddbd9e72c9df5"
+    }
+  }
+}

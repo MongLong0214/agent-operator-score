@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="286" viewBox="0 0 960 286" role="img"
+     aria-label="Gate chain: G0 fixture truth is resolved; G1 feasibility, G2 and G3 calibration are open; G4 source release is closed while the claim set stays open.">
+  <title>AOS gate chain and its current state</title>
+  <style>
+    :root { color-scheme: light dark; }
+    .bg    { fill: #ffffff; }
+    .card  { fill: #f8fafc; stroke: #e2e8f0; }
+    .pass  { fill: #ecfdf5; stroke: #6ee7b7; }
+    .open  { fill: #fffbeb; stroke: #fcd34d; }
+    .ink   { fill: #0f172a; }
+    .muted { fill: #64748b; }
+    .okink { fill: #047857; }
+    .opink { fill: #b45309; }
+    .flow  { stroke: #94a3b8; }
+    @media (prefers-color-scheme: dark) {
+      .bg    { fill: #0b1220; }
+      .card  { fill: #0f172a; stroke: #1e293b; }
+      .pass  { fill: #052e23; stroke: #047857; }
+      .open  { fill: #2a1f05; stroke: #a16207; }
+      .ink   { fill: #e2e8f0; }
+      .muted { fill: #94a3b8; }
+      .okink { fill: #34d399; }
+      .opink { fill: #fbbf24; }
+      .flow  { stroke: #475569; }
+    }
+    text { font-family: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .h { font-size: 15px; font-weight: 650; }
+    .s { font-size: 11.5px; }
+    .t { font-size: 10.5px; letter-spacing: 0.4px; font-weight: 600; }
+    .m { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; }
+  </style>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" class="flow" fill="context-stroke" stroke="none"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="960" height="286"/>
+  <text class="muted t" x="20" y="28">GATE CHAIN — MEASURED BY <tspan class="m">node scripts/verify-release.mjs</tspan></text>
+
+  <g transform="translate(20 44)">
+    <rect class="pass" x="0.5" y="0.5" width="168" height="96" rx="12"/>
+    <text class="ink h" x="16" y="30">G0</text>
+    <text class="muted s" x="16" y="50">fixture truth</text>
+    <text class="okink s" x="16" y="74">RESOLVED</text>
+    <text class="muted s" x="16" y="88" font-size="10">9 families · 19 vectors</text>
+  </g>
+  <path class="flow" d="M192 92 H222" fill="none" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <g transform="translate(224 44)">
+    <rect class="open" x="0.5" y="0.5" width="168" height="96" rx="12"/>
+    <text class="ink h" x="16" y="30">G1</text>
+    <text class="muted s" x="16" y="50">feasibility verdict</text>
+    <text class="opink s" x="16" y="74">OPEN</text>
+    <text class="muted s" x="16" y="88" font-size="10">the record is absent</text>
+  </g>
+  <path class="flow" d="M396 92 H426" fill="none" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <g transform="translate(428 44)">
+    <rect class="open" x="0.5" y="0.5" width="168" height="96" rx="12"/>
+    <text class="ink h" x="16" y="30">G2 · G3</text>
+    <text class="muted s" x="16" y="50">calibration studies</text>
+    <text class="opink s" x="16" y="74">OPEN</text>
+    <text class="muted s" x="16" y="88" font-size="10">deferred; no artifact</text>
+  </g>
+  <path class="flow" d="M600 92 H630" fill="none" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <g transform="translate(632 44)">
+    <rect class="card" x="0.5" y="0.5" width="308" height="96" rx="12"/>
+    <text class="ink h" x="16" y="30">G4</text>
+    <text class="muted s" x="16" y="50">publication — split in two</text>
+    <text class="okink s" x="16" y="74">SOURCE: CLOSED</text>
+    <text class="opink s" x="168" y="74">CLAIMS: OPEN ×5</text>
+  </g>
+
+  <g transform="translate(20 168)">
+    <rect class="card" x="0.5" y="0.5" width="920" height="100" rx="12"/>
+    <text class="ink h" x="18" y="30">What the closed half covers, and what it does not</text>
+    <text class="okink s" x="18" y="56">Closed</text>
+    <text class="muted s" x="80" y="56">MIT out · DCO in · notices · security policy · a clean-checkout reproduction of the pinned bytes</text>
+    <text class="opink s" x="18" y="80">Open</text>
+    <text class="muted s" x="80" y="80">independent reproduction · feasibility verdict · two calibration studies · qualified review</text>
+  </g>
+</svg>

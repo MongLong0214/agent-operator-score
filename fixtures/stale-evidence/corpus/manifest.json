@@ -1,0 +1,18 @@
+{
+  "family": "stale-evidence",
+  "reason_code": "STALE_EVIDENCE",
+  "files": {
+    "input": {
+      "path": "input.json",
+      "sha256": "4b7c6dedf1c2534ab1358202c21fbf945fc46ad20dd7174d0e13a6a1b8e9ebe0"
+    },
+    "expected": {
+      "path": "expected.json",
+      "sha256": "382d33db100f5c31635626337ace06ba91fb96658f025a0b479e5792b0912eb0"
+    },
+    "mutation": {
+      "path": "mutation.json",
+      "sha256": "46c878b3612462222f8738095ac06177487d5cdf260ac645f64086023079acb1"
+    }
+  }
+}

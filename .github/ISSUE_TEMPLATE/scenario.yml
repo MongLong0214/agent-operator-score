@@ -1,0 +1,26 @@
+name: Scenario contribution route
+description: Record where a future scenario would land. This template does not accept a contribution.
+title: "Scenario route: "
+labels: ["scenario-route"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        These routes document where an adapter or scenario would land. They do
+        not accept external contributions while contributor terms are unresolved.
+        MIT is the outbound license. It is not contributor terms and is not a
+        publication clearance. Do not attach generated attribution, secrets,
+        hidden reasoning, or hidden task answers.
+  - type: input
+    id: family
+    attributes:
+      label: Family the scenario would exercise
+    validations:
+      required: true
+  - type: textarea
+    id: landing
+    attributes:
+      label: Intended landing path under suites/coding-core-v0/
+      description: The frozen Form A pack lives at suites/coding-core-v0/form-a/.
+    validations:
+      required: true

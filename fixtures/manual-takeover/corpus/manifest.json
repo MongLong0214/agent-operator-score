@@ -1,0 +1,18 @@
+{
+  "family": "manual-takeover",
+  "reason_code": "MANUAL_TAKEOVER",
+  "files": {
+    "input": {
+      "path": "input.json",
+      "sha256": "2751a9c48ac9b4d03df99eaa3f9571f143cebe9b9c7f385417695b30b2be2e77"
+    },
+    "expected": {
+      "path": "expected.json",
+      "sha256": "43bc58e0a725db4fdd7531c1375ae7eebab324c8a2521401964f0fa960e55460"
+    },
+    "mutation": {
+      "path": "mutation.json",
+      "sha256": "d61da5f7469159c12afcf8839ce6b5ebabd756c14d1a4f8e825818600d3aa5c7"
+    }
+  }
+}

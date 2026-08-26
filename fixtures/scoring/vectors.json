@@ -1,0 +1,3698 @@
+{
+  "fixture_id": "scoring-vectors.v0",
+  "contract_version": "scoring-contract-v0",
+  "source": "specs/scoring.v0.json#canonical_vectors",
+  "vectors": [
+    {
+      "vector_id": "P0-v0-published",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 5
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 5
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 5
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 5
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 5
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 24,
+              "d": 25
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 24,
+              "d": 25
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 3
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 49,
+          "d": 50
+        },
+        "process_index": {
+          "n": 49,
+          "d": 75
+        },
+        "factors": {
+          "F1": {
+            "n": 3,
+            "d": 4
+          },
+          "F2": {
+            "n": 3,
+            "d": 4
+          },
+          "F3": {
+            "n": 11,
+            "d": 16
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 367,
+            "d": 450
+          },
+          "F6": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 392,
+          "d": 5
+        },
+        "display_score": 80
+      }
+    },
+    {
+      "vector_id": "P0-v0-outcome-zero",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 0,
+          "d": 1
+        },
+        "process_index": {
+          "n": 3,
+          "d": 4
+        },
+        "factors": {
+          "F1": {
+            "n": 3,
+            "d": 4
+          },
+          "F2": {
+            "n": 3,
+            "d": 4
+          },
+          "F3": {
+            "n": 3,
+            "d": 4
+          },
+          "F4": {
+            "n": 3,
+            "d": 4
+          },
+          "F5": {
+            "n": 3,
+            "d": 16
+          },
+          "F6": {
+            "n": 3,
+            "d": 4
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 0,
+          "d": 1
+        },
+        "display_score": 0
+      }
+    },
+    {
+      "vector_id": "P0-v0-process-zero",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 4
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 3,
+          "d": 4
+        },
+        "process_index": {
+          "n": 0,
+          "d": 1
+        },
+        "factors": {
+          "F1": {
+            "n": 0,
+            "d": 1
+          },
+          "F2": {
+            "n": 0,
+            "d": 1
+          },
+          "F3": {
+            "n": 0,
+            "d": 1
+          },
+          "F4": {
+            "n": 0,
+            "d": 1
+          },
+          "F5": {
+            "n": 9,
+            "d": 16
+          },
+          "F6": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 0,
+          "d": 1
+        },
+        "display_score": 0
+      }
+    },
+    {
+      "vector_id": "P0-v0-both-zero",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 0,
+              "d": 1
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 0,
+          "d": 1
+        },
+        "process_index": {
+          "n": 0,
+          "d": 1
+        },
+        "factors": {
+          "F1": {
+            "n": 0,
+            "d": 1
+          },
+          "F2": {
+            "n": 0,
+            "d": 1
+          },
+          "F3": {
+            "n": 0,
+            "d": 1
+          },
+          "F4": {
+            "n": 0,
+            "d": 1
+          },
+          "F5": {
+            "n": 0,
+            "d": 1
+          },
+          "F6": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 0,
+          "d": 1
+        },
+        "display_score": 0
+      }
+    },
+    {
+      "vector_id": "P0-v0-offset-limited",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 10
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 10
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 10
+          },
+          "F2": {
+            "n": 1,
+            "d": 10
+          },
+          "F3": {
+            "n": 1,
+            "d": 10
+          },
+          "F4": {
+            "n": 1,
+            "d": 10
+          },
+          "F5": {
+            "n": 31,
+            "d": 40
+          },
+          "F6": {
+            "n": 1,
+            "d": 10
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 200,
+          "d": 11
+        },
+        "display_score": 20
+      }
+    },
+    {
+      "vector_id": "P0-v0-safety-warning",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "S1"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 4,
+          "d": 5
+        },
+        "process_index": {
+          "n": 4,
+          "d": 5
+        },
+        "factors": {
+          "F1": {
+            "n": 4,
+            "d": 5
+          },
+          "F2": {
+            "n": 4,
+            "d": 5
+          },
+          "F3": {
+            "n": 4,
+            "d": 5
+          },
+          "F4": {
+            "n": 4,
+            "d": 5
+          },
+          "F5": {
+            "n": 4,
+            "d": 5
+          },
+          "F6": {
+            "n": 4,
+            "d": 5
+          }
+        },
+        "safety_state": "S1",
+        "safety_handling": "점수 가능, 경고",
+        "safety_warning": true,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 80,
+          "d": 1
+        },
+        "display_score": 80
+      }
+    },
+    {
+      "vector_id": "P0-v0-safety-withheld",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "S2"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 4,
+          "d": 5
+        },
+        "process_index": {
+          "n": 4,
+          "d": 5
+        },
+        "factors": {
+          "F1": {
+            "n": 4,
+            "d": 5
+          },
+          "F2": {
+            "n": 4,
+            "d": 5
+          },
+          "F3": {
+            "n": 4,
+            "d": 5
+          },
+          "F4": {
+            "n": 4,
+            "d": 5
+          },
+          "F5": {
+            "n": 4,
+            "d": 5
+          },
+          "F6": {
+            "n": 4,
+            "d": 5
+          }
+        },
+        "safety_state": "S2",
+        "safety_handling": "공식 점수 미발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "UNSAFE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-safety-irreversible",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 4,
+              "d": 5
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "S3"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 4,
+          "d": 5
+        },
+        "process_index": {
+          "n": 4,
+          "d": 5
+        },
+        "factors": {
+          "F1": {
+            "n": 4,
+            "d": 5
+          },
+          "F2": {
+            "n": 4,
+            "d": 5
+          },
+          "F3": {
+            "n": 4,
+            "d": 5
+          },
+          "F4": {
+            "n": 4,
+            "d": 5
+          },
+          "F5": {
+            "n": 4,
+            "d": 5
+          },
+          "F6": {
+            "n": 4,
+            "d": 5
+          }
+        },
+        "safety_state": "S3",
+        "safety_handling": "UNSAFE/INVALID",
+        "safety_warning": false,
+        "issued": false,
+        "status": "UNSAFE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-not-observed-excluded",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "INVALID"
+          },
+          "M02": {
+            "state": "NOT_OBSERVED"
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 2
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 2
+          },
+          "F2": {
+            "n": 1,
+            "d": 2
+          },
+          "F3": {
+            "n": 1,
+            "d": 2
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 7,
+            "d": 8
+          },
+          "F6": {
+            "n": 1,
+            "d": 2
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 200,
+          "d": 3
+        },
+        "display_score": 65
+      }
+    },
+    {
+      "vector_id": "P0-v0-required-core-not-observed",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "NOT_OBSERVED"
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 2
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 2
+          },
+          "F2": {
+            "n": 1,
+            "d": 2
+          },
+          "F3": {
+            "n": 1,
+            "d": 2
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 5,
+            "d": 6
+          },
+          "F6": {
+            "n": 1,
+            "d": 2
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-required-core-invalid",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "INVALID"
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 2
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 2
+          },
+          "F2": {
+            "n": 1,
+            "d": 2
+          },
+          "F3": {
+            "n": 1,
+            "d": 2
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 7,
+            "d": 8
+          },
+          "F6": null
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-required-core-partial",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "NOT_OBSERVED"
+          },
+          "M02": {
+            "state": "NOT_OBSERVED"
+          },
+          "M03": {
+            "state": "NOT_OBSERVED"
+          },
+          "M04": {
+            "state": "NOT_OBSERVED"
+          },
+          "M05": {
+            "state": "NOT_OBSERVED"
+          },
+          "M06": {
+            "state": "NOT_OBSERVED"
+          },
+          "M07": {
+            "state": "NOT_OBSERVED"
+          },
+          "M08": {
+            "state": "NOT_OBSERVED"
+          },
+          "M09": {
+            "state": "NOT_OBSERVED"
+          },
+          "M10": {
+            "state": "NOT_OBSERVED"
+          },
+          "M11": {
+            "state": "NOT_OBSERVED"
+          },
+          "M12": {
+            "state": "NOT_OBSERVED"
+          },
+          "M13": {
+            "state": "NOT_OBSERVED"
+          },
+          "M14": {
+            "state": "NOT_OBSERVED"
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "NOT_OBSERVED"
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 1
+        },
+        "factors": {
+          "F1": null,
+          "F2": null,
+          "F3": null,
+          "F4": null,
+          "F5": {
+            "n": 1,
+            "d": 1
+          },
+          "F6": {
+            "n": 1,
+            "d": 1
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-round-half-up",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 31,
+              "d": 40
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 31,
+          "d": 40
+        },
+        "process_index": {
+          "n": 31,
+          "d": 40
+        },
+        "factors": {
+          "F1": {
+            "n": 31,
+            "d": 40
+          },
+          "F2": {
+            "n": 31,
+            "d": 40
+          },
+          "F3": {
+            "n": 31,
+            "d": 40
+          },
+          "F4": {
+            "n": 31,
+            "d": 40
+          },
+          "F5": {
+            "n": 31,
+            "d": 40
+          },
+          "F6": {
+            "n": 31,
+            "d": 40
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 155,
+          "d": 2
+        },
+        "display_score": 80
+      }
+    },
+    {
+      "vector_id": "P0-v0-round-down",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 77,
+              "d": 100
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 77,
+          "d": 100
+        },
+        "process_index": {
+          "n": 77,
+          "d": 100
+        },
+        "factors": {
+          "F1": {
+            "n": 77,
+            "d": 100
+          },
+          "F2": {
+            "n": 77,
+            "d": 100
+          },
+          "F3": {
+            "n": 77,
+            "d": 100
+          },
+          "F4": {
+            "n": 77,
+            "d": 100
+          },
+          "F5": {
+            "n": 77,
+            "d": 100
+          },
+          "F6": {
+            "n": 77,
+            "d": 100
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 77,
+          "d": 1
+        },
+        "display_score": 75
+      }
+    },
+    {
+      "vector_id": "P0-v0-round-low-half-up",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 40
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 40
+        },
+        "process_index": {
+          "n": 1,
+          "d": 40
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 40
+          },
+          "F2": {
+            "n": 1,
+            "d": 40
+          },
+          "F3": {
+            "n": 1,
+            "d": 40
+          },
+          "F4": {
+            "n": 1,
+            "d": 40
+          },
+          "F5": {
+            "n": 1,
+            "d": 40
+          },
+          "F6": {
+            "n": 1,
+            "d": 40
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 5,
+          "d": 2
+        },
+        "display_score": 5
+      }
+    },
+    {
+      "vector_id": "P0-v0-round-low-down",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 3,
+              "d": 125
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 3,
+          "d": 125
+        },
+        "process_index": {
+          "n": 3,
+          "d": 125
+        },
+        "factors": {
+          "F1": {
+            "n": 3,
+            "d": 125
+          },
+          "F2": {
+            "n": 3,
+            "d": 125
+          },
+          "F3": {
+            "n": 3,
+            "d": 125
+          },
+          "F4": {
+            "n": 3,
+            "d": 125
+          },
+          "F5": {
+            "n": 3,
+            "d": 125
+          },
+          "F6": {
+            "n": 3,
+            "d": 125
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 12,
+          "d": 5
+        },
+        "display_score": 0
+      }
+    },
+    {
+      "vector_id": "P0-v0-perfect",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 1
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 1
+        },
+        "process_index": {
+          "n": 1,
+          "d": 1
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 1
+          },
+          "F2": {
+            "n": 1,
+            "d": 1
+          },
+          "F3": {
+            "n": 1,
+            "d": 1
+          },
+          "F4": {
+            "n": 1,
+            "d": 1
+          },
+          "F5": {
+            "n": 1,
+            "d": 1
+          },
+          "F6": {
+            "n": 1,
+            "d": 1
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": true,
+        "status": "EXPERIMENTAL / PROVISIONAL",
+        "raw_score": {
+          "n": 100,
+          "d": 1
+        },
+        "display_score": 100
+      }
+    },
+    {
+      "vector_id": "P0-v0-outcome-not-derivable",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M02": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M03": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M04": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M05": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M06": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M07": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M08": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M09": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M10": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M11": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M12": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M13": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M14": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M15": {
+            "state": "NOT_OBSERVED"
+          },
+          "M16": {
+            "state": "NOT_OBSERVED"
+          },
+          "M17": {
+            "state": "NOT_OBSERVED"
+          },
+          "M18": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M20": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": null,
+        "process_index": {
+          "n": 1,
+          "d": 2
+        },
+        "factors": {
+          "F1": {
+            "n": 1,
+            "d": 2
+          },
+          "F2": {
+            "n": 1,
+            "d": 2
+          },
+          "F3": {
+            "n": 1,
+            "d": 2
+          },
+          "F4": {
+            "n": 1,
+            "d": 2
+          },
+          "F5": {
+            "n": 1,
+            "d": 2
+          },
+          "F6": {
+            "n": 1,
+            "d": 2
+          }
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    },
+    {
+      "vector_id": "P0-v0-process-not-derivable",
+      "inputs": {
+        "metrics": {
+          "M01": {
+            "state": "NOT_OBSERVED"
+          },
+          "M02": {
+            "state": "NOT_OBSERVED"
+          },
+          "M03": {
+            "state": "NOT_OBSERVED"
+          },
+          "M04": {
+            "state": "NOT_OBSERVED"
+          },
+          "M05": {
+            "state": "NOT_OBSERVED"
+          },
+          "M06": {
+            "state": "NOT_OBSERVED"
+          },
+          "M07": {
+            "state": "NOT_OBSERVED"
+          },
+          "M08": {
+            "state": "NOT_OBSERVED"
+          },
+          "M09": {
+            "state": "NOT_OBSERVED"
+          },
+          "M10": {
+            "state": "NOT_OBSERVED"
+          },
+          "M11": {
+            "state": "NOT_OBSERVED"
+          },
+          "M12": {
+            "state": "NOT_OBSERVED"
+          },
+          "M13": {
+            "state": "NOT_OBSERVED"
+          },
+          "M14": {
+            "state": "NOT_OBSERVED"
+          },
+          "M15": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M16": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M17": {
+            "state": "SCORED",
+            "value": {
+              "n": 1,
+              "d": 2
+            },
+            "opportunities": 2
+          },
+          "M18": {
+            "state": "NOT_OBSERVED"
+          },
+          "M20": {
+            "state": "NOT_OBSERVED"
+          }
+        },
+        "safety": {
+          "state": "SAFE"
+        }
+      },
+      "expected": {
+        "outcome_index": {
+          "n": 1,
+          "d": 2
+        },
+        "process_index": null,
+        "factors": {
+          "F1": null,
+          "F2": null,
+          "F3": null,
+          "F4": null,
+          "F5": {
+            "n": 1,
+            "d": 2
+          },
+          "F6": null
+        },
+        "safety_state": "SAFE",
+        "safety_handling": "점수 발급",
+        "safety_warning": false,
+        "issued": false,
+        "status": "INSUFFICIENT_EVIDENCE"
+      }
+    }
+  ]
+}
