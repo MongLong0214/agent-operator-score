@@ -1,8 +1,0 @@
-{
-  "name": "@aos/schema",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "test": "node --test --test-name-pattern"
-  }
-}
