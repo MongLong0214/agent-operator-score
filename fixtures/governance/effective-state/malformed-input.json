@@ -1,0 +1,9 @@
+{
+  "id": "malformed-input",
+  "github_approval_facts": [],
+  "source_registry": {
+    "version": "two",
+    "status": 1,
+    "batches": "not-an-array"
+  }
+}

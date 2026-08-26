@@ -1,0 +1,100 @@
+{
+  "id": "duplicate-input",
+  "github_approval_facts": [],
+  "source_registry": {
+    "version": 2,
+    "status": "ACCEPTED",
+    "invalidation": {
+      "on_artifact_or_reviewed_head_change": true,
+      "effect": "invalidate_affected_batch_and_require_fresh_pending_batch"
+    },
+    "batches": [
+      {
+        "id": "duplicate-row",
+        "status": "ACCEPTED",
+        "scope": "first duplicate",
+        "target": {
+          "repository": "github.com/MongLong0214/agent-operator-score",
+          "branch": "dev"
+        },
+        "required_artifacts": [
+          {
+            "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+            "sha256": "da9e279769bdddb84b9e79d521f7731708addd66108592d98f7a87327e909ce7",
+            "kind": "TICKET"
+          }
+        ],
+        "required_transitions": [
+          "TICKET_READY_FOR_RED"
+        ],
+        "artifacts": [
+          {
+            "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+            "sha256": "da9e279769bdddb84b9e79d521f7731708addd66108592d98f7a87327e909ce7",
+            "kind": "TICKET"
+          }
+        ],
+        "transitions": [
+          {
+            "type": "TICKET_READY_FOR_RED",
+            "artifact_paths": [
+              "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md"
+            ]
+          }
+        ],
+        "events": [],
+        "preparation": {
+          "prepared_by": "local-prepared-by-role"
+        },
+        "approval": {
+          "approved_by": "independent-maintainer-external-review-required",
+          "approved_at": "2026-08-19T00:00:00Z",
+          "role": "MAINTAINER"
+        }
+      },
+      {
+        "id": "duplicate-row",
+        "status": "ACCEPTED",
+        "scope": "second duplicate",
+        "target": {
+          "repository": "github.com/MongLong0214/agent-operator-score",
+          "branch": "dev"
+        },
+        "required_artifacts": [
+          {
+            "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+            "sha256": "da9e279769bdddb84b9e79d521f7731708addd66108592d98f7a87327e909ce7",
+            "kind": "TICKET"
+          }
+        ],
+        "required_transitions": [
+          "TICKET_READY_FOR_RED"
+        ],
+        "artifacts": [
+          {
+            "path": "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md",
+            "sha256": "da9e279769bdddb84b9e79d521f7731708addd66108592d98f7a87327e909ce7",
+            "kind": "TICKET"
+          }
+        ],
+        "transitions": [
+          {
+            "type": "TICKET_READY_FOR_RED",
+            "artifact_paths": [
+              "docs/tickets/D0/D0-006-effective-state-quarantine-and-legacy-reclassification.md"
+            ]
+          }
+        ],
+        "events": [],
+        "preparation": {
+          "prepared_by": "local-prepared-by-role"
+        },
+        "approval": {
+          "approved_by": "independent-maintainer-external-review-required",
+          "approved_at": "2026-08-19T00:00:00Z",
+          "role": "MAINTAINER"
+        }
+      }
+    ]
+  }
+}

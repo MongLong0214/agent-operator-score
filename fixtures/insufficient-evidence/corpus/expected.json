@@ -1,0 +1,7 @@
+{
+  "family": "insufficient-evidence",
+  "status": "INSUFFICIENT_EVIDENCE",
+  "reason_code": "INSUFFICIENT_EVIDENCE",
+  "issued": false,
+  "score": null
+}
