@@ -1,0 +1,91 @@
+name: Release definitive 3
+
+on:
+  push:
+    branches: [production-cli-phase-b]
+    paths:
+      - scripts/fix-production-9.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aos-release-bootstrap
+  cancel-in-progress: true
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: production-cli-phase-b
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - name: Materialize hardened candidate
+        run: |
+          for script in scripts/finalize-production.py scripts/fix-production.py scripts/fix-production-2.py scripts/fix-production-3.py scripts/fix-production-4.py scripts/fix-production-5.py scripts/fix-production-6.py scripts/fix-production-7.py scripts/fix-production-8.py; do
+            [ ! -f "$script" ] || python3 "$script"
+          done
+          python3 scripts/fix-production-9.py
+      - run: npm install --package-lock-only --ignore-scripts
+      - name: Full release verification
+        id: verify
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          {
+            npm ci
+            npm run typecheck
+            npm test
+            npm run build
+            npm run verify
+            npm run pack:check
+          } 2>&1 | tee release-final.log
+      - name: Preserve failure evidence
+        if: steps.verify.outcome != 'success'
+        run: |
+          git config user.name "MongLong0214"
+          git config user.email "97578200+MongLong0214@users.noreply.github.com"
+          git add -A
+          git commit -m "test: record hardened release verification failure" || true
+          git push origin HEAD:production-cli-phase-b
+          exit 1
+      - name: Record successful gate
+        if: steps.verify.outcome == 'success'
+        env:
+          RUN_ID: ${{ github.run_id }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module - <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          writeFileSync('.release-ready.json', `${JSON.stringify({
+            schema_id: 'aos-release-ready.v1',
+            version: '0.1.0',
+            source_sha: process.env.HEAD_SHA,
+            verification_run_id: process.env.RUN_ID,
+            commands: ['npm ci','npm run typecheck','npm test','npm run build','npm run verify','npm run pack:check'],
+            platform: 'ubuntu-latest',
+            node: process.version
+          }, null, 2)}\n`);
+          NODE
+      - name: Remove bootstrap material
+        if: steps.verify.outcome == 'success'
+        run: |
+          rm -f scripts/finalize-production.py scripts/fix-production.py scripts/fix-production-2.py scripts/fix-production-3.py scripts/fix-production-4.py scripts/fix-production-5.py scripts/fix-production-6.py scripts/fix-production-7.py scripts/fix-production-8.py scripts/fix-production-9.py
+          rm -f .github/workflows/release-bootstrap.yml .github/workflows/release-fix.yml .github/workflows/release-fix-2.yml .github/workflows/release-final.yml .github/workflows/release-final-2.yml .github/workflows/release-final-3.yml .github/workflows/release-final-4.yml .github/workflows/release-definitive.yml .github/workflows/release-definitive-2.yml .github/workflows/release-definitive-3.yml .github/workflows/chatgpt-bootstrap.yml .github/workflows/promote-release.yml
+          rm -f release-bootstrap.log release-final.log
+      - name: Commit verified candidate
+        if: steps.verify.outcome == 'success'
+        run: |
+          git config user.name "MongLong0214"
+          git config user.email "97578200+MongLong0214@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: ship vendor-neutral multi-agent AOS CLI v0.1.0"
+          git push origin HEAD:production-cli-phase-b
