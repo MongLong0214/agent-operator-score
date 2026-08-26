@@ -1,214 +1,219 @@
-# Agent Operator Score
+<div align="center">
 
-Agent Operator Score (AOS) is a local-first CLI that evaluates **how a human operates one or more AI coding agents** during a controlled assessment.
+<img src="docs/assets/aos-mark.svg" alt="" width="88">
 
-It does not score Codex, Claude Code, Gemini, Grok, Hermes, Buzz, or any other provider as a model leaderboard. Those are interchangeable agent profiles or collaboration surfaces inside the operator's declared environment. One agent can earn a high score; adding more agents does not earn points by itself.
+# Agent Operator Score (AOS)
 
-> **Measurement status:** AOS-Coding P0 is `EXPERIMENTAL / PROVISIONAL`. It is not a certification, hiring signal, percentile, global rank, or industry standard.
+**The model is not the variable you control. You are.**
 
-## Supported environment
+[![status](https://img.shields.io/badge/status-pre--release-blue)](docs/tickets/BOARD.md)
+[![gate G0](https://img.shields.io/badge/G0-resolved-brightgreen)](docs/decisions/G4-VERDICT.md)
+[![gate G4 source](https://img.shields.io/badge/G4%20source-closed-brightgreen)](docs/decisions/PUBLICATION-CLEARANCE.md)
+[![claims](https://img.shields.io/badge/claims-5%20open-orange)](docs/decisions/G4-VERDICT.md)
+[![node](https://img.shields.io/badge/node-22%20%7C%2024-informational)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-- macOS or native Linux
-- x64 or arm64
-- Node.js `>=22.18 <25`
-- Windows and WSL are intentionally unsupported
+</div>
 
-AOS executes trusted local agent CLIs. It is not a hostile-code sandbox.
+---
 
-## Install
+> **Current status: foundation contracts implemented in `@aos/schema`; no public CLI and no end-to-end assessment.**
 
-From npm after publication:
+Two operators run the same model, on the same repository, with the same task. One ships. One burns
+the budget and merges something that does not work. Every benchmark you can name measures the half
+that was identical.
 
-```bash
-npm install --global agent-operator-score
-```
+Agent Operator Score measures the other half.
 
-Directly from this repository:
+## What it is
 
-```bash
-npm install --global github:MongLong0214/agent-operator-score#main
-```
+A local-first, open assessment of how effectively a **human operator** runs AI coding agents inside a
+declared environment. Model, runtime, harness, tools, permissions, network, context, time, budgets
+and intervention policy are recorded in an **Opportunity Profile** — not assumed, not inferred, and
+not averaged away.
 
-Verify the installation:
+AOS-Coding P0 does not statistically remove those environment effects. It reports conditional
+performance and refuses comparisons the conditions do not support.
 
-```bash
-aos --version
-aos verify --json
-```
+<img src="docs/assets/aos-pipeline.svg" alt="Opportunity Profile and controlled wrapper produce an aos-trace; the deterministic scorer produces a result; an ordered integrity, safety and issuance gate decides what may be issued." width="100%">
 
-## Quick start
+## What it refuses to be
 
-Initialize AOS in a disposable or dedicated assessment directory:
+Most of this repository is refusals, and they are the design.
 
-```bash
-mkdir aos-assessment && cd aos-assessment
-aos init
-```
+| It is not | Because |
+|---|---|
+| a stable personal ability | the score is conditional on a declared profile, and says so on every surface |
+| a model or harness benchmark | the model is held fixed; the operator is the unit |
+| a percentile or global rank | AOS does not report a percentile. |
+| a certification or hiring signal | AOS is not a certification. AOS is not a hiring signal, a global rank, or an industry standard. |
+| a hiring or surveillance instrument | AOS is not a hiring, promotion, or surveillance instrument. |
+| a SaaS or telemetry product | verified runs stay on your disk. Default telemetry is OFF. |
 
-Register any local agent CLI. `{promptFile}` is replaced with a private temporary file containing the operator instruction; the file is removed after the process exits.
+AOS-Coding P0 is EXPERIMENTAL / PROVISIONAL. A score is produced by the deterministic scorer from an
+aos-trace under a declared Opportunity Profile. Imported sessions are **DIAGNOSTIC ONLY**; Snapshot
+is **ESTIMATE** and may not display AOS-Coding P0 or safety-clear language.
 
-```bash
-aos agent add codex \
-  --command codex \
-  --arg exec \
-  --arg --full-auto \
-  --arg --prompt-file \
-  --arg '{promptFile}'
+## What an operator is scored on
 
-aos agent add claude \
-  --command claude \
-  --arg --print \
-  --arg '{prompt}'
-```
+<img src="docs/assets/aos-families.svg" alt="Six coding task families: intent, context, graph, loop and state, false completion, and recovery, safety and efficiency." width="100%">
 
-The command and arguments depend on the installed agent version. AOS never stores credentials in its config; secret-looking arguments are rejected.
+Twenty metrics, `M01`–`M20`, frozen in a registry the scorer cannot extend at runtime. One run
+yields one primary constraint and one treatment — or `MANUAL_REVIEW_REQUIRED`. Never a list of
+twelve things to fix.
 
-Check availability:
+## Honest status
 
-```bash
-aos doctor
-aos agent doctor
-```
+There is no `aos` CLI yet, and nothing here runs an assessment end to end. What exists is the part
+that has to be right before any of that means anything.
 
-Create an operator plan template:
+**Built, and bounded on purpose.** Each line names what landed and, immediately after, what that
+does not amount to. The second half is the part most projects leave out.
 
-```bash
-aos assess --template aos-plan.json
-```
+| Landed | What it is not |
+|---|---|
+| the frozen `M01`–`M20` registry in `metric-registry.ts`, plus the scoring, issuance, capability and session-class contracts | a scorer |
+| `specs/aos-trace.schema.json`, `specs/aos-result.schema.json` and `specs/opportunity-profile.schema.json` with a canonical event registry | a runner |
+| one FAM-2 grader in `packages/scorer/src/graders/context.ts` | **A single grader is not a scorer.** |
+| the frozen six-family Form A pack at `suites/coding-core-v0/form-a/manifest.json` | **A frozen pack is not an end-to-end assessment.** |
+| the explicit-root workspace lifecycle in `packages/runner/src/workspace.ts` | an isolated runner |
+| the deterministic one-lever selector in `packages/scorer/src/diagnosis/select-lever.ts` | **A lever selector is not a prescription report.** |
+| the ordered gate in `packages/scorer/src/issuance.ts` and `packages/scorer/src/safety.ts` | **An issuance gate is not a complete scorer.** |
+| Claude Code identity, capability discovery, the controlled wrapper and bounded event normalization | a complete adapter |
+| the control-plane validators and the operational-state resolver, on Node 22 and 24 | any of the above |
 
-Complete the plan. It records the operator's own:
+**Not built.** The `agent-operator-score` package, the `aos` CLI, the rest of the scorer, the runner,
+the Codex adapter, the task forms, reports, Snapshot, and any public release do **not** exist yet,
+and nothing here can run an assessment end to end. Every implemented contract is `private: true` and
+unpublished. No public package has been approved.
 
-- goal, constraints, and non-goals;
-- fact-research versus human-decision clarification policy;
-- acceptance criteria and evidence;
-- context selection and rejected sources;
-- task decomposition and dependency graph;
-- agent routes, distinct per-agent roles, handoffs, and join;
-- checkpoint, idempotency, and stop conditions;
-- recovery, permissions, external actions, and invocation budget.
+## Try the part that works
 
-The unchanged template is intentionally invalid and cannot earn a score.
-
-Run the controlled assessment:
-
-```bash
-aos assess --plan aos-plan.json
-```
-
-Use one agent for all six families, different agents by family, or a bounded multi-agent route:
-
-```json
-{
-  "FAM-1": { "route": "hermes" },
-  "FAM-2": { "route": "gemini" },
-  "FAM-3": { "route": "codex|claude>hermes" },
-  "FAM-4": { "route": "claude" },
-  "FAM-5": { "route": "grok" },
-  "FAM-6": { "route": "codex" }
-}
-```
-
-`codex|claude>hermes` means Codex and Claude execute in isolated workspace copies, then Hermes performs the explicit join. Every multi-agent route requires a distinct role instruction for each participant. Handoffs are bound to actual artifact digests; an empty handoff cannot receive M11 credit.
-
-## Output
-
-A controlled run writes under `.aos/runs/<run-id>/`:
-
-- `manifest.json`
-- per-producer canonical NDJSON events
-- isolated controlled workspaces
-- `result.json`
-- `report.md`
-- static `report.html`
-- exactly-once `terminal.json`
-
-Read a result:
+This is not the planned `aos` CLI and does not run an assessment. Same commands as in
+[examples/README.md](examples/README.md).
 
 ```bash
-aos session list
-aos session status <run-id>
-aos session graph <run-id>
-aos report --run <run-id> --format markdown
+node scripts/schema-conformance.mjs        # schema and fixture conformance
+node --test packages/scorer/test/score.test.ts   # scorer against the published vector pack
 ```
 
-Recover an interrupted run:
+The published formula vector pack is `fixtures/scoring/vectors.json`. Reproduce the fixture truth
+itself:
 
 ```bash
-aos session recover <run-id>
+node scripts/verify-g0.mjs
+# G0_FIXTURE_TRUTH families=9 mutations_killed=9 vectors=19 scored=19 manifest_sha256=eb75a654… node=22.23.2
 ```
 
-A result written before its terminal is digest-checked and committed exactly once. A run with no result becomes `ABORTED`. Existing terminal states are never relabelled.
+Clone this repository into a scratch directory and run it again. The digest is the same, or the gate
+below stops being closed.
 
-## Collaboration surfaces and imported evidence
+## The gate is the product
 
-Buzz and similar systems are collaboration surfaces, not model scores:
+An assessment that cannot say what it has not established is worth nothing. So the release gate says
+it, on every run, out loud.
+
+<img src="docs/assets/aos-gates.svg" alt="G0 resolved; G1, G2 and G3 open; G4 split into a closed source half and an open claim half." width="100%">
 
 ```bash
-aos surface add buzz --kind buzz --transport ndjson
-aos surface list
+node scripts/verify-release.mjs
 ```
 
-Import or bridge canonical events:
-
-```bash
-aos import --producer buzz --file events.ndjson
-aos bridge --producer buzz --file events.ndjson
-# or: cat events.ndjson | aos bridge --producer buzz
+```
+G4_SOURCE_PASS permits_source_publication=true
+CLAIMS_BLOCKED 5
+- G1
+- G2
+- G3
+- formal_publication_review
+- independent_reproduction
 ```
 
-Imported and bridged evidence is `DIAGNOSTIC_ONLY`; it does not silently become an official AOS-Coding P0 score.
+The source half is closed: MIT outbound, DCO inbound, notices, security policy, and a clean-checkout
+reproduction of the pinned fixture bytes. That clearance covers shipping source and nothing else.
 
-## Scoring
+The claim half is open and will stay open until real events close it — an **independent** party
+reproduces the bytes, the feasibility verdict is reached, two calibration studies are run, and a
+qualified reviewer looks at this. None of them can be closed by editing a file: each is read from its
+own evidence, and the test suite pins that injecting a fully-`RESOLVED` requirement array changes the
+blocked list not at all.
 
-AOS preserves M01-M20 across six factors:
+So: nothing here claims the metric measures what its name says. That claim has a price, and it has
+not been paid.
 
-1. Intent & Contract
-2. Context & Information
-3. Graph & Orchestration
-4. Loop & State
-5. Verification & Recovery
-6. Safety & Value
+## Local-first and privacy
 
-The primary formula is:
+Verified runs and reports stay local. Default telemetry is OFF. Secret values are never stored.
+Hidden chain-of-thought is never stored. Hidden task answers and gold solutions are not published on
+the public surface. Optional anonymous export is explicit, allowlisted, and implemented only by its
+future ticket.
+
+## How this repository is built
+
+Every change moves through a fixed chain, and a failed gate blocks everything after it:
 
 ```text
-Outcome O = 0.50×M15 + 0.25×M16 + 0.25×M17
-Process P = opportunity-weighted mean(M01..M14, M18, M20)
-AOS-Coding P0 = 100 × 2OP / (O + P)
+final SSOT → accepted ADR set → accepted owning PRD → accepted exact atomic ticket
+→ exact-base execution packet → RED with expected reason → minimum GREEN
+→ focused + full + build/package verification → cumulative exact-head review
+→ exact-head CI → explicit merge authorization
 ```
 
-M19 is a hard safety gate. Missing evidence is `NOT_OBSERVED`, not zero.
+13 ADRs, 20 PRDs, 73 atomic implementation tickets across 6 milestones. Each ticket owns exact files and symbols and
+declares forbidden scope, dependencies, RED, minimum GREEN, acceptance-to-test mapping, stop
+conditions, evidence and invalidation. Read the exact ticket in full before editing anything.
 
-The following are not direct score inputs:
+Implementation order is fixed: `D0` name migration → `E0-A…D` contracts → `E1` schemas → `E2` scorer
+→ `E3` runner → `E4` Codex adapter → `E5…E7` families → `G0` → `E8` complete Form A → `E9` Claude
+Code parity → `E10` report → `E11` Form B → `E12` feasibility alpha → `E13` Snapshot → `E14` public
+OSS and G4. Nothing jumps the order.
 
-- number of agents or providers;
-- model price;
-- prompt length;
-- token volume;
-- subagent count;
-- graph size;
-- generated code volume.
-
-## Privacy and process safety
-
-By default AOS stores bounded metadata and digests, not raw prompts, responses, tool arguments, environment values, secrets, or hidden reasoning.
-
-Controlled agent processes run in their own Unix process groups. On timeout, interruption, or leaked descendants AOS performs `SIGTERM`, escalates to `SIGKILL`, verifies survivors, and refuses success when descendants were left behind.
-
-Parallel work uses isolated directory copies. Symlink artifacts are refused before handoff or join.
-
-## Development verification
+## Planned CLI — not available yet
 
 ```bash
-npm ci
-npm run typecheck
-npm test
-npm run build
-npm run verify
-npm run pack:check
-npm audit --omit=dev --audit-level=high
+npx agent-operator-score doctor --capabilities --runtime codex
+npx agent-operator-score assess --runtime codex --suite coding-core-v0 --form A
+npx agent-operator-score score  --run ./runs/<id>
+npx agent-operator-score report --run ./runs/<id>
+npx agent-operator-score retest --runtime codex --form B --baseline ./runs/<id>
+npx agent-operator-score export --run ./runs/<id> --anonymous
 ```
 
-The permanent CI runs Linux Node 22.18 and Node 24, macOS Node 22.18, and a clean packaged-consumer install.
+Do not run these until the owning tickets are implemented and verified.
 
-See [docs/PRODUCTION.md](docs/PRODUCTION.md), [SECURITY.md](SECURITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
+## Documentation
+
+| | |
+|---|---|
+| [Intended use](docs/INTENDED_USE.md) | what a score may and may not be used for |
+| [Limitations](docs/LIMITATIONS.md) | what the instrument cannot tell you |
+| [Validation](docs/VALIDATION.md) | what has been established, and how |
+| [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md) | the source of truth every artifact answers to |
+| [ADRs](docs/adr/INDEX.md) · [PRDs](docs/prd/INDEX.md) | decisions and product requirements |
+| [Ticket board](docs/tickets/BOARD.md) · [Traceability](docs/TRACEABILITY.md) | the atomic work and its evidence |
+| [Contributing](CONTRIBUTING.md) | DCO sign-off, adapter and scenario routes |
+
+Every ADR and PRD is **PROPOSED**; every ticket not yet verified is **BLOCKED**. Issue creation does
+not authorize product code. Do not add generated attribution or internal agent, model, session, or
+routing metadata to public GitHub surfaces.
+
+## Canonical identity
+
+| Surface | Value |
+|---|---|
+| Product | Agent Operator Score |
+| Abbreviation | AOS |
+| Initial instrument | AOS-Coding |
+| Provisional score | AOS-Coding P0 |
+| Repository / package candidate | `agent-operator-score` |
+| CLI | `aos` |
+| Local state | `.aos/` |
+
+Legacy identifiers are forbidden in the active tree. Historical planning material was removed from the active tree and is recoverable only through Git history.
+
+## License
+
+MIT — see [LICENSE](LICENSE). MIT grants redistribution of the software. That grant is not
+contributor terms and is not a publication clearance. Contributions arrive under the Developer
+Certificate of Origin; see [Contributing](CONTRIBUTING.md). npm publication and a public-visibility
+change remain separate decisions.

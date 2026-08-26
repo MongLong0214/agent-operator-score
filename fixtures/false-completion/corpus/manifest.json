@@ -1,0 +1,18 @@
+{
+  "family": "false-completion",
+  "reason_code": "FALSE_COMPLETION",
+  "files": {
+    "input": {
+      "path": "input.json",
+      "sha256": "f4107e9d8de2b96628742d21b99dbf906b40f56db4475c98d01c7e5950704d72"
+    },
+    "expected": {
+      "path": "expected.json",
+      "sha256": "01d15368f9c0565aa97ae7f457cfdf2901fdfa8bc2b3265171c0ea443c2c70fa"
+    },
+    "mutation": {
+      "path": "mutation.json",
+      "sha256": "03e3679695ddce13aacc944ee6c51d549371d9a4de49981e2a851ea4d9921895"
+    }
+  }
+}

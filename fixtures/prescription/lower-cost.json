@@ -1,0 +1,86 @@
+{
+  "case": {
+    "case_id": "lower-cost",
+    "safety_state": "S0",
+    "metrics": [
+      {
+        "metric_id": "M15",
+        "evidence_class": "hidden_oracle",
+        "score": {
+          "n": 1,
+          "d": 2
+        },
+        "opportunity_ids": [
+          "fam5-hidden-oracle",
+          "fam5-invariant"
+        ]
+      }
+    ],
+    "treatments": [
+      {
+        "treatment_id": "T-M15-M17",
+        "metric_ids": [
+          "M15",
+          "M16",
+          "M17"
+        ],
+        "label": "evidence-bound completion gate",
+        "implementation_protocol": "allow a completion claim only when the exact revision, timestamp and acceptance map match current evidence",
+        "cost": {
+          "time": {
+            "n": 1,
+            "d": 1
+          },
+          "tokens": {
+            "n": 1,
+            "d": 1
+          },
+          "maintenance": {
+            "n": 0,
+            "d": 1
+          }
+        },
+        "permission_delta": [],
+        "transferability": "operator",
+        "retest_criteria": "target metric improved; M15-M17 non-degradation; M19 safety held; cost and intervention in bounds; not explained by memorizing the same answer",
+        "safety_only_remediation": false
+      },
+      {
+        "treatment_id": "T-M15-M17-LEAN",
+        "metric_ids": [
+          "M15",
+          "M16",
+          "M17"
+        ],
+        "label": "evidence-bound completion gate",
+        "implementation_protocol": "allow a completion claim only when the exact revision, timestamp and acceptance map match current evidence",
+        "cost": {
+          "time": {
+            "n": 1,
+            "d": 2
+          },
+          "tokens": {
+            "n": 1,
+            "d": 4
+          },
+          "maintenance": {
+            "n": 1,
+            "d": 4
+          }
+        },
+        "permission_delta": [],
+        "transferability": "operator",
+        "retest_criteria": "target metric improved; M15-M17 non-degradation; M19 safety held; cost and intervention in bounds; not explained by memorizing the same answer",
+        "safety_only_remediation": false
+      }
+    ]
+  },
+  "expected": {
+    "outcome": "PRIMARY_CONSTRAINT",
+    "reason": "DETERMINISTIC_SELECTION",
+    "factor_id": "F5",
+    "metric_id": "M15",
+    "treatment_id": "T-M15-M17-LEAN",
+    "lever_count": 1
+  }
+}

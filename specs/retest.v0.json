@@ -1,0 +1,66 @@
+{
+  "contract_id": "retest.v0",
+  "contract_version": "retest-contract-v0",
+  "source_authority": "SPEC.md#minimum-green",
+  "classification": {
+    "input": {
+      "baseline": {
+        "operator": "non-empty string",
+        "environment": "non-empty string"
+      },
+      "retest": {
+        "operator": "non-empty string",
+        "environment": "non-empty string"
+      }
+    },
+    "verdicts": [
+      "operator",
+      "environment",
+      "combined",
+      "unclassified"
+    ],
+    "invalid_input": null,
+    "rules": [
+      "operator is returned when only operator differs from baseline",
+      "environment is returned when only environment differs from baseline",
+      "combined is returned when both differ from baseline",
+      "unclassified is returned only when a valid retest changes neither source"
+    ]
+  },
+  "transfer_signal": {
+    "input": {
+      "verification_quality": [
+        "verified",
+        "degraded"
+      ],
+      "safety": [
+        "safe",
+        "unsafe"
+      ],
+      "exposure": [
+        "isolated",
+        "exposed"
+      ]
+    },
+    "invalid_input": null,
+    "support": {
+      "state": "transfer-supported",
+      "reason": "verified",
+      "when": "verification_quality is verified, safety is safe, and exposure is isolated"
+    },
+    "withhold": [
+      {
+        "when": "verification_quality is degraded",
+        "reason": "verification-degraded"
+      },
+      {
+        "when": "safety is unsafe",
+        "reason": "unsafe"
+      },
+      {
+        "when": "exposure is exposed",
+        "reason": "exposure"
+      }
+    ]
+  }
+}

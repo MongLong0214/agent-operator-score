@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "modes": [
+    "SOLE_OWNER_ADVISORY",
+    "AUTHENTICATED_REVIEW"
+  ],
+  "current_mode": "SOLE_OWNER_ADVISORY",
+  "authenticated_review_activation": {
+    "active": false
+  },
+  "claims_separation_of_duties": false
+}
