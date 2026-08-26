@@ -1,0 +1,26 @@
+name: Promote release candidate
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the verified production PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr=$(gh pr list --repo "${{ github.repository }}" --head production-cli-phase-b --base dev --state open --json number,isDraft --jq '.[0].number // empty')
+          [ -n "$pr" ] || exit 0
+          gh pr ready "$pr" --repo "${{ github.repository }}" || true
+          gh pr merge "$pr" --repo "${{ github.repository }}" --squash --match-head-commit "${{ github.event.workflow_run.head_sha }}"
