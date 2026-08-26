@@ -1,0 +1,17 @@
+name: Supersede stale cross-platform head
+
+on:
+  push:
+    branches: [production-cli-phase-b]
+    paths:
+      - scripts/fix-production-14.py
+
+concurrency:
+  group: aos-release-cross-platform
+  cancel-in-progress: true
+
+jobs:
+  supersede:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "A newer agent-specific handoff candidate supersedes the previous release head."
