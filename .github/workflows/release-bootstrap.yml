@@ -1,0 +1,58 @@
+name: Release bootstrap
+
+on:
+  push:
+    branches: [production-cli-phase-b]
+    paths:
+      - scripts/finalize-production.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aos-release-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: production-cli-phase-b
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - name: Generate production surface
+        run: python3 scripts/finalize-production.py
+      - name: Refresh lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Install exactly from lockfile
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Self verification
+        run: npm run verify
+      - name: Clean tarball smoke
+        run: npm run pack:check
+      - name: Remove bootstrap-only files
+        run: |
+          rm -f scripts/finalize-production.py
+          rm -f .github/workflows/release-bootstrap.yml
+          rm -f .github/workflows/chatgpt-bootstrap.yml
+      - name: Commit verified production package
+        run: |
+          git config user.name "MongLong0214"
+          git config user.email "97578200+MongLong0214@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: ship vendor-neutral multi-agent AOS CLI v0.1.0"
+          git push origin HEAD:production-cli-phase-b
