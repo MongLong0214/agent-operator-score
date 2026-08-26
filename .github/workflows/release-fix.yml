@@ -1,0 +1,72 @@
+name: Release fix
+
+on:
+  push:
+    branches: [production-cli-phase-b]
+    paths:
+      - scripts/fix-production.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aos-release-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: production-cli-phase-b
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - name: Generate and patch production surface
+        run: |
+          python3 scripts/finalize-production.py
+          python3 scripts/fix-production.py
+      - name: Refresh lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Verify production candidate
+        id: verify
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          {
+            npm ci
+            npm run typecheck
+            npm test
+            npm run build
+            npm run verify
+            npm run pack:check
+          } 2>&1 | tee release-bootstrap.log
+      - name: Commit failure evidence
+        if: steps.verify.outcome != 'success'
+        run: |
+          git config user.name "MongLong0214"
+          git config user.email "97578200+MongLong0214@users.noreply.github.com"
+          git add release-bootstrap.log package.json package-lock.json bin lib scripts test-product tsconfig.product.json README.md .github/workflows/ci.yml
+          git commit -m "test: record production bootstrap failure" || true
+          git push origin HEAD:production-cli-phase-b
+          exit 1
+      - name: Remove bootstrap-only files
+        if: steps.verify.outcome == 'success'
+        run: |
+          rm -f scripts/finalize-production.py scripts/fix-production.py
+          rm -f .github/workflows/release-bootstrap.yml .github/workflows/release-fix.yml .github/workflows/chatgpt-bootstrap.yml
+          rm -f release-bootstrap.log
+      - name: Commit verified production package
+        if: steps.verify.outcome == 'success'
+        run: |
+          git config user.name "MongLong0214"
+          git config user.email "97578200+MongLong0214@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: ship vendor-neutral multi-agent AOS CLI v0.1.0"
+          git push origin HEAD:production-cli-phase-b
