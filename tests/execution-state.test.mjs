@@ -7871,9 +7871,12 @@ test("pool-worker-per-item-timeout-keeps-sibling-successes", async () => {
   const { createAuthenticatedGitHubTransport } = await importResolver();
   const results = withFakeGh({ mode: "hang-second" }, () => {
     const transport = createAuthenticatedGitHubTransport(root, {
+      // The timing-out call blocks forever, so the budget only bounds how long this test waits for
+      // it. A budget tight enough to also kill a slow sibling spawn under load makes the assertion
+      // below flaky, so this matches the budget the other fake-gh transport tests use.
       concurrency: 3,
-      totalTimeoutMs: 10_000,
-      perCallTimeoutMs: 400
+      totalTimeoutMs: 30_000,
+      perCallTimeoutMs: 10_000
     });
     return transport.getJsonMany([
       "repos/ok/first",
@@ -7914,12 +7917,20 @@ const loadPassingActivationFacts = () =>
     readFileSync(resolve(root, "fixtures/governance/authenticated-review-activation/passing.json"), "utf8")
   );
 
-const gitBlobUtf8 = (sha, path) =>
-  execFileSync("git", ["cat-file", "blob", `${sha}:${path}`], {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"]
-  });
+// Absence is a measurement, not a failure: a commit the walk visits need not carry the path at
+// all, and every caller here reads null as "not this commit". Without the catch a single commit
+// that removed the governance tree aborts the whole walk.
+const gitBlobUtf8 = (sha, path) => {
+  try {
+    return execFileSync("git", ["cat-file", "blob", `${sha}:${path}`], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+  } catch {
+    return null;
+  }
+};
 
 test("activation-github-outage-fails-closed-unless-boolean-false", async () => {
   const { evaluateAuthenticatedReviewActivation } = await importResolver();
