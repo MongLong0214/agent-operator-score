@@ -205,10 +205,61 @@ test("scratchpad and agent memory are not out-of-scope edits", () => {
 
 test("a long unattended stretch is measured between operator turns", () => {
   const attended = build([...Array.from({ length: 20 }, () => bash("ls")), asked("check this"), bash("ls")]);
-  assert.equal(rules(attended).includes("long-unattended-stretch"), false);
+  assert.equal(rules(attended).includes("long-uninterrupted-tool-run"), false);
 
-  const unattended = build(Array.from({ length: 30 }, () => bash("ls")));
-  assert.ok(rules(unattended).includes("long-unattended-stretch"));
+  // Recorded, but as an observation: nothing went wrong inside it.
+  const unattended = build(Array.from({ length: 30 }, (_, i) => bash(`ls dir-${i}`)));
+  assert.equal(rules(unattended).includes("long-uninterrupted-tool-run"), false);
+  assert.ok(unattended.observations.some((entry) => entry.rule === "long-uninterrupted-tool-run"));
+});
+
+test("length on its own is an observation, not a warning", () => {
+  // This rule produced 82% of all findings across forty sessions and varied eightfold between
+  // projects, because how long a stretch runs is a property of the work. A careful refactor is
+  // long; so is a loop retrying one failing command, and only one of them is a defect.
+  const long = build(Array.from({ length: 40 }, (_, i) => bash(`rg pattern-${i} src/`)));
+  assert.deepEqual(long.findings, [], "an uneventful long stretch was reported as a problem");
+  const observed = long.observations.find((entry) => entry.rule === "long-uninterrupted-tool-run");
+  assert.equal(observed.severity, "info");
+  assert.match(observed.what, /nothing inside it failed or repeated/);
+});
+
+test("what raises a stretch is something that happened inside it", () => {
+  const failed = { kind: "result", ok: false, text: "error" };
+  const retried = build([
+    ...Array.from({ length: 24 }, (_, i) => bash(`step-${i}`)),
+    { ...bash("npm test"), result: failed },
+    { ...bash("npm test"), result: failed }
+  ]);
+  const finding = retried.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
+  assert.notEqual(finding.severity, "info");
+  assert.match(finding.what, /unchanged-retry-after-failure/);
+  assert.match(finding.evidence, /first failure at call 25 of 26/);
+});
+
+test("the same call three times over is a loop, even when nothing failed", () => {
+  const looping = build([
+    ...Array.from({ length: 24 }, (_, i) => bash(`step-${i}`)),
+    bash("git status"),
+    bash("git status"),
+    bash("git status")
+  ]);
+  const finding = looping.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
+  assert.match(finding.what, /no-progress-loop/);
+});
+
+test("a stretch is counted per stretch, not across the whole session", () => {
+  // Two shorter stretches with an operator turn between them are two moments the operator was
+  // present for, and summing them would report a session that was interrupted as one that was not.
+  const twice = build([
+    ...Array.from({ length: 20 }, (_, i) => bash(`a-${i}`)),
+    asked("looks right?"),
+    ...Array.from({ length: 20 }, (_, i) => bash(`b-${i}`))
+  ]);
+  assert.equal(rules(twice).includes("long-uninterrupted-tool-run"), false);
+  // And not as an observation either: merging the two stretches would report forty consecutive
+  // calls in a session the operator interrupted halfway through.
+  assert.deepEqual(twice.observations, []);
 });
 
 test("a clean session produces no findings", () => {
