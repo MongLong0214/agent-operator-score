@@ -9481,6 +9481,102 @@
         "approved_at": "2026-08-24T00:00:00Z",
         "role": "MAINTAINER"
       }
+    },
+    {
+      "id": "e15-001-owner-direction-prerequisites",
+      "status": "ACCEPTED",
+      "scope": "Accept the E15-001 prerequisite set - ADR-0002, ADR-0003, PRD E15, and the exact E15-001 ticket at the digests below - so that ticket may advance only through separately required exact-head technical review, CI, and an exact-base execution-packet gate. Recorded by the repository owner, who is its sole maintainer, on the owner's written direction rather than a fresh digest-by-digest maintainer review. Two independent adversarial reviews were run against the candidate and their findings were applied before this record; this record is not that review. It authorizes no npm publication and no public claim about what the metric measures: ADR-0003 holds distribution until E14/G4, and the E14 claim blockers remain open.",
+      "target": {
+        "repository": "github.com/MongLong0214/agent-operator-score",
+        "branch": "dev",
+        "reviewed_head": "cc1475ecf3d1c59b9a15aa8e3b058597773830cd"
+      },
+      "required_artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E15-local-assessment-instrument.md",
+          "sha256": "5789153d9695872165d2f87af1697fb05a37406c072f4a68ee495778bc1869e8",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E15/E15-001-local-assessment-instrument.md",
+          "sha256": "7b655cb9956627b855a35d83b702543350ce2d9e70cbc02984ca6b8f9567f241",
+          "kind": "TICKET"
+        }
+      ],
+      "required_transitions": [
+        "ADR_ACCEPTED",
+        "PRD_ACCEPTED",
+        "TICKET_READY_FOR_RED"
+      ],
+      "artifacts": [
+        {
+          "path": "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+          "sha256": "6aac605bd5f454a5a434e2e68db455d575ae06fbe2ff4f5b6d8ab5113fa226b0",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/adr/ADR-0003-runtime-repository-and-distribution.md",
+          "sha256": "ab2da6b35a6b1f1728ad5a701ad44bfc40e752d66aa0a09f5ba30b7444c131bd",
+          "kind": "ADR"
+        },
+        {
+          "path": "docs/prd/PRD-E15-local-assessment-instrument.md",
+          "sha256": "5789153d9695872165d2f87af1697fb05a37406c072f4a68ee495778bc1869e8",
+          "kind": "PRD"
+        },
+        {
+          "path": "docs/tickets/E15/E15-001-local-assessment-instrument.md",
+          "sha256": "7b655cb9956627b855a35d83b702543350ce2d9e70cbc02984ca6b8f9567f241",
+          "kind": "TICKET"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "ADR_ACCEPTED",
+          "artifact_paths": [
+            "docs/adr/ADR-0002-intended-use-scope-and-claims.md",
+            "docs/adr/ADR-0003-runtime-repository-and-distribution.md"
+          ]
+        },
+        {
+          "type": "PRD_ACCEPTED",
+          "artifact_paths": [
+            "docs/prd/PRD-E15-local-assessment-instrument.md"
+          ]
+        },
+        {
+          "type": "TICKET_READY_FOR_RED",
+          "artifact_paths": [
+            "docs/tickets/E15/E15-001-local-assessment-instrument.md"
+          ]
+        }
+      ],
+      "events": [
+        {
+          "from": "PENDING",
+          "to": "ACCEPTED",
+          "recorded_at": "2026-08-27T00:00:00Z",
+          "recorded_by": "e15-001-owner-direction-prerequisites-candidate"
+        }
+      ],
+      "preparation": {
+        "prepared_by": "e15-001-owner-direction-prerequisites-candidate"
+      },
+      "approval": {
+        "approved_by": "MongLong0214",
+        "approved_at": "2026-08-27T00:00:00Z",
+        "role": "MAINTAINER"
+      }
     }
   ],
   "invalidation": {
