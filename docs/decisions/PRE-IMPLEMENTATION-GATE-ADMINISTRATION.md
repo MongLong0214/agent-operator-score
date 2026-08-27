@@ -132,6 +132,7 @@ The registry entry binds the reviewed artifact head. The reviewable **final rece
 | `d0-004-prerequisites-completion-marker-receipt-renewal-owner-approved-2026-08-22-renewal-adr-0003-2026-08-22-renewal-decomposed-2026-08-23-decomposed-2026-08-23-deliverables-declaration-blocker-vocabulary-2026-08-24` | ACCEPTED |
 | `d0-gov-advisory-consequence-renewal-2026-08-24` | ACCEPTED |
 | `e14-source-release-scope-renewal-2026-08-24` | ACCEPTED |
+| `e15-001-owner-direction-prerequisites` | ACCEPTED |
 
 ## Operating sequence
 
