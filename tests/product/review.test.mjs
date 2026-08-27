@@ -105,3 +105,48 @@ test("a clean session produces no findings", () => {
   const result = build([asked("fix the parser"), edit("/repo/parser.ts"), bash("npm test"), said("Done.")]);
   assert.deepEqual(result.findings, []);
 });
+
+// The two runtimes write different shapes and the reviewer must not learn either one's schema
+// past lib/session.mjs. An earlier version parsed only Claude Code, so `aos review` on a Codex
+// session reported "0 tool calls" and no findings, which reads as a clean session.
+test("both runtimes reduce to the same normalized session", async () => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { loadSession } = await import("../../lib/session.mjs");
+
+  const directory = mkdtempSync(join(tmpdir(), "aos-session-"));
+  try {
+    const claude = join(directory, "claude.jsonl");
+    writeFileSync(claude, [
+      JSON.stringify({ type: "user", cwd: "/repo", timestamp: "2026-01-01T00:00:00Z", message: { content: "fix it" } }),
+      JSON.stringify({
+        type: "assistant",
+        timestamp: "2026-01-01T00:00:01Z",
+        message: { content: [{ type: "tool_use", name: "Bash", input: { command: "npm test" } }] }
+      })
+    ].join("\n"));
+
+    const codex = join(directory, "codex.jsonl");
+    writeFileSync(codex, [
+      JSON.stringify({ type: "session_meta", timestamp: "2026-01-01T00:00:00Z", payload: { cwd: "/repo" } }),
+      JSON.stringify({ type: "event_msg", timestamp: "2026-01-01T00:00:00Z", payload: { type: "user_message", message: "fix it" } }),
+      JSON.stringify({
+        type: "response_item",
+        timestamp: "2026-01-01T00:00:01Z",
+        payload: { type: "function_call", name: "exec_command", arguments: JSON.stringify({ cmd: "npm test" }) }
+      })
+    ].join("\n"));
+
+    for (const [label, path] of [["claude-code", claude], ["codex", codex]]) {
+      const session = loadSession(path);
+      assert.equal(session.cwd, "/repo", `${label} cwd`);
+      assert.equal(session.calls.length, 1, `${label} call count`);
+      assert.equal(session.calls[0].tool, "Bash", `${label} tool name`);
+      assert.equal(session.calls[0].input.command, "npm test", `${label} command`);
+      assert.equal(session.operatorTurns.length, 1, `${label} operator turns`);
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
