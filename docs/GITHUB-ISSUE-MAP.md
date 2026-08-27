@@ -78,3 +78,4 @@ All bindings are unique positive GitHub issue numbers generated from the verifie
 | E14-001 | [#116](https://github.com/MongLong0214/agent-operator-score/issues/116) | S5 · Public OSS |
 | E14-002 | [#117](https://github.com/MongLong0214/agent-operator-score/issues/117) | S5 · Public OSS |
 | E14-003 | [#118](https://github.com/MongLong0214/agent-operator-score/issues/118) | S5 · Public OSS |
+| E15-001 | [#331](https://github.com/MongLong0214/agent-operator-score/issues/331) | S5 · Public OSS |

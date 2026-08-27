@@ -11,3 +11,6 @@ coverage/
 .claude/
 .mcp.json
 .commitlore-policy.json
+
+# Serena/LSP project metadata. Agent tooling, never a public surface.
+.serena/
