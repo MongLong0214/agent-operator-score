@@ -16,20 +16,7 @@ AOS is not a hiring, promotion, or surveillance instrument.
 
 A score is produced by the deterministic scorer from an aos-trace under a declared Opportunity Profile. The Opportunity Profile, artifact digests, and scorer identity are the provenance of that number. The number is not a personal ability independent of environment.
 
-## What MIT did and did not settle
+## License
 
-MIT is the outbound license. It grants redistribution of the software on the MIT notice condition. That grant is not contributor terms, and it is not a publication clearance. Inbound contribution acceptance remains blocked. npm publication and a public-visibility change remain unauthorized.
-
-See [LIMITATIONS.md](LIMITATIONS.md) and [VALIDATION.md](VALIDATION.md).
-
-## Feasibility-analysis use
-
-For a future preregistered alpha, `analyzeAlpha` may be used to reproduce the frozen
-feasibility procedure from conserved pseudonymous rows and linked reference runs. Its
-output is limited to the protocol's registered feasibility decision and its accounting
-observations. It is not a participant-facing score, a hiring or treatment decision, or a
-way to infer an unrecorded result.
-
-Until an actual, protocol-conforming study is available, this use is limited to verifying
-the analysis mechanism with synthetic test vectors. G1, G2, and G3 remain unresolved;
-no caller may represent the mechanism as evidence that any gate has passed.
+MIT is the outbound license. That grant is redistribution permission; it is not a claim that the
+metric measures what it is named for.

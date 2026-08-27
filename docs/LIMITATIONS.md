@@ -11,7 +11,9 @@ These limits are part of the public surface, not footnotes. They are not removed
 - A score is produced by the deterministic scorer from an aos-trace under a declared Opportunity Profile.
 - Snapshot is ESTIMATE and cannot display AOS-Coding P0 or safety-clear language.
 - Imported sessions are DIAGNOSTIC ONLY.
-- Verified scores require a controlled AOS wrapper from start to finish. That wrapper and the public CLI are not available yet.
+- A score is PROFILE-BOUND. It measures performance in the declared environment and task pack it was produced in, and two numbers from different agents, models or machines are two different measurements.
+- The score is written to the run's report, not to the terminal. `aos review` produces no score at all.
+- No package is published. The command runs from a clone.
 
 ## Feasibility alpha boundary
 

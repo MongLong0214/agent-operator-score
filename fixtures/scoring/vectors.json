@@ -1,7 +1,7 @@
 {
   "fixture_id": "scoring-vectors.v0",
   "contract_version": "scoring-contract-v0",
-  "source": "specs/scoring.v0.json#canonical_vectors",
+  "source": "frozen from the scoring contract that was removed with the governance stack; these vectors are now the contract",
   "vectors": [
     {
       "vector_id": "P0-v0-published",
@@ -200,7 +200,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -408,7 +408,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -616,7 +616,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -824,7 +824,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -1032,7 +1032,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -1240,7 +1240,7 @@
           }
         },
         "safety_state": "S1",
-        "safety_handling": "점수 가능, 경고",
+        "safety_handling": "\uc810\uc218 \uac00\ub2a5, \uacbd\uace0",
         "safety_warning": true,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -1448,7 +1448,7 @@
           }
         },
         "safety_state": "S2",
-        "safety_handling": "공식 점수 미발급",
+        "safety_handling": "\uacf5\uc2dd \uc810\uc218 \ubbf8\ubc1c\uae09",
         "safety_warning": false,
         "issued": false,
         "status": "UNSAFE"
@@ -1844,7 +1844,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -2047,7 +2047,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": false,
         "status": "INSUFFICIENT_EVIDENCE"
@@ -2242,7 +2242,7 @@
           "F6": null
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": false,
         "status": "INSUFFICIENT_EVIDENCE"
@@ -2358,7 +2358,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": false,
         "status": "INSUFFICIENT_EVIDENCE"
@@ -2561,7 +2561,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -2769,7 +2769,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -2977,7 +2977,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -3185,7 +3185,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -3393,7 +3393,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": true,
         "status": "EXPERIMENTAL / PROVISIONAL",
@@ -3583,7 +3583,7 @@
           }
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": false,
         "status": "INSUFFICIENT_EVIDENCE"
@@ -3688,7 +3688,7 @@
           "F6": null
         },
         "safety_state": "SAFE",
-        "safety_handling": "점수 발급",
+        "safety_handling": "\uc810\uc218 \ubc1c\uae09",
         "safety_warning": false,
         "issued": false,
         "status": "INSUFFICIENT_EVIDENCE"

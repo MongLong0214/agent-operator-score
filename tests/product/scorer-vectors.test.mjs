@@ -78,7 +78,7 @@ test("the safety gate still withholds regardless of how well the operator scored
 });
 
 test("a factor carrying one lone opportunity cannot issue", () => {
-  // packages/scorer/src/issuance.ts:292 requires F1-F5 to each carry at least two opportunities.
+  // Issuance requires F1-F5 to each carry at least two opportunities.
   // Every metric here is its own opportunity, so the floor was satisfied by construction on any
   // real run and was never checked. Satisfied by accident is how two predicates drift apart.
   const full = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`M${String(i + 1).padStart(2, "0")}`, 1]));
