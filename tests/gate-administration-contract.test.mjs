@@ -1227,8 +1227,8 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
   // Repinned from the validator's own output as the per-artifact binding decomposition (#167)
   // proceeds: each step invalidates one batch and accepts its replacement, so total and
   // invalidated rise together while accepted holds.
-  assert.equal(result.batches, 83);
-  assert.equal(result.counts.accepted, 26);
+  assert.equal(result.batches, 84);
+  assert.equal(result.counts.accepted, 27);
   assert.equal(result.counts.invalidated, 57);
   assert.deepEqual(result.currentAcceptedTickets, [
     "docs/tickets/D0/D0-001-canonical-identifier-registry.md",
@@ -1272,6 +1272,7 @@ test("D0-002 RED census correction invalidates the prior acceptance and renews e
     "docs/tickets/E14/E14-001-complete-name-license-notices-and-security-clearance.md",
     "docs/tickets/E14/E14-002-build-public-documentation-demo-and-contributor-conformance-surface.md",
     "docs/tickets/E14/E14-003-obtain-independent-reproduction-and-close-g4-publication-gate.md",
+    "docs/tickets/E15/E15-001-local-assessment-instrument.md",
     "docs/tickets/E2/E2-001-implement-opportunity-eligibility-and-evidence-deduplication.md",
     "docs/tickets/E2/E2-002-implement-metric-factor-o-p-and-aos-coding-p0-scoring.md",
     "docs/tickets/E2/E2-003-implement-ordered-integrity-safety-and-issuance-gate.md",
