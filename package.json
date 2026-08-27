@@ -13,10 +13,6 @@
   ],
   "scripts": {
     "test": "node --test",
-    "build": "node scripts/validate-planning.mjs --build",
-    "docs:check": "node scripts/validate-planning.mjs",
-    "ops:status": "node scripts/resolve-execution-state.mjs",
-    "ops:check": "node scripts/resolve-execution-state.mjs --offline && node scripts/render-execution-views.mjs --check",
-    "ops:render": "node scripts/render-execution-views.mjs"
+    "verify": "node scripts/verify-g0.mjs && node scripts/schema-conformance.mjs"
   }
 }

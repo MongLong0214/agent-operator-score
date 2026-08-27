@@ -7,9 +7,6 @@
 **The model is not the variable you control. You are.**
 
 [![status](https://img.shields.io/badge/status-pre--release-blue)](docs/tickets/BOARD.md)
-[![gate G0](https://img.shields.io/badge/G0-resolved-brightgreen)](docs/decisions/G4-VERDICT.md)
-[![gate G4 source](https://img.shields.io/badge/G4%20source-closed-brightgreen)](docs/decisions/PUBLICATION-CLEARANCE.md)
-[![claims](https://img.shields.io/badge/claims-5%20open-orange)](docs/decisions/G4-VERDICT.md)
 [![node](https://img.shields.io/badge/node-22%20%7C%2024-informational)](package.json)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -152,38 +149,25 @@ node scripts/verify-g0.mjs
 Clone this repository into a scratch directory and run it again. The digest is the same, or the gate
 below stops being closed.
 
-## The gate is the product
+## What has not been established
 
-An assessment that cannot say what it has not established is worth nothing. So the release gate says
-it, on every run, out loud.
+An assessment that cannot say what it has not established is worth nothing, so this says it plainly
+rather than encoding it in a gate.
 
-<img src="docs/assets/aos-gates.svg" alt="G0 resolved; G1, G2 and G3 open; G4 split into a closed source half and an open claim half." width="100%">
+**Nothing here shows that AOS-Coding P0 measures what its name says.** No calibration study has been
+run. No feasibility alpha has been run. No independent party has reproduced these bytes on another
+machine. No qualified reviewer has examined this repository. Those are four separate absences, and
+none of them is closed.
 
-```bash
-node scripts/verify-release.mjs
-```
+What *is* established is narrower and real: the scorer is deterministic and its fixture truth
+reproduces byte-for-byte from a clean checkout, which `npm run verify` re-derives on demand. That is
+a statement about arithmetic, not about measurement.
 
-```
-G4_SOURCE_PASS permits_source_publication=true
-CLAIMS_BLOCKED 5
-- G1
-- G2
-- G3
-- formal_publication_review
-- independent_reproduction
-```
-
-The source half is closed: MIT outbound, DCO inbound, notices, security policy, and a clean-checkout
-reproduction of the pinned fixture bytes. That clearance covers shipping source and nothing else.
-
-The claim half is open and will stay open until real events close it — an **independent** party
-reproduces the bytes, the feasibility verdict is reached, two calibration studies are run, and a
-qualified reviewer looks at this. None of them can be closed by editing a file: each is read from its
-own evidence, and the test suite pins that injecting a fully-`RESOLVED` requirement array changes the
-blocked list not at all.
-
-So: nothing here claims the metric measures what its name says. That claim has a price, and it has
-not been paid.
+An earlier version of this repository expressed the same four absences as a release gate with signed
+reproduction manifests, a trusted-principal allowlist and a per-requirement ledger. The gate was
+removed because the machinery was larger than the thing it guarded and the sentence above does the
+same work. The absences did not change when the gate went; they are listed here because they are
+still true.
 
 ## Local-first and privacy
 
@@ -194,28 +178,16 @@ future ticket.
 
 ## How this repository is built
 
-Every change moves through a fixed chain, and a failed gate blocks everything after it:
+The design record is in `docs/`: the SSOT states the product direction, the ADRs record the
+decisions, and `docs/prd/` and `docs/tickets/` hold the requirement and work breakdown. Read the
+relevant one before changing what it describes.
 
-```text
-final SSOT → accepted ADR set → accepted owning PRD → accepted exact atomic ticket
-→ exact-base execution packet → RED with expected reason → minimum GREEN
-→ focused + full + build/package verification → cumulative exact-head review
-→ exact-head CI → explicit merge authorization
-```
-
-13 ADRs, 21 PRDs, 74 atomic implementation tickets across 6 milestones. Each ticket owns exact files and symbols and
-declares forbidden scope, dependencies, RED, minimum GREEN, acceptance-to-test mapping, stop
-conditions, evidence and invalidation. Read the exact ticket in full before editing anything.
-
-Implementation order is fixed: `D0` name migration → `E0-A…D` contracts → `E1` schemas → `E2` scorer
-→ `E3` runner → `E4` Codex adapter → `E5…E7` families → `G0` → `E8` complete Form A → `E9` Claude
-Code parity → `E10` report → `E11` Form B → `E12` feasibility alpha → `E13` Snapshot → `E14` public
-OSS and G4. Nothing in that chain jumps the order.
-
-`E15` sits outside it. The SSOT names the CLI surface in 9.3 but assigns it no epic, and the local
-instrument neither depends on that chain nor advances it: it is a sidecar that answers the same
-question with its own suite, and it is gated separately. Reading it as progress through the order
-would be reading it as something it is not.
+They are records, not gates. An earlier version of this repository enforced them with a control
+plane that decided which ticket was startable from live GitHub facts, pinned every validator output
+byte-for-byte, and required a signed receipt per acceptance. It came to about fifteen times the size
+of the code it governed, and adding a single ticket meant synchronising eight surfaces. It was
+removed. What replaces it is `npm test` and `npm run verify`, which check the things that can
+actually be wrong.
 
 ## Published CLI — not available yet
 
@@ -243,7 +215,7 @@ Nothing publishes this package, so none of these resolve. Do not treat a local r
 | [Validation](docs/VALIDATION.md) | what has been established, and how |
 | [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md) | the source of truth every artifact answers to |
 | [ADRs](docs/adr/INDEX.md) · [PRDs](docs/prd/INDEX.md) | decisions and product requirements |
-| [Ticket board](docs/tickets/BOARD.md) · [Traceability](docs/TRACEABILITY.md) | the atomic work and its evidence |
+| [Ticket board](docs/tickets/BOARD.md) | the work breakdown, kept as a record |
 | [Contributing](CONTRIBUTING.md) | DCO sign-off, adapter and scenario routes |
 
 Every ADR and PRD is **PROPOSED**; every ticket not yet verified is **BLOCKED**. Issue creation does
