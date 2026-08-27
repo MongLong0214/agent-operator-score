@@ -7,12 +7,7 @@
   "engines": {
     "node": ">=22.18 <25"
   },
-  "workspaces": [
-    "packages/*",
-    "adapters/*"
-  ],
   "scripts": {
-    "test": "node --test",
-    "verify": "node scripts/verify-g0.mjs && node scripts/schema-conformance.mjs"
+    "test": "node --test"
   }
 }
