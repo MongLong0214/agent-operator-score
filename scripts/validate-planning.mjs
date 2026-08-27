@@ -240,8 +240,8 @@ const adrFiles = allFiles.filter((path) => /^docs\/adr\/ADR-\d{4}-.+\.md$/.test(
 const prdFiles = allFiles.filter((path) => /^docs\/prd\/PRD-(?:D0|E0[ABCD]|E\d+)-.+\.md$/.test(rel(path)));
 const ticketFiles = allFiles.filter((path) => /^docs\/tickets\/(?:D0|E0-[ABCD]|E\d+)\/[A-Z0-9-]+-.+\.md$/.test(rel(path)));
 if (adrFiles.length !== 13) pushError(`ADR count ${adrFiles.length}, expected 13`);
-if (prdFiles.length !== 20) pushError(`PRD count ${prdFiles.length}, expected 20`);
-if (ticketFiles.length !== 74) pushError(`ticket count ${ticketFiles.length}, expected 74`);
+if (prdFiles.length !== 21) pushError(`PRD count ${prdFiles.length}, expected 21`);
+if (ticketFiles.length !== 75) pushError(`ticket count ${ticketFiles.length}, expected 75`);
 
 const adrs = new Map();
 for (const path of adrFiles) {
@@ -882,12 +882,16 @@ if (!readme.includes("# Agent Operator Score (AOS)") || !readme.includes("`agent
 // The status line is pinned by exact text so the README cannot drift away from what is
 // actually built. "Planning baseline. Product not implemented." stopped being true once
 // packages/schema/src landed the metric registry and the scoring/issuance/capability/
-// session-class contracts; the claim it is replaced by must stay equally exact.
-if (!readme.includes("Current status: foundation contracts implemented in `@aos/schema`; no public CLI and no end-to-end assessment.")) {
+// session-class contracts, and "no public CLI and no end-to-end assessment" stopped being
+// true once E15-001 landed the local instrument; the claim each is replaced by must stay
+// equally exact, and must keep naming what the instrument is not.
+// Pinned as one sentence, not as two independent fragments: splitting it let the halves drift
+// apart, and the half that bounds the claim is the half that matters.
+if (!readme.includes("a local `aos` instrument runs a controlled six-family assessment end to end from a\n> clone; it is not the `packages/*` contract stack, and no public package has been approved.")) {
   pushError("README lacks exact implementation-state truth");
 }
-if (!readme.includes("Planned CLI — not available yet")) pushError("README blurs planned CLI status");
-if (!readme.includes("73 atomic implementation tickets")) pushError("README ticket census stale");
+if (!readme.includes("Published CLI — not available yet")) pushError("README blurs published CLI status");
+if (!readme.includes("74 atomic implementation tickets")) pushError("README ticket census stale");
 if (existsSync(resolve(root, "docs/north-star/legacy"))) pushError("legacy planning path is active");
 
 // Banned wording. Two phrasings are prohibited: one asserting the absence of code, and one

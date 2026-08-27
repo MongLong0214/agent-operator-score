@@ -26,3 +26,4 @@ The execution order is fixed: D0 → E0-A → E0-B → E0-C → E0-D → E1 → 
 | [E12](PRD-E12-human-alpha-and-validation.md) | S4 · Human Alpha & Retest | Run a preregistered 20-person alpha to decide whether measurement, attribution, and prescription transfer exist. |
 | [E13](PRD-E13-snapshot-estimate.md) | S5 · Public OSS | Implement a clearly non-verified 3–5 minute Snapshot that routes users to the full assessment without impersonating it. |
 | [E14](PRD-E14-public-oss-and-g4.md) | S5 · Public OSS | Open the OSS surface only after identity, legal, documentation, reproducibility, and external-reproduction gates pass. |
+| [E15](PRD-E15-local-assessment-instrument.md) | S5 · Public OSS | Carry a self-contained local assessment instrument that runs a controlled six-family assessment from a clone without impersonating the contract stack. |
