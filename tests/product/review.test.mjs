@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isWrittenDownExample, reviewSession } from "../../lib/review.mjs";
+import { aggregateFindings, isWrittenDownExample, reviewSession } from "../../lib/review.mjs";
 
 // A session shaped the way lib/session.mjs normalizes one, built inline so these cases state the
 // exact sequence each rule is about rather than depending on whatever is on this machine.
@@ -144,6 +144,42 @@ test("a written-down example is distinguished from a credential by its own text"
   }
 });
 
+test("rm -rf is judged by its target, not by its flags", () => {
+  // Every absolute path outside /tmp counted as destructive, so ordinary cleanup of a directory the
+  // session made was reported. Across forty sessions that was 26 of 33 destructive findings, and a
+  // rule that fires on routine cleanup is one the operator stops reading.
+  for (const safe of [
+    "rm -rf /Users/isaac/scratch/build",
+    "rm -rf /var/folders/xx/T/aos-test",
+    "rm -rf node_modules",
+    'rm -rf "$ROOT"',
+    "rm -rf ./dist"
+  ]) {
+    assert.equal(rules(build([bash(safe)])).includes("destructive-command-executed"), false, safe);
+  }
+
+  for (const dangerous of [
+    "rm -rf /",
+    "rm -rf /usr",
+    "rm -rf /Users",
+    "rm -rf ~",
+    'rm -rf "$HOME"',
+    // The classic: an unset variable makes the trailing slash the whole target.
+    'rm -rf "$BUILD/"'
+  ]) {
+    assert.ok(rules(build([bash(dangerous)])).includes("destructive-command-executed"), dangerous);
+  }
+});
+
+test("resetting onto a ref that was just fetched is synchronisation", () => {
+  // origin/ and upstream/ were already excluded. FETCH_HEAD is the same act and was not, because
+  // the underscore stops \bHEAD\b from matching.
+  for (const sync of ["git reset --hard FETCH_HEAD", "git reset --hard ORIG_HEAD", "git reset --hard @{u}"]) {
+    assert.equal(rules(build([bash(sync)])).includes("destructive-command-executed"), false, sync);
+  }
+  assert.ok(rules(build([bash("git reset --hard 3b17051c")])).includes("destructive-command-executed"));
+});
+
 test("a destructive command quoted inside a string is not a command that ran", () => {
   // Three of six destructive findings across forty sessions were the reviewer reading the source
   // of its own rules, quoted inside a Python or Markdown literal.
@@ -223,4 +259,43 @@ test("both runtimes reduce to the same normalized session", async () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("the trend separates how many sessions from how many findings", () => {
+  // The count used to be per finding and was printed as "4 / 40 sessions", which reads as a habit
+  // across the operator's work when it is one moment in one session.
+  const noisy = { findings: [
+    { rule: "destructive-command-executed", severity: "high" },
+    { rule: "destructive-command-executed", severity: "high" },
+    { rule: "destructive-command-executed", severity: "high" }
+  ] };
+  const quiet = { findings: [{ rule: "long-unattended-stretch", severity: "high" }] };
+  const spread = { findings: [{ rule: "long-unattended-stretch", severity: "high" }] };
+
+  const ranked = aggregateFindings([noisy, quiet, spread]);
+  const destructive = ranked.find((row) => row.rule === "destructive-command-executed");
+  const unattended = ranked.find((row) => row.rule === "long-unattended-stretch");
+
+  assert.equal(destructive.session_count, 1, "three findings in one session counted as three sessions");
+  assert.equal(destructive.finding_count, 3);
+  assert.equal(unattended.session_count, 2);
+  assert.equal(unattended.finding_count, 2);
+
+  // Prevalence first: two sessions beat three findings in one.
+  assert.equal(ranked[0].rule, "long-unattended-stretch", "the noisier single session outranked the habit");
+});
+
+test("a rule that fires four times in one session is one session, not four", () => {
+  // The trend counted findings and printed them as sessions, so one moment in one session read as
+  // a pattern across the operator's work.
+  const repeated = build([
+    bash("rm -rf /"),
+    bash("rm -rf /usr"),
+    bash("rm -rf /etc"),
+    bash("rm -rf /bin")
+  ]);
+  const destructive = repeated.findings.filter((entry) => entry.rule === "destructive-command-executed");
+  assert.equal(destructive.length, 4, "each command should still be its own finding");
+  const sessionsHit = new Set(destructive.map(() => repeated.path)).size;
+  assert.equal(sessionsHit, 1, "four findings came from one session");
 });
