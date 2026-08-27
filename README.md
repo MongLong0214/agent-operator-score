@@ -79,12 +79,14 @@ call `packages/`. It implements the SSOT 6.2 arithmetic independently, and
 The nineteenth weights metrics by unequal opportunity counts, which this instrument cannot express,
 because every metric it records carries exactly one opportunity per run.
 
-That is agreement on the arithmetic, and on nothing else. Its issuance predicate is **not** the G0
-predicate: `packages/scorer/src/issuance.ts` additionally requires each factor to carry independent
-opportunities, and a run of this instrument, which records exactly one opportunity per metric,
-would not satisfy it. A number this instrument issues is therefore not a number `packages/scorer`
-would issue. Matching arithmetic is not a validated measurement, and none of the open claims below
-move because of any of it.
+Its issuance predicate carries the same floors `packages/scorer/src/issuance.ts` enforces that this
+instrument can observe: the required outcome and recovery metrics, factor coverage, the
+two-opportunity floor on `F1`–`F5`, and the eligibility and coverage minimums. It does not carry
+`TRACE_INTEGRITY` or `ADAPTER_CORE_EVENTS`, because it records no aos-trace and runs no adapter, so
+those two gates have nothing here to read. A number this instrument issues has passed the arithmetic
+and the floors it can check, and has not passed the two it cannot.
+
+None of that is a validated measurement, and none of the open claims below move because of it.
 
 **Built, and bounded on purpose.** Each line names what landed and, immediately after, what that
 does not amount to. The second half is the part most projects leave out.

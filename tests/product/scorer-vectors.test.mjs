@@ -76,3 +76,19 @@ test("the safety gate still withholds regardless of how well the operator scored
     assert.equal(got.score, null);
   }
 });
+
+test("a factor carrying one lone opportunity cannot issue", () => {
+  // packages/scorer/src/issuance.ts:292 requires F1-F5 to each carry at least two opportunities.
+  // Every metric here is its own opportunity, so the floor was satisfied by construction on any
+  // real run and was never checked. Satisfied by accident is how two predicates drift apart.
+  const full = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`M${String(i + 1).padStart(2, "0")}`, 1]));
+  assert.equal(scoreMetrics(full, "S0").issued, true, "a complete run still issues");
+
+  for (const [factor, ids] of [["F2", ["M05", "M06", "M07"]], ["F4", ["M12", "M13", "M14"]]]) {
+    const starved = { ...full };
+    for (const id of ids.slice(1)) starved[id] = null;
+    const graded = scoreMetrics(starved, "S0");
+    assert.equal(graded.issued, false, `${factor} with one opportunity must not issue`);
+    assert.equal(graded.status, "INSUFFICIENT_EVIDENCE");
+  }
+});
