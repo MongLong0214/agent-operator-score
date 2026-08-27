@@ -17,7 +17,8 @@
 
 ---
 
-> **Current status: foundation contracts implemented in `@aos/schema`; no public CLI and no end-to-end assessment.**
+> **Current status: a local `aos` instrument runs a controlled six-family assessment end to end from a
+> clone; it is not the `packages/*` contract stack, and no public package has been approved.**
 
 Two operators run the same model, on the same repository, with the same task. One ships. One burns
 the budget and merges something that does not work. Every benchmark you can name measures the half
@@ -64,8 +65,20 @@ twelve things to fix.
 
 ## Honest status
 
-There is no `aos` CLI yet, and nothing here runs an assessment end to end. What exists is the part
-that has to be right before any of that means anything.
+This repository holds two things, and confusing them would be the easiest way to overclaim.
+
+The first is the contract stack under `packages/` and `specs/`: the frozen registry, the schemas, the
+graders, the issuance and safety gates. It is the part that has to be right before any number means
+anything. It still has no runner and no scenario content, so on its own it assesses nothing.
+
+The second is a local instrument, `bin/aos.mjs` with `lib/`, that does run a controlled six-family
+assessment end to end against real agent CLIs on your machine. It is self-contained and does **not**
+call `packages/`. It implements the same SSOT 6.2 formula independently, and
+`tests/product/scorer-vectors.test.mjs` pins it against the G0-published pack in
+`fixtures/scoring/vectors.json`: eighteen of the nineteen vectors agree on issuance and display
+score. The nineteenth weights metrics by unequal opportunity counts, which this instrument cannot
+express, because every metric it records carries exactly one opportunity per run. Agreement on a
+formula is not a validated measurement, and none of the open claims below move because of it.
 
 **Built, and bounded on purpose.** Each line names what landed and, immediately after, what that
 does not amount to. The second half is the part most projects leave out.
@@ -74,7 +87,7 @@ does not amount to. The second half is the part most projects leave out.
 |---|---|
 | the frozen `M01`–`M20` registry in `metric-registry.ts`, plus the scoring, issuance, capability and session-class contracts | a scorer |
 | `specs/aos-trace.schema.json`, `specs/aos-result.schema.json` and `specs/opportunity-profile.schema.json` with a canonical event registry | a runner |
-| one FAM-2 grader in `packages/scorer/src/graders/context.ts` | **A single grader is not a scorer.** |
+| thirteen graders in `packages/scorer/src/graders/`, covering all six families | **Graders are not a runner.** They read structured observations, and nothing in `packages/` produces those from a real session. |
 | the frozen six-family Form A pack at `suites/coding-core-v0/form-a/manifest.json` | **A frozen pack is not an end-to-end assessment.** |
 | the explicit-root workspace lifecycle in `packages/runner/src/workspace.ts` | an isolated runner |
 | the deterministic one-lever selector in `packages/scorer/src/diagnosis/select-lever.ts` | **A lever selector is not a prescription report.** |
@@ -82,14 +95,36 @@ does not amount to. The second half is the part most projects leave out.
 | Claude Code identity, capability discovery, the controlled wrapper and bounded event normalization | a complete adapter |
 | the control-plane validators and the operational-state resolver, on Node 22 and 24 | any of the above |
 
-**Not built.** The `agent-operator-score` package, the `aos` CLI, the rest of the scorer, the runner,
-the Codex adapter, the task forms, reports, Snapshot, and any public release do **not** exist yet,
-and nothing here can run an assessment end to end. Every implemented contract is `private: true` and
-unpublished. No public package has been approved.
+**Not built.** Inside the contract stack: the runner, the scenario content the frozen pack refers to,
+the Codex adapter, reports, Snapshot, and the layer that would turn a real session into the
+observations the graders read. `suites/coding-core-v0/` carries opportunity ids and placeholder
+digests, not prompts, workspaces or oracles. Nothing in `packages/` spawns a process.
 
-## Try the part that works
+Outside it: the published `agent-operator-score` package. The local instrument runs from a clone and
+nothing else; the root manifest declares no `bin`, and every workspace is `private: true` and
+unpublished. Per ADR-0003 that stays true until E14/G4, and
+[PUBLICATION-CLEARANCE.md](docs/decisions/PUBLICATION-CLEARANCE.md) records
+`permits_npm_publication: false`. No public package has been approved.
 
-This is not the planned `aos` CLI and does not run an assessment. Same commands as in
+## Try it
+
+Clone the repository and run the instrument from the checkout. There is no install step, no
+dependency to fetch, and no `bin` on the manifest, so `node bin/aos.mjs` is the command.
+
+```bash
+node bin/aos.mjs doctor                    # platform and suite check
+node bin/aos.mjs init                      # create .aos/ in the current directory
+node bin/aos.mjs agent add codex --command codex --arg exec --arg -s --arg workspace-write \
+                                 --arg --skip-git-repo-check --arg -
+node bin/aos.mjs assess --template aos-plan.json   # write the operator plan template
+node bin/aos.mjs assess --plan aos-plan.json       # run the controlled assessment
+```
+
+The template is deliberately invalid until you complete it: the plan is the operator's own contract,
+and an unfilled one cannot earn a score. Registered agent commands are whatever your local CLIs
+actually accept — check them with `node bin/aos.mjs agent doctor` before a run.
+
+Verify the contract stack separately. These do not run an assessment. Same commands as in
 [examples/README.md](examples/README.md).
 
 ```bash
@@ -159,7 +194,7 @@ final SSOT → accepted ADR set → accepted owning PRD → accepted exact atomi
 → exact-head CI → explicit merge authorization
 ```
 
-13 ADRs, 20 PRDs, 73 atomic implementation tickets across 6 milestones. Each ticket owns exact files and symbols and
+13 ADRs, 21 PRDs, 74 atomic implementation tickets across 6 milestones. Each ticket owns exact files and symbols and
 declares forbidden scope, dependencies, RED, minimum GREEN, acceptance-to-test mapping, stop
 conditions, evidence and invalidation. Read the exact ticket in full before editing anything.
 
@@ -168,7 +203,11 @@ Implementation order is fixed: `D0` name migration → `E0-A…D` contracts → 
 Code parity → `E10` report → `E11` Form B → `E12` feasibility alpha → `E13` Snapshot → `E14` public
 OSS and G4. Nothing jumps the order.
 
-## Planned CLI — not available yet
+## Published CLI — not available yet
+
+The local instrument above is not this. These are the published-package commands the SSOT specifies,
+and they run against the contract stack, the frozen suite and the Opportunity Profile rather than
+against the local instrument's own suite.
 
 ```bash
 npx agent-operator-score doctor --capabilities --runtime codex
@@ -179,7 +218,7 @@ npx agent-operator-score retest --runtime codex --form B --baseline ./runs/<id>
 npx agent-operator-score export --run ./runs/<id> --anonymous
 ```
 
-Do not run these until the owning tickets are implemented and verified.
+Nothing publishes this package, so none of these resolve. Do not treat a local run as one of them.
 
 ## Documentation
 

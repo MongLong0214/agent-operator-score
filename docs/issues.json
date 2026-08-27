@@ -216,6 +216,11 @@
       "description": "AOS E14 epic"
     },
     {
+      "name": "epic:E15",
+      "color": "0E8A16",
+      "description": "AOS E15 epic"
+    },
+    {
       "name": "phase:S0",
       "color": "1D76DB",
       "description": "S0 \u00b7 Name & Contracts"
@@ -1675,6 +1680,23 @@
         "size:L"
       ],
       "body_template": "## Gate state\n\n**BLOCKED \u2014 OWNER-RATIFIED ONE-TIME GOVERNANCE REPAIR + CEO GATE REQUIRED. This bounded transitional planning-control-plane work carries zero product code.**\n\n- Epic: `D0`\n- Milestone: S0 \u00b7 Name & Contracts\n- Size: L\n- Dependencies: D0-008\n- Exact implementation contract: [docs/tickets/D0/D0-009-authenticated-review-activation.md](/docs/tickets/D0/D0-009-authenticated-review-activation.md)\n- Authority basis: owner-ratified one-time governance repair plus CEO gate\n\nRead the exact ticket in full. An issue number is not authorization."
+    },
+    {
+      "id": "E15-001",
+      "title": "E15-001 \u00b7 Carry the self-contained local assessment instrument",
+      "issue": 331,
+      "ticket_path": "docs/tickets/E15/E15-001-local-assessment-instrument.md",
+      "milestone": "S5 \u00b7 Public OSS",
+      "dependencies": [],
+      "size": "L",
+      "epic": "E15",
+      "kind": "executable",
+      "initial_labels": [
+        "epic:E15",
+        "phase:S5",
+        "size:L"
+      ],
+      "body_template": "## Gate state\n\n**BLOCKED \u2014 ADR + PRD + TICKET MAINTAINER GATES REQUIRED. Product implementation is not authorized by issue creation.**\n\n- Epic: `E15`\n- Milestone: S5 \u00b7 Public OSS\n- Size: L\n- Dependencies: None\n- Exact implementation contract: [docs/tickets/E15/E15-001-local-assessment-instrument.md](/docs/tickets/E15/E15-001-local-assessment-instrument.md)\n- Authority: [`docs/north-star/agent-operator-score-ssot-v1.0.md`](/docs/north-star/agent-operator-score-ssot-v1.0.md)\n\n## Execution rule\n\nRead the final SSOT, required ADRs, owning PRD, and the exact ticket in full. The ticket exclusively defines file/symbol ownership, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, completion evidence, and invalidation.\n\n## Gate checklist\n\n- [ ] Required ADR set accepted at exact digest\n- [ ] Owning PRD accepted at exact digest\n- [ ] Exact ticket accepted at exact digest\n- [ ] Execution packet pins base SHA and clean ownership\n- [ ] RED captured with expected reason before GREEN\n- [ ] Focused, full, build/package, and required manual/live lanes pass at exact head\n- [ ] Cumulative exact-head review and CI pass\n\nDo not broaden scope, infer missing observability, or continue past a failed dependency."
     }
   ]
 }

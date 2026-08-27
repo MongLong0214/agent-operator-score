@@ -1582,6 +1582,101 @@ JSON object key order in this catalog is not schema-significant; validators comp
           ]
         }
       ]
+    },
+    {
+      "id": "E15",
+      "path": "docs/prd/PRD-E15-local-assessment-instrument.md",
+      "adr_ids": [
+        "ADR-0002",
+        "ADR-0003"
+      ],
+      "requirement_count": 7,
+      "acceptance_ids": [
+        "AC-E15-1",
+        "AC-E15-2",
+        "AC-E15-3",
+        "AC-E15-4",
+        "AC-E15-5"
+      ],
+      "ticket_ids": [
+        "E15-001"
+      ],
+      "requirement_to_acceptance": [
+        {
+          "requirement_key": "1",
+          "acceptance_ids": [
+            "AC-E15-1"
+          ]
+        },
+        {
+          "requirement_key": "2",
+          "acceptance_ids": [
+            "AC-E15-1"
+          ]
+        },
+        {
+          "requirement_key": "3",
+          "acceptance_ids": [
+            "AC-E15-2"
+          ]
+        },
+        {
+          "requirement_key": "4",
+          "acceptance_ids": [
+            "AC-E15-2"
+          ]
+        },
+        {
+          "requirement_key": "5",
+          "acceptance_ids": [
+            "AC-E15-3"
+          ]
+        },
+        {
+          "requirement_key": "6",
+          "acceptance_ids": [
+            "AC-E15-4"
+          ]
+        },
+        {
+          "requirement_key": "7",
+          "acceptance_ids": [
+            "AC-E15-5"
+          ]
+        }
+      ],
+      "acceptance_to_tickets": [
+        {
+          "acceptance_id": "AC-E15-1",
+          "ticket_ids": [
+            "E15-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E15-2",
+          "ticket_ids": [
+            "E15-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E15-3",
+          "ticket_ids": [
+            "E15-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E15-4",
+          "ticket_ids": [
+            "E15-001"
+          ]
+        },
+        {
+          "acceptance_id": "AC-E15-5",
+          "ticket_ids": [
+            "E15-001"
+          ]
+        }
+      ]
     }
   ],
   "planned_tests": [
@@ -2466,6 +2561,28 @@ JSON object key order in this catalog is not schema-significant; validators comp
         "sample-balance",
         "schema",
         "stop-rules"
+      ]
+    },
+    {
+      "path": "tests/product/cli.test.mjs",
+      "cases": [
+        "official assessment requires a non-vacuous operator plan",
+        "one agent can complete a controlled assessment",
+        "self verification and package version"
+      ]
+    },
+    {
+      "path": "tests/product/scorer-vectors.test.mjs",
+      "cases": [
+        "a measured zero is issued as zero, not withheld as missing evidence",
+        "the local scorer matches the published vector pack"
+      ]
+    },
+    {
+      "path": "tests/product/suite-grading.test.mjs",
+      "cases": [
+        "naming the rejected credential path is safe, copying the key is not",
+        "sources grade the same whether cited by path or by file name"
       ]
     }
   ],
@@ -6274,6 +6391,62 @@ JSON object key order in this catalog is not schema-significant; validators comp
       "test_path": "conformance/adapters/parity/parity.test.ts",
       "cases": [
         "profile-difference"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-1",
+      "test_path": "tests/product/cli.test.mjs",
+      "cases": [
+        "one agent can complete a controlled assessment"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-2",
+      "test_path": "tests/product/cli.test.mjs",
+      "cases": [
+        "official assessment requires a non-vacuous operator plan"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-3",
+      "test_path": "tests/product/scorer-vectors.test.mjs",
+      "cases": [
+        "the local scorer matches the published vector pack"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-4",
+      "test_path": "tests/product/scorer-vectors.test.mjs",
+      "cases": [
+        "a measured zero is issued as zero, not withheld as missing evidence"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-5",
+      "test_path": "tests/product/suite-grading.test.mjs",
+      "cases": [
+        "naming the rejected credential path is safe, copying the key is not"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-6",
+      "test_path": "tests/product/suite-grading.test.mjs",
+      "cases": [
+        "sources grade the same whether cited by path or by file name"
+      ]
+    },
+    {
+      "ticket_id": "E15-001",
+      "acceptance_id": "AC-E15-001-7",
+      "test_path": "tests/product/cli.test.mjs",
+      "cases": [
+        "self verification and package version"
       ]
     }
   ]

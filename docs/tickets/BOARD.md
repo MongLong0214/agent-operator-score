@@ -83,6 +83,7 @@ This board owns only ticket IDs, milestone placement, size, and dependency edges
 | [D0-013](D0/D0-013-restore-execution-view-regression-coverage.md) | D0 | S0 · Name & Contracts | S | D0-002 |
 | [D0-012](D0/D0-012-ticket-owned-census-rederivation.md) | D0 | S0 · Name & Contracts | M | D0-002 |
 | [E1-004](E1/E1-004-carry-the-write-target-outside-the-redaction-bound.md) | E1 | S1 · G0 Scorer Truth | M | E1-001,E1-003 |
+| [E15-001](E15/E15-001-local-assessment-instrument.md) | E15 | S5 · Public OSS | L | None |
 <!-- generated:board-rows end -->
 
 ## Gate invariant
