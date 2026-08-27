@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { reviewSession } from "../../lib/review.mjs";
+import { isWrittenDownExample, reviewSession } from "../../lib/review.mjs";
 
 // A session shaped the way lib/session.mjs normalizes one, built inline so these cases state the
 // exact sequence each rule is about rather than depending on whatever is on this machine.
@@ -100,8 +100,48 @@ test("key material is named by kind and never repeated", () => {
   const prose = build([{ kind: "result", text: "the old rule matched -----BEGIN RSA PRIVATE KEY----- in docs" }]);
   assert.equal(prose.findings.some((entry) => entry.rule === "secret-material-in-session"), false);
 
-  const aws = build([{ kind: "result", text: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE" }]);
+  const aws = build([{ kind: "result", text: "AWS_ACCESS_KEY_ID=AKIA3XQ7ZP4WLM9RTKD2" }]);
   assert.match(aws.findings.find((entry) => entry.rule === "secret-material-in-session").what, /AWS access key id/);
+
+  // The fixture above used to be AKIAIOSFODNN7EXAMPLE, which is the key id AWS publishes in its
+  // own documentation. It is also in this repository's tests, so every session that worked on this
+  // repository reported it. Measured across forty real sessions, six of the eight distinct matches
+  // were of this kind -- documentation or fixtures -- and a high-severity rule that is wrong three
+  // times in four teaches the operator to ignore the two that are real.
+  const documented = build([{ kind: "result", text: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE" }]);
+  assert.equal(
+    documented.findings.some((entry) => entry.rule === "secret-material-in-session"),
+    false,
+    "a published documentation key was reported as a credential to rotate"
+  );
+});
+
+test("an example beside a real key does not suppress the real one", () => {
+  // The natural place for both to appear together is a diff or a test file being edited. Requiring
+  // every match to be real would let one documentation string hide the credential next to it.
+  const mixed = build([
+    { kind: "result", text: "AKIAIOSFODNN7EXAMPLE is the docs key; ours is AKIA3XQ7ZP4WLM9RTKD2" }
+  ]);
+  assert.ok(
+    mixed.findings.some((entry) => entry.rule === "secret-material-in-session"),
+    "a real key was suppressed by the example beside it"
+  );
+});
+
+test("a written-down example is distinguished from a credential by its own text", () => {
+  for (const example of [
+    "AKIAIOSFODNN7EXAMPLE",
+    "ghp_0123456789abcdefghijklmnopqrstuvwx",
+    "sk-0123456789abcdefghijklmnopqrstuvwx",
+    "ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sk-notarealkeyusedonlyintestsxxxx"
+  ]) {
+    assert.equal(isWrittenDownExample(example), true, example);
+  }
+  // High-entropy values with no placeholder word and no run stay reportable.
+  for (const real of ["AKIA3XQ7ZP4WLM9RTKD2", "ghp_7Kq2ZmR9pXvB4nTcW8yJdL3sHf6QaE", "sk-9WmZ4kQ7xR2vT8bN5cJ3hL6pD1yA"]) {
+    assert.equal(isWrittenDownExample(real), false, real);
+  }
 });
 
 test("a destructive command quoted inside a string is not a command that ran", () => {
