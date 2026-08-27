@@ -25,7 +25,14 @@ export function addAgent(cwd, id, script = fakeAgent) {
 }
 
 export function newestRunId(cwd) {
-  return readdirSync(join(cwd, ".aos", "runs")).sort().at(-1);
+  // By created_at, not by directory name. Run ids are UUIDs, so a lexical sort returns an arbitrary
+  // run as soon as there is more than one -- which made every multi-run assertion meaningless while
+  // still passing whenever a test happened to make only one.
+  const runs = join(cwd, ".aos", "runs");
+  return readdirSync(runs)
+    .map((id) => ({ id, at: JSON.parse(readFileSync(join(runs, id, "manifest.json"), "utf8")).created_at }))
+    .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id.localeCompare(b.id)))
+    .at(-1)?.id;
 }
 
 export function newestResult(cwd) {

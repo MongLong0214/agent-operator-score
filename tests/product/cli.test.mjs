@@ -188,3 +188,59 @@ test("asking for more sessions than the old cap returns more than the old cap", 
     assert.equal(beyond.reviewed_sessions, 45);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
+
+test("a seed names the scenario, and a run records the one it used", () => {
+  // A scenario nobody can name again is a result nobody can check. Given explicitly the run is
+  // reproducible; left out, one is drawn and written down rather than left implicit.
+  const cwd = temporary("aos-seed-");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    makePlan(cwd, { default: "solo" });
+
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 0);
+    const first = newestResult(cwd);
+    assert.equal(first.seed, "000000000000002a");
+    assert.equal(first.suite_manifest.seed, "000000000000002a");
+    assert.deepEqual(first.seeded_families, ["FAM-2", "FAM-4", "FAM-6"]);
+
+    // The run manifest and the result must name the same suite. Two sites write it, and a run that
+    // recorded one suite while its result claimed another would be unreadable after the fact.
+    const manifest = JSON.parse(
+      readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "manifest.json"), "utf8")
+    );
+    assert.equal(manifest.suite_digest, first.suite_digest);
+    assert.equal(manifest.seed, first.seed);
+
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 0);
+    const repeated = newestResult(cwd);
+    assert.equal(repeated.suite_digest, first.suite_digest, "the same seed produced a different suite");
+
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2b"], 0);
+    const different = newestResult(cwd);
+    assert.notEqual(different.suite_digest, first.suite_digest, "a different seed produced the same suite");
+
+    // Without --seed one is drawn, and it is a real seed rather than a placeholder.
+    run(cwd, ["assess", "--plan", "operator-plan.json"], 0);
+    assert.match(newestResult(cwd).seed, /^[0-9a-f]{16}$/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("an unusable seed is refused rather than quietly replaced", () => {
+  const cwd = temporary("aos-seed-bad-");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    makePlan(cwd, { default: "solo" });
+    const refused = spawnSync(process.execPath, [cli, "assess", "--plan", "operator-plan.json", "--seed", "not-hex"], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+    assert.notEqual(refused.status, 0);
+    // Named at the boundary the operator typed at. The generator refuses it too, but its message
+    // says only "AOS_INVALID_SEED nope", which does not tell anyone what shape was wanted.
+    assert.match(refused.stderr, /AOS_INVALID_SEED --seed not-hex/);
+    assert.match(refused.stderr, /expected up to 16 hex digits/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
