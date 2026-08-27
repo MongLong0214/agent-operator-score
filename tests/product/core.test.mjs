@@ -69,3 +69,20 @@ test("an agent that leaves a descendant is killed and cannot report success", as
     assert.equal(result.survivor, false);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
+
+test("truncated capture reports what it lost", async () => {
+  // Silent truncation made two different outputs sharing a 10 MiB prefix indistinguishable: same
+  // byte count, same digest, no flag. The record now carries the produced total and the flag.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-truncate-"));
+  try {
+    const result = await runProcess(
+      { command: process.execPath, args: ["-e", "process.stdout.write('x'.repeat(64))"] },
+      { workspace, prompt: "", session: "s", family: "FAM-1", timeoutMs: 30000 }
+    );
+    assert.equal(result.stdout_truncated, false, "an output under the cap is not truncated");
+    assert.equal(result.stdout_produced_bytes, result.stdout_bytes);
+    assert.equal(result.stdout_produced_bytes, 64);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

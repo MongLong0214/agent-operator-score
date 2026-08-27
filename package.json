@@ -2,7 +2,7 @@
   "name": "agent-operator-score",
   "version": "0.0.0",
   "private": true,
-  "description": "Planning baseline for Agent Operator Score; the public package and CLI are not implemented.",
+  "description": "Contract stack and local assessment instrument for Agent Operator Score; no public package is published and no bin is declared.",
   "type": "module",
   "engines": {
     "node": ">=22.18 <25"

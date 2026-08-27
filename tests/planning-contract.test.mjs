@@ -136,7 +136,29 @@ test("README distinguishes planning truth from every planned CLI surface", () =>
   // and the root manifest must carry no bin for that claim to stay true.
   assert.equal("bin" in JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")), false);
   assert.match(readme, /the runner, the scenario content the frozen pack refers to/);
-  assert.match(readme, /Nothing in `packages\/` spawns a process\./);
+  // The earlier wording, "Nothing in `packages/` spawns a process", was false:
+  // packages/runner/test/isolation.test.ts imports and calls spawnSync. Worse, this assertion
+  // only checked that the sentence was present, so a false claim was a passing condition. The
+  // claim is now scoped to production modules and actually measured against the tree.
+  assert.match(readme, /No module under `packages\/\*\/src` or `adapters\/\*\/src`/);
+  const productionSources = [];
+  for (const root of ["packages", "adapters"]) {
+    for (const workspace of readdirSync(resolve(root))) {
+      const source = resolve(root, workspace, "src");
+      if (!existsSync(source)) continue;
+      const walk = (directory) => {
+        for (const entry of readdirSync(directory, { withFileTypes: true })) {
+          const full = join(directory, entry.name);
+          if (entry.isDirectory()) walk(full);
+          else if (/\.(ts|mjs|js)$/.test(entry.name)) productionSources.push(full);
+        }
+      };
+      walk(source);
+    }
+  }
+  assert.ok(productionSources.length > 0, "no production sources were scanned");
+  const spawners = productionSources.filter((path) => /node:child_process/.test(readFileSync(path, "utf8")));
+  assert.deepEqual(spawners, [], "README claims the contract stack cannot spawn a process");
   // The pin moves with the tree, as it did when packages/schema/src landed. What the README
   // now claims present must be present, and what it calls absent must stay absent.
   assert.match(readme, /\*\*Graders are not a runner\.\*\*/);

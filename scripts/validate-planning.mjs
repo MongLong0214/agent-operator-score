@@ -885,11 +885,10 @@ if (!readme.includes("# Agent Operator Score (AOS)") || !readme.includes("`agent
 // session-class contracts, and "no public CLI and no end-to-end assessment" stopped being
 // true once E15-001 landed the local instrument; the claim each is replaced by must stay
 // equally exact, and must keep naming what the instrument is not.
-if (!readme.includes("a local `aos` instrument runs a controlled six-family assessment end to end from a")) {
+// Pinned as one sentence, not as two independent fragments: splitting it let the halves drift
+// apart, and the half that bounds the claim is the half that matters.
+if (!readme.includes("a local `aos` instrument runs a controlled six-family assessment end to end from a\n> clone; it is not the `packages/*` contract stack, and no public package has been approved.")) {
   pushError("README lacks exact implementation-state truth");
-}
-if (!readme.includes("it is not the `packages/*` contract stack, and no public package has been approved.")) {
-  pushError("README lacks the instrument boundary");
 }
 if (!readme.includes("Published CLI — not available yet")) pushError("README blurs published CLI status");
 if (!readme.includes("74 atomic implementation tickets")) pushError("README ticket census stale");

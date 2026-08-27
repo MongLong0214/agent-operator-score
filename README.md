@@ -73,12 +73,18 @@ anything. It still has no runner and no scenario content, so on its own it asses
 
 The second is a local instrument, `bin/aos.mjs` with `lib/`, that does run a controlled six-family
 assessment end to end against real agent CLIs on your machine. It is self-contained and does **not**
-call `packages/`. It implements the same SSOT 6.2 formula independently, and
-`tests/product/scorer-vectors.test.mjs` pins it against the G0-published pack in
-`fixtures/scoring/vectors.json`: eighteen of the nineteen vectors agree on issuance and display
-score. The nineteenth weights metrics by unequal opportunity counts, which this instrument cannot
-express, because every metric it records carries exactly one opportunity per run. Agreement on a
-formula is not a validated measurement, and none of the open claims below move because of it.
+call `packages/`. It implements the SSOT 6.2 arithmetic independently, and
+`tests/product/scorer-vectors.test.mjs` pins that arithmetic against the G0-published pack in
+`fixtures/scoring/vectors.json`: eighteen of the nineteen vectors produce the same display score.
+The nineteenth weights metrics by unequal opportunity counts, which this instrument cannot express,
+because every metric it records carries exactly one opportunity per run.
+
+That is agreement on the arithmetic, and on nothing else. Its issuance predicate is **not** the G0
+predicate: `packages/scorer/src/issuance.ts` additionally requires each factor to carry independent
+opportunities, and a run of this instrument, which records exactly one opportunity per metric,
+would not satisfy it. A number this instrument issues is therefore not a number `packages/scorer`
+would issue. Matching arithmetic is not a validated measurement, and none of the open claims below
+move because of any of it.
 
 **Built, and bounded on purpose.** Each line names what landed and, immediately after, what that
 does not amount to. The second half is the part most projects leave out.
@@ -98,7 +104,8 @@ does not amount to. The second half is the part most projects leave out.
 **Not built.** Inside the contract stack: the runner, the scenario content the frozen pack refers to,
 the Codex adapter, reports, Snapshot, and the layer that would turn a real session into the
 observations the graders read. `suites/coding-core-v0/` carries opportunity ids and placeholder
-digests, not prompts, workspaces or oracles. Nothing in `packages/` spawns a process.
+digests, not prompts, workspaces or oracles. No module under `packages/*/src` or `adapters/*/src`
+imports `node:child_process`, so the contract stack cannot run an agent even where it models one.
 
 Outside it: the published `agent-operator-score` package. The local instrument runs from a clone and
 nothing else; the root manifest declares no `bin`, and every workspace is `private: true` and
@@ -201,7 +208,12 @@ conditions, evidence and invalidation. Read the exact ticket in full before edit
 Implementation order is fixed: `D0` name migration → `E0-A…D` contracts → `E1` schemas → `E2` scorer
 → `E3` runner → `E4` Codex adapter → `E5…E7` families → `G0` → `E8` complete Form A → `E9` Claude
 Code parity → `E10` report → `E11` Form B → `E12` feasibility alpha → `E13` Snapshot → `E14` public
-OSS and G4. Nothing jumps the order.
+OSS and G4. Nothing in that chain jumps the order.
+
+`E15` sits outside it. The SSOT names the CLI surface in 9.3 but assigns it no epic, and the local
+instrument neither depends on that chain nor advances it: it is a sidecar that answers the same
+question with its own suite, and it is gated separately. Reading it as progress through the order
+would be reading it as something it is not.
 
 ## Published CLI — not available yet
 
