@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -127,5 +127,64 @@ test("collaboration surfaces and imported or bridged evidence remain diagnostic"
     assert.equal(imported.status, "DIAGNOSTIC_ONLY");
     const bridged = JSON.parse(run(cwd, ["bridge", "--run", imported.run_id, "--producer", "buzz", "--file", source, "--json"]).stdout);
     assert.equal(bridged.status, "DIAGNOSTIC_ONLY");
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("an explicit session is reviewed without discovering any", () => {
+  // Searching the default roots first meant that on a machine with no ~/.claude or ~/.codex the
+  // command exited with "no sessions found" while holding the path it had been asked about.
+  const cwd = temporary("aos-review-session-");
+  try {
+    const session = join(cwd, "explicit.jsonl");
+    writeFileSync(
+      session,
+      `${JSON.stringify({ type: "assistant", cwd: "/repo", message: { content: [{ type: "tool_use", id: "t1", name: "Write", input: { file_path: "/repo/a.ts" } }] } })}\n` +
+        `${JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "all tests pass" }] } })}\n`,
+      "utf8"
+    );
+    // HOME points at an empty directory, so nothing is discoverable.
+    const reviewed = spawnSync(process.execPath, [cli, "review", "--session", session, "--json"], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, HOME: cwd }
+    });
+    const result = JSON.parse(reviewed.stdout);
+    assert.equal(result.findings.some((finding) => finding.rule === "completion-claimed-without-verification"), true);
+    assert.equal(reviewed.status, 1, "a session with findings must not exit 0");
+
+    const missing = spawnSync(process.execPath, [cli, "review", "--session", join(cwd, "nope.jsonl")], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, HOME: cwd }
+    });
+    assert.equal(missing.status, 2, "a path that does not exist is bad input, not an empty review");
+    assert.match(missing.stdout, /no session file at/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("asking for more sessions than the old cap returns more than the old cap", () => {
+  // `--since 100` silently returned at most forty. The requested count and what could be found are
+  // different numbers, and the output says both.
+  const cwd = temporary("aos-review-limit-");
+  try {
+    const projects = join(cwd, ".claude", "projects", "sample");
+    mkdirSync(projects, { recursive: true });
+    const row = JSON.stringify({ type: "assistant", cwd: "/repo", message: { content: [{ type: "text", text: "hello" }] } });
+    for (let index = 0; index < 45; index += 1) {
+      writeFileSync(join(projects, `s-${index}.jsonl`), `${row}\n`, "utf8");
+    }
+    const env = { ...process.env, HOME: cwd };
+    const asked = JSON.parse(
+      spawnSync(process.execPath, [cli, "review", "--since", "45", "--json"], { cwd, encoding: "utf8", env }).stdout
+    );
+    assert.equal(asked.requested_sessions, 45);
+    assert.equal(asked.reviewed_sessions, 45, "the request was capped");
+
+    // And when there genuinely are not that many, both numbers are reported rather than one.
+    const beyond = JSON.parse(
+      spawnSync(process.execPath, [cli, "review", "--since", "60", "--json"], { cwd, encoding: "utf8", env }).stdout
+    );
+    assert.equal(beyond.requested_sessions, 60);
+    assert.equal(beyond.reviewed_sessions, 45);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
