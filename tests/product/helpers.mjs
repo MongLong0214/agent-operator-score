@@ -11,7 +11,10 @@ export function run(cwd, args, expected = 0, env = {}) {
     cwd,
     encoding: "utf8",
     timeout: 120000,
-    env: { ...process.env, ...env }
+    // Pinned to the temporary directory. Without it every test would write runs into the
+    // operator's real ~/.aos, which is both a pollution and a way for one test to see another's
+    // history.
+    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), ...env }
   });
   assert.equal(result.status, expected, `command failed: ${args.join(" ")}\nstdout=${result.stdout}\nstderr=${result.stderr}`);
   return result;
