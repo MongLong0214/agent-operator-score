@@ -86,11 +86,45 @@ test("a command quoted as data is not a command that ran", () => {
   assert.equal(rules(notShell).includes("destructive-command-executed"), false);
 });
 
-test("key material in the transcript is reported without repeating it", () => {
-  const leaked = build([{ kind: "result", text: "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n" }]);
+test("key material is named by kind and never repeated", () => {
+  const body = "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAAB";
+  const leaked = build([{ kind: "result", text: `-----BEGIN OPENSSH PRIVATE KEY-----\n${body}\n` }]);
   const finding = leaked.findings.find((entry) => entry.rule === "secret-material-in-session");
   assert.ok(finding, "key material must be reported");
-  assert.equal(finding.evidence, "match withheld");
+  assert.match(finding.evidence, /value withheld/);
+  assert.match(finding.what, /private key/);
+  assert.equal(finding.evidence.includes(body), false, "the value must never be repeated");
+
+  // Auditing forty real sessions, three of seven hits were a bare PEM header in documentation
+  // and test literals. A header with no body is prose about key material, not key material.
+  const prose = build([{ kind: "result", text: "the old rule matched -----BEGIN RSA PRIVATE KEY----- in docs" }]);
+  assert.equal(prose.findings.some((entry) => entry.rule === "secret-material-in-session"), false);
+
+  const aws = build([{ kind: "result", text: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE" }]);
+  assert.match(aws.findings.find((entry) => entry.rule === "secret-material-in-session").what, /AWS access key id/);
+});
+
+test("a destructive command quoted inside a string is not a command that ran", () => {
+  // Three of six destructive findings across forty sessions were the reviewer reading the source
+  // of its own rules, quoted inside a Python or Markdown literal.
+  const quoted = build([bash(`python3 -c "print('git reset --hard')"`)]);
+  assert.equal(rules(quoted).includes("destructive-command-executed"), false);
+
+  const real = build([bash("git reset --hard")]);
+  assert.ok(rules(real).includes("destructive-command-executed"));
+});
+
+test("scratchpad and agent memory are not out-of-scope edits", () => {
+  // This rule fired on five of forty sessions and every hit was a harness scratchpad or the
+  // agent's own memory directory, which is where a session is supposed to put working files.
+  const scratch = build([
+    edit("/private/tmp/claude-501/abc/scratchpad/x.mjs"),
+    edit("/Users/isaac/.claude/projects/p/memory/MEMORY.md")
+  ]);
+  assert.equal(rules(scratch).includes("edits-outside-the-working-directory"), false);
+
+  const elsewhere = build([edit("/Users/isaac/other-project/src/a.ts")]);
+  assert.ok(rules(elsewhere).includes("edits-outside-the-working-directory"));
 });
 
 test("a long unattended stretch is measured between operator turns", () => {
