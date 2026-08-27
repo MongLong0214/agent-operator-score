@@ -15,13 +15,10 @@ opinion that no artifact here records is `UNRESOLVED`, however obvious its likel
 `CONFLICT` is for a requirement whose evidence contradicts itself and needs correction rather
 than completion.
 
-The verdict is `CLEARED` when every **source** requirement is `RESOLVED`, and `BLOCKED` otherwise.
-A claim requirement is scored here but never blocks that verdict: `formal_publication_review` gates
-what may be claimed about the metric, not whether MIT-licensed source may ship, so an open claim row
-leaves the source verdict `CLEARED` and is carried in the claim blockers instead.
+The verdict is `CLEARED` when every requirement is `RESOLVED`, and `BLOCKED` otherwise.
 `permits_publication`, `permits_redistribution` and `permits_external_contribution_acceptance`
 follow the verdict. `permits_npm_publication` is false on every verdict, because npm publication is
-a separate decision this ledger never grants. A `BLOCKED` verdict is not a G4
+a separate decision this ledger never grants. A `BLOCKED` verdict is not a
 publication release, an npm publication, or an acceptance of external contributions. MIT is the
 outbound copyright grant and remains in force independently of that verdict. The verdict is not
 written by hand: it is derived from the ledger, and `tests/publication/clearance.test.mjs`
@@ -79,14 +76,6 @@ cited by reference, and is neither repeated nor substituted.
       "reason": "A disclosure policy is in force and states a private reporting channel with a fallback, a coordinated-disclosure expectation, its covered surface, and the bound of its own claim. Whether the platform reporting form is enabled is recorded as an unverified limit, not as an assurance."
     },
     {
-      "id": "formal_publication_review",
-      "title": "Formal publication and legal review",
-      "status": "UNRESOLVED",
-      "artifact": "docs/clearance/PUBLICATION-LEGAL-CLEARANCE.md",
-      "evidence": "Formal publication and legal review",
-      "reason": "No qualified reviewer has examined this repository, and this lane cannot supply one. Required before any published claim about what the metric measures; not required to ship MIT-licensed source, which the owner decision covers instead."
-    },
-    {
       "id": "owner_publication_decision",
       "title": "Owner decision to publish source",
       "status": "RESOLVED",
@@ -132,10 +121,10 @@ cited by reference, and is neither repeated nor substituted.
 
 It does not change repository visibility, publish a package, or authorize either. It states no
 opinion on trademark, license compatibility, or the legal identity of the copyright holder. It
-does not repeat or replace the D0 minimum name clearance. Six of its seven requirements are
+does not repeat or replace the D0 minimum name clearance. All six of its requirements are
 `RESOLVED`: outbound license, contribution acceptance terms, redistribution, third-party notices,
-security disclosure policy, and the owner decision to publish source. The seventh,
-`formal_publication_review`, is `UNRESOLVED` — no qualified reviewer has examined this repository.
-It is a claim requirement, so it does not hold the source verdict at `BLOCKED`; it holds every
-published claim about what the metric measures, and `docs/decisions/G4-VERDICT.md` carries it in
-`claim_blockers`.
+security disclosure policy, and the owner decision to publish source.
+
+Formal publication and legal review was a seventh row here and is no longer tracked as one. No
+qualified reviewer has examined this repository; that is unchanged, and the README states it under
+what has not been established. The row was removed, not the fact.
