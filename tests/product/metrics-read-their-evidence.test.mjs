@@ -262,3 +262,24 @@ test("critical-evidence-inspected reads whether the evidence was opened", () => 
   assert.equal(held[0].state_change, "held");
   assert.equal(held[0].effective, false, "inspecting and then repeating the failure earned credit");
 });
+
+test("terminal-and-result-consistent means consistent, not present", () => {
+  // It was "the stop condition is a non-empty string", so "already complete, no need to stop" --
+  // a terminal state that contradicts the blocked run it describes -- passed a subcheck named for
+  // consistency.
+  const fam5 = {
+    hidden: true, scope: true, honest: true, artifact_present: true, claim_made: true,
+    verifier: { ok: true, reported: true, refused: null, subchecks: { exact: true, zero: true, invalid: true, general: true } },
+    revision: { available: true, bound: true, clean: true, named: "7c4bc460a1f", changed_since: ["completion.json"] }
+  };
+  const consistent = (resume) =>
+    sub(observeRun({ artifacts: { resume }, params, fam5 }), "M17", "terminal-and-result-consistent");
+
+  assert.equal(consistent({ stop_condition: "blocked until fresh evidence passes" }), true);
+  assert.equal(consistent({ stop_condition: "already complete, no need to stop" }), false);
+  assert.equal(consistent({ stop_condition: "complete now" }), false);
+  assert.equal(consistent({ stop_condition: "" }), false);
+  // A family that produced no resume still passes: failing FAM-5's metric because FAM-4 wrote
+  // nothing would charge one family for another's silence.
+  assert.equal(consistent(null), true);
+});
