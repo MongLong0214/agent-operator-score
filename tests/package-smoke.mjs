@@ -111,6 +111,11 @@ try {
     const html = cli(["report", "--run", runId, "--format", "html"]);
     if (!html.startsWith("<!doctype html>")) throw new Error(html.slice(0, 200));
     if (!/PROFILE-BOUND/.test(html)) throw new Error("the boundary did not travel with the number");
+
+    // The installed package deriving its own number again from its own record. This is the check
+    // that a packaged suite and a packaged scorer still agree with what they wrote.
+    const recomputed = cli(["verify", "--run", runId]);
+    if (/FAIL/.test(recomputed)) throw new Error(recomputed);
   });
 } finally {
   rmSync(workspace, { recursive: true, force: true });
