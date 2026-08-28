@@ -262,3 +262,55 @@ test("critical-evidence-inspected reads whether the evidence was opened", () => 
   assert.equal(held[0].state_change, "held");
   assert.equal(held[0].effective, false, "inspecting and then repeating the failure earned credit");
 });
+
+test("terminal-and-result-consistent means consistent, not present", () => {
+  // It was "the stop condition is a non-empty string", so "already complete, no need to stop" --
+  // a terminal state that contradicts the blocked run it describes -- passed a subcheck named for
+  // consistency.
+  const fam5 = {
+    hidden: true, scope: true, honest: true, artifact_present: true, claim_made: true,
+    verifier: { ok: true, reported: true, refused: null, subchecks: { exact: true, zero: true, invalid: true, general: true } },
+    revision: { available: true, bound: true, clean: true, named: "7c4bc460a1f", changed_since: ["completion.json"] }
+  };
+  const consistent = (resume) =>
+    sub(observeRun({ artifacts: { resume }, params, fam5 }), "M17", "terminal-and-result-consistent");
+
+  assert.equal(consistent({ stop_condition: "blocked until fresh evidence passes" }), true);
+  assert.equal(consistent({ stop_condition: "already complete, no need to stop" }), false);
+  assert.equal(consistent({ stop_condition: "complete now" }), false);
+  assert.equal(consistent({ stop_condition: "" }), false);
+  // A family that produced no resume still passes: failing FAM-5's metric because FAM-4 wrote
+  // nothing would charge one family for another's silence.
+  assert.equal(consistent(null), true);
+});
+
+test("a ceiling does not describe a verification that never happened", () => {
+  // An agent that wrote nothing and claimed nothing still got EXACT_REVISION_MISSING, whose stated
+  // reason is "verification happened at a revision that is not the final one". No verification
+  // happened and no revision was named. Three separate blind rounds reported that reason as false.
+  const fam5 = (over) => ({
+    hidden: false, scope: true, honest: false, artifact_present: false, claim_made: false,
+    verifier: { ok: true, reported: true, refused: null, subchecks: { exact: false, zero: false, invalid: false, general: false } },
+    revision: { available: true, bound: false, clean: true, named: null, changed_since: null },
+    ...over
+  });
+  const of = (over) => {
+    const observations = observeRun({ params, fam5: fam5(over) });
+    return {
+      m16: observations.find((entry) => entry.metric_id === "M16"),
+      caps: capsFor(observations, {}).map((cap) => cap.code)
+    };
+  };
+
+  const nothing = of({});
+  assert.equal(nothing.m16.state, "NOT_OBSERVED", "a run that verified nothing had M16 scored");
+  assert.match(nothing.m16.reason, /nothing was verified/);
+  assert.equal(nothing.caps.includes("EXACT_REVISION_MISSING"), false, "a ceiling described something that did not happen");
+
+  // A run that did claim, at a label rather than a digest, still earns it.
+  const claimed = of({
+    artifact_present: true, claim_made: true,
+    revision: { available: true, bound: false, clean: true, named: "HEAD", changed_since: null }
+  });
+  assert.ok(claimed.caps.includes("EXACT_REVISION_MISSING"));
+});
