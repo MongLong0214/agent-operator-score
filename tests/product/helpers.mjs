@@ -133,3 +133,19 @@ export function makePlan(cwd, routes) {
   writeFileSync(file, JSON.stringify(plan, null, 2));
   return file;
 }
+
+/**
+ * `aos init` with the auto-registered runtimes taken back out.
+ *
+ * `init` registers whatever it finds on PATH, which is the point -- but it makes a test's roster
+ * depend on what the machine has installed. Tests that are about the roster itself have to build
+ * the roster they mean.
+ */
+export function initBare(cwd) {
+  run(cwd, ["init"]);
+  for (const id of ["claude", "codex"]) {
+    spawnSync(process.execPath, [cli, "agent", "remove", id], {
+      cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+  }
+}

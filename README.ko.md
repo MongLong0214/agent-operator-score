@@ -42,6 +42,17 @@ node bin/aos.mjs review          # 방금 끝낸 세션에서 무엇이 잘못�
 
 ---
 
+## 원클릭
+
+```
+/plugin marketplace add MongLong0214/agent-operator-score
+/plugin install aos@agent-operator-score
+```
+
+그다음 아무 Claude Code 세션에서 `/aos-review`. 설치 단계도 없고 설정할 것도 없습니다. 이 저장소는
+런타임 의존성이 없고, 에이전트는 `PATH`에서 스스로 등록되며, 런타임 자격증명은 그 런타임이 원래
+찾았을 자리에서 찾아옵니다.
+
 ## 두 갈래
 
 |  | `aos review` | `aos assess` |

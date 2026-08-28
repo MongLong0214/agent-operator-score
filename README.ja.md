@@ -42,6 +42,17 @@ node bin/aos.mjs review          # 今終えたセッションで何がまずか
 
 ---
 
+## ワンクリック
+
+```
+/plugin marketplace add MongLong0214/agent-operator-score
+/plugin install aos@agent-operator-score
+```
+
+あとは任意の Claude Code セッションで `/aos-review`。インストール手順も設定もありません。この
+リポジトリには実行時依存がなく、エージェントは `PATH` から自分で登録され、ランタイムの資格情報は
+そのランタイムが本来見つけたはずの場所から解決されます。
+
 ## 二つの半分
 
 |  | `aos review` | `aos assess` |

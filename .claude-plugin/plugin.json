@@ -1,0 +1,10 @@
+{
+  "name": "aos",
+  "version": "0.1.6",
+  "description": "Agent Operator Score — reads the session you just ran and reports what went wrong in it, or scores how well you run your agents under declared conditions. No dependencies, nothing uploaded, telemetry off.",
+  "author": { "name": "MongLong0214" },
+  "homepage": "https://github.com/MongLong0214/agent-operator-score",
+  "repository": "https://github.com/MongLong0214/agent-operator-score",
+  "license": "MIT",
+  "keywords": ["agent", "operator", "review", "assessment", "codex", "claude-code", "score"]
+}
