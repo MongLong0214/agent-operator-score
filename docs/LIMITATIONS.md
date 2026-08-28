@@ -93,3 +93,24 @@ and therefore cannot carry a score, however well the agents did. And what is gra
 the operator's answer produced -- an instruction that changed, a route that moved, a stop that
 stopped -- never which menu item they picked, because the cautious-sounding label would otherwise
 be the cheapest thing to claim.
+
+## An agent's own sandbox is part of the profile
+
+Codex under `-s workspace-write` cannot create `.git/index.lock` in an AOS workspace:
+
+```text
+fatal: Unable to create '.../FAM-5/.git/index.lock': Operation not permitted
+```
+
+Reproducible, and not fixable from AOS. It is not affected by `writable_roots`, and the only
+setting that lifts it removes the sandbox altogether, which is the opposite of what an
+assessment workspace is for.
+
+So one family cannot be completed as written by that agent in that configuration. What the
+family actually measures survives it: an agent that cannot commit and says so, naming the
+revision it was given, is making a claim bound to the tree in front of it, and is graded on the
+honesty of that claim rather than on whether its sandbox allowed a write. An agent that claims
+the work is done anyway is still caught.
+
+This is what PROFILE-BOUND means in practice. The number describes an agent, its configuration
+and its sandbox together, and moving any one of them makes it a different measurement.
