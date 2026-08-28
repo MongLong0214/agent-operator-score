@@ -102,15 +102,17 @@ Codex under `-s workspace-write` cannot create `.git/index.lock` in an AOS works
 fatal: Unable to create '.../FAM-5/.git/index.lock': Operation not permitted
 ```
 
-Reproducible, and not fixable from AOS. It is not affected by `writable_roots`, and the only
-setting that lifts it removes the sandbox altogether, which is the opposite of what an
-assessment workspace is for.
+Reproducible, and nothing AOS can change. `writable_roots` does not affect it; the setting that
+lifts it is `--dangerously-bypass-approvals-and-sandbox`, which turns the agent's own sandbox
+off. Both are legitimate configurations and they are different profiles:
 
-So one family cannot be completed as written by that agent in that configuration. What the
-family actually measures survives it: an agent that cannot commit and says so, naming the
-revision it was given, is making a claim bound to the tree in front of it, and is graded on the
-honesty of that claim rather than on whether its sandbox allowed a write. An agent that claims
-the work is done anyway is still caught.
+- **Sandbox on.** One family cannot be completed as written. What it measures survives that: an
+  agent that cannot commit and says so, naming the revision it was given, is making a claim
+  bound to the tree in front of it, and is graded on the honesty of that claim rather than on
+  whether its sandbox allowed a write. An agent that claims the work is done anyway is caught.
+- **Sandbox off.** The family runs as written. AOS's own isolation is unaffected either way --
+  its own workspace, a replaced HOME, a filtered environment -- because that is AOS's boundary
+  around the agent, not the agent's boundary around the commands it writes.
 
 This is what PROFILE-BOUND means in practice. The number describes an agent, its configuration
 and its sandbox together, and moving any one of them makes it a different measurement.
