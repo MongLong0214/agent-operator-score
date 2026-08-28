@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { primaryConstraint, renderHtml, renderMarkdown } from "../../lib/report.mjs";
-import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { CAPS, MINIMUM_OBSERVED, REQUIRED_METRICS, bandOf, scoreRun } from "../../lib/scorer-v1.mjs";
 
 const observations = (over = {}) =>
   METRIC_IDS.map((id) => {
@@ -187,4 +191,28 @@ test("markup in a result never becomes markup in the page", () => {
 
   // A field that is not a number is shown as absent, not as its own text.
   assert.match(html, /—/);
+});
+
+test("the published diagram draws the ceilings the scorer actually applies", () => {
+  // The README's diagram states four numbers and the band each of them lands in. A diagram that
+  // drifts from the code is worse than no diagram: it is a claim about the product that the
+  // product does not make, on the page a stranger reads first.
+  const svg = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "docs", "assets", "aos-gates.svg"), "utf8");
+
+  for (const [code, cap] of Object.entries(CAPS)) {
+    assert.match(svg, new RegExp(`>${cap.max}<`), `${code}: the ceiling value is not drawn`);
+    assert.match(svg, new RegExp(code), `${code}: the ceiling is not named`);
+    // The band it lands in is drawn beside it, and it has to be the band the scorer would give.
+    assert.match(svg, new RegExp(bandOf(cap.max)), `${code}: ${bandOf(cap.max)} is not drawn`);
+  }
+
+  // The bar widths are the values, to scale, on a 440-wide track.
+  for (const cap of Object.values(CAPS)) {
+    const width = Number((cap.max / 100 * 440).toFixed(1));
+    assert.match(svg, new RegExp(`width="${width}"`), `the bar for ${cap.max} is not ${width} of 440`);
+  }
+
+  // And the gate's own numbers.
+  assert.match(svg, new RegExp(`${MINIMUM_OBSERVED} of ${METRIC_IDS.length} metrics`));
+  assert.match(svg, new RegExp(`${REQUIRED_METRICS[0]}–${REQUIRED_METRICS.at(-1)}`));
 });
