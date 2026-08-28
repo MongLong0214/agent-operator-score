@@ -31,7 +31,7 @@ const cycleRun = (cwd, plan, { profile = "needs-instruction", answers = UNBLOCK 
     encoding: "utf8",
     input: answers,
     timeout: 300000,
-    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), AOS_TEST_PROFILE: profile }
+    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: profile }
   });
 
 const cycleOf = (home) => JSON.parse(readFileSync(join(home, "cycle.json"), "utf8"));

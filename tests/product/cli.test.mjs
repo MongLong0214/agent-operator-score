@@ -274,7 +274,7 @@ test("a join that never opened its branches is reported as unconsumed", () => {
     spawnSync(process.execPath, [cli, "assess", "--plan", plan], {
       cwd,
       encoding: "utf8",
-      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), AOS_TEST_SKIP_EVIDENCE: "1" }
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_SKIP_EVIDENCE: "1" }
     });
     const result = newestResult(cwd);
     const fam3 = result.family_results["FAM-3"];

@@ -11,7 +11,7 @@ const root = process.cwd();
 
 // A scripted profile: the same agent behaving in one of the specific ways the scorer is supposed to
 // recognise. Named rather than random, so a band that moves can be traced to a behaviour.
-const profile = process.env.AOS_TEST_PROFILE ?? "competent";
+const profile = process.env.FAKE_AGENT_PROFILE ?? "competent";
 const write = (name, value) => writeFileSync(join(root, name), JSON.stringify(value, null, 2));
 const readJson = (name) => JSON.parse(readFileSync(join(root, name), "utf8"));
 
@@ -64,11 +64,11 @@ if (family === "FAM-1") {
   // A lazy variant, used by one test to prove the unconsumed path is reachable end to end: it
   // produces a plausible plan without ever opening the branches it claims to have joined.
   const carried = [];
-  if (process.env.AOS_TEST_SKIP_EVIDENCE !== "1" && existsSync(join(root, "branch-evidence.txt"))) {
+  if (process.env.FAKE_AGENT_SKIP_EVIDENCE !== "1" && existsSync(join(root, "branch-evidence.txt"))) {
     carried.push(readFileSync(join(root, "branch-evidence.txt"), "utf8").split("\n")[0].trim());
   }
   const candidates = join(root, "candidates");
-  if (process.env.AOS_TEST_SKIP_EVIDENCE !== "1" && existsSync(candidates)) {
+  if (process.env.FAKE_AGENT_SKIP_EVIDENCE !== "1" && existsSync(candidates)) {
     for (const id of readdirSync(candidates)) {
       for (const name of readdirSync(join(candidates, id))) {
         const text = readFileSync(join(candidates, id, name), "utf8");

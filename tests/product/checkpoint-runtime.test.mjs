@@ -30,7 +30,7 @@ const assessAnswering = (answers, { profile = "needs-instruction", expected = 0 
       encoding: "utf8",
       input: answers.map((line) => `${line}\n`).join(""),
       timeout: 300000,
-      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), AOS_TEST_PROFILE: profile }
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: profile }
     });
     const runId = newestRunId(cwd);
     // A run every stage failed never reaches a result, which is a legitimate outcome here rather

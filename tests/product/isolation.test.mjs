@@ -96,12 +96,12 @@ test("no secret value is ever recorded, only names", () => {
   // names against the live environment would leak on this machine while a fixture-only test kept
   // reporting nulls and passing.
   const marker = "ghp_valuethatmustneverbewrittendown00";
-  process.env.AOS_TEST_RECORD_TOKEN = marker;
+  process.env.ACME_RECORD_TOKEN = marker;
   try {
     const built = buildAgentEnv("BEST_EFFORT_CLI", process.env);
     const record = isolationRecord("BEST_EFFORT_CLI", built);
     const serialized = JSON.stringify(record);
-    assert.equal(record.removed_env_names.includes("AOS_TEST_RECORD_TOKEN"), true, "the name should be reported");
+    assert.equal(record.removed_env_names.includes("ACME_RECORD_TOKEN"), true, "the name should be reported");
     assert.equal(serialized.includes(marker), false, "a removed variable's value reached the record");
     for (const value of Object.values(process.env)) {
       if (typeof value === "string" && value.length >= 12) {
@@ -109,7 +109,7 @@ test("no secret value is ever recorded, only names", () => {
       }
     }
   } finally {
-    delete process.env.AOS_TEST_RECORD_TOKEN;
+    delete process.env.ACME_RECORD_TOKEN;
   }
 });
 
@@ -138,7 +138,7 @@ test("isSensitiveName catches shape, prefix and exact name", () => {
 test("a spawned agent really cannot read the operator's credentials", async () => {
   // The unit tests above check the builder. This one checks the thing that actually runs: a child
   // process spawned by runProcess, with a real secret in this process's environment.
-  process.env.AOS_TEST_LEAK_TOKEN = "ghp_notarealtokenusedonlyforthistest0";
+  process.env.ACME_LEAK_TOKEN = "ghp_notarealtokenusedonlyforthistest0";
   const workspace = mkdtempSync(join(tmpdir(), "aos-iso-run-"));
   try {
     const probe = join(workspace, "probe.mjs");
@@ -146,7 +146,7 @@ test("a spawned agent really cannot read the operator's credentials", async () =
       probe,
       `import { writeFileSync } from "node:fs";
 writeFileSync(process.env.AOS_WORKSPACE + "/seen.json", JSON.stringify({
-  token: process.env.AOS_TEST_LEAK_TOKEN ?? "absent",
+  token: process.env.ACME_LEAK_TOKEN ?? "absent",
   home: process.env.HOME ?? "absent",
   names: Object.keys(process.env).sort()
 }));
@@ -162,9 +162,9 @@ writeFileSync(process.env.AOS_WORKSPACE + "/seen.json", JSON.stringify({
     assert.equal(seen.token, "absent", "the agent process read the operator's token");
     assert.notEqual(seen.home, process.env.HOME, "the agent process was given the real HOME");
     assert.equal(result.isolation.level, "BEST_EFFORT_CLI");
-    assert.equal(result.isolation.removed_env_names.includes("AOS_TEST_LEAK_TOKEN"), true);
+    assert.equal(result.isolation.removed_env_names.includes("ACME_LEAK_TOKEN"), true);
   } finally {
-    delete process.env.AOS_TEST_LEAK_TOKEN;
+    delete process.env.ACME_LEAK_TOKEN;
     rmSync(workspace, { recursive: true, force: true });
   }
 });
@@ -206,5 +206,32 @@ test("an adapter has to be one this build knows", () => {
     assert.equal(listed.find((agent) => agent.id === "codex").adapter, "codex-cli.v1");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("an agent is never told where the operator's runs are", () => {
+  // Replacing HOME keeps the operator's dotfiles out of reach, and then AOS_HOME handed the agent
+  // the one directory that matters more than any of them: the run records, the results, the
+  // holdout ledger and the cycle. An assessed agent runs with the operator's own write
+  // permissions, so a path is all it needs -- and a crafted result.json is read back by the
+  // dashboard in the operator's browser.
+  const source = { PATH: "/usr/bin", HOME: "/Users/someone", AOS_HOME: "/Users/someone/.aos", AOS_DATA_DIR: "/elsewhere", LANG: "en_US.UTF-8" };
+  for (const level of ["STRICT", "BEST_EFFORT_CLI", "NONE"]) {
+    const built = buildAgentEnv(level, source, {
+      // Even named explicitly. No runtime needs this, and the operator cannot give away something
+      // that is not theirs to give -- it is the record of the assessment being run.
+      allow: ["AOS_HOME", "AOS_DATA_DIR"],
+      home: "/tmp/agent-home",
+      injected: { AOS_SESSION_ID: "s", AOS_FAMILY: "FAM-1", AOS_WORKSPACE: "/w", AOS_TASK_FILE: "/t" }
+    });
+    assert.equal(built.env.AOS_HOME, undefined, level);
+    assert.equal(built.env.AOS_DATA_DIR, undefined, level);
+    assert.equal(built.removed.includes("AOS_HOME"), true, `${level}: the name should be reported`);
+
+    // The four AOS gives an agent on purpose are injected after the filter and are unaffected.
+    assert.equal(built.env.AOS_WORKSPACE, "/w", level);
+    assert.equal(built.env.AOS_TASK_FILE, "/t", level);
+    assert.equal(built.env.AOS_FAMILY, "FAM-1", level);
+    assert.equal(built.env.AOS_SESSION_ID, "s", level);
   }
 });

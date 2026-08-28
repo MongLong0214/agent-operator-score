@@ -156,3 +156,35 @@ test("a result carrying no metrics still renders", () => {
   assert.doesNotThrow(() => renderHtml(bare));
   assert.doesNotThrow(() => renderMarkdown(bare));
 });
+
+test("markup in a result never becomes markup in the page", () => {
+  // A result is a file on disk in a directory an assessed agent runs beside, and this page is
+  // opened in the operator's own browser through the dashboard. The fields the scorer produces as
+  // numbers were interpolated raw, so a string where a number belongs was markup.
+  const payload = '"><script>alert(1)</script>';
+  const hostile = {
+    run_id: payload,
+    status: payload,
+    score: { final: payload, raw: payload, band: payload },
+    provisional_raw: payload,
+    dimensions: { D1: payload, D2: null, D3: null, D4: null, D5: null, D6: null },
+    coverage: { observed: payload, total: payload },
+    caps: [{ code: payload, max: payload, reason: payload }],
+    blockers: [{ code: payload, detail: payload }],
+    metrics: [{
+      metric_id: payload, dimension: payload, value: payload, state: payload,
+      subchecks: [{ id: payload, pass: false }], evidence_ids: [payload],
+      reason: payload, verifier_id: payload
+    }],
+    limitations: [payload]
+  };
+  const html = renderHtml(hostile);
+  assert.equal(/<script>alert\(1\)<\/script>/.test(html), false, "injected markup survived");
+  assert.equal(/<script/i.test(html), false);
+  // It still renders rather than throwing: a damaged result must not take the page down.
+  assert.match(html, /<!doctype html>/);
+  assert.doesNotThrow(() => renderMarkdown(hostile));
+
+  // A field that is not a number is shown as absent, not as its own text.
+  assert.match(html, /—/);
+});

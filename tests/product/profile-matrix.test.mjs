@@ -25,7 +25,7 @@ const assessWith = (profile) => {
     run(cwd, ["init"]);
     addAgent(cwd, "solo");
     const plan = makePlan(cwd, { default: "solo" });
-    run(cwd, ["assess", "--plan", plan, "--seed", "7"], EXIT_OF[profile] ?? 3, { AOS_TEST_PROFILE: profile });
+    run(cwd, ["assess", "--plan", plan, "--seed", "7"], EXIT_OF[profile] ?? 3, { FAKE_AGENT_PROFILE: profile });
     return newestResult(cwd);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

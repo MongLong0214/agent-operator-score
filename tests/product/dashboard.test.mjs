@@ -224,3 +224,35 @@ test("a home with no cycle shows the runs and invents nothing", async () => {
     assert.match(body, /<h1>Runs<\/h1>/);
   });
 });
+
+test("markup in a stored record never becomes markup in the dashboard", async () => {
+  // Same reason as the report: these files sit in a directory an assessed agent runs beside, and
+  // the page is served to the operator's own browser.
+  const payload = '"><script>alert(1)</script>';
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-hostile-"));
+  initHome(home);
+  const { runId } = createRun(home, { mode: "TEST" });
+  writeResult(home, runId, {
+    run_id: runId, status: payload,
+    score: { final: payload, raw: payload, band: payload }, provisional_raw: payload,
+    dimensions: { D1: null, D2: null, D3: null, D4: null, D5: null, D6: null },
+    coverage: { observed: payload, total: payload }, caps: [], blockers: [], metrics: [], limitations: [payload]
+  }, "md", "<html></html>");
+  writeJson(join(home, "cycle.json"), {
+    schema_id: "aos-cycle.v1", cycle_id: payload, profile_digest: "d".repeat(64),
+    suite_major: 1, scorer_major: 1, seeds: [payload],
+    runs: [{ seed: payload, valid: false, invalid_reason: payload, final_score: null, dimensions: {} }]
+  });
+
+  const dashboard = await startDashboard({ home });
+  try {
+    for (const path of ["/", `/run/${encodeURIComponent(runId)}`]) {
+      const body = await (await get(dashboard.port, `${path}?t=${dashboard.token}`)).text();
+      assert.equal(/<script>alert\(1\)<\/script>/.test(body), false, path);
+      assert.equal(/<script/i.test(body), false, path);
+    }
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});

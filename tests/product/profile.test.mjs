@@ -136,16 +136,16 @@ test("the label carries the boundary next to the number", () => {
 test("the version probe does not hand the operator's credentials to the runtime", () => {
   // It runs before anybody has decided the run is safe to start, so it gets the same treatment the
   // run itself gets. Spawned for real, because the point is what the child can read.
-  process.env.AOS_TEST_PROBE_TOKEN = "ghp_probemustneverseethisvalue000000";
+  process.env.ACME_PROBE_TOKEN = "ghp_probemustneverseethisvalue000000";
   try {
     const dump = probeCommand(process.execPath, [
       "-e",
-      'process.stdout.write(JSON.stringify({ token: process.env.AOS_TEST_PROBE_TOKEN ?? "absent", names: Object.keys(process.env).length }))'
+      'process.stdout.write(JSON.stringify({ token: process.env.ACME_PROBE_TOKEN ?? "absent", names: Object.keys(process.env).length }))'
     ]);
     const seen = JSON.parse(dump);
     assert.equal(seen.token, "absent", "the probe inherited the operator's environment");
   } finally {
-    delete process.env.AOS_TEST_PROBE_TOKEN;
+    delete process.env.ACME_PROBE_TOKEN;
   }
 });
 

@@ -55,12 +55,12 @@ test("the assessed module never executes in the AOS process", async () => {
 test("the verifier does not inherit the operator's environment", async () => {
   // Codex and Claude sessions are run from a shell that holds cloud credentials. Assessed code
   // that can read them can exfiltrate them, and the task prompt being harmless does not matter.
-  process.env.AOS_TEST_FAKE_SECRET = "ghp_thisisafakevalueforthetest0000000";
+  process.env.ACME_FAKE_SECRET = "ghp_thisisafakevalueforthetest0000000";
   try {
     const { files } = await withAssessed(
       `import { writeFileSync } from "node:fs";
 writeFileSync(new URL("./leak.txt", import.meta.url), JSON.stringify({
-  secret: process.env.AOS_TEST_FAKE_SECRET ?? "absent",
+  secret: process.env.ACME_FAKE_SECRET ?? "absent",
   home: process.env.HOME ?? "absent",
   names: Object.keys(process.env).sort()
 }));
@@ -73,7 +73,7 @@ ${CORRECT}`,
     assert.notEqual(leak.home, process.env.HOME, "the assessed module was given the real HOME");
     assert.equal(leak.names.includes("AOS_VERIFIER_NONCE"), false, "the verdict nonce was readable");
   } finally {
-    delete process.env.AOS_TEST_FAKE_SECRET;
+    delete process.env.ACME_FAKE_SECRET;
   }
 });
 
