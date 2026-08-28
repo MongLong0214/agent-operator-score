@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { addAgent, makePlan, run } from "./helpers.mjs";
 import { failureSignature } from "../../lib/cli.mjs";
-import { isAosWorkspaceTranscript, isHarnessBlock } from "../../lib/session.mjs";
+import { isAosWorkspaceTranscript, isHarnessBlock, operatorText } from "../../lib/session.mjs";
 import { runProcess } from "../../lib/core.mjs";
 import { reviewSession } from "../../lib/review.mjs";
 
@@ -143,11 +143,22 @@ test("this tool's own assessment workspaces are not the operator's sessions", ()
 
 // #471
 test("a harness-injected row is not an operator turn", () => {
+  // Taken from what the runtimes on this machine actually emit: `task-notification` is much the
+  // most common of them and was being counted as the operator taking a turn.
   for (const text of [
     "<system-reminder>be careful</system-reminder>",
+    "<task-notification>a background task finished</task-notification>",
+    "<user_info>OS Version: macos</user_info>",
+    "<fork-boilerplate>x</fork-boilerplate>",
     "<local-command-stdout>ok</local-command-stdout>",
     "<local-command-caveat>x</local-command-caveat>\n<system-reminder>y</system-reminder>"
   ]) assert.equal(isHarnessBlock(text), true, text);
+
+  // `user_query` is not one of them. It is what the operator typed, wrapped, and treating it as
+  // harness would leave a Grok session with no operator turns at all.
+  assert.equal(isHarnessBlock("<user_query>fix the parser</user_query>"), false);
+  assert.equal(operatorText("<user_query>fix the parser</user_query>"), "fix the parser");
+  assert.equal(operatorText("fix the parser"), "fix the parser");
 
   // An operator quoting one while asking about it is still taking a turn.
   for (const text of [
