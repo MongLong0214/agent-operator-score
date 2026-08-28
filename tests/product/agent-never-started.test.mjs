@@ -66,8 +66,10 @@ test("an agent that runs and refuses is still assessed", () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-blocked-agent-"));
   try {
     run(cwd, ["init"]);
+    // A real refusal names what it was asked. An agent that emits byte-identical output for six
+    // different tasks did not read any of them, and that is the case the run stops on.
     run(cwd, ["agent", "add", "refuses", "--command", process.execPath, "--arg", "-e",
-      "--arg", 'process.stdout.write("I will not do that\\n"); process.exit(1);']);
+      "--arg", 'process.stdout.write(`I will not do ${process.env.AOS_FAMILY}\\n`); process.exit(1);']);
     const plan = makePlan(cwd, { default: "refuses" });
     // 3 or 4 -- a withheld score or a capped one. Either is a run that happened and was assessed,
     // which is the distinction under test; 2 would be AOS refusing to run it at all.
