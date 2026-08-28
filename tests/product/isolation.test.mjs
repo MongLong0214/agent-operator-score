@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { buildAgentEnv, isSensitiveName, isolationRecord, SCORING_ISOLATION } from "../../lib/isolation.mjs";
 import { runProcess } from "../../lib/core.mjs";
+import { run } from "./helpers.mjs";
 
 const SOURCE = {
   PATH: "/usr/bin:/bin",
@@ -165,5 +166,45 @@ writeFileSync(process.env.AOS_WORKSPACE + "/seen.json", JSON.stringify({
   } finally {
     delete process.env.AOS_TEST_LEAK_TOKEN;
     rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("a credential-shaped name cannot be added to an agent's allow list", () => {
+  // The allow list is checked before the credential filter, so permitting one there would hand the
+  // agent the key itself. A runtime that needs to find its own configuration asks for a directory.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-allow-env-"));
+  try {
+    run(cwd, ["init"]);
+    for (const name of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY", "GH_TOKEN", "DB_PASSWORD"]) {
+      const refused = run(cwd, ["agent", "add", "x", "--command", process.execPath, "--allow-env", name], 2);
+      assert.match(refused.stderr, /AOS_CREDENTIAL_ENV_REFUSED/, name);
+    }
+    // A configuration directory is not a credential and is carried by name.
+    run(cwd, ["agent", "add", "real", "--command", process.execPath, "--allow-env", "CODEX_HOME", "--allow-env", "CLAUDE_CONFIG_DIR"]);
+    const listed = JSON.parse(run(cwd, ["agent", "list", "--json"]).stdout);
+    const added = listed.find((agent) => agent.id === "real");
+    assert.deepEqual(added.allowed_env_names, ["CLAUDE_CONFIG_DIR", "CODEX_HOME"]);
+
+    // What an agent is allowed to carry is part of what it is: a run that carried one more variable
+    // is not the same environment as one that did not.
+    run(cwd, ["agent", "add", "plain", "--command", process.execPath]);
+    const plain = listed.concat(JSON.parse(run(cwd, ["agent", "list", "--json"]).stdout)).find((agent) => agent.id === "plain");
+    assert.notEqual(added.config_digest, plain.config_digest);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("an adapter has to be one this build knows", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-adapter-"));
+  try {
+    run(cwd, ["init"]);
+    const refused = run(cwd, ["agent", "add", "x", "--command", process.execPath, "--adapter", "not-a-runtime"], 2);
+    assert.match(refused.stderr, /AOS_UNKNOWN_ADAPTER/);
+    run(cwd, ["agent", "add", "codex", "--command", process.execPath, "--adapter", "codex-cli.v1"]);
+    const listed = JSON.parse(run(cwd, ["agent", "list", "--json"]).stdout);
+    assert.equal(listed.find((agent) => agent.id === "codex").adapter, "codex-cli.v1");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
   }
 });
