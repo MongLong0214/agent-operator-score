@@ -42,10 +42,19 @@ test("one agent can complete a controlled assessment", () => {
     run(cwd, ["init"]);
     addAgent(cwd, "solo");
     const plan = makePlan(cwd, { default: "solo" });
-    run(cwd, ["assess", "--plan", plan, "--json"]);
+    // Exit 3, not 0: an unattended run is INCOMPLETE by design. Monitoring is scored from a real
+    // operator turn that changed something, and there was nobody here to make one -- so this run is
+    // a diagnostic result rather than an operator score. That is the product statement, not a
+    // regression.
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.status, "EXPERIMENTAL / PROVISIONAL");
-    assert.equal(result.score.display, 100);
+    assert.equal(result.schema_id, "aos-mvp-result.v1");
+    assert.equal(result.status, "INCOMPLETE");
+    assert.equal(result.score, null);
+    assert.deepEqual(result.coverage.unobserved_dimensions, ["D4"]);
+    assert.equal(result.blockers.some((blocker) => blocker.code === "COVERAGE"), true);
+    // Everything it could observe, it observed well.
+    assert.equal(result.provisional_raw >= 70, true, `provisional was ${result.provisional_raw}`);
     assert.deepEqual(result.agent_portfolio.used, ["solo"]);
     assert.ok(result.operator_plan_digest);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
@@ -59,12 +68,14 @@ test("six vendor-neutral aliases share one operator score without agent-count bo
     for (const id of ids) addAgent(cwd, id);
     const routes = Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]));
     const plan = makePlan(cwd, routes);
-    run(cwd, ["assess", "--plan", plan, "--json"]);
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.score.display, 100);
+    // Six agents, one score. The count is not an input, and the only way to keep that true is for
+    // nothing in the result to carry it.
     assert.deepEqual(result.agent_portfolio.used, [...ids].sort());
     assert.equal(result.agent_portfolio.invocations, 6);
-    assert.equal("agent_count" in result.metrics, false);
+    assert.equal(JSON.stringify(result.metrics).includes("agent_count"), false);
+    assert.equal(result.provisional_raw >= 70, true);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
@@ -75,9 +86,8 @@ test("parallel workers use isolated workspaces and evidence-bound handoffs", () 
     for (const id of ["a", "b", "joiner"]) addAgent(cwd, id);
     const routes = { "FAM-1": "a", "FAM-2": "a", "FAM-3": "a|b>joiner", "FAM-4": "b", "FAM-5": "joiner", "FAM-6": "a" };
     const plan = makePlan(cwd, routes);
-    run(cwd, ["assess", "--plan", plan, "--json"]);
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.issued, true);
     assert.equal(result.family_results["FAM-3"].invocations.length, 3);
     assert.equal(result.family_results["FAM-3"].handoff_complete, true);
     // Observed, not merely unobjectionable. Without this, planting no marker at all would leave
@@ -205,7 +215,7 @@ test("a seed names the scenario, and a run records the one it used", () => {
     addAgent(cwd, "solo");
     makePlan(cwd, { default: "solo" });
 
-    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 0);
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);
     const first = newestResult(cwd);
     assert.equal(first.seed, "000000000000002a");
     assert.equal(first.suite_manifest.seed, "000000000000002a");
@@ -219,16 +229,16 @@ test("a seed names the scenario, and a run records the one it used", () => {
     assert.equal(manifest.suite_digest, first.suite_digest);
     assert.equal(manifest.seed, first.seed);
 
-    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 0);
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);
     const repeated = newestResult(cwd);
     assert.equal(repeated.suite_digest, first.suite_digest, "the same seed produced a different suite");
 
-    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2b"], 0);
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2b"], 3);
     const different = newestResult(cwd);
     assert.notEqual(different.suite_digest, first.suite_digest, "a different seed produced the same suite");
 
     // Without --seed one is drawn, and it is a real seed rather than a placeholder.
-    run(cwd, ["assess", "--plan", "operator-plan.json"], 0);
+    run(cwd, ["assess", "--plan", "operator-plan.json"], 3);
     assert.match(newestResult(cwd).seed, /^[0-9a-f]{16}$/);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
@@ -271,6 +281,12 @@ test("a join that never opened its branches is reported as unconsumed", () => {
     assert.equal(fam3.handoff_integrity.unconsumed, 2, "a join that read nothing was accepted");
     assert.equal(fam3.handoff_complete, false);
     assert.deepEqual(fam3.join.covered, []);
-    assert.equal(result.metrics.M11.value, 0, "the metric did not follow the evidence");
+    // Two of four, not zero: the handoff was made and the branches were distinguishable. What
+    // failed is that the join did not read them, and those are the two subchecks that say so.
+    const m10 = result.metrics.find((entry) => entry.metric_id === "M10");
+    assert.equal(m10.value, 0.5, "the metric did not follow the evidence");
+    assert.equal(m10.subchecks.find((entry) => entry.id === "receiver-consumed-evidence").pass, false);
+    assert.equal(m10.subchecks.find((entry) => entry.id === "join-covers-required-branches").pass, false);
+    assert.equal(m10.subchecks.find((entry) => entry.id === "artifact-digest-handed-off").pass, true);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

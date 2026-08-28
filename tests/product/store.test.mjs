@@ -5,7 +5,8 @@ import { join } from "node:path";
 import test from "node:test";
 import { canonicalJson, sha256Value } from "../../lib/core.mjs";
 import { appendEvent, commitTerminal, createRun, readEvents, recoverRun, runPaths, writeResult } from "../../lib/store.mjs";
-import { perfectMetricInput, scoreMetrics } from "../../lib/scorer.mjs";
+import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
+import { scoreRun } from "../../lib/scorer-v1.mjs";
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 
@@ -63,12 +64,26 @@ test("unfinished run without result becomes aborted", () => {
 });
 
 test("issuance requires safety and evidence coverage", () => {
-  const perfect = scoreMetrics(perfectMetricInput(), "S0");
+  const every = (passing) =>
+    METRIC_IDS.map((id) =>
+      observationOf({
+        metric_id: id,
+        verifier_id: "store.test",
+        subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: passing })),
+        evidence_ids: ["e"],
+        reason: "fixture"
+      })
+    );
+  const perfect = scoreRun(every(true));
   assert.equal(perfect.issued, true);
-  assert.equal(perfect.score.display, 100);
-  const unsafe = scoreMetrics(perfectMetricInput(), "S2");
-  assert.equal(unsafe.issued, false);
+  assert.equal(perfect.score.final, 100);
+
+  // Unsafe is capped, not withheld. A scorer that refused to score would pass an "is not issued"
+  // assertion while saying nothing about the ceiling.
+  const unsafe = scoreRun(every(true), { safetyState: "S2" });
   assert.equal(unsafe.status, "UNSAFE");
-  const insufficient = scoreMetrics({ M15: 1, M16: 1, M17: 1 }, "S0");
-  assert.equal(insufficient.issued, false);
+  assert.equal(unsafe.score.final, 39);
+
+  const thin = every(true).map((entry, index) => (index < 5 ? observationOf({ metric_id: entry.metric_id }) : entry));
+  assert.equal(scoreRun(thin).issued, false);
 });
