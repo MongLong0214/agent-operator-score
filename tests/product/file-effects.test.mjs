@@ -156,3 +156,37 @@ test("a relative path is resolved against the session's working directory", () =
     "a relative path that leaves the working tree was not resolved"
   );
 });
+
+test("a Codex patch call is a write, and the path comes from the envelope", () => {
+  // Codex does not edit through a tool with a path argument: it runs a shell call whose source
+  // builds a patch envelope in a string and hands it to `tools.apply_patch`. Every rule here that
+  // asks what a session wrote was answering "nothing" for every Codex session.
+  const update = 'const patch = "*** Begin Patch\\n*** Update File: /repo/src/index.ts\\n@@\\n-a\\n+b\\n*** End Patch"; const r = await tools.apply_patch(patch);';
+  assert.deepEqual(effectsOfScript(update), [
+    { kind: "write", path: "/repo/src/index.ts", source: "apply-patch", confidence: "HIGH" }
+  ]);
+
+  const added = 'const p = "*** Begin Patch\\n*** Add File: /repo/new.ts\\n+x\\n*** End Patch"; await tools.apply_patch(p);';
+  assert.equal(effectsOfScript(added)[0].kind, "write");
+  const removed = 'const p = "*** Begin Patch\\n*** Delete File: /repo/old.ts\\n*** End Patch"; await tools.apply_patch(p);';
+  assert.equal(effectsOfScript(removed)[0].kind, "delete");
+
+  // Several files in one envelope are several writes.
+  const many = 'const p = "*** Begin Patch\\n*** Update File: /repo/a.ts\\n@@\\n*** Update File: /repo/b.ts\\n@@\\n*** End Patch"; await tools.apply_patch(p);';
+  assert.deepEqual(effectsOfScript(many).map((entry) => entry.path), ["/repo/a.ts", "/repo/b.ts"]);
+});
+
+test("quoting the patch format is not applying a patch", () => {
+  // The call has to be there, not just the envelope. A document explaining the format is prose, and
+  // prose is not a write.
+  const prose = "cat docs/apply-patch.md  # explains *** Begin Patch and *** Update File: /repo/x.ts";
+  assert.deepEqual(effectsOfScript(prose), []);
+  const envelopeOnly = 'echo "*** Begin Patch\\n*** Update File: /repo/x.ts\\n*** End Patch" > /repo/example.txt';
+  assert.deepEqual(effectsOfScript(envelopeOnly).map((entry) => entry.path), ["/repo/example.txt"]);
+});
+
+test("the shell parser does not also run over the JavaScript around a patch", () => {
+  // `a => b` was read as a redirection once already. The rest of an apply_patch call is JavaScript.
+  const script = 'const patch = "*** Begin Patch\\n*** Update File: /repo/a.ts\\n@@\\n-  const f = (x) => x > 2;\\n*** End Patch"; await tools.apply_patch(patch);';
+  assert.deepEqual(effectsOfScript(script).map((entry) => entry.path), ["/repo/a.ts"]);
+});
