@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -53,6 +53,44 @@ test("agent doctor fails an agent that runs a fixture", () => {
     // A real binary in the same home still passes, so this is not a blanket refusal.
     aos(home, ["agent", "add", "real", "--command", "/bin/echo", "--arg", "hello"]);
     assert.equal(aos(home, ["agent", "doctor", "real"]).status, 0);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("the caveat prints where the number is read, not only in the JSON", () => {
+  // A blind session watched a fixture-backed agent print `Score: 100 / 100 (HIGH RELIABILITY)` with
+  // nothing on the terminal saying what had produced it. The caveat existed -- in a file nobody had
+  // opened yet.
+  const home = mkdtempSync(join(tmpdir(), "aos-caveat-"));
+  try {
+    aos(home, ["agent", "add", "faker", "--command", process.execPath, "--arg", fixture]);
+    const run = spawnSync(process.execPath, [cli, "assess", "--timeout-ms", "20000"], {
+      cwd: home, encoding: "utf8", timeout: 120000,
+      env: { ...process.env, AOS_HOME: home, HOME: home }
+    });
+    assert.match(run.stdout, /FIXTURE-BACKED: faker ran a test fixture, not a runtime/);
+    assert.match(run.stdout, /This number describes the fixture/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("an unrecognised command is named as one", () => {
+  // The fixture check is a filename rule, and a hundred-line stub called `solver` walked straight
+  // past it to 100/100 with `fixture_backed_agents: []`. Detecting an arbitrary script that
+  // pretends to be a runtime is not something this tool can do; saying which agents it did not
+  // recognise is.
+  const home = mkdtempSync(join(tmpdir(), "aos-unrecognised-"));
+  try {
+    writeFileSync(join(home, "solver"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    aos(home, ["agent", "add", "solver", "--command", join(home, "solver")]);
+    const run = spawnSync(process.execPath, [cli, "assess", "--timeout-ms", "20000"], {
+      cwd: home, encoding: "utf8", timeout: 120000,
+      env: { ...process.env, AOS_HOME: home, HOME: home }
+    });
+    assert.match(run.stdout, /UNRECOGNISED RUNTIME: solver/);
+    assert.doesNotMatch(run.stdout, /FIXTURE-BACKED/, "a plain stub is not this repository's fixture");
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
