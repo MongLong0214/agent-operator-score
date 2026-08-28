@@ -155,3 +155,39 @@ test("a call whose result never arrived is unpaired, not paired to someone else'
   assert.equal(loaded.calls[0].result, null, "the second call's result was attributed to the first");
   assert.equal(verificationOf(loaded.calls[0]), "unknown");
 });
+
+test("a test runner is recognised however the interpreter was named", () => {
+  // Five of sixteen high-severity findings in the owner's own held-back sessions were "nothing
+  // verified this" about sessions that had verified it -- with a python named by path, or behind a
+  // runner carrying options. A recognizer with an incomplete vocabulary does not fail loudly; it
+  // invents a finding.
+  const ran = (command) => verificationOf({ tool: "Bash", input: { command }, result: { ok: true } });
+  for (const command of [
+    "./.venv/bin/python -m pytest tests/x.py -q",
+    "/opt/homebrew/bin/python3.11 -m pytest tests/y.py",
+    "uv run --group dev python -m pytest -q tests/x.py",
+    "uv run --extra dev python -m pytest tests/x.py",
+    "uv run --quiet pytest",
+    "poetry run pytest",
+    "timeout 300 uv run --group dev python -m pytest -q tests/x.py"
+  ]) assert.equal(ran(command), "passed", command);
+
+  // The widening has to stop somewhere, and it stops at the tool. A runner prefix in front of
+  // something that is not a check is still not a check.
+  for (const command of [
+    "uv run --group dev python manage.py migrate",
+    "uv run python -c 'print(1)'",
+    "cat pytest.ini",
+    "grep -n pytest file.py",
+    "rm -rf build"
+  ]) assert.equal(ran(command), null, command);
+});
+
+test("a valued runner option does not swallow the tool after it", () => {
+  // `--quiet pytest` read as option-and-value leaves nothing to recognise, so only options known to
+  // take a value are allowed to consume the token after them.
+  const ran = (command) => verificationOf({ tool: "Bash", input: { command }, result: { ok: true } });
+  assert.equal(ran("uv run --quiet pytest"), "passed");
+  assert.equal(ran("uv run --frozen --no-sync pytest tests/"), "passed");
+  assert.equal(ran("uv run --group dev pytest"), "passed");
+});

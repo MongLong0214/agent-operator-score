@@ -248,6 +248,59 @@ test("the same call three times over is a loop, even when nothing failed", () =>
   assert.match(finding.what, /no-progress-loop/);
 });
 
+test("re-running the same test after editing the code is iteration, not a loop", () => {
+  // Red-green. The command repeats because the code under it changed, and the second run is asking a
+  // question the first one could not answer. Counting the repeat alone made five of the nine loop
+  // findings in the owner's held-back sessions wrong -- every one an agent doing exactly the right
+  // thing, and every one raised to high severity for it.
+  const iterating = build([
+    ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
+    bash("npm test"),
+    edit(),
+    bash("npm test"),
+    edit(),
+    bash("npm test")
+  ]);
+  const finding = iterating.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
+  assert.equal(/no-progress-loop/.test(finding?.what ?? ""), false, finding?.what);
+
+  // A write through a shell redirection counts as a change too, or the rule would only understand
+  // edits made with a tool.
+  const viaShell = build([
+    ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
+    bash("npm test"),
+    bash("cat > /repo/a.ts <<'EOF'\nnew\nEOF"),
+    bash("npm test"),
+    bash("cat > /repo/a.ts <<'EOF'\nnewer\nEOF"),
+    bash("npm test")
+  ]);
+  assert.equal(
+    /no-progress-loop/.test(viaShell.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run")?.what ?? ""),
+    false
+  );
+
+  // And the distinction is real in both directions: back to back with nothing in between is still a
+  // loop, which is the shape a stuck agent takes.
+  const stuck = build([
+    ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
+    bash("npm test"),
+    bash("npm test"),
+    bash("npm test")
+  ]);
+  assert.match(stuck.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run").what, /no-progress-loop/);
+
+  // A read between two runs is not a change. Looking at a file does not make the next run different.
+  const justLooking = build([
+    ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
+    bash("npm test"),
+    bash("cat /repo/a.ts"),
+    bash("npm test"),
+    bash("cat /repo/a.ts"),
+    bash("npm test")
+  ]);
+  assert.match(justLooking.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run").what, /no-progress-loop/);
+});
+
 test("a stretch is counted per stretch, not across the whole session", () => {
   // Two shorter stretches with an operator turn between them are two moments the operator was
   // present for, and summing them would report a session that was interrupted as one that was not.
