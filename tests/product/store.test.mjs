@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { canonicalJson, sha256Value } from "../../lib/core.mjs";
-import { appendEvent, commitTerminal, createRun, readEvents, recoverRun, runPaths, writeResult } from "../../lib/store.mjs";
+import { appendEvent, commitTerminal, createRun, initHome, listRuns, readEvents, recoverRun, runPaths, writeResult } from "../../lib/store.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
 
@@ -86,4 +86,30 @@ test("issuance requires safety and evidence coverage", () => {
 
   const thin = every(true).map((entry, index) => (index < 5 ? observationOf({ metric_id: entry.metric_id }) : entry));
   assert.equal(scoreRun(thin).issued, false);
+});
+
+test("runs come back in the order they were created", async () => {
+  // A run id is a uuid, so sorting by name is sorting by nothing -- and every caller reads this
+  // list as if it were in order. One of them recorded the first run's score against every seed in
+  // a cycle because "the first" and "the newest" happened to be unrelated.
+  const home = mkdtempSync(join(tmpdir(), "aos-order-"));
+  try {
+    initHome(home);
+    const created = [];
+    for (let index = 0; index < 4; index += 1) {
+      created.push(createRun(home, { mode: "TEST", note: `run ${index}` }).runId);
+      // ISO timestamps are millisecond-resolution, and four runs in one tick would tie.
+      await new Promise((resolve) => setTimeout(resolve, 3));
+    }
+    assert.deepEqual(listRuns(home), created);
+    assert.notDeepEqual(created, [...created].sort(), "the ids happened to be in name order; the test proved nothing");
+
+    // A run whose manifest cannot be read is broken. It sorts to the end rather than being given a
+    // place in the middle of a history.
+    const broken = createRun(home, { mode: "TEST" }).runId;
+    writeFileSync(join(home, "runs", broken, "manifest.json"), "{not json");
+    assert.equal(listRuns(home).at(-1), broken);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
