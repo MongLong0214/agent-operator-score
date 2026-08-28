@@ -15,6 +15,18 @@ const profile = process.env.AOS_TEST_PROFILE ?? "competent";
 const write = (name, value) => writeFileSync(join(root, name), JSON.stringify(value, null, 2));
 const readJson = (name) => JSON.parse(readFileSync(join(root, name), "utf8"));
 
+// Fails until the operator says something different. This is the fixture the checkpoint runtime
+// needs: a stage that cannot be got past by running it again, so the only thing that moves the run
+// forward is a real operator turn that changed the instruction.
+if (profile === "needs-instruction") {
+  const task = process.env.AOS_TASK_FILE;
+  const instruction = task && existsSync(task) ? readFileSync(task, "utf8") : "";
+  if (!instruction.includes("AOS-TEST-UNBLOCK")) {
+    process.stderr.write("blocked: the instruction does not say how to proceed\n");
+    process.exit(1);
+  }
+}
+
 if (family === "FAM-1") {
   write("contract.json", {
     goal: "Assess how a human operator uses one or more AI agents",
