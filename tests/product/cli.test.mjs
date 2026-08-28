@@ -80,6 +80,13 @@ test("parallel workers use isolated workspaces and evidence-bound handoffs", () 
     assert.equal(result.issued, true);
     assert.equal(result.family_results["FAM-3"].invocations.length, 3);
     assert.equal(result.family_results["FAM-3"].handoff_complete, true);
+    // Observed, not merely unobjectionable. Without this, planting no marker at all would leave
+    // every handoff "unobservable" and the run would still report a complete handoff.
+    const integrity = result.family_results["FAM-3"].handoff_integrity;
+    assert.equal(integrity.observed, true, "consumption was never observed");
+    assert.equal(integrity.consumed, 2, "both branches should have been shown as read");
+    assert.equal(integrity.unconsumed, 0);
+    assert.deepEqual(result.family_results["FAM-3"].join.covered, ["a", "b"]);
     const runId = newestRunId(cwd);
     const graph = JSON.parse(run(cwd, ["session", "graph", runId, "--json"]).stdout);
     const created = graph.filter((edge) => edge.type === "handoff.created");
@@ -242,5 +249,28 @@ test("an unusable seed is refused rather than quietly replaced", () => {
     // says only "AOS_INVALID_SEED nope", which does not tell anyone what shape was wanted.
     assert.match(refused.stderr, /AOS_INVALID_SEED --seed not-hex/);
     assert.match(refused.stderr, /expected up to 16 hex digits/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("a join that never opened its branches is reported as unconsumed", () => {
+  // The evidence chain has to be able to fail. If it cannot, "consumed" carries no information --
+  // which is exactly what the old unconditional handoff.consumed event was worth.
+  const cwd = temporary("aos-unconsumed-");
+  try {
+    run(cwd, ["init"]);
+    for (const id of ["a", "b", "joiner"]) addAgent(cwd, id);
+    const plan = makePlan(cwd, { "FAM-3": "a|b>joiner", default: "a" });
+    // Non-zero exit is expected: an unconsumed handoff zeroes M11 and the run stops issuing.
+    spawnSync(process.execPath, [cli, "assess", "--plan", plan], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), AOS_TEST_SKIP_EVIDENCE: "1" }
+    });
+    const result = newestResult(cwd);
+    const fam3 = result.family_results["FAM-3"];
+    assert.equal(fam3.handoff_integrity.unconsumed, 2, "a join that read nothing was accepted");
+    assert.equal(fam3.handoff_complete, false);
+    assert.deepEqual(fam3.join.covered, []);
+    assert.equal(result.metrics.M11.value, 0, "the metric did not follow the evidence");
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

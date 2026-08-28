@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
@@ -43,7 +43,27 @@ if (family === "FAM-1") {
     rejected_sources: docs.filter((doc) => doc.name !== authoritative.name).map((doc) => doc.name)
   });
 } else if (family === "FAM-3") {
+  // Carry the evidence forward: this branch's own line if it has one, and every candidate's line if
+  // this is the join. A join that skipped a branch cannot produce a line it never opened.
+  // A lazy variant, used by one test to prove the unconsumed path is reachable end to end: it
+  // produces a plausible plan without ever opening the branches it claims to have joined.
+  const carried = [];
+  if (process.env.AOS_TEST_SKIP_EVIDENCE !== "1" && existsSync(join(root, "branch-evidence.txt"))) {
+    carried.push(readFileSync(join(root, "branch-evidence.txt"), "utf8").split("\n")[0].trim());
+  }
+  const candidates = join(root, "candidates");
+  if (process.env.AOS_TEST_SKIP_EVIDENCE !== "1" && existsSync(candidates)) {
+    for (const id of readdirSync(candidates)) {
+      for (const name of readdirSync(join(candidates, id))) {
+        const text = readFileSync(join(candidates, id, name), "utf8");
+        for (const line of text.split(/[\s",]+/)) {
+          if (line.startsWith("AOS-BRANCH-")) carried.push(line);
+        }
+      }
+    }
+  }
   write("plan.json", {
+    evidence_carried: [...new Set(carried)],
     tasks: [
       { id: "contract", objective: "freeze contract", acceptance: "schema valid", depends_on: [], route: "architect" },
       { id: "implementation", objective: "implement", acceptance: "unit tests", depends_on: ["contract"], route: "builder" },
