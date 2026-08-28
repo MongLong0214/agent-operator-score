@@ -43,6 +43,39 @@ finding out before the change lands.
 Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an industry standard, or
 environment-independent. A score is PROFILE-BOUND. Imported sessions are DIAGNOSTIC ONLY.
 
+## Branches
+
+git flow, and the two long-lived branches mean what the model says they mean.
+
+| branch | holds | receives from | protected |
+|---|---|---|---|
+| `main` | released versions, tagged | `release/*`, `hotfix/*` | yes |
+| `dev` | the integration line, and the default branch | `feature/*`, and a back-merge from `main` | yes |
+
+Short-lived branches are named for what they are, and there is only one change on each:
+
+```text
+feature/<what-it-does>     off dev  -> dev
+release/<version>          off dev  -> main and dev, tagged on main
+hotfix/<what-it-fixes>     off main -> main and dev, tagged on main
+docs/<what-it-documents>   off dev  -> dev
+```
+
+Two rules earn their place by having been broken:
+
+**A release goes back to `dev`.** v0.1.0 went to `main` and stopped there, so the default branch --
+the page every visitor lands on -- showed the product as it was before the release for as long as
+that took to notice. A `release/*` or `hotfix/*` is not finished until `dev` has it too.
+
+**Protection names checks that exist.** `dev` required `test (22)` and `test (24)`. The CI matrix
+grew a platform axis, the jobs became `test (ubuntu-latest, node 22)` and the two old contexts
+could never report again, so every pull request into `dev` would have waited on them forever.
+Renaming a CI job means updating both branches' required checks in the same change.
+
+Branches are deleted when their pull request merges. Everything before v0.1.0 is a separate line
+that forked on 2026-08-05 and was deliberately stripped from the product; those branches are kept
+as history and are not part of this model.
+
 ## License and sign-off
 
 MIT outbound. [LICENSE](LICENSE) carries the standard MIT grant: a redistribution permission, not
