@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { addAgent, makePlan, run } from "./helpers.mjs";
+import { addAgent, initBare, makePlan, run } from "./helpers.mjs";
 import { failureSignature } from "../../lib/cli.mjs";
 import { isAosWorkspaceTranscript, isHarnessBlock, operatorText } from "../../lib/session.mjs";
 import { runProcess } from "../../lib/core.mjs";
@@ -172,7 +172,9 @@ test("a harness-injected row is not an operator turn", () => {
 test("the picker reaches what the aggregate names, and an empty roster is not a pass", () => {
   const cwd = temporary("aos-roster-");
   try {
-    run(cwd, ["init"]);
+    // `init` registers whatever runtimes it finds on PATH now, so an empty roster has to be built
+    // rather than assumed. The guard is unchanged: reporting on nothing is not reporting success.
+    initBare(cwd);
     const empty = run(cwd, ["agent", "doctor"], 3);
     assert.match(empty.stdout, /no agents registered/);
     assert.match(empty.stdout, /aos agent add/);
