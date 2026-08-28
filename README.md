@@ -193,6 +193,13 @@ node bin/aos.mjs holdout          # the three acceptance gates
 The ledger holds a digest of each session, the identity of each finding, your verdict and your
 reason — and never a transcript.
 
+## The report
+
+The HTML report beside a score reads in the operator's own language: Korean for a Korean locale,
+English for everything else. Both languages live in the file with one hidden by CSS, so a report
+sent to a colleague opens in *their* language rather than the language of the machine that made it.
+The toggle is a checkbox, not a script — the page has to keep asking for nothing from anywhere.
+
 ## Security and privacy
 
 | | |
