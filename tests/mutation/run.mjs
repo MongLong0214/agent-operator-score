@@ -51,7 +51,11 @@ try {
 
     const failing = [...test.stdout.matchAll(/^not ok \d+ - (.+)$/gm)].map((match) => match[1].trim());
     const outcome = failing.includes(entry.name) ? "killed" : test.status !== 0 ? "WRONG-TEST" : "SURVIVED";
-    results.push({ ...entry, outcome, failing });
+    // Kept for the same reason the product keeps an agent's: "died on a crash" with nothing else
+    // is a report nobody can act on, and this runner is the thing that says whether the guards
+    // hold. It is the last few lines, because a stack ends with the reason.
+    const noise = `${test.stderr ?? ""}${test.error ? `\n${test.error.message}` : ""}`.trim();
+    results.push({ ...entry, outcome, failing, noise: noise.split("\n").slice(-8).join("\n") });
 
     const detail = outcome === "WRONG-TEST" ? `  <- died on: ${failing.join(", ") || "a crash, not an assertion"}` : "";
     console.log(`${outcome.padEnd(9)} ${entry.guard}${detail}`);
@@ -69,6 +73,7 @@ for (const entry of results.filter((entry) => entry.outcome !== "killed")) {
   console.log(`  broke ${entry.file} and expected "${entry.name}" in ${entry.test} to die.`);
   if (entry.outcome === "SURVIVED") console.log("  Nothing failed. Either the guard does nothing, or no test checks it.");
   if (entry.outcome === "WRONG-TEST") console.log(`  Something else failed instead: ${entry.failing.join(", ") || "the file did not run"}`);
+  if (entry.noise) console.log(entry.noise.split("\n").map((line) => `    ${line}`).join("\n"));
 }
 
 process.exit(killed.length === results.length ? 0 : 1);
