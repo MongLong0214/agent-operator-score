@@ -5,3 +5,12 @@ coverage/
 *.log
 .DS_Store
 
+
+# Local tool configuration. Never tracked: .claude/ carries agent and model routing that does not
+# belong on a public surface, and the rest is per-machine setup.
+.claude/
+.mcp.json
+.commitlore-policy.json
+
+# Serena/LSP project metadata. Agent tooling, never a public surface.
+.serena/
