@@ -116,7 +116,10 @@ test("the bands land where the specification says they do", () => {
 });
 
 test("a false completion cannot climb past its ceiling however good the rest is", () => {
-  const scored = scoreRun(at({ fail: { M17: ["claim-matches-outcome"] } }));
+  // `no-hidden-failure` is the subcheck that means it: the run claimed complete and the hidden
+  // verifier disagreed. `claim-matches-outcome` also fails when an agent under-claims, which is
+  // wrong in the other direction and does not earn this ceiling.
+  const scored = scoreRun(at({ fail: { M17: ["claim-matches-outcome", "no-hidden-failure"] } }));
   assert.equal(scored.score.raw >= 95, true, "the rest of the run was excellent");
   assert.equal(scored.score.final, CAPS.FALSE_COMPLETION.max);
 });

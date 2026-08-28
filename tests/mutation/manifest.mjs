@@ -55,8 +55,8 @@ export const GUARDS = [
     guard: "false completion cap",
     reason: "work claimed as done and not done is the failure the product exists to catch",
     file: "lib/scorer-v1.mjs",
-    from: 'failed("M17", "claim-matches-outcome") || failed("M17", "no-hidden-failure")',
-    to: "false",
+    from: 'if (failed("M17", "no-hidden-failure")) {',
+    to: "if (false) {",
     test: "tests/product/profile-matrix.test.mjs",
     name: "false completion: the claim passes every public check and the hidden verifier catches it"
   },
