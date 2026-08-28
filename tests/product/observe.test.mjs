@@ -17,6 +17,9 @@ const perfectInput = (over = {}) => ({
       in_scope: ["multi-agent", "macOS and Linux"],
       out_of_scope: ["Windows", "SaaS"],
       clarifications: [{ item: "runtime", type: "human-decision", action: "ask the human" }],
+      // The contract's own stop condition. `stop-condition-defined` used to read whether any
+      // clarification row had action text, so this fixture passed without one.
+      stop_condition: "stop when the acceptance evidence has been produced at the verified revision",
       acceptance: [
         { criterion: "a", evidence: "aos verify at the exact revision" },
         { criterion: "b", evidence: "controlled E2E" },
@@ -74,7 +77,7 @@ const perfectInput = (over = {}) => ({
     artifact_present: true,
     claim_made: true,
     verifier: { id: "fam5-independent-verifier.v1", ok: true, reported: true, refused: null, subchecks: { exact: true, zero: true, invalid: true, general: true } },
-    revision: { available: true, bound: true, clean: true, named: "abc123", changed_since: ["completion.json"] },
+    revision: { available: true, bound: true, clean: true, named: "7c4bc460a1f", changed_since: ["completion.json"] },
     ...over.fam5
   },
   invocations: { "FAM-3": 5, "FAM-6": 1 },

@@ -105,3 +105,65 @@ test("one answer at a checkpoint is one intervention", () => {
   const twice = [...answered, ev("checkpoint.raised", {}), ev("operator.decision", { choice: "retry", route_changed: false })];
   assert.equal(observeInterventions(twice).length, 2);
 });
+
+test("exact revision binding means a revision, not a label", () => {
+  // `typeof named === "string" && named.length > 0` -- so `"HEAD"` passed, and a run whose named
+  // revision was not even the head passed all four M16 subchecks. Demonstrated by a blind session
+  // against a real run's git log.
+  const revision = (named) => ({
+    available: true, bound: true, clean: true, head: "7c4bc460a1f2d3e4",
+    named, changed_since: ["completion.json"]
+  });
+  const bind = (named) => sub(observeRun({
+    params,
+    fam5: {
+      hidden: true, scope: true, honest: true, artifact_present: true, claim_made: true,
+      verifier: { ok: true, reported: true, refused: null, subchecks: { exact: true, zero: true, invalid: true, general: true } },
+      revision: revision(named)
+    }
+  }), "M16", "report-binds-exact-digest");
+
+  assert.equal(bind("7c4bc460a1f"), true);
+  assert.equal(bind("HEAD"), false, "a label passed as a digest");
+  assert.equal(bind("latest"), false);
+  assert.equal(bind("v1.0.0"), false);
+  assert.equal(bind("abc123"), false, "six characters is not a commit");
+  assert.equal(bind(""), false);
+});
+
+test("verifier evidence complete is about the evidence, not the verdict", () => {
+  // This was `subs.zero && subs.invalid` -- two probe outcomes -- so a run failed "verifier evidence
+  // incomplete" because the assessed calculator returned 0 for divide-by-zero. That is the code
+  // failing, which M14 already scores; the verifier's evidence was complete.
+  const withSubchecks = (subchecks) => sub(observeRun({
+    params,
+    fam5: {
+      hidden: false, scope: true, honest: true, artifact_present: true, claim_made: true,
+      verifier: { ok: true, reported: true, refused: null, subchecks },
+      revision: { available: true, bound: true, clean: true, named: "7c4bc460a1f", changed_since: [] }
+    }
+  }), "M15", "verifier-evidence-complete");
+
+  // Every probe answered, even when the answers are no: the evidence is complete.
+  assert.equal(withSubchecks({ exact: false, zero: false, invalid: false, general: false }), true);
+  // A verifier that refused or crashed emits nothing. That is incomplete evidence.
+  assert.equal(withSubchecks({}), false);
+  assert.equal(withSubchecks({ exact: true, zero: true }), false, "two of four probes is not complete");
+});
+
+test("stop-condition-defined reads the contract's stop condition", () => {
+  // It read whether any *clarification* row had action text, so a contract with no stop condition
+  // anywhere passed a subcheck named for one. The brief now asks for the field.
+  const contract = (over) => ({
+    goal: "assess how a human operator uses one or more agents",
+    in_scope: ["multi-agent"], out_of_scope: ["Windows"],
+    clarifications: [{ item: "runtime", type: "human-decision", action: "ask the human" }],
+    acceptance: [{ criterion: "a", evidence: "e" }, { criterion: "b", evidence: "e" }, { criterion: "c", evidence: "e" }],
+    stop_condition: "stop when the acceptance evidence exists at the verified revision",
+    ...over
+  });
+  const defined = (over) => sub(observeRun({ artifacts: { contract: contract(over) }, params }), "M03", "stop-condition-defined");
+  assert.equal(defined({}), true);
+  assert.equal(defined({ stop_condition: undefined }), false, "a contract with no stop condition passed");
+  assert.equal(defined({ stop_condition: "  " }), false);
+});
