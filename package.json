@@ -8,6 +8,7 @@
     "node": ">=22.18 <25"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:mutation": "node tests/mutation/run.mjs"
   }
 }
