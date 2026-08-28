@@ -58,17 +58,47 @@ test("an unattended run observes nothing, and nothing is not a zero", () => {
 test("the menu choice is never what counts", () => {
   // "Inspect evidence" is a label. Picking the cautious-looking option and then retrying the same
   // thing unchanged is the exact defect the checkpoint exists to catch.
+  //
+  // This used to be enforced by producing no observation at all, which also erased the operator:
+  // #487 showed that a person who attended, read the evidence and decided nothing needed changing
+  // was indistinguishable from a run nobody watched, and D4 came back NOT_OBSERVED. So the answer
+  // is now recorded -- and earns nothing, which is the property that actually matters and which
+  // "no observation" could never demonstrate.
   const inspected = [
     ended("s1", false, "a"),
     ended("s1", false, "b"),
     decision({ choice: "inspect evidence" }),
     ended("s1", false, "c")
   ];
-  assert.deepEqual(observeInterventions(inspected), [], "a choice with no state change was counted");
+  const seen = observeInterventions(inspected);
+  assert.equal(seen.length, 1, "the operator answered and was not recorded");
+  assert.equal(seen[0].state_change, "held");
+  assert.equal(seen[0].effective, false, "a label earned credit");
+  assert.equal(seen[0].followed_by_same_failure, true);
 
   // Even a choice that names a reroute earns nothing unless the route actually changed.
   const claimed = [ended("s1", false, "a"), ended("s1", false, "b"), decision({ choice: "reroute" })];
-  assert.deepEqual(observeInterventions(claimed), []);
+  const claimedSeen = observeInterventions(claimed);
+  assert.deepEqual(claimedSeen.map((entry) => entry.state_change), ["held"], "a named reroute became a route change");
+});
+
+test("nobody there is still nobody there", () => {
+  // The distinction #487 asked for cuts both ways: an unanswered checkpoint must stay unobserved,
+  // or the honest result for an unattended run is lost in the other direction.
+  const unanswered = [ended("s1", false, "a"), ended("s1", false, "b"), decision({ choice: "unanswered" })];
+  assert.deepEqual(observeInterventions(unanswered), []);
+});
+
+test("holding earns nothing on the subchecks that grade an intervention", () => {
+  // Mashing the cautious option at every checkpoint must not farm D4. It is worth checking through
+  // the metrics rather than the observations, because that is where credit is actually given.
+  const held = observeInterventions([
+    ended("s1", false, "a"), ended("s1", false, "b"),
+    decision({ choice: "inspect evidence" }), ended("s1", false, "c"),
+    decision({ choice: "retry unchanged" }), ended("s1", false, "d")
+  ]);
+  assert.ok(held.length >= 1);
+  assert.equal(held.some((entry) => entry.effective), false, "holding was scored as an effective intervention");
 });
 
 test("a state change is judged by the work that followed it", () => {
@@ -84,18 +114,21 @@ test("a state change is judged by the work that followed it", () => {
   assert.deepEqual(changes(recovered), [["instruction-changed", true]]);
 });
 
-test("sending the same instruction again is not an intervention", () => {
-  // It is the retry the checkpoint was raised about, typed by a person.
+test("sending the same instruction again is not a changed instruction", () => {
+  // It is the retry the checkpoint was raised about, typed by a person. It is still a person: the
+  // resend is recorded as "held" so the operator's presence survives, and it is not promoted to
+  // "instruction-changed", which is what would have earned M12's retry-input subcheck.
   const resent = [ended("s1", false, "a"), ended("s1", false, "b"), instruction("same"), instruction("same")];
-  assert.deepEqual(changes(resent), [["instruction-changed", true]], "only the first should count");
+  assert.deepEqual(changes(resent), [["instruction-changed", true], ["held", true]]);
 });
 
 test("a route change counts only when the route actually moved", () => {
   const moved = [ended("s1", false, "a"), ended("s1", false, "b"), decision({ route_changed: true }), ended("s2", true, "c")];
   assert.deepEqual(changes(moved), [["route-changed", true]]);
 
+  // Recorded as an answer, never as a route that moved.
   const claimedOnly = [ended("s1", false, "a"), ended("s1", false, "b"), decision({ route_changed: false })];
-  assert.deepEqual(changes(claimedOnly), []);
+  assert.deepEqual(changes(claimedOnly).map(([change]) => change), ["held"]);
 });
 
 test("a stop that did not stop anything is a label too", () => {

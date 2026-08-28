@@ -42,8 +42,17 @@ test("the seeds are fixed when the cycle is created", () => {
 
 test("a cycle needs at least three runs and distinct seeds", () => {
   assert.throws(() => createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, runs: 2 }), /AOS_CYCLE_TOO_SHORT/);
-  assert.throws(() => createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds: ["1", "1", "2"] }), /AOS_CYCLE_DUPLICATE_SEEDS/);
-  assert.throws(() => createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds: ["1", "2", "zz"] }), /AOS_CYCLE_INVALID_SEEDS/);
+  // #485: one error stood for three different problems and named none of them. Each now says which
+  // condition failed and which seed caused it, because the operator has to be able to fix it.
+  const cycle = (seeds, runs) => () => createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, runs });
+  // Named in its normalised form, which is how the seed is written everywhere else.
+  assert.throws(cycle(["1", "1", "2"]), /AOS_CYCLE_DUPLICATE_SEEDS 0000000000000001;/);
+  assert.throws(cycle(["1", "2", "zz"]), /AOS_CYCLE_SEED_SHAPE zz; a seed is 1 to 16 hex characters/);
+  // Every seed valid, but there are two of them and three runs were asked for. This was the case
+  // that made the single error most misleading: nothing about any seed was wrong.
+  assert.throws(cycle(["aaaa", "bbbb"], 3), /AOS_CYCLE_SEED_COUNT 2 seed\(s\) given for --runs 3/);
+  // A sha256 is the shape an operator reaches for, because it is what the rest of this tool prints.
+  assert.throws(cycle(["a".repeat(64), "b".repeat(64), "c".repeat(64)]), /not a sha256/);
   assert.throws(() => createCycle({ suiteMajor: 1, scorerMajor: 1 }), /AOS_CYCLE_NO_PROFILE/);
 });
 
