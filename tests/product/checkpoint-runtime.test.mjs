@@ -158,6 +158,21 @@ test("every run reaches a checkpoint, not only the ones where the agent stumbled
   assert.match(result.stdout, /retry-tests/, "the operator should see the repeated action");
 });
 
+test("stopping stops the run", () => {
+  // An intervention is judged by whether the work that followed was the same thing again. Carrying
+  // on to the next family after the operator said stop would grade their decision as ineffective
+  // for a reason that is AOS's, not theirs.
+  const { result, events } = assessAnswering(["5"]);
+  assert.equal(result.status, 130, result.stderr);
+  assert.match(result.stderr, /AOS_CANCELLED/);
+  const cancelled = events.filter((event) => event.event_type === "session.cancelled");
+  assert.equal(cancelled.length, 1);
+  const started = events.filter((event) => event.event_type === "agent.started");
+  const after = events.slice(events.indexOf(cancelled[0])).filter((event) => event.event_type === "agent.started");
+  assert.equal(after.length, 0, `${after.length} agent(s) ran after the operator stopped`);
+  assert.equal(started.length >= 1, true);
+});
+
 test("the menu is parsed by number and by word, and refuses what this run cannot do", () => {
   const agents = ["solo", "spare"];
   assert.deepEqual(parseDecision("1", { agents }), { choice: "retry", changes: null });
