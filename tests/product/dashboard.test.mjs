@@ -9,6 +9,7 @@ import { LOOPBACK, hostAllowed, mintToken, startDashboard, tokenMatches } from "
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
+import { writeJson } from "../../lib/core.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 
 const homeWithRun = () => {
@@ -178,5 +179,48 @@ test("no response invites another origin to read it", async () => {
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(response.headers.get("referrer-policy"), "no-referrer");
     assert.match(response.headers.get("content-security-policy"), /default-src 'none'/);
+  });
+});
+
+test("the operator score sits above the runs it was computed from", async () => {
+  // The thing this product exists to produce. A summary that hid an exclusion would read as a
+  // cycle that never ran it, so every uncounted run is named with its reason.
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-cycle-"));
+  initHome(home);
+  writeJson(join(home, "cycle.json"), {
+    schema_id: "aos-cycle.v1",
+    cycle_id: "cycle-abc",
+    profile_digest: "d".repeat(64),
+    suite_major: 1,
+    scorer_major: 1,
+    seeds: ["0000000000000001", "0000000000000002", "0000000000000003", "0000000000000004"],
+    runs: [
+      { seed: "0000000000000001", valid: true, invalid_reason: null, final_score: 71, dimensions: { D1: 80 } },
+      { seed: "0000000000000002", valid: true, invalid_reason: null, final_score: 74, dimensions: { D1: 80 } },
+      { seed: "0000000000000003", valid: true, invalid_reason: null, final_score: 77, dimensions: { D1: 80 } },
+      { seed: "0000000000000004", valid: false, invalid_reason: "NOT_ISSUED", final_score: null, dimensions: {} }
+    ]
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    assert.match(body, /cycle-abc/);
+    assert.match(body, />74</, "the median of the valid runs");
+    assert.match(body, /Operator Score/);
+    assert.match(body, /0000000000000004 — NOT_ISSUED/);
+    assert.match(body, /local repeat evidence/);
+    assert.match(body, /PROFILE-BOUND/);
+    assert.equal(/confidence/i.test(body), false);
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a home with no cycle shows the runs and invents nothing", async () => {
+  await withServer(async ({ port, token }) => {
+    const body = await (await get(port, `/?t=${token}`)).text();
+    assert.equal(body.includes("Operator Score"), false);
+    assert.match(body, /<h1>Runs<\/h1>/);
   });
 });
