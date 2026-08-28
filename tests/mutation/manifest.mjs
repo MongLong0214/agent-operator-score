@@ -5,9 +5,10 @@
 // deleted and every test still passes, then either the guard does nothing or the suite does not
 // check it, and both are worth knowing before a number goes out with the product's name on it.
 //
-// The eleven guards are the ones named in the specification. Each entry says what to break, and
-// which named test is expected to notice -- naming the test is the point, because "some test
-// somewhere failed" would be satisfied by a typo.
+// Eleven of these are named in the specification; the rest were added by work that came after it,
+// and they earn their place the same way. Each entry says what to break, and which named test is
+// expected to notice -- naming the test is the point, because "some test somewhere failed" would be
+// satisfied by a typo.
 //
 // `tests/product/mutation-manifest.test.mjs` keeps this file honest: it runs on every `npm test`
 // and fails if a `from` string no longer appears in its file, or names a test that does not exist.
@@ -115,10 +116,43 @@ export const GUARDS = [
     to: "",
     test: "tests/product/cycle.test.mjs",
     name: "a seed that produced a result cannot be run again"
+  },
+  {
+    guard: "operator decision window",
+    reason: "every stage sends an instruction, so without a window the plan being carried out reads as the operator stepping in",
+    file: "lib/checkpoint.mjs",
+    from: 'if (anchored && event.event_type === "operator.decision") asked = false;',
+    to: "",
+    test: "tests/product/checkpoint-runtime.test.mjs",
+    name: "retrying unchanged is not an intervention, whatever it is called"
+  },
+  {
+    guard: "credential env refusal",
+    reason: "the allow list is consulted before the credential filter, so a key named there is handed to the agent",
+    file: "lib/cli.mjs",
+    from: "if (sensitive.length > 0) {",
+    to: "if (false) {",
+    test: "tests/product/isolation.test.mjs",
+    name: "a credential-shaped name cannot be added to an agent's allow list"
+  },
+  {
+    guard: "checkpoint evidence preserved",
+    reason: "a digest over evidence the record does not hold is a claim of checkability nothing can honour",
+    file: "lib/store.mjs",
+    from: '"checkpoint.raised": ["family", "kind", "detail", "output", "calls", "evidence_digest"],',
+    to: '"checkpoint.raised": ["family", "kind", "evidence_digest"],',
+    test: "tests/product/checkpoint-runtime.test.mjs",
+    name: "the record keeps what the operator was shown, not just that they were shown something"
   }
 ];
 
-/** The guard names the specification lists, in its order. Checked against GUARDS on every run. */
+/**
+ * The guard names the specification lists, in its order.
+ *
+ * The manifest may hold more than these -- work since has added guards of its own -- so this is
+ * checked as a floor rather than as an equality. What it forbids is one of the named eleven quietly
+ * leaving the list.
+ */
 export const REQUIRED_GUARDS = [
   "trusted-process import prohibition",
   "verification result check",
