@@ -193,6 +193,13 @@ node bin/aos.mjs holdout          # the three acceptance gates
 The ledger holds a digest of each session, the identity of each finding, your verdict and your
 reason — and never a transcript.
 
+## The report
+
+The HTML report beside a score reads in the operator's own language: Korean for a Korean locale,
+English for everything else. Both languages live in the file with one hidden by CSS, so a report
+sent to a colleague opens in *their* language rather than the language of the machine that made it.
+The toggle is a checkbox, not a script — the page has to keep asking for nothing from anywhere.
+
 ## Security and privacy
 
 | | |
@@ -200,6 +207,7 @@ reason — and never a transcript.
 | Network | one loopback server, bound to `127.0.0.1`, tokened, read-only, GET-only, no route returns a transcript. No outbound client exists in the codebase. |
 | Dependencies | none. `npm ci` installs nothing. |
 | The assessed agent | runs with `HOME` replaced, a filtered environment, and no `AOS_`-prefixed variable — it is never told where your runs are kept |
+| Runtime credential | found the way the runtime would have found it and carried in the process environment, so nothing has to be configured. The name and where it came from are recorded; the value is not, and no token is written to disk. `--no-auto-auth` turns it off |
 | Secrets | removed where output is read, reported by kind, never repeated into a finding, a result or an event |
 | Your home | `~/.aos` is `0700`, every file `0600` |
 
