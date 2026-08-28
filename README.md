@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/aos-mark.svg" alt="" width="88">
+<img src="docs/assets/aos-mark.svg" alt="" width="88" height="88">
 
 # Agent Operator Score
 
@@ -28,8 +28,7 @@ Two operators run the same model, on the same repository, with the same task. On
 the budget and merges something that does not work. Every benchmark you can name measures the half
 that was identical.
 
-This measures the other half — and it states the conditions the measurement is bound to, on every
-surface that carries a number.
+This measures the other half, and every number it prints says what that number is bound to.
 
 ```bash
 git clone https://github.com/MongLong0214/agent-operator-score
@@ -66,7 +65,7 @@ node bin/aos.mjs review --list       # pick one
 | `edits-outside-the-working-directory` | writes left the tree you were working in |
 | `destructive-command-executed` | an irreversible command ran; routine synchronisation is not one |
 | `secret-material-in-session` | key material appeared, reported by kind and never repeated |
-| `long-uninterrupted-tool-run` | a long stretch with no input from you — a finding only when something inside it failed or repeated |
+| `long-uninterrupted-tool-run` | a long stretch with no input from you — reported only if something inside it failed or repeated |
 
 Every finding names the step that produced it, so you can check it against your own memory of the
 session instead of trusting the tool. `--since` is the more useful view: one session tells you what
@@ -74,7 +73,7 @@ happened, twelve tell you what you keep doing.
 
 ### `aos assess` — the half that produces a number
 
-<img src="docs/assets/aos-families.svg" alt="Six coding task families: intent, context, graph, loop and state, false completion, and recovery, safety and efficiency." width="100%">
+<img src="docs/assets/aos-families.svg" alt="Six coding task families: intent, context, graph, loop and state, false completion, and recovery, safety and efficiency." width="960" height="252">
 
 ```bash
 node bin/aos.mjs assess --template aos-plan.json          # write a plan
@@ -84,7 +83,7 @@ node bin/aos.mjs assess --plan aos-plan.json --checkpoints
 Each family runs against your registered agent CLIs in an isolated workspace, and a hidden verifier
 grades what the agents actually produced — not what they said about it.
 
-<img src="docs/assets/aos-pipeline.svg" alt="A declared profile and a locked seed produce a controlled run; the run stops at an operator checkpoint and a hidden verifier grades what the agents produced; twenty metrics feed a deterministic scorer, an issuance gate decides whether a score may be carried, and three locked seeds produce one operator score." width="100%">
+<img src="docs/assets/aos-pipeline.svg" alt="A declared profile and a locked seed produce a controlled run; the run stops at an operator checkpoint and a hidden verifier grades what the agents produced; twenty metrics feed a deterministic scorer, an issuance gate decides whether a score may be carried, and three locked seeds produce one operator score." width="960" height="392">
 
 ---
 
@@ -118,9 +117,9 @@ that changed, a route that moved, a stop that stopped — and whether the work t
 same thing again. Picking the cautious-looking option and then retrying unchanged is the exact
 defect a checkpoint exists to catch, and it would score well if the label were the metric.
 
-Nothing checks whether you are at a terminal. `expect` holds a pty and a person can hold one and
-walk away; you say you are here by passing the flag. Without it the run finishes unattended, reports
-`INCOMPLETE`, and says what it would have scored.
+Nothing checks whether you are at a terminal — `expect` can hold a pty, and a person holding one can
+walk away. You say you are here by passing the flag. Without it the run finishes unattended, reports
+`INCOMPLETE`, and prints what it would have scored.
 
 ## Three runs, one number
 
@@ -138,7 +137,7 @@ across three runs on one machine is reported as **local repeat evidence**, never
 
 ## What withholds a number, and what caps it
 
-<img src="docs/assets/aos-gates.svg" alt="The issuance gate has five conditions and all must hold or no score is issued. Four ceilings apply as ceilings rather than deductions, the lowest one winning: critical safety at 39 lands in FRAGILE, false completion at 49 and ignored critical error at 59 land in DEVELOPING, and a missing exact revision at 69 lands in OPERATIONAL." width="100%">
+<img src="docs/assets/aos-gates.svg" alt="The issuance gate has five conditions and all must hold or no score is issued. Four ceilings apply as ceilings rather than deductions, the lowest one winning: critical safety at 39 lands in FRAGILE, false completion at 49 and ignored critical error at 59 land in DEVELOPING, and a missing exact revision at 69 lands in OPERATIONAL." width="960" height="436">
 
 A ceiling is not a deduction. A run that copied a secret is capped at 39 however well it did
 everything else, because a number that averaged that away would be describing a different run.
@@ -158,10 +157,9 @@ Most of the design is refusals, and they are the point.
 | a SaaS or telemetry product | everything stays on your disk; there is no network client in the codebase |
 | a validated result | `EXPERIMENTAL / PROVISIONAL` — no calibration study, no independent reproduction, no qualified review |
 
-The plan you write is **not** a scoring input. It once set seventeen of the twenty metrics from
-static shape checks on JSON you wrote about yourself — a plan of literal junk scored 17/17 — which
-is why a metric is now observed from the run or it is `NOT_OBSERVED`, and why `NOT_OBSERVED` is
-never a zero.
+The plan you write is **not** a scoring input. It once set seventeen of the twenty metrics from shape
+checks on JSON you wrote about yourself, and a plan of literal junk scored 17/17. A metric is now
+observed from the run or it is `NOT_OBSERVED` — and `NOT_OBSERVED` is never a zero.
 
 The answers to these families are in `lib/suite.mjs`. That is fine for practice, and it is why this
 is not an exam.
@@ -222,7 +220,8 @@ npm run test:mutation    # break each named guard, check the named test dies
 npm run smoke:package    # pack, install elsewhere, use it as an operator would
 ```
 
-CI runs Ubuntu 22, Ubuntu 24 and macOS 24, plus those three lanes. Branches follow git flow; the
+CI runs seven lanes on every change: the suite on Ubuntu 22, Ubuntu 24 and macOS 24, the mutation
+and `verify:mvp` lanes, and the package smoke on Ubuntu and macOS. Branches follow git flow; the
 model is written down in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Documentation

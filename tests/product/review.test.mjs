@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 import { aggregateFindings, isWrittenDownExample, reviewSession } from "../../lib/review.mjs";
 
 // A session shaped the way lib/session.mjs normalizes one, built inline so these cases state the
@@ -219,14 +222,23 @@ test("a destructive command quoted inside a string is not a command that ran", (
 test("scratchpad and agent memory are not out-of-scope edits", () => {
   // This rule fired on five of forty sessions and every hit was a harness scratchpad or the
   // agent's own memory directory, which is where a session is supposed to put working files.
+  // Under the operator's own home, wherever that is. This used to spell one machine's username,
+  // which passed here and nowhere else -- and once the exemption was anchored to the home
+  // directory rather than matching `.claude/` anywhere in a path, CI said so.
   const scratch = build([
     edit("/private/tmp/claude-501/abc/scratchpad/x.mjs"),
-    edit("/Users/isaac/.claude/projects/p/memory/MEMORY.md")
+    edit(join(homedir(), ".claude", "projects", "p", "memory", "MEMORY.md"))
   ]);
   assert.equal(rules(scratch).includes("edits-outside-the-working-directory"), false);
 
-  const elsewhere = build([edit("/Users/isaac/other-project/src/a.ts")]);
+  // Not under the home directory: a temp-rooted home would otherwise make this exempt for the
+  // system-temp reason and prove nothing about the one under test.
+  const elsewhere = build([edit("/srv/other-project/src/a.ts")]);
   assert.ok(rules(elsewhere).includes("edits-outside-the-working-directory"));
+
+  // A worktree under *a project's* .claude is source code in another repository, not agent memory.
+  const worktree = build([edit("/Users/someone/other/v3_fe/.claude/worktrees/feat-x/src/app.ts")]);
+  assert.ok(rules(worktree).includes("edits-outside-the-working-directory"));
 });
 
 test("a long unattended stretch is measured between operator turns", () => {
