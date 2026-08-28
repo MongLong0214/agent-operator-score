@@ -204,7 +204,12 @@ test("asking for more sessions than the old cap returns more than the old cap", 
   try {
     const projects = join(cwd, ".claude", "projects", "sample");
     mkdirSync(projects, { recursive: true });
-    const row = JSON.stringify({ type: "assistant", cwd: "/repo", message: { content: [{ type: "text", text: "hello" }] } });
+    // With a tool call in each, because `--since n` now means n sessions that have something to
+    // review: a transcript with no tool activity no longer takes a slot (#501).
+    const row = JSON.stringify({
+      type: "assistant", cwd: "/repo",
+      message: { content: [{ type: "tool_use", name: "Bash", input: { command: "npm test" } }] }
+    });
     for (let index = 0; index < 45; index += 1) {
       writeFileSync(join(projects, `s-${index}.jsonl`), `${row}\n`, "utf8");
     }
