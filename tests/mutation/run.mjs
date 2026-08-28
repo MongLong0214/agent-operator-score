@@ -46,9 +46,20 @@ try {
       continue;
     }
     writeFileSync(path, original.replace(entry.from, entry.to));
-    const test = run("node", ["--test", entry.test], { cwd: worktree, timeout: 900000 });
+    // The reporter is named, not inherited. This file reads TAP, and Node's default reporter for a
+    // non-terminal changed between the version this is developed on and the one CI runs, so every
+    // mutation came back with no `not ok` lines at all and was reported as a crash. Fifteen guards
+    // read as not load-bearing when all fifteen were.
+    const test = run("node", ["--test", "--test-reporter=tap", entry.test], { cwd: worktree, timeout: 900000 });
     writeFileSync(path, original);
 
+    // If the output is not TAP at all, nothing below can be trusted: "no test failed" and "the
+    // format changed" look identical, and only one of them is safe to report.
+    if (!/^TAP version/m.test(test.stdout)) {
+      results.push({ ...entry, outcome: "NO-TAP", failing: [], noise: `${test.stderr ?? ""}`.split("\n").slice(-8).join("\n") });
+      console.log(`NO-TAP    ${entry.guard}  <- the runner could not read this output as TAP`);
+      continue;
+    }
     const failing = [...test.stdout.matchAll(/^not ok \d+ - (.+)$/gm)].map((match) => match[1].trim());
     const outcome = failing.includes(entry.name) ? "killed" : test.status !== 0 ? "WRONG-TEST" : "SURVIVED";
     // Kept for the same reason the product keeps an agent's: "died on a crash" with nothing else
