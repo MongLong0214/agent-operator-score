@@ -207,6 +207,7 @@ The toggle is a checkbox, not a script — the page has to keep asking for nothi
 | Network | one loopback server, bound to `127.0.0.1`, tokened, read-only, GET-only, no route returns a transcript. No outbound client exists in the codebase. |
 | Dependencies | none. `npm ci` installs nothing. |
 | The assessed agent | runs with `HOME` replaced, a filtered environment, and no `AOS_`-prefixed variable — it is never told where your runs are kept |
+| Runtime credential | when a runtime needs one, exactly one variable it reads is carried by name. The name is recorded, the value is not, and no token is written to disk |
 | Secrets | removed where output is read, reported by kind, never repeated into a finding, a result or an event |
 | Your home | `~/.aos` is `0700`, every file `0600` |
 
