@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { checkpointEvidence, detectCheckpoints, interventionSummary, observeInterventions } from "../../lib/checkpoint.mjs";
+import { CHECKPOINT_KINDS, checkpointEvidence, detectCheckpoints, interventionSummary, observeInterventions } from "../../lib/checkpoint.mjs";
 
 const ended = (stage, ok, id) => ({
   event_type: "agent.ended",
@@ -134,4 +134,17 @@ test("an intervention before any checkpoint is not an intervention", () => {
   // There has to be something to intervene in. Otherwise every instruction in a clean run would
   // count as monitoring.
   assert.deepEqual(observeInterventions([instruction("a"), ended("s1", true, "x")]), []);
+});
+
+test("a checkpoint kind this build cannot produce is refused", () => {
+  // A name written down beside the code that does not consult it tells a reader the values are
+  // constrained when nothing constrains them. `no-progress` sat in that list and nothing could
+  // produce it.
+  assert.deepEqual(CHECKPOINT_KINDS, ["identical-retry-after-failure", "repeated-failure"]);
+  for (const kind of ["no-progress", "made-up", "", null, undefined]) {
+    assert.throws(() => checkpointEvidence({ kind, family: "FAM-1", detail: "x" }), /AOS_UNKNOWN_CHECKPOINT_KIND/, String(kind));
+  }
+  for (const kind of CHECKPOINT_KINDS) {
+    assert.equal(checkpointEvidence({ kind, family: "FAM-1", detail: "x" }).kind, kind);
+  }
 });
