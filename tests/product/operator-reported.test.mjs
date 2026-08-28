@@ -179,7 +179,10 @@ test("the picker reaches what the aggregate names, and an empty roster is not a 
     assert.match(empty.stdout, /no agents registered/);
     assert.match(empty.stdout, /aos agent add/);
 
-    addAgent(cwd, "solo");
+    // A real binary, because `addAgent` registers the repository's own fake-agent fixture and an
+    // agent that runs a fixture now fails doctor on purpose -- a score from it describes the
+    // fixture. That guard is covered in tests/product/fixture-backed-agent.test.mjs.
+    run(cwd, ["agent", "add", "solo", "--command", "/bin/echo", "--arg", "hi"]);
     const listed = run(cwd, ["agent", "doctor"]);
     assert.match(listed.stdout, /PASS\tsolo/);
     // PASS here has been read as "this agent works". It means the binary resolves, and -- since
