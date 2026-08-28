@@ -63,3 +63,33 @@ tool call whose object literal was JavaScript rather than JSON; a test runner na
 path; a patch body read as a command; one conjugation missing from an exclusion. None of
 them failed loudly. Each one invented a finding, which is the direction this product must
 not be wrong in.
+
+## What a real run looks like
+
+Measured with real Codex on one machine, six families, seeded suite:
+
+- **Unattended: 16 of 20 metrics observed, no score.** The four that are missing are the
+  operator dimension and the join metric a single-agent route cannot produce. The provisional
+  total was 70 and one ceiling applied. This is the designed answer, not a defect: a run nobody
+  watched is a diagnostic result.
+- **Every stage exited zero.** A checkpoint that fires only on a failed stage would never have
+  fired, which is why one family now presents its own seeded blocker before any agent runs.
+- **A run's outcome varies with the provider.** An earlier run of the same seed had three of six
+  families produce no artifact while still exiting zero, and nothing AOS had kept could say why.
+  The agent's own error output is now recorded, bounded and redacted, so the next one can.
+
+None of this transfers. It describes this operator, this Codex build, this machine and this task
+pack, which is what PROFILE-BOUND means.
+
+## The operator dimension can only be observed at a blocker
+
+M11 to M13 ask what the operator did when the work was stuck. That is only answerable if the run
+contains a moment where something was stuck, so the suite puts one there: a family whose seeded
+state is a goal, a blocker, and an event log showing the same action retried twice under one
+correlation id.
+
+Two consequences worth stating plainly. A run without `--checkpoints` cannot fill this dimension
+and therefore cannot carry a score, however well the agents did. And what is graded is the state
+the operator's answer produced -- an instruction that changed, a route that moved, a stop that
+stopped -- never which menu item they picked, because the cautious-sounding label would otherwise
+be the cheapest thing to claim.
