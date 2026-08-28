@@ -50,7 +50,11 @@ test("reporting that a test stayed green is not claiming the work is done", () =
   for (const text of [
     "Mutating both defaults to false left the test passing.",
     "Changing the reduction left all three new tests passing because the fixture makes them identical.",
-    "The mutation kept the tests passing, so the assertion is inert."
+    "The mutation kept the tests passing, so the assertion is inert.",
+    // The bare infinitive was missing from the first version of this exclusion, and it cost a
+    // finding in the held-back measurement.
+    "Reverting its helper adoption would leave these helper tests passing.",
+    "That change would keep the tests passing while removing the check."
   ]) {
     const result = build([bash("npm test"), edit(), said(text)]);
     assert.equal(rules(result).includes("completion-claimed-without-verification"), false, text);
@@ -454,4 +458,36 @@ test("a rule that fires four times in one session is one session, not four", () 
   const row = aggregateFindings([repeated]).find((entry) => entry.rule === "destructive-command-executed");
   assert.equal(row.finding_count, 4, "each command should still be its own finding");
   assert.equal(row.session_count, 1, "four findings came from one session");
+});
+
+test("a patch body is file content, not a command that ran", () => {
+  // Two of the ten high-severity findings in the owner's held-back sessions were `DROP TABLE`
+  // inside a sqlite migration an agent was *writing*, reported as an irreversible command. This is
+  // the rule the heredoc stripper already applies, in the shape Codex uses.
+  const patch = 'const patch = "*** Begin Patch\\n*** Update File: /repo/storage.py\\n+  conn.execute(\\"DROP TABLE runs\\")\\n*** End Patch"; await tools.apply_patch(patch);';
+  assert.equal(rules(build([bash(patch)])).includes("destructive-command-executed"), false);
+
+  // A destructive command that really ran is still one. Unquoted, because a command quoted as data
+  // is already excluded by a rule of its own -- that is what `psql -c 'DROP TABLE x'` is.
+  assert.ok(rules(build([bash("git push --force origin main")])).includes("destructive-command-executed"));
+  const both = 'const p = "*** Begin Patch\\n*** Update File: /repo/a.sql\\n+DROP TABLE x\\n*** End Patch"; await tools.apply_patch(p); git push --force origin main';
+  assert.ok(rules(build([bash(both)])).includes("destructive-command-executed"), "a real command beside a patch still counts");
+});
+
+test("output written outside the working tree is not an edit to the work", () => {
+  // A PR body and two CI logs under /tmp were three of the five "edits" behind one held-back
+  // finding; that session had pushed and watched CI go green, and was told nothing confirmed it.
+  const captured = build([
+    bash("npm test"),
+    bash("gh api /repos/x/actions/jobs/1/logs > /tmp/red.log"),
+    bash("cat > /tmp/pr-body.md <<'EOF'\nbody\nEOF")
+  ], "/repo");
+  assert.equal(rules(captured).includes("session-ended-on-stale-evidence"), false);
+
+  // A temp path is the work when the session is working there, which many of these sessions are.
+  const worktree = build([bash("npm test"), bash("echo x > /private/tmp/wt/src/a.ts")], "/private/tmp/wt");
+  assert.ok(rules(worktree).includes("session-ended-on-stale-evidence"));
+
+  // And an ordinary edit is untouched.
+  assert.ok(rules(build([bash("npm test"), bash("echo x > /repo/src/a.ts")], "/repo")).includes("session-ended-on-stale-evidence"));
 });
