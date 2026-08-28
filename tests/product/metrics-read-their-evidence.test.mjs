@@ -229,3 +229,36 @@ test("no-no-progress-loop needs a bound, not a sentence", () => {
   assert.equal(bounded("do the work"), false);
   assert.equal(bounded(""), false);
 });
+
+test("critical-evidence-inspected reads whether the evidence was opened", () => {
+  // It was `list.some(entry => entry.state_change !== "stopped")` -- "did not stop". A blind
+  // session confirmed both directions against artifacts: an operator whose answers were piped in
+  // before the prompt rendered passed it, and one who pressed `4. inspect evidence` and then
+  // stopped failed it. The name and the code were inverted, and the inspect branch left no trace
+  // for the code to read even if it had wanted to.
+  const ev = (event_type, payload = {}) => ({ event_type, payload });
+  const inspected = (times) => {
+    const observations = observeInterventions([
+      ev("agent.ended", { ok: false, stage: "s1", signature: "a" }),
+      ev("agent.ended", { ok: false, stage: "s1", signature: "b" }),
+      ev("checkpoint.raised", {}),
+      ev("operator.decision", { choice: "instruct", route_changed: false, inspected: times })
+    ]);
+    return sub(observeRun({ interventions: { observed: true, checkpoints_raised: 1, observations } }), "M11", "critical-evidence-inspected");
+  };
+  assert.equal(inspected(0), false, "an answer given without opening the evidence passed");
+  assert.equal(inspected(1), true);
+  assert.equal(inspected(3), true);
+
+  // Inspecting still earns nothing on its own: it carries no state change, which is the rule the
+  // checkpoint runtime exists to enforce.
+  const held = observeInterventions([
+    ev("agent.ended", { ok: false, stage: "s1", signature: "a" }),
+    ev("agent.ended", { ok: false, stage: "s1", signature: "b" }),
+    ev("checkpoint.raised", {}),
+    ev("operator.decision", { choice: "inspect", route_changed: false, inspected: 2 }),
+    ev("agent.ended", { ok: false, stage: "s1", signature: "c" })
+  ]);
+  assert.equal(held[0].state_change, "held");
+  assert.equal(held[0].effective, false, "inspecting and then repeating the failure earned credit");
+});

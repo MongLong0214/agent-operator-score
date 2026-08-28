@@ -153,10 +153,14 @@ test("nothing here reads a clock, a terminal, or a latency", () => {
   for (const forbidden of ["tty", "isatty", "duration", "latency", "elapsed", "time_to"]) {
     assert.equal(serialized.includes(forbidden), false, `${forbidden} reached an observation`);
   }
+  // `inspected` is a count of times the operator opened the evidence, not a clock or a channel
+  // property. It is here because `critical-evidence-inspected` had nothing to read and was
+  // measuring "did not stop" instead.
   assert.deepEqual(Object.keys(summary.observations[0]).sort(), [
     "at_event",
     "effective",
     "followed_by_same_failure",
+    "inspected",
     "kind",
     "state_change",
     "work_continued_after"
