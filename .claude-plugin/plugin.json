@@ -1,6 +1,6 @@
 {
   "name": "aos",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Agent Operator Score — reads the session you just ran and reports what went wrong in it, or scores how well you run your agents under declared conditions. No dependencies, nothing uploaded, telemetry off.",
   "author": {
     "name": "MongLong0214"
