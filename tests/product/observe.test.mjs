@@ -89,7 +89,9 @@ const byId = (observations) => new Map(observations.map((entry) => [entry.metric
 const attended = {
   observed: true,
   checkpoints_raised: 1,
-  observations: [{ state_change: "instruction-changed", effective: true, followed_by_same_failure: false, work_continued_after: true }]
+  // The operator opened the evidence before answering. `critical-evidence-inspected` used to be
+  // "did not stop", so this fixture passed it without ever having inspected anything.
+  observations: [{ state_change: "instruction-changed", effective: true, followed_by_same_failure: false, work_continued_after: true, inspected: 1 }]
 };
 
 test("a run produces exactly the twenty metrics of the contract", () => {
