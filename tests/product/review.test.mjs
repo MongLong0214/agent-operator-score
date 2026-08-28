@@ -43,6 +43,25 @@ test("a progress note is not a completion claim", () => {
   assert.equal(rules(result).includes("completion-claimed-without-verification"), false);
 });
 
+test("reporting that a test stayed green is not claiming the work is done", () => {
+  // A mutation report saying a test kept passing says the test failed to catch something. Both
+  // completion-claim findings in the owner's held-back sessions were this shape, and reading a
+  // defect report as a claim of success is the worst direction for this rule to be wrong in.
+  for (const text of [
+    "Mutating both defaults to false left the test passing.",
+    "Changing the reduction left all three new tests passing because the fixture makes them identical.",
+    "The mutation kept the tests passing, so the assertion is inert."
+  ]) {
+    const result = build([bash("npm test"), edit(), said(text)]);
+    assert.equal(rules(result).includes("completion-claimed-without-verification"), false, text);
+  }
+
+  // The exclusion stops at the sentence, so a real claim after a clause using one of those verbs is
+  // still a claim.
+  const real = build([bash("npm test"), edit(), said("This leaves the door open. All tests pass, ready to merge.")]);
+  assert.ok(rules(real).includes("completion-claimed-without-verification"));
+});
+
 test("edits after the last verification leave the session on stale evidence", () => {
   const stale = build([bash("npm test"), edit(), edit()]);
   assert.ok(rules(stale).includes("session-ended-on-stale-evidence"));
