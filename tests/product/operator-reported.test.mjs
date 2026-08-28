@@ -180,8 +180,11 @@ test("the picker reaches what the aggregate names, and an empty roster is not a 
     addAgent(cwd, "solo");
     const listed = run(cwd, ["agent", "doctor"]);
     assert.match(listed.stdout, /PASS\tsolo/);
-    // PASS here has been read as "this agent works". It means the binary resolves.
-    assert.match(listed.stdout, /not that it can authenticate/);
+    // PASS here has been read as "this agent works". It means the binary resolves, and -- since
+    // #459 -- that the declared credential path holds up. Neither runs the agent, so the footer
+    // still refuses the stronger reading; what it disclaims narrowed from "can authenticate" to
+    // "a live login" because the declared half is now actually checked.
+    assert.match(listed.stdout, /not a live login/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
