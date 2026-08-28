@@ -195,3 +195,28 @@ test("the claim file does not count against the tree it is a claim about", async
   });
   assert.equal(somethingElse.graded.details.revision.bound, false);
 });
+
+test("the scenario repository carries its own committer identity", async () => {
+  // AOS's own commit ran with an identity in its environment; the agent commits later, in its own
+  // process. On a machine with no global git identity it simply could not, so this family was
+  // unwinnable on a clean checkout and passed only where the operator had configured git years
+  // ago. Every Ubuntu lane in CI failed on exactly this while macOS passed.
+  const root = scratch();
+  try {
+    prepareScenario("FAM-5", root, "1");
+    const clean = {
+      PATH: process.env.PATH,
+      HOME: mkdtempSync(join(tmpdir(), "aos-no-identity-")),
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_SYSTEM: "/dev/null"
+    };
+    writeFileSync(join(root, "calculator.mjs"), CORRECT, "utf8");
+    const asAgent = (...args) => spawnSync("git", ["-C", root, ...args], { encoding: "utf8", env: clean });
+    assert.equal(asAgent("add", "-A").status, 0);
+    const committed = asAgent("commit", "--no-gpg-sign", "-m", "agent fix");
+    assert.equal(committed.status, 0, committed.stderr);
+    assert.equal(revisionOf(root).clean, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
