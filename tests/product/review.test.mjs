@@ -23,6 +23,9 @@ const rules = (result) => result.findings.map((finding) => finding.rule);
 
 const edit = (path = "/repo/a.ts") => ({ kind: "call", tool: "Edit", input: { file_path: path } });
 const bash = (command) => ({ kind: "call", tool: "Bash", input: { command } });
+// A call that recorded what it printed. A repeat is only no progress when the answer was the same
+// too, so a case about repetition has to say what came back.
+const ran = (command, text = "output", ok = true) => ({ kind: "call", tool: "Bash", input: { command }, result: { ok, text } });
 const said = (text) => ({ kind: "message", role: "agent", text });
 const asked = (text) => ({ kind: "message", role: "operator", text });
 
@@ -240,12 +243,40 @@ test("what raises a stretch is something that happened inside it", () => {
 test("the same call three times over is a loop, even when nothing failed", () => {
   const looping = build([
     ...Array.from({ length: 24 }, (_, i) => bash(`step-${i}`)),
+    ran("git status", "nothing to commit"),
+    ran("git status", "nothing to commit"),
+    ran("git status", "nothing to commit")
+  ]);
+  const finding = looping.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
+  assert.match(finding.what, /no-progress-loop/);
+});
+
+test("the same call answering differently every time is waiting, not looping", () => {
+  // Draining a background process with repeated empty writes, or polling `ps` while a build runs, is
+  // the same call over and over that learns something new each time. Fifty-five of the sixty-three
+  // repeats in the owner's held-back sessions were this, and the rule called every one of them a
+  // stuck agent.
+  const polling = build([
+    ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
+    ran("tail -f build.log", "compiling a.ts"),
+    ran("tail -f build.log", "compiling b.ts"),
+    ran("tail -f build.log", "compiling c.ts")
+  ]);
+  const finding = polling.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
+  assert.equal(/no-progress-loop/.test(finding?.what ?? ""), false, finding?.what);
+
+  // A result nobody recorded is not a match either. Silence is the safer direction for a claim that
+  // an agent was stuck, and a runtime that keeps no output would otherwise make every repeat one.
+  const unrecorded = build([
+    ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
     bash("git status"),
     bash("git status"),
     bash("git status")
   ]);
-  const finding = looping.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
-  assert.match(finding.what, /no-progress-loop/);
+  assert.equal(
+    /no-progress-loop/.test(unrecorded.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run")?.what ?? ""),
+    false
+  );
 });
 
 test("re-running the same test after editing the code is iteration, not a loop", () => {
@@ -255,11 +286,11 @@ test("re-running the same test after editing the code is iteration, not a loop",
   // thing, and every one raised to high severity for it.
   const iterating = build([
     ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
-    bash("npm test"),
+    ran("npm test", "1 failing"),
     edit(),
-    bash("npm test"),
+    ran("npm test", "1 failing"),
     edit(),
-    bash("npm test")
+    ran("npm test", "1 failing")
   ]);
   const finding = iterating.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run");
   assert.equal(/no-progress-loop/.test(finding?.what ?? ""), false, finding?.what);
@@ -268,11 +299,11 @@ test("re-running the same test after editing the code is iteration, not a loop",
   // edits made with a tool.
   const viaShell = build([
     ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
-    bash("npm test"),
+    ran("npm test", "1 failing"),
     bash("cat > /repo/a.ts <<'EOF'\nnew\nEOF"),
-    bash("npm test"),
+    ran("npm test", "1 failing"),
     bash("cat > /repo/a.ts <<'EOF'\nnewer\nEOF"),
-    bash("npm test")
+    ran("npm test", "1 failing")
   ]);
   assert.equal(
     /no-progress-loop/.test(viaShell.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run")?.what ?? ""),
@@ -283,20 +314,20 @@ test("re-running the same test after editing the code is iteration, not a loop",
   // loop, which is the shape a stuck agent takes.
   const stuck = build([
     ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
-    bash("npm test"),
-    bash("npm test"),
-    bash("npm test")
+    ran("npm test", "1 failing"),
+    ran("npm test", "1 failing"),
+    ran("npm test", "1 failing")
   ]);
   assert.match(stuck.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run").what, /no-progress-loop/);
 
   // A read between two runs is not a change. Looking at a file does not make the next run different.
   const justLooking = build([
     ...Array.from({ length: 24 }, (unused, index) => bash(`step-${index}`)),
-    bash("npm test"),
-    bash("cat /repo/a.ts"),
-    bash("npm test"),
-    bash("cat /repo/a.ts"),
-    bash("npm test")
+    ran("npm test", "1 failing"),
+    ran("cat /repo/a.ts", "contents"),
+    ran("npm test", "1 failing"),
+    ran("cat /repo/a.ts", "contents"),
+    ran("npm test", "1 failing")
   ]);
   assert.match(justLooking.findings.find((entry) => entry.rule === "long-uninterrupted-tool-run").what, /no-progress-loop/);
 });
