@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { addAgent, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
 import { MAX_CHECKPOINTS_PER_STAGE, parseDecision, renderCheckpoint, resolveCheckpoint } from "../../lib/checkpoint-runtime.mjs";
-import { detectCheckpoints, interventionSummary } from "../../lib/checkpoint.mjs";
+import { checkpointEvidence, detectCheckpoints, interventionSummary } from "../../lib/checkpoint.mjs";
 import { readEvents } from "../../lib/store.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -112,6 +112,50 @@ test("no answer is an unattended run, not a crash", () => {
   // The checkpoint was still raised and recorded; what is missing is a turn from anybody.
   assert.equal(events.some((event) => event.event_type === "checkpoint.raised"), true);
   assert.equal(interventionSummary(events).observed, false, "an unanswered run must not report an intervention");
+});
+
+test("the record keeps what the operator was shown, not just that they were shown something", () => {
+  // A digest over evidence the record does not hold is a claim of checkability nothing can honour.
+  // The payload is bounded where it is built, so what was shown, what was stored and what the
+  // digest covers are the same bytes.
+  const { events } = assessAnswering(Array.from({ length: 12 }, () => "1"));
+  const raised = events.filter((event) => event.event_type === "checkpoint.raised");
+  assert.equal(raised.length > 0, true);
+  for (const event of raised) {
+    assert.equal(typeof event.payload.detail, "string");
+    assert.equal(event.payload.detail.length > 0, true, JSON.stringify(event.payload));
+    assert.equal(Array.isArray(event.payload.calls), true);
+    assert.equal(event.payload.evidence_digest.length, 64);
+    // Bounded so the record can hold it at all: the event layer drops a string over 512 bytes, and
+    // a payload silently dropped is the failure this test exists for.
+    assert.equal((event.payload.output ?? "").length <= 512, true);
+  }
+
+  // The digest is over the payload, so it can be recomputed from what was stored.
+  const sample = raised[0].payload;
+  const recomputed = checkpointEvidence({
+    kind: sample.kind,
+    family: raised[0].family,
+    detail: sample.detail,
+    output: sample.output ?? "",
+    calls: (sample.calls ?? []).map((entry) => {
+      const [outcome, signature] = String(entry).split("\t");
+      return { outcome, signature };
+    })
+  });
+  assert.equal(recomputed.evidence_digest, sample.evidence_digest, "the record cannot reproduce its own digest");
+});
+
+test("every run reaches a checkpoint, not only the ones where the agent stumbled", () => {
+  // One family carries a blocker in its own seeded data -- a goal, a blocker, and an event log
+  // showing the same action retried twice under one correlation id. A checkpoint that only fires on
+  // failure is one a competent agent never reaches, and a run with none has nothing to observe on
+  // the dimension that asks what the operator did.
+  const { events, result } = assessAnswering(Array.from({ length: 14 }, () => "2 AOS-TEST-UNBLOCK proceed"), { profile: "competent" });
+  const raised = events.filter((event) => event.event_type === "checkpoint.raised");
+  assert.equal(raised.length > 0, true, "a run where nothing failed raised no checkpoint");
+  assert.equal(raised.some((event) => /blocked before this stage/.test(event.payload.detail)), true);
+  assert.match(result.stdout, /retry-tests/, "the operator should see the repeated action");
 });
 
 test("the menu is parsed by number and by word, and refuses what this run cannot do", () => {
