@@ -1,43 +1,62 @@
 # Contributing to Agent Operator Score
 
-AOS is not yet a public product. This public, source-visible repository currently contains a gated development specification, not an implemented assessment. Until a LICENSE and E14/G4 clearance exist, external contribution acceptance and redistribution are blocked.
+AOS runs from a clone. There is no published package, and the score it produces is
+`EXPERIMENTAL / PROVISIONAL` and bound to the environment it was produced in. Nothing here is a
+validated assessment of anybody's ability, and a contribution should not make it read like one.
 
-## Read first
+## The shape of the code
 
-1. [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md)
-2. [ADR index](docs/adr/INDEX.md)
-3. [Owning PRD](docs/prd/INDEX.md)
-4. [Exact atomic ticket](docs/tickets/BOARD.md)
-5. [AGENTS.md](AGENTS.md)
+Plain ESM JavaScript, no build step, no runtime dependencies. Tests are `node --test`.
 
-## Do not start from an issue title
+```bash
+npm ci
+npm test
+```
 
-The exact ticket file is the implementation contract. It states owned files/symbols, dependencies, forbidden scope, RED and expected failure, minimum GREEN, acceptance-to-test mapping, verification lanes, stop conditions, evidence, and invalidation.
+Node `>=22.18 <25`, macOS or Linux.
 
-All tickets are currently blocked pending separate ADR, PRD, and exact-ticket Maintainer Gates. The pending registry cannot approve itself.
+```text
+bin/aos.mjs     the command
+lib/            the product: review, suite, scorer, runner, storage, report
+tests/product/  the tests
+fixtures/       scoring vectors and scenario corpora
+docs/           what the product claims and does not claim
+```
 
-## Change protocol
+## What a change has to carry
 
-- Use `feat-issue-<number>` or `bug-issue-<number>`.
-- Pin exact base SHA and keep ownership disjoint.
-- Capture RED before GREEN.
-- Implement minimum scope.
-- Run focused, full, build/package, and required controlled manual/live verification.
-- Re-run affected evidence after every head, fixture, oracle, lockfile, runtime, or permission change.
-- Never direct-push protected branches.
+A rule that reports a defect has to be measured against real sessions, not only against a fixture
+written beside it. Every rule in `lib/review.mjs` that fires today was tuned by running the
+reviewer over forty real transcripts and checking what it said, and several of them were wrong in
+ways no unit test could have shown: a rule reporting the repository's own test fixtures as leaked
+credentials, a shell parser reading JavaScript arrow functions as file writes, a verification check
+satisfied by `echo "npm test"`.
 
-## Measurement changes
+So: run `node bin/aos.mjs review --since 40` before and after, and say in the commit what moved.
 
-M01–M20, factor mapping, issuance, formula, safety, Opportunity Profile, task opportunity, treatment, and comparison changes require the owning ADR/PRD to be reopened before code. Do not submit a casual metric change.
+Guards are load-bearing or they are not there. If deleting a condition does not turn a test red,
+either the test is checking the wrong thing or the condition is not doing anything — both are worth
+finding out before the change lands.
 
-## Safety and privacy
+## What the product may not say
 
-Never include secret values, hidden reasoning, raw private project content, uncontrolled external actions, or destructive commands. Local-only and telemetry-OFF are defaults.
+Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an industry standard, or
+environment-independent. A score is PROFILE-BOUND. Imported sessions are DIAGNOSTIC ONLY.
 
-## Public claim boundary
+## License and sign-off
 
-Do not describe AOS as calibrated, certified, hiring-suitable, ranked, an industry standard, or environment-independent. Snapshot is ESTIMATE; controlled full results are EXPERIMENTAL / PROVISIONAL; imported sessions are DIAGNOSTIC ONLY.
+MIT outbound. [LICENSE](LICENSE) carries the standard MIT grant: a redistribution permission, not
+contributor terms and not a publication clearance.
 
-## License
+Inbound contributions are accepted under the
+[Developer Certificate of Origin 1.1](https://developercertificate.org/), on the same MIT terms.
+There is no contributor license agreement, no copyright assignment, and no separate paperwork.
 
-No OSS license has been selected. D0 minimum name clearance is a separate canonical-identity decision and does not authorize contribution acceptance, redistribution, or publication. Contribution acceptance and redistribution remain blocked until the E14/G4 LICENSE and publication gate clears.
+Certify each commit with a sign-off line naming you:
+
+```
+Signed-off-by: Your Name <you@example.com>
+```
+
+`git commit -s` adds it. It means you wrote the contribution or otherwise have the right to submit
+it under MIT, and that the contribution and the sign-off are public and permanent.

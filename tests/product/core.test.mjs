@@ -1,0 +1,129 @@
+import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { appendNdjson, repairTornTrailingNdjson, runProcess } from "../../lib/core.mjs";
+
+const temporary = (name) => mkdtempSync(join(tmpdir(), name));
+
+test("a torn final NDJSON record is truncated before append", () => {
+  const cwd = temporary("aos-ndjson-");
+  try {
+    const file = join(cwd, "events.ndjson");
+    writeFileSync(file, '{"ok":1}\n{"torn":', { mode: 0o600 });
+    appendNdjson(file, { next: 2 });
+    const lines = readFileSync(file, "utf8").trimEnd().split("\n");
+    assert.deepEqual(lines.map((line) => JSON.parse(line)), [{ ok: 1 }, { next: 2 }]);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("a complete final NDJSON record receives only its missing newline", () => {
+  const cwd = temporary("aos-newline-");
+  try {
+    const file = join(cwd, "events.ndjson");
+    writeFileSync(file, '{"ok":1}', { mode: 0o600 });
+    assert.deepEqual(repairTornTrailingNdjson(file), { repaired: true, action: "newline" });
+    appendNdjson(file, { next: 2 });
+    const lines = readFileSync(file, "utf8").trimEnd().split("\n");
+    assert.deepEqual(lines.map((line) => JSON.parse(line)), [{ ok: 1 }, { next: 2 }]);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("runProcess never overwrites a caller workspace prompt file", async () => {
+  const cwd = temporary("aos-prompt-");
+  try {
+    const caller = join(cwd, "task.md");
+    const observed = join(cwd, "observed.txt");
+    writeFileSync(caller, "USER DATA", { mode: 0o600 });
+    const script = [
+      "const fs=require('node:fs')",
+      "const prompt=process.argv[1]",
+      "const observed=process.argv[2]",
+      "if(fs.readFileSync(prompt,'utf8')!=='SAFE PROMPT') process.exit(9)",
+      "fs.writeFileSync(observed,prompt)"
+    ].join(";");
+    const result = await runProcess(
+      { command: process.execPath, args: ["-e", script, "{promptFile}", observed] },
+      { workspace: cwd, prompt: "SAFE PROMPT", promptFile: caller, session: "session-test", family: "test", timeoutMs: 10_000 }
+    );
+    assert.equal(result.ok, true);
+    assert.equal(readFileSync(caller, "utf8"), "USER DATA");
+    const internal = readFileSync(observed, "utf8");
+    assert.notEqual(internal, caller);
+    assert.equal(existsSync(internal), false);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("an agent that leaves a descendant is killed and cannot report success", async () => {
+  const cwd = temporary("aos-descendant-");
+  try {
+    const script = join(cwd, "leak.mjs");
+    writeFileSync(script, "import { spawn } from 'node:child_process'; const child=spawn(process.execPath,['-e','setTimeout(()=>{},30000)'],{stdio:'ignore'}); child.unref();\n");
+    const result = await runProcess(
+      { command: process.execPath, args: [script] },
+      { workspace: cwd, family: "TEST", stage: "test", prompt: "test", promptFile: join(cwd, "task.md"), session: "test", timeoutMs: 5000 }
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.leaked_descendants, true);
+    assert.equal(result.survivor, false);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("truncated capture reports what it lost", async () => {
+  // Silent truncation made two different outputs sharing a 10 MiB prefix indistinguishable: same
+  // byte count, same digest, no flag. The record now carries the produced total and the flag.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-truncate-"));
+  try {
+    const result = await runProcess(
+      { command: process.execPath, args: ["-e", "process.stdout.write('x'.repeat(64))"] },
+      { workspace, prompt: "", session: "s", family: "FAM-1", timeoutMs: 30000 }
+    );
+    assert.equal(result.stdout_truncated, false, "an output under the cap is not truncated");
+    assert.equal(result.stdout_produced_bytes, result.stdout_bytes);
+    assert.equal(result.stdout_produced_bytes, 64);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("a failed agent's own words survive, with credentials removed", async () => {
+  // Only the digest used to. A stage that produced nothing was reported as "exit 0" and nothing
+  // else, and a checkpoint whose purpose is to show the operator what AOS saw could show them an
+  // exit code. Against real Codex, three of six families produced no artifact while exiting zero.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-excerpt-"));
+  try {
+    const script = [
+      'process.stderr.write("starting up\\n");',
+      'process.stderr.write("ANTHROPIC_API_KEY=sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\\n");',
+      'process.stderr.write("refused: no credentials for this provider\\n");',
+      "process.exit(1);"
+    ].join("");
+    const result = await runProcess(
+      { id: "x", command: process.execPath, args: ["-e", script] },
+      { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "s", timeoutMs: 30000 }
+    );
+    assert.equal(result.ok, false);
+    assert.match(result.stderr_excerpt, /refused: no credentials/);
+    assert.equal(result.stderr_excerpt.includes("sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), false, "a key reached the excerpt");
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("the excerpt is the tail, and it is bounded", async () => {
+  // A runtime that banners on startup and fails at the end puts the reason last.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-excerpt-tail-"));
+  try {
+    const script = 'process.stderr.write("A".repeat(9000) + "\\nthe actual reason\\n"); process.exit(2);';
+    const result = await runProcess(
+      { id: "x", command: process.execPath, args: ["-e", script] },
+      { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "s", timeoutMs: 30000 }
+    );
+    assert.match(result.stderr_excerpt, /the actual reason/);
+    assert.equal(result.stderr_excerpt.length <= 1500, true, `${result.stderr_excerpt.length} bytes`);
+    assert.equal(result.stderr_produced_bytes > 9000, true);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});

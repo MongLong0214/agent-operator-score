@@ -1,134 +1,140 @@
 # Agent Operator Score (AOS)
 
-> **Current status: foundation contracts implemented in `@aos/schema`; no public CLI and no end-to-end assessment.**
+**Review the coding-agent sessions you already ran.**
 
-Agent Operator Score is a planned local-first open assessment of how effectively a human operator runs AI coding agents in a declared environment.
+`aos review` reads a Codex or Claude Code transcript that is already on your disk and tells you what
+went wrong in it: a success reported after an edit nothing re-checked, a session that ended on
+evidence older than its last change, writes that left the directory you were working in,
+irreversible commands, key material in the transcript, long stretches with no input from you.
 
-**Measure the operator, not just the model.**
+No score, no model quota, seconds to run, on work you actually did. The controlled suite
+below is the half that does produce a number, and it says what that number is bound to.
 
-The assessment unit is the human operator. Model, runtime, harness, tools, permissions, network, context, time, token/tool-call budgets, and intervention policy are recorded in an Opportunity Profile. P0 does not statistically remove those environment effects; it reports conditional performance and blocks invalid comparison.
-
-## Canonical identity
-
-| Surface | Value |
-|---|---|
-| Product | Agent Operator Score |
-| Abbreviation | AOS |
-| Initial instrument | AOS-Coding |
-| Provisional score | AOS-Coding P0 |
-| Repository/package candidate | `agent-operator-score` |
-| CLI | `aos` |
-| Local state | `.aos/` |
-
-Legacy identifiers are forbidden in the active tree. Historical planning material was removed from the active tree and is recoverable only through Git history.
-
-## Product truth
-
-AOS-Coding P0 is an **EXPERIMENTAL / PROVISIONAL** score for observed operator performance in a declared Opportunity Profile and controlled six-family coding task pack.
-
-It is not:
-
-- a stable environment-independent personal ability;
-- a model or harness benchmark;
-- a percentile, certification, hiring signal, global rank, or industry standard;
-- a SaaS, account, payment, telemetry, or central-data product.
-
-Verified scores require a controlled AOS wrapper from start to finish. Imported sessions are **DIAGNOSTIC ONLY**. Snapshot is **ESTIMATE** and cannot display AOS-Coding P0 or safety-clear language.
-
-## What exists now
-
-Planning:
-
-- final single source of truth;
-- 13 proposed ADRs;
-- 20 proposed PRDs;
-- 71 atomic implementation tickets;
-- milestone, dependency, acceptance, and evidence contracts.
-
-Implemented, private and internal:
-
-- the npm workspace skeleton and the canonical identifier registry;
-- `@aos/schema` foundation and scoring/adapter contracts — `metric-registry.ts` (the frozen M01–M20 registry), `scoring-contract.ts`, `issuance-contract.ts`, `capability.ts`, and `session-class.ts` — each with its own test lane;
-- the control-plane validators and the operational-state resolver, with CI on Node 22 and 24.
-
-Everything below is still absent. The `agent-operator-score` package, the `aos` CLI, the trace and result schemas, the scorer, the runner, the Codex and Claude Code adapters, the task forms, reports, Snapshot, and any public release do **not** exist yet, and nothing here can run an assessment end to end. Every implemented contract is `private: true` and unpublished.
-
-## Fixed implementation order
-
-```text
-D0 name migration and repository skeleton
-→ E0-A metric and issuance contract
-→ E0-B adapter observability contract
-→ E0-C pack time and eligibility simulation
-→ E0-D prescription input formulas
-→ E1 aos-trace / aos-result schemas
-→ E2 deterministic scorer and conformance fixtures
-→ E3 isolated controlled runner
-→ E4 Codex adapter
-→ E5 FAM-4 Loop & State
-→ E6 FAM-5 False Completion
-→ E7 FAM-6 Recovery, Safety & Efficiency
-→ G0
-→ E8 FAM-1/2/3 and complete Form A
-→ E9 Claude Code adapter and parity
-→ E10 report and one lever
-→ E11 Form B and retest modes
-→ E12 20-person feasibility alpha and decision
-→ E13 Snapshot ESTIMATE
-→ E14 public OSS and G4
-```
-
-A failed gate blocks every later stage. No UI, third runtime, SaaS, new metric, or broader domain may jump this order.
-
-## Planned CLI — not available yet
+## Use it
 
 ```bash
-npx agent-operator-score doctor
-npx agent-operator-score fixtures verify
-npx agent-operator-score doctor --capabilities --runtime codex
-npx agent-operator-score assess --runtime codex --suite coding-core-v0 --form A
-npx agent-operator-score score --run ./runs/<id>
-npx agent-operator-score report --run ./runs/<id>
-npx agent-operator-score retest --runtime codex --form B --baseline ./runs/<id>
-npx agent-operator-score export --run ./runs/<id> --anonymous
+git clone https://github.com/MongLong0214/agent-operator-score
+cd agent-operator-score && npm ci
+
+node bin/aos.mjs review              # the session you just finished
+node bin/aos.mjs review --since 12   # what recurs across the last twelve
+node bin/aos.mjs review --list       # pick one
 ```
 
-Do not run these commands until the owning tickets are implemented and verified.
+Requires Node `>=22.18 <25`, macOS or Linux. Nothing is installed, nothing is uploaded, and no
+model is called.
 
-## Planning map
+## What it looks for
 
-- [Final SSOT](docs/north-star/agent-operator-score-ssot-v1.0.md)
-- [ADRs](docs/adr/INDEX.md)
-- [PRDs](docs/prd/INDEX.md)
-- [Atomic ticket board](docs/tickets/BOARD.md)
-- [GitHub issue map](docs/GITHUB-ISSUE-MAP.md)
-- [Milestones](docs/MILESTONES.md)
-- [Traceability](docs/TRACEABILITY.md)
+| | |
+|---|---|
+| `completion-claimed-without-verification` | success reported after an edit that nothing re-ran |
+| `session-ended-on-stale-evidence` | the last verification predates the last edit |
+| `edits-outside-the-working-directory` | writes that left the tree you were working in |
+| `destructive-command-executed` | irreversible commands; routine synchronisation is not one |
+| `secret-material-in-session` | key material in the transcript, reported without repeating it |
+| `long-uninterrupted-tool-run` | a long stretch with no input from you; a finding only when something inside it failed or repeated |
 
-Every ADR and PRD is **PROPOSED**; every ticket not yet verified is **BLOCKED**. Issue creation does not authorize product code.
+Each finding names the step that produced it, so you can check it against your own memory of the
+session rather than trusting the tool.
 
-## Required development protocol
+`--since` is the more useful view. One session tells you what happened; twelve tell you what you
+keep doing.
+
+## The controlled suite
+
+```bash
+node bin/aos.mjs assess --template aos-plan.json          # write a plan
+node bin/aos.mjs assess --plan aos-plan.json --checkpoints
+```
+
+Six task families — intent, context, orchestration, loop and state, false completion, recovery —
+run against your registered agent CLIs in isolated workspaces, and a hidden verifier grades what
+the agents actually produced. The terminal prints how many of the twenty metrics were observed.
+
+**A run nobody watched does not get a score, and that is deliberate.** One of the six dimensions
+asks what you did while the run was happening, and there is no way to answer it from a transcript.
+With `--checkpoints`, a failed stage stops and shows you what it saw:
 
 ```text
-final SSOT
-→ accepted ADR set
-→ accepted owning PRD
-→ accepted exact atomic ticket
-→ exact-base execution packet
-→ RED with expected reason
-→ minimum GREEN
-→ focused + full + build/package + required manual/live verification
-→ cumulative exact-head review
-→ exact-head CI
-→ explicit merge authorization
+AOS checkpoint (1 of 3) — repeated-failure
+  1. retry unchanged   2. modify instruction <text>   3. reroute <agent>
+  4. inspect evidence  5. stop blocked
 ```
 
-Each ticket owns exact files and symbols and defines forbidden scope, dependencies, RED, minimum GREEN, acceptance-to-test mapping, stop conditions, evidence, and invalidation. Read the exact ticket in full before editing.
+The choice is never the score. What is graded is the state your answer produced and whether the
+work that followed was the same thing again — picking the cautious-looking option and then
+retrying unchanged is the exact thing a checkpoint exists to catch. Without the flag the run
+finishes unattended, reports `INCOMPLETE`, and says what it would have scored.
 
-## Local-first and privacy
+Nothing checks whether you are at a terminal. You say you are here by passing the flag.
 
-Verified runs and reports stay local. Default telemetry is OFF. Secret values and hidden chain-of-thought are never stored. Optional anonymous export is explicit, allowlisted, and implemented only by its future ticket.
+### Three runs, one number
 
-## License and publication
+```bash
+node bin/aos.mjs cycle start                         # three seeds, fixed now
+node bin/aos.mjs cycle run --plan aos-plan.json --checkpoints
+node bin/aos.mjs cycle                               # the operator score
+node bin/aos.mjs dashboard                           # read-only, loopback, tokened
+```
 
-This is a public, source-visible planning repository. D0 minimum name clearance is a separate canonical-identity decision. No OSS license or public package has been approved, so external contribution acceptance and redistribution are blocked; LICENSE, contribution acceptance, redistribution, npm publication, third-party notices, security policy, formal publication clearance, and independent external reproduction are E14/G4 decisions.
+The seeds are drawn once and never again — otherwise "run twenty and keep the best three" is one
+loop away. The Operator Score is the median of every valid run, including the low ones; the only
+runs excluded are the ones that measured nothing, and each is printed with its reason. Repetition
+across three runs on one machine is reported as *local repeat evidence*, never as confidence.
+
+That number is **profile-bound**: it measures performance in the environment and task pack it was
+produced in, and its status is `EXPERIMENTAL / PROVISIONAL`. It is withheld entirely when the run
+is unsafe or when too few metrics were observed. Comparing two numbers produced under different
+agents, models or machines is comparing two different measurements.
+
+The plan you write is not a scoring input. It once set seventeen of the twenty metrics from static
+shape checks on JSON you wrote about yourself — a plan of literal junk scored 17/17 — and that is
+why a metric is now observed from the run or it is `NOT_OBSERVED`.
+
+The answers to these families are in `lib/suite.mjs`. That is fine for practice and it is why this
+is not an exam.
+
+## What this is not
+
+- Not a measurement of your ability. The score is conditional on a declared environment and task
+  pack. No calibration study, no independent reproduction and no qualified review exists, and
+  nothing here claims otherwise.
+- Not a hiring, promotion or surveillance instrument.
+- Not a percentile, rank or certification.
+- Not a model or harness benchmark.
+
+## How accurate is `aos review`?
+
+Measured once, on sessions held back from the work that wrote the rules: **4 of 10 high-severity
+findings were right.** Every one of the six errors was a recognizer with an incomplete vocabulary,
+and none of them failed loudly — each invented a finding.
+
+All six are fixed. That is not a second measurement, and `docs/LIMITATIONS.md` says so: a fix
+measured on the sessions that revealed it is a tuning number. `aos holdout` keeps the ledger — a
+digest of each session, the identity of each finding, your verdict and your reason, and never a
+transcript.
+
+```bash
+node bin/aos.mjs holdout --session <path> --use holdout
+node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
+node bin/aos.mjs holdout          # the three acceptance gates
+```
+
+## Local and private
+
+Everything stays on your machine. Nothing is uploaded, telemetry is off and there is nothing to
+turn on. Secret values are never stored, and where key material is detected the finding says so
+without repeating it.
+
+## Development
+
+```bash
+npm ci
+npm test                 # the suite
+npm run test:mutation    # break each named guard, check the named test dies
+npm run smoke:package    # pack, install elsewhere, use it as an operator would
+npm run verify:mvp       # the contract, the caps and the bands still mean what they say
+```
+
+MIT. Contributions under the [DCO](CONTRIBUTING.md); `git commit -s`.
