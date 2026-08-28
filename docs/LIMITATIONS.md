@@ -11,7 +11,9 @@ These limits are part of the public surface, not footnotes. They are not removed
 - A score is produced by the deterministic scorer from an aos-trace under a declared Opportunity Profile.
 - Snapshot is ESTIMATE and cannot display AOS-Coding P0 or safety-clear language.
 - Imported sessions are DIAGNOSTIC ONLY.
-- Verified scores require a controlled AOS wrapper from start to finish. That wrapper and the public CLI are not available yet.
+- A score is PROFILE-BOUND. It measures performance in the declared environment and task pack it was produced in, and two numbers from different agents, models or machines are two different measurements.
+- The score is written to the run's report, not to the terminal. `aos review` produces no score at all.
+- No package is published to a registry. `v0.1.0` is tagged and released on GitHub; the command runs from a clone or a tarball built with `npm pack`.
 
 ## Feasibility alpha boundary
 
@@ -30,4 +32,127 @@ G2 facet validation and G3 treatment-transfer validation are separate deferred s
 Neither becomes resolved from this alpha-analysis mechanism or from a transfer field in an
 alpha row.
 
-MIT is the outbound copyright grant. It is a redistribution permission. It is not contributor terms, and it is not a publication clearance. Contributor terms and formal publication review remain unresolved. G4 publication is not cleared. No public package has been approved.
+MIT is the outbound copyright grant. It is a redistribution permission. It is not contributor
+terms, and it is not a clearance for the research claims. Contributor terms and formal review of
+those claims remain unresolved: G4 publication covers the *findings*, and nothing here has been
+through it.
+
+The v0.1.0 source release is a different thing and the owner has made it. It ships the instrument,
+not a validated result -- every number in this repository is PROFILE-BOUND, EXPERIMENTAL and
+measured on one machine, and the release says so.
+
+## Session-review accuracy, as measured
+
+`aos review` is the part of this product that reads the owner's own agent sessions. Its
+rules were written by looking at real sessions, so they are at risk of having been written
+to fit them, and the only answer is a set of sessions held back from that work and judged
+by hand. `aos holdout` keeps that ledger; the numbers below are its current state.
+
+The last measurement on sessions never used for tuning: **320 sessions, 10 high-severity
+findings, 4 right and 6 wrong — precision 0.400** against an acceptance target of 0.90.
+Two other targets pass: no session whose transcript could not be fully read was reported as
+clean, and no secret material was written back out.
+
+All six false positives have since been fixed, and the same 320 sessions now produce 4
+high-severity findings — the four that were right. **That is not a second measurement.** It
+is the tuning number for a change made after seeing the sessions it was measured on, and it
+is reported here as a tuning number.
+
+A second measurement needs sessions that did not exist when these rules changed. In this
+corpus every session carrying real tool activity has now been used: the remaining 3,522
+transcripts hold 22 tool calls between them. So the honest position is that the reviewer's
+high-severity precision has been measured once, at 0.400, and that the measurement is older
+than the code. It will be re-measurable as the owner's work accumulates.
+
+What the six errors had in common is worth stating, because it is the shape to expect from
+the next ones: every single one was a recognizer with an incomplete vocabulary. A Codex
+tool call whose object literal was JavaScript rather than JSON; a test runner named by
+path; a patch body read as a command; one conjugation missing from an exclusion. None of
+them failed loudly. Each one invented a finding, which is the direction this product must
+not be wrong in.
+
+## What a real run looks like
+
+Measured with real Codex on one machine, six families, seeded suite:
+
+- **Unattended: 16 of 20 metrics observed, no score.** The four that are missing are the
+  operator dimension and the join metric a single-agent route cannot produce. The provisional
+  total was 70 and one ceiling applied. This is the designed answer, not a defect: a run nobody
+  watched is a diagnostic result.
+- **Every stage exited zero.** A checkpoint that fires only on a failed stage would never have
+  fired, which is why one family now presents its own seeded blocker before any agent runs.
+- **A run's outcome varies with the provider.** An earlier run of the same seed had three of six
+  families produce no artifact while still exiting zero, and nothing AOS had kept could say why.
+  The agent's own error output is now recorded, bounded and redacted, so the next one can.
+
+None of this transfers. It describes this operator, this Codex build, this machine and this task
+pack, which is what PROFILE-BOUND means.
+
+## The operator dimension can only be observed at a blocker
+
+M11 to M13 ask what the operator did when the work was stuck. That is only answerable if the run
+contains a moment where something was stuck, so the suite puts one there: a family whose seeded
+state is a goal, a blocker, and an event log showing the same action retried twice under one
+correlation id.
+
+Two consequences worth stating plainly. A run without `--checkpoints` cannot fill this dimension
+and therefore cannot carry a score, however well the agents did. And what is graded is the state
+the operator's answer produced -- an instruction that changed, a route that moved, a stop that
+stopped -- never which menu item they picked, because the cautious-sounding label would otherwise
+be the cheapest thing to claim.
+
+## An agent's own sandbox is part of the profile
+
+Codex under `-s workspace-write` cannot create `.git/index.lock` in an AOS workspace:
+
+```text
+fatal: Unable to create '.../FAM-5/.git/index.lock': Operation not permitted
+```
+
+Reproducible, and nothing AOS can change. `writable_roots` does not affect it; the setting that
+lifts it is `--dangerously-bypass-approvals-and-sandbox`, which turns the agent's own sandbox
+off. Both are legitimate configurations and they are different profiles:
+
+- **Sandbox on.** One family cannot be completed as written. What it measures survives that: an
+  agent that cannot commit and says so, naming the revision it was given, is making a claim
+  bound to the tree in front of it, and is graded on the honesty of that claim rather than on
+  whether its sandbox allowed a write. An agent that claims the work is done anyway is caught.
+- **Sandbox off.** The family runs as written. AOS's own isolation is unaffected either way --
+  its own workspace, a replaced HOME, a filtered environment -- because that is AOS's boundary
+  around the agent, not the agent's boundary around the commands it writes.
+
+This is what PROFILE-BOUND means in practice. The number describes an agent, its configuration
+and its sandbox together, and moving any one of them makes it a different measurement.
+
+## The three real cycles, and what each of them measured
+
+Real Codex, one machine, three seeds locked per cycle, every run attended.
+
+| | agent sandbox | Operator Score | runs | spread | what it found |
+|---|---|---|---|---|---|
+| 1 | on | **69** | 69, 69, 83 | 14 | one family cannot be completed when the agent may not write `.git` |
+| 2 | off | *withdrawn* | 49, 59, 89 | — | three defects in AOS, listed below |
+| 3 | off | **90** | 90, 87, 92 | 5 | — |
+
+Cycle 2's own number is withdrawn rather than reported. The cycle recorded one run's score
+against all three seeds, so the aggregate it printed described a single run counted three
+times. The individual run scores are real; the cycle around them was not.
+
+What cycle 2 found, all now fixed:
+
+- The cycle named runs through a list sorted by name, and a run id is a uuid, so "the run that
+  just appeared" was an arbitrary one.
+- An agent that did the work and reported `blocked` got the false-completion ceiling, the same
+  as one claiming work it never did. Codex did exactly that, and its reasoning was correct: the
+  family asked for a claim file, asked for its revision to name the commit the claim is about,
+  and asked for no uncommitted changes -- three requirements that cannot all hold.
+- So the family's own instructions were contradictory, which is why cycle 3 is both higher and
+  much tighter: spread 5 against 14, deviation 2.
+
+Cycle 3's first run predates a change made while it was running, so its record cannot be
+recomputed by `aos verify --run` even though its score is sound. Changing the instrument during
+a measurement is its own mistake and it is recorded here as one.
+
+None of these numbers transfers. Three runs on one machine say how much this measurement moved
+when it was repeated, and nothing about how it would move anywhere else -- which is why the
+report calls it local repeat evidence and never confidence.

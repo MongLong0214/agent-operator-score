@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -42,10 +42,19 @@ test("one agent can complete a controlled assessment", () => {
     run(cwd, ["init"]);
     addAgent(cwd, "solo");
     const plan = makePlan(cwd, { default: "solo" });
-    run(cwd, ["assess", "--plan", plan, "--json"]);
+    // Exit 3, not 0: an unattended run is INCOMPLETE by design. Monitoring is scored from a real
+    // operator turn that changed something, and there was nobody here to make one -- so this run is
+    // a diagnostic result rather than an operator score. That is the product statement, not a
+    // regression.
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.status, "EXPERIMENTAL / PROVISIONAL");
-    assert.equal(result.score.display, 100);
+    assert.equal(result.schema_id, "aos-mvp-result.v1");
+    assert.equal(result.status, "INCOMPLETE");
+    assert.equal(result.score, null);
+    assert.deepEqual(result.coverage.unobserved_dimensions, ["D4"]);
+    assert.equal(result.blockers.some((blocker) => blocker.code === "COVERAGE"), true);
+    // Everything it could observe, it observed well.
+    assert.equal(result.provisional_raw >= 70, true, `provisional was ${result.provisional_raw}`);
     assert.deepEqual(result.agent_portfolio.used, ["solo"]);
     assert.ok(result.operator_plan_digest);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
@@ -59,12 +68,14 @@ test("six vendor-neutral aliases share one operator score without agent-count bo
     for (const id of ids) addAgent(cwd, id);
     const routes = Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]));
     const plan = makePlan(cwd, routes);
-    run(cwd, ["assess", "--plan", plan, "--json"]);
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.score.display, 100);
+    // Six agents, one score. The count is not an input, and the only way to keep that true is for
+    // nothing in the result to carry it.
     assert.deepEqual(result.agent_portfolio.used, [...ids].sort());
     assert.equal(result.agent_portfolio.invocations, 6);
-    assert.equal("agent_count" in result.metrics, false);
+    assert.equal(JSON.stringify(result.metrics).includes("agent_count"), false);
+    assert.equal(result.provisional_raw >= 70, true);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
@@ -75,11 +86,17 @@ test("parallel workers use isolated workspaces and evidence-bound handoffs", () 
     for (const id of ["a", "b", "joiner"]) addAgent(cwd, id);
     const routes = { "FAM-1": "a", "FAM-2": "a", "FAM-3": "a|b>joiner", "FAM-4": "b", "FAM-5": "joiner", "FAM-6": "a" };
     const plan = makePlan(cwd, routes);
-    run(cwd, ["assess", "--plan", plan, "--json"]);
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.issued, true);
     assert.equal(result.family_results["FAM-3"].invocations.length, 3);
     assert.equal(result.family_results["FAM-3"].handoff_complete, true);
+    // Observed, not merely unobjectionable. Without this, planting no marker at all would leave
+    // every handoff "unobservable" and the run would still report a complete handoff.
+    const integrity = result.family_results["FAM-3"].handoff_integrity;
+    assert.equal(integrity.observed, true, "consumption was never observed");
+    assert.equal(integrity.consumed, 2, "both branches should have been shown as read");
+    assert.equal(integrity.unconsumed, 0);
+    assert.deepEqual(result.family_results["FAM-3"].join.covered, ["a", "b"]);
     const runId = newestRunId(cwd);
     const graph = JSON.parse(run(cwd, ["session", "graph", runId, "--json"]).stdout);
     const created = graph.filter((edge) => edge.type === "handoff.created");
@@ -127,5 +144,149 @@ test("collaboration surfaces and imported or bridged evidence remain diagnostic"
     assert.equal(imported.status, "DIAGNOSTIC_ONLY");
     const bridged = JSON.parse(run(cwd, ["bridge", "--run", imported.run_id, "--producer", "buzz", "--file", source, "--json"]).stdout);
     assert.equal(bridged.status, "DIAGNOSTIC_ONLY");
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("an explicit session is reviewed without discovering any", () => {
+  // Searching the default roots first meant that on a machine with no ~/.claude or ~/.codex the
+  // command exited with "no sessions found" while holding the path it had been asked about.
+  const cwd = temporary("aos-review-session-");
+  try {
+    const session = join(cwd, "explicit.jsonl");
+    writeFileSync(
+      session,
+      `${JSON.stringify({ type: "assistant", cwd: "/repo", message: { content: [{ type: "tool_use", id: "t1", name: "Write", input: { file_path: "/repo/a.ts" } }] } })}\n` +
+        `${JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "all tests pass" }] } })}\n`,
+      "utf8"
+    );
+    // HOME points at an empty directory, so nothing is discoverable.
+    const reviewed = spawnSync(process.execPath, [cli, "review", "--session", session, "--json"], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, HOME: cwd }
+    });
+    const result = JSON.parse(reviewed.stdout);
+    assert.equal(result.findings.some((finding) => finding.rule === "completion-claimed-without-verification"), true);
+    assert.equal(reviewed.status, 1, "a session with findings must not exit 0");
+
+    const missing = spawnSync(process.execPath, [cli, "review", "--session", join(cwd, "nope.jsonl")], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, HOME: cwd }
+    });
+    assert.equal(missing.status, 2, "a path that does not exist is bad input, not an empty review");
+    assert.match(missing.stdout, /no session file at/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("asking for more sessions than the old cap returns more than the old cap", () => {
+  // `--since 100` silently returned at most forty. The requested count and what could be found are
+  // different numbers, and the output says both.
+  const cwd = temporary("aos-review-limit-");
+  try {
+    const projects = join(cwd, ".claude", "projects", "sample");
+    mkdirSync(projects, { recursive: true });
+    const row = JSON.stringify({ type: "assistant", cwd: "/repo", message: { content: [{ type: "text", text: "hello" }] } });
+    for (let index = 0; index < 45; index += 1) {
+      writeFileSync(join(projects, `s-${index}.jsonl`), `${row}\n`, "utf8");
+    }
+    const env = { ...process.env, HOME: cwd };
+    const asked = JSON.parse(
+      spawnSync(process.execPath, [cli, "review", "--since", "45", "--json"], { cwd, encoding: "utf8", env }).stdout
+    );
+    assert.equal(asked.requested_sessions, 45);
+    assert.equal(asked.reviewed_sessions, 45, "the request was capped");
+
+    // And when there genuinely are not that many, both numbers are reported rather than one.
+    const beyond = JSON.parse(
+      spawnSync(process.execPath, [cli, "review", "--since", "60", "--json"], { cwd, encoding: "utf8", env }).stdout
+    );
+    assert.equal(beyond.requested_sessions, 60);
+    assert.equal(beyond.reviewed_sessions, 45);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("a seed names the scenario, and a run records the one it used", () => {
+  // A scenario nobody can name again is a result nobody can check. Given explicitly the run is
+  // reproducible; left out, one is drawn and written down rather than left implicit.
+  const cwd = temporary("aos-seed-");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    makePlan(cwd, { default: "solo" });
+
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);
+    const first = newestResult(cwd);
+    assert.equal(first.seed, "000000000000002a");
+    assert.equal(first.suite_manifest.seed, "000000000000002a");
+    assert.deepEqual(first.seeded_families, ["FAM-2", "FAM-4", "FAM-6"]);
+
+    // The run manifest and the result must name the same suite. Two sites write it, and a run that
+    // recorded one suite while its result claimed another would be unreadable after the fact.
+    const manifest = JSON.parse(
+      readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "manifest.json"), "utf8")
+    );
+    assert.equal(manifest.suite_digest, first.suite_digest);
+    assert.equal(manifest.seed, first.seed);
+
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);
+    const repeated = newestResult(cwd);
+    assert.equal(repeated.suite_digest, first.suite_digest, "the same seed produced a different suite");
+
+    run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2b"], 3);
+    const different = newestResult(cwd);
+    assert.notEqual(different.suite_digest, first.suite_digest, "a different seed produced the same suite");
+
+    // Without --seed one is drawn, and it is a real seed rather than a placeholder.
+    run(cwd, ["assess", "--plan", "operator-plan.json"], 3);
+    assert.match(newestResult(cwd).seed, /^[0-9a-f]{16}$/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("an unusable seed is refused rather than quietly replaced", () => {
+  const cwd = temporary("aos-seed-bad-");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    makePlan(cwd, { default: "solo" });
+    const refused = spawnSync(process.execPath, [cli, "assess", "--plan", "operator-plan.json", "--seed", "not-hex"], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+    assert.notEqual(refused.status, 0);
+    // Named at the boundary the operator typed at. The generator refuses it too, but its message
+    // says only "AOS_INVALID_SEED nope", which does not tell anyone what shape was wanted.
+    assert.match(refused.stderr, /AOS_INVALID_SEED --seed not-hex/);
+    assert.match(refused.stderr, /expected up to 16 hex digits/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("a join that never opened its branches is reported as unconsumed", () => {
+  // The evidence chain has to be able to fail. If it cannot, "consumed" carries no information --
+  // which is exactly what the old unconditional handoff.consumed event was worth.
+  const cwd = temporary("aos-unconsumed-");
+  try {
+    run(cwd, ["init"]);
+    for (const id of ["a", "b", "joiner"]) addAgent(cwd, id);
+    const plan = makePlan(cwd, { "FAM-3": "a|b>joiner", default: "a" });
+    // Non-zero exit is expected: an unconsumed handoff zeroes M11 and the run stops issuing.
+    spawnSync(process.execPath, [cli, "assess", "--plan", plan], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_SKIP_EVIDENCE: "1" }
+    });
+    const result = newestResult(cwd);
+    const fam3 = result.family_results["FAM-3"];
+    assert.equal(fam3.handoff_integrity.unconsumed, 2, "a join that read nothing was accepted");
+    assert.equal(fam3.handoff_complete, false);
+    assert.deepEqual(fam3.join.covered, []);
+    // Two of four, not zero: the handoff was made and the branches were distinguishable. What
+    // failed is that the join did not read them, and those are the two subchecks that say so.
+    const m10 = result.metrics.find((entry) => entry.metric_id === "M10");
+    assert.equal(m10.value, 0.5, "the metric did not follow the evidence");
+    assert.equal(m10.subchecks.find((entry) => entry.id === "receiver-consumed-evidence").pass, false);
+    assert.equal(m10.subchecks.find((entry) => entry.id === "join-covers-required-branches").pass, false);
+    assert.equal(m10.subchecks.find((entry) => entry.id === "artifact-digest-handed-off").pass, true);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

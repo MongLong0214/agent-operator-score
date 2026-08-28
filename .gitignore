@@ -6,8 +6,8 @@ coverage/
 .DS_Store
 
 
-# Local tool configuration. Never tracked: .claude/ carries agent and model routing that
-# AGENTS.md forbids on public GitHub surfaces, and the rest is per-machine setup.
+# Local tool configuration. Never tracked: .claude/ carries agent and model routing that does not
+# belong on a public surface, and the rest is per-machine setup.
 .claude/
 .mcp.json
 .commitlore-policy.json

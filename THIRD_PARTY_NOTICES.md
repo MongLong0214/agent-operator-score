@@ -46,5 +46,4 @@ Node.js is required at runtime and is not vendored or redistributed by this repo
   are neither vendored nor redistributed by this repository, so they are recorded here as a
   limit rather than as a redistributed component.
 - This file states what is present. It is not an opinion on license compatibility, and it does
-  not clear this repository for publication. That verdict lives in
-  `docs/decisions/PUBLICATION-CLEARANCE.md`.
+  not clear this repository for publication.

@@ -17,15 +17,18 @@ private project content in the report itself.
 
 ## What is in scope
 
-- The control-plane scripts in `scripts/` and the contracts in `packages/`, `adapters/`, and
-  `suites/`, at the commit you name.
-- The governance and evidence records in `docs/`, where a defect would let an unverified change
-  present itself as verified.
+- The command in `bin/` and the product in `lib/`, at the commit you name. The paths that matter
+  most are the ones that run or read what an agent produced: `lib/verifier-run.mjs`,
+  `lib/verifiers/`, `lib/safe-fs.mjs`, `lib/isolation.mjs`, and `lib/redact.mjs`.
+- The scoring vectors and scenario corpora in `fixtures/`, where a defect would let a run present
+  itself as verified when it was not.
+- Anything that would put a credential, a secret value, or private project content into a finding,
+  a report, or a stored run.
 
 ## What is out of scope
 
-- Anything that depends on a published package or a public command-line interface. Neither
-  exists; every workspace here is `private: true` and unpublished.
+- Anything that depends on a published package. There is none; this package is `private: true`
+  and unpublished, and the command runs from a clone.
 - Findings against a fork, a mirror, or a modified tree, unless they reproduce at a commit of
   this repository.
 - Third-party services and GitHub platform features themselves. Report those to their owners.
@@ -42,5 +45,4 @@ Coordinated disclosure is expected: do not publish detail before a fix or an agr
 This policy is not a security assurance, audit result, or certification.
 
 No security audit, penetration test, or third-party review of this repository has been performed
-or recorded. The publication clearance verdict in `docs/decisions/PUBLICATION-CLEARANCE.md`
-states what has and has not been established.
+or recorded.

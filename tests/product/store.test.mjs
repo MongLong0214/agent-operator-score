@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { canonicalJson, sha256Value } from "../../lib/core.mjs";
-import { appendEvent, commitTerminal, createRun, readEvents, recoverRun, runPaths, writeResult } from "../../lib/store.mjs";
-import { perfectMetricInput, scoreMetrics } from "../../lib/scorer.mjs";
+import { appendEvent, commitTerminal, createRun, initHome, listRuns, readEvents, recoverRun, runPaths, writeResult } from "../../lib/store.mjs";
+import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
+import { scoreRun } from "../../lib/scorer-v1.mjs";
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 
@@ -63,12 +64,66 @@ test("unfinished run without result becomes aborted", () => {
 });
 
 test("issuance requires safety and evidence coverage", () => {
-  const perfect = scoreMetrics(perfectMetricInput(), "S0");
+  const every = (passing) =>
+    METRIC_IDS.map((id) =>
+      observationOf({
+        metric_id: id,
+        verifier_id: "store.test",
+        subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: passing })),
+        evidence_ids: ["e"],
+        reason: "fixture"
+      })
+    );
+  const perfect = scoreRun(every(true));
   assert.equal(perfect.issued, true);
-  assert.equal(perfect.score.display, 100);
-  const unsafe = scoreMetrics(perfectMetricInput(), "S2");
-  assert.equal(unsafe.issued, false);
+  assert.equal(perfect.score.final, 100);
+
+  // Unsafe is capped, not withheld. A scorer that refused to score would pass an "is not issued"
+  // assertion while saying nothing about the ceiling.
+  const unsafe = scoreRun(every(true), { safetyState: "S2" });
   assert.equal(unsafe.status, "UNSAFE");
-  const insufficient = scoreMetrics({ M15: 1, M16: 1, M17: 1 }, "S0");
-  assert.equal(insufficient.issued, false);
+  assert.equal(unsafe.score.final, 39);
+
+  const thin = every(true).map((entry, index) => (index < 5 ? observationOf({ metric_id: entry.metric_id }) : entry));
+  assert.equal(scoreRun(thin).issued, false);
+});
+
+test("runs come back in the order they were created", () => {
+  // A run id is a uuid, so sorting by name is sorting by nothing -- and every caller reads this
+  // list as if it were in order. One of them recorded the first run's score against every seed in
+  // a cycle because "the first" and "the newest" happened to be unrelated.
+  //
+  // The names here sort opposite to the timestamps, so name order and creation order cannot agree
+  // by accident. An earlier version made four real runs and asserted their uuids were not already
+  // sorted, which is true 23 times in 24 and failed the rest -- a four per cent flake guarding
+  // against a test that proves nothing.
+  const home = mkdtempSync(join(tmpdir(), "aos-order-"));
+  try {
+    initHome(home);
+    const made = [
+      ["run-zzz", "2026-08-01T00:00:00.000Z"],
+      ["run-mmm", "2026-08-02T00:00:00.000Z"],
+      ["run-aaa", "2026-08-03T00:00:00.000Z"]
+    ];
+    for (const [id, createdAt] of made) {
+      mkdirSync(join(home, "runs", id), { recursive: true });
+      writeFileSync(join(home, "runs", id, "manifest.json"), JSON.stringify({ run_id: id, created_at: createdAt }));
+    }
+    const names = made.map(([id]) => id);
+    assert.deepEqual(listRuns(home), names);
+    assert.deepEqual([...names].sort(), [...names].reverse(), "the fixture must sort opposite to creation order");
+
+    // A run whose manifest cannot be read is broken. It sorts to the end rather than being given a
+    // place in the middle of a history.
+    mkdirSync(join(home, "runs", "run-000"), { recursive: true });
+    writeFileSync(join(home, "runs", "run-000", "manifest.json"), "{not json");
+    assert.equal(listRuns(home).at(-1), "run-000");
+    assert.deepEqual(listRuns(home).slice(0, 3), names);
+
+    // And a real run, created through the product, lands after the ones dated before it.
+    const { runId } = createRun(home, { mode: "TEST" });
+    assert.equal(listRuns(home).indexOf(runId) >= 3, true, "a run created now should sort after 2026-08-03");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
