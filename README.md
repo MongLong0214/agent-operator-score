@@ -44,14 +44,44 @@ keep doing.
 ## The controlled suite
 
 ```bash
-node bin/aos.mjs assess --template aos-plan.json   # write a plan
-node bin/aos.mjs assess --plan aos-plan.json       # run six controlled families
+node bin/aos.mjs assess --template aos-plan.json          # write a plan
+node bin/aos.mjs assess --plan aos-plan.json --checkpoints
 ```
 
 Six task families — intent, context, orchestration, loop and state, false completion, recovery —
 run against your registered agent CLIs in isolated workspaces, and a hidden verifier grades what
 the agents actually produced. The terminal prints how many of the twenty metrics were observed.
-The report it writes carries a score out of 100.
+
+**A run nobody watched does not get a score, and that is deliberate.** One of the six dimensions
+asks what you did while the run was happening, and there is no way to answer it from a transcript.
+With `--checkpoints`, a failed stage stops and shows you what it saw:
+
+```text
+AOS checkpoint (1 of 3) — repeated-failure
+  1. retry unchanged   2. modify instruction <text>   3. reroute <agent>
+  4. inspect evidence  5. stop blocked
+```
+
+The choice is never the score. What is graded is the state your answer produced and whether the
+work that followed was the same thing again — picking the cautious-looking option and then
+retrying unchanged is the exact thing a checkpoint exists to catch. Without the flag the run
+finishes unattended, reports `INCOMPLETE`, and says what it would have scored.
+
+Nothing checks whether you are at a terminal. You say you are here by passing the flag.
+
+### Three runs, one number
+
+```bash
+node bin/aos.mjs cycle start                         # three seeds, fixed now
+node bin/aos.mjs cycle run --plan aos-plan.json --checkpoints
+node bin/aos.mjs cycle                               # the operator score
+node bin/aos.mjs dashboard                           # read-only, loopback, tokened
+```
+
+The seeds are drawn once and never again — otherwise "run twenty and keep the best three" is one
+loop away. The Operator Score is the median of every valid run, including the low ones; the only
+runs excluded are the ones that measured nothing, and each is printed with its reason. Repetition
+across three runs on one machine is reported as *local repeat evidence*, never as confidence.
 
 That number is **profile-bound**: it measures performance in the environment and task pack it was
 produced in, and its status is `EXPERIMENTAL / PROVISIONAL`. It is withheld entirely when the run
@@ -74,6 +104,23 @@ is not an exam.
 - Not a percentile, rank or certification.
 - Not a model or harness benchmark.
 
+## How accurate is `aos review`?
+
+Measured once, on sessions held back from the work that wrote the rules: **4 of 10 high-severity
+findings were right.** Every one of the six errors was a recognizer with an incomplete vocabulary,
+and none of them failed loudly — each invented a finding.
+
+All six are fixed. That is not a second measurement, and `docs/LIMITATIONS.md` says so: a fix
+measured on the sessions that revealed it is a tuning number. `aos holdout` keeps the ledger — a
+digest of each session, the identity of each finding, your verdict and your reason, and never a
+transcript.
+
+```bash
+node bin/aos.mjs holdout --session <path> --use holdout
+node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
+node bin/aos.mjs holdout          # the three acceptance gates
+```
+
 ## Local and private
 
 Everything stays on your machine. Nothing is uploaded, telemetry is off and there is nothing to
@@ -84,7 +131,10 @@ without repeating it.
 
 ```bash
 npm ci
-npm test
+npm test                 # the suite
+npm run test:mutation    # break each named guard, check the named test dies
+npm run smoke:package    # pack, install elsewhere, use it as an operator would
+npm run verify:mvp       # the contract, the caps and the bands still mean what they say
 ```
 
 MIT. Contributions under the [DCO](CONTRIBUTING.md); `git commit -s`.
