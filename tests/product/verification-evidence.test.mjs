@@ -191,3 +191,28 @@ test("a valued runner option does not swallow the tool after it", () => {
   assert.equal(ran("uv run --frozen --no-sync pytest tests/"), "passed");
   assert.equal(ran("uv run --group dev pytest"), "passed");
 });
+
+test("a tool binary run by path is the same tool", () => {
+  // `./node_modules/.bin/vitest run` is how a project pins its own toolchain. All three remaining
+  // stale-evidence findings in the owner's held-back sessions were sessions that had verified their
+  // work exactly this way, and were told nothing had checked it.
+  const ran = (command) => verificationOf({ tool: "Bash", input: { command }, result: { ok: true } });
+  for (const command of [
+    "./node_modules/.bin/vitest run",
+    "node_modules/.bin/tsc --noEmit",
+    "node_modules/.bin/tsc --noEmit && node_modules/.bin/eslint src/a.ts",
+    // A compound statement leaves a segment beginning with a shell keyword.
+    "if [ -x node_modules/.bin/tsc ]; then node_modules/.bin/tsc --noEmit; else echo no; fi"
+  ]) assert.equal(ran(command), "passed", command);
+
+  // `test` is only a check as a script name behind a runner. As a bare command it is the shell
+  // builtin, and reading `test -f path` as a verification would silence a real finding.
+  for (const command of [
+    "test -f package.json && echo yes",
+    "test -x ./bin/run",
+    "./node_modules/.bin/tsx -e 'import x'",
+    "ls node_modules/.bin/vitest",
+    "cat node_modules/.bin/tsc",
+    "echo \"node_modules/.bin/tsc --noEmit\""
+  ]) assert.equal(ran(command), null, command);
+});
