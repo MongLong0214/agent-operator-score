@@ -181,6 +181,21 @@ test("a claim about a superseded revision fails M16 and caps the run", () => {
   const scored = scoreRun(stale);
   assert.equal(scored.caps.some((cap) => cap.code === "EXACT_REVISION_MISSING"), true);
   assert.equal(scored.score.final <= 69, true);
+
+  // That fixture fails both of M16's subchecks at once -- the tree also moved -- so it cannot say
+  // which one carried the cap, and the binding check could be removed without it noticing. Here
+  // only the binding is wrong: the sole write since the claim is the claim's own file, so
+  // no-write-after-verification passes and the revision is still not the one that shipped.
+  const unboundOnly = observeRun(
+    perfectInput({
+      top: { interventions: attended },
+      fam5: { revision: { available: true, bound: false, clean: true, named: "abc123", changed_since: ["completion.json"] } }
+    })
+  );
+  const m16 = unboundOnly.find((entry) => entry.metric_id === "M16");
+  assert.equal(m16.subchecks.find((entry) => entry.id === "no-write-after-verification").pass, true);
+  assert.equal(m16.subchecks.find((entry) => entry.id === "verified-head-is-final-head").pass, false);
+  assert.equal(scoreRun(unboundOnly).caps.some((cap) => cap.code === "EXACT_REVISION_MISSING"), true);
 });
 
 test("every observation names a verifier and a reason", () => {

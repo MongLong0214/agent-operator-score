@@ -345,8 +345,10 @@ test("a rule that fires four times in one session is one session, not four", () 
     bash("rm -rf /etc"),
     bash("rm -rf /bin")
   ]);
-  const destructive = repeated.findings.filter((entry) => entry.rule === "destructive-command-executed");
-  assert.equal(destructive.length, 4, "each command should still be its own finding");
-  const sessionsHit = new Set(destructive.map(() => repeated.path)).size;
-  assert.equal(sessionsHit, 1, "four findings came from one session");
+  // Through the aggregator, on findings a real review produced. Counting the findings and mapping
+  // each to the session they already came from would be arithmetic on a constant -- it answers one
+  // whatever the aggregator does, which is how this assertion passed while the dedupe was broken.
+  const row = aggregateFindings([repeated]).find((entry) => entry.rule === "destructive-command-executed");
+  assert.equal(row.finding_count, 4, "each command should still be its own finding");
+  assert.equal(row.session_count, 1, "four findings came from one session");
 });
