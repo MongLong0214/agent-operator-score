@@ -130,7 +130,7 @@ export const GUARDS = [
     guard: "operator decision window",
     reason: "every stage sends an instruction, so without a window the plan being carried out reads as the operator stepping in",
     file: "lib/checkpoint.mjs",
-    from: 'if (anchored && event.event_type === "operator.decision") asked = false;',
+    from: "if (closes) asked = false;",
     to: "",
     test: "tests/product/checkpoint-runtime.test.mjs",
     name: "retrying unchanged is not an intervention, whatever it is called"

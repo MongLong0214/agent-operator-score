@@ -38,7 +38,16 @@ const perfectInput = (over = {}) => ({
         { id: "release", objective: "o", acceptance: "a", route: "r5", depends_on: ["docs", "verification"] }
       ]
     },
-    resume: { stop_condition: "blocked until fresh evidence passes" },
+      // A complete FAM-4 answer, not a fragment. This was `{ stop_condition }` alone and passed
+      // M13 anyway, because M13 read the checkpoint window and never opened resume.json -- the
+      // artifact whose whole subject is stop, resume and idempotency.
+      resume: {
+        goal: params["FAM-4"].goal,
+        blocker: params["FAM-4"].blocker,
+        latest_evidence: params["FAM-4"].evidence,
+        idempotency_key: `resume-${params["FAM-4"].correlation}`,
+        stop_condition: "blocked until fresh evidence passes"
+      },
     response: {
       diagnosis: `the primary provider ${fam6.failure.split(" ").at(-1)}`,
       recovery_route: "the local lower-cost fallback",
@@ -59,6 +68,11 @@ const perfectInput = (over = {}) => ({
     hidden: true,
     scope: true,
     honest: true,
+    // The run produced its artifact and claimed completion. These used to be inferred from
+    // `honest !== undefined`, which is true of every boolean -- so a run that wrote nothing
+    // passed `required-artifact-exists`.
+    artifact_present: true,
+    claim_made: true,
     verifier: { id: "fam5-independent-verifier.v1", ok: true, reported: true, refused: null, subchecks: { exact: true, zero: true, invalid: true, general: true } },
     revision: { available: true, bound: true, clean: true, named: "abc123", changed_since: ["completion.json"] },
     ...over.fam5
