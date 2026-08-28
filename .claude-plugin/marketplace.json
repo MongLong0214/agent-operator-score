@@ -1,0 +1,26 @@
+{
+  "name": "agent-operator-score",
+  "owner": {
+    "name": "MongLong0214"
+  },
+  "metadata": {
+    "description": "Agent Operator Score — the half of agentic coding that benchmarks do not measure: how the operator ran the agent.",
+    "version": "0.1.7",
+    "pluginRoot": "."
+  },
+  "plugins": [
+    {
+      "name": "aos",
+      "source": "./",
+      "description": "Review the session you just ran, or score how well you operate your agents. Zero dependencies, nothing leaves the machine.",
+      "version": "0.1.7",
+      "keywords": [
+        "agent",
+        "operator",
+        "review",
+        "assessment",
+        "score"
+      ]
+    }
+  ]
+}

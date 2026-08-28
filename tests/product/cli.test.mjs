@@ -3,8 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { validateOperatorPlan } from "../../lib/operator-plan.mjs";
 import test from "node:test";
-import { addAgent, cli, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
+import { addAgent, cli, initBare, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 
@@ -21,15 +22,32 @@ test("self verification and package version", () => {
 test("official assessment requires a non-vacuous operator plan", () => {
   const cwd = temporary("aos-plan-required-");
   try {
-    run(cwd, ["init"]);
+    initBare(cwd);
     addAgent(cwd, "solo");
-    const missing = spawnSync(process.execPath, [cli, "assess", "--json"], { cwd, encoding: "utf8" });
-    assert.notEqual(missing.status, 0);
-    assert.match(missing.stderr, /AOS_OPERATOR_PLAN_REQUIRED/);
+
+    // Naming no plan is no longer a refusal: the shipped plan is written and used, because
+    // requiring a hand-authored file before anything ran was a lot of typing for a document the
+    // README says is not a scoring input. What must still hold is that the plan a run used is
+    // never vacuous, and that the record can tell a shipped plan from an authored one.
     run(cwd, ["assess", "--template", "plan.json"]);
-    const unchanged = spawnSync(process.execPath, [cli, "assess", "--plan", "plan.json"], { cwd, encoding: "utf8" });
-    assert.notEqual(unchanged.status, 0);
-    assert.match(unchanged.stderr, /AOS_INVALID_OPERATOR_PLAN/);
+    const shipped = JSON.parse(readFileSync(join(cwd, "plan.json"), "utf8"));
+    assert.deepEqual(validateOperatorPlan(shipped, ["solo"]), [], "the shipped plan cannot be run");
+
+    // Emptied by hand, and still refused. This is the property the check is named for.
+    writeFileSync(join(cwd, "blank.json"), JSON.stringify({
+      ...shipped,
+      goal: "", constraints: [], non_goals: [],
+      clarification_policy: { facts: "", human_decisions: "" },
+      acceptance: [{ criterion: "", evidence: "" }]
+    }));
+    const blank = spawnSync(process.execPath, [cli, "assess", "--plan", "blank.json"], { cwd, encoding: "utf8" });
+    assert.notEqual(blank.status, 0);
+    assert.match(blank.stderr, /AOS_INVALID_OPERATOR_PLAN/);
+
+    // A plan that is not there at all is still an error when the operator named one.
+    const absent = spawnSync(process.execPath, [cli, "assess", "--plan", "nope.json"], { cwd, encoding: "utf8" });
+    assert.notEqual(absent.status, 0);
+
     const overwrite = spawnSync(process.execPath, [cli, "assess", "--template", "plan.json"], { cwd, encoding: "utf8" });
     assert.notEqual(overwrite.status, 0);
     assert.match(overwrite.stderr, /AOS_TEMPLATE_EXISTS/);

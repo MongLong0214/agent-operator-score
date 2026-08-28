@@ -25,9 +25,12 @@ test("an async command's refusal is a refusal, not an internal error", () => {
   // so every async command's refusal escaped the CLI's own classification.
   const cwd = damaged();
   try {
-    const noPlan = run(cwd, ["assess"], 2);
-    assert.match(noPlan.stderr, /AOS_OPERATOR_PLAN_REQUIRED/);
-    assert.equal(noPlan.stderr.includes("AOS_INTERNAL_ERROR"), false);
+    // `assess` with no --plan is no longer a refusal: it writes and uses the shipped plan. Another
+    // async command that still refuses stands in, because the property under test is the
+    // classification of an async rejection, not which command produces one.
+    const noTask = run(cwd, ["observe", "--agent", "nope"], 2);
+    assert.match(noTask.stderr, /AOS_OBSERVE_REQUIRES_AGENT_AND_TASK/);
+    assert.equal(noTask.stderr.includes("AOS_INTERNAL_ERROR"), false);
 
     const missingPlan = run(cwd, ["assess", "--plan", join(cwd, "nope.json")], 2);
     assert.match(missingPlan.stderr, /AOS_UNREADABLE/);

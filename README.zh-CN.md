@@ -41,6 +41,16 @@ node bin/aos.mjs review          # 你刚跑完的那次会话里出了什么问
 
 ---
 
+## 一键
+
+```
+/plugin marketplace add MongLong0214/agent-operator-score
+/plugin install aos@agent-operator-score
+```
+
+然后在任意 Claude Code 会话里 `/aos-review`。没有安装步骤，也没有要配置的东西：这个仓库没有运行时
+依赖，agent 会自己从 `PATH` 注册，运行时凭据也会到它本来会去找的地方取。
+
 ## 两个半边
 
 |  | `aos review` | `aos assess` |

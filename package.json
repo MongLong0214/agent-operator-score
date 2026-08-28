@@ -1,6 +1,6 @@
 {
   "name": "agent-operator-score",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "description": "Local assessment instrument for Agent Operator Score. Runs from a clone or a locally built tarball; no public package is published.",
   "type": "module",

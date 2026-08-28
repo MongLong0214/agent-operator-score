@@ -42,6 +42,17 @@ is off, and there is nothing to turn on.
 
 ---
 
+## One click
+
+```
+/plugin marketplace add MongLong0214/agent-operator-score
+/plugin install aos@agent-operator-score
+```
+
+Then `/aos-review` in any Claude Code session. There is no install step and nothing to configure:
+this repository has no runtime dependencies, agents register themselves from `PATH`, and a runtime's
+own credential is resolved the way that runtime would have resolved it.
+
 ## Two halves
 
 |  | `aos review` | `aos assess` |
