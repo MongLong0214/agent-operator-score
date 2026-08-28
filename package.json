@@ -1,14 +1,32 @@
 {
   "name": "agent-operator-score",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Contract stack and local assessment instrument for Agent Operator Score; no public package is published and no bin is declared.",
+  "description": "Local assessment instrument for Agent Operator Score. Runs from a clone or a locally built tarball; no public package is published.",
   "type": "module",
   "engines": {
     "node": ">=22.18 <25"
   },
   "scripts": {
     "test": "node --test",
-    "test:mutation": "node tests/mutation/run.mjs"
-  }
+    "test:mutation": "node tests/mutation/run.mjs",
+    "verify:mvp": "node bin/aos.mjs verify",
+    "smoke:package": "node tests/package-smoke.mjs"
+  },
+  "bin": {
+    "aos": "./bin/aos.mjs"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "docs/",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "os": [
+    "darwin",
+    "linux"
+  ]
 }
