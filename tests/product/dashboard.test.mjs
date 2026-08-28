@@ -154,7 +154,9 @@ test("a run's report is served, and one that has no result is not invented", asy
     assert.equal(found.status, 200);
     const body = await found.text();
     assert.match(body, /PROFILE-BOUND/);
-    assert.match(body, /Dimensions/);
+    // "Dimensions" reads as jargon to someone opening this once; the section is "The six areas"
+    // now. What the dashboard has to serve is the real report, so this checks a section of it.
+    assert.match(body, /The six areas/);
 
     const missing = await get(port, `/run/run-does-not-exist?t=${token}`);
     assert.equal(missing.status, 404);

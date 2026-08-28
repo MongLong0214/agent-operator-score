@@ -72,8 +72,10 @@ test("a run with nothing wrong names no constraint", () => {
 test("a withheld score says so and says what it would have been", () => {
   const result = resultOf({ unobserved: ["M11", "M12", "M13"] });
   const html = renderHtml(result);
-  assert.match(html, /Score withheld/);
-  assert.match(html, /provisional 85/);
+  // The wording is plainer than it was; what has to hold is that the page says there is no score,
+  // says what it would have been, and says why.
+  assert.match(html, /No score for this run/);
+  assert.match(html, /it would have scored<\/span>.{0,80}85/s);
   assert.match(html, /Why there is no score/);
   assert.match(html, /COVERAGE/);
   assert.equal(html.includes(">85<"), false, "the provisional number was shown as the score");
@@ -82,9 +84,9 @@ test("a withheld score says so and says what it would have been", () => {
 test("a ceiling says what it cost and why", () => {
   const capped = resultOf({}, { safetyState: "S2" });
   const html = renderHtml(capped);
-  assert.match(html, /Ceilings/);
+  assert.match(html, /What is holding this score down/);
   assert.match(html, /CRITICAL_SAFETY/);
-  assert.match(html, /capped from 100/);
+  assert.match(html, /held down from<\/span>.{0,60}100/s);
 });
 
 test("every metric opens to its four subchecks and its verifier", () => {
@@ -100,9 +102,12 @@ test("every metric opens to its four subchecks and its verifier", () => {
 test("state is spelled out, never carried by colour alone", () => {
   // Colour is not a way to tell a reader that something failed.
   const html = renderHtml(resultOf({ passing: { M12: 0 } }));
-  assert.match(html, /<td>FAIL<\/td>/);
+  // The state cell is a chip now. It still carries the word, in both languages, so the shading is
+  // never the only thing that says a metric failed.
+  assert.match(html, /class="chip c-FAIL"/);
+  assert.match(html, /class="chip c-FAIL"><span class="en">fail<\/span><span class="ko">실패<\/span>/);
   assert.match(html, /FAIL — /, "a failing subcheck should say so in words");
-  assert.match(html, /<td>NOT_OBSERVED<\/td>|NOT_OBSERVED/);
+  assert.match(html, /c-NOT_OBSERVED/);
 });
 
 test("the page asks for nothing from anywhere", () => {
@@ -131,7 +136,11 @@ test("it is readable on a phone, on paper, and by a screen reader", () => {
   assert.match(html, /scope="col"/);
   assert.match(html, /scope="row"/);
   assert.match(html, /<meta name="viewport"/);
-  assert.match(html, /<html lang="en">/);
+  assert.match(html, /<html lang="en"/);
+  // The language toggle is a checkbox and a label, so switching needs no script at all -- which is
+  // what lets the injection test look for `<script` and mean it.
+  assert.match(html, /<label for="lang">/);
+  assert.equal(/<script/i.test(html), false);
 });
 
 test("the boundary travels with the number", () => {
