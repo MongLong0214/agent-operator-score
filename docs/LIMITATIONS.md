@@ -33,3 +33,33 @@ Neither becomes resolved from this alpha-analysis mechanism or from a transfer f
 alpha row.
 
 MIT is the outbound copyright grant. It is a redistribution permission. It is not contributor terms, and it is not a publication clearance. Contributor terms and formal publication review remain unresolved. G4 publication is not cleared. No public package has been approved.
+
+## Session-review accuracy, as measured
+
+`aos review` is the part of this product that reads the owner's own agent sessions. Its
+rules were written by looking at real sessions, so they are at risk of having been written
+to fit them, and the only answer is a set of sessions held back from that work and judged
+by hand. `aos holdout` keeps that ledger; the numbers below are its current state.
+
+The last measurement on sessions never used for tuning: **320 sessions, 10 high-severity
+findings, 4 right and 6 wrong — precision 0.400** against an acceptance target of 0.90.
+Two other targets pass: no session whose transcript could not be fully read was reported as
+clean, and no secret material was written back out.
+
+All six false positives have since been fixed, and the same 320 sessions now produce 4
+high-severity findings — the four that were right. **That is not a second measurement.** It
+is the tuning number for a change made after seeing the sessions it was measured on, and it
+is reported here as a tuning number.
+
+A second measurement needs sessions that did not exist when these rules changed. In this
+corpus every session carrying real tool activity has now been used: the remaining 3,522
+transcripts hold 22 tool calls between them. So the honest position is that the reviewer's
+high-severity precision has been measured once, at 0.400, and that the measurement is older
+than the code. It will be re-measurable as the owner's work accumulates.
+
+What the six errors had in common is worth stating, because it is the shape to expect from
+the next ones: every single one was a recognizer with an incomplete vocabulary. A Codex
+tool call whose object literal was JavaScript rather than JSON; a test runner named by
+path; a patch body read as a command; one conjugation missing from an exclusion. None of
+them failed loudly. Each one invented a finding, which is the direction this product must
+not be wrong in.
