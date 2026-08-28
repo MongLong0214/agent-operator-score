@@ -181,6 +181,30 @@ test("a recorded checkpoint is what a run reports, not one re-derived from its f
   assert.equal(derived[0].kind, "identical-retry-after-failure");
 });
 
+test("the checkpoint shows what the stage said, not just that it failed", () => {
+  // Deciding from an exit code is deciding from nothing.
+  const text = renderCheckpoint(
+    {
+      kind: "repeated-failure",
+      family: "FAM-1",
+      detail: "solo failed stage-1 (exit 1)",
+      output: "starting up\nrefused: no credentials for this provider",
+      calls: [{ signature: "agent.ended:solo:FAM-1:stage-1", outcome: "failed" }],
+      evidence_digest: "d".repeat(64)
+    },
+    { agents: ["solo"] }
+  );
+  assert.match(text, /\| refused: no credentials for this provider/);
+  assert.match(text, /exit 1/);
+
+  // A stage that said nothing does not get an empty block.
+  const quiet = renderCheckpoint(
+    { kind: "repeated-failure", family: "FAM-1", detail: "solo failed", output: "", calls: [], evidence_digest: "e".repeat(64) },
+    {}
+  );
+  assert.equal(quiet.includes("  | "), false);
+});
+
 test("the menu names every choice it will accept", () => {
   const text = renderCheckpoint(
     { kind: "repeated-failure", family: "FAM-1", detail: "solo failed", calls: [], evidence_digest: "c".repeat(64) },

@@ -86,3 +86,44 @@ test("truncated capture reports what it lost", async () => {
     rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test("a failed agent's own words survive, with credentials removed", async () => {
+  // Only the digest used to. A stage that produced nothing was reported as "exit 0" and nothing
+  // else, and a checkpoint whose purpose is to show the operator what AOS saw could show them an
+  // exit code. Against real Codex, three of six families produced no artifact while exiting zero.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-excerpt-"));
+  try {
+    const script = [
+      'process.stderr.write("starting up\\n");',
+      'process.stderr.write("ANTHROPIC_API_KEY=sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\\n");',
+      'process.stderr.write("refused: no credentials for this provider\\n");',
+      "process.exit(1);"
+    ].join("");
+    const result = await runProcess(
+      { id: "x", command: process.execPath, args: ["-e", script] },
+      { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "s", timeoutMs: 30000 }
+    );
+    assert.equal(result.ok, false);
+    assert.match(result.stderr_excerpt, /refused: no credentials/);
+    assert.equal(result.stderr_excerpt.includes("sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), false, "a key reached the excerpt");
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("the excerpt is the tail, and it is bounded", async () => {
+  // A runtime that banners on startup and fails at the end puts the reason last.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-excerpt-tail-"));
+  try {
+    const script = 'process.stderr.write("A".repeat(9000) + "\\nthe actual reason\\n"); process.exit(2);';
+    const result = await runProcess(
+      { id: "x", command: process.execPath, args: ["-e", script] },
+      { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "s", timeoutMs: 30000 }
+    );
+    assert.match(result.stderr_excerpt, /the actual reason/);
+    assert.equal(result.stderr_excerpt.length <= 1500, true, `${result.stderr_excerpt.length} bytes`);
+    assert.equal(result.stderr_produced_bytes > 9000, true);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
