@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/aos-mark.svg" alt="" width="88">
+<img src="docs/assets/aos-mark.svg" alt="" width="88" height="88">
 
 # Agent Operator Score
 
@@ -27,7 +27,7 @@
 两位操作者用同一个模型，在同一个仓库上，做同一个任务。一位交付了。另一位烧光预算，合入了跑不
 起来的东西。你能叫得出名字的每一个基准，测的都是**完全相同的那一半**。
 
-这个工具测另一半——并且在每一个出现数字的地方，同时说明这个测量被绑定在什么条件上。
+这个工具测另一半，并且它打印的每一个数字都会说明自己被绑定在什么条件上。
 
 ```bash
 git clone https://github.com/MongLong0214/agent-operator-score
@@ -71,7 +71,7 @@ node bin/aos.mjs review --list       # 挑一个
 
 ### `aos assess` —— 产出数字的那一半
 
-<img src="docs/assets/aos-families.svg" alt="六个编码任务族：意图、上下文、图、循环与状态、虚假完成、恢复与安全与效率。" width="100%">
+<img src="docs/assets/aos-families.svg" alt="六个编码任务族：意图、上下文、图、循环与状态、虚假完成、恢复与安全与效率。" width="960" height="252">
 
 ```bash
 node bin/aos.mjs assess --template aos-plan.json          # 写一份计划
@@ -80,7 +80,7 @@ node bin/aos.mjs assess --plan aos-plan.json --checkpoints
 
 每个任务族都会在隔离工作区里运行你注册的 agent CLI，由一个隐藏校验器给 agent **实际产出的东西**打分，而不是它对自己的描述。
 
-<img src="docs/assets/aos-pipeline.svg" alt="声明的画像与锁定的种子产生一次受控运行；运行会在操作者检查点停下，隐藏校验器给 agent 的产物打分；二十项指标进入确定性评分器，签发闸门决定这次运行能否携带分数，三个锁定种子得出一个 Operator Score。" width="100%">
+<img src="docs/assets/aos-pipeline.svg" alt="声明的画像与锁定的种子产生一次受控运行；运行会在操作者检查点停下，隐藏校验器给 agent 的产物打分；二十项指标进入确定性评分器，签发闸门决定这次运行能否携带分数，三个锁定种子得出一个 Operator Score。" width="960" height="392">
 
 ---
 
@@ -130,7 +130,7 @@ node bin/aos.mjs dashboard                                    # 只读、回环�
 
 ## 什么会扣住数字，天花板又做了什么
 
-<img src="docs/assets/aos-gates.svg" alt="签发闸门有五个条件，必须全部成立才会给出分数。四个天花板以天花板而非扣分的方式生效，最低的那个胜出：安全 39 落在 FRAGILE，虚假完成 49 与被忽略的严重错误 59 落在 DEVELOPING，缺少确切修订 69 落在 OPERATIONAL。" width="100%">
+<img src="docs/assets/aos-gates.svg" alt="签发闸门有五个条件，必须全部成立才会给出分数。四个天花板以天花板而非扣分的方式生效，最低的那个胜出：安全 39 落在 FRAGILE，虚假完成 49 与被忽略的严重错误 59 落在 DEVELOPING，缺少确切修订 69 落在 OPERATIONAL。" width="960" height="436">
 
 天花板不是扣分。一次复制了密钥的运行会被压在 39，无论其余部分做得多好——因为把这件事平均掉的
 数字，描述的是另一次运行。
@@ -151,7 +151,7 @@ node bin/aos.mjs dashboard                                    # 只读、回环�
 | 已验证的结果 | `EXPERIMENTAL / PROVISIONAL` —— 没有校准研究、没有独立复现、没有合格评审 |
 
 你写的计划**不是评分输入**。它曾经仅凭对你自己所写 JSON 的形状检查，就决定了二十项指标中的
-十七项，而一份字面意义上的垃圾计划拿到了 17/17。所以现在指标要么从运行中被观测到，要么就是
+十七项，而一份字面意义上的垃圾计划拿到了 17/17。现在指标要么从运行中被观测到，要么就是
 `NOT_OBSERVED`，而 `NOT_OBSERVED` 绝不是零。
 
 这些任务族的答案就在 `lib/suite.mjs` 里。作为练习没有问题，这也正是它不是一场考试的原因。
@@ -210,7 +210,8 @@ npm run test:mutation    # 逐个破坏具名守卫，检查被指名的测试�
 npm run smoke:package    # 打包、装到别处、像操作者那样用一遍
 ```
 
-CI 在 Ubuntu 22、Ubuntu 24 和 macOS 24 上运行，另加上面这三条泳道。分支遵循 git flow，模型写在
+CI 在每次变更上运行七条泳道：Ubuntu 22、Ubuntu 24 和 macOS 24 上的测试套件，mutation 与
+`verify:mvp`，以及 Ubuntu 和 macOS 上的打包冒烟。分支遵循 git flow，模型写在
 [`CONTRIBUTING.md`](CONTRIBUTING.md) 里。
 
 ## 文档

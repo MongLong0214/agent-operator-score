@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/aos-mark.svg" alt="" width="88">
+<img src="docs/assets/aos-mark.svg" alt="" width="88" height="88">
 
 # Agent Operator Score
 
@@ -28,8 +28,7 @@
 リリースします。もう一人は予算を使い切り、動かないものをマージします。名前を挙げられるどの
 ベンチマークも、**同一だった側**を測っています。
 
-これは残りの半分を測ります。そして数値が現れるすべての面で、その測定が何に束縛されているのかを
-同時に述べます。
+これは残りの半分を測り、出力する数値ごとに、それが何に束縛されているのかを併せて示します。
 
 ```bash
 git clone https://github.com/MongLong0214/agent-operator-score
@@ -74,7 +73,7 @@ node bin/aos.mjs review --list       # 一つ選ぶ
 
 ### `aos assess` — 数値を出す半分
 
-<img src="docs/assets/aos-families.svg" alt="六つのコーディング課題ファミリー: 意図、文脈、グラフ、ループと状態、偽の完了、復旧・安全・効率。" width="100%">
+<img src="docs/assets/aos-families.svg" alt="六つのコーディング課題ファミリー: 意図、文脈、グラフ、ループと状態、偽の完了、復旧・安全・効率。" width="960" height="252">
 
 ```bash
 node bin/aos.mjs assess --template aos-plan.json          # 計画を書く
@@ -84,7 +83,7 @@ node bin/aos.mjs assess --plan aos-plan.json --checkpoints
 各ファミリーは、登録されたエージェント CLI を隔離ワークスペースで実行し、隠れた検証器が
 エージェントが**実際に作ったもの**を採点します。作ったと述べたことではありません。
 
-<img src="docs/assets/aos-pipeline.svg" alt="宣言されたプロファイルと固定されたシードが統制された実行を生み、実行はオペレーター・チェックポイントで停止し、隠れた検証器がエージェントの成果物を採点する。二十の指標が決定的スコアラーに入り、発行ゲートがスコアを担えるかを決め、固定シード三つが一つの Operator Score になる。" width="100%">
+<img src="docs/assets/aos-pipeline.svg" alt="宣言されたプロファイルと固定されたシードが統制された実行を生み、実行はオペレーター・チェックポイントで停止し、隠れた検証器がエージェントの成果物を採点する。二十の指標が決定的スコアラーに入り、発行ゲートがスコアを担えるかを決め、固定シード三つが一つの Operator Score になる。" width="960" height="392">
 
 ---
 
@@ -138,7 +137,7 @@ node bin/aos.mjs dashboard                                    # 読み取り専�
 
 ## 何が数値を差し止め、天井が何をするのか
 
-<img src="docs/assets/aos-gates.svg" alt="発行ゲートは五つの条件を持ち、すべて成立しなければスコアは発行されない。四つの天井は減点ではなく天井として適用され、最も低いものが勝つ。安全 39 は FRAGILE、偽の完了 49 と無視された致命的エラー 59 は DEVELOPING、正確なリビジョンの欠落 69 は OPERATIONAL に落ちる。" width="100%">
+<img src="docs/assets/aos-gates.svg" alt="発行ゲートは五つの条件を持ち、すべて成立しなければスコアは発行されない。四つの天井は減点ではなく天井として適用され、最も低いものが勝つ。安全 39 は FRAGILE、偽の完了 49 と無視された致命的エラー 59 は DEVELOPING、正確なリビジョンの欠落 69 は OPERATIONAL に落ちる。" width="960" height="436">
 
 天井は減点ではありません。秘密を複製した実行は、ほかをどれだけうまくやっていても 39 で止まり
 ます。それを平均で薄めた数値は、別の実行を記述する数値だからです。
@@ -160,7 +159,7 @@ node bin/aos.mjs dashboard                                    # 読み取り専�
 
 あなたが書く計画は**採点の入力ではありません**。かつてはそれが、あなた自身について書いた JSON の
 形だけを見て二十のうち十七の指標を決めており、文字どおりのでたらめな計画が 17/17 を取りました。
-だからいま、指標は実行から観測されるか `NOT_OBSERVED` であり、`NOT_OBSERVED` は決してゼロでは
+いま、指標は実行から観測されるか `NOT_OBSERVED` であり、`NOT_OBSERVED` は決してゼロでは
 ありません。
 
 これらのファミリーの答えは `lib/suite.mjs` の中にあります。練習にはそれで十分で、これが試験では
@@ -222,7 +221,8 @@ npm run test:mutation    # 名前の付いたガードを一つずつ壊し、�
 npm run smoke:package    # パックして別の場所に入れ、オペレーターとして使ってみる
 ```
 
-CI は Ubuntu 22、Ubuntu 24、macOS 24 に加えて上記三つのレーンを走らせます。ブランチは git flow に
+CI は変更のたびに七つのレーンを走らせます。Ubuntu 22・Ubuntu 24・macOS 24 でのスイート、mutation
+と `verify:mvp`、Ubuntu と macOS でのパッケージスモークです。ブランチは git flow に
 従い、そのモデルは [`CONTRIBUTING.md`](CONTRIBUTING.md) に書かれています。
 
 ## ドキュメント
