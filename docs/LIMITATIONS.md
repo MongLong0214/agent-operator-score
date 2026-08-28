@@ -116,3 +116,36 @@ off. Both are legitimate configurations and they are different profiles:
 
 This is what PROFILE-BOUND means in practice. The number describes an agent, its configuration
 and its sandbox together, and moving any one of them makes it a different measurement.
+
+## The three real cycles, and what each of them measured
+
+Real Codex, one machine, three seeds locked per cycle, every run attended.
+
+| | agent sandbox | Operator Score | runs | spread | what it found |
+|---|---|---|---|---|---|
+| 1 | on | **69** | 69, 69, 83 | 14 | one family cannot be completed when the agent may not write `.git` |
+| 2 | off | *withdrawn* | 49, 59, 89 | — | three defects in AOS, listed below |
+| 3 | off | **90** | 90, 87, 92 | 5 | — |
+
+Cycle 2's own number is withdrawn rather than reported. The cycle recorded one run's score
+against all three seeds, so the aggregate it printed described a single run counted three
+times. The individual run scores are real; the cycle around them was not.
+
+What cycle 2 found, all now fixed:
+
+- The cycle named runs through a list sorted by name, and a run id is a uuid, so "the run that
+  just appeared" was an arbitrary one.
+- An agent that did the work and reported `blocked` got the false-completion ceiling, the same
+  as one claiming work it never did. Codex did exactly that, and its reasoning was correct: the
+  family asked for a claim file, asked for its revision to name the commit the claim is about,
+  and asked for no uncommitted changes -- three requirements that cannot all hold.
+- So the family's own instructions were contradictory, which is why cycle 3 is both higher and
+  much tighter: spread 5 against 14, deviation 2.
+
+Cycle 3's first run predates a change made while it was running, so its record cannot be
+recomputed by `aos verify --run` even though its score is sound. Changing the instrument during
+a measurement is its own mistake and it is recorded here as one.
+
+None of these numbers transfers. Three runs on one machine say how much this measurement moved
+when it was repeated, and nothing about how it would move anywhere else -- which is why the
+report calls it local repeat evidence and never confidence.
