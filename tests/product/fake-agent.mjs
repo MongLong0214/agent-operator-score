@@ -22,7 +22,11 @@ if (profile === "needs-instruction") {
   const task = process.env.AOS_TASK_FILE;
   const instruction = task && existsSync(task) ? readFileSync(task, "utf8") : "";
   if (!instruction.includes("AOS-TEST-UNBLOCK")) {
-    process.stderr.write("blocked: the instruction does not say how to proceed\n");
+    // On stdout, the way a real agent explains itself. An agent that says nothing at all and exits
+    // immediately is indistinguishable from a command that never started, and AOS now stops on that
+    // rather than scoring it.
+    process.stdout.write("blocked: the instruction does not say how to proceed\n");
+    process.stderr.write("blocked\n");
     process.exit(1);
   }
 }
