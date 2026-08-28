@@ -93,7 +93,12 @@ test("three attended runs produce an operator score, and it is the median of all
   // The whole point of the locked cycle: every valid run counts, including a low one.
   const { cwd, plan, home } = opened();
   try {
-    for (let index = 0; index < 3; index += 1) cycleRun(cwd, plan);
+    const printedScores = [];
+    for (let index = 0; index < 3; index += 1) {
+      const output = cycleRun(cwd, plan).stdout;
+      const score = /^Score: (\d+) \//m.exec(output);
+      if (score) printedScores.push(Number(score[1]));
+    }
     const report = spawnSync(process.execPath, [cli, "cycle", "--json"], {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home }
     });
@@ -101,10 +106,16 @@ test("three attended runs produce an operator score, and it is the median of all
     assert.equal(summary.valid_runs, 3, JSON.stringify(summary.excluded));
     assert.equal(summary.complete, true);
     assert.equal(typeof summary.operator_score, "number");
-
-    const scores = cycleOf(home).runs.filter((entry) => entry.valid).map((entry) => entry.final_score).sort((a, b) => a - b);
-    assert.equal(summary.operator_score, scores[1], "the middle of three, not the best of them");
     assert.equal(summary.seeds.length, 3);
+
+    // Against what the runs printed, not against what the ledger stored. Reading the expectation
+    // out of the ledger made this pass while every seed was recorded with the first run's score --
+    // three copies of one number, and a median assertion that could not see it.
+    assert.equal(new Set(cycleOf(home).runs.map((entry) => entry.run_id)).size, 3, "a run id was recorded twice");
+    const printed = [...printedScores].sort((a, b) => a - b);
+    assert.equal(printed.length, 3, `saw ${printed.length} scores in the output`);
+    assert.deepEqual(cycleOf(home).runs.map((entry) => entry.final_score).sort((a, b) => a - b), printed);
+    assert.equal(summary.operator_score, printed[1], "the middle of three, not the best of them");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

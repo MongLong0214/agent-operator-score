@@ -118,6 +118,15 @@ export const GUARDS = [
     name: "a seed that produced a result cannot be run again"
   },
   {
+    guard: "cycle run identity",
+    reason: "listRuns sorts by name and a run id is a uuid, so taking either end of it records one run's score for every seed",
+    file: "lib/cli.mjs",
+    from: 'const runId = listRuns(home).find((id) => !before.has(id)) ?? null;',
+    to: "const runId = listRuns(home)[0];",
+    test: "tests/product/cycle-command.test.mjs",
+    name: "three attended runs produce an operator score, and it is the median of all of them"
+  },
+  {
     guard: "operator decision window",
     reason: "every stage sends an instruction, so without a window the plan being carried out reads as the operator stepping in",
     file: "lib/checkpoint.mjs",
