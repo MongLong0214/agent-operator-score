@@ -365,8 +365,8 @@ Chinese report UI are not yet localized.
 | AOS networking | The dashboard binds to `127.0.0.1`, requires a token, and is read-only and GET-only. No route returns a transcript, and AOS has no external collection client |
 | Agent networking | Codex and Claude Code may contact their model providers during `assess`; this is not an offline run |
 | Dependencies | There are no runtime package dependencies, but a supported Node runtime is required |
-| Agent environment | AOS replaces `HOME`, filters sensitive variables, and removes the operator's existing `AOS_*` values including `AOS_HOME` |
-| Run context and credentials | AOS injects only `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`, plus an explicitly allowed or supported runtime credential. Names and sources may be recorded; values are not |
+| Agent environment | AOS replaces `HOME`. In the default `BEST_EFFORT_CLI` mode it carries ordinary non-sensitive variables, removes sensitive-looking variables and the operator's existing `AOS_*` values including `AOS_HOME`, then adds four run-context variables |
+| Run context and credentials | The four new AOS variables are `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`. Explicitly allowed variables and supported runtime credentials may also be carried. Names and sources may be recorded; credential values are not |
 | Secrets and local storage | Secret values are redacted where output is read. `~/.aos` is mode `0700`; files inside are mode `0600` |
 
 Automatic credential discovery can be disabled with `--no-auto-auth`. Report security issues
