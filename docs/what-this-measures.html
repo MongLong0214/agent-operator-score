@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>차가 아니라 운전자 · Agent Operator Score</title>
+<meta name="description" content="AOS가 무엇을 채점하는지, 아무것도 모르는 사람에게 그림으로 설명합니다.">
+<style>
+/* Highway signage, because the whole idea is a driving test: the car is not the one being examined.
+   The greens and the yellow are sign paint, not decoration.
+
+   Every face here is one the reader already has. This page ships in a repository whose report makes
+   no request of any kind, and a page that reaches out for a webfont to explain that product would be
+   contradicting it on its own first screen. The three roles are carried by system families -- sans
+   for structure, serif for the sentences that explain, mono for labels and data. */
+:root{
+  --asphalt:#26282c; --ground:#f0f1ee; --panel:#ffffff;
+  --sign:#0f5132; --sign-ink:#ffffff; --line:#f2b705; --stop:#a8322a;
+  --ink:#1a1c1a; --ink-soft:#5b615c; --edge:#d5d8d2;
+  --shadow:0 1px 2px rgba(26,28,26,.06),0 12px 32px rgba(26,28,26,.07);
+  --sans:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  --serif:"Apple SD Gothic Neo",ui-serif,Georgia,"Nanum Myeongjo","Noto Serif KR",serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"D2Coding",monospace;
+  --step:clamp(1rem,.7rem + 1.4vw,1.26rem);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#141618; --panel:#1c1f21;
+    --sign:#3f9a6b; --sign-ink:#0b1410; --line:#f2b705; --stop:#e0796e;
+    --ink:#eceee9; --ink-soft:#9aa199; --edge:#2e3336;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.44);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#141618; --panel:#1c1f21;
+  --sign:#3f9a6b; --sign-ink:#0b1410; --line:#f2b705; --stop:#e0796e;
+  --ink:#eceee9; --ink-soft:#9aa199; --edge:#2e3336;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.44);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:var(--step); line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+section{padding:clamp(56px,7vw,104px) 0;border-top:1px solid var(--edge)}
+section:first-of-type{border-top:0}
+
+h1,h2{font-weight:800;letter-spacing:-.022em;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.5rem,1.2rem + 5.6vw,4.9rem);line-height:1.05}
+h2{font-size:clamp(1.85rem,1rem + 3.2vw,3.05rem);line-height:1.12}
+p{max-width:34em;margin:1.1rem 0 0}
+.serif{font-family:var(--serif);color:var(--ink-soft);font-size:1.04em;line-height:1.85}
+.eyebrow{
+  font-family:var(--mono);font-weight:600;font-size:.75rem;
+  letter-spacing:.2em;color:var(--ink-soft);margin:0 0 18px;text-transform:uppercase;
+}
+.big{font-size:clamp(1.22rem,.9rem + 1.4vw,1.66rem);font-weight:600;line-height:1.45;max-width:23em}
+.hl{background:linear-gradient(transparent 62%,var(--line) 62%,var(--line) 94%,transparent 94%);padding:0 .06em}
+
+figure{margin:clamp(30px,4vw,52px) 0 0}
+svg{display:block;width:100%;height:auto;overflow:visible}
+figcaption{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft);margin-top:14px;letter-spacing:.03em}
+
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:clamp(14px,2.4vw,28px);margin-top:clamp(28px,4vw,44px)}
+.vs>div{background:var(--panel);border:1px solid var(--edge);border-radius:4px;padding:clamp(20px,2.6vw,30px);box-shadow:var(--shadow)}
+.vs .lab{font-family:var(--mono);font-size:.73rem;letter-spacing:.16em;color:var(--ink-soft);text-transform:uppercase;margin:0}
+.vs .who{font-size:clamp(1.35rem,.9rem + 1.9vw,2.05rem);font-weight:800;letter-spacing:-.02em;margin-top:10px;line-height:1.14}
+.vs .dim{opacity:.55}
+.vs .mine{border-color:var(--sign);border-width:2px}
+
+.six{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:12px;margin-top:clamp(28px,4vw,44px)}
+.plate{background:var(--sign);color:var(--sign-ink);border-radius:8px;padding:22px;border:3px solid var(--sign);outline:2px solid var(--sign);outline-offset:-8px}
+.plate .n{font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;opacity:.75;margin:0}
+.plate .t{font-size:1.26rem;font-weight:800;line-height:1.2;margin-top:9px}
+.plate .s{font-size:.93rem;line-height:1.5;margin-top:8px;opacity:.92}
+
+.stamp{
+  display:inline-block;border:3px solid var(--stop);color:var(--stop);border-radius:5px;
+  padding:9px 20px;font-weight:800;font-size:1.2rem;letter-spacing:.05em;transform:rotate(-2.4deg);
+  font-family:var(--mono);
+}
+.note{border-left:4px solid var(--line);padding:4px 0 4px 20px;margin-top:30px}
+
+footer{padding:56px 0 92px;border-top:1px solid var(--edge);color:var(--ink-soft);font-size:.92rem}
+footer code,.wrap code{font-family:var(--mono);background:var(--panel);border:1px solid var(--edge);border-radius:3px;padding:2px 7px}
+a{color:var(--sign)}
+a:focus-visible,:focus-visible{outline:3px solid var(--line);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:640px){.vs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<section>
+  <p class="eyebrow">Agent Operator Score</p>
+  <h1>차가 아니라,<br>운전자를 봅니다.</h1>
+  <p class="big" style="margin-top:26px">AI 코딩 에이전트를 시험하는 도구는 많습니다.<br>
+  AOS는 <span class="hl">그걸 시키는 사람</span>을 봅니다.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 260" role="img" aria-label="자동차와 운전자가 나란히 있고, 채점표가 가리키는 쪽은 운전자입니다.">
+      <rect x="0" y="196" width="1000" height="14" fill="var(--asphalt)" opacity=".14"></rect>
+      <g stroke="var(--line)" stroke-width="7" stroke-linecap="round">
+        <line x1="20" y1="203" x2="90" y2="203"></line><line x1="130" y1="203" x2="200" y2="203"></line>
+        <line x1="240" y1="203" x2="310" y2="203"></line><line x1="350" y1="203" x2="420" y2="203"></line>
+        <line x1="460" y1="203" x2="530" y2="203"></line><line x1="570" y1="203" x2="640" y2="203"></line>
+        <line x1="680" y1="203" x2="750" y2="203"></line><line x1="790" y1="203" x2="860" y2="203"></line>
+        <line x1="900" y1="203" x2="970" y2="203"></line>
+      </g>
+      <g fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round">
+        <path d="M120 190v-34a10 10 0 0 1 10-10h34l26-34h74l16 34h30a10 10 0 0 1 10 10v34" fill="var(--panel)"></path>
+        <circle cx="166" cy="190" r="17" fill="var(--panel)"></circle><circle cx="272" cy="190" r="17" fill="var(--panel)"></circle>
+      </g>
+      <text x="220" y="245" text-anchor="middle" font-family="ui-monospace,monospace" font-size="19" font-weight="600" fill="var(--ink-soft)">에이전트</text>
+      <g fill="none" stroke="var(--ink)" stroke-width="5" stroke-linecap="round">
+        <circle cx="560" cy="104" r="27" fill="var(--panel)"></circle>
+        <path d="M518 190v-28a42 42 0 0 1 84 0v28" fill="var(--panel)"></path>
+      </g>
+      <text x="560" y="245" text-anchor="middle" font-family="ui-monospace,monospace" font-size="19" font-weight="600" fill="var(--ink-soft)">운영자 · 당신</text>
+      <g>
+        <rect x="740" y="58" width="176" height="134" rx="7" fill="var(--sign)"></rect>
+        <g stroke="var(--sign-ink)" stroke-width="6" stroke-linecap="round" opacity=".85">
+          <line x1="770" y1="96" x2="886" y2="96"></line><line x1="770" y1="124" x2="886" y2="124"></line><line x1="770" y1="152" x2="850" y2="152"></line>
+        </g>
+        <path d="M736 125 L668 125" stroke="var(--sign)" stroke-width="6" stroke-linecap="round"></path>
+        <path d="M676 111 L660 125 L676 139" fill="none" stroke="var(--sign)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+      </g>
+      <text x="828" y="222" text-anchor="middle" font-family="ui-monospace,monospace" font-size="19" font-weight="600" fill="var(--sign)">채점표</text>
+    </svg>
+    <figcaption>시험지는 차가 아니라 운전자를 향합니다.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <p class="eyebrow">무엇이 다른가</p>
+  <h2>같은 차, 다른 운전.</h2>
+  <p class="serif">같은 에이전트에게 같은 일을 시켜도 결과는 달라집니다. 어떤 사람은 무엇을 만들지 정확히 말하고, 막히면 지시를 바꾸고, 다 됐다는 말을 따로 확인합니다. 어떤 사람은 같은 실패를 계속 반복하게 둡니다.</p>
+  <div class="vs">
+    <div class="dim">
+      <p class="lab">벤치마크</p>
+      <p class="who">차를 잽니다</p>
+      <p class="serif" style="margin-top:12px;font-size:.97rem">이 모델이 저 모델보다 빠른가.</p>
+    </div>
+    <div class="mine">
+      <p class="lab">AOS</p>
+      <p class="who">운전을 잽니다</p>
+      <p class="serif" style="margin-top:12px;font-size:.97rem">당신이 그 차를 어떻게 몰았는가.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">채점표에 적힌 것</p>
+  <h2>여섯 가지를 봅니다.</h2>
+  <div class="six">
+    <div class="plate"><p class="n">D1 · TASK SPECIFICATION</p><p class="t">뭘 만들지 말했나</p><p class="s">목표, 하지 말 것, 다 됐다고 할 조건.</p></div>
+    <div class="plate"><p class="n">D2 · CONTEXT ENGINEERING</p><p class="t">뭘 보여줬나</p><p class="s">맞는 자료를 골랐나, 낡거나 수상한 건 걸렀나.</p></div>
+    <div class="plate"><p class="n">D3 · DECOMPOSITION &amp; ROUTING</p><p class="t">일을 어떻게 쪼갰나</p><p class="s">누구에게 뭘 맡기고, 결과를 어떻게 합쳤나.</p></div>
+    <div class="plate"><p class="n">D4 · HUMAN-IN-THE-LOOP</p><p class="t">막혔을 때 뭘 했나</p><p class="s">알아챘나, 지시를 바꿨나, 멈춰야 할 때 멈췄나.</p></div>
+    <div class="plate"><p class="n">D5 · EVALUATION &amp; VERIFICATION</p><p class="t">진짜 되는지 봤나</p><p class="s">“다 됐습니다”를 따로 확인했나.</p></div>
+    <div class="plate"><p class="n">D6 · GUARDRAILS, RECOVERY &amp; COST</p><p class="t">안전하고 싸게 했나</p><p class="s">비밀은 안 샜나, 권한은 최소였나, 예산 안이었나.</p></div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">가장 중요한 규칙</p>
+  <h2>못 본 건 0점이 아닙니다.</h2>
+  <p class="serif">시험관이 주차를 못 봤으면, 주차를 0점 주는 게 아니라 <strong>시험을 통과시키지 않습니다.</strong> AOS도 같습니다. 스무 개 중 열여덟 개를 못 봤으면 숫자를 지어내지 않고 그냥 안 줍니다.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 200" role="img" aria-label="스무 칸 중 세 칸만 채워진 채점표. 나머지는 점선으로 비어 있습니다.">
+      <text x="0" y="26" font-family="ui-monospace,monospace" font-size="17" font-weight="600" fill="var(--ink-soft)">본 것 3 / 20</text>
+      <g>
+        <rect x="0" y="48" width="40" height="40" rx="5" fill="var(--sign)"></rect>
+        <rect x="50" y="48" width="40" height="40" rx="5" fill="var(--sign)"></rect>
+        <rect x="100" y="48" width="40" height="40" rx="5" fill="var(--sign)"></rect>
+      </g>
+      <g fill="none" stroke="var(--edge)" stroke-width="3" stroke-dasharray="6 5">
+        <rect x="150" y="48" width="40" height="40" rx="5"></rect><rect x="200" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="250" y="48" width="40" height="40" rx="5"></rect><rect x="300" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="350" y="48" width="40" height="40" rx="5"></rect><rect x="400" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="450" y="48" width="40" height="40" rx="5"></rect><rect x="500" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="550" y="48" width="40" height="40" rx="5"></rect><rect x="600" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="650" y="48" width="40" height="40" rx="5"></rect><rect x="700" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="750" y="48" width="40" height="40" rx="5"></rect><rect x="800" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="850" y="48" width="40" height="40" rx="5"></rect><rect x="900" y="48" width="40" height="40" rx="5"></rect>
+        <rect x="0" y="98" width="40" height="40" rx="5"></rect>
+      </g>
+      <text x="0" y="176" font-family="ui-monospace,monospace" font-size="15" fill="var(--ink-soft)">점선 = 볼 기회가 없었던 것. 틀린 게 아닙니다.</text>
+    </svg>
+  </figure>
+
+  <p style="margin-top:34px"><span class="stamp">점수 없음</span></p>
+  <div class="note">
+    <p class="serif" style="margin:0">덜 볼수록 숫자가 좋아지는 계측기는 아무것도 재고 있지 않습니다.<br>그래서 <strong>침묵은 통과가 아닙니다.</strong></p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">숫자를 읽는 법</p>
+  <h2>83점끼리도<br>비교할 수 없습니다.</h2>
+  <p class="serif">다른 차, 다른 코스, 다른 날씨에서 받은 두 점수는 서로 다른 시험입니다. 그래서 AOS는 점수 옆에 <strong>어떤 조건이었는지</strong>를 항상 같이 붙입니다. 조건이 다르면 두 숫자는 그냥 다른 것을 잰 값입니다.</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 200" role="img" aria-label="서로 다른 조건에서 나온 83점 두 개. 같은 숫자지만 같은 시험이 아닙니다.">
+      <rect x="10" y="20" width="450" height="150" rx="10" fill="var(--panel)" stroke="var(--edge)" stroke-width="2"></rect>
+      <text x="42" y="70" font-family="system-ui,sans-serif" font-size="52" font-weight="800" fill="var(--sign)">83</text>
+      <g font-family="ui-monospace,monospace" font-size="16" fill="var(--ink-soft)">
+        <text x="42" y="104">codex · 격리 켬</text><text x="42" y="130">시드 7c8f75…</text><text x="42" y="154">과제묶음 690042…</text>
+      </g>
+      <text x="500" y="106" text-anchor="middle" font-family="system-ui,sans-serif" font-size="34" font-weight="800" fill="var(--ink-soft)">≠</text>
+      <rect x="540" y="20" width="450" height="150" rx="10" fill="var(--panel)" stroke="var(--edge)" stroke-width="2"></rect>
+      <text x="572" y="70" font-family="system-ui,sans-serif" font-size="52" font-weight="800" fill="var(--sign)">83</text>
+      <g font-family="ui-monospace,monospace" font-size="16" fill="var(--ink-soft)">
+        <text x="572" y="104">claude · 격리 끔</text><text x="572" y="130">시드 a41b9c…</text><text x="572" y="154">과제묶음 c73e18…</text>
+      </g>
+    </svg>
+    <figcaption>같은 숫자, 다른 시험. AOS는 이걸 PROFILE-BOUND라고 부릅니다.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <p class="eyebrow">받는 것</p>
+  <h2>한 장짜리 채점표.</h2>
+  <p class="serif">점수 하나, 여섯 영역, 그리고 <strong>제일 먼저 고칠 것 한 가지</strong>. 조건은 카드 앞면에 박혀 있어서, 어디로 공유되든 숫자 혼자 떠다니지 않습니다.</p>
+  <p class="big" style="margin-top:28px">그리고 채점표는 <span class="hl">당신을 벌주려고</span> 있는 게 아닙니다.<br>다음에 뭘 다르게 할지 알려주려고 있습니다.</p>
+</section>
+
+<footer class="wrap">
+  <p>직접 돌려보려면 — Claude Code에서 <code>/plugin install aos@agent-operator-score</code> 뒤에 <code>/aos-review</code>.
+  이미 끝난 세션을 복기하는 <code>review</code>는 모델을 새로 부르지 않아 비용이 들지 않습니다.</p>
+  <p style="margin-top:18px">더 읽을 것: <a href="../README.ko.md">README</a> ·
+  <a href="LIMITATIONS.md">측정의 한계</a> · <a href="INTENDED_USE.md">써도 되는 곳과 안 되는 곳</a></p>
+  <p style="margin-top:18px">AOS는 <code>EXPERIMENTAL / PROVISIONAL</code> 상태입니다. 채용·승진·직원 감시에 쓰면 안 됩니다.</p>
+</footer>
+
+</div>
+</body>
+</html>

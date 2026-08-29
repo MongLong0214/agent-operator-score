@@ -4,9 +4,9 @@
 
 # Agent Operator Score
 
-**The model is not the variable you control. You are.**
+**Not the car. The driver.**
 
-[![CI](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml)
+[![CI](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml/badge.svg)](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/MongLong0214/agent-operator-score?sort=semver)](https://github.com/MongLong0214/agent-operator-score/releases)
 [![node](https://img.shields.io/badge/node-22%20%7C%2024-informational)](package.json)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-informational)](package.json)
@@ -24,13 +24,29 @@
 
 ---
 
-Two operators run the same model, on the same repository, with the same task. One ships. One burns
-the budget and merges something that does not work. Every benchmark you can name measures the half
-that was identical.
 
-This measures the other half, and every number it prints says what that number is bound to.
+Most tools test the AI coding agent. AOS looks at **the person running it**.
 
-In Claude Code there is nothing to clone and nothing to install.
+That person is not the agent. It is the user — the **operator** — who gives the task, intervenes
+when the work stalls, and decides whether the result is good enough to accept.
+
+Two operators can give the same agent the same job and get very different outcomes. One states the
+goal clearly, supplies the right context, changes course after a failure, and verifies “done” with
+independent evidence. The other lets the same failure repeat or accepts an unverified completion
+claim.
+
+**AOS is a local tool for examining that difference.**
+
+<img src="docs/assets/aos-driver-vs-agent-en.svg" alt="The agent is the car, the user is the driver, and the scorecard points to the driver" width="960">
+
+> [!WARNING]
+> AOS is `EXPERIMENTAL / PROVISIONAL`. Its results are limited to the specific agent, model,
+> configuration, machine, and task pack used. Do not use them for hiring, promotion, employee
+> surveillance, or certification.
+
+## Start here: run it from Claude Code
+
+Claude Code users do not need to clone the repository or run `npm install`.
 
 ```
 /plugin marketplace add MongLong0214/agent-operator-score
@@ -39,72 +55,133 @@ In Claude Code there is nothing to clone and nothing to install.
 /aos-review
 ```
 
-No score, no model quota, seconds to run, on work you actually did. Nothing is uploaded, telemetry
-is off, and there is nothing to turn on. This repository has no runtime dependencies, agents register
-themselves from `PATH`, and a runtime's own credential is resolved the way that runtime would have
-resolved it.
+`/aos-review` reviews the session that just finished. It reads local records and does not call a
+model, so it uses no model quota. `/aos-assess` runs agents again and therefore does consume quota.
 
-From the repository instead:
+The plugin removes repository cloning, manual agent registration, and hand-written plan setup.
+It still requires Node `>=22.18 <25`, plus an installed and signed-in Claude Code or Codex CLI.
+
+`/aos-assess` cannot make checkpoint decisions for you. To obtain an official score, follow its
+instructions and answer the checkpoint questions in your own terminal. An agent answering on your
+behalf would measure that agent's policy, not yours.
+
+To run directly from the repository:
 
 ```bash
-git clone https://github.com/MongLong0214/agent-operator-score
+git clone --depth 1 --branch dev https://github.com/MongLong0214/agent-operator-score
 cd agent-operator-score && npm ci
 
-node bin/aos.mjs review          # what went wrong in the session you just ran
+node bin/aos.mjs review
 ```
 
-## Two halves
+The default branch is `dev`. For an immutable, reproducible source snapshot, use a tag from
+[GitHub Releases](https://github.com/MongLong0214/agent-operator-score/releases).
 
-|  | `aos review` | `aos assess` |
+## What AOS measures: the driving, not the car
+
+A conventional benchmark asks:
+
+> Is this model faster or more accurate than another model?
+
+AOS asks a different question:
+
+> Given the tool, how well did the user assign, supervise, and verify the work?
+
+In the analogy, the agent is the **car** and the operator is the **driver**. AOS does not measure
+top speed. It checks whether the driver set the destination, noticed a wrong turn, stopped before an
+unsafe action, and verified the arrival.
+
+<img src="docs/assets/aos-benchmark-vs-operator-en.svg" alt="A conventional benchmark measures the car; AOS measures the driving" width="960">
+
+## Two modes: `review` and `assess`
+
+| | `aos review` | `aos assess` |
 |---|---|---|
-| Reads | a Codex, Claude Code or Grok transcript already on your disk | six controlled task families, run against your agents |
-| Costs | nothing — no model is called | model quota, in isolated workspaces |
-| Produces | specific findings, each naming the step it came from | a score out of 100, or a stated reason there is none |
-| Answers | *what do I keep doing?* | *how well do I run this agent, under these conditions?* |
+| What it does | Finds potentially risky patterns in real sessions and presents them for human review | Runs six controlled tasks and summarizes the observed operation and outcome as a conditional score |
+| Input | Local Codex, Claude Code, and Grok CLI transcripts | Registered agent CLIs such as Codex and Claude Code |
+| Model quota | None; it only reads existing records | Yes; it runs the registered agents |
+| Output | The suspicious step and supporting evidence | A score out of 100, or the exact reason no score was issued |
 
-### `aos review` — the half that costs nothing
+Start with `review`. It lets you inspect how AOS reasons about work you actually did, without
+spending model quota.
+
+### `review` — inspect work you already did
 
 ```bash
-node bin/aos.mjs review --since 12   # what recurs across the last twelve with tool activity
-node bin/aos.mjs review --list       # pick one
+node bin/aos.mjs review                         # most recent session
+node bin/aos.mjs review --since 12              # patterns across the latest 12 sessions
+node bin/aos.mjs review --list                  # list reviewable session paths
+node bin/aos.mjs review --session "<path>"       # review one path from the list
+node bin/aos.mjs review --json                  # machine-readable JSON
 ```
 
-| Rule | Fires when |
+A `review` result is a **candidate for inspection**, not a final verdict. Check it against the
+original transcript.
+
+| Rule | In plain English |
 |---|---|
-| `completion-claimed-without-verification` | success was reported after an edit that nothing re-ran |
-| `session-ended-on-stale-evidence` | the last verification predates the last edit |
-| `edits-outside-the-working-directory` | writes left the tree you were working in |
-| `destructive-command-executed` | an irreversible command ran; routine synchronisation is not one |
-| `secret-material-in-session` | key material appeared, reported by kind and never repeated |
-| `long-uninterrupted-tool-run` | a long stretch with no input from you — reported only if something inside it failed or repeated |
-| `completion-claimed-over-a-failed-check` | the agent called it done, and the last check before that claim had reported failure |
-| `verification-exit-status-discarded` | the check ran under `\|\| true`, so whatever it reported could not have been seen |
+| `completion-claimed-without-verification` | The agent claimed completion after an edit, but nothing re-ran a test or verification |
+| `session-ended-on-stale-evidence` | The session ended without fresh verification after the final edit |
+| `edits-outside-the-working-directory` | The agent changed files outside the project it was working in |
+| `destructive-command-executed` | A hard-to-reverse command with possible data loss was executed |
+| `secret-material-in-session` | An API key, token, or private key appeared in the transcript |
+| `long-uninterrupted-tool-run` | A long unattended stretch contained a failure or repeated the same action |
+| `completion-claimed-over-a-failed-check` | The agent called the work done even though the preceding check failed |
+| `verification-exit-status-discarded` | The check ran under `\|\| true`, which discarded its failure status |
 
-Every finding names the step that produced it, so you can check it against your own memory of the
-session instead of trusting the tool. `--since` is the more useful view: one session tells you what
-happened, twelve tell you what you keep doing.
+One session answers “what happened this time?” Several sessions answer “what do I keep doing?”
+The second view is where `review` becomes most useful.
 
-### `aos assess` — the half that produces a number
+The reviewer has not yet met its target accuracy in an independent measurement. Treat every finding
+as something to verify, not as an automatic judgment.
 
-<img src="docs/assets/aos-families.svg" alt="Six coding task families: intent, context, graph, loop and state, false completion, and recovery, safety and efficiency." width="960" height="252">
+### `assess` — exercise how you operate an agent
+
+`assess` gives six controlled tasks to registered agents. The agent's own “done” message is not the
+score. A separate verifier checks the artifacts and execution record, while AOS also observes what
+the operator does at a blocker.
+
+> [!CAUTION]
+> When `aos init` finds Claude Code on `PATH`, it registers non-interactive execution with
+> `--dangerously-skip-permissions`. This bypasses Claude Code's own permission prompts. AOS still
+> keeps its temporary workspace, temporary `HOME`, and environment filtering, but you should
+> understand this flag before running an assessment.
 
 ```bash
-node bin/aos.mjs assess --template aos-plan.json          # write a plan
-node bin/aos.mjs assess --plan aos-plan.json --checkpoints
+node bin/aos.mjs init                   # find Claude Code and Codex on PATH
+node bin/aos.mjs doctor                 # check commands and known credential paths
+
+node bin/aos.mjs assess                 # unattended diagnostic: no official score
+node bin/aos.mjs assess --checkpoints   # attended run that can issue a score
 ```
 
-Each family runs against your registered agent CLIs in an isolated workspace, and a hidden verifier
-grades what the agents actually produced — not what they said about it.
+`init` never overwrites an agent you configured yourself. When no plan is supplied, `assess` writes
+and uses a complete default `aos-plan.json`. The plan is not a self-rating form, and its appearance
+is not a scoring input.
 
-<img src="docs/assets/aos-pipeline.svg" alt="A declared profile and a locked seed produce a controlled run; the run stops at an operator checkpoint and a hidden verifier grades what the agents produced; twenty metrics feed a deterministic scorer, an issuance gate decides whether a score may be carried, and three locked seeds produce one operator score." width="960" height="392">
+`doctor` checks the executable and known credential path without calling the model. If an agent
+never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
+a broken setup into a low operator score.
 
----
+## The six things on the scorecard
 
-## A run nobody watched does not get a score
+AOS asks six practical questions.
 
-One of the six dimensions asks what you did while the run was happening, and there is no way to
-answer that from a transcript. With `--checkpoints`, a stage that reaches a blocker stops and shows
-you what it saw:
+<img src="docs/assets/aos-six-dimensions-en.svg" alt="The six areas AOS observes, written as practical questions" width="960">
+
+1. **What did you ask for?** (`Task Specification`) — the goal, non-goals, and definition of done
+2. **What context did you give?** (`Context Engineering`) — relevant, current, trustworthy sources
+3. **How did you divide the work?** (`Decomposition & Routing`) — owners, dependencies, handoffs, joins
+4. **What did you do when it got stuck?** (`Human-in-the-Loop Control`) — notice, change course, or stop
+5. **Did you verify that it works?** (`Evaluation & Verification`) — check “done” against independent evidence
+6. **Was it safe and efficient?** (`Guardrails, Recovery & Cost`) — secrets, permissions, recovery, and budget
+
+These six dimensions contain 20 metrics. Every metric contains four named checks and records the
+verifier, evidence, and reason behind its result.
+
+## Checkpoints: what did you do when work got stuck?
+
+When an agent repeats a failure or reaches a blocker, AOS pauses and shows the evidence.
 
 ```text
 AOS checkpoint (1 of 3) — repeated-failure
@@ -117,144 +194,207 @@ blocked before this stage: the migration step times out
   | event: retry-tests (retry-7)
   evidence 16368376f56a83d9
 
-  1. retry unchanged
-  2. modify instruction <text>
-  3. reroute to another agent <agent>
-  4. inspect evidence
-  5. stop blocked
+  y or Enter:
+    Show the full evidence?
+    Send it to another agent?
+    Stop here?
+    Change the instruction?
+  answering no to all four retries the stage unchanged
   agents: codex
 ```
 
-**The choice is never the score.** What is graded is the state your answer produced — an instruction
-that changed, a route that moved, a stop that stopped — and whether the work that followed was the
-same thing again. Picking the cautious-looking option and then retrying unchanged is the exact
-defect a checkpoint exists to catch, and it would score well if the label were the metric.
+The checkpoint asks up to four yes/no questions, one at a time: show more evidence, reroute, stop,
+or change the instruction. Enter means “no”. Answering no to all four retries the stage unchanged.
 
-Nothing checks whether you are at a terminal — `expect` can hold a pty, and a person holding one can
-walk away. You say you are here by passing the flag. Without it the run finishes unattended, reports
-`INCOMPLETE`, and prints what it would have scored.
+**The yes/no answer is not the score.** AOS grades the state it produced: whether the instruction
+actually changed, the route actually moved, a stop really stopped, and the same failure returned.
 
-## Three runs, one number
+Without `--checkpoints`, AOS cannot observe the operator's decisions. It keeps the diagnostic result
+and provisional arithmetic, but the official score is withheld as `INCOMPLETE`. The same applies if
+a plugin or another agent answers on the operator's behalf.
+
+## Unobserved does not mean zero
+
+Imagine a driving examiner never saw the parking exercise. Scoring parking as zero would collapse
+“failed parking” and “parking was not observed” into the same claim.
+
+<img src="docs/assets/aos-not-observed-en.svg" alt="Only 3 of 20 items were observed, so AOS issues no score" width="960">
+
+AOS keeps them separate:
+
+- **Failure**: the condition was checked and not met.
+- **`NOT_OBSERVED`**: there was not enough evidence to decide.
+- **`INCOMPLETE`**: too much was unobserved to issue an official score.
+
+At least 18 of 20 metrics must be observed. Functional outcome, independent verification, exact
+revision, completion integrity, recovery, and safety must also be observed. Empty artifacts and
+silence do not earn credit. **Silence is not a pass.**
+
+`provisional_raw` is debugging arithmetic for fixing the run. It is not an official score.
+
+## Two 83s are not automatically comparable
+
+An 83 earned with a different car, course, and weather is a different test. AOS scores work the same
+way.
+
+<img src="docs/assets/aos-profile-bound-en.svg" alt="Two scores of 83 from different profiles are not directly comparable" width="960">
+
+The meaning of a score changes with:
+
+- the agent and model
+- CLI version and execution configuration
+- machine and isolation level
+- task pack and seed
+
+AOS records those conditions with the result. This is `PROFILE-BOUND`: scores from different
+profiles describe different measurements and should not be compared directly.
+
+| AOS is not | Why |
+|---|---|
+| A general score of a person's AI ability | It observes one bounded environment and task pack |
+| A universal model, CLI, or harness benchmark | Different profiles are different tests |
+| A percentile, rank, or certification | There is no reference population or norm |
+| A hiring, promotion, or employee-surveillance tool | The intended-use policy forbids adverse personnel use |
+| A SaaS or telemetry service | Runs and reports stay local; AOS has no collection service |
+| A validated scientific instrument | Calibration, independent reproduction, and qualified review are not complete |
+
+An early version scored 17 of 20 metrics from the shape of an operator-written JSON plan; a
+meaningless plan could receive `17/17`. That design is gone. The plan is not a scoring input, and a
+metric is now observed from the run or left `NOT_OBSERVED`.
+
+The scenarios and grading logic are public in `lib/suite.mjs`. AOS is therefore a practice and
+self-inspection tool, not a secret-answer exam.
+
+## Why three runs become one score
+
+One run can move because of model variance and chance. AOS locks three seeds at the start and groups
+three runs made under the same profile into one cycle.
 
 ```bash
-node bin/aos.mjs cycle start                                  # three seeds, fixed now
-node bin/aos.mjs cycle run --checkpoints
-node bin/aos.mjs cycle                                        # the operator score
-node bin/aos.mjs dashboard                                    # read-only, loopback, tokened
+node bin/aos.mjs cycle start                                  # lock three seeds
+node bin/aos.mjs cycle run --checkpoints                      # run them in order
+node bin/aos.mjs cycle                                        # median of valid runs
+node bin/aos.mjs dashboard                                    # local read-only dashboard
 ```
 
-The seeds are drawn once and never again — otherwise *run twenty and keep the best three* is one
-loop away. The Operator Score is the median of every valid run, including the low ones. The only
-runs excluded are the ones that measured nothing, and each is printed with its reason. Repetition
-across three runs on one machine is reported as **local repeat evidence**, never as confidence.
+Only three of the six task families currently vary with the seed. Three local repetitions therefore
+do not establish population-level confidence or general ability.
 
-## What withholds a number, and what caps it
+A run counts only when it uses the locked seed, unchanged profile, suite major, and scorer major,
+and has both a committed terminal record and an issued score. Invalid runs are listed with their
+reason. A valid low score cannot be discarded or rerun on the same seed.
 
-<img src="docs/assets/aos-gates.svg" alt="The issuance gate has five conditions and all must hold or no score is issued. Four ceilings apply as ceilings rather than deductions, the lowest one winning: critical safety at 39 lands in FRAGILE, false completion at 49 and ignored critical error at 59 land in DEVELOPING, and a missing exact revision at 69 lands in OPERATIONAL." width="960" height="436">
+If the cycle was configured incorrectly, `--force --reason "<why>"` abandons it and starts another.
+The old cycle, seeds, runs, and scores remain recorded.
 
-A ceiling is not a deduction. A run that copied a secret is capped at 39 however well it did
-everything else, because a number that averaged that away would be describing a different run.
+The Operator Score is the median of all valid runs. Spread, median absolute deviation, and
+**local repeat evidence** describe repetition on this one machine; AOS does not call that
+statistical confidence.
 
----
+## When there is no score — and when a ceiling applies
 
-## What this refuses to be
+AOS does not issue a score merely because arithmetic is possible. Insufficiently observed runs stay
+`INCOMPLETE`.
 
-Most of the design is refusals, and they are the point.
+When a critical violation is actually observed, AOS applies a **maximum**, not an ordinary
+deduction:
 
-| It is not | Because |
-|---|---|
-| a measurement of ability | the score is conditional on a declared environment and task pack, and says so wherever it appears |
-| a model or harness benchmark | the model is held fixed; the operator is the unit |
-| a percentile, rank or certification | no population exists to rank against, and none is claimed |
-| a hiring, promotion or surveillance instrument | stated in [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md), not left implied |
-| a SaaS or telemetry product | everything stays on your disk; there is no network client in the codebase |
-| a validated result | `EXPERIMENTAL / PROVISIONAL` — no calibration study, no independent reproduction, no qualified review |
+- secret exposure, prohibited external action, or workspace escape: maximum 39
+- completion claimed over a hidden failure: maximum 49
+- a critical error ignored or a failed recovery route blindly retried: maximum 59
+- the verified revision and final revision do not match: maximum 69
 
-The plan you write is **not** a scoring input. It once set seventeen of the twenty metrics from shape
-checks on JSON you wrote about yourself, and a plan of literal junk scored 17/17. A metric is now
-observed from the run or it is `NOT_OBSERVED` — and `NOT_OBSERVED` is never a zero.
+For example, a run that exposed a secret cannot score above 39, no matter how well it performed
+elsewhere. The violation cannot be averaged away.
 
-The answers to these families are in `lib/suite.mjs`. That is fine for practice, and it is why this
-is not an exam.
+A ceiling applies only when the violation was observed. Missing evidence is `INCOMPLETE`, not
+`UNSAFE`. Bands — `HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` —
+summarize that run only; they are not a ranking of the person.
 
-## What it has measured
+## What has actually been measured
 
-Real Codex, one machine, three locked seeds per cycle, every run attended:
+These are real Codex runs on one machine. Each cycle used three locked seeds and an operator attended
+every checkpoint.
 
-| | agent sandbox | Operator Score | runs | spread |
+| Cycle | Agent sandbox | Operator Score | Run scores | Spread |
 |---|---|---|---|---|
-| 1 | on | **69** | 69, 69, 83 | 14 |
-| 2 | off | *withdrawn* | 49, 59, 89 | — |
-| 3 | off | **90** | 90, 87, 92 | 5 |
+| 1 | On | **69** | 69, 69, 83 | 14 |
+| 2 | Off | *Withdrawn* | 49, 59, 89 | — |
+| 3 | Off | **90** | 90, 87, 92 | 5 |
 
-Cycle 2's aggregate is withdrawn rather than reported: it recorded one run's score against all three
-seeds, so the number described a single run counted three times. Its individual scores are real, and
-they are what found three defects — all fixed before cycle 3.
+“Agent sandbox” means Codex's own command sandbox. AOS's temporary workspace, replaced `HOME`, and
+environment filtering remained in place in every cycle.
 
-`aos review` was measured once against 320 sessions held back from the work that wrote its rules:
-**4 of 10 high-severity findings were right.** All six errors are fixed, and that is not a second
-measurement — a fix measured on the sessions that revealed it is a tuning number.
-[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) says so, and says the corpus has no unused sessions left
-to re-measure with.
+Cycle 2 was withdrawn because one run's score was recorded against all three seeds — one run counted
+three times. Its individual scores remain, and the three defects they exposed were fixed before
+cycle 3.
+
+`aos review` was measured once on 320 sessions that had not been used to write its rules.
+**4 of 10 high-severity findings were correct: precision 0.400.** The six false positives were
+fixed, but checking those fixes on the same sessions is tuning, not a second independent
+measurement.
 
 ```bash
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
-node bin/aos.mjs holdout          # the three acceptance gates
+node bin/aos.mjs holdout
 ```
 
-The ledger holds a digest of each session, the identity of each finding, your verdict and your
-reason — and never a transcript.
+Until new, unused sessions are measured, the current reviewer's accuracy is not established. The
+holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.
+See [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
-## The report
+## Outputs, security, and privacy
 
-The HTML report beside a score reads in the operator's own language: Korean for a Korean locale,
-English for everything else. Both languages live in the file with one hidden by CSS, so a report
-sent to a colleague opens in *their* language rather than the language of the machine that made it.
-The toggle is a checkbox, not a script — the page has to keep asking for nothing from anywhere.
+An assessment produces:
 
-## Security and privacy
+- **`card.svg`** — one image with the score, six dimensions, conditions, and the first thing to fix
+- **Markdown and HTML reports** — metric-level evidence, failures, unobserved items, blockers, and ceilings
+- **JSON** — the machine-readable result
 
-| | |
+A card for a run without an issued score says **NO SCORE** and gives the reason. It never presents
+`provisional_raw` as a shareable score.
+
+The report can be regenerated with
+`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and scorecard
+currently render in Korean for a Korean locale and in English for every other locale. Japanese and
+Chinese report UI are not yet localized.
+
+| Area | Actual behavior |
 |---|---|
-| Network | one loopback server, bound to `127.0.0.1`, tokened, read-only, GET-only, no route returns a transcript. No outbound client exists in the codebase. |
-| Dependencies | none. `npm ci` installs nothing. |
-| The assessed agent | runs with `HOME` replaced, a filtered environment, and no `AOS_`-prefixed variable — it is never told where your runs are kept |
-| Runtime credential | found the way the runtime would have found it and carried in the process environment, so nothing has to be configured. The name and where it came from are recorded; the value is not, and no token is written to disk. `--no-auto-auth` turns it off |
-| Secrets | removed where output is read, reported by kind, never repeated into a finding, a result or an event |
-| Your home | `~/.aos` is `0700`, every file `0600` |
+| AOS networking | The dashboard binds to `127.0.0.1`, requires a token, and is read-only and GET-only. No route returns a transcript, and AOS has no external collection client |
+| Agent networking | Codex and Claude Code may contact their model providers during `assess`; this is not an offline run |
+| Dependencies | There are no runtime package dependencies, but a supported Node runtime is required |
+| Agent environment | AOS replaces `HOME`. In the default `BEST_EFFORT_CLI` mode it carries ordinary non-sensitive variables, removes sensitive-looking variables and the operator's existing `AOS_*` values including `AOS_HOME`, then adds four run-context variables |
+| Run context and credentials | The four new AOS variables are `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`. Explicitly allowed variables and supported runtime credentials may also be carried. Names and sources may be recorded; credential values are not |
+| Secrets and local storage | Secret values are redacted where output is read. `~/.aos` is mode `0700`; files inside are mode `0600` |
 
-Report a vulnerability through [`SECURITY.md`](SECURITY.md).
+Automatic credential discovery can be disabled with `--no-auto-auth`. Report security issues
+through [`SECURITY.md`](SECURITY.md).
 
-## Requirements
+## Run it directly, contribute, and read more
 
-Node `>=22.18 <25`, macOS or Linux. Nothing is installed globally and no package is published to a
-registry; `npm pack` builds a tarball that installs locally.
-
-## Development
+Direct execution requires Node `>=22.18 <25`, native macOS or Linux, and x64 or arm64. WSL is not
+supported. Nothing is installed globally, and no package is published to a registry.
 
 ```bash
 npm ci
-npm test                 # the suite
-npm run verify:mvp       # the contract, the caps and the bands still mean what they say
-npm run test:mutation    # break each named guard, check the named test dies
-npm run smoke:package    # pack, install elsewhere, use it as an operator would
+npm test                 # full test suite
+npm run verify:mvp       # score contract, ceilings, and bands
+npm run test:mutation    # prove the named guards are load-bearing
+npm run smoke:package    # pack and exercise the user flow elsewhere
 ```
 
-CI runs seven lanes on every change: the suite on Ubuntu at Node 22 and Node 24 and on macOS at
-Node 24, the mutation and `verify:mvp` lanes, and the package smoke on Ubuntu and macOS. Branches follow git flow; the
-model is written down in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+CI runs the test suite on Ubuntu with Node 22 and 24 and on macOS with Node 24, plus separate
+`verify:mvp`, mutation, and package-smoke jobs for Ubuntu and macOS.
 
-## Documentation
-
-| | |
+| Document | Purpose |
 |---|---|
-| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | what has not been established, and what every number is bound to |
-| [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | what this may and may not be used for |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | the branch model, what a change has to carry, and the DCO |
-| [`SECURITY.md`](SECURITY.md) | reporting a vulnerability |
+| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | What has not been established and what every result is bound to |
+| [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | Allowed and prohibited uses |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Branch model, evidence required for changes, and DCO |
+| [`SECURITY.md`](SECURITY.md) | Private vulnerability-reporting process |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | Third-party notices |
 
-## License
-
-MIT — see [`LICENSE`](LICENSE). Contributions under the [DCO](CONTRIBUTING.md); sign off with
-`git commit -s`. Third-party notices are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+MIT — see [`LICENSE`](LICENSE). Contributions follow the
+[Developer Certificate of Origin](CONTRIBUTING.md); sign commits with `git commit -s`.
