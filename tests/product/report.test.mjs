@@ -115,9 +115,20 @@ test("the page asks for nothing from anywhere", () => {
   // local artifact about the operator's own work.
   const html = renderHtml(resultOf());
   assert.equal(/<script/i.test(html), false);
-  assert.equal(/https?:\/\//.test(html), false);
-  assert.equal(/@import|url\(/i.test(html), false);
+  assert.equal(/@import/i.test(html), false);
+  // `url(#id)` points at a gradient in this same document -- the scorecard defines two. Anything
+  // else inside url() names somewhere to fetch from, which is what this test is about.
+  assert.deepEqual((html.match(/url\((?!#)[^)]*\)/gi) ?? []), []);
   assert.equal(/<iframe|<img/i.test(html), false);
+  // Nothing that names a place to fetch from. The scorecard is an inline SVG, so the one absolute URL
+  // in the document is its namespace -- an identifier the browser never resolves, and the only string
+  // this exemption covers. Everything else that could carry a request is checked by name rather than
+  // by a blanket search for "http", which is what let the namespace fail this in the first place.
+  assert.deepEqual(
+    (html.match(/https?:\/\/[^"'\s>)]*/g) ?? []).filter((url) => url !== "http://www.w3.org/2000/svg"),
+    []
+  );
+  assert.equal(/\ssrc=|\shref=|xlink:href/i.test(html), false);
 });
 
 test("the palette is tokens, and the dark and light values are both declared", () => {
