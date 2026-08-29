@@ -39,9 +39,18 @@ test("init says when a runtime's name is taken by the answer key", () => {
     // Still refuses to overwrite on its own: the operator is told, and decides.
     assert.match(aos(cwd, home, ["agent", "list"]).stdout, new RegExp(fixture.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
+    // What --force can do depends on whether the runtime is installed here, and CI has neither CLI. Both
+    // branches are real behaviour and both are asserted, rather than skipping the one this machine
+    // cannot reach: with the binary present the impostor is replaced, without it nothing is invented
+    // and the notice still stands.
     const forced = aos(cwd, home, ["init", "--force"]);
-    assert.match(forced.stdout, /Registered .*claude/);
-    assert.doesNotMatch(aos(cwd, home, ["agent", "list"]).stdout, /fake-agent/);
+    const listed = aos(cwd, home, ["agent", "list"]).stdout;
+    if (/Registered .*claude/.test(forced.stdout)) {
+      assert.doesNotMatch(listed, /fake-agent/, "--force left the fixture in place");
+    } else {
+      assert.match(listed, /fake-agent/, "--force removed the fixture without a runtime to put back");
+      assert.match(aos(cwd, home, ["init"]).stderr, /test fixture/);
+    }
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
   }
