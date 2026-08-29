@@ -1,17 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Builds the package, installs it somewhere else, and uses it as an operator would.
 //
-// The suite runs against the source tree, so it cannot see the two things that only go wrong at the
-// boundary: a file the manifest forgot to ship, and an entry point that works when it is imported
-// but not when it is installed. This is the lane that would have caught either.
-//
-// Written as a script rather than as workflow steps so that what CI runs is what can be run here.
-// A smoke test that exists only in YAML drifts from the thing it is smoking.
+// The suite runs against the source tree, so it cannot see the things that only go wrong at the
+// package boundary: a manifest that forgot a translated README, a missing runtime file, or an entry
+// point that imports correctly in the checkout but not after installation. This is the lane that
+// has to catch those failures.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const workspace = mkdtempSync(join(tmpdir(), "aos-package-smoke-"));
@@ -53,6 +51,13 @@ try {
   });
   rmSync(join(root, packed), { force: true });
   aos = join(prefix, "bin", "aos");
+  const installedRoot = join(prefix, "lib", "node_modules", "agent-operator-score");
+
+  check("all translated READMEs are packaged", () => {
+    for (const file of ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"]) {
+      if (!existsSync(join(installedRoot, file))) throw new Error(`${file} is missing from ${installedRoot}`);
+    }
+  });
 
   const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
   check("aos version", () => {

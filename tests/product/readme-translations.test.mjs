@@ -7,15 +7,22 @@ import { fileURLToPath } from "node:url";
 import { checkpointEvidence } from "../../lib/checkpoint.mjs";
 import { renderCheckpoint } from "../../lib/checkpoint-runtime.mjs";
 
-// Four README files drift apart silently: one gets a new section, the others keep the old shape,
-// and a reader in the wrong language is told about a product that no longer exists. These hold the
-// four to the same skeleton without pretending to check the prose.
+// Each language may use its own natural prose, but the public product contract must not drift.
+// These checks hold the four pages to the same structure, examples, measurements and visual story
+// without freezing whole translations into brittle snapshots.
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const LANGUAGES = [
-  { file: "README.md", name: "English" },
-  { file: "README.ko.md", name: "한국어" },
-  { file: "README.ja.md", name: "日本語" },
-  { file: "README.zh-CN.md", name: "简体中文" }
+  { file: "README.md", name: "English", asset: "en" },
+  { file: "README.ko.md", name: "한국어", asset: "ko" },
+  { file: "README.ja.md", name: "日本語", asset: "ja" },
+  { file: "README.zh-CN.md", name: "简体中文", asset: "zh-cn" }
+];
+const VISUALS = [
+  "aos-driver-vs-agent",
+  "aos-benchmark-vs-operator",
+  "aos-six-dimensions",
+  "aos-not-observed",
+  "aos-profile-bound"
 ];
 const read = (file) => readFileSync(join(root, file), "utf8");
 const count = (text, pattern) => (text.match(pattern) ?? []).length;
@@ -65,8 +72,6 @@ test("every local link and image in every language resolves", () => {
 });
 
 test("the checkpoint every page shows is the one the product prints", () => {
-  // A page about refusing to overclaim must not show output the tool does not emit -- in any
-  // language. The sample is the same bytes everywhere because it is literal terminal output.
   const evidence = checkpointEvidence({
     kind: "repeated-failure",
     family: "FAM-4",
@@ -88,22 +93,41 @@ test("the checkpoint every page shows is the one the product prints", () => {
   }
 });
 
-test("the measured numbers say the same thing in every language", () => {
-  // Prose is not checked, but a number that disagrees across translations is a different claim,
-  // and this repository's numbers are the part it is most careful about.
+test("the measured numbers and public boundaries match in every language", () => {
+  const shared = [
+    "69, 69, 83",
+    "49, 59, 89",
+    "90, 87, 92",
+    "17/17",
+    "320",
+    "0.400",
+    "`>=22.18 <25`",
+    "Grok",
+    "--session",
+    "--dangerously-skip-permissions",
+    "NOT_OBSERVED",
+    "INCOMPLETE",
+    "PROFILE-BOUND",
+    "card.svg",
+    "NO SCORE",
+    "--no-auto-auth",
+    "AOS_SESSION_ID",
+    "AOS_FAMILY",
+    "AOS_WORKSPACE",
+    "AOS_TASK_FILE",
+    "local repeat evidence"
+  ];
   for (const { file } of LANGUAGES) {
     const text = read(file);
-    for (const figure of ["69, 69, 83", "49, 59, 89", "90, 87, 92", "17/17", "320", "`>=22.18 <25`"]) {
-      assert.equal(text.includes(figure), true, `${file}: ${figure} is missing`);
+    for (const marker of shared) {
+      assert.equal(text.includes(marker), true, `${file}: ${marker} is missing`);
     }
   }
 });
 
-// The picture explainer ships in the repository and is opened from a file:// path, so anything it
-// reaches for is a request the reader did not ask for -- and it exists to explain a product whose
-// report makes none. A page that fetched a webfont to say that would be contradicting itself on its
-// own first screen.
-test("the explainer asks for nothing from anywhere", () => {
+// The original standalone explainer remains a useful source artifact. It must stay self-contained,
+// but the READMEs now carry the pictures directly instead of making the reader follow an HTML link.
+test("the standalone explainer asks for nothing from anywhere", () => {
   const file = join(root, "docs", "what-this-measures.html");
   assert.equal(existsSync(file), true);
   const html = readFileSync(file, "utf8");
@@ -111,15 +135,12 @@ test("the explainer asks for nothing from anywhere", () => {
   assert.equal(/<script/i.test(html), false, "a script");
   assert.equal(/<iframe|<img/i.test(html), false, "an embed");
   assert.equal(/@import/i.test(html), false, "an imported stylesheet");
-  // `url(#id)` would point inside this document; anything else names somewhere to fetch from.
   assert.deepEqual(html.match(/url\((?!#)[^)]*\)/gi) ?? [], []);
-  // The SVG namespace is an identifier the browser never resolves. Nothing else absolute may appear.
   assert.deepEqual(
     (html.match(/https?:\/\/[^"'\s>)]*/g) ?? []).filter((url) => url !== "http://www.w3.org/2000/svg"),
     []
   );
 
-  // Every link it does carry has to resolve, or the page sends the reader nowhere.
   const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
   assert.ok(links.length > 0);
   for (const link of links) {
@@ -127,15 +148,45 @@ test("the explainer asks for nothing from anywhere", () => {
     assert.equal(existsSync(join(root, "docs", link)), true, `${link} does not exist`);
   }
 
-  // Both themes are defined, and the ground is painted rather than inherited from whatever is behind.
   assert.match(html, /prefers-color-scheme:dark/);
   assert.match(html, /\[data-theme="dark"\]/);
   assert.match(html, /body\{[^}]*background:var\(--ground\)/);
 });
 
-// It is linked from every translation, so a reader who lands on any of the four can find it.
-test("every README points at the explainer", () => {
+test("every README embeds its own five localized explainer images", () => {
+  for (const { file, asset } of LANGUAGES) {
+    const text = read(file);
+    assert.equal(text.includes("docs/what-this-measures.html"), false, `${file}: links to the HTML instead of showing the pictures`);
+    for (const visual of VISUALS) {
+      const path = `docs/assets/${visual}-${asset}.svg`;
+      assert.match(text, new RegExp(`<img src="${path.replaceAll("/", "\\/")}"`), `${file}: does not embed ${path}`);
+    }
+  }
+});
+
+test("localized explainer SVGs are self-contained and accessible", () => {
+  for (const { asset } of LANGUAGES) {
+    for (const visual of VISUALS) {
+      const path = join(root, "docs", "assets", `${visual}-${asset}.svg`);
+      assert.equal(existsSync(path), true, `${path} is missing`);
+      const svg = readFileSync(path, "utf8");
+      assert.match(svg, /^<svg[^>]+viewBox=/, `${path}: no viewBox`);
+      assert.match(svg, /<title(?:\s[^>]*)?>[^<]+<\/title>/, `${path}: no title`);
+      assert.match(svg, /<desc(?:\s[^>]*)?>[^<]+<\/desc>/, `${path}: no description`);
+      assert.equal(/<script|<image|<foreignObject/i.test(svg), false, `${path}: active or embedded content`);
+      assert.equal(/(?:xlink:)?href\s*=/i.test(svg), false, `${path}: external reference attribute`);
+      assert.deepEqual(
+        (svg.match(/https?:\/\/[^"'\s>)]*/g) ?? []).filter((url) => url !== "http://www.w3.org/2000/svg"),
+        [],
+        `${path}: external URL`
+      );
+    }
+  }
+});
+
+test("the package manifest ships all four README files", () => {
+  const manifest = JSON.parse(read("package.json"));
   for (const { file } of LANGUAGES) {
-    assert.match(read(file), /docs\/what-this-measures\.html/, `${file} does not link the explainer`);
+    assert.equal(manifest.files.includes(file), true, `package.json: ${file} is not packaged`);
   }
 });
