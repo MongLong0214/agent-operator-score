@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 310" role="img" aria-labelledby="title desc">
+  <title id="title">普通基准与AOS的区别</title>
+  <desc id="desc">普通基准比较 agent 本身，AOS 检查使用者如何操作 agent。</desc>
+  <rect width="1200" height="310" fill="#f0f1ee"/>
+  <g font-family="system-ui,-apple-system,'Microsoft YaHei','PingFang SC',sans-serif">
+    <rect x="42" y="34" width="530" height="242" rx="8" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
+    <text x="82" y="82" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" font-weight="700" letter-spacing="3">BENCHMARK</text>
+    <text x="82" y="140" fill="#1a1c1a" font-size="38" font-weight="800">测的是车</text><text x="82" y="194" fill="#5b615c" font-size="24">哪个模型更快、</text><text x="82" y="230" fill="#5b615c" font-size="24">更准确？</text>
+    <rect x="628" y="34" width="530" height="242" rx="8" fill="#fff" stroke="#0f5132" stroke-width="5"/>
+    <text x="668" y="82" fill="#0f5132" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" font-weight="700" letter-spacing="3">AOS</text>
+    <text x="668" y="140" fill="#1a1c1a" font-size="38" font-weight="800">测的是驾驶</text><text x="668" y="194" fill="#5b615c" font-size="24">使用者怎样交代任务、</text><text x="668" y="230" fill="#5b615c" font-size="24">介入并验证结果？</text>
+  </g>
+</svg>
