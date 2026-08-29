@@ -23,7 +23,8 @@ const opened = () => {
 
 // Answers enough checkpoints for one run: every stage of the needs-instruction profile blocks until
 // the operator says something different, which is the only way a run fills D4 and can be scored.
-const UNBLOCK = Array.from({ length: 12 }, () => "2 AOS-TEST-UNBLOCK proceed\n").join("");
+// Four questions per checkpoint: no, no, no, yes — then the sentence. Enter is no.
+const UNBLOCK = Array.from({ length: 12 }, () => "\n\n\ny\nAOS-TEST-UNBLOCK proceed\n").join("");
 
 const cycleRun = (cwd, plan, { profile = "needs-instruction", answers = UNBLOCK } = {}) =>
   spawnSync(process.execPath, [cli, "cycle", "run", "--plan", plan, "--checkpoints"], {

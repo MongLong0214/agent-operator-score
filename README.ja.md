@@ -117,11 +117,12 @@ blocked before this stage: the migration step times out
   | event: retry-tests (retry-7)
   evidence 16368376f56a83d9
 
-  1. retry unchanged
-  2. modify instruction <text>
-  3. reroute to another agent <agent>
-  4. inspect evidence
-  5. stop blocked
+  y or Enter:
+    Show the full evidence?
+    Send it to another agent?
+    Stop here?
+    Change the instruction?
+  answering no to all four retries the stage unchanged
   agents: codex
 ```
 
