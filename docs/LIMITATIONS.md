@@ -58,6 +58,13 @@ high-severity findings — the four that were right. **That is not a second meas
 is the tuning number for a change made after seeing the sessions it was measured on, and it
 is reported here as a tuning number.
 
+Only precision is measured, and only precision can be. The ledger is built from findings
+AOS reported and a human judged; a session where AOS reported nothing and should have is
+never entered, so recall has no denominator here and none of these numbers describe it.
+The six errors were all a recognizer with too small a vocabulary, and the same gap in the
+other direction is invisible to this instrument. A precision of 1.000 would be consistent
+with a reviewer that reports almost nothing.
+
 A second measurement needs sessions that did not exist when these rules changed. In this
 corpus every session carrying real tool activity has now been used: the remaining 3,522
 transcripts hold 22 tool calls between them. So the honest position is that the reviewer's
