@@ -4,9 +4,9 @@
 
 # Agent Operator Score
 
-**你能控制的变量不是模型，是你自己。**
+**看的不是车，而是开车的人。**
 
-[![CI](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml)
+[![CI](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml/badge.svg)](https://github.com/MongLong0214/agent-operator-score/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/MongLong0214/agent-operator-score?sort=semver)](https://github.com/MongLong0214/agent-operator-score/releases)
 [![node](https://img.shields.io/badge/node-22%20%7C%2024-informational)](package.json)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-informational)](package.json)
@@ -24,12 +24,27 @@
 
 ---
 
-两位操作者用同一个模型，在同一个仓库上，做同一个任务。一位交付了。另一位烧光预算，合入了跑不
-起来的东西。你能叫得出名字的每一个基准，测的都是**完全相同的那一半**。
 
-这个工具测另一半，并且它打印的每一个数字都会说明自己被绑定在什么条件上。
+评测 AI 编程 Agent 本身的工具很多。AOS 关注的是**使用它的人**。
 
-在 Claude Code 里，没有要克隆的，也没有要安装的。
+这里的“人”不是 Agent，而是给它分配任务、在工作卡住时介入、决定结果能否接受的**用户**，
+也就是操作者（operator）。
+
+同一个 Agent 做同一个任务，结果仍可能完全不同。有的操作者会说清目标，只提供必要资料，
+失败后改变方向，并用独立证据核对“已经完成”。也有人让同一种失败不断重复，或直接接受未经
+验证的完成报告。
+
+**AOS 是用来检查这种差异的本地工具。**
+
+<img src="docs/assets/aos-driver-vs-agent-zh-cn.svg" alt="把 Agent 比作车辆、用户比作驾驶者，评分卡指向驾驶者的示意图" width="960">
+
+> [!WARNING]
+> AOS 目前是 `EXPERIMENTAL / PROVISIONAL`。结果只适用于当次使用的 Agent、模型、配置、
+> 机器和任务包。请勿将其用于招聘、晋升、员工监控或资格认证。
+
+## 先从 Claude Code 里运行
+
+使用 Claude Code 时，不需要克隆仓库，也不需要执行 `npm install`。
 
 ```
 /plugin marketplace add MongLong0214/agent-operator-score
@@ -38,68 +53,125 @@
 /aos-review
 ```
 
-没有分数，不消耗模型额度，几秒钟跑完，对象是你真正做过的工作。什么都不上传，遥测是关的，也没有
-可以打开的开关。这个仓库没有运行时依赖，agent 会自己从 `PATH` 注册，运行时凭据也会到它本来会去
-找的地方取。
+`/aos-review` 会回看刚结束的会话。它只读取本地记录，不调用模型，因此不消耗模型额度。
+`/aos-assess` 会重新运行 Agent，所以会消耗额度。
 
-想从仓库直接跑：
+插件省去了克隆仓库、手动注册 Agent 和手写计划文件。不过仍然需要 Node `>=22.18 <25`，
+以及已经安装并登录的 Claude Code 或 Codex CLI。
+
+`/aos-assess` 不能替你回答检查点问题。要获得正式分数，请按提示在自己的终端里作答。
+如果由 Agent 代答，测到的将是 Agent 的策略，而不是你的判断。
+
+从仓库直接运行：
 
 ```bash
-git clone https://github.com/MongLong0214/agent-operator-score
+git clone --depth 1 --branch dev https://github.com/MongLong0214/agent-operator-score
 cd agent-operator-score && npm ci
 
-node bin/aos.mjs review          # 你刚跑完的那次会话里出了什么问题
+node bin/aos.mjs review
 ```
 
-## 两个半边
+默认分支是 `dev`。需要日后精确复现同一份源码时，请使用
+[GitHub Releases](https://github.com/MongLong0214/agent-operator-score/releases) 中的标签。
 
-|  | `aos review` | `aos assess` |
+## AOS 测的是什么：不是车，而是驾驶方式
+
+常见基准测试会问：
+
+> 这个模型是否比另一个模型更快、更准确？
+
+AOS 问的是另一件事：
+
+> 使用同一个工具时，用户是否把任务交代清楚、持续监督，并验证了结果？
+
+打个比方，Agent 是**车**，操作者是**驾驶者**。AOS 不测最高时速，而是看驾驶者是否设定了
+正确目的地、发现走错路、在危险操作前停下，并在到达后确认结果确实正确。
+
+<img src="docs/assets/aos-benchmark-vs-operator-zh-cn.svg" alt="常见基准测试测车辆，AOS 测驾驶方式的对比图" width="960">
+
+## 两种功能：`review` 与 `assess`
+
+| | `aos review` | `aos assess` |
 |---|---|---|
-| 读什么 | 已经在你磁盘上的 Codex / Claude Code / Grok 会话记录 | 六个受控任务族，用你的 agent 跑 |
-| 成本 | 无——不调用模型 | 模型额度，在隔离工作区中 |
-| 产出 | 具体的问题，每一条都指名它来自哪一步 | 百分制的分数，或者一个没有分数的明确理由 |
-| 回答 | *我在反复做什么？* | *在这些条件下，我把这个 agent 用得有多好？* |
+| 做什么 | 从真实会话中找出可能有风险的模式，作为人工复核候选 | 运行六个受控任务，用受条件约束的分数概括操作过程与结果 |
+| 对象 | 本地保存的 Codex、Claude Code、Grok CLI 会话记录 | 已注册的 Codex、Claude Code 等 Agent CLI |
+| 模型额度 | 不消耗，只读取已有记录 | 会消耗，因为会实际运行 Agent |
+| 结果 | 可疑步骤与支持证据 | 百分制分数，或未签发分数的准确原因 |
 
-### `aos review` —— 不花钱的那一半
+建议先使用 `review`。它不会消耗模型额度，可以先用自己的真实工作记录理解 AOS 的判断方式，
+再决定是否运行 `assess`。
+
+### `review` — 回看已经完成的工作
 
 ```bash
-node bin/aos.mjs review --since 12   # 最近十二次有工具活动的会话里反复出现的
-node bin/aos.mjs review --list       # 挑一个
+node bin/aos.mjs review                         # 最近一次会话
+node bin/aos.mjs review --since 12              # 最近 12 次会话中的重复模式
+node bin/aos.mjs review --list                  # 列出可检查的会话路径
+node bin/aos.mjs review --session "<路径>"      # 检查列表中的指定会话
+node bin/aos.mjs review --json                  # 输出 JSON
 ```
 
-| 规则 | 什么时候触发 |
+`review` 给出的不是最终判决，而是**需要人工核对的候选项**。请对照原始会话确认是否真的成立。
+
+| 规则 | 简单来说 |
 |---|---|
-| `completion-claimed-without-verification` | 在一次没有任何东西重跑过的修改之后报告了成功 |
-| `session-ended-on-stale-evidence` | 最后一次验证早于最后一次修改 |
-| `edits-outside-the-working-directory` | 写入越出了你当时工作的目录树 |
-| `destructive-command-executed` | 跑了不可逆的命令；例行同步不算 |
-| `secret-material-in-session` | 出现了密钥材料，只报告种类，绝不重复其内容 |
-| `long-uninterrupted-tool-run` | 一段没有你输入的长区间——只有当其中有东西失败或重复时才算问题 |
-| `completion-claimed-over-a-failed-check` | 声称完成之前的那次校验已经报告失败，却仍然说完成了 |
-| `verification-exit-status-discarded` | 检查跑在 `\|\| true` 下面，所以它报告了什么根本无从看见 |
+| `completion-claimed-without-verification` | Agent 修改文件后没有重新测试或验证，却声称已经完成 |
+| `session-ended-on-stale-evidence` | 最后一次修改之后没有新验证证据，会话就结束了 |
+| `edits-outside-the-working-directory` | Agent 修改了当前项目目录之外的文件 |
+| `destructive-command-executed` | 执行了可能导致数据丢失、难以撤销的命令 |
+| `secret-material-in-session` | 会话中出现了 API Key、令牌或私钥等敏感值 |
+| `long-uninterrupted-tool-run` | 长时间无人介入的执行中发生了失败或重复操作 |
+| `completion-claimed-over-a-failed-check` | 前一次检查已经失败，Agent 仍声称工作完成 |
+| `verification-exit-status-discarded` | 验证命令后加了 `\|\| true`，把失败状态丢掉了 |
 
-每一条都指名产生它的那一步，好让你拿它和自己对那次会话的记忆去核对，而不是相信这个工具。
-`--since` 更有用：一次会话告诉你发生了什么，十二次会话告诉你你在反复做什么。
+单次会话回答“这次发生了什么”；多次会话更容易看出“我反复在做什么”。后者是 `review`
+更有价值的用法。
 
-### `aos assess` —— 产出数字的那一半
+当前 `review` 规则在独立测量中尚未达到目标准确率。所有提示都应视为人工核对候选，
+而不是自动裁决。
 
-<img src="docs/assets/aos-families.svg" alt="六个编码任务族：意图、上下文、图、循环与状态、虚假完成、恢复与安全与效率。" width="960" height="252">
+### `assess` — 用练习任务检查操作方式
+
+`assess` 会让 Agent 实际执行 AOS 准备的六个任务。Agent 说“完成了”并不会自动得分。
+独立验证器会检查产物和执行记录，AOS 也会观察操作者在工作受阻时如何判断。
+
+> [!CAUTION]
+> 当 `aos init` 在 `PATH` 中找到 Claude Code 时，会用
+> `--dangerously-skip-permissions` 注册非交互运行。这会跳过 Claude Code 自身的权限确认。
+> AOS 的临时工作区、临时 `HOME` 和环境变量过滤仍然存在，但请先理解该参数再运行评估。
 
 ```bash
-node bin/aos.mjs assess --template aos-plan.json          # 写一份计划
-node bin/aos.mjs assess --plan aos-plan.json --checkpoints
+node bin/aos.mjs init                   # 从 PATH 自动注册 Claude Code 和 Codex
+node bin/aos.mjs doctor                 # 检查命令与已知凭据路径
+
+node bin/aos.mjs assess                 # 无人诊断：不会签发正式分数
+node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分数的运行
 ```
 
-每个任务族都会在隔离工作区里运行你注册的 agent CLI，由一个隐藏校验器给 agent **实际产出的东西**打分，而不是它对自己的描述。
+`init` 不会覆盖用户自己配置的 Agent。未指定计划文件时，`assess` 会生成并使用可直接运行的
+默认 `aos-plan.json`。计划文件不是自评问卷，其写法是否漂亮也不会计入分数。
 
-<img src="docs/assets/aos-pipeline.svg" alt="声明的画像与锁定的种子产生一次受控运行；运行会在操作者检查点停下，隐藏校验器给 agent 的产物打分；二十项指标进入确定性评分器，签发闸门决定这次运行能否携带分数，三个锁定种子得出一个 Operator Score。" width="960" height="392">
+`doctor` 会检查可执行文件和已知凭据路径，但不会调用模型。如果 Agent 根本没有启动，或者不同
+任务在工作开始前以完全相同的方式失败，AOS 会停止，而不会把错误配置算成操作者低分。
 
----
+## 评分卡上的六个问题
 
-## 没人看着的运行不会有分数
+AOS 关注下面六件事。
 
-六个维度中有一个问的是：**运行进行时你做了什么**。这个问题无法从会话记录里回答。加上
-`--checkpoints`，走到阻塞处的阶段会停下来，把它看到的东西给你看：
+<img src="docs/assets/aos-six-dimensions-zh-cn.svg" alt="用六个实际问题说明 AOS 观察的六个维度" width="960">
+
+1. **让它做什么** (`Task Specification`) — 目标、不做什么、什么算完成
+2. **给它看什么** (`Context Engineering`) — 相关、最新、可信的资料
+3. **如何拆分任务** (`Decomposition & Routing`) — 负责人、依赖、交接、汇合
+4. **卡住时做了什么** (`Human-in-the-Loop Control`) — 发现问题、改变方向或停止
+5. **是否真的验证过** (`Evaluation & Verification`) — 用独立证据核对“完成”
+6. **是否安全且节省** (`Guardrails, Recovery & Cost`) — 密钥、权限、恢复、调用预算
+
+六个维度下共有 20 项指标。每项指标由四个明确检查组成，并记录验证器、证据和判定理由。
+
+## 检查点：卡住时做了什么
+
+当 Agent 重复同一种失败，或无法继续前进时，AOS 会暂时停下并显示证据。
 
 ```text
 AOS checkpoint (1 of 3) — repeated-failure
@@ -121,130 +193,185 @@ blocked before this stage: the migration step times out
   agents: codex
 ```
 
-**选项本身从来不是分数。** 被评分的是你的回答造成的状态变化——改变了的指令、改道了的路径、
-真正停下来的中止——以及随后的工作是不是同一件事的重复。选一个看起来谨慎的选项，然后什么都不改
-地重试，正是检查点要抓的那个缺陷；如果标签就是指标，它反而会得高分。
+检查点会依次用“是／否”询问：是否查看完整证据、是否转交另一个 Agent、是否在此停止、
+是否修改指令。按 Enter 表示“否”。四个问题全部回答“否”时，会按原状态重试该阶段。
 
-这里不检查你是不是在终端前。`expect` 也能拿住一个 pty，人也可以拿着 pty 走开。你在场这件事由
-参数来表明。不加这个参数，运行会以无人值守结束，报告 `INCOMPLETE`，并写明它本来会得多少分。
+**“是／否”本身不是分数。** AOS 看的是回答造成的实际状态变化：指令是否真的改变、路线是否
+真的切换、选择停止后是否真的停止，以及同一种失败是否再次出现。
 
-## 三次运行，一个数字
+不加 `--checkpoints` 就无法观察操作者的判断。诊断结果和临时计算值会保留，但正式分数会以
+`INCOMPLETE` 状态扣留。插件或另一个 Agent 代答也一样。
+
+## 没观察到，不等于 0 分
+
+假设驾考考官没有机会看到停车项目。把它记成 0 分，会把“停车失败”和“没有观察到停车”
+混成同一件事。
+
+<img src="docs/assets/aos-not-observed-zh-cn.svg" alt="20 项中只观察到 3 项，因此 AOS 不签发分数的示意图" width="960">
+
+AOS 会区分：
+
+- **失败**：已经检查，条件没有满足。
+- **`NOT_OBSERVED`**：没有足够证据作出判断。
+- **`INCOMPLETE`**：重要项目观察不足，因此不签发正式分数。
+
+20 项指标中至少要观察到 18 项；功能结果、独立验证、最终版本、完成声明、恢复与安全这些必需
+指标也必须可观察。空产物和沉默不会得分。**沉默不等于通过。**
+
+`provisional_raw` 只是排查运行问题时参考的临时计算值，不是正式分数。
+
+## 两个 83 分不能直接比较
+
+不同车辆、路线和天气下得到的两个 83 分，不是同一场考试。AOS 分数也是如此。
+
+<img src="docs/assets/aos-profile-bound-zh-cn.svg" alt="不同配置下的两个 83 分不能直接比较的示意图" width="960">
+
+分数含义会随以下条件变化：
+
+- 使用的 Agent 与模型
+- CLI 版本与执行配置
+- 机器与隔离级别
+- 任务包与种子
+
+AOS 会把这些条件与结果一起记录。这就是 `PROFILE-BOUND`：不同配置下的分数描述的是不同测量，
+不能直接比较。
+
+| AOS 不是什么 | 原因 |
+|---|---|
+| 一个人综合 AI 能力的总分 | 它只观察一个受限环境和任务包 |
+| 模型、CLI 或 Harness 的通用优劣基准 | 配置不同就是不同考试 |
+| 百分位、排名或认证 | 没有参考总体或常模 |
+| 招聘、晋升或员工监控工具 | 预期用途明确禁止对人员造成不利影响的使用 |
+| SaaS 或遥测服务 | 运行记录与报告留在本地，AOS 没有收集服务 |
+| 已验证的科学测量工具 | 校准、独立复现和专业评审尚未完成 |
+
+早期版本曾根据操作者填写的 JSON 计划文件形状，直接决定 20 项指标中的 17 项；一份没有实际
+内容的计划也可能得到 `17/17`。现在计划文件不再是评分输入，指标只能从运行中被观察到，
+否则保持 `NOT_OBSERVED`。
+
+任务与评分逻辑公开在 `lib/suite.mjs`。AOS 因此是练习与自查工具，不是靠猜隐藏答案的考试。
+
+## 为什么运行三次后合成一个分数
+
+单次运行会受模型波动和偶然因素影响。AOS 会在开始时锁定三个种子，并把同一配置下的三次运行
+组成一个周期。
 
 ```bash
-node bin/aos.mjs cycle start                                  # 三个种子，此刻锁定
-node bin/aos.mjs cycle run --checkpoints
-node bin/aos.mjs cycle                                        # operator score
-node bin/aos.mjs dashboard                                    # 只读、回环、带令牌
+node bin/aos.mjs cycle start                                  # 锁定三个种子
+node bin/aos.mjs cycle run --checkpoints                      # 按顺序运行
+node bin/aos.mjs cycle                                        # 有效运行的中位数
+node bin/aos.mjs dashboard                                    # 本机只读面板
 ```
 
-种子只抽一次，之后再也不重抽——否则*跑二十次留最好的三次*只差一步。Operator Score 是所有有效
-运行的中位数，低分也算在内。唯一被排除的是什么都没测到的运行，而且每一个都会连同理由一起打印
-出来。同一台机器上三次重复的结果记为 **local repeat evidence**，绝不称作 confidence。
+目前六个任务中只有三个会随种子改变细节。因此，三次本地重复不能被扩大解释为总体层面的统计
+置信度，也不能证明通用能力。
 
-## 什么会扣住数字，天花板又做了什么
+只有使用锁定种子、相同 Profile、相同 suite major 和 scorer major，并且具备终止记录与正式
+分数的运行才会进入汇总。被排除的运行会显示原因。有效低分不能被丢弃，也不能用同一种子重跑。
 
-<img src="docs/assets/aos-gates.svg" alt="签发闸门有五个条件，必须全部成立才会给出分数。四个天花板以天花板而非扣分的方式生效，最低的那个胜出：安全 39 落在 FRAGILE，虚假完成 49 与被忽略的严重错误 59 落在 DEVELOPING，缺少确切修订 69 落在 OPERATIONAL。" width="960" height="436">
+如果周期配置错误，可以用 `--force --reason "<原因>"` 终止并重新开始。旧周期、种子、运行和
+分数不会删除。
 
-天花板不是扣分。一次复制了密钥的运行会被压在 39，无论其余部分做得多好——因为把这件事平均掉的
-数字，描述的是另一次运行。
+Operator Score 是所有有效运行的**中位数**。极差、中位绝对偏差（MAD）和
+**local repeat evidence** 只描述这台机器上的重复波动；AOS 不把它称为统计
+`confidence`。
 
----
+## 没有分数与分数上限
 
-## 它拒绝成为什么
+AOS 不会因为能做算术就一定签发正式分数。观察不足的运行会保持 `INCOMPLETE`。
 
-设计的大部分是拒绝，而这正是要点。
+如果实际观察到严重违规，AOS 不采用普通扣分，而是限制分数的**最高值**：
 
-| 它不是 | 因为 |
-|---|---|
-| 对能力的测量 | 分数以声明的环境和任务包为条件，并在它出现的每一处这样说明 |
-| 模型或框架的基准 | 模型是固定的，被测的单位是操作者 |
-| 百分位、排名或认证 | 不存在可供排名的总体，也没有作出这种主张 |
-| 招聘、晋升或监控工具 | 写在 [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) 里，而不是留给人去猜 |
-| SaaS 或遥测产品 | 一切都留在你的磁盘上；代码库里没有任何外发客户端 |
-| 已验证的结果 | `EXPERIMENTAL / PROVISIONAL` —— 没有校准研究、没有独立复现、没有合格评审 |
+- 泄露敏感信息、执行禁止的外部操作或越出工作区：最高 39 分
+- 隐藏验证已经失败，仍声称完成：最高 49 分
+- 忽略严重错误，或盲目重试已经失败的恢复路线：最高 59 分
+- 被验证的版本与最终版本不一致：最高 69 分
 
-你写的计划**不是评分输入**。它曾经仅凭对你自己所写 JSON 的形状检查，就决定了二十项指标中的
-十七项，而一份字面意义上的垃圾计划拿到了 17/17。现在指标要么从运行中被观测到，要么就是
-`NOT_OBSERVED`，而 `NOT_OBSERVED` 绝不是零。
+例如，泄露敏感信息的运行无论其他部分多好，都不能超过 39 分。严重问题不能被其他高分平均掉。
 
-这些任务族的答案就在 `lib/suite.mjs` 里。作为练习没有问题，这也正是它不是一场考试的原因。
+只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。
+`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 只概括当次运行，
+不代表一个人的整体能力或行业排名。
 
-## 它测出了什么
+## 已有实测结果与当前限制
 
-真实的 Codex，一台机器，每个周期三个锁定种子，每次运行都有人在场：
+下面是使用真实 Codex 在一台机器上的运行案例。每个周期包含三个锁定种子，所有检查点都有
+操作者参与。
 
-| | agent 沙箱 | Operator Score | 各次运行 | 极差 |
+| 周期 | Agent 沙箱 | Operator Score | 各次分数 | 极差 |
 |---|---|---|---|---|
 | 1 | 开 | **69** | 69, 69, 83 | 14 |
-| 2 | 关 | *撤回* | 49, 59, 89 | — |
+| 2 | 关 | *已撤回* | 49, 59, 89 | — |
 | 3 | 关 | **90** | 90, 87, 92 | 5 |
 
-周期 2 的汇总值被撤回而不是报告出来：它把一次运行的分数记到了全部三个种子上，所以那个数字描述
-的是同一次运行被数了三遍。它各次运行的分数是真的，正是它们找出了三个缺陷——都在周期 3 之前
-修好了。
+“Agent 沙箱”指 Codex 自身的命令执行限制。AOS 的临时工作区、替换后的 `HOME` 和环境变量过滤
+在三个周期中都保持启用。
 
-`aos review` 只测过一次，用的是从写规则的工作中留出的 320 次会话：**10 条高严重度问题中有 4 条
-是对的。** 六个错误都已修复，但那不是第二次测量——用暴露出错误的那批会话去测修复，得到的是调参
-数字。[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) 这样写了，也写明语料里已经没有未使用的会话可以
-重新测量。
+周期 2 的汇总分数已撤回，因为一次运行的分数被记录到三个种子上，相当于把同一次运行算了三遍。
+各次分数仍保留，其中暴露出的三个缺陷已在周期 3 前修复。
+
+`aos review` 曾在 320 个未用于编写规则的会话上进行过一次测量。
+**10 条高严重度提示中 4 条正确，精确率为 0.400。** 六个误报后来已修复，但用同一批会话检查
+修复结果属于调参，不是第二次独立测量。
 
 ```bash
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
-node bin/aos.mjs holdout          # 三道验收闸门
+node bin/aos.mjs holdout
 ```
 
-台账保存的是每次会话的摘要、每条问题的标识、你的判定和你的理由——绝不保存会话记录本身。
+在新的、未使用过的会话上重新测量之前，不能声称当前 `review` 的准确率已经确立。holdout 台账
+只保存会话哈希、提示 ID、人工判定与理由，不保存会话正文。详见
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。
 
-## 报告
+## 输出、安全与隐私
 
-分数旁边的 HTML 报告按操作者自己的区域设置显示：韩语环境用韩语，其余一律英语。两种语言都写在同一
-个文件里、由 CSS 隐去其一，所以发给同事的报告会以**对方**的语言打开，而不是生成它那台机器的语言。
-切换用的是复选框而不是脚本——这个页面必须继续做到不向任何地方发出请求。
+`assess` 完成后会生成：
 
-## 安全与隐私
+- **`card.svg`** — 在一张图中显示分数、六个维度、运行条件和最先应修复的一项
+- **Markdown 与 HTML 报告** — 指标级证据、失败、未观察项、扣留原因与上限
+- **JSON 结果** — 供其他工具读取的原始数据
 
-| | |
+未签发正式分数时，卡片会显示 **NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
+
+可用 `node bin/aos.mjs report --run <id> --format markdown|html|json` 重新生成报告。HTML 报告与
+评分卡在韩语 Locale 下显示韩语，其他 Locale 下显示英语。目前尚无日语或中文报告界面。
+
+| 项目 | 实际行为 |
 |---|---|
-| 网络 | 一个回环服务器，绑定 `127.0.0.1`，必须带令牌，只读，只接受 GET，没有任何路由会返回会话记录。代码库中不存在外发客户端 |
-| 依赖 | 无。`npm ci` 不会安装任何东西 |
-| 被评估的 agent | 以替换过的 `HOME` 和过滤后的环境运行，拿不到任何 `AOS_` 前缀的变量——它永远不知道你的运行记录放在哪里 |
-| 运行时凭据 | 到该运行时本来会去找的地方取，经进程环境交给它，无需任何配置。记录名字与来源而不记录取值，也不把令牌写到磁盘上。`--no-auto-auth` 可以关掉 |
-| 密钥 | 在读取输出的地方就被移除，只按种类报告，绝不写回到问题、结果或事件中 |
-| 你的主目录 | `~/.aos` 为 `0700`，其中每个文件为 `0600` |
+| AOS 自身网络 | 面板只绑定 `127.0.0.1`，需要令牌，只读且仅接受 GET。没有返回会话正文的路由，AOS 也没有外部收集客户端 |
+| Agent 网络 | `assess` 中的 Codex 和 Claude Code 可能连接各自的模型提供方；这不是完全离线运行 |
+| 依赖 | 没有运行时包依赖，但需要受支持的 Node |
+| Agent 环境 | AOS 会替换 `HOME`。默认的 `BEST_EFFORT_CLI` 模式会保留普通的非敏感环境变量，移除名称看起来敏感的变量以及用户原有的 `AOS_*`、`AOS_HOME`，再加入四个运行上下文变量 |
+| 运行信息与凭据 | 新加入的 AOS 变量是 `AOS_SESSION_ID`、`AOS_FAMILY`、`AOS_WORKSPACE`、`AOS_TASK_FILE`。明确允许的变量和已支持的运行时凭据也可能被传入。可以记录名称与来源，但不会保存凭据值 |
+| 敏感值与本地存储 | 输出中的敏感值在读取时被移除。`~/.aos` 权限为 `0700`，其中的文件为 `0600` |
 
-漏洞请通过 [`SECURITY.md`](SECURITY.md) 报告。
+可用 `--no-auto-auth` 关闭凭据自动发现。安全问题请按
+[`SECURITY.md`](SECURITY.md) 中的流程报告。
 
-## 环境要求
+## 直接运行、开发与相关文档
 
-Node `>=22.18 <25`，macOS 或 Linux。不会全局安装任何东西，也没有发布到任何 registry 的包；
-`npm pack` 会构建一个可在本地安装的 tarball。
-
-## 开发
+直接运行需要 Node `>=22.18 <25`、原生 macOS 或 Linux，以及 x64 或 arm64。暂不支持 WSL。
+无需全局安装，也没有发布到 npm Registry 的包。
 
 ```bash
 npm ci
-npm test                 # 测试套件
-npm run verify:mvp       # 契约、天花板和档位是否仍如其所述
-npm run test:mutation    # 逐个破坏具名守卫，检查被指名的测试会不会死
-npm run smoke:package    # 打包、装到别处、像操作者那样用一遍
+npm test                 # 全部测试
+npm run verify:mvp       # 验证评分契约、上限和等级
+npm run test:mutation    # 破坏守卫时，对应测试必须失败
+npm run smoke:package    # 打包到其他位置，验证真实使用流程
 ```
 
-CI 在每次变更上运行七条泳道：Ubuntu 上的 Node 22 与 Node 24、macOS 上的 Node 24 跑测试套件，
-mutation 与 `verify:mvp`，以及 Ubuntu 和 macOS 上的打包冒烟。分支遵循 git flow，模型写在
-[`CONTRIBUTING.md`](CONTRIBUTING.md) 里。
+CI 会在 Ubuntu 的 Node 22、24 与 macOS 的 Node 24 上运行全部测试，并单独运行 `verify:mvp`、
+变异测试，以及 Ubuntu、macOS 的包冒烟测试。
 
-## 文档
-
-| | |
+| 文档 | 内容 |
 |---|---|
-| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 哪些还没有被确立，以及每个数字被绑定在什么上 |
-| [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 可以用来做什么，不可以用来做什么 |
-| [`docs/what-this-measures.html`](docs/what-this-measures.html) | 用图讲清楚在给什么打分 — 韩语 |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支模型、一次变更需要携带什么、DCO |
-| [`SECURITY.md`](SECURITY.md) | 报告漏洞 |
+| [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 尚未确立的结论，以及每项结果受哪些条件约束 |
+| [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 允许与禁止的使用方式 |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支策略、变更所需证据、DCO |
+| [`SECURITY.md`](SECURITY.md) | 私下报告安全漏洞的流程 |
+| [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 第三方声明 |
 
-## 许可
-
-MIT —— 见 [`LICENSE`](LICENSE)。贡献遵循 [DCO](CONTRIBUTING.md)，请用 `git commit -s` 签名。
-第三方声明在 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+MIT License，详见 [`LICENSE`](LICENSE)。贡献需遵循
+[Developer Certificate of Origin](CONTRIBUTING.md)，并使用 `git commit -s` 签名。
