@@ -14,3 +14,6 @@ coverage/
 
 # Serena/LSP project metadata. Agent tooling, never a public surface.
 .serena/
+
+# Written by `assess` when no --plan is named. A generated stub, never the repo's.
+aos-plan.json
