@@ -389,6 +389,7 @@ CI는 Ubuntu에서 Node 22와 Node 24로, macOS에서 Node 24로 테스트합니
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 아직 확립되지 않은 주장과 각 숫자에 붙는 조건 |
 | [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 사용해도 되는 곳과 사용하면 안 되는 곳 |
+| [`docs/what-this-measures.html`](docs/what-this-measures.html) | AOS가 무엇을 채점하는지 그림으로 먼저 설명 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 브랜치 전략, 변경 조건, DCO 서명 방법 |
 | [`SECURITY.md`](SECURITY.md) | 보안 취약점 신고 방법 |
 
