@@ -79,7 +79,9 @@ test("each README embeds the five explainer visuals in its own language", () => 
       assert.match(text, new RegExp(`<img src="${path}"`), `${file}: does not embed ${path}`);
       assert.equal(existsSync(join(root, path)), true, `${path} is missing`);
     }
-    // The HTML page remains as the design source, but the README must show the pictures directly.
+    // The page this replaced is gone. The assertion stays because the mistake it names -- sending a
+    // reader somewhere else for the picture, in a language that is not theirs -- is the one worth
+    // being unable to make again.
     assert.doesNotMatch(text, /\]\(docs\/what-this-measures\.html\)/, `${file}: links away instead of embedding the explanation`);
   }
 });
@@ -161,32 +163,4 @@ test("all four README files are included in the local package", () => {
   const manifest = JSON.parse(read("package.json"));
   const files = new Set(manifest.files ?? []);
   for (const { file } of LANGUAGES) assert.equal(files.has(file), true, `package.json omits ${file}`);
-});
-
-// The original visual explainer remains as an offline design reference. It must continue to make no
-// request of any kind even though the READMEs now embed localized SVGs directly.
-test("the original explainer asks for nothing from anywhere", () => {
-  const file = join(root, "docs", "what-this-measures.html");
-  assert.equal(existsSync(file), true);
-  const html = readFileSync(file, "utf8");
-
-  assert.equal(/<script/i.test(html), false, "a script");
-  assert.equal(/<iframe|<img/i.test(html), false, "an embed");
-  assert.equal(/@import/i.test(html), false, "an imported stylesheet");
-  assert.deepEqual(html.match(/url\((?!#)[^)]*\)/gi) ?? [], []);
-  assert.deepEqual(
-    (html.match(/https?:\/\/[^"'\s>)]*/g) ?? []).filter((url) => url !== "http://www.w3.org/2000/svg"),
-    []
-  );
-
-  const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
-  assert.ok(links.length > 0);
-  for (const link of links) {
-    assert.equal(link.startsWith("http"), false, link);
-    assert.equal(existsSync(join(root, "docs", link)), true, `${link} does not exist`);
-  }
-
-  assert.match(html, /prefers-color-scheme:dark/);
-  assert.match(html, /\[data-theme="dark"\]/);
-  assert.match(html, /body\{[^}]*background:var\(--ground\)/);
 });
