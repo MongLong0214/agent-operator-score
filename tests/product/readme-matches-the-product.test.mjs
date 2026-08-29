@@ -126,3 +126,32 @@ test("what the READMEs say about CI is what the workflow does", () => {
     assert.doesNotMatch(text, /Ubuntu 22|Ubuntu 24|macOS 24/, `${file} names Node versions as OS releases`);
   }
 });
+
+// Round 9 of the sweep spent a whole three-run cycle unattended and learned only afterwards that no
+// score was possible. M11-M13 are observed from a real operator turn or not at all, so an unattended
+// run tops out at 17 of 20 against a gate of 18 -- arithmetic known before any model is called, on a
+// command that spends model quota and whose seeds are not refundable.
+test("an unattended run says it cannot be scored before it spends anything", () => {
+  const home = mkdtempSync(join(tmpdir(), "aos-unattended-home-"));
+  const cwd = mkdtempSync(join(tmpdir(), "aos-unattended-cwd-"));
+  try {
+    aosIn(cwd, home, ["agent", "add", "codex", "--command", "/bin/sh", "--arg", "-c", "--arg", "exit 0"]);
+    const run = aosIn(cwd, home, ["assess"]);
+    assert.match(run.stderr, /no --checkpoints/);
+    assert.match(run.stderr, /17 of 20/);
+    assert.match(run.stderr, /gate of 18/);
+    // Before the run, not in the summary after it: the notice is worth nothing once the quota is gone.
+    assert.ok(
+      run.stderr.indexOf("no --checkpoints") < (run.stdout.indexOf("metrics observed") + run.stderr.length),
+      "the notice arrived after the run"
+    );
+    // stdout stays machine-readable -- this is the mistake the shipped-plan notice already made once.
+    assert.doesNotMatch(aosIn(cwd, home, ["assess", "--json"]).stdout, /no --checkpoints/);
+    JSON.parse(aosIn(cwd, home, ["assess", "--json"]).stdout);
+
+    // And it is silent when the operator is there, so it never becomes noise to scroll past.
+    assert.doesNotMatch(aosIn(cwd, home, ["assess", "--checkpoints"]).stderr, /no --checkpoints/);
+  } finally {
+    for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
+  }
+});
