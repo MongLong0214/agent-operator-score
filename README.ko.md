@@ -35,7 +35,8 @@ AI 코딩 에이전트를 시험하는 도구는 많습니다. AOS는 **그걸 �
 
 **AOS는 이 차이를 확인하는 로컬 도구입니다.**
 
-[그림으로 1분 만에 이해하기 → 차가 아니라 운전자를 봅니다](docs/what-this-measures.html)
+<!-- 그림 원본: docs/what-this-measures.html -->
+<img src="docs/assets/aos-driver-vs-agent-ko.svg" alt="에이전트는 차, 사용자는 운전자이며 채점표가 운전자를 가리키는 그림" width="960">
 
 > [!WARNING]
 > AOS는 현재 `EXPERIMENTAL / PROVISIONAL` 상태입니다. 결과는 특정 에이전트·모델·설정·머신·
@@ -89,6 +90,8 @@ AOS가 묻는 질문은 다릅니다.
 자동차로 비유하면 에이전트는 **차**, 운영자는 **운전자**입니다. AOS가 보는 대상은 차의 최고속도가
 아니라 운전자가 목적지를 제대로 정했는지, 잘못된 길을 알아챘는지, 사고가 날 상황에서 멈췄는지,
 도착한 뒤 정말 맞는 곳인지 확인했는지입니다.
+
+<img src="docs/assets/aos-benchmark-vs-operator-ko.svg" alt="일반 벤치마크는 차를 재고 AOS는 운전을 잰다는 비교 그림" width="960">
 
 AOS에는 이를 확인하는 두 가지 기능이 있습니다.
 
@@ -168,7 +171,9 @@ node bin/aos.mjs assess --checkpoints   # 운영자가 직접 참여하는 점�
 
 ## 채점표에 적히는 여섯 가지
 
-아티팩트의 표현대로 풀면 AOS는 아래 여섯 가지를 봅니다.
+AOS는 아래 여섯 가지를 봅니다.
+
+<img src="docs/assets/aos-six-dimensions-ko.svg" alt="AOS가 보는 여섯 영역을 쉬운 질문으로 정리한 그림" width="960">
 
 1. **뭘 만들지 말했나** (`Task Specification`) — 목표, 하지 말아야 할 것, 완료라고 할 조건
 2. **뭘 보여 줬나** (`Context Engineering`) — 맞는 자료를 골랐는지, 낡거나 수상한 자료를 걸렀는지
@@ -218,6 +223,8 @@ blocked before this stage: the migration step times out
 운전 시험에서 시험관이 주차를 볼 기회가 없었다고 가정해 보겠습니다. 이때 주차를 0점 처리하면
 “주차를 못했다”와 “주차를 보지 못했다”를 같은 일로 취급하게 됩니다.
 
+<img src="docs/assets/aos-not-observed-ko.svg" alt="20개 중 3개만 관찰한 경우 점수를 내지 않는다는 그림" width="960">
+
 AOS는 둘을 구분합니다.
 
 - **실패**: 확인해 보니 조건을 지키지 못했습니다.
@@ -234,6 +241,8 @@ AOS는 둘을 구분합니다.
 
 다른 차, 다른 코스, 다른 날씨에서 받은 두 개의 83점은 같은 시험 결과가 아닙니다.
 AOS 점수도 마찬가지입니다.
+
+<img src="docs/assets/aos-profile-bound-ko.svg" alt="서로 다른 조건에서 나온 83점 두 개는 직접 비교할 수 없다는 그림" width="960">
 
 점수의 의미는 다음 조건에 따라 달라집니다.
 
@@ -389,7 +398,7 @@ CI는 Ubuntu에서 Node 22와 Node 24로, macOS에서 Node 24로 테스트합니
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 아직 확립되지 않은 주장과 각 숫자에 붙는 조건 |
 | [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 사용해도 되는 곳과 사용하면 안 되는 곳 |
-| [`docs/what-this-measures.html`](docs/what-this-measures.html) | AOS가 무엇을 채점하는지 그림으로 먼저 설명 |
+| README 본문 그림 | 차·운전자 비유, 여섯 영역, 미관찰 상태, 프로필 차이를 위에서 바로 확인 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 브랜치 전략, 변경 조건, DCO 서명 방법 |
 | [`SECURITY.md`](SECURITY.md) | 보안 취약점 신고 방법 |
 
