@@ -1,0 +1,26 @@
+name: update-readme-review-branch
+
+on:
+  push:
+    branches:
+      - docs/finalize-all-readmes
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Merge current dev and remove this workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin dev
+          git merge --no-edit origin/dev
+          git rm -f .github/workflows/update-readme-review-branch.yml
+          git commit -m "chore: remove one-time branch update workflow"
+          git push origin HEAD:docs/finalize-all-readmes
