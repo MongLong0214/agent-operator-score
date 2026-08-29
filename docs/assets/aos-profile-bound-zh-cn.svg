@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">同样是83分也不一定是同一种测量</title>
+  <desc id="desc">agent、隔离设置和种子不同的两个83分不能直接比较。</desc>
+  <rect width="1200" height="390" fill="#f0f1ee"/>
+  <g font-family="system-ui,-apple-system,'Microsoft YaHei','PingFang SC',sans-serif">
+    <rect x="40" y="38" width="455" height="255" rx="10" fill="#fff" stroke="#d5d8d2" stroke-width="3"/><text x="78" y="88" fill="#5b615c" font-size="19" font-family="ui-monospace,monospace">PROFILE A</text><text x="78" y="174" fill="#0f5132" font-size="88" font-weight="850">83</text><text x="78" y="225" fill="#1a1c1a" font-size="23">Codex · 沙箱开 · seed 1</text>
+    <rect x="705" y="38" width="455" height="255" rx="10" fill="#fff" stroke="#d5d8d2" stroke-width="3"/><text x="743" y="88" fill="#5b615c" font-size="19" font-family="ui-monospace,monospace">PROFILE B</text><text x="743" y="174" fill="#0f5132" font-size="88" font-weight="850">83</text><text x="743" y="225" fill="#1a1c1a" font-size="23">Claude · 沙箱关 · seed 9</text>
+    <text x="600" y="175" fill="#a8322a" font-size="54" font-weight="900" text-anchor="middle">≠</text>
+    <rect x="365" y="319" width="470" height="52" rx="26" fill="#0f5132"/><text x="600" y="353" fill="#fff" font-size="23" font-weight="800" text-anchor="middle">PROFILE-BOUND · 条件不同就是不同测量</text>
+  </g>
+</svg>
