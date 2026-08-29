@@ -138,7 +138,7 @@ node bin/aos.mjs review --json                  # 기계가 읽을 수 있는 JS
 node bin/aos.mjs init                   # PATH의 Claude Code·Codex를 자동 등록
 node bin/aos.mjs doctor                 # 실행 파일과 인증 경로를 사전 점검
 
-node bin/aos.mjs assess                 # 무인 진단: 공식 점수는 보류될 수 있음
+node bin/aos.mjs assess                 # 무인 진단: 공식 점수는 반드시 보류됨
 node bin/aos.mjs assess --checkpoints   # 운영자가 참여하는 점수 실행
 ```
 
