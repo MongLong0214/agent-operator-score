@@ -354,6 +354,7 @@ CI는 Ubuntu에서 Node 22와 Node 24로, macOS에서 Node 24로 테스트를 �
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 아직 확립되지 않은 주장과 각 숫자에 붙는 조건 |
 | [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 허용되는 사용 방식과 사용하면 안 되는 방식 |
+| [`docs/what-this-measures.html`](docs/what-this-measures.html) | 무엇을 채점하는지 그림으로 — 처음이라면 여기부터 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 브랜치 전략, 변경 조건, DCO 서명 방법 |
 | [`SECURITY.md`](SECURITY.md) | 보안 취약점 신고 방법 |
 

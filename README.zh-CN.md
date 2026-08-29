@@ -239,6 +239,7 @@ mutation 与 `verify:mvp`，以及 Ubuntu 和 macOS 上的打包冒烟。分支�
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 哪些还没有被确立，以及每个数字被绑定在什么上 |
 | [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 可以用来做什么，不可以用来做什么 |
+| [`docs/what-this-measures.html`](docs/what-this-measures.html) | 用图讲清楚在给什么打分 — 韩语 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 分支模型、一次变更需要携带什么、DCO |
 | [`SECURITY.md`](SECURITY.md) | 报告漏洞 |
 

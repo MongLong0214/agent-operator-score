@@ -251,6 +251,7 @@ model is written down in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | what has not been established, and what every number is bound to |
 | [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | what this may and may not be used for |
+| [`docs/what-this-measures.html`](docs/what-this-measures.html) | a picture explainer of what is being scored — in Korean |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | the branch model, what a change has to carry, and the DCO |
 | [`SECURITY.md`](SECURITY.md) | reporting a vulnerability |
 

@@ -252,6 +252,7 @@ CI は変更のたびに七つのレーンを走らせます。Ubuntu の Node 2
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 何が確立されていないか、すべての数値が何に束縛されているか |
 | [`docs/INTENDED_USE.md`](docs/INTENDED_USE.md) | 何に使ってよく、何に使ってはならないか |
+| [`docs/what-this-measures.html`](docs/what-this-measures.html) | 何が採点されるのかを図で — 韓国語 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | ブランチモデル、変更が備えるべきもの、DCO |
 | [`SECURITY.md`](SECURITY.md) | 脆弱性の報告 |
 
