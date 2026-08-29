@@ -57,7 +57,7 @@ own credential is resolved the way that runtime would have resolved it.
 
 |  | `aos review` | `aos assess` |
 |---|---|---|
-| Reads | a Codex or Claude Code transcript already on your disk | six controlled task families, run against your agents |
+| Reads | a Codex, Claude Code or Grok transcript already on your disk | six controlled task families, run against your agents |
 | Costs | nothing — no model is called | model quota, in isolated workspaces |
 | Produces | specific findings, each naming the step it came from | a score out of 100, or a stated reason there is none |
 | Answers | *what do I keep doing?* | *how well do I run this agent, under these conditions?* |
@@ -65,7 +65,7 @@ own credential is resolved the way that runtime would have resolved it.
 ### `aos review` — the half that costs nothing
 
 ```bash
-node bin/aos.mjs review --since 12   # what recurs across the last twelve
+node bin/aos.mjs review --since 12   # what recurs across the last twelve with tool activity
 node bin/aos.mjs review --list       # pick one
 ```
 
@@ -77,6 +77,8 @@ node bin/aos.mjs review --list       # pick one
 | `destructive-command-executed` | an irreversible command ran; routine synchronisation is not one |
 | `secret-material-in-session` | key material appeared, reported by kind and never repeated |
 | `long-uninterrupted-tool-run` | a long stretch with no input from you — reported only if something inside it failed or repeated |
+| `completion-claimed-over-a-failed-check` | the agent called it done, and the last check before that claim had reported failure |
+| `verification-exit-status-discarded` | the check ran under `\|\| true`, so whatever it reported could not have been seen |
 
 Every finding names the step that produced it, so you can check it against your own memory of the
 session instead of trusting the tool. `--since` is the more useful view: one session tells you what
@@ -136,7 +138,7 @@ walk away. You say you are here by passing the flag. Without it the run finishes
 
 ```bash
 node bin/aos.mjs cycle start                                  # three seeds, fixed now
-node bin/aos.mjs cycle run --plan aos-plan.json --checkpoints
+node bin/aos.mjs cycle run --checkpoints
 node bin/aos.mjs cycle                                        # the operator score
 node bin/aos.mjs dashboard                                    # read-only, loopback, tokened
 ```
@@ -239,8 +241,8 @@ npm run test:mutation    # break each named guard, check the named test dies
 npm run smoke:package    # pack, install elsewhere, use it as an operator would
 ```
 
-CI runs seven lanes on every change: the suite on Ubuntu 22, Ubuntu 24 and macOS 24, the mutation
-and `verify:mvp` lanes, and the package smoke on Ubuntu and macOS. Branches follow git flow; the
+CI runs seven lanes on every change: the suite on Ubuntu at Node 22 and Node 24 and on macOS at
+Node 24, the mutation and `verify:mvp` lanes, and the package smoke on Ubuntu and macOS. Branches follow git flow; the
 model is written down in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Documentation

@@ -92,7 +92,7 @@ Claude Code에서는 저장소를 직접 복제하지 않고 플러그인으로 
 
 ```bash
 node bin/aos.mjs review                         # 가장 최근 세션
-node bin/aos.mjs review --since 12              # 최근 12개 세션의 반복 패턴
+node bin/aos.mjs review --since 12              # 도구 활동이 있는 최근 12개 세션의 반복 패턴
 node bin/aos.mjs review --list                  # 검토할 수 있는 세션 경로 보기
 node bin/aos.mjs review --session "<경로>"      # 목록에서 고른 세션 검토
 node bin/aos.mjs review --json                  # 기계가 읽을 수 있는 JSON
@@ -108,6 +108,8 @@ node bin/aos.mjs review --json                  # 기계가 읽을 수 있는 JS
 | `destructive-command-executed` | 데이터 손실 가능성이 있는 되돌리기 어려운 명령이 실행된 경우 |
 | `secret-material-in-session` | API 키·토큰·개인 키 같은 비밀값이 세션에 나타난 경우 |
 | `long-uninterrupted-tool-run` | 운영자의 개입 없이 긴 실행이 이어졌고, 그 안에서 실패나 같은 행동의 반복이 발생한 경우 |
+| `completion-claimed-over-a-failed-check` | 완료를 주장하기 직전의 검증이 실패를 보고했는데도 완료라고 말한 경우 |
+| `verification-exit-status-discarded` | 검사를 `\|\| true` 아래에서 실행해 그 결과를 애초에 볼 수 없었던 경우 |
 
 각 지적은 문제가 의심되는 단계를 함께 표시합니다. 판정을 그대로 믿기보다 원래 세션과 대조해
 실제로 맞는지 확인해야 합니다. 현재 규칙은 과거 독립 측정에서 목표 정확도에 미치지 못했으며,
@@ -209,7 +211,7 @@ blocked before this stage: the migration step times out
 
 ```bash
 node bin/aos.mjs cycle start                                  # 시드 3개 고정
-node bin/aos.mjs cycle run --plan aos-plan.json --checkpoints # 고정된 시드로 차례대로 실행
+node bin/aos.mjs cycle run --checkpoints                      # 고정된 시드로 차례대로 실행
 node bin/aos.mjs cycle                                        # 유효한 실행의 중앙값
 node bin/aos.mjs dashboard                                    # 로컬 읽기 전용 대시보드
 ```
@@ -350,8 +352,8 @@ npm run test:mutation    # 보호 조건을 깨뜨렸을 때 관련 테스트가
 npm run smoke:package    # 패키징 후 다른 위치에서 실제 사용자 흐름 점검
 ```
 
-CI는 Ubuntu 22, Ubuntu 24, macOS에서 테스트를 실행하고, 점수 계약 검증·변이 테스트·패키지
-스모크 테스트도 별도 작업으로 확인합니다. 브랜치 운영 방식과 기여 규칙은
+CI는 Ubuntu에서 Node 22와 Node 24로, macOS에서 Node 24로 테스트를 실행하고, 점수 계약 검증·변이
+테스트·패키지 스모크 테스트도 별도 작업으로 확인합니다. 브랜치 운영 방식과 기여 규칙은
 [`CONTRIBUTING.md`](CONTRIBUTING.md)에 있습니다.
 
 ## 관련 문서
