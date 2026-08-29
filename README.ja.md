@@ -30,28 +30,28 @@
 
 これは残りの半分を測り、出力する数値ごとに、それが何に束縛されているのかを併せて示します。
 
+Claude Code なら、クローンするものもインストールするものもありません。
+
+```
+/plugin marketplace add MongLong0214/agent-operator-score
+/plugin install aos@agent-operator-score
+
+/aos-review
+```
+
+スコアなし、モデルの消費なし、数秒で終わり、対象はあなたが実際に行った作業です。何もアップ
+ロードされず、テレメトリはオフで、オンにするものもありません。このリポジトリには実行時依存が
+なく、エージェントは `PATH` から自分で登録され、ランタイムの資格情報はそのランタイムが本来
+見つけたはずの場所から解決されます。
+
+リポジトリから直接動かすなら:
+
 ```bash
 git clone https://github.com/MongLong0214/agent-operator-score
 cd agent-operator-score && npm ci
 
 node bin/aos.mjs review          # 今終えたセッションで何がまずかったのか
 ```
-
-スコアなし、モデルの消費なし、数秒で終わり、対象はあなたが実際に行った作業です。何もアップ
-ロードされず、テレメトリはオフで、オンにするものもありません。
-
----
-
-## ワンクリック
-
-```
-/plugin marketplace add MongLong0214/agent-operator-score
-/plugin install aos@agent-operator-score
-```
-
-あとは任意の Claude Code セッションで `/aos-review`。インストール手順も設定もありません。この
-リポジトリには実行時依存がなく、エージェントは `PATH` から自分で登録され、ランタイムの資格情報は
-そのランタイムが本来見つけたはずの場所から解決されます。
 
 ## 二つの半分
 

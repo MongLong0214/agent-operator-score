@@ -30,28 +30,28 @@ that was identical.
 
 This measures the other half, and every number it prints says what that number is bound to.
 
+In Claude Code there is nothing to clone and nothing to install.
+
+```
+/plugin marketplace add MongLong0214/agent-operator-score
+/plugin install aos@agent-operator-score
+
+/aos-review
+```
+
+No score, no model quota, seconds to run, on work you actually did. Nothing is uploaded, telemetry
+is off, and there is nothing to turn on. This repository has no runtime dependencies, agents register
+themselves from `PATH`, and a runtime's own credential is resolved the way that runtime would have
+resolved it.
+
+From the repository instead:
+
 ```bash
 git clone https://github.com/MongLong0214/agent-operator-score
 cd agent-operator-score && npm ci
 
 node bin/aos.mjs review          # what went wrong in the session you just ran
 ```
-
-No score, no model quota, seconds to run, on work you actually did. Nothing is uploaded, telemetry
-is off, and there is nothing to turn on.
-
----
-
-## One click
-
-```
-/plugin marketplace add MongLong0214/agent-operator-score
-/plugin install aos@agent-operator-score
-```
-
-Then `/aos-review` in any Claude Code session. There is no install step and nothing to configure:
-this repository has no runtime dependencies, agents register themselves from `PATH`, and a runtime's
-own credential is resolved the way that runtime would have resolved it.
 
 ## Two halves
 
