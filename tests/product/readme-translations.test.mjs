@@ -98,3 +98,44 @@ test("the measured numbers say the same thing in every language", () => {
     }
   }
 });
+
+// The picture explainer ships in the repository and is opened from a file:// path, so anything it
+// reaches for is a request the reader did not ask for -- and it exists to explain a product whose
+// report makes none. A page that fetched a webfont to say that would be contradicting itself on its
+// own first screen.
+test("the explainer asks for nothing from anywhere", () => {
+  const file = join(root, "docs", "what-this-measures.html");
+  assert.equal(existsSync(file), true);
+  const html = readFileSync(file, "utf8");
+
+  assert.equal(/<script/i.test(html), false, "a script");
+  assert.equal(/<iframe|<img/i.test(html), false, "an embed");
+  assert.equal(/@import/i.test(html), false, "an imported stylesheet");
+  // `url(#id)` would point inside this document; anything else names somewhere to fetch from.
+  assert.deepEqual(html.match(/url\((?!#)[^)]*\)/gi) ?? [], []);
+  // The SVG namespace is an identifier the browser never resolves. Nothing else absolute may appear.
+  assert.deepEqual(
+    (html.match(/https?:\/\/[^"'\s>)]*/g) ?? []).filter((url) => url !== "http://www.w3.org/2000/svg"),
+    []
+  );
+
+  // Every link it does carry has to resolve, or the page sends the reader nowhere.
+  const links = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+  assert.ok(links.length > 0);
+  for (const link of links) {
+    assert.equal(link.startsWith("http"), false, link);
+    assert.equal(existsSync(join(root, "docs", link)), true, `${link} does not exist`);
+  }
+
+  // Both themes are defined, and the ground is painted rather than inherited from whatever is behind.
+  assert.match(html, /prefers-color-scheme:dark/);
+  assert.match(html, /\[data-theme="dark"\]/);
+  assert.match(html, /body\{[^}]*background:var\(--ground\)/);
+});
+
+// It is linked from every translation, so a reader who lands on any of the four can find it.
+test("every README points at the explainer", () => {
+  for (const { file } of LANGUAGES) {
+    assert.match(read(file), /docs\/what-this-measures\.html/, `${file} does not link the explainer`);
+  }
+});
