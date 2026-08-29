@@ -55,7 +55,7 @@ node bin/aos.mjs review          # 你刚跑完的那次会话里出了什么问
 
 |  | `aos review` | `aos assess` |
 |---|---|---|
-| 读什么 | 已经在你磁盘上的 Codex / Claude Code 会话记录 | 六个受控任务族，用你的 agent 跑 |
+| 读什么 | 已经在你磁盘上的 Codex / Claude Code / Grok 会话记录 | 六个受控任务族，用你的 agent 跑 |
 | 成本 | 无——不调用模型 | 模型额度，在隔离工作区中 |
 | 产出 | 具体的问题，每一条都指名它来自哪一步 | 百分制的分数，或者一个没有分数的明确理由 |
 | 回答 | *我在反复做什么？* | *在这些条件下，我把这个 agent 用得有多好？* |
@@ -63,7 +63,7 @@ node bin/aos.mjs review          # 你刚跑完的那次会话里出了什么问
 ### `aos review` —— 不花钱的那一半
 
 ```bash
-node bin/aos.mjs review --since 12   # 最近十二次会话里反复出现的
+node bin/aos.mjs review --since 12   # 最近十二次有工具活动的会话里反复出现的
 node bin/aos.mjs review --list       # 挑一个
 ```
 
@@ -75,6 +75,8 @@ node bin/aos.mjs review --list       # 挑一个
 | `destructive-command-executed` | 跑了不可逆的命令；例行同步不算 |
 | `secret-material-in-session` | 出现了密钥材料，只报告种类，绝不重复其内容 |
 | `long-uninterrupted-tool-run` | 一段没有你输入的长区间——只有当其中有东西失败或重复时才算问题 |
+| `completion-claimed-over-a-failed-check` | 声称完成之前的那次校验已经报告失败，却仍然说完成了 |
+| `verification-exit-status-discarded` | 检查跑在 `\|\| true` 下面，所以它报告了什么根本无从看见 |
 
 每一条都指名产生它的那一步，好让你拿它和自己对那次会话的记忆去核对，而不是相信这个工具。
 `--since` 更有用：一次会话告诉你发生了什么，十二次会话告诉你你在反复做什么。
@@ -129,7 +131,7 @@ blocked before this stage: the migration step times out
 
 ```bash
 node bin/aos.mjs cycle start                                  # 三个种子，此刻锁定
-node bin/aos.mjs cycle run --plan aos-plan.json --checkpoints
+node bin/aos.mjs cycle run --checkpoints
 node bin/aos.mjs cycle                                        # operator score
 node bin/aos.mjs dashboard                                    # 只读、回环、带令牌
 ```
@@ -227,8 +229,8 @@ npm run test:mutation    # 逐个破坏具名守卫，检查被指名的测试�
 npm run smoke:package    # 打包、装到别处、像操作者那样用一遍
 ```
 
-CI 在每次变更上运行七条泳道：Ubuntu 22、Ubuntu 24 和 macOS 24 上的测试套件，mutation 与
-`verify:mvp`，以及 Ubuntu 和 macOS 上的打包冒烟。分支遵循 git flow，模型写在
+CI 在每次变更上运行七条泳道：Ubuntu 上的 Node 22 与 Node 24、macOS 上的 Node 24 跑测试套件，
+mutation 与 `verify:mvp`，以及 Ubuntu 和 macOS 上的打包冒烟。分支遵循 git flow，模型写在
 [`CONTRIBUTING.md`](CONTRIBUTING.md) 里。
 
 ## 文档
