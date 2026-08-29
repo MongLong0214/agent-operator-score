@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">The six areas AOS scores</title>
+  <desc id="desc">Task specification, context engineering, decomposition and routing, human-in-the-loop control, evaluation and verification, and guardrails recovery and cost.</desc>
+  <rect width="1200" height="650" fill="#f0f1ee"/>
+  <g font-family="system-ui,-apple-system,'Segoe UI',Arial,sans-serif">
+    <g transform="translate(30 30)">
+      <rect width="360" height="270" rx="12" fill="#0f5132"/>
+      <text x="30" y="47" fill="#d7eadf" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" font-weight="700" letter-spacing=".6">D1 · TASK SPECIFICATION</text>
+      <text x="30" y="102" fill="#fff" font-size="29" font-weight="800"><tspan x="30" y="102">What did you ask it</tspan><tspan x="30" dy="37">to build?</tspan></text>
+      <text x="30" y="190" fill="#e5f1e9" font-size="20"><tspan x="30" y="190">Goal, non-goals,</tspan><tspan x="30" dy="34">and definition of done.</tspan></text>
+    </g>
+    <g transform="translate(420 30)">
+      <rect width="360" height="270" rx="12" fill="#0f5132"/>
+      <text x="30" y="47" fill="#d7eadf" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" font-weight="700" letter-spacing=".6">D2 · CONTEXT ENGINEERING</text>
+      <text x="30" y="102" fill="#fff" font-size="29" font-weight="800"><tspan x="30" y="102">What did you</tspan><tspan x="30" dy="37">show it?</tspan></text>
+      <text x="30" y="190" fill="#e5f1e9" font-size="20"><tspan x="30" y="190">Relevant, current sources;</tspan><tspan x="30" dy="34">untrusted content filtered.</tspan></text>
+    </g>
+    <g transform="translate(810 30)">
+      <rect width="360" height="270" rx="12" fill="#0f5132"/>
+      <text x="30" y="47" fill="#d7eadf" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" font-weight="700" letter-spacing=".6">D3 · DECOMPOSITION &amp; ROUTING</text>
+      <text x="30" y="102" fill="#fff" font-size="29" font-weight="800"><tspan x="30" y="102">How did you split</tspan><tspan x="30" dy="37">the work?</tspan></text>
+      <text x="30" y="190" fill="#e5f1e9" font-size="20"><tspan x="30" y="190">Owners, dependencies,</tspan><tspan x="30" dy="34">handoffs, and joins.</tspan></text>
+    </g>
+    <g transform="translate(30 330)">
+      <rect width="360" height="270" rx="12" fill="#0f5132"/>
+      <text x="30" y="47" fill="#d7eadf" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" font-weight="700" letter-spacing=".6">D4 · HUMAN-IN-THE-LOOP CONTROL</text>
+      <text x="30" y="102" fill="#fff" font-size="29" font-weight="800"><tspan x="30" y="102">What did you do</tspan><tspan x="30" dy="37">when it got stuck?</tspan></text>
+      <text x="30" y="190" fill="#e5f1e9" font-size="20"><tspan x="30" y="190">Notice, intervene,</tspan><tspan x="30" dy="34">stop, and resume.</tspan></text>
+    </g>
+    <g transform="translate(420 330)">
+      <rect width="360" height="270" rx="12" fill="#0f5132"/>
+      <text x="30" y="47" fill="#d7eadf" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" font-weight="700" letter-spacing=".6">D5 · EVALUATION &amp; VERIFICATION</text>
+      <text x="30" y="102" fill="#fff" font-size="29" font-weight="800"><tspan x="30" y="102">Did you check it</tspan><tspan x="30" dy="37">really worked?</tspan></text>
+      <text x="30" y="190" fill="#e5f1e9" font-size="20"><tspan x="30" y="190">Independent evidence,</tspan><tspan x="30" dy="34">exact revision, honest done.</tspan></text>
+    </g>
+    <g transform="translate(810 330)">
+      <rect width="360" height="270" rx="12" fill="#0f5132"/>
+      <text x="30" y="47" fill="#d7eadf" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12" font-weight="700" letter-spacing=".6">D6 · GUARDRAILS, RECOVERY &amp; COST</text>
+      <text x="30" y="102" fill="#fff" font-size="29" font-weight="800"><tspan x="30" y="102">Was it safe and</tspan><tspan x="30" dy="37">worth the cost?</tspan></text>
+      <text x="30" y="190" fill="#e5f1e9" font-size="20"><tspan x="30" y="190">Secrets, permissions,</tspan><tspan x="30" dy="34">recovery, invocation budget.</tspan></text>
+    </g>
+  </g>
+</svg>

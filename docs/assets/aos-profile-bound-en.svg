@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">The same number can describe different measurements</title>
+  <desc id="desc">Two scores of 83 produced under different agents and sandbox settings are not directly comparable.</desc>
+  <rect width="1200" height="320" fill="#f0f1ee"/>
+  <g font-family="system-ui,-apple-system,'Segoe UI',Arial,sans-serif">
+    <rect x="30" y="28" width="510" height="224" rx="12" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
+    <text x="68" y="104" fill="#0f5132" font-size="64" font-weight="850">83</text>
+    <text x="68" y="150" fill="#5b615c" font-size="22">codex · agent sandbox on</text>
+    <text x="68" y="186" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">seed 7c8f75…</text>
+    <text x="68" y="218" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">task pack 690042…</text>
+    <text x="600" y="145" text-anchor="middle" fill="#5b615c" font-size="52" font-weight="850">≠</text>
+    <rect x="660" y="28" width="510" height="224" rx="12" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
+    <text x="698" y="104" fill="#0f5132" font-size="64" font-weight="850">83</text>
+    <text x="698" y="150" fill="#5b615c" font-size="22">claude · agent sandbox off</text>
+    <text x="698" y="186" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">seed a41b9c…</text>
+    <text x="698" y="218" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">task pack c73e18…</text>
+    <text x="600" y="292" text-anchor="middle" fill="#5b615c" font-size="20">Same number, different run · PROFILE-BOUND</text>
+  </g>
+</svg>

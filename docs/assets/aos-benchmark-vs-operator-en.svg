@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 310" role="img" aria-labelledby="title desc">
+  <title id="title">What a benchmark measures and what AOS measures</title>
+  <desc id="desc">A conventional benchmark measures the agent. AOS measures how the user operated it.</desc>
+  <rect width="1200" height="310" fill="#f0f1ee"/>
+  <g font-family="system-ui,-apple-system,'Segoe UI',Arial,sans-serif">
+    <rect x="42" y="34" width="530" height="242" rx="8" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
+    <text x="82" y="82" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" font-weight="700" letter-spacing="3">BENCHMARK</text>
+    <text x="82" y="140" fill="#1a1c1a" font-size="38" font-weight="800">Measures the car</text>
+    <text x="82" y="194" fill="#5b615c" font-size="24"><tspan x="82">Is this model faster</tspan><tspan x="82" dy="36">and more accurate?</tspan></text>
+    <rect x="628" y="34" width="530" height="242" rx="8" fill="#fff" stroke="#0f5132" stroke-width="5"/>
+    <text x="668" y="82" fill="#0f5132" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" font-weight="700" letter-spacing="3">AOS</text>
+    <text x="668" y="140" fill="#1a1c1a" font-size="38" font-weight="800">Measures the driving</text>
+    <text x="668" y="194" fill="#5b615c" font-size="24"><tspan x="668">How well did the user assign,</tspan><tspan x="668" dy="36">steer, and verify the work?</tspan></text>
+  </g>
+</svg>
