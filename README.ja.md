@@ -57,7 +57,7 @@ node bin/aos.mjs review          # 今終えたセッションで何がまずか
 
 |  | `aos review` | `aos assess` |
 |---|---|---|
-| 読むもの | ディスクにすでにある Codex / Claude Code のトランスクリプト | 統制された六つの課題ファミリーを、あなたのエージェントで実行 |
+| 読むもの | ディスクにすでにある Codex / Claude Code / Grok のトランスクリプト | 統制された六つの課題ファミリーを、あなたのエージェントで実行 |
 | コスト | なし — モデルを呼ばない | モデル消費。隔離されたワークスペースで |
 | 出すもの | どの手順から出たかを名指しする具体的な指摘 | 100 点満点のスコア、またはスコアが無い理由 |
 | 答える問い | *自分は何を繰り返しているのか* | *この条件下で、自分はこのエージェントをどれだけうまく運用できているのか* |
@@ -65,7 +65,7 @@ node bin/aos.mjs review          # 今終えたセッションで何がまずか
 ### `aos review` — コストのかからない半分
 
 ```bash
-node bin/aos.mjs review --since 12   # 直近十二セッションで繰り返されているもの
+node bin/aos.mjs review --since 12   # ツール実行のある直近十二セッションで繰り返されているもの
 node bin/aos.mjs review --list       # 一つ選ぶ
 ```
 
@@ -77,6 +77,8 @@ node bin/aos.mjs review --list       # 一つ選ぶ
 | `destructive-command-executed` | 取り返しのつかないコマンドが走った。通常の同期はこれに当たらない |
 | `secret-material-in-session` | 鍵の材料が現れた。種類だけを報告し、値は二度と書かない |
 | `long-uninterrupted-tool-run` | あなたの入力がない長い区間。その中で何かが失敗したか繰り返された場合にのみ指摘 |
+| `completion-claimed-over-a-failed-check` | 完了と言う直前の検証が失敗を報告していたのに、完了と述べた場合 |
+| `verification-exit-status-discarded` | 検査を `\|\| true` の下で走らせ、その結果を見ることがそもそもできなかった場合 |
 
 すべての指摘は、それが生まれた手順を名指しします。ツールを信じる代わりに、あなた自身のセッション
 の記憶と突き合わせられるようにするためです。`--since` のほうが役に立ちます。一つのセッションは
@@ -136,7 +138,7 @@ blocked before this stage: the migration step times out
 
 ```bash
 node bin/aos.mjs cycle start                                  # シード三つ、いま固定
-node bin/aos.mjs cycle run --plan aos-plan.json --checkpoints
+node bin/aos.mjs cycle run --checkpoints
 node bin/aos.mjs cycle                                        # operator score
 node bin/aos.mjs dashboard                                    # 読み取り専用、ループバック、トークン
 ```
@@ -240,8 +242,8 @@ npm run test:mutation    # 名前の付いたガードを一つずつ壊し、�
 npm run smoke:package    # パックして別の場所に入れ、オペレーターとして使ってみる
 ```
 
-CI は変更のたびに七つのレーンを走らせます。Ubuntu 22・Ubuntu 24・macOS 24 でのスイート、mutation
-と `verify:mvp`、Ubuntu と macOS でのパッケージスモークです。ブランチは git flow に
+CI は変更のたびに七つのレーンを走らせます。Ubuntu の Node 22 と Node 24、macOS の Node 24 での
+スイート、mutation と `verify:mvp`、Ubuntu と macOS でのパッケージスモークです。ブランチは git flow に
 従い、そのモデルは [`CONTRIBUTING.md`](CONTRIBUTING.md) に書かれています。
 
 ## ドキュメント
