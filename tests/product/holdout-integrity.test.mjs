@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { judge, precisionOf, recordSession } from "../../lib/holdout.mjs";
+import { emptyLedger, judge, precisionOf, recordSession, saveLedger } from "../../lib/holdout.mjs";
 import { redactText } from "../../lib/redact.mjs";
+
+const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "bin", "aos.mjs");
 
 const DIGEST = "a".repeat(64);
 const empty = () => ({ schema_id: "aos-holdout.v1", version: 1, sessions: [], judgements: [] });
@@ -59,5 +66,41 @@ test("a key is labelled with the vendor it belongs to", () => {
   // The value never survives, whichever label it gets.
   for (const text of [`sk-ant-api03-${"x".repeat(40)}`, `sk-${"y".repeat(40)}`]) {
     assert.equal(redactText(text).text.includes("x".repeat(20)) || redactText(text).text.includes("y".repeat(20)), false);
+  }
+});
+
+// Round 10 of the sweep exercised the ledger end to end and reproduced the precision arithmetic
+// exactly -- then pointed at what it could not reproduce: the tool reports whatever the owner's last
+// `--use` flag leaves behind, "with the audit trail sitting unread in the file". `recordSession` has
+// kept `previous_use` since a judged session could be re-labelled as tuning while its verdicts stayed
+// in the count. Nothing read it back. A record nobody reads is the shape this ledger exists to refuse.
+test("a session that changed side after being recorded is printed beside the number", () => {
+  const home = mkdtempSync(join(tmpdir(), "aos-moved-"));
+  try {
+    saveLedger(home, {
+      ...emptyLedger(),
+      sessions: [
+        { digest: "a".repeat(16), use: "tuning", previous_use: "holdout", previous_note: "judged first", evidence: "COMPLETE" },
+        { digest: "b".repeat(16), use: "holdout", evidence: "COMPLETE" }
+      ]
+    });
+    const shown = spawnSync(process.execPath, [cli, "holdout"], {
+      encoding: "utf8", env: { ...process.env, AOS_HOME: home, HOME: home }
+    }).stdout;
+
+    assert.match(shown, /1 session\(s\) changed side after being recorded/);
+    assert.match(shown, /holdout -> tuning/);
+    assert.match(shown, /judged first/);
+    // The one that never moved is not listed, so the notice means something when it appears.
+    assert.doesNotMatch(shown, new RegExp("b".repeat(12)));
+
+    // And a clean ledger says nothing at all.
+    saveLedger(home, { ...emptyLedger(), sessions: [{ digest: "c".repeat(16), use: "holdout", evidence: "COMPLETE" }] });
+    assert.doesNotMatch(
+      spawnSync(process.execPath, [cli, "holdout"], { encoding: "utf8", env: { ...process.env, AOS_HOME: home, HOME: home } }).stdout,
+      /changed side/
+    );
+  } finally {
+    rmSync(home, { recursive: true, force: true });
   }
 });
