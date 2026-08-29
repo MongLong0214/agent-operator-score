@@ -1,16 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
-  <title id="title">못 본 것은 0점이 아닙니다</title>
-  <desc id="desc">20개 지표 중 3개만 관찰했습니다. AOS는 없는 근거를 실패로 바꾸지 않고 점수를 보류합니다.</desc>
+  <title id="title">未観測を 0 点にしない</title>
+  <desc id="desc">20 指標のうち 3 つしか観測できませんでした。AOS は不足した根拠を失敗扱いせず、スコアを保留します。</desc>
   <rect width="1200" height="330" fill="#f0f1ee"/>
-  <g font-family="system-ui,-apple-system,&#x27;Apple SD Gothic Neo&#x27;,&#x27;Noto Sans KR&#x27;,&#x27;Malgun Gothic&#x27;,sans-serif">
-    <text x="52" y="48" fill="#5b615c" font-size="22" font-weight="700">관찰한 것 3 / 20</text>
+  <g font-family="system-ui,-apple-system,&#x27;Hiragino Sans&#x27;,&#x27;Yu Gothic&#x27;,&#x27;Noto Sans JP&#x27;,sans-serif">
+    <text x="52" y="48" fill="#5b615c" font-size="22" font-weight="700">観測 3 / 20</text>
     <g><rect x="52" y="84" width="42" height="42" rx="5" fill="#0f5132"/><rect x="108" y="84" width="42" height="42" rx="5" fill="#0f5132"/><rect x="164" y="84" width="42" height="42" rx="5" fill="#0f5132"/><rect x="220" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="276" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="332" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="388" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="444" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="500" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="556" y="84" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="52" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="108" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="164" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="220" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="276" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="332" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="388" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="444" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="500" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/><rect x="556" y="140" width="42" height="42" rx="5" fill="none" stroke="#aeb4ad" stroke-width="3" stroke-dasharray="6 5"/></g>
-    <text x="52" y="232" fill="#5b615c" font-size="19">점선 = 관찰하지 못한 것. 실패한 것이 아닙니다.</text>
-    <g transform="translate(718 72) rotate(-2)">
-      <rect width="410" height="86" rx="8" fill="none" stroke="#a8322a" stroke-width="5"/>
-      <text x="205" y="56" text-anchor="middle" fill="#a8322a" font-family="system-ui,-apple-system,&#x27;Apple SD Gothic Neo&#x27;,&#x27;Noto Sans KR&#x27;,&#x27;Malgun Gothic&#x27;,sans-serif" font-size="34" font-weight="850">점수 없음</text>
-    </g>
-    <rect x="718" y="196" width="410" height="76" rx="8" fill="#fff" stroke="#d5d8d2" stroke-width="2"/>
-    <text x="923" y="244" text-anchor="middle" fill="#1a1c1a" font-size="24" font-weight="750">침묵은 통과가 아닙니다.</text>
+    <text x="52" y="232" fill="#5b615c" font-size="19">点線 = 未観測。失敗ではありません。</text>
+    <g transform="translate(718 72) rotate(-2)"><rect width="410" height="86" rx="8" fill="none" stroke="#a8322a" stroke-width="5"/><text x="205" y="56" text-anchor="middle" fill="#a8322a" font-family="system-ui,-apple-system,&#x27;Hiragino Sans&#x27;,&#x27;Yu Gothic&#x27;,&#x27;Noto Sans JP&#x27;,sans-serif" font-size="34" font-weight="850">スコアなし</text></g>
+    <rect x="718" y="196" width="410" height="76" rx="8" fill="#fff" stroke="#d5d8d2" stroke-width="2"/><text x="923" y="244" text-anchor="middle" fill="#1a1c1a" font-size="24" font-weight="750">何も示さないことは合格ではありません。</text>
   </g>
 </svg>

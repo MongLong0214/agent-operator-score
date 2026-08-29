@@ -1,18 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 310" role="img" aria-labelledby="title desc">
-  <title id="title">벤치마크와 AOS의 차이</title>
-  <desc id="desc">일반 벤치마크는 에이전트 자체를 비교하고, AOS는 사용자가 에이전트를 운영한 방식을 봅니다.</desc>
+  <title id="title">일반 벤치마크와 AOS의 차이</title>
+  <desc id="desc">일반 벤치마크는 에이전트 자체를 비교하고 AOS는 사용자가 에이전트를 운영한 방식을 봅니다.</desc>
   <rect width="1200" height="310" fill="#f0f1ee"/>
-  <g font-family="system-ui,-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif">
+  <g font-family="system-ui,-apple-system,&#x27;Apple SD Gothic Neo&#x27;,&#x27;Noto Sans KR&#x27;,&#x27;Malgun Gothic&#x27;,sans-serif">
     <rect x="42" y="34" width="530" height="242" rx="8" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
     <text x="82" y="82" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" font-weight="700" letter-spacing="3">BENCHMARK</text>
     <text x="82" y="140" fill="#1a1c1a" font-size="38" font-weight="800">차를 잽니다</text>
-    <text x="82" y="194" fill="#5b615c" font-size="24">이 모델이 저 모델보다</text>
-    <text x="82" y="230" fill="#5b615c" font-size="24">더 빠르고 정확한가?</text>
-
+    <text x="82" y="194" fill="#5b615c" font-size="24"><tspan x="82">이 모델이 저 모델보다</tspan><tspan x="82" dy="36">더 빠르고 정확한가?</tspan></text>
     <rect x="628" y="34" width="530" height="242" rx="8" fill="#fff" stroke="#0f5132" stroke-width="5"/>
     <text x="668" y="82" fill="#0f5132" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18" font-weight="700" letter-spacing="3">AOS</text>
     <text x="668" y="140" fill="#1a1c1a" font-size="38" font-weight="800">운전을 잽니다</text>
-    <text x="668" y="194" fill="#5b615c" font-size="24">사용자가 그 도구로 일을</text>
-    <text x="668" y="230" fill="#5b615c" font-size="24">얼마나 잘 맡기고 확인했는가?</text>
+    <text x="668" y="194" fill="#5b615c" font-size="24"><tspan x="668">사용자가 일을 얼마나 잘</tspan><tspan x="668" dy="36">맡기고 조정하고 확인했는가?</tspan></text>
   </g>
 </svg>

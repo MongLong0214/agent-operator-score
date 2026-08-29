@@ -1,26 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
-  <title id="title">같은 83점도 서로 비교할 수 없습니다</title>
-  <desc id="desc">서로 다른 에이전트와 격리 조건에서 나온 83점 두 개를 같지 않음 기호로 구분합니다.</desc>
-  <rect width="1200" height="330" fill="#f0f1ee"/>
-  <g font-family="system-ui,-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif">
-    <rect x="34" y="34" width="500" height="230" rx="12" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
-    <text x="76" y="112" fill="#0f5132" font-size="66" font-weight="850">83</text>
-    <g fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="21">
-      <text x="76" y="158">codex · 격리 켬</text>
-      <text x="76" y="194">시드 7c8f75…</text>
-      <text x="76" y="230">과제 묶음 690042…</text>
-    </g>
-
-    <text x="600" y="170" text-anchor="middle" fill="#5b615c" font-size="52" font-weight="850">≠</text>
-
-    <rect x="666" y="34" width="500" height="230" rx="12" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
-    <text x="708" y="112" fill="#0f5132" font-size="66" font-weight="850">83</text>
-    <g fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="21">
-      <text x="708" y="158">claude · 격리 끔</text>
-      <text x="708" y="194">시드 a41b9c…</text>
-      <text x="708" y="230">과제 묶음 c73e18…</text>
-    </g>
-
-    <text x="600" y="306" text-anchor="middle" fill="#5b615c" font-size="20">같은 숫자, 다른 시험 · AOS는 이를 PROFILE-BOUND라고 부릅니다.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">같은 숫자도 다른 측정일 수 있습니다</title>
+  <desc id="desc">서로 다른 에이전트와 샌드박스 설정에서 나온 83점 두 개는 직접 비교할 수 없습니다.</desc>
+  <rect width="1200" height="320" fill="#f0f1ee"/>
+  <g font-family="system-ui,-apple-system,&#x27;Apple SD Gothic Neo&#x27;,&#x27;Noto Sans KR&#x27;,&#x27;Malgun Gothic&#x27;,sans-serif">
+    <rect x="30" y="28" width="510" height="224" rx="12" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
+    <text x="68" y="104" fill="#0f5132" font-size="64" font-weight="850">83</text>
+    <text x="68" y="150" fill="#5b615c" font-size="22">codex · 에이전트 샌드박스 켬</text>
+    <text x="68" y="186" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">시드 7c8f75…</text>
+    <text x="68" y="218" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">과제 묶음 690042…</text>
+    <text x="600" y="145" text-anchor="middle" fill="#5b615c" font-size="52" font-weight="850">≠</text>
+    <rect x="660" y="28" width="510" height="224" rx="12" fill="#fff" stroke="#d5d8d2" stroke-width="3"/>
+    <text x="698" y="104" fill="#0f5132" font-size="64" font-weight="850">83</text>
+    <text x="698" y="150" fill="#5b615c" font-size="22">claude · 에이전트 샌드박스 끔</text>
+    <text x="698" y="186" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">시드 a41b9c…</text>
+    <text x="698" y="218" fill="#5b615c" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="18">과제 묶음 c73e18…</text>
+    <text x="600" y="292" text-anchor="middle" fill="#5b615c" font-size="20">같은 숫자, 다른 실행 · PROFILE-BOUND</text>
   </g>
 </svg>
