@@ -11,7 +11,9 @@
     "test": "node --test",
     "test:mutation": "node tests/mutation/run.mjs",
     "verify:mvp": "node bin/aos.mjs verify",
-    "smoke:package": "node tests/package-smoke.mjs"
+    "smoke:package": "node tests/package-smoke.mjs",
+    "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
+    "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json"
   },
   "bin": {
     "aos": "./bin/aos.mjs"
@@ -20,6 +22,9 @@
     "bin/",
     "lib/",
     "docs/",
+    "governance/",
+    "schemas/",
+    "scripts/",
     "README.md",
     "README.ko.md",
     "README.ja.md",

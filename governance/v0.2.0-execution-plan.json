@@ -1,0 +1,1307 @@
+{
+  "schema": "aos-execution-plan.v1",
+  "release": "v0.2.0",
+  "repository": "MongLong0214/agent-operator-score",
+  "epic": 573,
+  "milestone": 14,
+  "milestone_title": "v0.2.0 — SSOT v3 Execution-Governed Measurement Integrity & Zero-config UX",
+  "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+  "epic_body_marker": "FINAL_EXECUTION_SSOT_2026-09-01_V3",
+  "release_label": "release:v0.2.0",
+  "excluded_issues": [
+    579,
+    580,
+    581
+  ],
+  "phase_output_vocabulary": [
+    "safe-evidence-matrix",
+    "platform-probe-record",
+    "stale-branch-audit-report",
+    "branch-deletion-log",
+    "implementation",
+    "tests",
+    "documentation"
+  ],
+  "gates": {
+    "X": [
+      588
+    ],
+    "S": [
+      553,
+      554,
+      555,
+      556,
+      557
+    ],
+    "C": [
+      582,
+      559,
+      560,
+      558,
+      583
+    ],
+    "G": [
+      561,
+      564,
+      584,
+      585,
+      568,
+      586,
+      562,
+      563
+    ],
+    "E": [
+      566,
+      567
+    ],
+    "Q": [
+      565
+    ],
+    "U": [
+      574,
+      575,
+      576
+    ],
+    "R": [
+      569,
+      570,
+      571,
+      577
+    ],
+    "P": [
+      578
+    ]
+  },
+  "issues": [
+    {
+      "issue": 553,
+      "kind": "implementation",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        557,
+        562,
+        564,
+        569,
+        578
+      ],
+      "priority": "P0",
+      "area": "security",
+      "release_critical": true,
+      "owner_surfaces": [
+        "trusted-verifier-boundary"
+      ],
+      "allowed_parallel_with": [
+        554,
+        555,
+        565,
+        567,
+        570,
+        572,
+        582,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "controller_subject_probe_digests",
+        "attack_matrix",
+        "process_cleanup_matrix",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 554,
+      "kind": "implementation",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        556,
+        561,
+        562,
+        569,
+        574,
+        578
+      ],
+      "priority": "P0",
+      "area": "security",
+      "release_critical": true,
+      "owner_surfaces": [
+        "executable-bound-credential"
+      ],
+      "allowed_parallel_with": [
+        553,
+        555,
+        565,
+        567,
+        570,
+        572,
+        582,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "executable_identity_binding",
+        "credential_canary",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 555,
+      "kind": "implementation",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        556,
+        562,
+        569,
+        574,
+        578
+      ],
+      "priority": "P0",
+      "area": "security",
+      "release_critical": true,
+      "owner_surfaces": [
+        "adapter-env-allowlist"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        565,
+        567,
+        570,
+        572,
+        582,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "env_allowlist_digest",
+        "leak_canary",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 556,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 1,
+      "blocked_by": [
+        554,
+        555,
+        588
+      ],
+      "blocks": [
+        557,
+        562,
+        569,
+        574,
+        578
+      ],
+      "priority": "P0",
+      "area": "security",
+      "release_critical": true,
+      "owner_surfaces": [
+        "strict-workspace-confinement"
+      ],
+      "allowed_parallel_with": [
+        559,
+        561
+      ],
+      "phases": [
+        {
+          "id": "feasibility-proof",
+          "status": "ready",
+          "blocked_by": [],
+          "allowed_outputs": [
+            "safe-evidence-matrix",
+            "platform-probe-record"
+          ],
+          "code_integration_allowed": false
+        },
+        {
+          "id": "final-integration",
+          "status": "blocked",
+          "blocked_by": [
+            554,
+            555,
+            588
+          ],
+          "allowed_outputs": [
+            "implementation",
+            "tests",
+            "documentation"
+          ],
+          "code_integration_allowed": true
+        }
+      ],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "isolation_backend",
+        "boundary_canary",
+        "platform_lane",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 557,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 2,
+      "blocked_by": [
+        553,
+        556,
+        559,
+        588
+      ],
+      "blocks": [
+        562,
+        566,
+        569,
+        578
+      ],
+      "priority": "P0",
+      "area": "security",
+      "release_critical": true,
+      "owner_surfaces": [
+        "actual-effect-safety"
+      ],
+      "allowed_parallel_with": [
+        560,
+        574
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "actual_effect_observation",
+        "safety_canary",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 558,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 3,
+      "blocked_by": [
+        559,
+        560,
+        582,
+        588
+      ],
+      "blocks": [
+        562,
+        564,
+        569,
+        578,
+        583
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "routing-oracle"
+      ],
+      "allowed_parallel_with": [
+        566
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "route_oracle_digest",
+        "counterfactual",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 559,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 1,
+      "blocked_by": [
+        582,
+        588
+      ],
+      "blocks": [
+        557,
+        558,
+        560,
+        562,
+        566,
+        568,
+        569,
+        576,
+        578,
+        583,
+        584
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "result-schema",
+        "profile-aggregation"
+      ],
+      "allowed_parallel_with": [
+        556,
+        561
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "result_schema_digest",
+        "aggregation_vectors",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 560,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 2,
+      "blocked_by": [
+        559,
+        582,
+        588
+      ],
+      "blocks": [
+        558,
+        562,
+        564,
+        569,
+        576,
+        578,
+        583
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "operator-events"
+      ],
+      "allowed_parallel_with": [
+        557,
+        574
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "operator_event_schema_digest",
+        "opportunity_binding",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 561,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 1,
+      "blocked_by": [
+        554,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        574,
+        578,
+        584
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "runtime-model-identity"
+      ],
+      "allowed_parallel_with": [
+        556,
+        559
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "model_identity_digest",
+        "comparability_rule",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 562,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 6,
+      "blocked_by": [
+        553,
+        554,
+        555,
+        556,
+        557,
+        558,
+        559,
+        560,
+        561,
+        564,
+        566,
+        567,
+        568,
+        576,
+        582,
+        583,
+        584,
+        585,
+        586,
+        588
+      ],
+      "blocks": [
+        563,
+        569,
+        575,
+        578
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "contract-freeze"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "frozen_contract_digests",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 563,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 6,
+      "blocked_by": [
+        562,
+        588
+      ],
+      "blocks": [
+        569,
+        575,
+        578
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "cycle-completion-gate"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "form_completion_gate",
+        "withheld_states",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 564,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 4,
+      "blocked_by": [
+        553,
+        558,
+        560,
+        567,
+        582,
+        583,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        578,
+        584,
+        585
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "suite-forms"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "suite_form_digests",
+        "form_equivalence_status",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 565,
+      "kind": "implementation",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        569,
+        578,
+        586
+      ],
+      "priority": "P1",
+      "area": "review",
+      "release_critical": true,
+      "owner_surfaces": [
+        "review-holdout"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        555,
+        567,
+        570,
+        572,
+        582,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "holdout_floor",
+        "precision_recall",
+        "undecided_gate",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 566,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 3,
+      "blocked_by": [
+        557,
+        559,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        578
+      ],
+      "priority": "P1",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "hard-cap-binding"
+      ],
+      "allowed_parallel_with": [
+        558,
+        576,
+        583
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "cap_trigger_cells",
+        "verifier_evidence",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 567,
+      "kind": "implementation",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        562,
+        564,
+        569,
+        578
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "raw-byte-evidence"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        555,
+        565,
+        570,
+        572,
+        582,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "raw_byte_digest_api",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 568,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 5,
+      "blocked_by": [
+        559,
+        582,
+        584,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        578,
+        586
+      ],
+      "priority": "P1",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "score-band-removal"
+      ],
+      "allowed_parallel_with": [
+        585
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "band_removal_proof",
+        "uncertainty_surface",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 569,
+      "kind": "release",
+      "status": "blocked",
+      "batch": 8,
+      "blocked_by": [
+        553,
+        554,
+        555,
+        556,
+        557,
+        558,
+        559,
+        560,
+        561,
+        562,
+        563,
+        564,
+        565,
+        566,
+        567,
+        568,
+        574,
+        575,
+        576,
+        582,
+        583,
+        584,
+        585,
+        586,
+        588
+      ],
+      "blocks": [
+        571,
+        577,
+        578
+      ],
+      "priority": "P1",
+      "area": "release",
+      "release_critical": true,
+      "owner_surfaces": [
+        "release-channel"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "stable_main_sha",
+        "gate_matrix",
+        "branch_protection"
+      ]
+    },
+    {
+      "issue": 570,
+      "kind": "release",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        571,
+        577,
+        578
+      ],
+      "priority": "P1",
+      "area": "release",
+      "release_critical": true,
+      "owner_surfaces": [
+        "action-pinning"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        555,
+        565,
+        567,
+        572,
+        582,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "pinned_action_shas",
+        "supply_chain_check",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 571,
+      "kind": "release",
+      "status": "blocked",
+      "batch": 8,
+      "blocked_by": [
+        569,
+        570,
+        588
+      ],
+      "blocks": [
+        577,
+        578
+      ],
+      "priority": "P1",
+      "area": "release",
+      "release_critical": true,
+      "owner_surfaces": [
+        "release-artifact-manifest"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "tarball_sha256",
+        "sbom",
+        "provenance",
+        "install_manifest_digest"
+      ]
+    },
+    {
+      "issue": 572,
+      "kind": "audit",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [],
+      "priority": "P2",
+      "area": "repo",
+      "release_critical": false,
+      "owner_surfaces": [
+        "stale-branch-audit"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        555,
+        565,
+        567,
+        570,
+        582,
+        588
+      ],
+      "phases": [
+        {
+          "id": "read-only-audit",
+          "status": "ready",
+          "blocked_by": [],
+          "allowed_outputs": [
+            "stale-branch-audit-report"
+          ],
+          "code_integration_allowed": false
+        },
+        {
+          "id": "final-deletion",
+          "status": "blocked",
+          "blocked_by": [
+            578,
+            588
+          ],
+          "allowed_outputs": [
+            "branch-deletion-log"
+          ],
+          "code_integration_allowed": false
+        }
+      ],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "audit_report_digest",
+        "deletion_log"
+      ]
+    },
+    {
+      "issue": 573,
+      "kind": "epic",
+      "status": "tracking",
+      "batch": null,
+      "blocked_by": [],
+      "blocks": [],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "final_closeout_report",
+        "evidence_bundle_digest"
+      ]
+    },
+    {
+      "issue": 574,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 2,
+      "blocked_by": [
+        554,
+        555,
+        556,
+        561,
+        588
+      ],
+      "blocks": [
+        569,
+        575,
+        578
+      ],
+      "priority": "P0",
+      "area": "ux",
+      "release_critical": true,
+      "owner_surfaces": [
+        "runtime-discovery"
+      ],
+      "allowed_parallel_with": [
+        557,
+        560
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "discovery_matrix",
+        "profile_digest",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 575,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 7,
+      "blocked_by": [
+        562,
+        563,
+        574,
+        576,
+        588
+      ],
+      "blocks": [
+        569,
+        577,
+        578
+      ],
+      "priority": "P0",
+      "area": "ux",
+      "release_critical": true,
+      "owner_surfaces": [
+        "quickstart-orchestration"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "orchestration_ledger",
+        "idempotency_proof",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 576,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 3,
+      "blocked_by": [
+        559,
+        560,
+        583,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        575,
+        578
+      ],
+      "priority": "P0",
+      "area": "ux",
+      "release_critical": true,
+      "owner_surfaces": [
+        "agent-relay-protocol"
+      ],
+      "allowed_parallel_with": [
+        566
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "relay_protocol_digest",
+        "initial_before_advice_proof",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 577,
+      "kind": "release",
+      "status": "blocked",
+      "batch": 8,
+      "blocked_by": [
+        569,
+        570,
+        571,
+        575,
+        588
+      ],
+      "blocks": [
+        578
+      ],
+      "priority": "P0",
+      "area": "ux",
+      "release_critical": true,
+      "owner_surfaces": [
+        "installer-consumer"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "install_receipt",
+        "manifest_verification",
+        "clean_install_matrix"
+      ]
+    },
+    {
+      "issue": 578,
+      "kind": "acceptance",
+      "status": "blocked",
+      "batch": 9,
+      "blocked_by": [
+        553,
+        554,
+        555,
+        556,
+        557,
+        558,
+        559,
+        560,
+        561,
+        562,
+        563,
+        564,
+        565,
+        566,
+        567,
+        568,
+        569,
+        570,
+        571,
+        574,
+        575,
+        576,
+        577,
+        582,
+        583,
+        584,
+        585,
+        586,
+        588
+      ],
+      "blocks": [],
+      "priority": "P0",
+      "area": "ux",
+      "release_critical": true,
+      "owner_surfaces": [
+        "acceptance-e2e"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "zero_context_ux_ledger",
+        "cycle_id",
+        "profiles_delivered",
+        "evidence_bundle_digest"
+      ]
+    },
+    {
+      "issue": 582,
+      "kind": "implementation",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        558,
+        559,
+        560,
+        562,
+        564,
+        568,
+        569,
+        578,
+        583,
+        584,
+        586
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "construct-map",
+        "evidence-model",
+        "task-model",
+        "interpretation-use-argument",
+        "observable-cell"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        555,
+        565,
+        567,
+        570,
+        572,
+        588
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "construct_map_digest",
+        "evidence_model_digest",
+        "task_model_digest",
+        "use_argument_digest",
+        "cell_mapping",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 583,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 3,
+      "blocked_by": [
+        558,
+        559,
+        560,
+        582,
+        588
+      ],
+      "blocks": [
+        562,
+        564,
+        569,
+        576,
+        578,
+        584,
+        585
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "reliance-events"
+      ],
+      "allowed_parallel_with": [
+        566
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "reliance_event_schema_digest",
+        "opportunity_floor",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 584,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 4,
+      "blocked_by": [
+        559,
+        561,
+        564,
+        582,
+        583,
+        588
+      ],
+      "blocks": [
+        562,
+        568,
+        569,
+        578,
+        585,
+        586
+      ],
+      "priority": "P0",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "facet-uncertainty"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "facet_record_digest",
+        "uncertainty_status",
+        "generalizability_default",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 585,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 5,
+      "blocked_by": [
+        564,
+        583,
+        584,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        578,
+        586
+      ],
+      "priority": "P1",
+      "area": "measurement",
+      "release_critical": true,
+      "owner_surfaces": [
+        "form-class-exposure"
+      ],
+      "allowed_parallel_with": [
+        568
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "form_class_registry",
+        "exposure_ledger",
+        "transfer_classification",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 586,
+      "kind": "implementation",
+      "status": "blocked",
+      "batch": 5,
+      "blocked_by": [
+        565,
+        568,
+        582,
+        584,
+        585,
+        588
+      ],
+      "blocks": [
+        562,
+        569,
+        578
+      ],
+      "priority": "P1",
+      "area": "review",
+      "release_critical": true,
+      "owner_surfaces": [
+        "claim-governance"
+      ],
+      "allowed_parallel_with": [],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "validation_registry_digest",
+        "claim_stage",
+        "forbidden_use_policy",
+        "mutation"
+      ]
+    },
+    {
+      "issue": 588,
+      "kind": "governance",
+      "status": "ready",
+      "batch": 0,
+      "blocked_by": [],
+      "blocks": [
+        556,
+        557,
+        558,
+        559,
+        560,
+        561,
+        562,
+        563,
+        564,
+        566,
+        568,
+        569,
+        571,
+        574,
+        575,
+        576,
+        577,
+        578,
+        583,
+        584,
+        585,
+        586
+      ],
+      "priority": "P0",
+      "area": "repo",
+      "release_critical": true,
+      "owner_surfaces": [
+        "execution-governance"
+      ],
+      "allowed_parallel_with": [
+        553,
+        554,
+        555,
+        565,
+        567,
+        570,
+        572,
+        582
+      ],
+      "phases": [],
+      "close_evidence_required": true,
+      "required_evidence_fields": [
+        "manifest_digest",
+        "schema_digest",
+        "canonical_issue_count",
+        "live_audit",
+        "mutation"
+      ]
+    }
+  ]
+}
