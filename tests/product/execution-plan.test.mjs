@@ -6,10 +6,12 @@ import {
   CANONICAL_ISSUE_COUNT,
   EXCLUDED_ISSUES,
   auditCloseEvidence,
+  auditSummary,
   checkGithubState,
   checkPlan,
   loadPlan,
   loadSchema,
+  nextWork,
   planDigest,
   validateAgainstSchema
 } from "../../lib/execution-plan.mjs";
@@ -18,6 +20,15 @@ const plan = () => loadPlan();
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const entry = (doc, issue) => doc.issues.find((one) => one.issue === issue);
 const failures = (report) => report.failures.map((one) => one.check);
+
+const verified = () => ({
+  commit_exists: true,
+  commit_on_integration_branch: true,
+  pr_merged: true,
+  pr_closes_issue: true,
+  ci_runs_succeeded: true,
+  verified: true
+});
 
 const state = () =>
   JSON.parse(readFileSync(new URL("../../fixtures/execution-plan/github-state.json", import.meta.url), "utf8"));
@@ -225,6 +236,7 @@ test("close evidence missing an issue-specific required field fails", () => {
     verdict: "PASS",
     evidence: { mutation: "load-bearing" }
   };
+  issue.close_evidence_checked = verified();
   const report = auditCloseEvidence(plan(), snapshot);
   assert.ok(report.failures.some((one) => one.check === "close-evidence-field-missing"));
 });
@@ -246,6 +258,7 @@ test("a complete completion record closes the issue", () => {
       mutation: "load-bearing"
     }
   };
+  issue.close_evidence_checked = verified();
   assert.deepEqual(auditCloseEvidence(plan(), snapshot).failures, []);
 });
 
@@ -307,12 +320,242 @@ test("only a fenced record that names the schema counts as evidence, and the las
   assert.equal(parseCompletionRecord(["body", first]).verdict, "HOLD");
 });
 
-test("the audit summary carries no title, body or path", () => {
-  // What this command prints is what goes into the release evidence bundle, and the bundle is
-  // published. A check that leaked an issue title would leak it once and for ever.
+test("the audit summary carries no title, body or path, even when everything is failing", () => {
+  // What the command prints is what goes into the release evidence bundle, and the bundle is
+  // published. Built here with real failures in it, because a version of this test that asserted an
+  // empty failure list was empty would have stayed green while a title was added to the output.
   const doc = plan();
+  const snapshot = state();
+  const broken = snapshot.issues.find((one) => one.number === 567);
+  broken.labels = ["release:v0.2.0", "priority:P0", "area:measurement", "status:done"];
+  broken.milestone = 13;
+  entry(doc, 559).blocked_by.push(559);
+
+  const summary = auditSummary(doc, snapshot, {
+    plan: checkPlan(doc),
+    state: checkGithubState(doc, snapshot),
+    evidence: auditCloseEvidence(doc, snapshot)
+  });
+
+  assert.equal(summary.ok, false);
+  assert.ok(summary.failures.length > 0, "the summary should be reporting failures here");
+  for (const failure of summary.failures) {
+    assert.deepEqual(Object.keys(failure).sort(), ["check", "issue", "lane"]);
+  }
+
+  const serialised = JSON.stringify(summary);
+  for (const one of snapshot.issues) {
+    assert.equal(serialised.includes(one.title), false, `the summary leaked the title of #${one.number}`);
+  }
+  assert.equal(/\/(Users|home|var|tmp)\//.test(serialised), false, "the summary leaked a path");
+  assert.equal(/gh[pousr]_[A-Za-z0-9]/.test(serialised), false, "the summary leaked a token");
+  assert.equal(serialised.includes(plan().body_marker) && !summary.ok ? false : true, true);
+});
+
+// --- what the final review broke, and what stops it now --------------------------------------
+
+test("the excluded-issue check cannot be switched off from inside the plan", () => {
+  const doc = plan();
+  doc.excluded_issues = [];
   const report = checkPlan(doc);
-  const serialised = JSON.stringify(report.failures);
-  assert.equal(serialised, "[]");
-  for (const one of state().issues) assert.ok(one.title.length > 0);
+  assert.ok(failures(report).includes("excluded-issue-dropped"));
+  for (const number of [579, 580, 581]) {
+    assert.ok(report.failures.some((one) => one.check === "excluded-issue-dropped" && one.issue === number));
+  }
+});
+
+test("in-progress and done are constrained by predecessors, not just ready", () => {
+  for (const status of ["in-progress", "done", "ready"]) {
+    const doc = plan();
+    entry(doc, 559).status = status;
+    assert.ok(
+      failures(checkPlan(doc)).includes("ready-with-unfinished-predecessor"),
+      `#559 was allowed to be ${status} while #582 is unfinished`
+    );
+  }
+});
+
+test("a ready issue with a blocked phase is advertised as restricted, never as ready", () => {
+  const work = nextWork(plan());
+  // #572 may audit stale branches now and may not delete them until #578 has preserved the
+  // evidence. Printing "ready now: #572" was an invitation to do the second thing.
+  assert.equal(work.ready.includes(572), false);
+  const restricted = work.ready_with_blocked_phases.find((one) => one.issue === 572);
+  assert.deepEqual(restricted.open_phases, ["read-only-audit"]);
+  assert.deepEqual(restricted.withheld_phases, [{ phase: "final-deletion", blocked_by: [578, 588] }]);
+});
+
+test("a phase left blocked after its predecessors landed is stale", () => {
+  const doc = plan();
+  for (const number of [578, 588]) entry(doc, number).status = "done";
+  assert.ok(failures(checkPlan(doc)).includes("stale-blocked-phase"));
+});
+
+test("a batch that runs behind something it waits on fails", () => {
+  const doc = plan();
+  entry(doc, 578).batch = 0;
+  assert.ok(failures(checkPlan(doc)).includes("batch-out-of-order"));
+});
+
+test("an issue cannot both wait on a peer and claim to run beside it", () => {
+  const doc = plan();
+  entry(doc, 559).allowed_parallel_with.push(582);
+  entry(doc, 582).allowed_parallel_with.push(559);
+  assert.ok(failures(checkPlan(doc)).includes("parallel-with-dependency"));
+});
+
+test("every release-critical issue is behind a gate, and gate names are fixed", () => {
+  const doc = plan();
+  doc.gates.S = doc.gates.S.filter((number) => number !== 553);
+  assert.ok(failures(checkPlan(doc)).includes("release-critical-not-gated"));
+
+  const renamed = plan();
+  renamed.gates.Z = renamed.gates.S;
+  delete renamed.gates.S;
+  assert.ok(failures(checkPlan(renamed)).includes("gate-unknown-name"));
+});
+
+// --- the schema validator is sound about the constructs it accepts ---------------------------
+
+test("the schema subset does not silently accept what a schema forbids", () => {
+  const check = (schema, value) => validateAgainstSchema(value, schema).ok;
+
+  // `false` is a schema meaning "nothing is allowed here", not an absent one.
+  assert.equal(check({ type: "object", properties: { x: false } }, { x: 1 }), false);
+  assert.equal(check({ type: "object", properties: { x: true } }, { x: 1 }), true);
+
+  // Draft 2020-12 applies $ref's siblings.
+  const withRef = { $defs: { n: { type: "integer" } }, $ref: "#/$defs/n", minimum: 5 };
+  assert.equal(check(withRef, 3), false);
+  assert.equal(check(withRef, 7), true);
+
+  // Key order is not part of a JSON value's identity.
+  assert.equal(check({ type: "array", uniqueItems: true }, [{ a: 1, b: 2 }, { b: 2, a: 1 }]), false);
+
+  // An unsupported keyword is reported, not thrown: a crashed required check reads as
+  // infrastructure trouble rather than as the schema saying something we cannot honour.
+  const unsupported = validateAgainstSchema(1, { allOf: [{ type: "integer" }] });
+  assert.equal(unsupported.ok, false);
+  assert.match(unsupported.errors[0].message, /unsupported schema keyword "allOf"/);
+
+  // An unresolvable reference fails rather than escaping as an exception.
+  assert.equal(check({ $ref: "#/$defs/missing" }, 1), false);
+});
+
+// --- the snapshot has to say what it is -------------------------------------------------------
+
+test("a snapshot that does not say what it is cannot be the comparison authority", () => {
+  const doc = plan();
+  const forged = { ...state(), schema: "anything", repository: "attacker/fork", source: "fabricated", captured_at: "1900-01-01T" };
+  const report = checkGithubState(doc, forged);
+  const names = report.failures.map((one) => one.check);
+  assert.ok(names.includes("snapshot-not-a-snapshot"));
+  assert.ok(names.includes("snapshot-wrong-repository"));
+  assert.ok(names.includes("snapshot-unknown-source"));
+  assert.ok(names.includes("snapshot-undated"));
+});
+
+test("the committed snapshot says it is a snapshot, so an offline run cannot read as a live audit", () => {
+  assert.equal(state().source, "snapshot");
+});
+
+test("two contradictory status labels do not pass", () => {
+  const snapshot = state();
+  const issue = snapshot.issues.find((one) => one.number === 559);
+  issue.labels = [...issue.labels, "status:ready"];
+  assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "status-label-mismatch"));
+});
+
+test("closed as not planned is not closed as done", () => {
+  const snapshot = state();
+  const issue = snapshot.issues.find((one) => one.number === 588);
+  issue.state_reason = "not_planned";
+  assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "closed-not-planned"));
+});
+
+// --- a completion record is checked against the repository, not read ---------------------------
+
+test("a record the repository does not confirm is not evidence", () => {
+  const snapshot = state();
+  const issue = snapshot.issues.find((one) => one.number === 588);
+  issue.close_evidence_checked = { commit_exists: true, commit_on_integration_branch: false, pr_merged: true, pr_closes_issue: true, ci_runs_succeeded: true, verified: false };
+  const report = auditCloseEvidence(plan(), snapshot);
+  assert.ok(report.failures.some((one) => one.check === "close-evidence-unverified" && one.issue === 588));
+});
+
+test("a record nobody ever checked is not evidence either", () => {
+  const snapshot = state();
+  snapshot.issues.find((one) => one.number === 588).close_evidence_checked = null;
+  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-unchecked"));
+});
+
+test("the shipped snapshot's own record was checked against the repository and holds", () => {
+  const issue = state().issues.find((one) => one.number === 588);
+  assert.equal(issue.state, "closed");
+  assert.equal(issue.close_evidence.verdict, "PASS");
+  assert.equal(issue.close_evidence.author_trusted, true);
+  assert.deepEqual(issue.close_evidence_checked, {
+    commit_exists: true,
+    commit_on_integration_branch: true,
+    pr_merged: true,
+    pr_closes_issue: true,
+    ci_runs_succeeded: true,
+    verified: true
+  });
+});
+
+test("a record from someone without write access is not an attestation", async () => {
+  const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
+  const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
+
+  const outsider = parseCompletionRecord([{ body: block("PASS"), author_association: "NONE", author: "drive-by" }]);
+  assert.equal(outsider.author_trusted, false);
+
+  const snapshot = state();
+  const issue = snapshot.issues.find((one) => one.number === 588);
+  issue.close_evidence = { ...issue.close_evidence, author_trusted: false, author: "drive-by" };
+  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-untrusted-author"));
+});
+
+test("an outsider cannot overwrite a maintainer's record, and the attempt is recorded", async () => {
+  const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
+  const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
+
+  const held = parseCompletionRecord([
+    { body: block("HOLD"), author_association: "OWNER", author: "maintainer" },
+    { body: block("PASS"), author_association: "NONE", author: "drive-by" }
+  ]);
+  assert.equal(held.verdict, "HOLD");
+  assert.equal(held.contested_by, "drive-by");
+
+  // A maintainer's correction after a maintainer's pass does still supersede it.
+  const corrected = parseCompletionRecord([
+    { body: block("PASS"), author_association: "OWNER", author: "maintainer" },
+    { body: block("HOLD"), author_association: "MEMBER", author: "reviewer" }
+  ]);
+  assert.equal(corrected.verdict, "HOLD");
+});
+
+// --- the cycle diagnostic names every edge someone would have to remove ---------------------
+
+test("every elementary cycle is reported, once each", () => {
+  const doc = plan();
+  // Three issues that all wait on each other. A depth-first search with one shared visited set
+  // finds only some of these, and the one it drops is the edge the reader has to remove.
+  entry(doc, 553).blocked_by = [554, 555];
+  entry(doc, 554).blocked_by = [553, 555];
+  entry(doc, 555).blocked_by = [553, 554];
+  for (const number of [553, 554, 555]) entry(doc, number).status = "blocked";
+
+  const reported = checkPlan(doc)
+    .failures.filter((one) => one.check === "dependency-cycle")
+    .map((one) => one.detail);
+
+  // Six elementary cycles: three of length two, two of length three, and each named once.
+  const canonical = (detail) => detail.replace(/#/g, "");
+  assert.equal(reported.length, 5, reported.join(" | "));
+  for (const expected of ["553 -> 554 -> 553", "553 -> 555 -> 553", "554 -> 555 -> 554"]) {
+    assert.ok(reported.some((one) => canonical(one) === expected), `missing ${expected}: ${reported.join(" | ")}`);
+  }
+  assert.equal(new Set(reported).size, reported.length, "a cycle was reported twice");
 });

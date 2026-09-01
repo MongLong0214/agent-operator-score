@@ -16,11 +16,83 @@
 
 export const GUARDS = [
   {
+    guard: "elementary cycle enumeration",
+    reason: "a diagnostic that omits the edge someone has to remove sends them to fix the wrong one",
+    file: "lib/execution-plan.mjs",
+    from: "        if (!byNumber.has(next) || next < start) continue;",
+    to: "        if (!byNumber.has(next)) continue;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "every elementary cycle is reported, once each"
+  },
+  {
+    guard: "close-evidence repository confirmation",
+    reason: "forty hex characters and a positive integer are things a fabricated record has too",
+    file: "lib/execution-plan.mjs",
+    from: "    if (checked && checked.verified !== true) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a record the repository does not confirm is not evidence"
+  },
+  {
+    guard: "close-evidence author trust",
+    reason: "anyone can comment on a public issue; not everyone can attest that work was done",
+    file: "lib/execution-plan.mjs",
+    from: "    if (record && record.author_trusted === false) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a record from someone without write access is not an attestation"
+  },
+  {
+    guard: "snapshot provenance",
+    reason: "a branch controlling both the plan and its comparison authority can make them agree on a fiction",
+    file: "lib/execution-plan.mjs",
+    from: "  if (snapshot?.repository !== plan.repository) {",
+    to: "  if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a snapshot that does not say what it is cannot be the comparison authority"
+  },
+  {
+    guard: "started statuses need finished predecessors",
+    reason: "constraining only `ready` let an issue be moved to in-progress and then done past its blockers",
+    file: "lib/execution-plan.mjs",
+    from: "    if (STARTED.has(one.status) && unfinished.length > 0) {",
+    to: "    if (one.status === \"ready\" && false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "in-progress and done are constrained by predecessors, not just ready"
+  },
+  {
+    guard: "excluded issues are a floor",
+    reason: "a check its own subject can switch off is not a check",
+    file: "lib/execution-plan.mjs",
+    from: "    if (!plan.excluded_issues.includes(excluded)) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the excluded-issue check cannot be switched off from inside the plan"
+  },
+  {
+    guard: "restricted readiness",
+    reason: "advertising #572 as ready is an invitation to delete branches before #578 preserved the evidence",
+    file: "lib/execution-plan.mjs",
+    from: "  const restricted = openIssues.filter((one) => one.phases.some((phase) => phase.status !== \"ready\"));",
+    to: "  const restricted = [];",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a ready issue with a blocked phase is advertised as restricted, never as ready"
+  },
+  {
+    guard: "exactly one status label",
+    reason: "status:blocked and status:ready at once shows an agent permission the manifest withholds",
+    file: "lib/execution-plan.mjs",
+    from: "    if (statuses.length !== 1 || statuses[0] !== `status:${one.status}`) {",
+    to: "    if (!labels.has(`status:${one.status}`) && false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "two contradictory status labels do not pass"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
-    from: "      if (onStack.has(next)) {",
-    to: "      if (false) {",
+    from: "        if (next === start) cycles.push([...stack, start]);",
+    to: "        if (false) cycles.push([...stack, start]);",
     test: "tests/product/execution-plan.test.mjs",
     name: "a dependency cycle fails"
   },
