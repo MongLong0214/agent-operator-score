@@ -1,0 +1,739 @@
+{
+  "schema": "aos-github-issue-state.v1",
+  "repository": "MongLong0214/agent-operator-score",
+  "captured_at": "2026-09-01T23:02:04.962Z",
+  "source": "live",
+  "issues": [
+    {
+      "number": 553,
+      "title": "[P0][security] assessed code와 trusted verdict authority process를 완전히 분리한다",
+      "state": "open",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#553",
+        "#573",
+        "#574",
+        "#575",
+        "#576",
+        "#578"
+      ]
+    },
+    {
+      "number": 554,
+      "title": "[P0][security] automatic runtime credential을 verified executable identity에 결박한다",
+      "state": "open",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#554",
+        "#573",
+        "#574",
+        "#575",
+        "#578"
+      ]
+    },
+    {
+      "number": 555,
+      "title": "[P0][security] child environment를 adapter allowlist-only policy로 전환한다",
+      "state": "open",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#555",
+        "#573",
+        "#574",
+        "#575",
+        "#562",
+        "#578"
+      ]
+    },
+    {
+      "number": 556,
+      "title": "[P0][security] actual runtime/platform official lane의 STRICT workspace confinement를 증명한다",
+      "state": "open",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#556",
+        "#574",
+        "#575",
+        "#578"
+      ]
+    },
+    {
+      "number": 557,
+      "title": "[P0][measurement] Safety를 agent 자기신고가 아닌 actual observed effects로 판정한다",
+      "state": "open",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#557",
+        "#556",
+        "#575",
+        "#576",
+        "#578"
+      ]
+    },
+    {
+      "number": 558,
+      "title": "[P0][measurement] M09를 actual route·capability·deterministic minimal-route oracle로 교체한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#558",
+        "#576",
+        "#574",
+        "#575",
+        "#560",
+        "#578",
+        "#582",
+        "#559",
+        "#583"
+      ]
+    },
+    {
+      "number": 559,
+      "title": "[P0][product] Process·Reliance·Outcome Profile과 secondary descriptive indices를 구현한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#559",
+        "#575",
+        "#578",
+        "#576",
+        "#582",
+        "#560",
+        "#583",
+        "#558",
+        "#584",
+        "#568",
+        "#586",
+        "#585"
+      ]
+    },
+    {
+      "number": 560,
+      "title": "[P0][measurement] D1–D3를 actual operator event와 construct opportunity에 재결박한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#560",
+        "#576",
+        "#578",
+        "#575",
+        "#582",
+        "#559",
+        "#558",
+        "#583"
+      ]
+    },
+    {
+      "number": 561,
+      "title": "[P0][measurement] exact model/runtime identity를 Profile facet과 Cycle comparability에 결박한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#561",
+        "#574",
+        "#575",
+        "#578",
+        "#576",
+        "#562",
+        "#584",
+        "#585"
+      ]
+    },
+    {
+      "number": 562,
+      "title": "[P0][measurement] 최종 profile·suite·form·scorer·claim contract를 exact digests로 freeze한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#562",
+        "#575",
+        "#578",
+        "#553",
+        "#554",
+        "#555",
+        "#556",
+        "#557",
+        "#558",
+        "#559",
+        "#560",
+        "#561",
+        "#564",
+        "#566",
+        "#567",
+        "#568",
+        "#576",
+        "#582",
+        "#583",
+        "#584",
+        "#585",
+        "#586"
+      ]
+    },
+    {
+      "number": 563,
+      "title": "[P0][measurement] 모든 locked operational form과 claim-required coverage가 충족돼야 Cycle을 발급한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#563",
+        "#575",
+        "#578",
+        "#584"
+      ]
+    },
+    {
+      "number": 564,
+      "title": "[P0][suite] 6개 family의 operational form을 construct opportunity·oracle 기준으로 의미 있게 변형한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#564",
+        "#575",
+        "#578",
+        "#576",
+        "#562",
+        "#553",
+        "#582",
+        "#558",
+        "#560",
+        "#583",
+        "#567",
+        "#584",
+        "#585"
+      ]
+    },
+    {
+      "number": 565,
+      "title": "[P1][review] review holdout floor·known-incident precision/recall·UNDECIDED gate를 구현한다",
+      "state": "open",
+      "labels": [
+        "area:review",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#565",
+        "#578",
+        "#575",
+        "#586"
+      ]
+    },
+    {
+      "number": 566,
+      "title": "[P1][scoring] Hard cap을 exact trigger cell·verifier·effect evidence에 결박한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#566",
+        "#578",
+        "#575"
+      ]
+    },
+    {
+      "number": 567,
+      "title": "[P0][evidence] artifact·handoff·tree identity를 raw-byte digests로 전환한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#567",
+        "#575",
+        "#576",
+        "#578",
+        "#562"
+      ]
+    },
+    {
+      "number": 568,
+      "title": "[P1][measurement] active score band·cut score를 제거하고 uncertainty·claim stage로 대체한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#568",
+        "#559",
+        "#578",
+        "#575"
+      ]
+    },
+    {
+      "number": 569,
+      "title": "[P1][release] 모든 implementation gate PASS 후 `main`을 stable/default 채널로 promotion한다",
+      "state": "open",
+      "labels": [
+        "area:release",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#569",
+        "#577",
+        "#578"
+      ]
+    },
+    {
+      "number": 570,
+      "title": "[P1][supply-chain] 모든 external GitHub Action을 immutable full SHA에 pin한다",
+      "state": "open",
+      "labels": [
+        "area:release",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#570",
+        "#577",
+        "#578",
+        "#571"
+      ]
+    },
+    {
+      "number": 571,
+      "title": "[P1][release] tarball·checksum·SBOM·provenance·stable install manifest를 final Release에 제공한다",
+      "state": "open",
+      "labels": [
+        "area:release",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#571",
+        "#577",
+        "#578",
+        "#575"
+      ]
+    },
+    {
+      "number": 572,
+      "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다",
+      "state": "open",
+      "labels": [
+        "area:repo",
+        "priority:P2",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#572",
+        "#574",
+        "#578",
+        "#577"
+      ]
+    },
+    {
+      "number": 573,
+      "title": "[EPIC][v0.2.0][SSOT v3][EXECUTION GO] Measurement integrity, zero-config UX & production closeout",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:tracking"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_SSOT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#579",
+        "#580",
+        "#574",
+        "#575",
+        "#576",
+        "#577",
+        "#578",
+        "#553",
+        "#14",
+        "#562",
+        "#587",
+        "#582",
+        "#583",
+        "#584",
+        "#585",
+        "#586",
+        "#581",
+        "#554",
+        "#555",
+        "#565",
+        "#567",
+        "#570",
+        "#572",
+        "#559",
+        "#588",
+        "#556",
+        "#573",
+        "#564",
+        "#571",
+        "#563",
+        "#569"
+      ]
+    },
+    {
+      "number": 574,
+      "title": "[P0][UX] runtime·auth·model·env·STRICT isolation·Profile을 자동 탐지·구성한다",
+      "state": "open",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 575,
+      "title": "[P0][UX] verified install 이후 discovery→Cycle→relay→profiles→report orchestration을 구현한다",
+      "state": "open",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#568"
+      ]
+    },
+    {
+      "number": 576,
+      "title": "[P0][UX][protocol] actual user turn과 initial-before-advice를 보존하는 agent-relay protocol을 구현한다",
+      "state": "open",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#586",
+        "#583"
+      ]
+    },
+    {
+      "number": 577,
+      "title": "[P0][UX][release] #571 stable manifest를 소비해 artifact를 검증·user-scope 설치한다",
+      "state": "open",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 578,
+      "title": "[P0][UX][acceptance] URL만 받은 zero-context agent의 actual STRICT profile-bound terminal-0 E2E를 증명한다",
+      "state": "open",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#553",
+        "#577",
+        "#582",
+        "#586"
+      ]
+    },
+    {
+      "number": 579,
+      "title": "[P2][UX][optional] URL 하나로 설치·진단·측정까지 수행하는 agent-operated quickstart",
+      "state": "closed",
+      "labels": [],
+      "milestone": null,
+      "body_marker": null,
+      "close_evidence": null,
+      "closing_references": [
+        "#579",
+        "#574",
+        "#575",
+        "#576",
+        "#577",
+        "#578",
+        "#580",
+        "#573",
+        "#554",
+        "#555",
+        "#556",
+        "#561",
+        "#562",
+        "#563"
+      ]
+    },
+    {
+      "number": 580,
+      "title": "[P2][UX][optional] 동일 대화창 operator checkpoint agent-relay protocol",
+      "state": "closed",
+      "labels": [],
+      "milestone": null,
+      "body_marker": null,
+      "close_evidence": null,
+      "closing_references": [
+        "#580",
+        "#576",
+        "#573",
+        "#578"
+      ]
+    },
+    {
+      "number": 581,
+      "title": "[ADMIN][CLOSED] Accidental temporary issue — no implementation work",
+      "state": "closed",
+      "labels": [],
+      "milestone": null,
+      "body_marker": null,
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 582,
+      "title": "[P0][measurement] Evidence-Centered construct·evidence·task·해석/사용 계약을 구현한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 583,
+      "title": "[P0][measurement] 사전 독립판단·위임·채택을 분리한 appropriate-reliance trace를 구현한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": [
+        "#582",
+        "#559",
+        "#560",
+        "#558",
+        "#583"
+      ]
+    },
+    {
+      "number": 584,
+      "title": "[P0][psychometrics] facet·uncertainty·generalizability gate와 calibration scaffold를 구현한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 585,
+      "title": "[P1][validation] form class·exposure·practice·transfer·invariance 계약을 구현한다",
+      "state": "open",
+      "labels": [
+        "area:measurement",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 586,
+      "title": "[P1][validation] validation evidence registry·claim-stage·forbidden-use governance를 구현한다",
+      "state": "open",
+      "labels": [
+        "area:review",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    },
+    {
+      "number": 588,
+      "title": "[P0][governance] v0.2.0 실행 DAG·이슈 상태·phase·hot-file ownership을 machine-readable하게 고정한다",
+      "state": "open",
+      "labels": [
+        "area:repo",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "closing_references": []
+    }
+  ]
+}

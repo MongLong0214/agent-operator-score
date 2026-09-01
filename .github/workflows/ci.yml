@@ -85,3 +85,19 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:mutation
+
+  # The execution plan against its schema, against itself, and against the committed snapshot of
+  # the issues. Required, and offline: a plan that has drifted from the issues it describes sends
+  # the next agent to work on something it is not allowed to start yet, and that is not the kind of
+  # mistake that shows up in a test of the product.
+  execution-plan:
+    name: execution-plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:execution-plan
