@@ -48,7 +48,9 @@ if (has("--write-snapshot")) {
 
 const reports = {
   plan: checkPlan(plan, { schema: loadSchema(SCHEMA_PATH) }),
-  state: checkGithubState(plan, snapshot),
+  // The run says how it got the file; the file has to agree. A hand-written offline snapshot
+  // stamped `live` would otherwise read, in the evidence bundle, as an audit that talked to GitHub.
+  state: checkGithubState(plan, snapshot, { expectedSource: live ? "live" : "snapshot" }),
   evidence: auditCloseEvidence(plan, snapshot)
 };
 

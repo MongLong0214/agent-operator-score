@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-01T23:26:01.877Z",
+  "captured_at": "2026-09-01T23:45:51.074Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -825,8 +825,11 @@
         "commit_exists": true,
         "commit_on_integration_branch": true,
         "pr_merged": true,
+        "pr_targets_integration_branch": true,
         "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
         "verified": true
       },
       "closing_references": [

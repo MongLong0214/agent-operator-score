@@ -12,6 +12,8 @@ import {
   loadPlan,
   loadSchema,
   nextWork,
+  MAX_REPORTED_CYCLES,
+  REQUIRED_CONFIRMATIONS,
   planDigest,
   validateAgainstSchema
 } from "../../lib/execution-plan.mjs";
@@ -21,14 +23,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const entry = (doc, issue) => doc.issues.find((one) => one.issue === issue);
 const failures = (report) => report.failures.map((one) => one.check);
 
-const verified = () => ({
-  commit_exists: true,
-  commit_on_integration_branch: true,
-  pr_merged: true,
-  pr_closes_issue: true,
-  ci_runs_succeeded: true,
-  verified: true
-});
+const verified = () => ({ ...Object.fromEntries(REQUIRED_CONFIRMATIONS.map((key) => [key, true])), verified: true });
 
 const state = () =>
   JSON.parse(readFileSync(new URL("../../fixtures/execution-plan/github-state.json", import.meta.url), "utf8"));
@@ -199,6 +194,7 @@ test("close evidence without CI run ids or a PASS verdict is not evidence", () =
   issue.state = "closed";
   issue.close_evidence = {
     schema: "aos-issue-completion.v1",
+    author_trusted: true,
     issue: 567,
     final_sha: "0".repeat(40),
     pr: 601,
@@ -213,6 +209,7 @@ test("close evidence without CI run ids or a PASS verdict is not evidence", () =
   other.state = "closed";
   other.close_evidence = {
     schema: "aos-issue-completion.v1",
+    author_trusted: true,
     issue: 567,
     final_sha: "0".repeat(40),
     pr: 601,
@@ -229,6 +226,7 @@ test("close evidence missing an issue-specific required field fails", () => {
   issue.state = "closed";
   issue.close_evidence = {
     schema: "aos-issue-completion.v1",
+    author_trusted: true,
     issue: 567,
     final_sha: "0".repeat(40),
     pr: 601,
@@ -248,6 +246,7 @@ test("a complete completion record closes the issue", () => {
   issue.labels = ["release:v0.2.0", "priority:P0", "area:measurement", "status:done"];
   issue.close_evidence = {
     schema: "aos-issue-completion.v1",
+    author_trusted: true,
     issue: 567,
     final_sha: "a".repeat(40),
     pr: 601,
@@ -494,21 +493,14 @@ test("the shipped snapshot's own record was checked against the repository and h
   assert.equal(issue.state, "closed");
   assert.equal(issue.close_evidence.verdict, "PASS");
   assert.equal(issue.close_evidence.author_trusted, true);
-  assert.deepEqual(issue.close_evidence_checked, {
-    commit_exists: true,
-    commit_on_integration_branch: true,
-    pr_merged: true,
-    pr_closes_issue: true,
-    ci_runs_succeeded: true,
-    verified: true
-  });
+  assert.deepEqual(issue.close_evidence_checked, verified());
 });
 
 test("a record from someone without write access is not an attestation", async () => {
   const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
   const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
 
-  const outsider = parseCompletionRecord([{ body: block("PASS"), author_association: "NONE", author: "drive-by" }]);
+  const outsider = parseCompletionRecord([{ body: block("PASS"), author_trusted: false, author: "drive-by" }]);
   assert.equal(outsider.author_trusted, false);
 
   const snapshot = state();
@@ -522,16 +514,16 @@ test("an outsider cannot overwrite a maintainer's record, and the attempt is rec
   const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
 
   const held = parseCompletionRecord([
-    { body: block("HOLD"), author_association: "OWNER", author: "maintainer" },
-    { body: block("PASS"), author_association: "NONE", author: "drive-by" }
+    { body: block("HOLD"), author_trusted: true, author: "maintainer" },
+    { body: block("PASS"), author_trusted: false, author: "drive-by" }
   ]);
   assert.equal(held.verdict, "HOLD");
   assert.equal(held.contested_by, "drive-by");
 
   // A maintainer's correction after a maintainer's pass does still supersede it.
   const corrected = parseCompletionRecord([
-    { body: block("PASS"), author_association: "OWNER", author: "maintainer" },
-    { body: block("HOLD"), author_association: "MEMBER", author: "reviewer" }
+    { body: block("PASS"), author_trusted: true, author: "maintainer" },
+    { body: block("HOLD"), author_trusted: true, author: "reviewer" }
   ]);
   assert.equal(corrected.verdict, "HOLD");
 });
@@ -558,4 +550,195 @@ test("every elementary cycle is reported, once each", () => {
     assert.ok(reported.some((one) => canonical(one) === expected), `missing ${expected}: ${reported.join(" | ")}`);
   }
   assert.equal(new Set(reported).size, reported.length, "a cycle was reported twice");
+});
+
+// --- round two: the confirmation is one claim, not several true-but-unrelated ones -----------
+
+test("three separately true facts are not a confirmation", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1] };
+
+  // Everything the old version asked for, all of it real, none of it about the same work: an old
+  // commit that happens to be on dev, a merged PR that happens to close the issue, a successful
+  // run that happens to exist.
+  const unrelated = async (path) => {
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: "c".repeat(40), body: "Closes #588" } };
+    }
+    return { body: { conclusion: "success", head_sha: "d".repeat(40) } };
+  };
+  const loose = await verifyCompletionRecord("o/r", record, { get: unrelated });
+  assert.equal(loose.verified, false);
+  assert.equal(loose.pr_produced_the_commit, false);
+  assert.equal(loose.ci_runs_ran_on_this_work, false);
+  assert.equal(loose.commit_on_integration_branch, true, "the parts really are individually true");
+
+  // The same shape, actually bound together.
+  const bound = async (path) => {
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    return { body: { conclusion: "success", head_sha: "b".repeat(40) } };
+  };
+  assert.equal((await verifyCompletionRecord("o/r", record, { get: bound })).verified, true);
+
+  // And a pull request aimed somewhere other than the branch that ships is not it either.
+  const elsewhere = async (path) =>
+    path.includes("/pulls/")
+      ? { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "someone-elses-branch" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } }
+      : bound(path);
+  assert.equal((await verifyCompletionRecord("o/r", record, { get: elsewhere })).verified, false);
+});
+
+test("a one-key forgery of the whole audit does not pass", () => {
+  const snapshot = state();
+  snapshot.issues.find((one) => one.number === 588).close_evidence_checked = { verified: true };
+  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-unverified"));
+
+  const partial = state();
+  partial.issues.find((one) => one.number === 588).close_evidence_checked = { ...verified(), pr_produced_the_commit: false };
+  assert.ok(auditCloseEvidence(plan(), partial).failures.some((one) => one.check === "close-evidence-unverified"));
+});
+
+test("an omitted author_trusted is not a trusted author", () => {
+  const snapshot = state();
+  const issue = snapshot.issues.find((one) => one.number === 588);
+  delete issue.close_evidence.author_trusted;
+  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-untrusted-author"));
+});
+
+test("an empty array is not a digest and false is not a count", () => {
+  for (const value of [[], {}, false, 0, "", "   ", null]) {
+    const snapshot = state();
+    const issue = snapshot.issues.find((one) => one.number === 588);
+    issue.close_evidence = { ...issue.close_evidence, evidence: { ...issue.close_evidence.evidence, manifest_digest: value } };
+    assert.ok(
+      auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-field-missing"),
+      `${JSON.stringify(value)} was accepted as evidence`
+    );
+  }
+});
+
+test("write access is asked of the repository, not inferred from an association", async () => {
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const withRole = (permission) => async () => ({ body: { permission } });
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("admin") }), true);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("write") }), true);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("maintain") }), true);
+  // A collaborator with the read or triage role would have attested to completed work.
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("triage") }), false);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("read") }), false);
+  // "Could not establish" is not "has it".
+  assert.equal(await hasWriteAccess("o/r", "a", { get: async () => { throw new Error("403"); } }), false);
+  assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
+});
+
+test("comments are read until GitHub says there is no next page", async () => {
+  const { requestAll } = await import("../../lib/github-state.mjs");
+  const pages = { 1: [1, 2], 2: [3, 4], 3: [5] };
+  let asked = 0;
+  const get = async (path) => {
+    asked += 1;
+    const page = Number(/[?&]page=(\d+)/.exec(path)[1]);
+    return {
+      body: pages[page] ?? [],
+      link: pages[page + 1] ? `<https://api.github.com/x?page=${page + 1}>; rel="next"` : null
+    };
+  };
+  // Three pages, not a fixed bound: a correction posted after the bound would never be read.
+  assert.deepEqual(await requestAll("/x", null, get), [1, 2, 3, 4, 5]);
+  assert.equal(asked, 3);
+});
+
+// --- round two: the snapshot's provenance, not just its shape --------------------------------
+
+test("an offline snapshot cannot claim to be a live audit, or to be about another branch", () => {
+  const doc = plan();
+  const stamped = { ...state(), source: "live" };
+  assert.ok(checkGithubState(doc, stamped).failures.some((one) => one.check === "snapshot-source-mismatch"));
+  assert.deepEqual(checkGithubState(doc, stamped, { expectedSource: "live" }).failures, []);
+
+  const elsewhere = { ...state(), integration_branch: "attacker" };
+  assert.ok(checkGithubState(doc, elsewhere).failures.some((one) => one.check === "snapshot-wrong-branch"));
+
+  for (const when of ["0", "1900-01-01", "yesterday", 0]) {
+    assert.ok(
+      checkGithubState(doc, { ...state(), captured_at: when }).failures.some((one) => one.check === "snapshot-undated"),
+      `${JSON.stringify(when)} was accepted as a capture time`
+    );
+  }
+});
+
+test("an excluded issue missing from the snapshot is not a pass", () => {
+  const snapshot = state();
+  snapshot.issues = snapshot.issues.filter((one) => ![579, 580, 581].includes(one.number));
+  const failed = checkGithubState(plan(), snapshot).failures.filter((one) => one.check === "excluded-issue-not-in-snapshot");
+  assert.deepEqual(failed.map((one) => one.issue).sort((a, b) => a - b), [579, 580, 581]);
+});
+
+test("a done issue closed as a duplicate is not a done issue", () => {
+  for (const reason of ["duplicate", "not_planned", null, "reopened"]) {
+    const snapshot = state();
+    snapshot.issues.find((one) => one.number === 588).state_reason = reason;
+    assert.ok(
+      checkGithubState(plan(), snapshot).failures.some((one) => one.check === "closed-not-planned"),
+      `${reason} was accepted as completion`
+    );
+  }
+});
+
+// --- round two: done means done, gates exist, and the validator handles characters -------------
+
+test("an issue is not done while one of its phases is withheld", () => {
+  const doc = plan();
+  // #572's withheld phase is the one that deletes branches, and it waits on #578.
+  entry(doc, 572).status = "done";
+  assert.ok(failures(checkPlan(doc)).includes("done-with-unfinished-phase"));
+});
+
+test("a gate cannot be deleted by folding its issues into another one", () => {
+  const doc = plan();
+  doc.gates.S = [...doc.gates.S, ...doc.gates.X];
+  delete doc.gates.X;
+  assert.ok(failures(checkPlan(doc)).includes("gate-missing"));
+});
+
+test("string length is counted in characters and patterns are matched in unicode mode", () => {
+  const emoji = "\u{1F600}";
+  assert.equal(validateAgainstSchema(emoji, { type: "string", minLength: 2 }).ok, false);
+  assert.equal(validateAgainstSchema(emoji, { type: "string", maxLength: 1 }).ok, true);
+  assert.equal(validateAgainstSchema(emoji, { type: "string", pattern: "^..$" }).ok, false);
+  assert.equal(validateAgainstSchema(emoji, { type: "string", pattern: "^.$" }).ok, true);
+});
+
+test("the cycle report is bounded, so a dense graph fails rather than hangs", () => {
+  const doc = plan();
+  // Everything waits on everything. The elementary cycles of a complete graph on thirty-two nodes
+  // outnumber anything worth enumerating; the answer needed is "this is cyclic, and here is where".
+  const numbers = doc.issues.map((one) => one.issue);
+  for (const one of doc.issues) {
+    one.blocked_by = numbers.filter((number) => number !== one.issue);
+    one.blocks = numbers.filter((number) => number !== one.issue);
+  }
+  const started = Date.now();
+  const reported = checkPlan(doc).failures.filter((one) => one.check === "dependency-cycle");
+  assert.ok(Date.now() - started < 10_000, "the cycle search did not finish quickly");
+  assert.equal(reported.length, MAX_REPORTED_CYCLES);
+});
+
+test("the published summary keeps the key names its schema version promised", () => {
+  const doc = plan();
+  const snapshot = state();
+  const summary = auditSummary(doc, snapshot, {
+    plan: checkPlan(doc),
+    state: checkGithubState(doc, snapshot),
+    evidence: auditCloseEvidence(doc, snapshot)
+  });
+  assert.equal(summary.schema, "aos-execution-audit.v1");
+  assert.deepEqual(Object.keys(summary.counts).sort(), ["blocked", "done", "in_progress", "ready", "tracking"]);
+  assert.equal(summary.counts.in_progress, 0);
 });

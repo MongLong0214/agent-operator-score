@@ -16,6 +16,60 @@
 
 export const GUARDS = [
   {
+    guard: "close-evidence component confirmations",
+    reason: "a one-key `verified: true` was a forgery of the whole live audit",
+    file: "lib/execution-plan.mjs",
+    from: "      const absent = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true);",
+    to: "      const absent = [];",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a one-key forgery of the whole audit does not pass"
+  },
+  {
+    guard: "pull request produced the commit",
+    reason: "three separately true facts about unrelated work are not a confirmation of this work",
+    file: "lib/github-state.mjs",
+    from: "    checked.pr_produced_the_commit = pull.merge_commit_sha === record.final_sha || pull.head?.sha === record.final_sha;",
+    to: "    checked.pr_produced_the_commit = true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "three separately true facts are not a confirmation"
+  },
+  {
+    guard: "write access asked of the repository",
+    reason: "a collaborator with the read or triage role would have attested to completed work",
+    file: "lib/github-state.mjs",
+    from: "    allowed = WRITE_PERMISSIONS.has(body.permission);",
+    to: "    allowed = true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "write access is asked of the repository, not inferred from an association"
+  },
+  {
+    guard: "snapshot source matches how it was read",
+    reason: "an offline snapshot stamped `live` reads in the evidence bundle as an audit that talked to GitHub",
+    file: "lib/execution-plan.mjs",
+    from: "  if (snapshot?.source !== expectedSource) {",
+    to: "  if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an offline snapshot cannot claim to be a live audit, or to be about another branch"
+  },
+  {
+    guard: "done issues have no withheld phase",
+    reason: "#572's withheld phase is the one that deletes branches",
+    file: "lib/execution-plan.mjs",
+    from: '      if (one.status === "done" && phase.status !== "done") {',
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an issue is not done while one of its phases is withheld"
+  },
+  {
+    guard: "excluded issues present in the snapshot",
+    reason: "absence switched the excluded-issue check off from the file it checks",
+    file: "lib/execution-plan.mjs",
+    from: '      fail("excluded-issue-not-in-snapshot", excluded, "the snapshot does not carry the excluded issue, so its state cannot be checked");',
+    to: "      continue;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an excluded issue missing from the snapshot is not a pass"
+  },
+  {
     guard: "elementary cycle enumeration",
     reason: "a diagnostic that omits the edge someone has to remove sends them to fix the wrong one",
     file: "lib/execution-plan.mjs",
@@ -37,7 +91,7 @@ export const GUARDS = [
     guard: "close-evidence author trust",
     reason: "anyone can comment on a public issue; not everyone can attest that work was done",
     file: "lib/execution-plan.mjs",
-    from: "    if (record && record.author_trusted === false) {",
+    from: "    if (record && record.author_trusted !== true) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a record from someone without write access is not an attestation"

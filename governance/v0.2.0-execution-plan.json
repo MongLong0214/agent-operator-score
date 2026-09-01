@@ -5,6 +5,7 @@
   "epic": 573,
   "milestone": 14,
   "milestone_title": "v0.2.0 — SSOT v3 Execution-Governed Measurement Integrity & Zero-config UX",
+  "integration_branch": "dev",
   "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
   "epic_body_marker": "FINAL_EXECUTION_SSOT_2026-09-01_V3",
   "release_label": "release:v0.2.0",
