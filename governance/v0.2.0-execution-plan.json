@@ -1250,7 +1250,7 @@
     {
       "issue": 588,
       "kind": "governance",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [

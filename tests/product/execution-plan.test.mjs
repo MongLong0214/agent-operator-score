@@ -253,12 +253,34 @@ test("a complete completion record closes the issue", () => {
 
 test("the next batch is decidable from the manifest alone", () => {
   const doc = plan();
+  // Batch 0 is the set that starts with nothing to wait for. Stated as the invariant rather than
+  // as a frozen list, so closing an issue does not require editing this assertion -- an assertion
+  // that has to be edited on every merge stops being read.
+  const batchZero = [553, 554, 555, 556, 565, 567, 570, 572, 582, 588];
   const ready = doc.issues.filter((one) => one.status === "ready").map((one) => one.issue).sort((a, b) => a - b);
-  assert.deepEqual(ready, [553, 554, 555, 565, 567, 570, 572, 582, 588]);
+  const expected = batchZero
+    .filter((number) => entry(doc, number).blocked_by.length === 0)
+    .filter((number) => entry(doc, number).status !== "done");
+  assert.deepEqual(ready, expected);
+  assert.ok(ready.length > 0, "the plan has run out of startable work");
+
+  // #556 is the phase case: blocked as an issue, open as a probe. It must never appear as ready.
+  assert.equal(ready.includes(556), false);
   const phaseReady = doc.issues
     .filter((one) => one.status !== "ready" && (one.phases ?? []).some((p) => p.status === "ready"))
     .map((one) => one.issue);
   assert.deepEqual(phaseReady, [556]);
+});
+
+test("a done issue is closed on GitHub and a not-done issue is open", () => {
+  const doc = plan();
+  const snapshot = state();
+  for (const one of doc.issues) {
+    const live = snapshot.issues.find((other) => other.number === one.issue);
+    assert.equal(live.state, one.status === "done" ? "closed" : "open", `#${one.issue}`);
+  }
+  // Every issue already closed carries the record that closed it, checked rather than assumed.
+  assert.deepEqual(auditCloseEvidence(doc, snapshot).failures, []);
 });
 
 test("the digest is stable and changes when the plan changes", () => {

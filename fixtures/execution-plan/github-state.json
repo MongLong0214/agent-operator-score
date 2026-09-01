@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-01T23:02:04.962Z",
+  "captured_at": "2026-09-01T23:11:35.265Z",
   "source": "live",
   "issues": [
     {
@@ -723,17 +723,47 @@
     {
       "number": 588,
       "title": "[P0][governance] v0.2.0 실행 DAG·이슈 상태·phase·hot-file ownership을 machine-readable하게 고정한다",
-      "state": "open",
+      "state": "closed",
       "labels": [
         "area:repo",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "closing_references": []
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 588,
+        "final_sha": "499bb11b004024fc46b9e97300ad8909d86a5073",
+        "pr": 589,
+        "ci_run_ids": [
+          33569597591
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "manifest_digest": "sha256:8f0a3c65546ac9d582feb4b85ac209d7b16ce1aa4f99a76275d5e54d70ebe25e",
+          "schema_digest": "sha256:1f09bc3e72dea75b866e370c24c41071c8fd1164b81ab13ae29f28a88c11415e",
+          "canonical_issue_count": 32,
+          "live_audit": "PASS — plan, GitHub state and close evidence agree; source live",
+          "mutation": "21/21 guards load-bearing, 6 of them new to this issue"
+        }
+      },
+      "closing_references": [
+        "#588",
+        "#582",
+        "#564",
+        "#562",
+        "#556",
+        "#557",
+        "#553",
+        "#554",
+        "#555",
+        "#565",
+        "#567",
+        "#570",
+        "#572"
+      ]
     }
   ]
 }
