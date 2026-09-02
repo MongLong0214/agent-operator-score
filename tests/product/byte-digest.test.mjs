@@ -19,7 +19,7 @@ import {
   treeByteDigest
 } from "../../lib/digest.mjs";
 import { runProcess } from "../../lib/core.mjs";
-import { acceptanceOf, emptyLedger, judge, loadLedger, recordSession } from "../../lib/holdout.mjs";
+import { acceptanceOf, emptyLedger, judge, laneA, loadLedger, recordSession } from "../../lib/holdout.mjs";
 import { DIRECTORY, safeWalk } from "../../lib/safe-fs.mjs";
 import { run } from "./helpers.mjs";
 
@@ -1154,6 +1154,9 @@ test("a session recorded under the legacy identity is not counted, and not hidde
   // can see that their holdout is smaller than the file suggests.
   assert.equal(acceptance.tuning_sessions, 0);
   assert.equal(acceptance.legacy_sessions, 1);
+  // And the floored shape the command actually prints carries the count too; `acceptanceOf` is not
+  // an output path, so a figure that stopped there would be one nobody saw.
+  assert.equal(laneA(judged).legacy_sessions, 1);
 
   // A row recorded under the byte identity still counts, so this is a check on the identity and not
   // a refusal of the ledger.

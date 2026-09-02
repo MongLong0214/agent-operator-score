@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T06:35:11.156Z",
+  "captured_at": "2026-09-02T06:48:34.300Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -252,7 +252,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -838,19 +838,52 @@
     {
       "number": 582,
       "title": "[P0][measurement] Evidence-Centered construct·evidence·task·해석/사용 계약을 구현한다",
-      "state": "open",
-      "state_reason": "reopened",
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
-      "closing_references": []
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 582,
+        "final_sha": "a6e11712dcd7bde9db2ceca4cf9ff0f2ce4ad2c2",
+        "pr": 598,
+        "ci_run_ids": [
+          33599643141
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "construct_map_digest": "sha256:815d6718d48c50db0b2a79280b55918e9645689532a32516ab50f39accf84362 (contracts/aos-construct-map.v1.json, canonical JSON via contractDigests(); combined sha256:c20461900bfcecb02b5d0fcb41518b2d9d4d34f63cf7b7be9b3878e5b7b608c7)",
+          "evidence_model_digest": "sha256:a103106e4b76af4e5673cc4fb61c8f543532d8acac3a16bf1cfabf906b09d775 (contracts/aos-evidence-model.v1.json)",
+          "task_model_digest": "sha256:343c21cee3bd14f8c85f2ed7ec4bd5756ea891c2ceef1a1fc66dbb3be2415192 (contracts/aos-task-model.v1.json)",
+          "use_argument_digest": "sha256:ad82b54f1e6f69c5a3f33b799c2511da0f5f19e4c279ef5a69a0253f14c29677 (contracts/aos-interpretation-use-argument.v1.json)",
+          "cell_mapping": "subcheckMapping(shippedEcdContract()): 80 subcheck ids mapped onto 28 observable cells (cells digest sha256:1f34bbfdc4dfb8397166f18235cf89694a86d1a49b517682997c89f56eb31ab9) across 6 constructs and 6 administering forms, every row with a form_id, 76 credit-bearing rows and the 4 agent-declaration rows carry no credit; authority counts {\"agent-artifact+deterministic-grader\":40,\"artifact-byte-effect\":3,\"agent-declaration\":4,\"artifact-content-effect\":1,\"runtime-invocation-ledger+agent-artifact\":1,\"orchestration-effect\":4,\"operator-canonical-event\":8,\"operator-canonical-event+agent-artifact\":2,\"isolated-verifier-process\":8,\"workspace-revision-effect\":4,\"isolated-verifier-process+agent-artifact\":3,\"runtime-invocation-ledger\":2}; mapping digest sha256:a98358c119605aab224199490cc18e96465235e3b6854bed87700f9e5c4857d3. checkEcdContract passes on the shipped artifacts and every scoring function refuses an unsealed contract (tests/product/ecd-*.test.mjs).",
+          "mutation": "192/192 guards are load-bearing (CI mutation job on a6e1171, run 33599643141)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
+      "closing_references": [
+        "#582"
+      ]
     },
     {
       "number": 583,
