@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { FAM5_VERIFIER, gradeScenario, prepareScenario } from "../../lib/suite.mjs";
 import { readVerdict, runVerifier } from "../../lib/verifier-run.mjs";
 import { REFUSED, safeWalk } from "../../lib/safe-fs.mjs";
+import { PROBES } from "../../lib/verifiers/fam5-probes.mjs";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "aos-isolation-"));
 
@@ -105,13 +106,19 @@ test("assessed code that exits the process is a verifier failure, not a pass", a
   assert.equal(graded.details.verifier.exit_code, 0);
   // This assertion used to read `reported === false`: the exit killed the one process that both
   // imported the module and wrote the verdict, so the whole verifier fell silent. That silence was
-  // the old architecture's symptom, and it is gone -- the module can only exit the subject process
-  // now, and the controller reports the probe it never got an answer from. The property under test
-  // is unchanged and the evidence is stronger: an exit is still not a pass, and the report now says
-  // which probes went unanswered instead of saying nothing at all.
+  // the old architecture's symptom and it is gone -- the module can only exit the subject process
+  // now, and the controller reports the probe it never got an answer from.
+  //
+  // The two conditions contradict rather than one superseding the other, so this is a rewrite, not
+  // a strengthening: what carries over is the property the test is named for, that an exit is not a
+  // pass, and what is better is the evidence, which now says which probes went unanswered.
   assert.equal(graded.details.verifier.reported, true, "assessed code silenced the trusted controller");
   assert.equal(graded.details.hidden, false, "silence was read as a verdict");
-  for (const probe of Object.values(graded.details.verifier.probes)) {
+  // The count first. Iterating an empty map asserts nothing, and `probes: {}` is exactly what a
+  // refused verdict carries -- so without this the loop below would pass on the wrong failure.
+  const probes = graded.details.verifier.probes;
+  assert.equal(Object.keys(probes).length, PROBES.length, "the verdict did not report every probe");
+  for (const probe of Object.values(probes)) {
     assert.equal(probe.passed, false, "a probe whose subject exited without answering was scored as passed");
     assert.equal(probe.refused, "no-result", "the refusal reason was not recorded");
   }
@@ -143,7 +150,13 @@ ${CORRECT}`
   // module is not verified even though its ratio() is correct.
   assert.equal(graded.details.verifier.leaked_descendants, true, "the spawned process was not seen");
   assert.equal(graded.details.verifier.survivors, false, "a spawned process outlived the cleanup");
+  assert.equal(graded.details.verifier.descendants_found, true, "the positive finding was not carried");
   assert.equal(graded.metrics.M15, 0, "a run that leaked a process was scored as verified");
+  // And the verifier process itself finished cleanly. `ok` used to fold the descendant scan in, so
+  // one boolean carried both the established exit facts and the scan's unestablished negative, and
+  // lib/observe.mjs consumed the pair under the name `verifier-exits-success`. They are separate
+  // now: this is what makes the run fail, and it is asserted at the site that decides.
+  assert.equal(graded.details.verifier.ok, true, "the exit facts and the descendant scan are still one boolean");
 });
 
 test("calculator.mjs as a symlink is refused rather than followed", async () => {

@@ -26,7 +26,7 @@ export const GUARDS = [
   },
   {
     guard: "subject nonce non-disclosure",
-    reason: "a subject process holding the nonce can write the verdict line itself",
+    reason: "the parent's authentication secret has no business in a process running assessed code",
     file: "lib/verifiers/fam5.mjs",
     from: 'const subjectEnv = (home) => ({ PATH: SAFE_PATH, HOME: home, TMPDIR: home, LANG: "C", NODE_ENV: "production" });',
     to: 'const subjectEnv = (home) => ({ PATH: SAFE_PATH, HOME: home, TMPDIR: home, LANG: "C", NODE_ENV: "production", AOS_VERIFIER_NONCE: nonce });',
@@ -52,13 +52,49 @@ export const GUARDS = [
     name: "a duplicate observation on the result channel is refused"
   },
   {
-    guard: "observation schema and size",
+    guard: "observation schema",
     reason: "an unvalidated result channel is an assessed-code-controlled field in the verdict",
     file: "lib/verifiers/fam5-result.mjs",
     from: "  if (fields.length !== 5 || fields[0] !== MARKER) return refuse(\"malformed-result\");",
     to: "",
     test: "tests/product/verifier-authority.test.mjs",
     name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "observation channel size bound",
+    reason: "an unbounded result channel is memory the assessed module decides how much of to take",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: '  if (channel.length > MAX_CHANNEL_BYTES) return refuse("oversized-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "observation line size bound",
+    reason: "a row bound the channel bound does not imply, and the schema would misreport as malformed",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: '  if (line.length > MAX_RESULT_BYTES) return refuse("oversized-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "subject runner executed from memory",
+    reason: "a runner spawned by path is the attacker's runner from the second probe onwards",
+    file: "lib/verifiers/fam5.mjs",
+    from: "      SUBJECT_SOURCE,",
+    to: '      readFileSync(new URL("./fam5-subject.mjs", import.meta.url), "utf8"),',
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the controller reads the subject runner once, before it spawns anything"
+  },
+  {
+    guard: "trusted-file integrity re-check",
+    reason: "a verifier that cannot vouch for its own code has nothing to say about anybody else's",
+    file: "lib/verifiers/fam5.mjs",
+    from: "    if (modifiedTrustedFiles().length > 0) {",
+    to: "    if (false) {",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "a write into the AOS installation refuses the verdict even when the probes would pass"
   },
   {
     guard: "missing-result refusal",

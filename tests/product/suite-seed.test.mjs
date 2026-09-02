@@ -3,8 +3,9 @@ import test from "node:test";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
-import { sha256Text, sha256Value } from "../../lib/core.mjs";
+import { sha256Value } from "../../lib/core.mjs";
 import { normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
 import { SUITE_ID, prepareScenario, suiteDigest, suiteManifest } from "../../lib/suite.mjs";
 
@@ -111,12 +112,38 @@ test("the manifest binds the grader, the verifier and the metric contract", () =
   assert.equal(manifest.suite_id, SUITE_ID);
   assert.match(manifest.generator_digest, /^[a-f0-9]{64}$/);
   assert.match(manifest.metric_contract_digest, /^[a-f0-9]{64}$/);
-  assert.match(manifest.verifier_digests["fam5-independent-verifier.v1"], /^[a-f0-9]{64}$/);
 
-  // The verifier digest is the verifier's own bytes: editing it moves the manifest whether or not
-  // anybody remembered to bump a version.
-  const verifier = readFileSync(new URL("../../lib/verifiers/fam5.mjs", import.meta.url), "utf8");
-  assert.equal(manifest.verifier_digests["fam5-independent-verifier.v1"], sha256Text(verifier.replace(/\r\n/g, "\n")));
+  // Every file the verdict rests on, and each of them by its own bytes. This checked only the
+  // controller, and it checked it after normalising CRLF -- so three of the four additions were
+  // covered by nothing, and two byte-distinct files could carry the same digest. A digest that says
+  // which rules marked a run is worth exactly what it fails to notice.
+  const rawDigest = (relative) =>
+    createHash("sha256").update(readFileSync(new URL(relative, import.meta.url))).digest("hex");
+  const covered = {
+    "fam5-independent-verifier.v1": "../../lib/verifiers/fam5.mjs",
+    "fam5-subject-runner.v1": "../../lib/verifiers/fam5-subject.mjs",
+    "fam5-probe-manifest.v1": "../../lib/verifiers/fam5-probes.mjs",
+    "fam5-result-schema.v1": "../../lib/verifiers/fam5-result.mjs",
+    "fam5-verifier-runner.v1": "../../lib/verifier-run.mjs"
+  };
+  assert.deepEqual(Object.keys(manifest.verifier_digests).sort(), Object.keys(covered).sort());
+  for (const [id, relative] of Object.entries(covered)) {
+    assert.match(manifest.verifier_digests[id], /^[a-f0-9]{64}$/, id);
+    assert.equal(manifest.verifier_digests[id], rawDigest(relative), id);
+  }
+
+  // The generator digest reaches the runner and the process scan too: both decide how an answer is
+  // marked, and a suite digest that moves for a grader edit but not for those is not saying what it
+  // claims to say.
+  assert.equal(
+    manifest.generator_digest,
+    sha256Value({
+      suite: rawDigest("../../lib/suite.mjs"),
+      seeded: rawDigest("../../lib/suite-seed.mjs"),
+      runner: rawDigest("../../lib/verifier-run.mjs"),
+      core: rawDigest("../../lib/core.mjs")
+    })
+  );
 
   // And the fixture this seed actually produces, not just the seed that names it. Binding the label
   // alone would let the generator change what a seed means while the manifest stayed still.
