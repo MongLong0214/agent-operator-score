@@ -300,6 +300,27 @@ export const GUARDS = [
     name: "the record separates what was withheld outright from what was merely never named"
   },
   {
+    guard: "stale-branch audit preserves orphaned unmerged work",
+    reason:
+      "a branch whose only copy of real work sits nowhere else must never read as safe to delete -- that is the exact loss #578's evidence-preservation gate exists to prevent",
+    file: "fixtures/stale-branches/audit.json",
+    from: '"name": "task/issue-588-mark-done",\n      "recommendation": "must_be_preserved"',
+    to: '"name": "task/issue-588-mark-done",\n      "recommendation": "safe_to_delete_after_578"',
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "an entry with commits merged into neither dev nor main must be marked must_be_preserved, across the audited-branches and open-PR-head tables"
+  },
+  {
+    guard: "stale-branch audit deletion recommendations carry a reason",
+    reason:
+      "a deletion recommendation with no stated reason is unreviewable -- the next reader cannot tell an evidenced call from a guess",
+    file: "fixtures/stale-branches/audit.json",
+    from:
+      '"reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of the 355 checked in that search) ever used it as a head branch, and that GitHub-wide search found no reference to it outside issue #572\'s own candidate list; PR #592 (this audit\'s own PR, opened after that search) also names it in its body, but only as a self-reference -- see referenced_by_pr. Deleting it after #578\'s evidence bundle is captured loses nothing."',
+    to: '"reason": ""',
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "no entry recommends deletion without a reason"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
@@ -550,6 +571,8 @@ export const ACCOUNTED_GUARDS = [
   "runtime auth is bound to the adapter that reads it",
   "safety cap",
   "stale blocked status",
+  "stale-branch audit deletion recommendations carry a reason",
+  "stale-branch audit preserves orphaned unmerged work",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the digest covers the rules applied outside the allowlist",
