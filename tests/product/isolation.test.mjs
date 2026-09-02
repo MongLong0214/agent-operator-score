@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { buildAgentEnv, isSensitiveName, isolationRecord, SCORING_ISOLATION } from "../../lib/isolation.mjs";
+import { envPolicyFor } from "../../lib/env-policy.mjs";
 import { runProcess } from "../../lib/core.mjs";
 import { run } from "./helpers.mjs";
 
@@ -79,15 +80,41 @@ test("both scoring levels are deny-by-default", () => {
 test("an explicitly allowed name travels and is reported by name", () => {
   // An adapter may genuinely need one. It is carried on purpose, and the result says so rather
   // than leaving the reader to assume the environment was empty.
-  const { env, carried, explicit, removed } = buildAgentEnv("STRICT", SOURCE, { allow: ["ANTHROPIC_API_KEY"] });
-  assert.equal(env.ANTHROPIC_API_KEY, "an");
+  //
+  // The name used to be `ANTHROPIC_API_KEY`, which made this test the counter-example to the one
+  // above it: `every credential-shaped name is removed at both scoring levels` was false whenever
+  // somebody declared one. `aos agent add` had refused that declaration since before #555 and the
+  // builder had not, so the product's claim and its code disagreed and this test encoded the
+  // disagreement. A config directory is what the claim was always about.
+  const { env, carried, explicit, removed } = buildAgentEnv("STRICT", { ...SOURCE, CODEX_HOME: "/tmp/codex" }, { allow: ["CODEX_HOME"] });
+  assert.equal(env.CODEX_HOME, "/tmp/codex");
   // `carried` is now every name the child actually has, so that a record cannot describe an
   // environment the agent did not run in; `explicit` is the narrower question this test asks --
   // which of them the operator named rather than which the structure of a process requires.
-  assert.deepEqual(explicit, ["ANTHROPIC_API_KEY"]);
-  assert.equal(carried.includes("ANTHROPIC_API_KEY"), true);
-  assert.equal(removed.includes("ANTHROPIC_API_KEY"), false);
+  assert.deepEqual(explicit, ["CODEX_HOME"]);
+  assert.equal(carried.includes("CODEX_HOME"), true);
+  assert.equal(removed.includes("CODEX_HOME"), false);
   assert.equal(Object.hasOwn(env, "OPENAI_API_KEY"), false, "allowing one name allowed another");
+});
+
+test("a credential-shaped name cannot become an ordinary allowed name, by flag or by file", () => {
+  // The other half of the claim above, and the route that actually worked. `aos agent add` refused
+  // `--allow-env GH_TOKEN` and nothing repeated the refusal where a spawn could see it, so a
+  // configuration file edited by hand carried the operator's token into the child and the record
+  // filed it as an ordinary declared name.
+  assert.throws(
+    () => buildAgentEnv("STRICT", SOURCE, { allow: ["ANTHROPIC_API_KEY"] }),
+    /AOS_ENV_POLICY_MISMATCH ANTHROPIC_API_KEY is credential-shaped/
+  );
+  // And a policy object that never passed that check still does not carry one: the construction
+  // refusal is not the last line, because a policy does not have to arrive from the constructor.
+  const forged = { ...envPolicyFor(null, {}), config_env: ["GH_TOKEN", "ACME_DEPLOY_TOKEN"] };
+  const built = buildAgentEnv("STRICT", { ...SOURCE, ACME_DEPLOY_TOKEN: "ghp-not-real" }, { policy: forged });
+  assert.equal(Object.hasOwn(built.env, "GH_TOKEN"), false, "a hand-forged policy carried a credential");
+  assert.equal(Object.hasOwn(built.env, "ACME_DEPLOY_TOKEN"), false);
+  assert.equal(built.removed.includes("GH_TOKEN"), true, "it was refused without being reported");
+  // The record cannot go on quoting the digest of the object before it was tampered with.
+  assert.notEqual(built.policy.policy_digest, envPolicyFor(null, {}).policy_digest);
 });
 
 test("HOME is replaced, never inherited", () => {
@@ -223,10 +250,20 @@ test("an agent is never told where the operator's runs are", () => {
   // dashboard in the operator's browser.
   const source = { PATH: "/usr/bin", HOME: "/Users/someone", AOS_HOME: "/Users/someone/.aos", AOS_DATA_DIR: "/elsewhere", LANG: "en_US.UTF-8" };
   for (const level of ["STRICT", "BEST_EFFORT_CLI", "NONE"]) {
+    // Naming them explicitly is refused outright now, which is a stronger answer than carrying the
+    // declaration and dropping the value: the operator cannot give away something that is not
+    // theirs to give, and `AOS_` is withheld before the allowlist is consulted at all.
+    assert.throws(() => buildAgentEnv(level, source, { allow: ["AOS_HOME"] }), /AOS_ENV_POLICY_MISMATCH/, level);
     const built = buildAgentEnv(level, source, {
-      // Even named explicitly. No runtime needs this, and the operator cannot give away something
-      // that is not theirs to give -- it is the record of the assessment being run.
-      allow: ["AOS_HOME", "AOS_DATA_DIR"],
+      // And a policy that never went through that refusal still does not carry them. Declared in
+      // `structural_env` rather than `config_env`: the config branch is also covered by the
+      // credential-shape rule, and every `AOS_` name is credential-shaped by prefix, so a policy
+      // that only used it would keep passing with the unconditional withholding removed. This is
+      // the one arrangement where the withholding is the only thing left.
+      policy: {
+        ...envPolicyFor(null, {}),
+        structural_env: [...envPolicyFor(null, {}).structural_env, "AOS_HOME", "AOS_DATA_DIR"]
+      },
       home: "/tmp/agent-home",
       injected: { AOS_SESSION_ID: "s", AOS_FAMILY: "FAM-1", AOS_WORKSPACE: "/w", AOS_TASK_FILE: "/t" }
     });
@@ -239,5 +276,14 @@ test("an agent is never told where the operator's runs are", () => {
     assert.equal(built.env.AOS_TASK_FILE, "/t", level);
     assert.equal(built.env.AOS_FAMILY, "FAM-1", level);
     assert.equal(built.env.AOS_SESSION_ID, "s", level);
+
+    // The config route is closed by a second rule, so it is asserted separately rather than folded
+    // into the one above, where it would have masked what that one is testing.
+    const declared = buildAgentEnv(level, source, {
+      policy: { ...envPolicyFor(null, {}), config_env: ["AOS_HOME", "AOS_DATA_DIR"] },
+      home: "/tmp/agent-home"
+    });
+    assert.equal(declared.env.AOS_HOME, undefined, level);
+    assert.equal(declared.env.AOS_DATA_DIR, undefined, level);
   }
 });

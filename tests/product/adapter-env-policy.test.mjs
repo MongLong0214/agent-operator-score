@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { ENV_POLICY_SCHEMA, HARD_FORBIDDEN_CLASSES, TRANSPORT_ENV, envPolicyFor, hardForbiddenClassOf, isTransportName } from "../../lib/env-policy.mjs";
+import { ENV_POLICY_SCHEMA, HARD_FORBIDDEN_CLASSES, RUN_METADATA_ENV, TRANSPORT_ENV, envPolicyDigestOf, envPolicyFor, hardForbiddenClassOf, isTransportName } from "../../lib/env-policy.mjs";
 import { buildAgentEnv, isolationRecord } from "../../lib/isolation.mjs";
 import { ADAPTERS, buildProfile } from "../../lib/profile.mjs";
 import { runProcess } from "../../lib/core.mjs";
-import { addAgent, initBare, makePlan, newestResult, run } from "./helpers.mjs";
+import { addAgent, cli, initBare, makePlan, newestResult, run } from "./helpers.mjs";
 
 /**
  * The variables that change what a process is before it runs a line of its own.
@@ -347,6 +348,37 @@ test("a name that redirects or unverifies the run's traffic needs the transport 
   }
 });
 
+test("a stored configuration cannot hand a credential to a child by any declaration", async () => {
+  // This test used to cover `runtime_auth_env_names` only, and its name claimed the whole subject.
+  // The ordinary route was open: `allowed_env_names: ["GH_TOKEN"]` in a hand-edited config carried
+  // the operator's token into the child and the record filed it as an ordinary declared name. The
+  // CLI had refused that spelling since before #555, so the product's claim was true of the flag
+  // and false of the file.
+  assert.throws(
+    () => envPolicyFor(ADAPTERS["codex-cli.v1"], { allow: ["GH_TOKEN"] }),
+    /AOS_ENV_POLICY_MISMATCH GH_TOKEN is credential-shaped/
+  );
+  // Including a name that is in no list anywhere and is caught by shape alone.
+  assert.throws(
+    () => envPolicyFor(ADAPTERS["generic-command.v1"], { allow: ["ACME_DEPLOY_TOKEN"] }),
+    /AOS_ENV_POLICY_MISMATCH ACME_DEPLOY_TOKEN/
+  );
+  // And a policy object that never passed that check still carries nothing, because construction is
+  // not the only way a policy reaches a spawn.
+  const clean = envPolicyFor(ADAPTERS["codex-cli.v1"], {});
+  const forged = { ...clean, config_env: [...clean.config_env, "GH_TOKEN"] };
+  const built = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin", GH_TOKEN: "gh-not-real" }, { policy: forged });
+  assert.equal(Object.hasOwn(built.env, "GH_TOKEN"), false, "a forged policy carried a credential");
+  assert.equal(built.removed.includes("GH_TOKEN"), true);
+  assert.equal(JSON.stringify(built.policy).includes("gh-not-real"), false);
+
+  // Through the spawn, from a stored agent, which is the shape the reviewer demonstrated.
+  await assert.rejects(
+    () => spawnAndReadEnv({ GH_TOKEN: "gh-not-real" }, { allowed_env_names: ["GH_TOKEN"] }),
+    /AOS_ENV_POLICY_MISMATCH/
+  );
+});
+
 test("a stored configuration cannot hand a credential to an adapter that does not read it", async () => {
   // The CLI refuses `--allow-runtime-auth GH_TOKEN` for the generic adapter. Nothing repeated that
   // where a spawn could see it, so a configuration file edited by hand -- the same file that names
@@ -441,6 +473,50 @@ test("the policy digest moves when a forbidden rule's contents move, not only it
   // Restored, and the digest comes back with it -- otherwise this test would have proved only that
   // the digest is unstable.
   assert.equal(envPolicyFor(ADAPTERS["codex-cli.v1"], {}).policy_digest, before.policy_digest);
+});
+
+test("a run whose auto-auth found a credential reports a digest the profile could not predict", async () => {
+  // The version of this below reasons about `envPolicyFor` and `buildAgentEnv` directly, which
+  // proves the arithmetic and not the plumbing. This one runs the real core: `runProcess` resolves
+  // the credential, builds the policy, spawns a child and writes the record, and the digest in that
+  // record is compared with the one `buildProfile` computed before any of it happened.
+  //
+  // The resolver's first branch is the operator's own environment variable, so no Keychain is
+  // touched and the test does not depend on this machine having a login.
+  const agent = { adapter: "claude-code.v1", runtime_auth_env_names: [] };
+  const declared = buildProfile({ agent: { ...agent, id: "cc", command: process.execPath, args: [] }, probe: () => null });
+
+  const { result, seen, cleanup } = await spawnAndReadEnv(
+    { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-notarealtokenforthistest" },
+    { adapter: "claude-code.v1" }
+  );
+  try {
+    assert.equal(result.exit_code, 0, result.error ?? "");
+    // Auto-auth found it, so the child has a name the declaration never mentioned.
+    assert.deepEqual(result.isolation.runtime_auth_env_names, ["CLAUDE_CODE_OAUTH_TOKEN"]);
+    assert.equal(result.isolation.runtime_auth_source, "environment");
+    assert.equal(seen.names.includes("CLAUDE_CODE_OAUTH_TOKEN"), true, "the resolved credential did not reach the child");
+    // Which is the whole point: the applied policy is not the declared one, and the result says so
+    // rather than filing the run under a digest computed before the credential was found.
+    assert.notEqual(result.isolation.env_policy_digest, declared.env_policy_digest);
+    assert.match(result.isolation.env_policy_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(JSON.stringify(result.isolation).includes("sk-ant-oat-notarealtokenforthistest"), false, "the value reached the record");
+  } finally {
+    cleanup();
+  }
+
+  // And with automatic resolution switched off, the run carries what the profile predicted.
+  const off = await spawnAndReadEnv(
+    { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-notarealtokenforthistest" },
+    { adapter: "claude-code.v1", auto_runtime_auth: false }
+  );
+  try {
+    assert.deepEqual(off.result.isolation.runtime_auth_env_names, []);
+    assert.equal(off.seen.names.includes("CLAUDE_CODE_OAUTH_TOKEN"), false);
+    assert.equal(off.result.isolation.env_policy_digest, declared.env_policy_digest);
+  } finally {
+    off.cleanup();
+  }
 });
 
 test("the profile digest cannot cover automatic credential resolution, and the run says so", () => {
@@ -551,27 +627,66 @@ test("the CLI refuses a hard-forbidden name and points a proxy at its own approv
   }
 });
 
-test("doctor says which names a run will carry and which dangerous ones it will drop, without values", () => {
+test("doctor names what a run will carry, what it will drop, and what is declared but not there", () => {
   // Answerable before a quota is spent: no provider call, no spawn, and no value in the output.
+  //
+  // The absent case is the one this test used to miss. It exported `CODEX_HOME` itself and then
+  // asserted PASS, so it proved that a name with a value is carried and said nothing about the
+  // ordinary installation, where `CODEX_HOME` is unset because Codex defaults it to `$HOME/.codex`
+  // -- and a run replaces HOME. Doctor treated the declaration as the answer and said PASS, and the
+  // operator found out six families later as an HTTP 401 that reads like a login problem.
   const cwd = mkdtempSync(join(tmpdir(), "aos-env-doctor-"));
   process.env.ACME_DOCTOR_TOKEN = "ghp_notarealtokenusedonlyforthistest3";
   process.env.PYTHONPATH = "/tmp/aos-test-python";
+  const restoreCodexHome = process.env.CODEX_HOME;
+  delete process.env.CODEX_HOME;
   try {
     run(cwd, ["init"]);
-    run(cwd, ["agent", "add", "envcheck", "--command", process.execPath, "--adapter", "codex-cli.v1", "--allow-env", "CODEX_HOME"]);
-    // One agent by name: `agent doctor` with no id also reports on whatever runtimes `init` found
-    // on this machine, and its exit code would then depend on the machine rather than on the test.
-    const rows = JSON.parse(run(cwd, ["agent", "doctor", "envcheck", "--json"]).stdout);
-    const row = rows.find((entry) => entry.id === "envcheck");
-    assert.equal(row.env.ok, true);
-    assert.match(row.env.detail, /carries .*PATH/);
-    assert.match(row.env.detail, /blocked .*language_preload/);
-    assert.match(row.env.detail, /sha256:[0-9a-f]{64}/);
-    assert.equal(row.env.detail.includes("ghp_notarealtokenusedonlyforthistest3"), false, "a value reached doctor output");
-    assert.equal(row.env.detail.includes("/tmp/aos-test-python"), false);
+    run(cwd, ["agent", "add", "envcheck", "--command", process.execPath, "--adapter", "codex-cli.v1"]);
+    // One agent by name, and the exit code deliberately ignored: `agent doctor` also answers the
+    // credential question, whose answer depends on what is in this machine's Keychain. The row
+    // under test is the environment one.
+    const rowOf = (id) => {
+      const result = spawnSync(process.execPath, [cli, "agent", "doctor", id, "--json"], {
+        cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+      });
+      return JSON.parse(result.stdout).find((entry) => entry.id === id);
+    };
+
+    // Required and unset: a named blocker, not a PASS.
+    const absent = rowOf("envcheck");
+    assert.equal(absent.env.ok, false, "doctor passed a runtime that will start with no configuration");
+    assert.match(absent.env.detail, /AOS_ENV_REQUIRED_MISSING CODEX_HOME/);
+    assert.match(absent.env.detail, /replaces HOME/);
+
+    // The same agent once the value exists.
+    process.env.CODEX_HOME = "/tmp/aos-test-codex-home";
+    const present = rowOf("envcheck");
+    assert.equal(present.env.ok, true);
+    assert.match(present.env.detail, /carries .*CODEX_HOME/);
+    assert.match(present.env.detail, /carries .*PATH/);
+    assert.match(present.env.detail, /blocked .*language_preload/);
+    assert.match(present.env.detail, /sha256:[0-9a-f]{64}/);
+    assert.equal(present.env.detail.includes("ghp_notarealtokenusedonlyforthistest3"), false, "a value reached doctor output");
+    assert.equal(present.env.detail.includes("/tmp/aos-test-python"), false);
+    assert.equal(present.env.detail.includes("/tmp/aos-test-codex-home"), false, "a config path reached doctor output");
+
+    // Automatic credential resolution is part of what a run will carry, and the row never mentioned
+    // it. Said by name, without reaching for a value -- and said differently when it is switched off.
+    run(cwd, ["agent", "add", "cc", "--command", process.execPath, "--adapter", "claude-code.v1"]);
+    run(cwd, ["agent", "add", "ccoff", "--command", process.execPath, "--adapter", "claude-code.v1", "--no-auto-auth"]);
+    const auto = rowOf("cc");
+    assert.match(auto.env.detail, /auto auth may add CLAUDE_CODE_OAUTH_TOKEN/);
+    // Declared by the adapter and unset on this machine: reported, not a blocker, because this
+    // runtime keeps its credential in the Keychain rather than in that directory.
+    assert.match(auto.env.detail, /declared but unset CLAUDE_CONFIG_DIR/);
+    assert.equal(auto.env.ok, true);
+    assert.match(rowOf("ccoff").env.detail, /auto auth off, so CLAUDE_CODE_OAUTH_TOKEN is not resolved/);
   } finally {
     delete process.env.ACME_DOCTOR_TOKEN;
     delete process.env.PYTHONPATH;
+    if (restoreCodexHome === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = restoreCodexHome;
     rmSync(cwd, { recursive: true, force: true });
   }
 });
@@ -647,5 +762,112 @@ test("a scored result carries the boundary it was produced under, by name and ne
     delete process.env.ACME_RESULT_TOKEN;
     delete process.env.PYTHONPATH;
     rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a .NET startup hook is a hard-forbidden class like every other pre-main hook", () => {
+  // The host loads each assembly named in `DOTNET_STARTUP_HOOKS` and runs its `Initialize` before
+  // the application's `Main`, and the CoreCLR profiler variables load a library into the process at
+  // startup. Both are documented runtime features, which is exactly what makes them a supported way
+  // to change what ran without changing the command anybody recorded. Neither was listed, so
+  // `--allow-env DOTNET_STARTUP_HOOKS` was accepted and carried.
+  assert.equal(hardForbiddenClassOf("DOTNET_STARTUP_HOOKS"), "language_preload");
+  for (const name of ["CORECLR_ENABLE_PROFILING", "CORECLR_PROFILER", "CORECLR_PROFILER_PATH", "COMPlus_ETWEnabled"]) {
+    assert.equal(hardForbiddenClassOf(name), "loader_preload", name);
+  }
+  for (const name of ["DOTNET_STARTUP_HOOKS", "CORECLR_PROFILER", "COMPlus_ETWEnabled"]) {
+    assert.throws(() => envPolicyFor(ADAPTERS["codex-cli.v1"], { allow: [name] }), /AOS_ENV_HARD_FORBIDDEN/, name);
+  }
+  // `DOTNET_ROOT` selects a toolchain and does not load anything of the operator's choosing, so it
+  // stays declarable. An over-broad `DOTNET_` prefix would have made this list cheaper and wrong.
+  assert.equal(hardForbiddenClassOf("DOTNET_ROOT"), null);
+});
+
+test("the digest describes every rule the builder applied, not only the allowlist", () => {
+  // Two rules run outside the allowlist -- the unconditional `AOS_*` withholding and the list of
+  // names the post-policy door may add -- and neither was a digest input. A record could therefore
+  // quote a digest that said nothing about the rules that decided what the child received.
+  const policy = envPolicyFor(ADAPTERS["codex-cli.v1"], {});
+  assert.deepEqual(policy.run_metadata_env, [...RUN_METADATA_ENV].sort());
+  assert.deepEqual(policy.withheld_env_prefixes, ["AOS_"]);
+  assert.equal(envPolicyDigestOf(policy), policy.policy_digest, "the stored digest is not the digest of the stored policy");
+  for (const change of [
+    { run_metadata_env: [...policy.run_metadata_env, "AOS_HOME"] },
+    { withheld_env_prefixes: [] },
+    { required_env: ["SOMETHING_ELSE"] }
+  ]) {
+    assert.notEqual(envPolicyDigestOf({ ...policy, ...change }), policy.policy_digest, JSON.stringify(change));
+  }
+});
+
+test("a policy may narrow the rules it did not write, and cannot widen them", () => {
+  // A supplied policy is an ordinary object. It reaches the builder from `core.mjs` having just
+  // been constructed, and it can reach it from anywhere else having been edited. Narrowing is
+  // honoured because a stricter run is still a run; widening is refused because otherwise the way
+  // to open a door is to declare it open.
+  const clean = envPolicyFor(ADAPTERS["codex-cli.v1"], {});
+
+  // Widening: the withheld prefix removed *and* the name declared somewhere the credential-shape
+  // rule does not read. `structural_env` is that place -- it is consulted before the config branch
+  // and without the shape check -- so this is the one shape of policy where the unconditional
+  // withholding is the only thing standing between an agent and the operator's run records.
+  const widened = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin", AOS_HOME: "/Users/someone/.aos" }, {
+    policy: { ...clean, withheld_env_prefixes: [], structural_env: [...clean.structural_env, "AOS_HOME"] }
+  });
+  assert.equal(Object.hasOwn(widened.env, "AOS_HOME"), false, "a policy widened its way to the operator's run records");
+  assert.equal(widened.removed.includes("AOS_HOME"), true);
+
+  // Widening the other door: a metadata name the module does not name is not added.
+  const doorWidened = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, {
+    policy: { ...clean, run_metadata_env: [...clean.run_metadata_env, "AOS_HOME"] },
+    injected: { AOS_SESSION_ID: "s" }
+  });
+  assert.equal(doorWidened.env.AOS_SESSION_ID, "s");
+  assert.equal(Object.hasOwn(doorWidened.env, "AOS_HOME"), false);
+
+  // Narrowing: a policy that names fewer metadata variables gets fewer.
+  const narrowed = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, {
+    policy: { ...clean, run_metadata_env: ["AOS_SESSION_ID"] },
+    injected: { AOS_SESSION_ID: "s", AOS_FAMILY: "FAM-1" }
+  });
+  assert.equal(narrowed.env.AOS_SESSION_ID, "s");
+  assert.equal(Object.hasOwn(narrowed.env, "AOS_FAMILY"), false, "a narrowed policy was recorded and not applied");
+  // Either way the record describes the policy that ran, not the one it was derived from.
+  assert.notEqual(narrowed.policy.policy_digest, clean.policy_digest);
+});
+
+test("the run-metadata list cannot be widened in the running process", () => {
+  // Demonstrated by the review as a one-line escalation: push `AOS_HOME` onto the list and the
+  // builder accepts it as run metadata. That list is applied once and read nowhere else, so unlike
+  // the hard-forbidden classes -- which are checked at the CLI, at construction and at the carry --
+  // it has no second reader to catch a change. It is frozen.
+  assert.throws(() => RUN_METADATA_ENV.push("AOS_HOME"), TypeError);
+  assert.equal(RUN_METADATA_ENV.includes("AOS_HOME"), false);
+  assert.throws(
+    () => buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, { injected: { AOS_HOME: "/Users/someone/.aos" } }),
+    /AOS_ENV_POLICY_MISMATCH AOS_HOME/
+  );
+});
+
+test("a refused policy leaves no scratch directory behind", async () => {
+  // `runProcess` made the prompt directory and the agent's HOME before it built the policy, and the
+  // cleanup only covered what happened after. Refusing a stored policy is new, so this throw is
+  // new, and every refused run leaked two directories into the system temp folder.
+  // Into a temporary directory of its own, because `node --test` runs the other files in parallel
+  // and they are making and removing `aos-agent-home-` directories in the shared one the whole time.
+  const scratch = mkdtempSync(join(tmpdir(), "aos-leak-"));
+  const restore = process.env.TMPDIR;
+  process.env.TMPDIR = scratch;
+  try {
+    await assert.rejects(
+      () => spawnAndReadEnv({ GH_TOKEN: "gh-not-real" }, { runtime_auth_env_names: ["GH_TOKEN"] }),
+      /AOS_ENV_POLICY_MISMATCH/
+    );
+    const left = readdirSync(scratch).filter((entry) => entry.startsWith("aos-prompt-") || entry.startsWith("aos-agent-home-"));
+    assert.deepEqual(left, [], "a refused run left its scratch directories behind");
+  } finally {
+    if (restore === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = restore;
+    rmSync(scratch, { recursive: true, force: true });
   }
 });

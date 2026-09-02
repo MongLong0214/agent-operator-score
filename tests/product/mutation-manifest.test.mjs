@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
+import { ACCOUNTED_GUARDS, GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
@@ -43,6 +43,19 @@ test("every mutation names a test that exists", () => {
     assert.equal(existsSync(join(root, entry.test)), true, `${entry.guard}: ${entry.test} is gone`);
     assert.equal(read(entry.test).includes(`test("${entry.name}"`), true, `${entry.guard}: no test named "${entry.name}" in ${entry.test}`);
   }
+});
+
+test("every guard in the manifest is accounted for, and every accounted guard is still there", () => {
+  // Equality, not a floor. `REQUIRED_GUARDS` is a floor over the eleven the specification named, so
+  // it cannot see a guard that was never in it -- every guard added since could have been deleted
+  // and this suite would have stayed green while reporting that the manifest was checked. A floor
+  // falls behind by default and can be stale and green at the same time; under equality an
+  // unaccounted guard fails and a departed one fails too.
+  const named = [...GUARDS.map((entry) => entry.guard)].sort();
+  const accounted = [...ACCOUNTED_GUARDS].sort();
+  assert.deepEqual(named, accounted);
+  assert.deepEqual(accounted, [...new Set(accounted)], "a name is accounted for twice");
+  assert.deepEqual([...ACCOUNTED_GUARDS], accounted, "ACCOUNTED_GUARDS is not sorted, which is what makes a merge of two branches readable");
 });
 
 test("the manifest covers the named guards and invents none", () => {

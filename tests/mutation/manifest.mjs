@@ -16,6 +16,96 @@
 
 export const GUARDS = [
   {
+    guard: "a credential-shaped name is refused as an ordinary allowed name",
+    reason: "the CLI refused --allow-env GH_TOKEN and nothing repeated it, so a hand-edited config carried the operator's token into the child",
+    file: "lib/env-policy.mjs",
+    from: "  const credentialShaped = allow.filter((name) => isSensitiveName(name));",
+    to: "  const credentialShaped = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a stored configuration cannot hand a credential to a child by any declaration"
+  },
+  {
+    guard: "a credential-shaped name is refused at the carry as well",
+    reason: "policy construction is not the only way a policy reaches a spawn, and a forged config_env is the way past it",
+    file: "lib/env-policy.mjs",
+    from: '      ? { carry: false, reason: "credential_shaped" }',
+    to: '      ? { carry: true, reason: "config" }',
+    test: "tests/product/isolation.test.mjs",
+    name: "a credential-shaped name cannot become an ordinary allowed name, by flag or by file"
+  },
+  {
+    guard: "the digest is recomputed over the policy actually applied",
+    reason: "a supplied policy is mutable, so a copied digest describes the object's history rather than the child's environment",
+    file: "lib/isolation.mjs",
+    from: "  const inForce = { ...supplied, policy_digest: envPolicyDigestOf(supplied) };",
+    to: "  const inForce = supplied;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "a policy cannot widen the withheld prefixes",
+    reason: "otherwise the way to reach AOS_HOME, and the run records the score is read from, is to declare the prefix no longer withheld",
+    file: "lib/isolation.mjs",
+    from: "  const withheldPrefixes = [...new Set([...WITHHELD_ENV_PREFIXES, ...(inForce.withheld_env_prefixes ?? [])])];",
+    to: "  const withheldPrefixes = inForce.withheld_env_prefixes ?? [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "a policy that narrows the run-metadata door is applied, not merely recorded",
+    reason: "a rule the digest describes and the builder ignores is a record of something that did not happen",
+    file: "lib/isolation.mjs",
+    from: "  const runMetadata = (inForce.run_metadata_env ?? RUN_METADATA_ENV).filter((name) => RUN_METADATA_ENV.includes(name));",
+    to: "  const runMetadata = [...RUN_METADATA_ENV];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "the run-metadata door cannot be widened in the running process",
+    reason: "one line pushing AOS_HOME onto it hands an agent the runs, results and holdout ledger its own score is read from",
+    file: "lib/env-policy.mjs",
+    from: 'export const RUN_METADATA_ENV = Object.freeze(["AOS_FAMILY", "AOS_SESSION_ID", "AOS_TASK_FILE", "AOS_WORKSPACE"]);',
+    to: 'export const RUN_METADATA_ENV = ["AOS_FAMILY", "AOS_SESSION_ID", "AOS_TASK_FILE", "AOS_WORKSPACE"];',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the run-metadata list cannot be widened in the running process"
+  },
+  {
+    guard: "the digest covers the rules applied outside the allowlist",
+    reason: "the AOS_ withholding and the run-metadata door decide what the child receives and were not digest inputs",
+    file: "lib/env-policy.mjs",
+    from: '    ["run_metadata_env", unique(policy.run_metadata_env ?? RUN_METADATA_ENV)],',
+    to: '    ["run_metadata_env", []],',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the digest describes every rule the builder applied, not only the allowlist"
+  },
+  {
+    guard: "a .NET startup hook is a pre-main hook like the rest",
+    reason: "the host runs each assembly named in DOTNET_STARTUP_HOOKS before the application's Main",
+    file: "lib/env-policy.mjs",
+    from: '      "DOTNET_STARTUP_HOOKS",',
+    to: '      "DOTNET_ROOT",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a .NET startup hook is a hard-forbidden class like every other pre-main hook"
+  },
+  {
+    guard: "doctor checks a required config name has a value",
+    reason: "a declaration with nothing in it carries nothing, and the run then fails as though the runtime were not logged in",
+    file: "lib/cli.mjs",
+    from: "  const missingRequired = (policy.required_env ?? []).filter((name) => !valued(name));",
+    to: "  const missingRequired = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "doctor names what a run will carry, what it will drop, and what is declared but not there"
+  },
+  {
+    guard: "run scratch is created inside the cleanup-protected region",
+    reason: "a policy refused between the first mkdtemp and the try left both temporary directories behind on every refused run",
+    file: "lib/core.mjs",
+    from: "  let internalDir = null;",
+    to: '  let internalDir = mkdtempSync(join(tmpdir(), "aos-prompt-"));',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a refused policy leaves no scratch directory behind"
+  },
+  {
     guard: "hard-forbidden matching is case-insensitive",
     reason: "npm folds environment keys to lower case, so a mixed-case npm_config_node_options arrives at a lifecycle child as NODE_OPTIONS",
     file: "lib/env-policy.mjs",
@@ -127,7 +217,7 @@ export const GUARDS = [
     guard: "env policy digest binding",
     reason: "an evidence bundle that quotes a digest which does not move cannot say which allowlist was in force",
     file: "lib/env-policy.mjs",
-    from: "  return { ...policy, policy_digest: envPolicyDigest(policy) };",
+    from: "  return { ...policy, policy_digest: envPolicyDigestOf(policy) };",
     to: '  return { ...policy, policy_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000" };',
     test: "tests/product/adapter-env-policy.test.mjs",
     name: "the policy digest moves when the allowlist or an approval moves"
@@ -136,7 +226,7 @@ export const GUARDS = [
     guard: "AOS home withheld from the agent",
     reason: "an assessed agent handed AOS_HOME can rewrite the run records, the results and the holdout ledger the score is read from",
     file: "lib/isolation.mjs",
-    from: '    if (name.startsWith("AOS_")) {',
+    from: "    if (withheldPrefixes.some((prefix) => name.startsWith(prefix))) {",
     to: "    if (false) {",
     test: "tests/product/isolation.test.mjs",
     name: "an agent is never told where the operator's runs are"
@@ -342,6 +432,67 @@ export const GUARDS = [
  * checked as a floor rather than as an equality. What it forbids is one of the named eleven quietly
  * leaving the list.
  */
+/**
+ * Every guard in this file, by name, sorted.
+ *
+ * `REQUIRED_GUARDS` below is a floor over the eleven the specification named, and a floor cannot
+ * see a guard that was never in it: every guard added since could have been deleted from `GUARDS`
+ * and the ordinary suite would have stayed green. A manifest whose own check cannot notice its
+ * contents leaving is not a manifest.
+ *
+ * So this one is checked for equality in both directions. A guard added without its name here
+ * fails, and a name here whose guard has gone fails -- which is the difference between a list that
+ * is maintained and a list that is merely long. Adding a guard means adding its name here, sorted,
+ * in the same commit.
+ */
+export const ACCOUNTED_GUARDS = [
+  "AOS home withheld from the agent",
+  "a .NET startup hook is a pre-main hook like the rest",
+  "a credential-shaped name is refused as an ordinary allowed name",
+  "a credential-shaped name is refused at the carry as well",
+  "a policy cannot widen the withheld prefixes",
+  "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "allowlist-only child environment",
+  "central redaction",
+  "checkpoint evidence preserved",
+  "close-evidence issue-specific fields",
+  "close-evidence verdict",
+  "coverage gate",
+  "credential env refusal",
+  "cycle run identity",
+  "doctor checks a required config name has a value",
+  "env policy digest binding",
+  "every transport spelling needs the transport approval",
+  "exact revision binding",
+  "execution plan cycle detection",
+  "false completion cap",
+  "hard-forbidden class refusal",
+  "hard-forbidden matching is case-insensitive",
+  "home_source is a kind and never a path",
+  "hot-file single owner",
+  "interpreter startup paths are a forbidden class",
+  "locked cycle seed",
+  "malformed-row reporting",
+  "operator decision window",
+  "phase-ready scope",
+  "run scratch is created inside the cleanup-protected region",
+  "runtime auth is bound to the adapter that reads it",
+  "safety cap",
+  "stale blocked status",
+  "the adapter's own config directory is declared, not typed twice",
+  "the digest covers the rules applied outside the allowlist",
+  "the digest is recomputed over the policy actually applied",
+  "the policy digest covers the forbidden rules themselves",
+  "the run-metadata door cannot be widened in the running process",
+  "the run-metadata door carries only run metadata",
+  "the scored result carries the boundary it was produced under",
+  "transport approval binding",
+  "trend dedupe",
+  "trusted-process import prohibition",
+  "verification result check",
+  "workspace containment",
+];
+
 export const REQUIRED_GUARDS = [
   "trusted-process import prohibition",
   "verification result check",
