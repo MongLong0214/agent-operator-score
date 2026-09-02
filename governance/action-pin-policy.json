@@ -1,0 +1,14 @@
+{
+  "schema": "aos-action-pin-policy.v1",
+  "reviewed_actions": ["actions/checkout", "actions/setup-node"],
+  "version_comment_pattern": "^v\\d+(\\.\\d+){0,2}([-+][0-9A-Za-z.-]+)?$",
+  "update_automation": "dependabot",
+  "workflow_permissions": {
+    ".github/workflows/ci.yml": {
+      "workflow": { "contents": "read" },
+      "jobs": {
+        "execution-plan-live": { "contents": "read", "issues": "read", "actions": "read", "pull-requests": "read" }
+      }
+    }
+  }
+}

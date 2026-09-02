@@ -18,6 +18,7 @@
     "verify:ecd-contract": "node --test tests/product/ecd-construct-map.test.mjs tests/product/ecd-evidence-model.test.mjs tests/product/ecd-task-model.test.mjs tests/product/ecd-interpretation-use.test.mjs tests/product/ecd-aggregation.test.mjs tests/product/ecd-shortcuts.test.mjs",
     "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
     "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
+    "verify:action-pins": "node scripts/verify-action-pins.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {

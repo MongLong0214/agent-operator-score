@@ -11,10 +11,33 @@ permissions:
   contents: read
 
 jobs:
+  # First, and everything else waits for it. A check that runs beside the jobs it is checking has
+  # already let them run: a pull request adding `uses: attacker/thing@main` to the test job would
+  # execute that action while this job was still going red. Ordering does not make the check an
+  # execution-prevention control -- anyone who can push a branch can edit this file too, `always()`
+  # on a job would override the wait, and a separate workflow cannot depend on this one at all --
+  # but it does mean an unpinned reference in any *other* job here never runs. A test asserts that
+  # every job waits and that none of them opts out of waiting.
+  action-pins:
+    name: action-pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Not `npm run`: a repository-level `.npmrc` saying `script-shell=/usr/bin/true` makes every
+      # npm script exit zero without executing anything, and this is the one job whose exit status
+      # is the whole point. Node is invoked directly so there is no shell in between.
+      - run: node scripts/verify-action-pins.mjs
+
   # The runtimes this product says it supports, on the platforms it says it supports. macOS is a
   # lane of its own rather than an afterthought: the isolation layer replaces HOME, walks the
   # filesystem with lstat and kills process groups, and those are the parts that differ.
   test:
+    needs: action-pins
     name: test (${{ matrix.os }}, node ${{ matrix.node }})
     strategy:
       fail-fast: false
@@ -28,8 +51,8 @@ jobs:
             node: 24
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -40,11 +63,12 @@ jobs:
   # still mean what they say, and it has to be readable as its own answer rather than as one of
   # three hundred assertions.
   verify-mvp:
+    needs: action-pins
     name: verify-mvp
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -55,6 +79,7 @@ jobs:
   # the boundary: a file the manifest forgot to ship, and an entry point that works imported but
   # not installed. Both platforms, because a packaging mistake is rarely wrong on only one.
   package-smoke:
+    needs: action-pins
     name: package-smoke (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -62,8 +87,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -74,13 +99,14 @@ jobs:
   # the suite because it builds a worktree per guard; here because a guard that quietly stopped
   # being load-bearing is exactly the thing nobody would go looking for.
   mutation:
+    needs: action-pins
     name: mutation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -92,11 +118,12 @@ jobs:
   # the next agent to work on something it is not allowed to start yet, and that is not the kind of
   # mistake that shows up in a test of the product.
   execution-plan:
+    needs: action-pins
     name: execution-plan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -112,6 +139,7 @@ jobs:
   # Not on pull requests -- a fork's token cannot read what this needs, and a required check that is
   # skipped for forks is worse than one that runs where it can. On `main` and on demand.
   execution-plan-live:
+    needs: action-pins
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     name: execution-plan-live
     runs-on: ubuntu-latest
@@ -121,8 +149,8 @@ jobs:
       actions: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
@@ -138,11 +166,12 @@ jobs:
   # it; this job is those rounds run in seconds, so the review that follows has only design left
   # to argue about.
   defect-classes:
+    needs: action-pins
     name: defect-classes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: npm
