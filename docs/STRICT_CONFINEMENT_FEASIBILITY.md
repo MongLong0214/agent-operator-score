@@ -303,6 +303,30 @@ scan polled more than once while the agent was alive, the process group was swep
 which catches a descendant that forks away without taking its own session -- and `survivorSweep`
 ran and found nothing.
 
+**What holds a descendant, and what does not.** Three scanners cannot prove a process is absent. A
+descendant that double-forks, calls `setsid`, clears its environment, closes every inherited
+descriptor and changes directory is in none of them, and each round of hardening here ended with a
+further stripping that evaded the new scanner. So the lane does not claim the scans are complete.
+What it claims is the property that is actually enforced: on Seatbelt the profile is inherited
+across fork and exec and cannot be shed with the markers, so a descendant AOS never sees is still
+refused everything outside the workspace. The canary demonstrates it on every STRICT run --
+`stripped_descendant` sheds all of it, writes inside the workspace (which is how the parent knows it
+ran) and is refused the file it tries to create outside (which is the claim) -- and
+`processAxisEnforced` reads that proof. The scans stay and anything they find still blocks, because
+a descendant AOS can see is one it must terminate; they are detection, and the inherited profile is
+containment. `process_containment` on the record says which of the two a lane has:
+`inherited-profile` on Seatbelt, `pid-namespace` under bubblewrap's `--unshare-pid`, where
+membership cannot be shed at all and the case does not arise.
+
+**The residual, exactly.** An undetected survivor of that kind can outlive the run, and it can write
+inside *that run's own workspace* after AOS has digested the evidence. It cannot read or write
+anything else: not the store, not another run's workspace, not the operator's home, not the staged
+credential copy once the agent HOME is gone. It cannot see another run, and it cannot outlive the
+boundary's grant of anything but the one directory. macOS has no facility that makes membership
+unsheddable -- no cgroup, no jail this tool can enter, and `ps` exposes no session id to a non-root
+process -- so this is stated as a limitation of the lane rather than enforced away, and it is one of
+the reasons the lane is `SUPPORTED_WITH_CONSTRAINTS`.
+
 That sweep is what closes the double-fork-plus-`setsid` case. It looks for this run's marker
 (`AOS_SESSION_ID=<session>`, unique to the run) in every process environment, and for the run's own
 workspace, agent HOME and scratch among every process's open files and working directories: both
@@ -461,6 +485,13 @@ longer leaves the staged copy of the operator's credential on disk. The matrix r
 `cleanup_verified` from that observation and the process axis from the canary's recorded group
 sweep through `processAxisEnforced` -- the same helper a run uses -- so the table has one formula
 rather than two, and every observation a row cites must record an exit status of 0.
+
+A guard that only one platform can measure is recorded where the other can require it:
+`tests/mutation/measured.json` carries, per guard, the platform that measured it and a fingerprint
+of the guard and the bytes of the file it mutates. The lane that cannot run it demands a record that
+still describes the code in front of it, so a guard cannot be deferred on every lane and counted as
+fine -- and a change to the guard or that file makes the record stale until the platform that owns
+it has run again.
 
 `npm run verify:real-runtime-strict` sets `AOS_REAL_STRICT_REQUIRED=1`, and under that variable a
 skip is a failure: on a host without the backend, or without an authenticated Codex, the script
