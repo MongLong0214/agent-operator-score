@@ -16,6 +16,87 @@
 
 export const GUARDS = [
   {
+    guard: "hard-forbidden matching is case-insensitive",
+    reason: "npm folds environment keys to lower case, so a mixed-case npm_config_node_options arrives at a lifecycle child as NODE_OPTIONS",
+    file: "lib/env-policy.mjs",
+    from: "  const key = canonical(name);",
+    to: "  const key = name;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name is refused in every spelling a consumer might fold it into"
+  },
+  {
+    guard: "interpreter startup paths are a forbidden class",
+    reason: "a .pth file under a pointed-at PYTHONUSERBASE runs an import line before the assessed script's first statement",
+    file: "lib/env-policy.mjs",
+    from: '      "PYTHONUSERBASE",',
+    to: '      "PYTHONNOUSERSITE",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a variable that starts an interpreter's own code is in a hard-forbidden class"
+  },
+  {
+    guard: "every transport spelling needs the transport approval",
+    reason: "CARGO_HTTP_PROXY redirects what HTTPS_PROXY redirects, so leaving it unclassified makes the separate approval a spelling test",
+    file: "lib/env-policy.mjs",
+    from: '  "CARGO_HTTP_PROXY", "CARGO_HTTP_CAINFO", "CURL_HOME", "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",',
+    to: '  "NO_PROXY",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a name that redirects or unverifies the run's traffic needs the transport approval"
+  },
+  {
+    guard: "runtime auth is bound to the adapter that reads it",
+    reason: "without it a hand-edited config gives any credential to any command, and the CLI's check is not reachable from a spawn",
+    file: "lib/env-policy.mjs",
+    from: "  if (undeclaredAuth.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a stored configuration cannot hand a credential to an adapter that does not read it"
+  },
+  {
+    guard: "the adapter's own config directory is declared, not typed twice",
+    reason: "a hand-registered runtime that cannot see its own config directory fails as though it were not logged in",
+    file: "lib/env-policy.mjs",
+    from: "  const declaredConfig = [...(declared.config_env ?? []), ...(adapter?.config_env ? [adapter.config_env] : [])];",
+    to: "  const declaredConfig = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "an adapter's declared config directory travels and nothing else does"
+  },
+  {
+    guard: "the policy digest covers the forbidden rules themselves",
+    reason: "a digest over class names alone does not move when a rule change flips an existing policy from carrying a name to refusing it",
+    file: "lib/env-policy.mjs",
+    from: '    ["hard_forbidden_rules", hardForbiddenRules()]',
+    to: '    ["hard_forbidden_rules", []]',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the policy digest moves when a forbidden rule's contents move, not only its class names"
+  },
+  {
+    guard: "the run-metadata door carries only run metadata",
+    reason: "the injected merge happens after the policy has decided, so an unchecked one is a way past the allowlist",
+    file: "lib/isolation.mjs",
+    from: "  const smuggled = Object.keys(injected).filter((name) => !RUN_METADATA_ENV.includes(name));",
+    to: "  const smuggled = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name cannot be declared into the allowlist by any route"
+  },
+  {
+    guard: "home_source is a kind and never a path",
+    reason: "an arbitrary string in that field puts a directory on the operator's machine into a record whose whole claim is that it is quotable",
+    file: "lib/isolation.mjs",
+    from: "  if (!HOME_SOURCES.has(homeSource)) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the HOME regime is recorded as a kind, and a path cannot be written into that field"
+  },
+  {
+    guard: "the scored result carries the boundary it was produced under",
+    reason: "a result that cannot say which policy produced it cannot be compared with another, which is what the digest beside the score claims",
+    file: "lib/cli.mjs",
+    from: "        if (entry.isolation && !environmentByAgent.has(entry.agent)) environmentByAgent.set(entry.agent, entry.isolation);",
+    to: "        if (false) environmentByAgent.set(entry.agent, entry.isolation);",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a scored result carries the boundary it was produced under, by name and never by value"
+  },
+  {
     guard: "allowlist-only child environment",
     reason: "a child built from the operator's environment carries every injection variable nobody has listed yet",
     file: "lib/isolation.mjs",
