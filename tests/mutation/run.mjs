@@ -123,7 +123,9 @@ const fingerprint = (entry) => sha256Bytes(Buffer.from(JSON.stringify([
   entry.to,
   entry.test,
   entry.name,
-  sha256Bytes(readFileSync(join(worktree, entry.file)))
+  // Read from the checkout, not the worktree: the worktree is removed with the run, and the
+  // runner refuses to start on a dirty tree, so the two hold the same bytes while it exists.
+  sha256Bytes(readFileSync(new URL(`../../${entry.file}`, import.meta.url)))
 ]), "utf8"));
 const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { schema: LEDGER_SCHEMA, measured: {} };
 for (const entry of results.filter((one) => one.outcome === "killed")) {

@@ -2760,15 +2760,6 @@ export const GUARDS = [
     name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
   },
   {
-    guard: "the process axis rests on the boundary, not on empty scans",
-    reason: "three scanners cannot prove a descendant is absent, and three rounds of hardening each ended with a further stripping that evaded the new one; what is asserted is the kernel's own answer about a descendant that shed every marker",
-    file: "lib/confinement.mjs",
-    from: "    && canary?.out_of_band?.stripped?.confined === true",
-    to: "",
-    test: "tests/product/official-issuance.test.mjs",
-    name: "a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_scanners"
-  },
-  {
     guard: "the canary proves the stripped descendant was confined",
     reason: "without the cell the axis has nothing to read but empty enumerations, which is the thing this decision replaced",
     file: "lib/confinement.mjs",
@@ -3084,7 +3075,6 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the process axis needs the sweep and the second poll",
-  "the process axis rests on the boundary, not on empty scans",
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile is rendered from the policy that is digested",
