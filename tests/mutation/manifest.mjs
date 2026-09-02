@@ -2052,7 +2052,7 @@ export const GUARDS = [
     guard: "close-evidence verdict",
     reason: "a record that says HOLD is not a record that says the work passed",
     file: "lib/execution-plan.mjs",
-    from: 'if (record.verdict !== "PASS") {',
+    from: 'if (record.verdict !== "PASS" && record.verdict !== "PASS_WITH_KNOWN_RESIDUE") {',
     to: "if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "close evidence without CI run ids or a PASS verdict is not evidence"
