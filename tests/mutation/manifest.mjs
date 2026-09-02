@@ -16,6 +16,108 @@
 
 export const GUARDS = [
   {
+    guard: "artifact type in the envelope",
+    reason: "without it a regular file and a directory are handed on under one artifact identity",
+    file: "lib/digest.mjs",
+    from: 'if (stat.isFile()) return sha256Bytes(artifactPreimage("file", stat, relative, fileByteDigest(path)));',
+    to: 'if (stat.isFile()) return sha256Bytes(artifactPreimage("dir", stat, relative, fileByteDigest(path)));',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a file artifact and a directory artifact are different even where their contents digest the same"
+  },
+  {
+    guard: "artifact top-level mode",
+    reason: "a script handed on identically at 0644 and 0755 is a digest that cannot see whether the receiver can run it",
+    file: "lib/digest.mjs",
+    from: '  Buffer.from(`${ARTIFACT_SCHEMA}\\n${type}\\n${modeOf(stats)}\\n${Buffer.from(relative, "utf8").toString("hex")}\\n${digest}\\n`, "utf8");',
+    to: '  Buffer.from(`${ARTIFACT_SCHEMA}\\n${type}\\n${Buffer.from(relative, "utf8").toString("hex")}\\n${digest}\\n`, "utf8");',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "an artifact digest changes when the artifact's own mode changes"
+  },
+  {
+    guard: "refused size in the tree digest",
+    reason: "a refusal that dropped the size freezes the evidence for anything large enough to trip the limit",
+    file: "lib/digest.mjs",
+    from: '  entry.size_bytes === null ? "-" : String(entry.size_bytes),',
+    to: '  "-",',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a refusal keeps the path, type, mode and size of what it refused"
+  },
+  {
+    guard: "escaping link keeps its own bytes",
+    reason: "two links out of the tree to different places become one row, which is a collision inside the refusal",
+    file: "lib/digest.mjs",
+    from: "          bytes: target,\n          refused: escapes ? SYMLINK_ESCAPES : null",
+    to: "          bytes: escapes ? null : target,\n          refused: escapes ? SYMLINK_ESCAPES : null",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "two links that escape the tree to different places are two different trees"
+  },
+  {
+    guard: "raw link target bytes",
+    reason: "readlink decoded as UTF-8 hashes a link to byte FF and a link to byte FE as the same link",
+    file: "lib/digest.mjs",
+    from: '        const target = readlinkSync(full, { encoding: "buffer" });',
+    to: '        const target = Buffer.from(readlinkSync(full), "utf8");',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a link target's raw bytes are the link's identity"
+  },
+  {
+    guard: "raw filename bytes",
+    // Linux only, and named as such. APFS refuses a filename that is not valid UTF-8, so the case
+    // cannot be constructed on macOS and the test returns early there; the mutation job runs on
+    // ubuntu, which is where this one is decided.
+    reason: "readdir decoded as UTF-8 gives two files whose names differ by one byte a single unreadable-entry row",
+    file: "lib/digest.mjs",
+    from: '      return readdirSync(directory, { encoding: "buffer" }).sort(Buffer.compare);',
+    to: '      return readdirSync(directory).map((name) => Buffer.from(name, "utf8")).sort(Buffer.compare);',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a filename's raw bytes are its identity in the tree"
+  },
+  {
+    guard: "symlink chain containment",
+    reason: "checking only the first hop accepts a dangling chain whose end is outside the tree",
+    file: "lib/digest.mjs",
+    from: "      if (!containsBytes(base, current)) return false;",
+    to: "",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a chain of dangling links that leaves the tree is refused"
+  },
+  {
+    guard: "skipped directory is still an entry",
+    reason: "dropping the entry as well as the contents makes an empty artifact and one holding a .git the same artifact",
+    file: "lib/digest.mjs",
+    from: '          refuse(relative, "skipped-directory", { type: "dir", mode: modeOf(stats) });',
+    to: "",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a skipped directory is an entry even though its contents are not walked"
+  },
+  {
+    guard: "canonical row field alphabet",
+    reason: "an exported digest over unchecked fields lets a hand-built manifest forge a row boundary",
+    file: "lib/digest.mjs",
+    from: '    if (!wellFormedEntry(entry)) throw new Error(`AOS_TREE_MANIFEST_ENTRY ${entry?.path ?? "?"}`);',
+    to: "",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a manifest whose fields could forge a row boundary is refused rather than hashed"
+  },
+  {
+    guard: "workspace snapshot records directories",
+    reason: "an absent directory and an empty one otherwise produce the same snapshot, so mkdir is a change no scope check sees",
+    file: "lib/safe-fs.mjs",
+    from: "        files[relative] = DIRECTORY;",
+    to: "",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a workspace snapshot records a directory, so an added empty one is a change"
+  },
+  {
+    guard: "session ledger byte identity",
+    reason: "a session read as UTF-8 gives two transcripts differing by one undecodable byte the same ledger identity",
+    file: "lib/cli.mjs",
+    from: "    const digest = sessionDigestOf(readFileSync(sessionPath));",
+    to: '    const digest = sessionDigestOf(Buffer.from(readFileSync(sessionPath, "utf8"), "utf8"));',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a recorded session's ledger identity is its bytes"
+  },
+  {
     guard: "captured stream byte authority",
     reason: "a digest of decoded output gives two different agent outputs the same failure signature",
     file: "lib/core.mjs",
@@ -64,8 +166,8 @@ export const GUARDS = [
     guard: "symlink escape refusal",
     reason: "a link followed out of the tree puts files the tree does not contain into its digest",
     file: "lib/digest.mjs",
-    from: "        if (!linkTargetInside(base, directory, full)) {",
-    to: "        if (false) {",
+    from: "        const escapes = !linkTargetInside(base, directory, full, target);",
+    to: "        const escapes = false;",
     test: "tests/product/byte-digest.test.mjs",
     name: "a symlink out of the tree is refused rather than digested"
   },
@@ -73,7 +175,7 @@ export const GUARDS = [
     guard: "handoff exact compare",
     reason: "a consume taken on the receiver's word closes a handoff for an artifact it never read",
     file: "lib/cli.mjs",
-    from: "    if (!handoffDigestsMatch(created.payload?.artifact_digests ?? [], artifacts)) {",
+    from: "    if (!handoffDigestsMatch(handed, artifacts)) {",
     to: "    if (false) {",
     test: "tests/product/handoff-exact-digest.test.mjs",
     name: "a handoff consumed with a digest that was not handed is refused"

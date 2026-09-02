@@ -6,15 +6,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  FILE_EVIDENCE_SCHEMA,
+  TREE_MANIFEST_SCHEMA,
   artifactByteDigest,
   canonicalTreeDigest,
   canonicalTreeManifest,
   fileByteDigest,
+  isByteDigest,
   optionalFileTextDigest,
   sha256Bytes
 } from "../../lib/digest.mjs";
 import { runProcess } from "../../lib/core.mjs";
-import { safeWalk } from "../../lib/safe-fs.mjs";
+import { loadLedger } from "../../lib/holdout.mjs";
+import { DIRECTORY, safeWalk } from "../../lib/safe-fs.mjs";
+import { run } from "./helpers.mjs";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "aos-byte-digest-"));
 
@@ -300,15 +305,22 @@ test("a symlink out of the tree is refused rather than digested", () => {
       const byPath = Object.fromEntries(manifest.entries.map((entry) => [entry.path, entry]));
 
       for (const name of ["escape", "up"]) {
-        assert.equal(byPath[name].type, "refused", `${name} was not refused`);
+        assert.equal(byPath[name].type, "symlink", `${name} was not recorded as a link`);
         assert.equal(byPath[name].refused, "symlink-escapes-tree");
-        assert.equal(byPath[name].byte_digest, null, `${name} was digested`);
+        // The link's own bytes, and never the target's. Recording the digest of a name is not
+        // reading what the name points at, which is what the refusal is about.
+        assert.notEqual(
+          byPath.escape.byte_digest,
+          fileByteDigest(join(outside, "private")),
+          "the walk digested the file the link points at"
+        );
         assert.equal(
           manifest.refusals.some((entry) => entry.path === name && entry.reason === "symlink-escapes-tree"),
           true,
           `${name} was not reported as a refusal`
         );
       }
+      assert.equal(byPath.escape.byte_digest, sha256Bytes(Buffer.from(join(outside, "private"), "utf8")));
       // A refusal is an entry, not an absence: an omitted one reads as a tree that never held it.
       assert.equal(
         JSON.stringify(manifest.entries.map((entry) => entry.path)),
@@ -482,6 +494,7 @@ test("a directory artifact digest sees a mode change and a file replaced by a li
     const bundle = join(root, "bundle");
     mkdirSync(bundle);
     writeFileSync(join(bundle, "run.sh"), Buffer.from("#!/bin/sh\n", "utf8"), { mode: 0o644 });
+    writeFileSync(join(bundle, "payload.txt"), Buffer.from("payload", "utf8"));
     writeFileSync(join(bundle, "data"), Buffer.from("payload", "utf8"));
     const base = artifactByteDigest(bundle, "bundle");
 
@@ -490,9 +503,11 @@ test("a directory artifact digest sees a mode change and a file replaced by a li
     chmodSync(join(bundle, "run.sh"), 0o644);
     assert.equal(artifactByteDigest(bundle, "bundle"), base);
 
-    // Same content reachable at the same path, through a link rather than as a file.
+    // Same content reachable at the same path, through a link rather than as a file -- and nothing
+    // else changed. `payload.txt` is in the tree the baseline was taken over, so replacing `data`
+    // is the only difference between the two digests. It used to be added at the same moment, which
+    // left the assertion unable to say which of the two changes the digest had responded to.
     rmSync(join(bundle, "data"));
-    writeFileSync(join(bundle, "payload.txt"), Buffer.from("payload", "utf8"));
     symlinkSync("payload.txt", join(bundle, "data"));
     assert.notEqual(artifactByteDigest(bundle, "bundle"), base);
   });
@@ -573,18 +588,31 @@ test("an unreadable directory or file is a refusal, not the end of the walk", ()
     // out would report nothing at all about the tree rather than reporting the entry that failed.
     mkdirSync(join(root, "closed"));
     writeFileSync(join(root, "closed", "inside"), Buffer.from("x", "utf8"));
+    // The file half of the name, which this test used to leave out: only the directory was made
+    // unreadable, so nothing here said what happens to a file the walk can stat and cannot read.
+    writeFileSync(join(root, "shut.txt"), Buffer.alloc(11, 0x41), { mode: 0o644 });
     writeFileSync(join(root, "open.txt"), Buffer.from("y", "utf8"));
     chmodSync(join(root, "closed"), 0o000);
+    chmodSync(join(root, "shut.txt"), 0o000);
     try {
       const manifest = canonicalTreeManifest(root);
       const byPath = Object.fromEntries(manifest.entries.map((entry) => [entry.path, entry]));
       assert.equal(byPath.closed.refused, "unreadable-directory");
       assert.equal(byPath.closed.byte_digest, null);
+      // Running as root defeats mode 0000, and a test that silently passed there would be checking
+      // nothing. Where the mode holds, the entry is present, refused, and keeps what was knowable.
+      if (byPath["shut.txt"].refused !== null) {
+        assert.equal(byPath["shut.txt"].refused, "unreadable-entry");
+        assert.equal(byPath["shut.txt"].byte_digest, null);
+        assert.equal(byPath["shut.txt"].size_bytes, 11);
+        assert.equal(byPath["shut.txt"].mode, "0000");
+      }
       // The rest of the tree is still evidence.
       assert.match(byPath["open.txt"].byte_digest, /^sha256:[0-9a-f]{64}$/);
       assert.equal(manifest.refusals.some((entry) => entry.reason === "unreadable-directory"), true);
     } finally {
       chmodSync(join(root, "closed"), 0o755);
+      chmodSync(join(root, "shut.txt"), 0o644);
     }
   });
 });
@@ -614,4 +642,286 @@ test("a tree deeper than the policy allows is refused at the directory that exce
     // And nothing below it was read.
     assert.equal(Object.hasOwn(byPath, "a/b/c/deep.txt"), false);
   });
+});
+
+// --- what the row has to be able to tell apart --------------------------------------------------
+//
+// Each of these was a pair of different trees, or a pair of different artifacts, that the digest
+// gave one identity to. They are here rather than folded into the tests above because a collision
+// is only evidence of anything when the two things being collided are stated.
+
+test("a file artifact and a directory artifact are different even where their contents digest the same", () => {
+  withScratch((root) => {
+    // A file whose contents are exactly the bytes an empty canonical tree digests over. The
+    // artifact envelope wrapped only the name and the inner digest, so this file named `bundle` and
+    // an empty directory named `bundle` handed on under one artifact digest -- the domain
+    // separation was claimed for directories and never existed for files.
+    const asFile = join(root, "as-file");
+    mkdirSync(asFile);
+    writeFileSync(join(asFile, "bundle"), Buffer.from(`${TREE_MANIFEST_SCHEMA}\n\n`, "utf8"));
+    chmodSync(join(asFile, "bundle"), 0o755);
+    const asDirectory = join(root, "as-directory");
+    mkdirSync(asDirectory);
+    mkdirSync(join(asDirectory, "bundle"));
+    chmodSync(join(asDirectory, "bundle"), 0o755);
+
+    // The collision the type is guarding against, still constructible. Without this the test could
+    // pass because the two inner digests drifted apart rather than because the type separates them,
+    // and the same mode on both leaves the type as the only difference.
+    assert.equal(fileByteDigest(join(asFile, "bundle")), treeOf(join(asDirectory, "bundle")));
+    assert.notEqual(
+      artifactByteDigest(join(asFile, "bundle"), "bundle"),
+      artifactByteDigest(join(asDirectory, "bundle"), "bundle"),
+      "a regular file and a directory were handed on under one artifact identity"
+    );
+  });
+});
+
+test("an artifact digest changes when the artifact's own mode changes", () => {
+  withScratch((root) => {
+    // `artifactByteDigest` was already calling `lstatSync` and neither branch used what it
+    // returned, so a script handed on identically whether or not the receiver could run it.
+    const file = join(root, "run.sh");
+    writeFileSync(file, Buffer.from("#!/bin/sh\n", "utf8"), { mode: 0o644 });
+    const readable = artifactByteDigest(file, "run.sh");
+    chmodSync(file, 0o755);
+    assert.notEqual(artifactByteDigest(file, "run.sh"), readable, "an artifact made executable handed on unchanged");
+    chmodSync(file, 0o644);
+    assert.equal(artifactByteDigest(file, "run.sh"), readable);
+
+    // And the same question about the top of a directory artifact, which the tree inside it cannot
+    // answer: the root's own mode is not one of its entries.
+    const bundle = join(root, "bundle");
+    mkdirSync(bundle, { mode: 0o755 });
+    writeFileSync(join(bundle, "a"), Buffer.from("x", "utf8"));
+    const open = artifactByteDigest(bundle, "bundle");
+    chmodSync(bundle, 0o700);
+    assert.notEqual(artifactByteDigest(bundle, "bundle"), open, "the artifact root's own mode was invisible");
+  });
+});
+
+test("a refusal keeps the path, type, mode and size of what it refused", () => {
+  withScratch((root) => {
+    const refused = (name, size, byte, mode) => {
+      const directory = join(root, name);
+      mkdirSync(directory);
+      writeFileSync(join(directory, "huge"), Buffer.alloc(size, byte), { mode });
+      return directory;
+    };
+    const policy = { maxFileBytes: 1024 };
+    const base = refused("base", 4096, 0x41, 0o644);
+    assert.notEqual(treeOf(base, policy), treeOf(refused("bigger", 8192, 0x41, 0o644), policy), "the size left the refusal");
+    assert.notEqual(treeOf(base, policy), treeOf(refused("executable", 4096, 0x41, 0o755), policy), "the mode left the refusal");
+
+    const entry = canonicalTreeManifest(base, policy).entries[0];
+    assert.equal(entry.type, "refused");
+    assert.equal(entry.refused, "file-too-large");
+    assert.equal(entry.mode, "0644");
+    assert.equal(entry.size_bytes, 4096);
+    assert.equal(entry.byte_digest, null);
+
+    // And what a refusal cannot do, asserted rather than left for a reader to assume. The bytes
+    // were not read, so two files of the same size refused for the same reason are one row: a
+    // refusal identifies the entry it refused, never its contents. Documented in
+    // docs/BYTE_DIGEST.md as a limit of the limits, because the alternative -- reading a file the
+    // policy just refused to read -- is the thing the limit exists to prevent.
+    assert.equal(treeOf(base, policy), treeOf(refused("other", 4096, 0x42, 0o644), policy));
+  });
+});
+
+test("two links that escape the tree to different places are two different trees", () => {
+  withScratch((root) => {
+    const escaping = (name, target) => {
+      const directory = join(root, name);
+      mkdirSync(directory);
+      symlinkSync(target, join(directory, "link"));
+      return directory;
+    };
+    // The same name, the same refusal, a different target. Discarding the target bytes on refusal
+    // made these one row -- a collision inside the refusal rather than a protection against one.
+    // Nothing outside the tree is read either way: the name a link carries is not what it points at.
+    assert.notEqual(treeOf(escaping("a", "../../outside-a")), treeOf(escaping("b", "../../outside-b")));
+  });
+});
+
+test("a link target's raw bytes are the link's identity", () => {
+  withScratch((root) => {
+    const linked = (name, byte) => {
+      const directory = join(root, name);
+      mkdirSync(directory);
+      symlinkSync(Buffer.from([byte]), join(directory, "link"));
+      return directory;
+    };
+    // `readlinkSync` decodes by default, and both of these decoded to U+FFFD. Two links pointing at
+    // two different names were hashed as the same link, which is the opposite of "the link's own
+    // bytes".
+    assert.notEqual(treeOf(linked("ff", 0xff)), treeOf(linked("fe", 0xfe)));
+    const entry = canonicalTreeManifest(join(root, "ff")).entries[0];
+    assert.equal(entry.type, "symlink");
+    assert.equal(entry.size_bytes, 1);
+    assert.equal(entry.byte_digest, sha256Bytes(Buffer.from([0xff])));
+  });
+});
+
+test("a filename's raw bytes are its identity in the tree", () => {
+  withScratch((root) => {
+    const named = (directoryName, byte) => {
+      const directory = join(root, directoryName);
+      mkdirSync(directory);
+      const path = Buffer.concat([Buffer.from(`${directory}/`, "utf8"), Buffer.from([byte])]);
+      try {
+        writeFileSync(path, Buffer.from("the same contents", "utf8"));
+      } catch {
+        // APFS refuses a filename that is not valid UTF-8 with EILSEQ, so the case cannot be built
+        // on macOS at all. It can be on Linux, where every byte but `/` and NUL is a legal name and
+        // where CI runs the mutation this test is named by.
+        return null;
+      }
+      return directory;
+    };
+    const ff = named("ff", 0xff);
+    if (ff === null) return;
+    assert.notEqual(treeOf(ff), treeOf(named("fe", 0xfe)), "two names differing by one byte were one tree");
+
+    const entry = canonicalTreeManifest(ff).entries[0];
+    // Both halves: the name reached the row as the bytes the kernel gave, and the walk could still
+    // find the file under it. Decoding produced U+FFFD, the lookup of the re-encoded name failed,
+    // and both trees recorded one identical `unreadable-entry` row.
+    assert.equal(entry.path_bytes, "ff");
+    assert.equal(entry.refused, null);
+    assert.equal(entry.byte_digest, sha256Bytes(Buffer.from("the same contents", "utf8")));
+  });
+});
+
+test("a chain of dangling links that leaves the tree is refused", () => {
+  const outside = scratch();
+  withScratch((root) => {
+    try {
+      // `inner` dangles, so `realpath` cannot answer for either link and the lexical fallback is
+      // what decides. Checking only the first hop said `outer` points at `root/inner`, which is
+      // inside, and let it through -- although following it leaves the tree.
+      symlinkSync(join(outside, "missing"), join(root, "inner"));
+      symlinkSync("inner", join(root, "outer"));
+      const byPath = Object.fromEntries(canonicalTreeManifest(root).entries.map((entry) => [entry.path, entry]));
+      assert.equal(byPath.inner.refused, "symlink-escapes-tree");
+      assert.equal(byPath.outer.refused, "symlink-escapes-tree", "a chain that escapes was accepted at its first hop");
+
+      // A chain that stays inside is still a link and not a refusal, so this is not a check that
+      // refuses everything it cannot resolve.
+      writeFileSync(join(root, "real"), Buffer.from("x", "utf8"));
+      symlinkSync("real", join(root, "near"));
+      symlinkSync("near", join(root, "far"));
+      const resolved = Object.fromEntries(canonicalTreeManifest(root).entries.map((entry) => [entry.path, entry]));
+      assert.equal(resolved.far.refused, null);
+      assert.equal(resolved.near.refused, null);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+});
+
+test("a skipped directory is an entry even though its contents are not walked", () => {
+  withScratch((root) => {
+    const empty = join(root, "empty");
+    mkdirSync(empty);
+    const repository = join(root, "repository");
+    mkdirSync(join(repository, ".git", "objects"), { recursive: true });
+    writeFileSync(join(repository, ".git", "objects", "loose"), Buffer.from("bookkeeping", "utf8"));
+    // The skip is a statement about bookkeeping contents, never about whether the directory is
+    // there. Dropping its own entry too made an empty artifact and one holding a `.git/` the same
+    // artifact.
+    assert.notEqual(treeOf(empty), treeOf(repository));
+
+    const entries = canonicalTreeManifest(repository).entries;
+    assert.deepEqual(entries.map((entry) => entry.path), [".git"]);
+    assert.equal(entries[0].type, "dir");
+    assert.equal(entries[0].refused, "skipped-directory");
+    // And nothing under it was read, which is what the skip is for: walking a repository's object
+    // database reported every loose object as work the agent did.
+    assert.equal(entries.some((entry) => entry.path.includes("loose")), false);
+  });
+});
+
+test("a manifest whose fields could forge a row boundary is refused rather than hashed", () => {
+  withScratch((root) => {
+    const entry = (over) => ({
+      schema_id: FILE_EVIDENCE_SCHEMA,
+      path: "b",
+      path_bytes: "62",
+      type: "file",
+      mode: "0644",
+      size_bytes: 1,
+      byte_digest: null,
+      text_digest: null,
+      media: "unknown",
+      refused: null,
+      ...over
+    });
+    const manifest = (entries) => ({ schema_id: TREE_MANIFEST_SCHEMA, entries, refusals: [], totals: { entries: entries.length, bytes: 0 } });
+
+    // A row is its fields joined by a tab, and the walk's own fields come from alphabets that
+    // cannot hold one. `canonicalTreeDigest` is exported, though, and took any object: a `type` of
+    // `dir\t0755\t-\t-\t-\t61\nfile` joined into exactly the two rows of a different tree and
+    // the two digested the same. The alphabet is checked where the boundary is.
+    for (const forged of [
+      { type: "dir\t0755\t-\t-\t-\t61\nfile" },
+      { mode: "0755\t-\t-\t-\t61\nfile\t0644" },
+      { refused: "escapes\t-\t61\nfile" },
+      { path_bytes: "6\t2" },
+      { byte_digest: `83d544cc${"0".repeat(56)}` },
+      { size_bytes: "1\t-" },
+      { schema_id: "aos-file-evidence.v1" }
+    ]) {
+      assert.throws(() => canonicalTreeDigest(manifest([entry(forged)])), /AOS_TREE_MANIFEST_ENTRY/, JSON.stringify(forged));
+    }
+
+    // A manifest the walk produced still hashes, so this is a check and not a refusal of everything.
+    writeFileSync(join(root, "a"), Buffer.from("x", "utf8"));
+    assert.match(treeOf(root), /^sha256:[0-9a-f]{64}$/);
+  });
+});
+
+test("a workspace snapshot records a directory, so an added empty one is a change", () => {
+  withScratch((root) => {
+    writeFileSync(join(root, "f"), Buffer.from("x", "utf8"));
+    const before = safeWalk(root).files;
+    mkdirSync(join(root, "made"));
+    const after = safeWalk(root).files;
+    // An absent directory and an empty one produced identical snapshots, so `mkdir` outside the
+    // allowed set was the one change to a workspace a scope check could not see.
+    assert.equal(Object.hasOwn(before, "made"), false);
+    assert.equal(after.made, DIRECTORY);
+    assert.notDeepEqual(before, after, "an added empty directory read as an untouched workspace");
+  });
+});
+
+test("a recorded session's ledger identity is its bytes", () => {
+  const cwd = scratch();
+  try {
+    run(cwd, ["init"]);
+    // Two sessions differing by one undecodable byte inside a string. Read as UTF-8 both became
+    // U+FFFD, so both were recorded under one ledger identity and a verdict about one was
+    // recorded as a verdict about the other.
+    const rows = [
+      { type: "user", timestamp: "2026-08-20T10:00:00Z", cwd: "/repo", message: { content: [{ type: "text", text: "Zfix the parser" }] } },
+      { type: "assistant", timestamp: "2026-08-20T10:00:10Z", message: { content: [{ type: "tool_use", id: "t1", name: "Bash", input: { command: "npm test" } }] } },
+      { type: "user", timestamp: "2026-08-20T10:00:20Z", message: { content: [{ type: "tool_result", tool_use_id: "t1", is_error: false, content: "ok" }] } },
+      { type: "assistant", timestamp: "2026-08-20T10:00:30Z", message: { content: [{ type: "text", text: "All tests pass, ready to merge." }] } }
+    ];
+    const written = (name, byte) => {
+      const file = join(cwd, name);
+      const bytes = Buffer.from(`${rows.map((row) => JSON.stringify(row)).join("\n")}\n`, "utf8");
+      bytes[bytes.indexOf(0x5a)] = byte;
+      writeFileSync(file, bytes);
+      return file;
+    };
+    run(cwd, ["holdout", "--session", written("one.jsonl", 0xff), "--use", "holdout"]);
+    run(cwd, ["holdout", "--session", written("two.jsonl", 0xfe), "--use", "holdout"]);
+
+    const ledger = loadLedger(join(cwd, ".aos"));
+    assert.equal(ledger.sessions.length, 2, "two different sessions were recorded under one identity");
+    assert.equal(ledger.sessions.every((entry) => isByteDigest(entry.digest)), true, "the ledger still holds a legacy bare-hex identity");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });

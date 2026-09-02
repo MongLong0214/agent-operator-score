@@ -59,6 +59,24 @@ test("a handoff consumed with a subset, a superset or a reordering of what was h
   });
 });
 
+test("a reordered consume is refused, and the refusal says which mistake it was", () => {
+  withRun((cwd, runId) => {
+    handoff(cwd, runId, "create", [A, B], 0);
+    // Ordered, not a multiset, and deliberately so: `outputArtifactDigests` emits in ascending
+    // artifact-name order, so the order is reproducible rather than incidental and a list in
+    // another order is not the list that was handed on. What the refusal owes the operator is the
+    // difference between "you read something else" and "you read these in another order", because
+    // a refusal nobody can act on gets worked around instead of corrected.
+    const reordered = handoff(cwd, runId, "consume", [B, A], 2);
+    assert.match(reordered.stderr, /AOS_HANDOFF_DIGEST_MISMATCH/);
+    assert.match(reordered.stderr, /different order/);
+    // A genuinely different artifact is not described as a reordering.
+    const wrong = handoff(cwd, runId, "consume", [A, A], 2);
+    assert.match(wrong.stderr, /AOS_HANDOFF_DIGEST_MISMATCH/);
+    assert.doesNotMatch(wrong.stderr, /different order/);
+  });
+});
+
 test("a handoff consumed with nothing at all is refused", () => {
   withRun((cwd, runId) => {
     handoff(cwd, runId, "create", [A], 0);
