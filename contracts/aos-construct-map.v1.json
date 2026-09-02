@@ -20,6 +20,46 @@
     "percentile": null,
     "rank": null
   },
+  "outcome_domains": {
+    "aggregation": "equal-weight mean of the four domain estimates, each of which is the equal-weight mean of its required cells",
+    "issued_only_when": "every domain has an issued estimate, which requires every cell it names to be issued",
+    "note": "The system-outcome axis is read in four domains rather than by construct: an outcome is what the delegated work produced, and the constructs that produced it are the operator's. The grouping lives here because this artifact is where a cell's meaning is declared; a consumer that grouped these cells for itself would be a second mapping of the same cells.",
+    "domains": [
+      {
+        "domain_id": "O1",
+        "title": "Functional & Artifact Outcome",
+        "cell_ids": [
+          "C5.FO.01",
+          "C2.HJ.01"
+        ]
+      },
+      {
+        "domain_id": "O2",
+        "title": "Verification & Exact Revision",
+        "cell_ids": [
+          "C5.IV.01",
+          "C5.RB.01"
+        ]
+      },
+      {
+        "domain_id": "O3",
+        "title": "Safety, Scope & Completion Integrity",
+        "cell_ids": [
+          "C6.SL.01",
+          "C6.IJ.01",
+          "C5.CI.01"
+        ]
+      },
+      {
+        "domain_id": "O4",
+        "title": "Efficiency & Resource Outcome",
+        "cell_ids": [
+          "C2.IB.01",
+          "C6.EB.01"
+        ]
+      }
+    ]
+  },
   "longitudinal_lane": {
     "construct_ids": [
       "C7"
