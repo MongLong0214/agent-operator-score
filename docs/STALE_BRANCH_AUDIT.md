@@ -33,7 +33,7 @@ and why.
 
 | generated at | what changed |
 |---|---|
-| 2026-09-02T00:18:26Z | Initial version. `task/issue-588-mark-done` classified `must_be_preserved` under the per-branch table because no PR referenced it at that time. |
+| 2026-09-02T00:18:26Z | Initial version. `task/issue-588-mark-done` classified `must_be_preserved` under the per-branch table because its PR-list query found no PR referencing it. PR #591 had in fact already been opened against it five minutes earlier (00:13:30Z); the query was stale, not the branch. |
 | 2026-09-02T00:29:41Z | Coordinator correction. PR #591 (opened 00:13:30Z, five minutes before the first snapshot's stated generation time of 00:18:26Z) was already open against `task/issue-588-mark-done` when the first snapshot was generated; that snapshot's PR-list query had gone stale before the document was produced and missed it. Further review-round commits are reported to have landed on the branch locally since. Re-collected live state: moved `task/issue-588-mark-done` into the open-PR-heads table (alongside `#570`), refreshed `task/issue-570-action-pins`'s SHA (one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (`task/issue-572-work`, PR #592) to the same table. Recorded the `dev` SHA at snapshot time and this history. Also recorded, rather than assumed, a discrepancy with the coordinator's report of seven other new branches -- see "Branches reported but not found on origin" below. |
 
 ## Method
@@ -51,7 +51,7 @@ Every fact below came from a read command against `MongLong0214/agent-operator-s
   fetched in full, not the default 200) -- whether any PR, open or closed, ever used a branch as its
   head, or mentioned its name in a PR body.
 - `gh pr view <number>` -- current state and head SHA of specific PRs.
-- `gh api search/issues -f q='repo:... "<branch name>"'` -- whether any issue anywhere on the
+- `gh api -X GET search/issues -f q='repo:... "<branch name>"'` -- whether any issue anywhere on the
   repository mentions a branch by name.
 - `gh api repos/MongLong0214/agent-operator-score/branches/<branch>/protection` and
   `.../rulesets` -- branch protection and ruleset status.
@@ -134,7 +134,9 @@ open PR's head branch outright.
 
 At the corrected snapshot time, `git ls-remote origin refs/heads/task/issue-588-mark-done` and
 `gh pr view 591 --json headRefOid` both reported `034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a` -- the
-same SHA this document's first version recorded, before PR #591 existed. The coordinator has stated
+same SHA this document's first version recorded -- at a time when PR #591 already existed
+(created 00:13:30Z), though the first version's PR-list query had not yet found it. The
+coordinator has stated
 that at least one further review-round commit (`88523a4`) has since landed on this branch. This
 document's own read-only remote commands, run at the times stated, did not observe `88523a4` on
 `origin` -- only in the shared local checkout's copy of the `task/issue-588-mark-done` branch
@@ -159,15 +161,17 @@ out deletion, independent of exactly how many commits are on it right now.
 | merged into `dev` | yes (0 commits unique to the branch) |
 | merged into `main` | yes (0 commits unique to the branch) |
 | unmerged commits | 0 |
-| ever referenced by a PR | no (0 of 355 PRs, head or body) |
+| ever referenced by a PR | not as a head. In a PR body, only by this audit's own PR [#592](https://github.com/MongLong0214/agent-operator-score/pull/592) (opened 00:23:32Z, naming it as a Phase-A candidate) -- a self-reference from the audit describing itself, not independent evidence; does not change the recommendation |
 | ever referenced elsewhere | only as a named candidate in issue #572 itself |
 | branch protection | none |
 | **recommendation** | **safe to delete after #578** |
 
 Reason: the tip commit is an ancestor of both `origin/dev` and `origin/main`; every commit on this
 branch already lives on the integration and release lines under a different route (it was, per its
-own merge-commit subject, folded in via the `chore/back-merge-0.1.10` chain). Deleting it after
-#578's evidence bundle is captured loses nothing, because nothing on it is unique.
+own merge-commit subject, folded in via the `chore/back-merge-0.1.10` chain). This audit's own PR
+#592 names the branch in its body, but only as this document talking about itself, not as evidence
+of active use elsewhere -- see "ever referenced by a PR" above. Deleting it after #578's evidence
+bundle is captured loses nothing, because nothing on it is unique.
 
 ### `tmp/read-claude-artifact`
 
@@ -180,14 +184,16 @@ own merge-commit subject, folded in via the `chore/back-merge-0.1.10` chain). De
 | merged into `dev` | yes (0 commits unique to the branch) |
 | merged into `main` | yes (0 commits unique to the branch) |
 | unmerged commits | 0 |
-| ever referenced by a PR | no (0 of 355 PRs, head or body) |
+| ever referenced by a PR | not as a head. In a PR body, only by this audit's own PR [#592](https://github.com/MongLong0214/agent-operator-score/pull/592) (opened 00:23:32Z, naming it as a Phase-A candidate) -- a self-reference from the audit describing itself, not independent evidence; does not change the recommendation |
 | ever referenced elsewhere | only as a named candidate in issue #572 itself |
 | branch protection | none |
 | **recommendation** | **safe to delete after #578** |
 
 Reason: fully contained in both `origin/dev` and `origin/main` via PR #538's back-merge chain. It is
 a `tmp/*` branch; repository policy already caps those at 7 days or task end, and this one is 3 days
-old with its only content long since merged elsewhere. Deleting it after #578 loses nothing.
+old with its only content long since merged elsewhere. This audit's own PR #592 names the branch in
+its body, but only as this document talking about itself -- see "ever referenced by a PR" above.
+Deleting it after #578 loses nothing.
 
 ## Why `task/issue-588-mark-done` is no longer in the stale-branch table
 

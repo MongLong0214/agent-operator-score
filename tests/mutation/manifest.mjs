@@ -31,7 +31,7 @@ export const GUARDS = [
       "a deletion recommendation with no stated reason is unreviewable -- the next reader cannot tell an evidenced call from a guess",
     file: "fixtures/stale-branches/audit.json",
     from:
-      '"reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of 355 checked) ever used it as a head branch, and a GitHub-wide search finds no reference to it outside issue #572\'s own candidate list. Deleting it after #578\'s evidence bundle is captured loses nothing."',
+      '"reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of the 355 checked in that search) ever used it as a head branch, and that GitHub-wide search found no reference to it outside issue #572\'s own candidate list; PR #592 (this audit\'s own PR, opened after that search) also names it in its body, but only as a self-reference -- see referenced_by_pr. Deleting it after #578\'s evidence bundle is captured loses nothing."',
     to: '"reason": ""',
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "no entry recommends deletion without a reason"
