@@ -347,7 +347,9 @@ node bin/aos.mjs holdout --lanes
 EXPERIMENTAL로 남습니다. 보류는 0이 아니라 값 없음이며, 이 명령이 출력하는 모든 보고서는
 하한선을 적용한 결과에서 생성됩니다. 이 하한선들은 통계적으로 유도한 값이 아니라 선언된 제품
 수용 기준이고, 픽스처 코퍼스는 규칙을 쓴 사람이 직접 재구성한 것입니다 —
-[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) 참고.
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) 참고. 이 명령이 출력하는 JSON 형태는
+[`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md)에 이름과 버전이 붙어 있고, 이전의 버전 없는
+형태를 무엇으로 대체했는지도 거기에 적혀 있습니다.
 
 새로운 미사용 세션으로 다시 측정하기 전까지 현재 `review`의 정확도가 확립됐다고 주장할 수
 없습니다. holdout 기록에는 세션 원문이 아니라 세션 해시, 지적 ID, 판정과 이유만 저장됩니다.

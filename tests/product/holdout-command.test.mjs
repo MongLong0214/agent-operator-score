@@ -119,6 +119,20 @@ test("neither report the command can print carries a rate below the floor", () =
     const lanes = run(cwd, ["holdout", "--lanes"], 1);
     assert.match(lanes.stdout, /precision withheld/);
     assert.equal(/\b1\.000\b/.test(lanes.stdout), false);
+
+    // The fourth way out of this command, and the test claimed to cover every one of them while
+    // leaving this one out. It is the machine-readable path, so it is the one a number would be
+    // quoted from.
+    const lanesJson = JSON.parse(run(cwd, ["holdout", "--lanes", "--json"], 1).stdout);
+    assert.equal(lanesJson.lane_a.precision, null);
+    assert.equal(lanesJson.lane_a.status, "UNDECIDED");
+    assert.equal(lanesJson.precision_claim, "WITHHELD");
+    assert.equal(lanesJson.claim, "EXPERIMENTAL");
+    for (const metric of Object.values(lanesJson.lane_b.rule_metrics)) {
+      assert.equal(metric.precision, null, `${metric.rule} published a precision`);
+      assert.equal(metric.recall, null, `${metric.rule} published a recall`);
+    }
+    assert.equal(/"precision":\s*[0-9]|"recall":\s*[0-9]/.test(JSON.stringify(lanesJson)), false, "a rate reached the lane report");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

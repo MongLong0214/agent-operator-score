@@ -348,7 +348,9 @@ more abstentions than decisions — a rate is withheld rather than printed, and 
 EXPERIMENTAL. Withheld means absent, not zero: every report the command prints is generated from
 the floored result. The floors are declared acceptance thresholds, not statistical ones, and the
 corpus is a set of reconstructions written by the author of the rules — see
-[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md). The JSON shape this command prints is named and
+versioned in [`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md), which records what replaced the
+unversioned shape it used to print.
 
 Until new, unused sessions are measured, the current reviewer's accuracy is not established. The
 holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.

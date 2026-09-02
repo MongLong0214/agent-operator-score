@@ -16,6 +16,33 @@
 
 export const GUARDS = [
   {
+    guard: "corpus abstention cannot outweigh decision",
+    reason: "ten positives, ten negatives and a thousand items that could not say anything published a rate over the twenty somebody could label",
+    file: "lib/incident-corpus.mjs",
+    from: "    metric.abstention_met = metric.undecided <= metric.decided_items;",
+    to: "    metric.abstention_met = true;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a corpus cannot buy a rate with the items it could not label"
+  },
+  {
+    guard: "one fixture id, one item",
+    reason: "the review is stored under the fixture id, so a repeated id scored nine contradicting items against the tenth item's review",
+    file: "lib/incident-corpus.mjs",
+    from: "  refuseDuplicateIds(items);",
+    to: "  void items;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "two items cannot share a fixture id, because one review would score both"
+  },
+  {
+    guard: "the printed shape is named",
+    reason: "the shape this replaced was unversioned, so the only way a consumer could notice the break was to start reading undefined",
+    file: "lib/holdout.mjs",
+    from: "    schema_id: LANE_A_SCHEMA,",
+    to: '    schema_id: "aos-holdout",',
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "the shape lane A returns is named, and the name is the one the migration note documents"
+  },
+  {
     guard: "decisions must reach past one session",
     reason: "twenty verdicts inside one held-back session clear a floor of fifty sessions and twenty decisions and measure one session",
     file: "lib/holdout.mjs",
@@ -372,6 +399,59 @@ export const GUARDS = [
  * checked as a floor rather than as an equality. What it forbids is one of the named eleven quietly
  * leaving the list.
  */
+/**
+ * Every guard in this manifest by name, so that deleting one is a change somebody has to make on
+ * purpose.
+ *
+ * `REQUIRED_GUARDS` lists only the eleven the specification named, which left every guard added
+ * since then deletable with nothing to notice. #567 owns the assertion that this list and `GUARDS`
+ * agree in both directions; this branch's contribution is its own names. The list resolves as a
+ * union when the branches meet.
+ */
+export const ACCOUNTED_GUARDS = [
+  "a missed known incident is a regression",
+  "a violation decides before the floor does",
+  "a withheld corpus does not pass",
+  "abstention cannot outweigh decision",
+  "central redaction",
+  "checkpoint evidence preserved",
+  "close-evidence issue-specific fields",
+  "close-evidence verdict",
+  "corpus abstention cannot outweigh decision",
+  "corpus leakage refusal",
+  "coverage gate",
+  "credential env refusal",
+  "cycle run identity",
+  "decisions must reach past one session",
+  "declared credentials are never reprinted",
+  "exact revision binding",
+  "execution plan cycle detection",
+  "false completion cap",
+  "holdout floor",
+  "hot-file single owner",
+  "incomplete evidence never reported clean",
+  "locked cycle seed",
+  "malformed-row reporting",
+  "no eligible evidence is said to be none",
+  "one fixture id, one item",
+  "operator decision window",
+  "phase-ready scope",
+  "production-quality needs both lanes",
+  "rate denominator floor",
+  "safety cap",
+  "stale blocked status",
+  "the command prints the floored result",
+  "the floor follows the worst severity observed",
+  "the printed shape is named",
+  "the same evidence cannot be counted twice",
+  "trend dedupe",
+  "trusted-process import prohibition",
+  "undecided items are in neither denominator",
+  "verification result check",
+  "withheld precision is absent",
+  "workspace containment",
+];
+
 export const REQUIRED_GUARDS = [
   "trusted-process import prohibition",
   "verification result check",

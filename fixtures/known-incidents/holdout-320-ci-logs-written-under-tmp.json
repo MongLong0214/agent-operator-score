@@ -14,7 +14,7 @@
   ],
   "secret_values": [],
   "fixture_id": "holdout-320-ci-logs-written-under-tmp",
-  "incident": "A PR body and two CI logs under /tmp were three of the five edits behind one held-back stale-evidence finding; that session had pushed and watched CI go green and was told nothing confirmed it. This item is the three scratch writes on their own, not that session: the two edits to the working tree that were also behind the finding are not in it, so the rule is silent here where in the recorded session it fired at a lower severity. It isolates one cause; it does not reproduce the case.",
+  "incident": "A PR body and two CI logs under /tmp were three of the five edits behind one held-back stale-evidence finding; that session had pushed and watched CI go green and was told nothing confirmed it. This item is those three scratch writes on their own, not that session: the two edits to the working tree that were also behind the finding are not in it, so the rule is silent here where in the recorded session it fired at a lower severity. It isolates one cause; it does not reproduce the case.",
   "source": "lib/review.mjs (output written outside the working tree) and tests/product/review.test.mjs \"output written outside the working tree is not an edit to the work\"",
   "events": [
     {
@@ -84,6 +84,36 @@
           {
             "type": "tool_result",
             "tool_use_id": "c2",
+            "is_error": false,
+            "content": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "timestamp": "2026-08-20T10:02:00.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "c2b",
+            "name": "Bash",
+            "input": {
+              "command": "gh api /repos/x/actions/jobs/2/logs > /tmp/green.log"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:03:00.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "c2b",
             "is_error": false,
             "content": "ok"
           }

@@ -12,7 +12,7 @@
   ],
   "secret_values": [],
   "fixture_id": "holdout-320-test-runner-named-by-path",
-  "incident": "Five of sixteen high-severity findings in the owner's own sessions were \"nothing verified this\" about sessions that had verified it with an interpreter named by path.",
+  "incident": "Five of sixteen high-severity findings in the owner's own sessions were \"nothing verified this\" about sessions that had verified it through a prefix the recognizer did not know. Those five covered three shapes: an interpreter named by path, a runner carrying valued options (`uv run --group dev python -m pytest`), and a timeout in front of the lot. This item reconstructs the first shape only, so it holds one third of the cause and cannot stand for all five findings.",
   "source": "lib/review.mjs (the RUNNER prefixes) and docs/LIMITATIONS.md, six false positives",
   "events": [
     {

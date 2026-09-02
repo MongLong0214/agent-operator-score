@@ -326,7 +326,9 @@ node bin/aos.mjs holdout --lanes
 跨越至少 10 个不同会话、且存疑判定不多于已定判定）时，比率不会打印而是被扣留，`aos review` 仍为
 EXPERIMENTAL。扣留意味着没有该值，而不是 0；该命令打印的每一份报告都由应用下限后的结果生成。
 这些下限是声明的产品验收阈值，并非统计推导所得，夹具集合也是由编写规则的同一人重建的 —— 详见
-[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。该命令输出的 JSON 形状已在
+[`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md) 中命名并版本化，其中也记录了它取代的那个
+未版本化形状对应读什么。
 
 在新的、未使用过的会话上重新测量之前，不能声称当前 `review` 的准确率已经确立。holdout 台账
 只保存会话哈希、提示 ID、人工判定与理由，不保存会话正文。详见

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import {
+  LANE_A_SCHEMA,
   MVP_DECIDED_HIGH,
   MVP_DECIDED_SESSIONS,
   MVP_HOLDOUT_SESSIONS,
@@ -232,9 +237,35 @@ test("the number is bound to the data it was computed from", () => {
   assert.notEqual(laneA(more).dataset_digest, digest, "the digest did not move when the data did");
 });
 
+test("the shape lane A returns is named, and the name is the one the migration note documents", () => {
+  // This object replaced an unversioned one. `aos holdout --json` used to print the acceptance
+  // report -- `accepted`, `holdout_sessions`, a nested `precision` object -- and it had to stop,
+  // because that object carries a rate no floor was applied to. What it must not do is replace one
+  // unnamed shape with another: a consumer that reads `undefined` has been told nothing about why.
+  const lane = laneA(ledgerWith({ sessions: 1, verdicts: ["true-positive"] }));
+  assert.equal(lane.schema_id, LANE_A_SCHEMA);
+  assert.match(lane.schema_id, /^aos-holdout-lane-a\.v\d+$/);
+
+  // And the note that tells the old readers what to read instead names the same shape. A rename
+  // here with the document left behind is the same silent break in a new coat.
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const note = readFileSync(join(root, "docs", "HOLDOUT_OUTPUT.md"), "utf8");
+  assert.ok(note.includes(LANE_A_SCHEMA), `docs/HOLDOUT_OUTPUT.md does not name ${lane.schema_id}`);
+  // The fields it promises to explain are the ones the old shape carried.
+  for (const old of ["accepted", "holdout_sessions", "precision.precision", "gates"]) {
+    assert.ok(note.includes(old), `the migration note does not say what replaced ${old}`);
+  }
+});
+
 test("the lane report carries no band, no percentile and no rank", () => {
   // A diagnostic about a review rule is not a score about a person, and the vocabulary is where
   // that distinction is lost first.
-  const lane = laneA(ledgerWith({ sessions: MVP_HOLDOUT_SESSIONS, verdicts: repeat("true-positive", MVP_DECIDED_HIGH) }));
-  assert.equal(/percentile|\brank(ed|ing|s)?\b|\bband\b/i.test(JSON.stringify(lane)), false);
+  //
+  // The whole report, not lane A on its own: this asserted the vocabulary of one lane while its
+  // name promised the report, and the words it looks for would most likely be introduced in lane B
+  // or in the claim, which is the part a reader quotes.
+  const ledger = ledgerWith({ sessions: MVP_HOLDOUT_SESSIONS, verdicts: repeat("true-positive", MVP_DECIDED_HIGH) });
+  const report = laneReport({ ledger });
+  assert.ok(Object.keys(report.lane_b.rule_metrics).length > 0, "lane B contributed nothing to the text this checks");
+  assert.equal(/percentile|\brank(ed|ing|s)?\b|\bband\b/i.test(JSON.stringify(report)), false);
 });

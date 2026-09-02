@@ -245,6 +245,57 @@ test("the same evidence twice is one incident, and a corpus that holds it twice 
   ]).rule_metrics[DESTRUCTIVE].tp, 2);
 });
 
+test("a corpus cannot buy a rate with the items it could not label", () => {
+  // The Lane A rule, on the side that did not have it. Ten positives, ten negatives and a thousand
+  // items that could say nothing cleared the floor in both directions and published precision 1.000
+  // and recall 1.000 -- a rate over the twenty somebody could label, reported by a corpus that was
+  // 98% abstention. Every one of the thousand is a distinct session, so neither the duplicate
+  // evidence check nor the duplicate id check has anything to say about it.
+  const abstentions = Array.from({ length: 1000 }, (unused, index) => ({
+    ...fires(`cannot-tell-${index}`), fixture_id: `cannot-tell-${index}`, undecided_rules: [DESTRUCTIVE]
+  }));
+  const decided = [
+    ...many((tag) => ({ ...fires(tag), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "positive"),
+    ...many((tag) => ({ ...silent(tag), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative")
+  ];
+
+  const swamped = laneB([...decided, ...abstentions]).rule_metrics[DESTRUCTIVE];
+  assert.equal(swamped.undecided, 1000);
+  assert.equal(swamped.decided_items, LANE_B_FLOOR.high * 2);
+  assert.equal(swamped.abstention_met, false);
+  assert.equal(swamped.precision, null, "a rate was published over the cases somebody could label");
+  assert.equal(swamped.recall, null);
+  assert.match(swamped.withheld_reason, /could not be labelled/);
+  assert.equal(laneB([...decided, ...abstentions]).status, "UNDECIDED");
+
+  // The counts are still there, and at the line the rate comes back: twenty decided carries twenty
+  // undecided, because withholding a rate is not withholding the evidence either way round.
+  const atTheLine = laneB([...decided, ...abstentions.slice(0, LANE_B_FLOOR.high * 2)]).rule_metrics[DESTRUCTIVE];
+  assert.equal(atTheLine.abstention_met, true);
+  assert.equal(atTheLine.precision, 1);
+  assert.equal(atTheLine.recall, 1);
+});
+
+test("two items cannot share a fixture id, because one review would score both", () => {
+  // The reviews are stored under the fixture id, so a repeated id meant the last item's review was
+  // the one every item with that id was scored against. Nine silent expected items and one firing
+  // one under a single id scored ten true positives off the one that fired; the same trick in the
+  // other direction scored ten true negatives. Twenty items, eighteen of them contradicting their
+  // own labels, precision 1.000, recall 1.000, PASS. Every digest was distinct, so the
+  // duplicate-evidence check saw nothing wrong.
+  const positives = [
+    ...Array.from({ length: 9 }, (unused, index) => ({ ...silent(`p-${index}`), fixture_id: "p", expected_rules: [DESTRUCTIVE] })),
+    { ...fires("p-last"), fixture_id: "p", expected_rules: [DESTRUCTIVE] }
+  ];
+  const negatives = [
+    ...Array.from({ length: 9 }, (unused, index) => ({ ...fires(`n-${index}`), fixture_id: "n", forbidden_rules: [DESTRUCTIVE] })),
+    { ...silent("n-last"), fixture_id: "n", forbidden_rules: [DESTRUCTIVE] }
+  ];
+  assert.throws(() => laneB([...positives, ...negatives]), /AOS_CORPUS_DUPLICATE_ID p/);
+  // And it is refused before anything is scored, rather than caught by the arithmetic afterwards.
+  assert.throws(() => laneB([positives[0], positives[1]]), /AOS_CORPUS_DUPLICATE_ID/);
+});
+
 test("no eligible decided evidence is reported as none, not as a small number", () => {
   // Zero and "nearly ten" are different states and the report said the same sentence for both.
   const onlyDerived = [
@@ -299,6 +350,16 @@ test("the corpus that ships says what it can and only what it can", () => {
   // The honest state of this corpus, asserted rather than described. Every item in it is an
   // incident this repository already recorded, and almost every one of them is an incident a rule
   // was changed in response to -- which is exactly the evidence that cannot measure that rule.
+  //
+  // What this test is, and is not. It checks the corpus against the labels in the corpus, and both
+  // were written by the same person in the same change: it is a consistency check, not a
+  // correctness one. It would pass over a mislabelled item as readily as over a right one, and no
+  // check here can do better, because the thing a label would have to be checked against -- what
+  // actually happened in the incident -- exists only in sessions that are not in this repository
+  // and must never be. The leakage rule has the same shape one level down: `derived_rules` is a
+  // declaration about provenance and this suite can only test that the declaration was honoured,
+  // never that it was true. Read a green run here as "the corpus still says what it said", and
+  // nothing more.
   const items = loadCorpus();
   assert.ok(items.length > 0, "the corpus is empty");
   for (const entry of items) validateItem(entry);

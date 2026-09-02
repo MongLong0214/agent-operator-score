@@ -85,10 +85,15 @@ reports two lanes and will not publish a rate from either one until the sample c
 
 Lane A is the local holdout: fifty held-back sessions, twenty decided high-severity findings, those
 decisions reaching at least ten different sessions, and at least as many decided findings as
-undecided ones. Below any of those the status is `UNDECIDED` -- not PASS, not FAIL -- and the
-precision is **withheld**, which means absent from the report rather than printed as zero or as an
-interval. Both reports the command can print are generated from that floored result; an earlier
-version printed the default report from an unfloored acceptance object, so a single decided finding
+undecided ones. Below any of those, **in the absence of a counted violation**, the status is
+`UNDECIDED` -- not PASS, not FAIL -- and the precision is **withheld**, which means absent from the
+report rather than printed as zero or as an interval. The qualification is not a detail: a violation
+is a count and decides before the floor does, so a one-session ledger that reported a transcript as
+complete when the evidence was not is `FAIL`, with the precision withheld all the same. Waiting for
+a bigger sample before saying that would be the same as not saying it.
+
+Both reports the command can print are generated from that floored result; an earlier version
+printed the default report from an unfloored acceptance object, so a single decided finding
 produced a gate line reading `FAIL high-severity precision — 0` with a sentence underneath saying
 the number was not a measurement. A notice under a printed number is not absence.
 
@@ -129,6 +134,15 @@ which cleared a floor of ten in each direction with two distinct shapes; identic
 refused outright. Near-identical evidence is not: an item with one character changed is a different
 digest and counts again, and no check here can tell that from a second incident.
 
+Two more ways a corpus could have bought a rate, both closed. A rule's review is stored under the
+item's fixture id, so two items sharing an id meant one review scored both: nine silent items and
+one firing item under a single id produced ten true positives off the one that fired, and twenty
+items whose labels eighteen of them contradicted came out as precision 1.000 and recall 1.000. A
+repeated id is now refused. And abstention was unlimited on this side, where Lane A had already
+closed it: ten positives, ten negatives and a thousand items that could not say anything published
+a rate over the twenty somebody could label. A rule's rate is now withheld unless at least as many
+items decided it as abstained on it.
+
 The larger limit is what a declaration can be worth. `derived_rules` is the field the whole
 separation rests on, and it is a claim the author of the rules wrote about their own rules, in the
 same change, with no independent history to check it against. Omitting a rule name from that array
@@ -140,6 +154,10 @@ establish that a rule was measured on evidence it did not come from.
 
 So: `aos review` is EXPERIMENTAL, its precision claim is WITHHELD, and the only measured figure
 this product has about its own reviewer is still the 0.400 above.
+
+The machine-readable shape of all this is named and versioned in
+[`HOLDOUT_OUTPUT.md`](HOLDOUT_OUTPUT.md), which also records what the unversioned shape it replaced
+used to carry and what its readers should read now.
 
 ### Two ways a destructive command is still missed
 
