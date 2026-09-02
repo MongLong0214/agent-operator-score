@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 
 import { canonicalJson, htmlEscape, sha256Value } from "../../lib/core.mjs";
 import { runValidity } from "../../lib/cycle.mjs";
-import { comparability, shippedEcdContract } from "../../lib/ecd-contract.mjs";
+import { comparability, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { isolationPolicyDigestOf } from "../../lib/isolation.mjs";
 import {
@@ -41,8 +41,12 @@ import {
   verifyModelIdentity
 } from "../../lib/model-identity.mjs";
 import { ADAPTERS, appliedProfile, buildProfile, profileDigestOf } from "../../lib/profile.mjs";
+import { buildResult } from "../../lib/result-schema.mjs";
+import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
+import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
+import { renderProfileCard, renderProfileHtml, renderProfileMarkdown } from "../../lib/profile-report.mjs";
 import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA, LEGACY_IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
 import { addAgent, makePlan, newestResult, run, verifiedRunner } from "./helpers.mjs";
 
@@ -116,6 +120,38 @@ const build = (over = {}) =>
   buildProfile({ agent: agent(), platform: "darwin", arch: "arm64", nodeVersion: "22.18.0", probe: () => null, ...over });
 
 const declared = (model) => ({ model, provider: null });
+
+// A complete, all-passing evaluation: the shape a result is built from when nothing about the
+// measurement is withheld, so what withholds in these tests is the identity and only the identity.
+const allPassObservations = () => METRIC_IDS.map((id) => observationOf({
+  metric_id: id,
+  verifier_id: "aos-verify.v1",
+  subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: true })),
+  evidence_ids: ["fixture"],
+  reason: "fixture"
+}));
+
+// The contract whose index is populated, so the composite actually issues and what withholds it in
+// these tests is the identity: against the shipped contract the process index is withheld anyway,
+// and a gate tested where the thing it gates was already off is not tested.
+const issuingContract = () => contractWithAPopulatedIndex();
+
+const allPassEvaluation = () => evaluate(allPassObservations(), {
+  // Every facet identified, so the contract itself reaches PROFILE_BOUND and what withholds in
+  // these tests is the identity record and only the identity record.
+  facets: { language: "en", interface: "cli", harness: "aos@test", runtime: "codex", model: EXACT_A, operator: "fixture-operator", occasion: "1" },
+  profile_digest: "d".repeat(64),
+  forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"]
+}, shippedEcdContract());
+
+const runBlock = () => ({
+  run_id: "run-fixture", mode: "ASSESS", suite: "aos-coding-p0", suite_digest: `sha256:${"a".repeat(64)}`,
+  seed: "0000000000000021", seeded_families: ["FAM-1"], forms_completed: ["FAM-1"],
+  profile_digest: "d".repeat(64), isolation_level: "BEST_EFFORT_CLI", scoring_permitted: true,
+  evidence_status: "COMPLETE", safety_state: "S0", agents_used: ["main"], invocation_count: 1,
+  fixture_backed_agents: [], unrecognised_runtime_agents: [], operator_plan_digest: `sha256:${"b".repeat(64)}`,
+  operator_plan_authored: true
+});
 
 // The two provenance states a profile can be digested under: what a cycle locks when it opens (the
 // bound model as the configured runtime is expected to confirm it) and what a run resolves once
@@ -638,6 +674,31 @@ test("a date-shaped substring is not snapshot proof", () => {
   assert.deepEqual(aliasClassOf("newco/llm-2026-01-01"), { alias_class: "unrecognised-family", mutable_alias: true });
 });
 
+test("a cycle's runtime identity is the runs' own, not the registration it was opened with", () => {
+  // The binding carried the registration's runtime status while every run described the executable
+  // it actually spawned, and the cycle read only the binding -- so a stale VERIFIED registration
+  // turned a run whose executable was UNTRUSTED into an issued cycle (#561 round 9). The runs are
+  // where the executable was seen; the weakest of them decides.
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const confirmed = verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" });
+  const binding = modelIdentityRecord({
+    by_agent: { solo: { provenance, verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const runWith = (status) => ({
+    valid: true,
+    model_identity: modelIdentityRecord({
+      by_agent: { solo: { provenance, verification: confirmed, runtime_identity_digest: identity().identity_digest, runtime_identity_status: status } },
+      profile_digest: "d".repeat(64)
+    })
+  });
+  const untrusted = cycleModelIdentity({ binding, runs: [runWith("VERIFIED"), runWith("UNTRUSTED"), runWith("VERIFIED")] });
+  assert.equal(untrusted.by_agent.solo.runtime_identity_status, "UNTRUSTED");
+  assert.equal(untrusted.profile_bound_aggregation.reason, "RUNTIME_IDENTITY_UNVERIFIED");
+  const verified = cycleModelIdentity({ binding, runs: [runWith("VERIFIED"), runWith("VERIFIED"), runWith("VERIFIED")] });
+  assert.equal(verified.profile_bound_aggregation.status, "issued");
+});
+
 test("one contradicted run withholds the whole cycle, however many others agreed", () => {
   // The merge takes the weakest verdict, not the strongest: a cycle in which one run named another
   // model is not three runs of one model, and two agreements do not average it away.
@@ -1124,6 +1185,30 @@ test("the card quotes the stored identity lines, every agent of them, and render
   assert.match(bare, /—/u);
 });
 
+test("the profile renderers quote the stored identity lines, and the profile card carries them", () => {
+  // The v2 renderers recomputed the projection and the v2 card had no identity on it at all --
+  // Markdown, HTML and the card each deciding for themselves what a result says about its model
+  // (#561 round 9). They quote what the record stored, and a sentinel is how that is checked.
+  const evaluation = allPassEvaluation();
+  const named = modelIdentityRecord({
+    by_agent: { main: { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const result = buildResult({ evaluation, observations: allPassObservations(), run: runBlock(), model_identity: named });
+  const stored = { ...result, model_identity: { ...result.model_identity, lines: ["SENTINEL_FROM_STORED_PROFILE"] } };
+  for (const locale of ["en-US", "ko-KR"]) {
+    const markdown = renderProfileMarkdown(stored, { locale });
+    const html = renderProfileHtml(stored, { locale });
+    const card = renderProfileCard(stored, { locale });
+    assert.match(markdown, /SENTINEL_FROM_STORED_PROFILE/u, `${locale}: markdown`);
+    assert.match(html, /SENTINEL_FROM_STORED_PROFILE/u, `${locale}: html`);
+    assert.match(card, /SENTINEL_FROM_STORED_PROFILE/u, `${locale}: card`);
+    for (const surface of [markdown, html, card]) {
+      assert.equal(surface.includes(`Model (main): declared ${EXACT_A}`), false, `${locale}: a surface derived its own lines`);
+    }
+  }
+});
+
 test("a report whose aggregate is withheld does not also print the profile-bound claim", () => {
   const unknown = modelIdentityRecord({
     by_agent: { main: { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: null, runtime_identity_status: "MIGRATION_REQUIRED" } },
@@ -1189,6 +1274,67 @@ test("the provenance schema fixture is committed and its digest is the model ide
   for (const field of ["provider", "family", "id", "source", "confidence", "evidence_digest", "mutable_alias"]) {
     assert.equal(produced[field], parsed.record[field], field);
   }
+});
+
+test("a canonical result never issues a profile-bound claim its identity record withholds", () => {
+  // The record was copied into the result and read by nothing: `buildResult` computed the claim
+  // stage and the composite from the contract alone, so a result with no identity at all -- or one
+  // whose own policy said MODEL_UNKNOWN -- came out PROFILE_BOUND with a composite (#561 round 9).
+  // The identity is a condition on the claim, not a decoration beside it.
+  const evaluation = allPassEvaluation();
+  const unknown = modelIdentityRecord({
+    by_agent: { main: { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: null, runtime_identity_status: "MIGRATION_REQUIRED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const withheld = buildResult({ evaluation, observations: allPassObservations(), run: runBlock(), model_identity: unknown });
+  assert.equal(withheld.claim_stage, "RUN_DIAGNOSTIC");
+  assert.equal(withheld.aos_composite.issued, false);
+  assert.equal(withheld.aos_composite.value, null);
+  // And against a contract whose index is populated -- where the composite really does issue --
+  // the identity is what takes the number away, and its reason is the one printed.
+  // One contract object for both: the evaluation is bound to the contract it was emitted under.
+  const contract = issuingContract();
+  const issuing = evaluate(observationsWith(), identified, contract);
+  assert.equal(buildResult({ contract, evaluation: issuing }).aos_composite.issued, true, "the fixture must issue before the identity withholds it");
+  const capped = buildResult({ contract, evaluation: issuing, model_identity: unknown });
+  assert.equal(capped.aos_composite.issued, false);
+  assert.equal(capped.aos_composite.value, null);
+  assert.match(capped.aos_composite.withheld_reason, /MODEL_UNKNOWN/u);
+  // A record explicitly absent is in the same position: nothing established what produced it.
+  const absent = buildResult({ evaluation, observations: allPassObservations(), run: runBlock(), model_identity: null });
+  assert.equal(absent.claim_stage, "RUN_DIAGNOSTIC");
+  assert.equal(absent.aos_composite.issued, false);
+  // And the cap is the identity's: the same evaluation with a record that issues keeps the stage
+  // the contract gave it, so this is a condition on the claim rather than a blanket refusal.
+  const named = modelIdentityRecord({
+    by_agent: { main: { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  assert.equal(evaluation.claim_stage, "PROFILE_BOUND", "the fixture must reach the stage the identity then caps");
+  assert.equal(buildResult({ evaluation, observations: allPassObservations(), run: runBlock(), model_identity: named }).claim_stage, "PROFILE_BOUND");
+});
+
+test("a caller's identity record cannot carry a path or a credential into a published result", () => {
+  // The record was boxed as this module's own text so its digests would survive the gate -- which
+  // handed a caller a door into the published artefact that nothing inspected (#561 round 9). The
+  // record is this module's shape or it is not published: the fields are known, and every string
+  // in them goes through the same gate as every other string on the result.
+  const forged = {
+    schema_id: "aos-model-identity.v1",
+    profile_digest: `sha256:${"d".repeat(64)}`,
+    by_agent: {},
+    lines: ["/Users/alice/private/credential.txt", `sk-live-${"a".repeat(24)}`],
+    claim_stage: "RUN_DIAGNOSTIC",
+    run_diagnostic_permitted: true,
+    profile_bound_aggregation: { status: "withheld", reason: "MODEL_UNKNOWN", detail: "/Users/alice/private" },
+    composite: "WITHHELD",
+    arbitrary: { credential: `sk-live-${"b".repeat(24)}` }
+  };
+  const result = buildResult({ evaluation: allPassEvaluation(), observations: allPassObservations(), run: runBlock(), model_identity: forged });
+  const published = JSON.stringify(result);
+  assert.equal(published.includes("/Users/alice"), false, "an absolute path reached the published result");
+  assert.equal(published.includes("sk-live-"), false, "a credential reached the published result");
+  assert.equal(Object.hasOwn(result.model_identity, "arbitrary"), false, "an unknown field was published verbatim");
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -1399,6 +1545,18 @@ test("a credential typed as a model id is refused at registration, never stored 
   const cwd = mkdtempSync(join(tmpdir(), "aos-model-secret-"));
   try {
     run(cwd, ["init"]);
+    // Two shapes: one the redactor knows, and one it does not. The second is the point -- the
+    // registration channel used to store and echo anything the model parser could not read, so a
+    // vendor prefix nobody taught this product was a credential channel (#561 round 9).
+    const prefixed = (prefix, body) => `${prefix}_${body}`;
+    for (const value of [prefixed("hf", `${"abcdefghijklmnopqrstuvwxyz"}0123456`), prefixed("nvapi", "9f8e7d6c5b4a39281706abcdefabcdef")]) {
+      const declined = spawnSync(process.execPath, [cli, "agent", "add", "unreadable", "--command", process.execPath, "--model-id", value, "--json"], {
+        cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+      });
+      assert.notEqual(declined.status, 0, value);
+      assert.equal(`${declined.stdout}${declined.stderr}`.includes(value), false, `${value} was echoed back`);
+      assert.equal(readFileSync(join(cwd, ".aos", "agents.json"), "utf8").includes(value), false, `${value} reached the store`);
+    }
     const secret = "sk-supersecretcredential1234567890";
     const refused = spawnSync(process.execPath, [cli, "agent", "add", "leaky", "--command", process.execPath, "--model-id", secret, "--json"], {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }

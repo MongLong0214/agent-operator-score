@@ -2529,6 +2529,60 @@ export const GUARDS = [
     name: "an import with nothing in it creates no Run at all"
   },
   {
+    guard: "a withheld identity caps the canonical claim",
+    reason: "the record was copied into the result and read by nothing, so a result whose model was unknown still came out PROFILE_BOUND with a composite -- the gate this issue exists to build, not gating the artefact everybody reads",
+    file: "lib/result-schema.mjs",
+    from: "    claim_stage: identityWithheld === null ? evaluation.claim_stage : \"RUN_DIAGNOSTIC\",",
+    to: "    claim_stage: evaluation.claim_stage,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a canonical result never issues a profile-bound claim its identity record withholds"
+  },
+  {
+    guard: "a withheld identity withholds the composite",
+    reason: "a number describing a run nobody can say the model of is a number about an unnamed thing",
+    file: "lib/result-schema.mjs",
+    from: "  const compositeIssued = compositeThroughOutcome.issued && identityWithheld === null;",
+    to: "  const compositeIssued = compositeThroughOutcome.issued;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a canonical result never issues a profile-bound claim its identity record withholds"
+  },
+  {
+    guard: "the identity record is published field by field",
+    reason: "boxing the whole record as this module's own text handed a caller a door into the published artefact that nothing inspected: a line naming an absolute path or a credential went out verbatim",
+    file: "lib/result-schema.mjs",
+    from: "  for (const field of IDENTITY_FIELDS) {",
+    to: "  for (const field of Object.keys(record)) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a caller's identity record cannot carry a path or a credential into a published result"
+  },
+  {
+    guard: "a cycle reads the executable its runs saw",
+    reason: "the binding carries the registration's status, so a stale VERIFIED registration turned a run whose executable was UNTRUSTED into an issued cycle",
+    file: "lib/model-identity.mjs",
+    from: "      runtime_identity_status: weakest?.runtime_identity_status ?? bound?.runtime_identity_status ?? \"MIGRATION_REQUIRED\",",
+    to: "      runtime_identity_status: bound?.runtime_identity_status ?? \"MIGRATION_REQUIRED\",",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle's runtime identity is the runs' own, not the registration it was opened with"
+  },
+  {
+    guard: "a model id this product cannot read is refused",
+    reason: "an unreadable value became `unknown` for the profile while the raw string was stored on the agent and echoed by agent add --json, which is the credential channel the transcript reader closed, on the registration side",
+    file: "lib/cli.mjs",
+    from: "    if (modelId !== null && parseModelName(modelId) === null) {",
+    to: "    if (false) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a credential typed as a model id is refused at registration, never stored and never echoed"
+  },
+  {
+    guard: "the profile renderers quote the stored lines",
+    reason: "the v2 Markdown, HTML and card each derived their own model presentation, so three renderings of one result could say three things",
+    file: "lib/profile-report.mjs",
+    from: "  (Array.isArray(result?.model_identity?.lines) ? result.model_identity.lines : modelIdentityLines(result?.model_identity ?? null));",
+    to: "  modelIdentityLines(result?.model_identity ?? null);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the profile renderers quote the stored identity lines, and the profile card carries them"
+  },
+  {
     guard: "a name that is not a model name is never printed",
     reason: "the shape check was a charset and a length, so an agent-controlled transcript could put a credential this product had never been taught to recognise into the provenance id, the projection lines, and the result JSON, CLI, Markdown and HTML",
     file: "lib/model-identity.mjs",
@@ -3462,6 +3516,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused at the carry as well",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
+  "a cycle reads the executable its runs saw",
   "a date-shaped substring is not a snapshot on its own",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
@@ -3473,6 +3528,7 @@ export const ACCOUNTED_GUARDS = [
   "a metric's status and its value are one state",
   "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
+  "a model id this product cannot read is refused",
   "a mutable alias withholds the profile-bound aggregate",
   "a name that is not a model name is never printed",
   "a name without snapshot proof is a mutable alias",
@@ -3510,6 +3566,8 @@ export const ACCOUNTED_GUARDS = [
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
   "a withheld corpus does not pass",
+  "a withheld identity caps the canonical claim",
+  "a withheld identity withholds the composite",
   "a withheld metric says so rather than reading as uncomputed",
   "a withheld rate keeps the counts that withheld it",
   "absent coverage is not a measured zero",
@@ -3720,6 +3778,7 @@ export const ACCOUNTED_GUARDS = [
   "the evidence digest is over the claim, not the transcript row",
   "the executable identity digest is recomputed, not read",
   "the floor follows the worst severity observed",
+  "the identity record is published field by field",
   "the identity record names the agents that ran",
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
@@ -3728,6 +3787,7 @@ export const ACCOUNTED_GUARDS = [
   "the profile digest covers the isolation policy",
   "the profile digest covers the mutable alias state",
   "the profile digest covers the provenance record",
+  "the profile renderers quote the stored lines",
   "the profile-bound claim is printed only when it was reached",
   "the projection verb is the record's own source",
   "the reader checks the state it was handed",

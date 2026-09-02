@@ -19,7 +19,7 @@
 //     carries the canonical event line its `event_digest` is taken over, so a test recomputes it.
 //     `observed_row_digest` names the row on the capture machine and is labelled as such.
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir, homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -27,6 +27,8 @@ import { fileURLToPath } from "node:url";
 
 import { sha256Bytes } from "../lib/digest.mjs";
 import { redactText } from "../lib/redact.mjs";
+import { describeExecutable } from "../lib/runtime-identity.mjs";
+import { isSensitiveName } from "../lib/env-policy.mjs";
 import {
   aliasClassOf,
   canonicalModelEventLine,
@@ -51,8 +53,9 @@ const RUNTIMES = [
     command: "codex",
     args: ["exec", "--skip-git-repo-check", PROMPT],
     configDir: ".codex",
-    env: (home) => ({ CODEX_HOME: join(home, ".codex") }),
-    copy: ["auth.json", "config.toml"]
+    // Its own configuration directory, where its credential already lives. The workspace is the
+    // isolated part, and it is what ties the rows this capture reads to this invocation.
+    env: () => ({ CODEX_HOME: join(homedir(), ".codex") })
   },
   {
     runtime: "claude-code",
@@ -64,9 +67,7 @@ const RUNTIMES = [
     // It runs under the operator's own configuration and writes its transcript under a temporary
     // workspace, which is what ties the rows to this capture: the project directory it creates is
     // named after a directory that existed only for this invocation.
-    home: () => homedir(),
-    env: () => ({}),
-    copy: []
+    env: () => ({})
   }
 ];
 
@@ -87,37 +88,59 @@ const failureClass = (result) => {
   return "the reason was not one this capture recognises; run it by hand to see it";
 };
 
-const runtimeVersion = (command) => {
-  const probe = spawnSync(command, ["--version"], { encoding: "utf8", timeout: 30000 });
-  return probe.status === 0 ? (probe.stdout ?? "").trim().split("\n")[0] : null;
+/**
+ * The executable this capture will run, verified before it is run.
+ *
+ * A bare name off the ambient PATH is whatever is first on the ambient PATH: a `codex` shim in a
+ * directory somebody else can write answered `--version` and was then handed the operator's
+ * credential directory (#561 round 9). #554 already knows how to say which file a name reaches and
+ * whether anybody else can replace it, so this asks it and refuses anything it will not vouch for.
+ */
+const verifiedRuntime = (command) => {
+  const identity = describeExecutable(command, { adapterId: null });
+  if (identity === null) return { blocker: `${command} does not resolve to a regular executable file on this PATH` };
+  if (identity.identity_status !== "VERIFIED") {
+    return { blocker: `${command} resolves to an executable #554 will not vouch for (${identity.untrusted_reasons.length} reason(s)); this capture will not run it` };
+  }
+  const probe = spawnSync(identity.resolved_realpath, ["--version"], { encoding: "utf8", timeout: 30000, env: MINIMAL_ENV() });
+  if (probe.status !== 0) return { blocker: `${command} does not answer --version on this machine` };
+  return { path: identity.resolved_realpath, version: (probe.stdout ?? "").trim().split("\n")[0] };
+};
+
+// What the runtime is given: this shell's environment with every credential-shaped name removed,
+// by the product's own rule rather than a second list invented here. The capture used to spawn
+// with the whole ambient environment, so every AWS, GitHub and npm credential in the operator's
+// shell went to the runtime along with the prompt (#561 round 9). The runtime still needs its own
+// PATH -- it is a script with a shebang -- and its own configuration directory, which is where its
+// credential lives and where it is read from rather than copied.
+const MINIMAL_ENV = (extra = {}) => {
+  const carried = Object.fromEntries(Object.entries(process.env).filter(([name]) => !isSensitiveName(name)));
+  return { ...carried, HOME: homedir(), TERM: "dumb", ...extra };
 };
 
 /** Runs one runtime once, in its own HOME, and reads the transcript that invocation wrote. */
 function invoke(spec) {
-  const version = runtimeVersion(spec.command);
-  if (version === null) {
-    return { blocker: `${spec.command} is not on PATH or does not answer --version on this machine` };
-  }
+  const runtime = verifiedRuntime(spec.command);
+  if (runtime.blocker !== undefined) return runtime;
+  const { path: executable, version } = runtime;
   // The workspace is always fresh, because that is what makes a transcript row this capture's:
   // the runtime records the directory it ran in, and this one existed only for this invocation.
   const scratch = mkdtempSync(join(tmpdir(), `aos-canary-${spec.runtime}-`));
   const workspace = join(scratch, "workspace");
   mkdirSync(workspace, { recursive: true });
-  const home = spec.home === undefined ? scratch : spec.home();
-  if (spec.home === undefined) mkdirSync(join(home, spec.configDir), { recursive: true });
-  // The credential, and only the credential. It is read from the operator's own configuration and
-  // never recorded: what this file keeps is the model the runtime named, not how it authenticated.
-  for (const name of spec.copy) {
-    const source = join(homedir(), spec.configDir, name);
-    if (existsSync(source)) cpSync(source, join(home, spec.configDir, name));
-  }
+  const home = homedir();
+  // Nothing is copied. An earlier version copied the operator's `auth.json` into a temporary
+  // directory so the runtime would authenticate there, which put a live credential in a second
+  // place on disk for the length of the capture (#561 round 9). The runtime reads its own
+  // configuration directory where it already lives; what this capture isolates is the workspace,
+  // which is what ties the transcript rows to this invocation.
   const cleanup = () => { if (!keep) rmSync(scratch, { recursive: true, force: true }); };
   const started = Date.now();
-  const result = spawnSync(spec.command, spec.args, {
+  const result = spawnSync(executable, spec.args, {
     cwd: workspace,
     encoding: "utf8",
     timeout: 300000,
-    env: { ...process.env, HOME: home, ...spec.env(home) }
+    env: MINIMAL_ENV(spec.env(home))
   });
   const duration = Date.now() - started;
   if (result.status !== 0) {
@@ -139,7 +162,7 @@ function invoke(spec) {
   if (event === null) {
     return { blocker: `${spec.command} ran and exited 0, but wrote no transcript row naming a model under the HOME this capture gave it` };
   }
-  return { version, duration, workspace, event, isolated_home: spec.home === undefined };
+  return { version, duration, workspace, event, isolated_home: false };
 }
 
 const observations = [];
@@ -175,9 +198,8 @@ for (const spec of RUNTIMES) {
         prompt: PROMPT,
         exit_code: 0,
         duration_ms: duration,
-        // Whether the runtime ran under a HOME made for this capture, or under the operator's own
-        // configuration because its credential lives in a per-account keychain. Either way the
-        // workspace was fresh, which is what ties the transcript rows to this invocation.
+        // The runtime runs under its own configuration -- nothing is copied and no credential is
+        // moved -- and the workspace is what this capture made, which is what ties the rows to it.
         isolated_home: isolatedHome,
         // The path is a digest. Which directory this ran in is not information anybody needs.
         workspace_digest: sha256Bytes(Buffer.from(workspace, "utf8"))

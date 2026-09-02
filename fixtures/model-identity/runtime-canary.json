@@ -1,6 +1,6 @@
 {
   "schema_id": "aos-model-canary.v1",
-  "captured_at": "2026-09-02T17:14:03.697Z",
+  "captured_at": "2026-09-02T22:53:33.509Z",
   "kind": "live-capture-replay",
   "unverifiable_from_repository": "Each observation came from invoking the runtime and reading the transcript that invocation wrote. The transcripts are unsigned local files with no attestation channel to this repository, so the capture is asserted by this record and not proved by it. Re-run scripts/capture-model-canary.mjs to reproduce it on a machine with both runtimes authenticated.",
   "capture": {
@@ -17,15 +17,15 @@
         "command": "codex exec --skip-git-repo-check <prompt>",
         "prompt": "reply with the single word ok",
         "exit_code": 0,
-        "duration_ms": 4705,
-        "isolated_home": true,
-        "workspace_digest": "sha256:181e618c5c825c00fb2d790224ddda6baf43f59a7d3451cd0b464ca0e80afa29"
+        "duration_ms": 3700,
+        "isolated_home": false,
+        "workspace_digest": "sha256:7871b5383c09d94473c5ce5e9bf8373abd98aabbf2f31cd6633301f2da7f7b89"
       },
       "provider": "openai",
       "model": "gpt-5.6-sol",
       "event_line": "{\"runtime\":\"codex\",\"provider\":\"openai\",\"model\":\"gpt-5.6-sol\"}",
       "event_digest": "sha256:eaf50504874c88ed253ebb8635e83b96346b7adf7347986834e81d868fe26b03",
-      "observed_row_digest": "sha256:44eb48b1da70b4b3d893f9dcbdb0edcbe8c9689638dc7ffbdf8e21c51b40a3e9",
+      "observed_row_digest": "sha256:40234232f43bc96c562528736c6ac0134ac33542c01b92be2a92a79d5706c5fa",
       "alias_class": "provider-managed-alias",
       "mutable_alias": true,
       "declared": "openai/gpt-5.6-sol",
@@ -42,15 +42,15 @@
         "command": "codex exec --skip-git-repo-check <prompt>",
         "prompt": "reply with the single word ok",
         "exit_code": 0,
-        "duration_ms": 4705,
-        "isolated_home": true,
-        "workspace_digest": "sha256:181e618c5c825c00fb2d790224ddda6baf43f59a7d3451cd0b464ca0e80afa29"
+        "duration_ms": 3700,
+        "isolated_home": false,
+        "workspace_digest": "sha256:7871b5383c09d94473c5ce5e9bf8373abd98aabbf2f31cd6633301f2da7f7b89"
       },
       "provider": "openai",
       "model": "gpt-5.6-sol",
       "event_line": "{\"runtime\":\"codex\",\"provider\":\"openai\",\"model\":\"gpt-5.6-sol\"}",
       "event_digest": "sha256:eaf50504874c88ed253ebb8635e83b96346b7adf7347986834e81d868fe26b03",
-      "observed_row_digest": "sha256:44eb48b1da70b4b3d893f9dcbdb0edcbe8c9689638dc7ffbdf8e21c51b40a3e9",
+      "observed_row_digest": "sha256:40234232f43bc96c562528736c6ac0134ac33542c01b92be2a92a79d5706c5fa",
       "alias_class": "provider-managed-alias",
       "mutable_alias": true,
       "declared": "anthropic/claude-3-5-sonnet-20241022",
@@ -62,20 +62,20 @@
     },
     {
       "runtime": "claude-code",
-      "runtime_version": "2.1.258 (Claude Code)",
+      "runtime_version": "2.1.259 (Claude Code)",
       "invocation": {
         "command": "claude -p <prompt>",
         "prompt": "reply with the single word ok",
         "exit_code": 0,
-        "duration_ms": 6018,
+        "duration_ms": 5701,
         "isolated_home": false,
-        "workspace_digest": "sha256:2438f85e4a56336b2fa6d9fa9458966d1e9ae73db0a84da5a1ea633757fc8254"
+        "workspace_digest": "sha256:ec1f02907a86524ca8c940031cfcb3e6a8afbed6a64e5a8978e2cd372e034de1"
       },
       "provider": "anthropic",
       "model": "claude-opus-5",
       "event_line": "{\"runtime\":\"claude-code\",\"provider\":\"anthropic\",\"model\":\"claude-opus-5\"}",
       "event_digest": "sha256:eae9bea6478250c3e5e1f1da447c45e8fa77a8eca263342bff0202395f1608be",
-      "observed_row_digest": "sha256:4105631e71010b0465e9fbf3b5069ab6536c5f86cda815cc03b701bbe3c07e74",
+      "observed_row_digest": "sha256:3649cb0abd1f8ba918e8686d57babae39c69a81ceca90a1617e469f7d20e2c6a",
       "alias_class": "provider-managed-alias",
       "mutable_alias": true,
       "declared": "anthropic/claude-opus-5",
@@ -87,20 +87,20 @@
     },
     {
       "runtime": "claude-code",
-      "runtime_version": "2.1.258 (Claude Code)",
+      "runtime_version": "2.1.259 (Claude Code)",
       "invocation": {
         "command": "claude -p <prompt>",
         "prompt": "reply with the single word ok",
         "exit_code": 0,
-        "duration_ms": 6018,
+        "duration_ms": 5701,
         "isolated_home": false,
-        "workspace_digest": "sha256:2438f85e4a56336b2fa6d9fa9458966d1e9ae73db0a84da5a1ea633757fc8254"
+        "workspace_digest": "sha256:ec1f02907a86524ca8c940031cfcb3e6a8afbed6a64e5a8978e2cd372e034de1"
       },
       "provider": "anthropic",
       "model": "claude-opus-5",
       "event_line": "{\"runtime\":\"claude-code\",\"provider\":\"anthropic\",\"model\":\"claude-opus-5\"}",
       "event_digest": "sha256:eae9bea6478250c3e5e1f1da447c45e8fa77a8eca263342bff0202395f1608be",
-      "observed_row_digest": "sha256:4105631e71010b0465e9fbf3b5069ab6536c5f86cda815cc03b701bbe3c07e74",
+      "observed_row_digest": "sha256:3649cb0abd1f8ba918e8686d57babae39c69a81ceca90a1617e469f7d20e2c6a",
       "alias_class": "provider-managed-alias",
       "mutable_alias": true,
       "declared": "anthropic/claude-3-5-sonnet-20241022",
