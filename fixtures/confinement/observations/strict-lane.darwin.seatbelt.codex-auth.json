@@ -1,0 +1,21 @@
+{
+  "backend_run": "strict-lane.darwin.seatbelt.codex-auth",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f strict.sb codex login status   # same profile as the canary; HOME=TMPDIR=@AGENT_TEMP_HOME@, CODEX_HOME=@AGENT_TEMP_HOME@/.codex (staged copy of auth.json, config.toml)",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "",
+  "stderr_excerpt": "Logged in using ChatGPT\n",
+  "parse_error": null,
+  "captured": {
+    "duration_ms": 86,
+    "staging": {
+      "dir": "@AGENT_TEMP_HOME@/.codex",
+      "staged": [
+        "auth.json",
+        "config.toml"
+      ],
+      "source": "default_dir"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "backend_run": "strict-lane.darwin.seatbelt.codex-exec",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f strict.sb codex exec --skip-git-repo-check -C @WORKSPACE@ -o @WORKSPACE@/last-message.txt -   # same profile as the canary; HOME=TMPDIR=@AGENT_TEMP_HOME@, CODEX_HOME=@AGENT_TEMP_HOME@/.codex (staged copy of auth.json, config.toml)",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "OK\n",
+  "stderr_excerpt": "OpenAI Codex v0.148.0\n--------\nworkdir: @WORKSPACE@\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: danger-full-access\nreasoning effort: xhigh\nreasoning summaries: none\nsession id: 01a06150-9aac-7a91-9fd6-5f2bd8b19834\n--------\nuser\nReply with exactly the single word OK and nothing else.\ncodex\nOK\ntokens used\n3,252\n",
+  "parse_error": null,
+  "captured": {
+    "duration_ms": 5187,
+    "staging": {
+      "dir": "@AGENT_TEMP_HOME@/.codex",
+      "staged": [
+        "auth.json",
+        "config.toml"
+      ],
+      "source": "default_dir"
+    },
+    "prompt": "Reply with exactly the single word OK and nothing else."
+  }
+}
