@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "a sequence at its key's indentation is the value",
+    reason: "`on:` over `- push` is how most workflows are written; a reader that refused it failed on valid workflows, which is how a pin check gets switched off",
+    file: "lib/action-pins.mjs",
+    from: "        if (/^-(\\s|$)/.test(rest())) return readBlockSequence(keyIndent);",
+    to: "        if (false) return readBlockSequence(keyIndent);",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a block sequence at its key's own indentation is the key's value, not a second document"
+  },
+  {
     guard: "an alias is the node it names",
     reason: "an alias that resolves to nothing is a mapping's inherited keys silently vanishing, and answering wrongly is worse than refusing",
     file: "lib/action-pins.mjs",
@@ -100,8 +109,8 @@ export const GUARDS = [
     guard: "carriage returns stripped",
     reason: "a workflow written on Windows leaves a carriage return on every value, and an ordinary pinned reference came back unreadable",
     file: "lib/action-pins.mjs",
-    from: "  const source = text.replace(/\\r\\n?/g, \"\\n\");",
-    to: "  const source = text;",
+    from: "  const source = text.replace(/^\\uFEFF/, \"\").replace(/\\r\\n?/g, \"\\n\");",
+    to: "  const source = text.replace(/^\\uFEFF/, \"\");",
     test: "tests/product/action-pins.test.mjs",
     name: "a workflow with CRLF line endings reads the same as one without"
   },

@@ -1038,3 +1038,45 @@ test("an alias is the node it names, so a merge key cannot hide a reference or a
   ].join("\n"));
   assert.deepEqual(parsed.jobs.one.permissions, { contents: "write" });
 });
+
+test("a block sequence at its key's own indentation is the key's value, not a second document", () => {
+  // Found by differential-testing this reader against PyYAML rather than by review: `on:` over
+  // `- push` and `steps:` over `- uses:` is the commonest way a workflow is written, and the reader
+  // refused it. Fail-closed, but a check that fails on a valid workflow is a check that gets
+  // switched off, which is the one way a pin scan stops scanning.
+  const parsed = parseYamlSubset([
+    "on:",
+    "- push",
+    "- pull_request",
+    "jobs:",
+    "  one:",
+    "    steps:",
+    "    - name: first",
+    "      uses: actions/checkout@v4",
+    "      with:",
+    "        fetch-depth: 0",
+    "    - run: echo",
+    "  two:",
+    "    steps:",
+    "      - uses: actions/other@v1"
+  ].join("\n"));
+  assert.deepEqual(parsed.on, ["push", "pull_request"]);
+  assert.equal(parsed.jobs.one.steps.length, 2);
+  assert.deepEqual(parsed.jobs.one.steps[0], { name: "first", uses: "actions/checkout@v4", with: { "fetch-depth": 0 } });
+  assert.equal(parsed.jobs.two.steps[0].uses, "actions/other@v1");
+
+  const found = usesInText(["jobs:", "  one:", "    steps:", "    - uses: attacker/evil@main"].join("\n"));
+  assert.ok(found.some((one) => one.raw === "attacker/evil@main"), JSON.stringify(found));
+});
+
+test("a byte-order mark and a %YAML directive are read past, not refused", () => {
+  const body = ["jobs:", "  one:", "    steps:", "      - uses: actions/checkout@v4"].join("\n");
+  assert.deepEqual(parseYamlSubset(`﻿${body}`), parseYamlSubset(body));
+  assert.deepEqual(parseYamlSubset(`%YAML 1.2\n---\n${body}`), parseYamlSubset(body));
+});
+
+test("a key named __proto__ is an entry of the mapping, not its prototype", () => {
+  const parsed = parseYamlSubset(["__proto__:", "  permissions:", "    contents: write", "jobs: {}"].join("\n"));
+  assert.ok(Object.hasOwn(parsed, "__proto__"));
+  assert.equal(parsed.permissions, undefined);
+});
