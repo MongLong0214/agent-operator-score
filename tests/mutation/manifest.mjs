@@ -2194,6 +2194,141 @@ export const GUARDS = [
     to: '"checkpoint.raised": ["family", "kind", "evidence_digest"],',
     test: "tests/product/checkpoint-runtime.test.mjs",
     name: "the record keeps what the operator was shown, not just that they were shown something"
+  },
+  {
+    guard: "profile index withholds on a missing row",
+    reason: "with the withheld branch gone the loop has already skipped the missing row and the mean divides what is left by every row, which is the missing cell averaged in as a zero",
+    file: "lib/result-schema.mjs",
+    from: "if (rows.length === 0 || withheld.length > 0) return deepFreeze({ value: null, issued: false, withheld_for: withheld });",
+    to: "if (rows.length === 0) return deepFreeze({ value: null, issued: false, withheld_for: withheld });",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "equalWeightIndex issues only when every row is issued, and weights every row the same"
+  },
+  {
+    guard: "profile index weights every row the same",
+    reason: "a construct counted twice is a hidden weight, and the fixture vectors are the only place a weight that is not 1/n shows up as a different number",
+    file: "lib/result-schema.mjs",
+    from: "return deepFreeze({ value: (100 * total) / rows.length, issued: true, withheld_for: [] });",
+    to: "return deepFreeze({ value: (100 * (total + rows[0].estimate)) / (rows.length + 1), issued: true, withheld_for: [] });",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "the aggregation vector fixture is reproduced by the aggregation functions"
+  },
+  {
+    guard: "profile composite is the 50:50 mean",
+    reason: "aos-composite.v1 is the only formula and it weights the two indices equally; a 2:1 weight is a second formula nobody declared",
+    file: "lib/result-schema.mjs",
+    from: "return deepFreeze({ value: (processIndex + outcomeIndex) / 2, issued: true, withheld_for: [] });",
+    to: "return deepFreeze({ value: (2 * processIndex + outcomeIndex) / 3, issued: true, withheld_for: [] });",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "the composite is the 50:50 arithmetic mean of the two indices under aos-composite.v1 and marked secondary"
+  },
+  {
+    guard: "profile composite withheld with the process index",
+    reason: "without the check a withheld process index enters the mean as null and the composite reads as half the outcome index",
+    file: "lib/result-schema.mjs",
+    from: "if (!isFiniteNumber(processIndex)) withheld.push(\"operator_process\");",
+    to: "if (false) withheld.push(\"operator_process\");",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "withholds the process index and the composite when any construct is withheld, and never averages the rest"
+  },
+  {
+    guard: "profile composite withheld with the outcome index",
+    reason: "without the check a withheld outcome index enters the mean as null and the composite reads as half the process index",
+    file: "lib/result-schema.mjs",
+    from: "if (!isFiniteNumber(outcomeIndex)) withheld.push(\"system_outcome\");",
+    to: "if (false) withheld.push(\"system_outcome\");",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "withholds the outcome index and the composite when any domain is withheld"
+  },
+  {
+    guard: "profile cap reaches the outcome index",
+    reason: "a cap that is recorded and never applied leaves a safety violation reading as a full outcome score",
+    file: "lib/result-schema.mjs",
+    from: "const outcomeCapped = outcomeRaw.value !== null && outcomeCeiling !== null && outcomeCeiling.max_value < outcomeRaw.value;",
+    to: "const outcomeCapped = false;",
+    test: "tests/product/process-outcome-counterfactual.test.mjs",
+    name: "an outcome safety violation with a safe operator decision caps the outcome and composite and leaves the process profile uncapped"
+  },
+  {
+    guard: "profile cap reaches the composite",
+    reason: "the composite ceiling is applied after the mean, so a cap that only reached the outcome index would leave the composite above the ceiling the cap names",
+    file: "lib/result-schema.mjs",
+    from: "const compositeCapped = compositeThroughOutcome.value !== null && compositeCeiling !== null && compositeCeiling.max_value < compositeThroughOutcome.value;",
+    to: "const compositeCapped = false;",
+    test: "tests/product/process-outcome-counterfactual.test.mjs",
+    name: "an outcome safety violation with a safe operator decision caps the outcome and composite and leaves the process profile uncapped"
+  },
+  {
+    guard: "profile cap never names the process axis",
+    reason: "a cap scoped to the process axis would let a system outcome lower the operator's process profile, which is the conflation the two axes exist to prevent",
+    file: "lib/result-schema.mjs",
+    from: "if (!Array.isArray(cap.scope) || cap.scope.length === 0 || cap.scope.some((scope) => !CAP_SCOPES.includes(scope))) {",
+    to: "if (!Array.isArray(cap.scope) || cap.scope.length === 0) {",
+    test: "tests/product/process-outcome-counterfactual.test.mjs",
+    name: "a cap that names the process axis, lacks evidence, or rests on an unobserved trigger is refused"
+  },
+  {
+    guard: "profile process index is never capped",
+    reason: "the process index is the operator's own evidence; an outcome ceiling applied to it would make a model failure read as an operator failure",
+    file: "lib/result-schema.mjs",
+    from: "      index: processIndex.value,",
+    to: "      index: outcomeCeiling === null || processIndex.value === null ? processIndex.value : Math.min(processIndex.value, outcomeCeiling.max_value),",
+    test: "tests/product/process-outcome-counterfactual.test.mjs",
+    name: "an outcome safety violation with a safe operator decision caps the outcome and composite and leaves the process profile uncapped"
+  },
+  {
+    guard: "profile renderer recomputes nothing",
+    reason: "a projection that derives the composite from the indices beside it is a second scorer, and a report that can disagree with the result it was drawn from",
+    file: "lib/result-schema.mjs",
+    from: "      value: shown(composite.value),",
+    to: "      value: shown(compositeOf(process.index, outcome.index).value),",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "renderers print the stored composite and indices even when they disagree with the rows, because they recompute nothing"
+  },
+  {
+    guard: "profile legacy result is not migrated",
+    reason: "a legacy v1 record rebuilt under the profile schema would carry numbers no contract issued, under a schema id that says one did",
+    file: "lib/result-schema.mjs",
+    from: "if (Object.hasOwn(rest, \"legacy\")) throw new Error(\"AOS_LEGACY_RESULT_NOT_MIGRATED a legacy result is rendered as the record it is; buildResult does not migrate it\");",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a legacy record is recognised by its old schema and is never migrated into the new one"
+  },
+  {
+    guard: "profile results are not aggregated with legacy ones",
+    reason: "the legacy median over a cycle that mixes v1 scores and profile results is a number over two different instruments",
+    file: "lib/result-schema.mjs",
+    from: "if (schemas.size > 1) throw new Error(`AOS_MIXED_RESULT_SCHEMAS ${where} holds ${[...schemas].sort().join(\" and \")} results; legacy and profile results are not aggregated together`);",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "refuses to aggregate legacy and new results in one cycle"
+  },
+  {
+    guard: "profile reliance floor",
+    reason: "a reliance metric issued over fewer opportunities than its floor is a rate over noise, and the seam left for #583 has to refuse it rather than carry it",
+    file: "lib/result-schema.mjs",
+    from: "if (row.denominator < RELIANCE_FLOOR) throw new Error(`AOS_RELIANCE_FLOOR ${id} rests on ${row.denominator} opportunities and the floor is ${RELIANCE_FLOOR}`);",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a reliance metric supplied below the operational floor is refused rather than issued"
+  },
+  {
+    guard: "profile outcome domains match the contract",
+    reason: "a domain grouping that drifts from the contract's cells is an outcome index that silently ignores a cell or waits on one that cannot issue",
+    file: "lib/result-schema.mjs",
+    from: "if (drift.length > 0) throw new Error(`AOS_OUTCOME_DOMAIN_DRIFT ${drift.join(\"; \")}`);",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "outcomeDomains refuses a contract whose system-outcome cells the declared grouping does not cover"
+  },
+  {
+    guard: "profile evaluation is emitted under the given contract",
+    reason: "a result built from an evaluation another contract emitted would carry that contract's digests over numbers this one never issued",
+    file: "lib/result-schema.mjs",
+    from: "if (/^AOS_CONTRACT_MISMATCH/u.test(error.message)) throw new Error(\"AOS_CONTRACT_MISMATCH the evaluation was not emitted under the contract given to buildResult\");",
+    to: "if (/^AOS_CONTRACT_MISMATCH/u.test(error.message)) return;",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "buildResult takes only a result evaluate emitted under the contract it is given"
   }
 ];
 
@@ -2407,6 +2542,21 @@ export const ACCOUNTED_GUARDS = [
   "probe process independence",
   "probe result authentication",
   "production-quality needs both lanes",
+  "profile cap never names the process axis",
+  "profile cap reaches the composite",
+  "profile cap reaches the outcome index",
+  "profile composite is the 50:50 mean",
+  "profile composite withheld with the outcome index",
+  "profile composite withheld with the process index",
+  "profile evaluation is emitted under the given contract",
+  "profile index weights every row the same",
+  "profile index withholds on a missing row",
+  "profile legacy result is not migrated",
+  "profile outcome domains match the contract",
+  "profile process index is never capped",
+  "profile reliance floor",
+  "profile renderer recomputes nothing",
+  "profile results are not aggregated with legacy ones",
   "pull request produced the commit",
   "quoted keys are keys",
   "rate denominator floor",
