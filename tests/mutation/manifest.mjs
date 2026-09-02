@@ -16,6 +16,51 @@
 
 export const GUARDS = [
   {
+    guard: "allowlist-only child environment",
+    reason: "a child built from the operator's environment carries every injection variable nobody has listed yet",
+    file: "lib/isolation.mjs",
+    from: "    const decision = envDecision(inForce, name);",
+    to: "    const decision = { carry: true, reason: \"ordinary\" };",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "no process-injection variable in the operator's shell reaches the spawned child"
+  },
+  {
+    guard: "hard-forbidden class refusal",
+    reason: "a loader or preload variable changes what the assessed process is before its first line, so no flag may carry one",
+    file: "lib/env-policy.mjs",
+    from: "  if (forbidden.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name cannot be declared into the allowlist by any route"
+  },
+  {
+    guard: "transport approval binding",
+    reason: "a proxy carried without an adapter declaration and an operator approval redirects every call the run makes",
+    file: "lib/env-policy.mjs",
+    from: "  if (unverified.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a generic command gets no transport env even when the operator asks for one"
+  },
+  {
+    guard: "env policy digest binding",
+    reason: "an evidence bundle that quotes a digest which does not move cannot say which allowlist was in force",
+    file: "lib/env-policy.mjs",
+    from: "  return { ...policy, policy_digest: envPolicyDigest(policy) };",
+    to: '  return { ...policy, policy_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000" };',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the policy digest moves when the allowlist or an approval moves"
+  },
+  {
+    guard: "AOS home withheld from the agent",
+    reason: "an assessed agent handed AOS_HOME can rewrite the run records, the results and the holdout ledger the score is read from",
+    file: "lib/isolation.mjs",
+    from: '    if (name.startsWith("AOS_")) {',
+    to: "    if (false) {",
+    test: "tests/product/isolation.test.mjs",
+    name: "an agent is never told where the operator's runs are"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",

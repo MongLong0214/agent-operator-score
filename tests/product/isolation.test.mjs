@@ -61,25 +61,31 @@ test("NODE_OPTIONS never travels", () => {
   }
 });
 
-test("STRICT is deny-by-default and BEST_EFFORT_CLI is not", () => {
-  // The difference is the point of having two levels: a CLI that is already logged in needs the
-  // rest of the environment, and pretending otherwise would make BEST_EFFORT_CLI unusable.
-  const strict = buildAgentEnv("STRICT", SOURCE);
-  assert.equal(Object.hasOwn(strict.env, "EDITOR"), false, "STRICT kept an unrelated variable");
-  assert.equal(Object.hasOwn(strict.env, "PROJECT_ROOT"), false);
-  assert.equal(names(strict.env).includes("PATH"), true, "STRICT dropped PATH and nothing could run");
-
-  const best = buildAgentEnv("BEST_EFFORT_CLI", SOURCE);
-  assert.equal(best.env.EDITOR, "vim");
-  assert.equal(best.env.PROJECT_ROOT, "/work");
+test("both scoring levels are deny-by-default", () => {
+  // BEST_EFFORT_CLI used to keep the rest of the operator's environment so an already-logged-in CLI
+  // would work, and that is what this test used to assert. It is no longer true and should not be:
+  // "keep everything except the dangerous names" is a denylist, and the names that matter are the
+  // ones nobody has listed yet. What a logged-in CLI needs is one declared config directory, which
+  // is the next test, not the operator's shell.
+  for (const level of ["STRICT", "BEST_EFFORT_CLI"]) {
+    const built = buildAgentEnv(level, SOURCE);
+    assert.equal(Object.hasOwn(built.env, "EDITOR"), false, `${level} kept an unrelated variable`);
+    assert.equal(Object.hasOwn(built.env, "PROJECT_ROOT"), false, level);
+    assert.equal(names(built.env).includes("PATH"), true, `${level} dropped PATH and nothing could run`);
+    assert.equal(built.removed.includes("EDITOR"), true, `${level}: a dropped name should be reported`);
+  }
 });
 
 test("an explicitly allowed name travels and is reported by name", () => {
   // An adapter may genuinely need one. It is carried on purpose, and the result says so rather
   // than leaving the reader to assume the environment was empty.
-  const { env, carried, removed } = buildAgentEnv("STRICT", SOURCE, { allow: ["ANTHROPIC_API_KEY"] });
+  const { env, carried, explicit, removed } = buildAgentEnv("STRICT", SOURCE, { allow: ["ANTHROPIC_API_KEY"] });
   assert.equal(env.ANTHROPIC_API_KEY, "an");
-  assert.deepEqual(carried, ["ANTHROPIC_API_KEY"]);
+  // `carried` is now every name the child actually has, so that a record cannot describe an
+  // environment the agent did not run in; `explicit` is the narrower question this test asks --
+  // which of them the operator named rather than which the structure of a process requires.
+  assert.deepEqual(explicit, ["ANTHROPIC_API_KEY"]);
+  assert.equal(carried.includes("ANTHROPIC_API_KEY"), true);
   assert.equal(removed.includes("ANTHROPIC_API_KEY"), false);
   assert.equal(Object.hasOwn(env, "OPENAI_API_KEY"), false, "allowing one name allowed another");
 });

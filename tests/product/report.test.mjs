@@ -140,7 +140,12 @@ test("the palette is tokens, and the dark and light values are both declared", (
 });
 
 test("it is readable on a phone, on paper, and by a screen reader", () => {
-  const html = renderHtml(resultOf());
+  // The locale is pinned rather than inherited. This test asserts `<html lang="en">`, and
+  // `renderHtml` defaults to the locale the shell reports -- so on a machine with
+  // `LANG=ko_KR.UTF-8` it failed, while the product was behaving exactly as designed. A test that
+  // reads ambient environment measures the machine it ran on; `report-language.test.mjs` owns the
+  // question of which locale produces which language, and passes both in explicitly.
+  const html = renderHtml(resultOf(), { locale: "en_US.UTF-8" });
   assert.match(html, /@media print/);
   assert.match(html, /@media\(max-width:640px\)/);
   assert.match(html, /prefers-reduced-motion/);
