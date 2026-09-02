@@ -2346,7 +2346,7 @@ export const GUARDS = [
     from: "  if (containsSecretMaterial(trimmed)) return null;",
     to: "  if (false) return null;",
     test: "tests/product/model-identity.test.mjs",
-    name: "a transcript value that is not a plausible model name leaves as a digest, never as text"
+    name: "a name this product cannot read as a model name is digested, whoever's prefix it wears"
   },
   {
     guard: "an unnameable transcript row withholds the aggregate",
@@ -2520,13 +2520,31 @@ export const GUARDS = [
     name: "a run that failed still says which model and which executable it was going to be"
   },
   {
-    guard: "an import validates before it creates a Run",
-    reason: "the Run was created before the input was read, so an empty pipe left a manifest with no provenance record and no result -- produced by the command refusing to do anything",
+    guard: "an import reads every event before it creates a Run",
+    reason: "the Run was created before the input was parsed, so a row that is not an event and a file that is not JSON both left a manifest with no provenance record and no result -- produced by the command refusing to do anything",
     file: "lib/cli.mjs",
-    from: "  if (source.trim() === \"\") return fail(io, \"AOS_EVENT_SOURCE_EMPTY\", 2);\n\n  if (typeof runId !== \"string\")",
-    to: "  if (false) return fail(io, \"AOS_EVENT_SOURCE_EMPTY\", 2);\n\n  if (typeof runId !== \"string\")",
+    from: "      return fail(io, \"AOS_INVALID_IMPORTED_EVENT every row needs an event_type\", 2);",
+    to: "      events.push({ event_type: \"import.unreadable\" });",
     test: "tests/product/model-identity.test.mjs",
     name: "an import with nothing in it creates no Run at all"
+  },
+  {
+    guard: "a name that is not a model name is never printed",
+    reason: "the shape check was a charset and a length, so an agent-controlled transcript could put a credential this product had never been taught to recognise into the provenance id, the projection lines, and the result JSON, CLI, Markdown and HTML",
+    file: "lib/model-identity.mjs",
+    from: "  if (!MODEL_NAME.test(model) || !readableModelName(model)) return null;",
+    to: "  if (!MODEL_NAME.test(model)) return null;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a name this product cannot read as a model name is digested, whoever's prefix it wears"
+  },
+  {
+    guard: "an observation that could not run still leaves its record",
+    reason: "the invocation refuses before it starts when the executable moved since registration, and the Run already existed -- it was left as a manifest with no result and no provenance record",
+    file: "lib/cli.mjs",
+    from: "    const failed = observationResult({",
+    to: "    const failed = null ?? ({",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an observation whose agent cannot be run leaves no Run without a record"
   },
   {
     guard: "every directory entry is charged to the scan budget",
@@ -2865,6 +2883,7 @@ export const ACCOUNTED_GUARDS = [
   "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
   "a mutable alias withholds the profile-bound aggregate",
+  "a name that is not a model name is never printed",
   "a name without snapshot proof is a mutable alias",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
@@ -2890,13 +2909,14 @@ export const ACCOUNTED_GUARDS = [
   "allowlist-only child environment",
   "an UNTRUSTED identity is not a verified one",
   "an alias is the node it names",
-  "an import validates before it creates a Run",
+  "an import reads every event before it creates a Run",
   "an imported run is written down",
   "an imported run names the producer of its evidence",
   "an incomplete result's terminal names it",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "an observation run carries a provenance record too",
+  "an observation that could not run still leaves its record",
   "an unknown model withholds the aggregate by its own name",
   "an unknown status is not a verdict",
   "an unnameable transcript row withholds the aggregate",

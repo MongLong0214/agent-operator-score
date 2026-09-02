@@ -95,6 +95,19 @@ test("the canary was captured from both runtimes this product reads, or says why
   assert.ok(canary.observations.length >= 2, "a canary of one runtime is half a canary");
 });
 
+test("a blocker records the exit status and a class, never the runtime's own output", () => {
+  // A runtime that fails while authenticating says so with the path to its credential file and
+  // sometimes the credential itself, and this fixture is committed. The blocker is the status and
+  // one of a few words; the output it was read from is dropped (#561 round 8).
+  for (const [runtime, blocker] of Object.entries(canary.blockers ?? {})) {
+    assert.match(blocker, /^(codex|claude) exited /u, runtime);
+    assert.equal(blocker.length < 220, true, `${runtime}: a blocker is a sentence, not a log`);
+    for (const shape of ["/Users/", "/home/", "sk-", "hf_", "ghp_", "Bearer "]) {
+      assert.equal(blocker.includes(shape), false, `${runtime}: ${shape} reached the fixture`);
+    }
+  }
+});
+
 test("no transcript content and no absolute path was copied into the canary", () => {
   // The rows are somebody's session and this file ships in the repository. What is recorded is the
   // event, its digest, and digests of the things that would otherwise be paths. This is the test

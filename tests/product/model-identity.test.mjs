@@ -34,6 +34,7 @@ import {
   modelIdentityRecord,
   MODEL_PROVENANCE_SCHEMA,
   observeModelEvents,
+  parseModelName,
   provenanceSchemaDigest,
   resolveModelProvenance,
   runtimeConfigModel,
@@ -425,6 +426,39 @@ test("the transcript scan is bounded, and exhausting the budget is a named answe
     assert.equal(verification.code, "AOS_MODEL_SCAN_BUDGET");
   } finally {
     rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a name this product cannot read as a model name is digested, whoever's prefix it wears", () => {
+  // The shape check was a charset and a length, so anything spellable passed -- and the secret
+  // detector only knows the vendors it was taught. A Hugging Face token in a transcript's `model`
+  // field became `openai/hf_…` in the provenance, in the line, and in JSON, CLI, Markdown and
+  // HTML. Chasing prefixes is the losing half of that trade: a model name has a shape -- short
+  // segments that are families, versions, tiers or dates -- and a string that is not that shape is
+  // not printed at all, whichever vendor invents the next prefix (#561 round 8).
+  // Assembled rather than written out. These are invented values, and a file carrying the literal
+  // shapes is a file secret scanners stop at the push -- the test needs the shape, not the string.
+  const shaped = (prefix, body, separator = "_") => `${prefix}${separator}${body}`;
+  const alphabet = "abcdefghijklmnopqrstuvwxyz";
+  const credentials = [
+    shaped("hf", `${alphabet}0123456`),
+    shaped("ghp", `${alphabet}012345`),
+    shaped("xoxb", `1234567890-${alphabet.slice(0, 20)}`, "-"),
+    "a".repeat(32),
+    shaped("nvapi", "9f8e7d6c5b4a39281706abcdefabcdef", "-"),
+    // Short enough to read as a name, and still an assignment the redactor knows: the shape check
+    // and the secret check each catch cases the other does not.
+    "api_key:abcdefghij"
+  ];
+  for (const value of credentials) {
+    assert.equal(parseModelName(value, "openai"), null, value);
+    const record = resolveModelProvenance({ runtimeEvent: { runtime: "codex", provider: "openai", model: value, row_digest: `sha256:${"4".repeat(64)}` } });
+    assert.equal(record.id, null, value);
+    assert.equal(canonicalJson(record).includes(value.slice(0, 12)), false, value);
+  }
+  // Real names, including ones from a provider this product has no snapshot rules for, still read.
+  for (const value of ["gpt-4o-2024-08-06", "claude-3-5-sonnet-20241022", "gpt-5.6-sol", "claude-fable-5-1", "o3-mini-2025-01-31", "llama-3.1-405b-instruct-fp8", "qwen3-embedding"]) {
+    assert.notEqual(parseModelName(value, "openai"), null, value);
   }
 });
 
@@ -1268,6 +1302,38 @@ test("the agent that actually ran is the agent the identity record names", () =>
   }
 });
 
+test("an observation whose agent cannot be run leaves no Run without a record", () => {
+  // Runtime identity drift throws out of the invocation, and the Run had already been created --
+  // so replacing an agent's executable and running `aos observe` left a manifest with no result
+  // and no provenance record, the one shape "every Run carries a record" cannot survive (#561
+  // round 8).
+  const cwd = mkdtempSync(join(tmpdir(), "aos-model-observe-fail-"));
+  try {
+    run(cwd, ["init"]);
+    const launcher = verifiedRunner(cwd);
+    // A credential at stake, so #554 re-verifies the executable before the spawn and refuses when
+    // it has moved -- the throw the reviewer reproduced, from inside the invocation.
+    addAgent(cwd, "exact", undefined, [
+      "--model-id", EXACT_A, "--adapter", "codex-cli.v1", "--allow-runtime-auth", "OPENAI_API_KEY"
+    ], launcher);
+    writeFileSync(launcher, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} "$@" # replaced\n`, { mode: 0o755 });
+    const failed = spawnSync(process.execPath, [cli, "observe", "--agent", "exact", "--task", "look", "--json"], {
+      cwd, encoding: "utf8", timeout: 300000, env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+    assert.notEqual(failed.status, 0);
+    for (const runId of readdirSync(join(cwd, ".aos", "runs"))) {
+      const paths = join(cwd, ".aos", "runs", runId);
+      assert.equal(existsSync(join(paths, "result.json")), true, `${runId}: a Run with no result`);
+      const stored = JSON.parse(readFileSync(join(paths, "result.json"), "utf8"));
+      assert.equal(stored.model_identity.schema_id, "aos-model-identity.v1", runId);
+      assert.equal(stored.model_identity.by_agent.exact.provenance.id, EXACT_A, runId);
+      assert.equal(stored.claim_stage, "RUN_DIAGNOSTIC", runId);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 test("an observation run carries the same provenance record as a scored one", () => {
   // `aos observe` creates and persists a Run. The issue says every Run has model and runtime
   // provenance; this one carried the raw process record and no resolved identity at all, so the
@@ -1466,12 +1532,23 @@ test("an import with nothing in it creates no Run at all", () => {
     run(cwd, ["init"]);
     const empty = join(cwd, "empty.jsonl");
     writeFileSync(empty, "");
-    const refused = spawnSync(process.execPath, [cli, "import", "--producer", "other-tool", "--file", empty], {
+    const importing = (file) => spawnSync(process.execPath, [cli, "import", "--producer", "other-tool", "--file", file], {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
     });
-    assert.notEqual(refused.status, 0);
-    assert.match(refused.stderr, /AOS_EVENT_SOURCE_EMPTY/u);
     const runs = join(cwd, ".aos", "runs");
+    const refused = importing(empty);
+    assert.notEqual(refused.status, 0);
+    assert.match(`${refused.stdout}${refused.stderr}`, /AOS_EVENT_SOURCE_EMPTY/u);
+
+    // Every event, not only the empty case: a file whose rows are not events, and a file that is
+    // not JSON at all, both used to create the Run and then throw.
+    const invalid = join(cwd, "invalid.jsonl");
+    writeFileSync(invalid, `${JSON.stringify({})}\n`);
+    assert.notEqual(importing(invalid).status, 0);
+    const malformed = join(cwd, "malformed.jsonl");
+    writeFileSync(malformed, "{not json\n");
+    assert.notEqual(importing(malformed).status, 0);
+
     assert.deepEqual(existsSync(runs) ? readdirSync(runs) : [], [], "a Run was created for an import that never happened");
   } finally {
     rmSync(cwd, { recursive: true, force: true });

@@ -26,6 +26,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { sha256Bytes } from "../lib/digest.mjs";
+import { redactText } from "../lib/redact.mjs";
 import {
   aliasClassOf,
   canonicalModelEventLine,
@@ -69,6 +70,23 @@ const RUNTIMES = [
   }
 ];
 
+// What went wrong, as one of a few words this file is willing to hold. Read from the runtime's own
+// output and then thrown away: the classes are matched against a redacted copy, so a credential in
+// the text cannot even reach the matcher's own captures.
+const FAILURE_CLASSES = [
+  ["not authenticated", /not logged in|unauthori[sz]ed|401|auth(?:entication)? (?:failed|required)|please run \/login|api key/i],
+  ["no network", /enotfound|econnrefused|etimedout|network|offline|dns/i],
+  ["rate limited", /rate limit|429|quota|too many requests/i],
+  ["refused the prompt", /refus|policy|blocked/i],
+  ["timed out", /timed? ?out|etimedout/i]
+];
+
+const failureClass = (result) => {
+  const said = redactText(`${result.stderr ?? ""}\n${result.stdout ?? ""}`).text;
+  for (const [label, pattern] of FAILURE_CLASSES) if (pattern.test(said)) return label;
+  return "the reason was not one this capture recognises; run it by hand to see it";
+};
+
 const runtimeVersion = (command) => {
   const probe = spawnSync(command, ["--version"], { encoding: "utf8", timeout: 30000 });
   return probe.status === 0 ? (probe.stdout ?? "").trim().split("\n")[0] : null;
@@ -104,8 +122,11 @@ function invoke(spec) {
   const duration = Date.now() - started;
   if (result.status !== 0) {
     cleanup();
-    const said = `${result.stderr ?? ""}${result.stdout ?? ""}`.trim().split("\n").slice(-1)[0] ?? "";
-    return { blocker: `${spec.command} exited ${result.status ?? "with a signal"} in this capture: ${said.slice(0, 200)}` };
+    // The exit status and a class, never the output. A runtime that fails while authenticating
+    // says so with the path to its credential file and sometimes the credential, and this file is
+    // committed -- copying stderr into it contradicted its own "no absolute path is copied" line
+    // (#561 round 8). The class is read from the output and the output is then dropped.
+    return { blocker: `${spec.command} exited ${result.status ?? "on a signal"} in this capture: ${failureClass(result)}` };
   }
   const scan = observeModelEvents({
     env: { HOME: home, ...spec.env(home) },
