@@ -15,175 +15,175 @@
     },
     "AOS_HOME is denied before the workspace is allowed": {
       "platform": "darwin",
-      "fingerprint": "sha256:cbfa21a46671654475fbd9cb6e7ba5c1fec8b957a18fbe6196b90b9718678549"
+      "fingerprint": "sha256:54871883e17ca912aed7faba31a89324e5f0f9b959f87b0db357c2f06a6b0b7b"
     },
     "ECD PROFILE_BOUND names the profile it claims": {
       "platform": "darwin",
-      "fingerprint": "sha256:a800c2f0101cece081e6a2d966de38d394e577f87ce529d8f73de8e29a8cdc7d"
+      "fingerprint": "sha256:880d67e9b6c1d9c4228d4914a4058e9da164fe5d89bee9131a6cdb029091f1b4"
     },
     "ECD a bound profile identity is compared": {
       "platform": "darwin",
-      "fingerprint": "sha256:d87697c28590b0baa2cfb19534f5592cf6a66ec698d5ffc2d321319af9a9b2de"
+      "fingerprint": "sha256:3e42b0531c9a37bd25b948a745e1a6e083a941268ef77557cbc4971c72d65943"
     },
     "ECD a cell names only forms that administer its subchecks": {
       "platform": "darwin",
-      "fingerprint": "sha256:8256dba54a634d01d0800c35935c78e6d4c2afd8978c1c29d5d644ae167c7a0f"
+      "fingerprint": "sha256:162d3ede69d5249de48c203accc1f51d55fb7ad0523f3c8f9887f07f3d781efd"
     },
     "ECD a locked form is completed exactly once": {
       "platform": "darwin",
-      "fingerprint": "sha256:c353b00e3722c6bc1e47f35c5aac6736d43c50a03e5c8aa8b8706907c3870851"
+      "fingerprint": "sha256:52cbbcf59a3915acdab5ac194312c88b3c06055dd490c1d07c807064835c9407"
     },
     "ECD an answered opportunity names its verifier": {
       "platform": "darwin",
-      "fingerprint": "sha256:b3566d763997219c0e15d1e66fc3560bf295f06cf14e519f045c0ad3c3afb091"
+      "fingerprint": "sha256:52dbb01cf210a45a70f69ce61f2ae00d49345917c1a42c438a0e510becf894f9"
     },
     "ECD an observation agrees with its own subchecks": {
       "platform": "darwin",
-      "fingerprint": "sha256:10b803a0201ee6d83f2cab2e2458553dc09374a3c13827cef8aabad622eff417"
+      "fingerprint": "sha256:ae27938ac79860d8c78068493352cc86b8dce76047bafe599de0a49ea34e2c19"
     },
     "ECD artifact versions are exact": {
       "platform": "darwin",
-      "fingerprint": "sha256:cd70798ffe2b30e92c4fc9bee5a4d829a60f1c0de64d48e1f3f6f1c836b05806"
+      "fingerprint": "sha256:7debf1a32cc797a1a57fee2dbd22302ae5b203da66904a53fcaeb77cf30ee285"
     },
     "ECD capabilities are identity, not a property": {
       "platform": "darwin",
-      "fingerprint": "sha256:d14213a1c451e7c234b7afb2d1cd5010faf3b0c751730fd6e1852639c5b81103"
+      "fingerprint": "sha256:b15677a62756f8ee80b1893a20f6e3b22a890d979671a2f2f4e293af46f20e36"
     },
     "ECD cell claims a real subcheck": {
       "platform": "darwin",
-      "fingerprint": "sha256:31fd368927ad0d99999c351e035d15cd0ac2ce92dd121488826371b05172400d"
+      "fingerprint": "sha256:3bff26d16e63b715d372a3f67ed81091af010efc1cf00931509c5500a22b360f"
     },
     "ECD cell has an owning construct": {
       "platform": "darwin",
-      "fingerprint": "sha256:7931739cc3cf1b13be05597de3723e470cdd614ac8d5218dda7fb2d241b130ca"
+      "fingerprint": "sha256:63cc0b7274fb6dba553919ab63b11435836914046086e687616bbf4333619842"
     },
     "ECD cell resolved from the contract": {
       "platform": "darwin",
-      "fingerprint": "sha256:7ed40e1767bbb37f8c83f0aa06771acad5e81e74ae4276c24aa5cb26fbb9b106"
+      "fingerprint": "sha256:1c89f9e909c077c76fc84555a5022b352029c3dbd4941a8ed61b3fd18217a692"
     },
     "ECD claim stage rests on what was observed": {
       "platform": "darwin",
-      "fingerprint": "sha256:3c4a15e0bbc82020f2187cacffb0da346a8ade416d5e69b8bdf3030bdb048b56"
+      "fingerprint": "sha256:ad7d0527f1abfa1de8e2b4408e365463a40de878329a945fdac3b51c7238e5f8"
     },
     "ECD claim stages are the three this module scores": {
       "platform": "darwin",
-      "fingerprint": "sha256:11ec5a732e635c825caf5a86e001a49e53de78b934e6743f67418c42e61bde6f"
+      "fingerprint": "sha256:b4ea3a4a9a8d2fcade10f6a32b7c7afe61743dd70982ab9b2f1d2791a50b7b1b"
     },
     "ECD comparability compares emitted results": {
       "platform": "darwin",
-      "fingerprint": "sha256:17375651d959c39a1f6a883ee1e721948283c2ae3e608fb14562b06cee715695"
+      "fingerprint": "sha256:1e8c3c95d59cec61bf5ce4797325104336927ebae24c441be06d8870480d435f"
     },
     "ECD comparability enforces every declared rule": {
       "platform": "darwin",
-      "fingerprint": "sha256:510848fce209b5c26fd22c6ee4bc577a2472f628b7ae7508615a3311bf9e7ae1"
+      "fingerprint": "sha256:fa187c8e59c0c168a762b8c59edacc91f3033925c8ebd1fca6efaed19263a329"
     },
     "ECD comparability is governed by the contract the results were scored under": {
       "platform": "darwin",
-      "fingerprint": "sha256:2571c741353bde08b3485ee140cfe48d176b44be30ecddb73ccde05f7fb2cffd"
+      "fingerprint": "sha256:fdce81d3cda570401246ee9db6158831a84246cfb4ff428377a974827343f7a9"
     },
     "ECD comparability reads the emitted facet identity": {
       "platform": "darwin",
-      "fingerprint": "sha256:1cc26a7910e9fc87669547f04d10d20580d86c7a880ec3364175ee3608498454"
+      "fingerprint": "sha256:304432779e6a32119c9738fd7a4013777fc3aa9ea4b5f875c3bf3ff232d3f64d"
     },
     "ECD comparability refuses an undeclared facet": {
       "platform": "darwin",
-      "fingerprint": "sha256:d044d983bf6964da4a5ddf06a11f4f071b1834e0f4c811ff8a3131441ebbca07"
+      "fingerprint": "sha256:55b605b1ced0c6f23489f1384cb6f73507d176bfa91d6b8a0948d09ebc1ed244"
     },
     "ECD comparability rules gate declared facets": {
       "platform": "darwin",
-      "fingerprint": "sha256:27b9f42c990c250c8364d5c9204b1bb6ee413b49ada3a94d44061b73e83b6738"
+      "fingerprint": "sha256:b10146dfed0d3ef20a52996bcacd529a99004ccc66bef4a12fcf857c90dc962c"
     },
     "ECD construct withheld on a missing required cell": {
       "platform": "darwin",
-      "fingerprint": "sha256:f933b82d54ba81d2a74ea38f0e6a4dbbff9ce8477bc34f2d39601874661dc056"
+      "fingerprint": "sha256:f3874755d16806657ac1d1d2f7695e6f933981b24d08cf784d5e34572d159f24"
     },
     "ECD contract identity is derived, not declared": {
       "platform": "darwin",
-      "fingerprint": "sha256:0cf8e958d81018780faeb9622e82f056f65b37990d8aaeb3678c202ffbb02923"
+      "fingerprint": "sha256:a5bdab3a43801839b4bf25428fd0839ca26bb2ab70f02ec67cd60293a20637c8"
     },
     "ECD contract seal required before an estimate": {
       "platform": "darwin",
-      "fingerprint": "sha256:f417869310c333c5f0dbbddbf92cae4281e23b2c9623251799ac5fc89b04892b"
+      "fingerprint": "sha256:6ed531c92858a435b8410035ea37e055a4ad8dff1067945bb491d5da40a6e926"
     },
     "ECD contract-specified minimum cannot drift from its clause": {
       "platform": "darwin",
-      "fingerprint": "sha256:b7750c16b3e2289b914dbaebc86d0f7bd771104549aff504c8e7205b632f88a4"
+      "fingerprint": "sha256:d5d1aa4e65ca2e6480b5a910e7c449c94bab76e558b504f3e7f4840ab267cf57"
     },
     "ECD deferred claim may not be scored": {
       "platform": "darwin",
-      "fingerprint": "sha256:c2aa061e9876859ee7c4224e8c94a1aed835bf98c3df61b191b7223dd4b68ac9"
+      "fingerprint": "sha256:96cbf9cc475aedf512cd05cb3b1ab933dcaeade995a970c9a22928bfa8e389b4"
     },
     "ECD derived rows are frozen": {
       "platform": "darwin",
-      "fingerprint": "sha256:f63d20b01ca30b7821d5675f3f203d0eac3a7fb82a81f0391e204ebf518e7870"
+      "fingerprint": "sha256:4668d5692db81735b60230171d0d1ba5d771af93430b901c98c85c14be23444f"
     },
     "ECD derived rows only": {
       "platform": "darwin",
-      "fingerprint": "sha256:36a52031f1fa258526f1b22cb8d7392307d810803d03a2a5cc359c9dfd60b302"
+      "fingerprint": "sha256:82865e5640e65cc822c9ce0f89125fe1a88191ebac42dd380a406c1f7326c420"
     },
     "ECD every metric is administered exactly once": {
       "platform": "darwin",
-      "fingerprint": "sha256:f31f2698e2e80256ff4f079e587b8e83b7a025352ff19baaf9079bdfa6658e45"
+      "fingerprint": "sha256:ec3dde0ff2b1d37689394f5e69ab27a6790cf9fa92f7c6396e469429433297dd"
     },
     "ECD form and cell name each other": {
       "platform": "darwin",
-      "fingerprint": "sha256:79116572ead4901d328ea06323411796364afe05f1aa77085b25e1836fedc4c3"
+      "fingerprint": "sha256:eea58e60c2f605127a4a222609c8b732f01cbc94de2d45f7bdb65ae2fcdbb7cf"
     },
     "ECD form opportunity count is derived": {
       "platform": "darwin",
-      "fingerprint": "sha256:de56138f48e4faa2af968ff949bb96f43b0f242cfc8420db3c03356915b71ae3"
+      "fingerprint": "sha256:d3bbf39844bcb9eabfcc4075ceb6e3d64bfb02cba846bdbd697983d0d6a83af0"
     },
     "ECD insufficient opportunities yields null": {
       "platform": "darwin",
-      "fingerprint": "sha256:9fb9a0bca95db2f7d31716ee9867f82d4c6afe07d5bed9050352d3ae1e3be8c1"
+      "fingerprint": "sha256:80fe134fdd31c5722c3deb5850097f5822a60474509c4012752f2a52a46e0f60"
     },
     "ECD legacy band surface is disclosed, not asserted away": {
       "platform": "darwin",
-      "fingerprint": "sha256:cdd45a290e6259088252784d2924a7f49e8826757d4762aa73b0aabb945400b5"
+      "fingerprint": "sha256:9fc6a4d55f93b888a2308c7a68fd55cf51b56dee936dee77f384c2363340db95"
     },
     "ECD missing evidence keeps its own reason": {
       "platform": "darwin",
-      "fingerprint": "sha256:7c77ee45462fd249346b4223064bc09b2ac5817c6001f9f12baba0832b2208dd"
+      "fingerprint": "sha256:9c5ad0967b321ea5660c37b61847b699d9411e644f375955a166e7de46107eb2"
     },
     "ECD observations are what lib/metrics.mjs says they are": {
       "platform": "darwin",
-      "fingerprint": "sha256:abf4165cda81b18e2ab3127d11c8e3059207fffc91f7a3dd35a0e289c7549fa0"
+      "fingerprint": "sha256:a9c9c06110f2552c810344b2408b98a27e153c52f16c7f7288a8438e8a473902"
     },
     "ECD opportunities carry what decided them": {
       "platform": "darwin",
-      "fingerprint": "sha256:9e5064b1a8f04bf1144ab1af3e416f9fa29b1e827fd3ff195d057ca82e0cfc90"
+      "fingerprint": "sha256:b0478aa7c444855c1368e4a560dd6a57e8d1ba08ea100019e34330154bea2cc7"
     },
     "ECD process index withheld on a missing construct": {
       "platform": "darwin",
-      "fingerprint": "sha256:c4880e2578c51bc21902345b791dc6b25906f0fd1b443254fd3d30480495c4d9"
+      "fingerprint": "sha256:1761bfc761fddafc05ddbba094be680705ff1421fa40617846ca0da5fb6142a4"
     },
     "ECD prohibited value source refused": {
       "platform": "darwin",
-      "fingerprint": "sha256:a719804bdcd5f5ed813fcc5fb89ab592c88e8e8d537ae0a00878346bbee28fb6"
+      "fingerprint": "sha256:95d7d30ef04bb7a50cc6c534c466a28ca795f84b8e7e5448750948e9ebd47462"
     },
     "ECD self-report earns no credit": {
       "platform": "darwin",
-      "fingerprint": "sha256:c4a90cf88d2744c729b54706a825c73c9be7498ec0ba3f519890cdf57122a149"
+      "fingerprint": "sha256:a6f96a41d78f17db74a7b339e66c948a9441bc52282c0599f9da12ed53465118"
     },
     "ECD shared form cells are disclosed": {
       "platform": "darwin",
-      "fingerprint": "sha256:8e28304582966e05dbbd70f3e21ff3916f451857cdc326e88e70b6cf6124a4e8"
+      "fingerprint": "sha256:29f0add95d18b544e160f56cb9cb8a51cd16cac59c2cf422bc344830fa653999"
     },
     "ECD subcheck cardinality is pinned": {
       "platform": "darwin",
-      "fingerprint": "sha256:36ed638a8db4d178c75c4cd64ce1a75d1e57ed2e9dcc689ecfdda17295765b1d"
+      "fingerprint": "sha256:20d13bd38c229b03e01ddc91af1f9bc1a317638bb65b4f77546699a130157141"
     },
     "ECD subcheck double ownership": {
       "platform": "darwin",
-      "fingerprint": "sha256:24bd2dc916ee85d4bb845cd78004bf87f9adacf10e9d26cda83d50b6016f7742"
+      "fingerprint": "sha256:6b32ff56b43e5f0254c85297a8d0dd8e251dd70debc920397a14e9324256d909"
     },
     "ECD subcheck exhaustive mapping": {
       "platform": "darwin",
-      "fingerprint": "sha256:be77db91aed8b5090cfd5f60c5f39c09d968dd3c609dd198858ac56b66af3f47"
+      "fingerprint": "sha256:c0acd0c3ae9819b8f3cc416d6fbb07e4d886cb243c10ef4fae5d6fb84c22a707"
     },
     "ECD subcheck ownership follows the administering form": {
       "platform": "darwin",
-      "fingerprint": "sha256:81b293ad1aefe140cc96402589e44542b5ed6a782aabd5a502cda37ef3e8f6a3"
+      "fingerprint": "sha256:7a39276b73b67cf4cc39d79cc7a77afcfde714e836b536a2ca042dc95f86d18a"
     },
     "PATH carries no relative entry": {
       "platform": "darwin",
@@ -195,19 +195,19 @@
     },
     "a /proc listing is not a list of survivors": {
       "platform": "darwin",
-      "fingerprint": "sha256:9d8a456ec4b0fcdf2307adf007a061ebb19aa477359b3cc9ab082b71b66f4979"
+      "fingerprint": "sha256:6713be8f457f0d4f33f9001f62d99ded78001f360be543aa037091e7d0017ef0"
     },
     "a URL carrying userinfo is a credential": {
       "platform": "darwin",
-      "fingerprint": "sha256:0922cf9c696674cceed68c4cac8b855c3f8f4c6d3c41a39f0169f84acee36a59"
+      "fingerprint": "sha256:1c8b3be20dc64f6b83c1ab34affa74438072de5ed5741c8ef38a0c998ca00077"
     },
     "a bound claim names the profile it is bound to": {
       "platform": "darwin",
-      "fingerprint": "sha256:d89dff40d994f7ae2f7d839a96e9633f2cdc59d06ec1aa33d24b0ffa434f7136"
+      "fingerprint": "sha256:e453d502d7e238a863a7979dbab870b07d0e63233dac3052ac73e4febd8489e1"
     },
     "a cleanup failure is published by class and digest": {
       "platform": "darwin",
-      "fingerprint": "sha256:885fc880905c10baea64e036823101759e1fd0b230ad82bacc48adced44c8588"
+      "fingerprint": "sha256:724a3eedcda204fd4c0d1b8ec13954ba8cd801f3d08f115ffad37c1243c402ee"
     },
     "a committed observation carries no transcript": {
       "platform": "darwin",
@@ -215,11 +215,11 @@
     },
     "a credential is staged for the runtime, not for the label": {
       "platform": "darwin",
-      "fingerprint": "sha256:77ee1a169ff8db4a4b1fa2c9af9b62405c142dd9a407638275b5c4f08014b8dd"
+      "fingerprint": "sha256:b31b1a26f0b325c3a5c955f314f2e26e6e7dc7b86a31fc8d2fbd8ddd0b3ff595"
     },
     "a credential is what it is filed under, at any length": {
       "platform": "darwin",
-      "fingerprint": "sha256:2f2efe63079043b5a1603e14a7eb8852d254e84d547bef23a7147825368b7f05"
+      "fingerprint": "sha256:70e47cd602a304388291b4074b10dee94b711ca2ab020c1a1ef3ab3858f1dc7f"
     },
     "a credential-shaped name is refused as an ordinary allowed name": {
       "platform": "darwin",
@@ -231,15 +231,15 @@
     },
     "a cycle of profiles withholds its aggregate by name": {
       "platform": "darwin",
-      "fingerprint": "sha256:a5ea2820cdf8185b75dccbad41197065425159f90bdb42c3a671b1be40e0a088"
+      "fingerprint": "sha256:58630eef779ee130ee056e2031b8deb2c3d9aa6c29bf934f3d04e656265f571c"
     },
     "a facet is not normalised into a digest": {
       "platform": "darwin",
-      "fingerprint": "sha256:cabff0a5f5302f7879e87522469e93e368edc8c80791a48d22b9250c94b93c86"
+      "fingerprint": "sha256:72651896644673a94b819ea2040904ca5ee6b451e1d5e0813442cc0fafeaf35d"
     },
     "a filesystem location is one however it is spelled": {
       "platform": "darwin",
-      "fingerprint": "sha256:0d6a1275b407c409ad00e65397a4a560c3d2c4a130d5c8e1d8cb64ed194dc360"
+      "fingerprint": "sha256:6e600920396386058cc36c43050d7d06705e95e28fc9915bfcb93e4a6bcb39c4"
     },
     "a forged structural set is revalidated like the rest": {
       "platform": "darwin",
@@ -247,7 +247,7 @@
     },
     "a leaked descendant blocks issuance": {
       "platform": "darwin",
-      "fingerprint": "sha256:2a5b4ed2cd21928620aac7c579266185dd9af3ce372dfc0424e89854acc190d8"
+      "fingerprint": "sha256:0477167e4be12e5b7ceb48765dcfa9352b77218dc816d4efcc3902863050862b"
     },
     "a live audit needs a live snapshot": {
       "platform": "darwin",
@@ -255,7 +255,7 @@
     },
     "a metric's status and its value are one state": {
       "platform": "darwin",
-      "fingerprint": "sha256:9f89db7a3ca94d418f84c5d698c9ac6959d69a00bd927f815848d48e7f12d259"
+      "fingerprint": "sha256:adfb9ee5a261a6a258c10f1ce70ab20c3435360c5658012d3efc1ca2d226350c"
     },
     "a missed known incident is a regression": {
       "platform": "darwin",
@@ -263,19 +263,19 @@
     },
     "a named secret assigned a value is a secret at any length": {
       "platform": "darwin",
-      "fingerprint": "sha256:2293d8ca09164b4091a23c4e0d5d4a8ab2d89822d49e9b93ec075f34b0acee7c"
+      "fingerprint": "sha256:77d42d99a954cf92e9a4587778b3ab6fcf507ef25c07fcdec4f644528560901a"
     },
     "a named secret is a secret without a digit in it": {
       "platform": "darwin",
-      "fingerprint": "sha256:b20161dfc9329804c6d1b7e3be54a2a43ca989120808cc755b6249bbed5f0bcf"
+      "fingerprint": "sha256:cd93b404289983c901540283017052b943477e585d0be129a110da0d8cbdfb16"
     },
     "a new run is never scored by the old scorer": {
       "platform": "darwin",
-      "fingerprint": "sha256:43888a43a1f7182c230baaf8b687cd82a0363923c741c871c5ee3845d73b51c5"
+      "fingerprint": "sha256:f6f5b47972619d47064062612b564b7d761e65482ffee49a0bc96b6a8ea52b53"
     },
     "a one-segment absolute path is a path": {
       "platform": "darwin",
-      "fingerprint": "sha256:2c7da32f79854ace00d43b71cb26505b2e17c9ceb3e33af37693dfa0b4a6e9f6"
+      "fingerprint": "sha256:3c8f9a1435f59a52ccd0c4178e00e9b017ed21b88bbd21620d4cde2973a5f250"
     },
     "a phase's predecessors must be in the plan": {
       "platform": "darwin",
@@ -283,7 +283,7 @@
     },
     "a policy no backend implements is not measured": {
       "platform": "darwin",
-      "fingerprint": "sha256:744a00c46d119a9587da7e90752179c07cdf3efec351d50ac68217946d5e1af5"
+      "fingerprint": "sha256:09353b2bedf14707e3632e2ba571b8b7192f5fedbd6217d4c43bbf568880dcbd"
     },
     "a policy that narrows the run-metadata door is applied, not merely recorded": {
       "platform": "darwin",
@@ -291,7 +291,7 @@
     },
     "a record is authenticated before it is judged": {
       "platform": "darwin",
-      "fingerprint": "sha256:c24d278d4cfbefca8d0dd5d15d60f24da9e09c55005ff9f82515cae0b5225dff"
+      "fingerprint": "sha256:21b89c3360987229f4d314d3193101289420ce7db2e61d7d217d35124423d529"
     },
     "a refused file fails the check": {
       "platform": "darwin",
@@ -299,7 +299,7 @@
     },
     "a required metric with an unanswered subcheck is not present": {
       "platform": "darwin",
-      "fingerprint": "sha256:892d2e63d7f59dead5854ab8b33c49070cb18fe24bd877a2b27d05c9300b13c4"
+      "fingerprint": "sha256:1b8e941511d8430147fde84580f68931407fd75fe30b2c64dccc32c64ea167f3"
     },
     "a resolved key is the key": {
       "platform": "darwin",
@@ -307,23 +307,23 @@
     },
     "a result has to agree with itself": {
       "platform": "darwin",
-      "fingerprint": "sha256:a4d9dc5953ec56f8f8df70b8909d53fc342b5bb78f37177111a9296006f031a7"
+      "fingerprint": "sha256:7f53e652f783c6ba83ada1a71f164c333da7e420d81b02604f003b741b95be66"
     },
     "a root is a root wherever it starts": {
       "platform": "darwin",
-      "fingerprint": "sha256:79180ec26f71709d5dfab36b50c25999a79dc4fdc7fce8773ab66829d251beab"
+      "fingerprint": "sha256:0a6a1bac03047aef9711dff1ffc588473187f3ebd342c7b84c4e51e00195c550"
     },
     "a row is held to the cells its contract declared": {
       "platform": "darwin",
-      "fingerprint": "sha256:82dfd8f424135d07166faf2e5d914544d89050e246c9e58b76fd8e0ddf5614a0"
+      "fingerprint": "sha256:d538d35c1e1970f028d1f0b6b42008ca137d7c40e4e15a97c3d68bd4a1dfa30f"
     },
     "a row is read as a whole": {
       "platform": "darwin",
-      "fingerprint": "sha256:97e9d70af75756a7f4f0f4a9f9106ba94559bbfa70a53fcb5460f1af97ed9315"
+      "fingerprint": "sha256:f0f0dc3e6dcc77da84845539d20cb278eb0ee85b287f8417d6212592924c204e"
     },
     "a run is official only when every invocation is": {
       "platform": "darwin",
-      "fingerprint": "sha256:2b70b3a8b586cc031f798999efb1b0aaf32544b94abf1b5f4f311143b31d5dcd"
+      "fingerprint": "sha256:51b0f30c6bfcdff9b6ecaa1ee337607e81602315c3bdbfc0bbe156fdc5ac2f5a"
     },
     "a run workspace is never inside the store": {
       "platform": "darwin",
@@ -331,11 +331,11 @@
     },
     "a sanitised value is one this module boxed": {
       "platform": "darwin",
-      "fingerprint": "sha256:e61476db9cd46f10812f164a7c318e286d6383e19643e269f5fb157c78aab721"
+      "fingerprint": "sha256:0478d9de9ef23c65eb69be696193dc11ef09c91aa42a234e351eaaf51c7921f0"
     },
     "a secret handed over with a space is still handed over": {
       "platform": "darwin",
-      "fingerprint": "sha256:5548c841aea69cb4f6bbc003729557660929de7a620843942b9b3628ee51739f"
+      "fingerprint": "sha256:06d1f7a8433819c74934214dd3b52137c01bcae8a5805bd450cf3e7a1214bacf"
     },
     "a sequence at its key's indentation is the value": {
       "platform": "darwin",
@@ -343,7 +343,7 @@
     },
     "a skipped real lane is not a verified one": {
       "platform": "darwin",
-      "fingerprint": "sha256:231654b79db9809eeee87d7631f709d0fb9add5362e5b9c30004a400f9f20a9e"
+      "fingerprint": "sha256:2433c62eb083f70fd908e6e39143ea8fd60ff3723c9fce1669e17a2946cb8082"
     },
     "a started phase cannot integrate code on a blocked issue": {
       "platform": "darwin",
@@ -351,19 +351,19 @@
     },
     "a status this build does not know is refused": {
       "platform": "darwin",
-      "fingerprint": "sha256:1f118e649db53ed82cb92e5dc386c9f5f467af9595b7c5be7fb7708097dac1d5"
+      "fingerprint": "sha256:724a5e65069359863cb3e4aa3eb6803746c295373a4dd9a6156814555b460116"
     },
     "a stored result may not elevate its own claim": {
       "platform": "darwin",
-      "fingerprint": "sha256:d48608ceda9af0b1d8edd25ab9418eea1f7b801ebae09a9e41b79339d74705cb"
+      "fingerprint": "sha256:56d9e52ed292d43add6087e6061d0075ac417f70fe26a512d48d0dda60c5f612"
     },
     "a surface carries the rows it says it averaged": {
       "platform": "darwin",
-      "fingerprint": "sha256:af49249c47c39e96120ac5c458a64af4f159e6b912eebd06381ca8ae3b07c2be"
+      "fingerprint": "sha256:2a9a6c00ed0dafc7d81b01c9f3a62bf08b780a4bfa1e9fbbe2466fb3791aad23"
     },
     "a symlinked staging source is refused by name": {
       "platform": "darwin",
-      "fingerprint": "sha256:5ab9d268f800bdb3bced96501ffd681265582631a38fc941e7faa8f6df8df79b"
+      "fingerprint": "sha256:a7a5b73e3aa401d74cc9795c55a4212f71f5c4e4b8c05a7dae6be523f7809eb0"
     },
     "a truncated cycle search says so": {
       "platform": "darwin",
@@ -373,17 +373,21 @@
       "platform": "darwin",
       "fingerprint": "sha256:e6958a098d5af1e0202fe5511b14720646351f98644549f2e4a978a37d399ec8"
     },
+    "a verifier recomputes under the boundary the result names": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3f65a7d15c0e9ec921e4532341257439d58808191dbce208f9979e285329c6a1"
+    },
     "a violation decides before the floor does": {
       "platform": "darwin",
       "fingerprint": "sha256:6480ee84e9de501c96df96955b57f91d1bfa19d7a45d5b802ac914fd20ef6a9e"
     },
     "a weight is a reciprocal or it is not a weight": {
       "platform": "darwin",
-      "fingerprint": "sha256:3bcc613e1b2cd1e3d928c69c103cba461cf4c1f1da015ad199b8360a277d4bce"
+      "fingerprint": "sha256:19f3410ba024f319dd9d758c076b977ba0ce3c68bc019b14186f388e569e97fb"
     },
     "a weight is a share of an equal-weight mean": {
       "platform": "darwin",
-      "fingerprint": "sha256:a3b7370c6723b3f9033335e24c60248c0a61c2bc50343bbbc7704161a03e7f9c"
+      "fingerprint": "sha256:1bc52b3b2cb931bc7db95fc5db4caff70ec92230c93c9f34722e3f692382a1bd"
     },
     "a withheld corpus does not pass": {
       "platform": "darwin",
@@ -391,15 +395,15 @@
     },
     "a withheld metric says so rather than reading as uncomputed": {
       "platform": "darwin",
-      "fingerprint": "sha256:49ac3ee9ae09a7594f7d944bfad85aa78cbc743be6ff858e3e57db0a5ad5c56a"
+      "fingerprint": "sha256:235bf70a715809c1d954af63d35f15b6d3075098940003703e5ff729b84343a6"
     },
     "a withheld rate keeps the counts that withheld it": {
       "platform": "darwin",
-      "fingerprint": "sha256:9b2de1f6d74086a181646a8722bf4ca52831fe6afa4ddb503110b13f362dee76"
+      "fingerprint": "sha256:c1dc392d5e7d9ae1eec3337ed1058389e2439116bd9b25831a2567fa5748fedc"
     },
     "a workspace that contains the store is refused": {
       "platform": "darwin",
-      "fingerprint": "sha256:4e45ff7cc00f8df1b30ea94bffb9556b841e2163c8fc42ba4e6f134f3192b182"
+      "fingerprint": "sha256:26c6320c2a9666e90d7d296e8b29d550049b02141721bbd5688e11c281ced5b5"
     },
     "a workspace that resolves into the store is refused": {
       "platform": "darwin",
@@ -407,7 +411,7 @@
     },
     "a write after settlement is visible": {
       "platform": "darwin",
-      "fingerprint": "sha256:8d569a24e0ae4c73f4975d807b2f4c36c959d4b3e1d71a4ce2131e91c8d08b29"
+      "fingerprint": "sha256:2c871872803588056024b23f0217bfb333db0674df7e66f0e67887fd8ba63106"
     },
     "abstention cannot outweigh decision": {
       "platform": "darwin",
@@ -416,6 +420,10 @@
     "allowlist-only child environment": {
       "platform": "darwin",
       "fingerprint": "sha256:1308cf3393850c8764d78e6bd877d9a426d0639531e0b8af908dc6f0ecdebe7c"
+    },
+    "an absent boundary is not a passing one": {
+      "platform": "darwin",
+      "fingerprint": "sha256:77ea63fc720af6d38cb87d2763466dd1274a549d554fef1d59590bf9db145589"
     },
     "an alias is the node it names": {
       "platform": "darwin",
@@ -429,29 +437,33 @@
       "platform": "darwin",
       "fingerprint": "sha256:3c3792084429eb94a335e6004f3f33b0772a1c0ca624c21ad8759cfcd92a857c"
     },
+    "an issued legacy number needs a declared STRICT level": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c3f57ea3ea09e2c8504904d5e04ce83d6e3c7203a4ea76e0f4718027b13edd7a"
+    },
     "an observation's markers are read, not only its exit code": {
       "platform": "darwin",
-      "fingerprint": "sha256:169bf4cbd2deb3b43bb02c765027e9f3bb1f7c9b639f776382895142ebea4da6"
+      "fingerprint": "sha256:a50dfd67936cbb99c6c94c66af5fc150293d27e307a113db3de4647f2d7df9ad"
     },
     "an unidentified runtime cannot carry the lane": {
       "platform": "darwin",
-      "fingerprint": "sha256:3f25f6345f8d0e82d3c57e3ccf7fec039a227eadda0870bcb44378a067a8d546"
+      "fingerprint": "sha256:ecdb4f669d3c20bc8c78425d11f579a5b0f7780a276093bf23652fd13779f94b"
     },
     "an unknown isolation lane is refused, not defaulted": {
       "platform": "darwin",
-      "fingerprint": "sha256:08c5d418b6c6ae37efffbc310a68e30fb3cdc1ba776b395a0ce094928039ca84"
+      "fingerprint": "sha256:acef1c46372448c8cbb12704d0b59d648c0cd5528f9bdcee2fe0f711beff0674"
     },
     "an unmeasured network axis is not NOT_OBSERVED": {
       "platform": "darwin",
-      "fingerprint": "sha256:d79a6048f3ed71dced881e6758b0489b256a80211c560142712d912b51b5319c"
+      "fingerprint": "sha256:7211423d96b8bcf2677a24f4f42ef190493e129b4ada3017184bb547b99a43f2"
     },
     "an unmeasured network policy has no expectation": {
       "platform": "darwin",
-      "fingerprint": "sha256:880b98c7a4e90a228fb66bb2067bc91b0d714e2262d25697ca2b7c614d97bf33"
+      "fingerprint": "sha256:71e293895db8e133c54a9cc6abe3095d3631923b199ced58f09dfa53a4a57eff"
     },
     "an unproven lane blocks issuance": {
       "platform": "darwin",
-      "fingerprint": "sha256:7e57c92641218a1c5ff0b47a47ade444b2adf4eca6701a3c2d38e2c1720ca7c8"
+      "fingerprint": "sha256:ef2a5e37bd4cfe64e49082854010dba598c01e57e3f768e70ff2f423926c37df"
     },
     "artifact top-level mode": {
       "platform": "darwin",
@@ -471,7 +483,7 @@
     },
     "bubblewrap mounts what the policy declares": {
       "platform": "darwin",
-      "fingerprint": "sha256:d74f6c6803492b9773c0b8e8024cad1cf5ed072a9236ba937700f048865759db"
+      "fingerprint": "sha256:ff8ea90f2ab9f2c377bba42da537f6b5e25ee162c1ad275e345169ad66810240"
     },
     "canonical manifest order and uniqueness": {
       "platform": "darwin",
@@ -511,7 +523,7 @@
     },
     "cited evidence is read only if it is the evidence cited": {
       "platform": "darwin",
-      "fingerprint": "sha256:21613dddca92a14876e4e50ab4272ee7b1a3a9c49404e5874f75c8a14181c387"
+      "fingerprint": "sha256:49716edf80faadd14e5b9b98d2278336c815c6daeb3e23fdb638b64390f5fbb8"
     },
     "cleanup claim not overstated": {
       "platform": "darwin",
@@ -519,11 +531,11 @@
     },
     "cleanup is read from the teardown that happened": {
       "platform": "darwin",
-      "fingerprint": "sha256:e03be88d296eaac9e44cbd8447a06717ef404123954a4cebcdc7068ed55378be"
+      "fingerprint": "sha256:dbf8475abebefaead345bb04d1da4d7a6bdba8f65751172a01f89425582ed780"
     },
     "cleanup is verified by the scans that can answer": {
       "platform": "darwin",
-      "fingerprint": "sha256:e67aac696779ed3c23dd3755c06f459dcb5f84ca31185d55edc433eb3ce16939"
+      "fingerprint": "sha256:537f8b1175b822f187e444217a4a49e88cdddd8bf70c0cd35458df86875f9f34"
     },
     "close-evidence author trust": {
       "platform": "darwin",
@@ -567,11 +579,11 @@
     },
     "coverage gate": {
       "platform": "darwin",
-      "fingerprint": "sha256:a97637a48bbe8049575c7305239c874f961cffc72aae542760e4e60703dd5c0c"
+      "fingerprint": "sha256:e1546034c5da198e12a5f2654bf632197d56f054fa76a0105508f39321812541"
     },
     "credential env refusal": {
       "platform": "darwin",
-      "fingerprint": "sha256:19743ad22dfe4830cdb030ebce1519266615cc6710702dda43cfe3ddcbf0bb4e"
+      "fingerprint": "sha256:caa860ab91f3270872fb443f04badf6e2050dcfa06f70a4d5ba2a5d1e06a7380"
     },
     "credential names a shape rule cannot see are listed": {
       "platform": "darwin",
@@ -583,7 +595,7 @@
     },
     "cycle run identity": {
       "platform": "darwin",
-      "fingerprint": "sha256:d0425cda85172f1be519409f2a51375cb420cce8836e67968c79fea175e6646d"
+      "fingerprint": "sha256:9eb72178fc01ddc76e5883ae0730467f9ec6bc52ea7f67f8d55e0278a6db5fe8"
     },
     "cycle search inside strongly connected components": {
       "platform": "darwin",
@@ -611,7 +623,7 @@
     },
     "doctor checks a required config name has a value": {
       "platform": "darwin",
-      "fingerprint": "sha256:caf4c62ee9895c73cdccbcd07ae28818a55cda82e4d6158fa825272ad49fee3a"
+      "fingerprint": "sha256:23bae884ac7eb168e71523c9a808feffd10090940368d3e9f635dae1777f9d20"
     },
     "done issues have no withheld phase": {
       "platform": "darwin",
@@ -647,11 +659,11 @@
     },
     "every kind of evidence is required by name": {
       "platform": "darwin",
-      "fingerprint": "sha256:02a9a0dd58389cb9c851648d289f89ce25d3fb95580989d3e67b93daac4bb919"
+      "fingerprint": "sha256:5cdd01d2d1db39ee009ce9dd0efb55377f830b3af69e380b296a30e1219b8b47"
     },
     "every observation a row cites must record a run that succeeded": {
       "platform": "darwin",
-      "fingerprint": "sha256:7d3e8005afa9cf14906e1ee08d2ae30900d36b85a6fea3450c087d687ef07ac1"
+      "fingerprint": "sha256:20751a6b169c4596994e951a700e2da72f5fac6d5823c5ff39b7e3f4289812d5"
     },
     "every projection is compared with the result": {
       "platform": "darwin",
@@ -663,7 +675,7 @@
     },
     "everything published passes the one gate": {
       "platform": "darwin",
-      "fingerprint": "sha256:b6d7ed7e72b79c2e2b68715167e0cfabaed517b63d2731be0033e4fd8703541b"
+      "fingerprint": "sha256:490dce65ec0d3bb1824bef40a8ddf4d2066b6cd7cab2ec9c0653088a2e43cbb6"
     },
     "evidence bound to the audited revision": {
       "platform": "darwin",
@@ -699,7 +711,7 @@
     },
     "false completion cap": {
       "platform": "darwin",
-      "fingerprint": "sha256:07083a1bf79e73a6d1015e1969887b884010bb710a9a90a10d0099ee9712ed99"
+      "fingerprint": "sha256:a1c859fe5826555055c5093456a1b457f0afce4455d422cfc7488b58887d96f1"
     },
     "fingerprint compare": {
       "platform": "darwin",
@@ -715,11 +727,11 @@
     },
     "grading reads what was frozen at settlement": {
       "platform": "darwin",
-      "fingerprint": "sha256:824488ad3e7b25d2d83d563581ff1378bf20c199349f4b47b6bbe3dc26e99323"
+      "fingerprint": "sha256:49f637842149683990a12e3046ef154b752ea245b9c67204838a5025e6034a02"
     },
     "handoff exact compare": {
       "platform": "darwin",
-      "fingerprint": "sha256:2774303676150330a0ee605631ca8286f97b35ba4e2029e3857f719f82953323"
+      "fingerprint": "sha256:2a26a771666530b52aa117420721dcc67b628c2445f9b53b58a38158ee05ffbc"
     },
     "hard-forbidden class refusal": {
       "platform": "darwin",
@@ -767,19 +779,19 @@
     },
     "invocation identity provenance": {
       "platform": "darwin",
-      "fingerprint": "sha256:3d512b924019a985f7ca40e33f0a819c8f708b002298204a2b4cbdf01e380ea3"
+      "fingerprint": "sha256:407e2b829100cc644646149af3fe9d1fc0d4513dddd35d8c8faa01bd5d224ebf"
     },
     "issuance needs STRICT": {
       "platform": "darwin",
-      "fingerprint": "sha256:64e0b410e3737c1676dab7fb50f02565a36aafae3f6a30ec3846fece094fc323"
+      "fingerprint": "sha256:429004064c0a373d6a7d09b97b7ad72d6198f2d38f7f5c5b8fd7e26909dc1eb6"
     },
     "issuance needs a passing canary with evidence": {
       "platform": "darwin",
-      "fingerprint": "sha256:3d4f9421682a28c60425de5c9d48bca1af68e1dd5559cb1410c0113749dcaf5a"
+      "fingerprint": "sha256:31c2ea22ab4e4166cde5df64f6182a1ccfc961fe65612952f2a9c5ae5331774c"
     },
     "legacy digest separation": {
       "platform": "darwin",
-      "fingerprint": "sha256:2b04c68ca638273c5f6ba2dfc47093bd5139ec34bee9ac09697ee726a31ab695"
+      "fingerprint": "sha256:ea5f628cf271c3692d8f7a6d53feb44b69ba85252b1e9a36daa8c8ec82b9c800"
     },
     "legacy ledger row is not holdout evidence": {
       "platform": "darwin",
@@ -815,7 +827,7 @@
     },
     "no variable may carry the store path": {
       "platform": "darwin",
-      "fingerprint": "sha256:055d8d961efe5b2f09326c7c5796538250d1478f1a2e40e4104bd38d667fac12"
+      "fingerprint": "sha256:bbb24218f744aea56f0b9cc6eb39b60fde4c6acd069380b4933f0fe499e88c9d"
     },
     "observation channel size bound": {
       "platform": "darwin",
@@ -851,7 +863,7 @@
     },
     "only the declared runtime files are staged": {
       "platform": "darwin",
-      "fingerprint": "sha256:ff8a37683c5c109238255a5829a194c9c3068f3dcd2bc90d35f7b2c9600d5d82"
+      "fingerprint": "sha256:9bc2e687c926b1ede4507cc9290a0c9209d600c3c68ec6fdc023c9ee4b5a39aa"
     },
     "operator decision window": {
       "platform": "darwin",
@@ -895,91 +907,91 @@
     },
     "profile cap never names the process axis": {
       "platform": "darwin",
-      "fingerprint": "sha256:6922601b6bbd6690ef0721a30069fee161f60bad36b4e6b15447d1aa6baa7855"
+      "fingerprint": "sha256:3f68891252767268911ea50ff91ab87971937e03c91768b6504c2938202e08e7"
     },
     "profile cap reaches the composite": {
       "platform": "darwin",
-      "fingerprint": "sha256:48a6ca2c582fdf7ad50c076f11a11e6cc429670f797a1425f68a4ef079aa4080"
+      "fingerprint": "sha256:9b021bca29334380ee3c026641010ddf0301b52adec872e20593587319031208"
     },
     "profile cap reaches the outcome index": {
       "platform": "darwin",
-      "fingerprint": "sha256:89b4992ba968b8510a7f855e78463aeeb7b1d256fbf248eb922febce02ab7b3c"
+      "fingerprint": "sha256:b13948f98aa5ecff0ad57d446ee9e15cd4f982bb533171055eb036e0dbf928ba"
     },
     "profile composite is the 50:50 mean": {
       "platform": "darwin",
-      "fingerprint": "sha256:6ace4345a417d8c97bc369d7a26529c69a74afe737e8b3531c053f4b92b2931b"
+      "fingerprint": "sha256:2ed9d0a4415e349ca2c41e7fe01205498dfbde8e9b2febc408ee46d84105181b"
     },
     "profile composite withheld with the outcome index": {
       "platform": "darwin",
-      "fingerprint": "sha256:843f98d78dbb7f6b3cdf01a651f7cf2fda8964c6e5531c124fc5f0f33896f4b6"
+      "fingerprint": "sha256:a36a46b6ced6705007b4ad183eb9807f8a7a7b483a14938c1aa4d79ed7ce06d4"
     },
     "profile composite withheld with the process index": {
       "platform": "darwin",
-      "fingerprint": "sha256:f58c4543c920c758bf54aed3c2f5b214eaee3b218e5bfa0eac39d6aa1c51b729"
+      "fingerprint": "sha256:1cadedae5d3b9fcbc066307b33be32bc0a77da2555331ccb72ce201499f63bc5"
     },
     "profile evaluation is emitted under the given contract": {
       "platform": "darwin",
-      "fingerprint": "sha256:fa581e6aa0776e660b959bc22ad6a85ced2336dc5cde52ae08119194a41926dc"
+      "fingerprint": "sha256:785e769c91e92286c3846e1aa8ca06c2ea85d2b71d9103426e4f865d0d585dd6"
     },
     "profile index weights every row the same": {
       "platform": "darwin",
-      "fingerprint": "sha256:542eab5aac2fe69705d672922bc6e8686ff34f74f1f122596307bb6f594aba85"
+      "fingerprint": "sha256:00ef7e22d9646314e7c26cf53729d1cb15c5b399ca380e9750ca343038f2904e"
     },
     "profile index withholds on a missing row": {
       "platform": "darwin",
-      "fingerprint": "sha256:d665481514dbf31801974b9b0da81dafcfff0715dd53336eb9a0491ac5e6f103"
+      "fingerprint": "sha256:3655813c109152298fd2a1709ba3af90ea8e1e7e2a15e731017a88dda0d9c023"
     },
     "profile legacy result is not migrated": {
       "platform": "darwin",
-      "fingerprint": "sha256:5f5461f323fd7a29a306d457ceac934a1de64b737c159795c43d378744e5fd5d"
+      "fingerprint": "sha256:db971817bf57d14e915d7c84dd315a93b6676ffe21d4dfb64e73c0d780c06052"
     },
     "profile outcome domains match the contract": {
       "platform": "darwin",
-      "fingerprint": "sha256:8ab1e521b73412d6e15304f21111c6c257df1cbe68fa5877d57d47e6e003adc9"
+      "fingerprint": "sha256:ca5db3fd63ac8f965e89cdf51e9de3829a0574bf903420969a8b231466b6eab2"
     },
     "profile outcome grouping comes from the contract": {
       "platform": "darwin",
-      "fingerprint": "sha256:46cfc6aa417e9745f8b4c686fc5d43166613e8ebce985ae42eb03b35c11cb06a"
+      "fingerprint": "sha256:f3525d1e339dd25a81315b6bff5f56d8948b524401b744977e6ff1a66efe676c"
     },
     "profile process index is never capped": {
       "platform": "darwin",
-      "fingerprint": "sha256:525364cb65c060f1087d0f67b68f23b382601e3be5e75c1fdca9568cffe13813"
+      "fingerprint": "sha256:ac5b7f4d0c68f66f23953edf6ce85e7e369a45878ffa9326cbc368b0b8e9d0e3"
     },
     "profile process index is the contract's own": {
       "platform": "darwin",
-      "fingerprint": "sha256:354b810eb879c840be181d46b879ffb33562976e0040f0214a029a817e147c41"
+      "fingerprint": "sha256:f01197d70d92247c06d2bfe89156edeb5e51bfe8f798d039eeedd49642be3779"
     },
     "profile projection refuses a result that lost a surface": {
       "platform": "darwin",
-      "fingerprint": "sha256:14ff3248fca5241d00480338f57dac24a4fea6a4c321e084efc46603048f6f6c"
+      "fingerprint": "sha256:778ba7a23068713aa7f28772223f9e275d57acddd2a15b68e6626580979ab31d"
     },
     "profile reliance carries its own coverage": {
       "platform": "darwin",
-      "fingerprint": "sha256:16ad717b4a34936977b4375f5d016904b5917da56fdeea1955156ae16ed23385"
+      "fingerprint": "sha256:894dad2a26591e63633565b17c1e73783b87c31d97590e40a19f15da7344e3fb"
     },
     "profile reliance floor": {
       "platform": "darwin",
-      "fingerprint": "sha256:6b321802cc90cd55eda228c259d6f6fe73acb79ba7c52293599db5c7ff2a9421"
+      "fingerprint": "sha256:c7014149ff0c258436164cdb6817a388db166a67899bb3556d436805cbf8e65f"
     },
     "profile renderer recomputes nothing": {
       "platform": "darwin",
-      "fingerprint": "sha256:432c3bac2974898d68b186fa00e306b7102b386f9f0fd77f3b49c6d3d1706ffd"
+      "fingerprint": "sha256:9dc27c770c0eb47e0584029875bfeda317569baf15dc75be4b8ddfa0dce68569"
     },
     "profile results are not aggregated with legacy ones": {
       "platform": "darwin",
-      "fingerprint": "sha256:ee763d344dda5300c92ab63afb84f21d72017fa5de7219cd57f6adeced5d3edf"
+      "fingerprint": "sha256:f05b8c1797fe5a51bd5e99690adc8787b86ade00e8d1b848656aa3283cc3549f"
     },
     "profile undeclared run fields are digested": {
       "platform": "darwin",
-      "fingerprint": "sha256:2ae4e12d288789c7562921a606ed4dd2678eaddcd667c3ca268a191a4b7aecca"
+      "fingerprint": "sha256:04c774361e2912910522735d78dcd86b8b4e9d887c80078a396fda9216bf5bcd"
     },
     "profile unknown result schema is refused": {
       "platform": "darwin",
-      "fingerprint": "sha256:443aae60b4a1b53ac6327428f20cda5fcedeefd704a14c589e6476544194a459"
+      "fingerprint": "sha256:8e531275d01bd9eb61b7c01d82f9b5f4e8cf50010a96632e2a8ef6d09b403e1a"
     },
     "provider credential formats are recognised": {
       "platform": "darwin",
-      "fingerprint": "sha256:23d7ccb493b18d90e44b13c96bb8a03f91cea24f1afb6fc25f059996681c70d4"
+      "fingerprint": "sha256:6d208723fb6ea9a424cb133992864542dcb089eead337e223ffc4907a86de162"
     },
     "pull request produced the commit": {
       "platform": "darwin",
@@ -1047,7 +1059,7 @@
     },
     "safety cap": {
       "platform": "darwin",
-      "fingerprint": "sha256:0909ce5854aaf24d60f5f03be68388a9fccf3e28af530110bf819d7feb56e37c"
+      "fingerprint": "sha256:d2e7ce808bfe479e90c57d6c1d41717db2b7caaa57add6e212336fafaa977a08"
     },
     "secret-value scan": {
       "platform": "darwin",
@@ -1055,11 +1067,11 @@
     },
     "session ledger byte identity": {
       "platform": "darwin",
-      "fingerprint": "sha256:20fe7f6ebd671a7c9536889a4c7db9d3bfb70b8185c294552844f624c2fe8fd6"
+      "fingerprint": "sha256:9cf65c7f7f1f938fa3aa240dd15aa6f26129c759f38c3c2b2f19ef07b6614657"
     },
     "settle reads the cleanup failures": {
       "platform": "darwin",
-      "fingerprint": "sha256:03809e40fcb94c1847f8a736a2ee5fa6e486f31645ac19e4ae52869eb9d79b5d"
+      "fingerprint": "sha256:0fdc3dbe8bda083140a801304a5fa325377135ec77121fc390893bb2e69ff5a6"
     },
     "single observation per probe": {
       "platform": "darwin",
@@ -1139,7 +1151,7 @@
     },
     "task-initiated network is NOT_OBSERVED": {
       "platform": "darwin",
-      "fingerprint": "sha256:8fe788d19cc8ad4f368df0f89ed37b65a871982c3cf3429cf99bac2c6cd80a08"
+      "fingerprint": "sha256:46286925c28d79aa33cc1c31ba318f1e80b14f30372d3ec3c9bee4fc82620526"
     },
     "the PATH rule is part of the digest": {
       "platform": "darwin",
@@ -1151,43 +1163,43 @@
     },
     "the assessment is scored under the gate it reports": {
       "platform": "darwin",
-      "fingerprint": "sha256:15dfdae2d124180aac742c3e54ff326726d47cb55e9ebfabb7b04e4a42fca097"
+      "fingerprint": "sha256:61d62975a0a87af743d29df3f42c11bc74b5f5f16816332412e5f617ff4b96ca"
     },
     "the assessment profile is built for the lane the run uses": {
       "platform": "darwin",
-      "fingerprint": "sha256:44ad8bc97e51d00d8252353a7c761528f4c3bad321fcaef072443a36f63f34f0"
+      "fingerprint": "sha256:6c385c5cd4d550d34b05404aea3b625335cc56f0c5c6b9dbaadd14226509d611"
     },
     "the assessment writes the profile result": {
       "platform": "darwin",
-      "fingerprint": "sha256:e323928cae18d8a0c38f2896e98e2c1b2ecfef35894dc825fb1474c9d06cb42b"
+      "fingerprint": "sha256:ef2c967ee209c58155b90834db3c5b289494460f60a3a9b0550a159f619a10b7"
     },
     "the boundary withholds the number, not only the claim stage": {
       "platform": "darwin",
-      "fingerprint": "sha256:be99e034735cb4ea23f988bd8446a1f8125350370d21f4735f546665407fce19"
+      "fingerprint": "sha256:cc8f7ce21af79969b3bd0866061f76ecfef3db8c3e2410de66be8428165f1dff"
     },
     "the boundary's verdict decides whether the run carries a number": {
       "platform": "darwin",
-      "fingerprint": "sha256:015d069424ef15c773f14a2530482b9024156fb1f03bfdb01ddb6b606041303f"
+      "fingerprint": "sha256:da1e33277c72d9f9a8d67d27a994650c6cc8850f47954e796146e8f0d08f9964"
     },
     "the canary expectation is this module's, not the record's": {
       "platform": "darwin",
-      "fingerprint": "sha256:8b79fe23b8a75d2263dc8b7d16995f5cb4c0828518d40edc8fa1d70600b1f663"
+      "fingerprint": "sha256:4a42d9772c78d6f3c2ef3086af66ce8c91a53b4c7b3c9014947b2546c6432a75"
     },
     "the canary proves the stripped descendant was confined": {
       "platform": "darwin",
-      "fingerprint": "sha256:5416bd36c64c4f13f78c2fa6aabaf19652045ece053b7909d066e1c259dae477"
+      "fingerprint": "sha256:d532fe6f40b00c8cac440f4a699a56a5f88f618e417dda9d2e19af025612b2b9"
     },
     "the canary that certifies the boundary is the one that shipped": {
       "platform": "darwin",
-      "fingerprint": "sha256:981b4d339830eaf17d8d01c59bee6578da0db4e9d4077dae98ece71b55955666"
+      "fingerprint": "sha256:fdff7fd64cec322fb4143b071a20ef47b6420d57a3633e95dd0b04e03bf87067"
     },
     "the canary verdict is derived from its cells": {
       "platform": "darwin",
-      "fingerprint": "sha256:a5daaf9c4591b57c1730930cf59f6ff2db60c516947a8b8abaf1457f7729b27c"
+      "fingerprint": "sha256:344675707c6a48d9fe475db0c6a5b0efedeb2372c301dfac643306f58c93334d"
     },
     "the canary's own escapee is killed and checked": {
       "platform": "darwin",
-      "fingerprint": "sha256:dd44ae834848c1b4c623bbce04971a5ee60f8a455501e6d85fd6d5658e6d47d3"
+      "fingerprint": "sha256:05f4676968bfac5190614c954da813d382938657d9b2e13bdbbd1ed74c977fd0"
     },
     "the capture time names a day that exists": {
       "platform": "darwin",
@@ -1207,11 +1219,11 @@
     },
     "the claim is compared like the numbers are": {
       "platform": "darwin",
-      "fingerprint": "sha256:43e7ad6fd879ed91e6e73e964506c59d77b641337ea05f248cd5745a71e4f045"
+      "fingerprint": "sha256:57a9bd68970b678723ee2978e9710159dab6586abd7679440d95c2a4c88bd5c0"
     },
     "the claim stage reads the boundary": {
       "platform": "darwin",
-      "fingerprint": "sha256:3e4c4ee04b401e85b869cd00c00239255e6ee2624f84bd718460bac53de950c6"
+      "fingerprint": "sha256:e136aff35b3cc3d9df5e19a20a719f3017745b31dd22422dfc57f1360f432b3b"
     },
     "the closing pull request changed something the issue owns": {
       "platform": "darwin",
@@ -1219,27 +1231,31 @@
     },
     "the cohort digest refuses what staging refuses": {
       "platform": "darwin",
-      "fingerprint": "sha256:93d918b15760389b3f25e07573a964d74097807c308f70cb3a995e001fb1be67"
+      "fingerprint": "sha256:228e31c1ea2572a12194ba3140fa8d9dd8a3ecc5f1c2cf56c0eba8a709912de4"
     },
     "the command prints the floored result": {
       "platform": "darwin",
-      "fingerprint": "sha256:e55e1ee94b2f1f151fd0566d3650f30a339ae00574fa567d1f42a039238172d4"
+      "fingerprint": "sha256:71d96cbec534a01b694312bde3d92074abb42cb099afcdd8f0e5397ca6832a5e"
     },
     "the composite has to agree with its own inputs": {
       "platform": "darwin",
-      "fingerprint": "sha256:92c8dac87e1d345c866dd3e8dcfc13e11b952dc7cae575b400eb9f67de267dde"
+      "fingerprint": "sha256:b3712c8c6dfd29093ad205b0bc835b308da969208625b1f9c500db34e749dc5c"
     },
     "the contract digest covers the contract's bytes": {
       "platform": "darwin",
-      "fingerprint": "sha256:a1276c508160db92eac0401f2f80ac04ab6b868560b83406eb903845bc5547b8"
+      "fingerprint": "sha256:5febc4b3474d2ef6b4c9905b1b5f9418cf871c914e6c09b30bd07281698cf523"
     },
     "the contract states the cells each row averages": {
       "platform": "darwin",
-      "fingerprint": "sha256:ab554153dd39e85f9d9270a3384d8147dd14bd0e1d2e1a6f2461fd537d2bb7c3"
+      "fingerprint": "sha256:5e7a10a11c6e8c5ebc1bf4e40f94662052715d5e8c0447be16ead8650343408b"
     },
     "the derived verdict ignores the reported one": {
       "platform": "darwin",
-      "fingerprint": "sha256:573bb53a56de6af0cd6afc6468faad72131b50e36cbb1643474453edbf4ea575"
+      "fingerprint": "sha256:b9c8ec61da4adb1ebdd60e76d1725caa5919d79d8561268cb1c8e492a870c356"
+    },
+    "the device nodes are the policy's, not the renderer's": {
+      "platform": "darwin",
+      "fingerprint": "sha256:adc187ff66967d83244e9a6ae6bacb6a886bb27219fd63f488d0dc8004f18b8b"
     },
     "the digest covers the rules applied outside the allowlist": {
       "platform": "darwin",
@@ -1251,11 +1267,11 @@
     },
     "the escaped descendant is proved confined": {
       "platform": "darwin",
-      "fingerprint": "sha256:2d33d2e399e694a4378280f18a84729d5695100e610dfa1e59ab3eb8eddc0959"
+      "fingerprint": "sha256:874a9810dc53a5bea1f84294a6195ebe8b4defb51831c2f0f9f08d27387c468c"
     },
     "the evidence a row must cite follows its level, not its label": {
       "platform": "darwin",
-      "fingerprint": "sha256:6a180a0709472a66a4dbebe46358fa47fc811f290d556fa59966b83c3537eb2f"
+      "fingerprint": "sha256:267b0ecf12cc2ef78446190de3cc0b70ba82baf81d354f99720b29e4319a55f4"
     },
     "the evidence contract is pinned outside the plan": {
       "platform": "darwin",
@@ -1275,23 +1291,23 @@
     },
     "the lane's identity comes from the runtime that authenticated": {
       "platform": "darwin",
-      "fingerprint": "sha256:9e7379ef45fb5258ba32418403289389e9204714db05d2e6df9602d22da2c409"
+      "fingerprint": "sha256:89316f16dae846cdebfe22c22c79ec3060c0d445103d0a40510631a05b9d72b3"
     },
     "the matrix decides the process axis with the run's own helper": {
       "platform": "darwin",
-      "fingerprint": "sha256:11d770922ef7ad89bd57eef7d762cf54303506e3f96cb701630b5daebdb93da9"
+      "fingerprint": "sha256:0ed048dbb6b3b350925ba9b74af545a904ebbda84be4adcb419a65d7778b9f87"
     },
     "the matrix reads what the teardown could not remove": {
       "platform": "darwin",
-      "fingerprint": "sha256:6d87931b43394d54246424109b2d6ef30c0075616f654e1e41a3c8be8998ad0c"
+      "fingerprint": "sha256:f2cd59dccc1c87584bad75fef68aadac601dd752600149e263c5d3e18467cccd"
     },
     "the network axis is enumerated, not typed": {
       "platform": "darwin",
-      "fingerprint": "sha256:26dc6f2a5bd68a16b5f84a91e94d813357c56990f5a5ef20ed5e26b92e611eb4"
+      "fingerprint": "sha256:3cd36f42345ec0ff4d180ce8e413cd440d962d3332b73d39796f6c43bd2e4d30"
     },
     "the phrase list names the artifact rows it is supposed to check": {
       "platform": "darwin",
-      "fingerprint": "sha256:2d933c4d3bcc3ad44e014e99dafd2d8b26fafebcfa189a2dab97c6ceedc5753e"
+      "fingerprint": "sha256:4fa7ec32f71a49fbbc564d1dccd56e6e78e52fcd9cdda50d0d2cbf779747abf3"
     },
     "the policy digest covers the forbidden rules themselves": {
       "platform": "darwin",
@@ -1301,13 +1317,17 @@
       "platform": "darwin",
       "fingerprint": "sha256:e52636dd539cf1acc493c8de1ca79b62a9b19941089d96358bee61c9cc861b54"
     },
+    "the private tmpfs is declared before it is mounted": {
+      "platform": "darwin",
+      "fingerprint": "sha256:67c722209e4566cbffa1f6b8a0736a3c77652083184e6775e33626a24bc27843"
+    },
     "the process axis needs the sweep and the second poll": {
       "platform": "darwin",
-      "fingerprint": "sha256:68d8972decc1aaa3e995766d3281f986af0b7971204abaaa7589bd2294ef6dec"
+      "fingerprint": "sha256:bfdb7898a93caf4e4408b993fab80169e7cc058e27f6b4dcc9c71bb9e1b9e2aa"
     },
     "the process group is enumerated, not assumed": {
       "platform": "darwin",
-      "fingerprint": "sha256:161d63d5d5cdfd2a368beb680935d6a5bf993b6087201daa9550f76324a3bbe0"
+      "fingerprint": "sha256:63859d21770f49d64b79a78097e29485169351bd7c21b5fe019255428502570a"
     },
     "the profile digest binds the boundary and the runtime configuration": {
       "platform": "darwin",
@@ -1315,23 +1335,23 @@
     },
     "the profile is rendered from the policy that is digested": {
       "platform": "darwin",
-      "fingerprint": "sha256:6bfb0730993a39d52a0dff57c4c04715e37781c7e0626ddd2acd59d2b4363a55"
+      "fingerprint": "sha256:f6e953431c5cc2f0a3390a991770ca5ea777972e928d33edf7f1aadfa57d64d6"
     },
     "the reader checks the state it was handed": {
       "platform": "darwin",
-      "fingerprint": "sha256:44bd813c90c1f2c98897054fa3a51a93c1634bd9c4e5583de1205b2ee61b7048"
+      "fingerprint": "sha256:e3137b798469d75d958290c9975299cc309cc718762c84af17dfc8d835400037"
     },
     "the rebuild is handed the reliance the result was built from": {
       "platform": "darwin",
-      "fingerprint": "sha256:fa9253ebb9a3e59aa9fd70a1a331a3e3375f6b9018f43db4fe5ce1c8845d14fb"
+      "fingerprint": "sha256:780e2a2d65017d4dc1d608d4ca84cd158056a096758b055c4b2a5f7b06317445"
     },
     "the renderer refuses a workspace inside the store": {
       "platform": "darwin",
-      "fingerprint": "sha256:06f5f8be2c2f9d6aa1d88c3473684abe9129ddd307e4daacd374dea04c6f1d1e"
+      "fingerprint": "sha256:992891ae7b55359764e8c342f11a5ae8b5df4d4d96b97f769261795dd5f60fc6"
     },
     "the report command serves what the result projects to": {
       "platform": "darwin",
-      "fingerprint": "sha256:6790b2c9392de5503b73852ae444cbb3ba10aa7b1938cfa571979f43bdbe3f92"
+      "fingerprint": "sha256:6f3fa61f17b309c9925cd4ed030efc6a3dfe038658f5079abce8d9c62b193640"
     },
     "the result publishes redacted cleanup failures": {
       "platform": "darwin",
@@ -1339,15 +1359,15 @@
     },
     "the result states the claim ceiling it was issued under": {
       "platform": "darwin",
-      "fingerprint": "sha256:e26f7c4c94a15f5c82b5849fb26dc32ad10228eaadfc262cfb18bf8e6c8fcdaa"
+      "fingerprint": "sha256:75170f0ea66b0439b881d9ca188a0298854ff6335db20d6c541341f4c5e9c252"
     },
     "the result states the rows its contract declared": {
       "platform": "darwin",
-      "fingerprint": "sha256:0d8f5901d43a786592636915f4117de03932cd7cc146c0283d5ce42cac4c7dfe"
+      "fingerprint": "sha256:50f9be2ef9535c1de759ffc8753f6b7d8a03b240c335239c5ccf7e8d8a9a9e9c"
     },
     "the rows a result must carry come from its contract": {
       "platform": "darwin",
-      "fingerprint": "sha256:83fa122ed12e8133d914b8a259d275f14b705a495804ec1db75ceeb8eed6ceee"
+      "fingerprint": "sha256:74465ca7154e098bff86f968e91bbd3bd4e2605920753fc53f58251227b5fa08"
     },
     "the run-metadata door cannot be widened in the running process": {
       "platform": "darwin",
@@ -1363,7 +1383,7 @@
     },
     "the scored result carries the boundary it was produced under": {
       "platform": "darwin",
-      "fingerprint": "sha256:8b39c7f8d43681ea0ac8be7ead66e51a91f3c15a10cc001dee8762f0f21d177d"
+      "fingerprint": "sha256:4f5892636cbdc71524d66238d858621f21182b4a22ec1f1da887550e87d8254e"
     },
     "the spawn refuses a workspace inside the store": {
       "platform": "darwin",
@@ -1371,11 +1391,11 @@
     },
     "the staged credential copy is private": {
       "platform": "darwin",
-      "fingerprint": "sha256:a33c2bc2e69bceb37f759cf71120088ef56771c2cace2a38dc96ccbca2a3298a"
+      "fingerprint": "sha256:5968ffbca3b56b987d4c5778156d5f85603137ad1d10fb2d225b88f11ee893a7"
     },
     "the staged credential is scrubbed by value": {
       "platform": "darwin",
-      "fingerprint": "sha256:da859c5e555d0fa670f5e7c88f13c16311d4480fac3476028be5378566f344af"
+      "fingerprint": "sha256:6f8c9b3ed50b4363bfb01a725106d7f6440208a316abfae314774993a4654b29"
     },
     "the staged secrets reach the scrubber": {
       "platform": "darwin",
@@ -1383,7 +1403,7 @@
     },
     "the table shows the decision and not the label": {
       "platform": "darwin",
-      "fingerprint": "sha256:46dee6e7330f179ccc80f76678168ff3f9c207bf55bc033a2edd5d611ab95c0b"
+      "fingerprint": "sha256:58a554c527704974260874a9fa9e1c198a1d2cffd04e8a5463a0a8fa0979f793"
     },
     "the teardown observation reports what cleanup returned": {
       "platform": "darwin",
@@ -1391,7 +1411,7 @@
     },
     "the verified executable must be the adapter's runtime": {
       "platform": "darwin",
-      "fingerprint": "sha256:75921fa664b64a7b573769dd3711aef6833753db5294fb34359948977a92f84e"
+      "fingerprint": "sha256:90777f88462e67e170022cdb40618530ff515ae789604f909d0050187fe9824e"
     },
     "the whole policy is revalidated against its adapter at the point of use": {
       "platform": "darwin",
@@ -1403,7 +1423,7 @@
     },
     "the withheld reason travels with the surface": {
       "platform": "darwin",
-      "fingerprint": "sha256:8f40c39acac2bfb17715149fa7e474933589ab37ae96e569e7ea0a38a62db69b"
+      "fingerprint": "sha256:90e9699649b1b5b0c91eeb3f86e19c1ff49b8fa66ee72fe9f08eee6544118d5b"
     },
     "the workspace is named relatively so the store is not": {
       "platform": "darwin",
@@ -1455,7 +1475,7 @@
     },
     "unverified cleanup blocks issuance": {
       "platform": "darwin",
-      "fingerprint": "sha256:030e57b208ca7bfae9a4c5d2446b84b794a645dfd36eeb010e52cf42d09be827"
+      "fingerprint": "sha256:f69f1575f6845988780ee22c628c1dd7f745930a12daab4948677b730a01068a"
     },
     "uses under with: or env: is an input": {
       "platform": "darwin",
@@ -1479,7 +1499,7 @@
     },
     "withheld is never a number, and issued is never a reason": {
       "platform": "darwin",
-      "fingerprint": "sha256:294ae3055a74ba5c87a5ae7d827145ed9d59f93cdfae67b1ec304ecece7d73bc"
+      "fingerprint": "sha256:aee1951db82fd8516ef76c94531177288dac8e61d86c0ab7f14b0423207fe7bd"
     },
     "withheld precision is absent": {
       "platform": "darwin",
