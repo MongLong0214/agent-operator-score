@@ -354,6 +354,16 @@ descendant is dead after teardown; the installed Codex runtime, run through the 
 without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
 reason and does not pass on nothing.
 
+From the CLI, the lane is the operator's to name: `AOS_ISOLATION=STRICT aos agent run ...` (and
+`aos assess`, `aos observe`) runs under the boundary and the record says so; unset, the CLI runs
+`BEST_EFFORT_CLI`, which every host can run and which is never official. A value that is neither
+lane is refused as `AOS_ISOLATION_LEVEL_UNKNOWN` before any command runs, because a misspelling
+that quietly fell back to the weaker lane would look exactly like choosing it. A live
+`aos agent run codex --task ... --json` under `AOS_ISOLATION=STRICT` on this machine returned a
+record with `level: STRICT`, `backend: macos-seatbelt`, canary `PASS`, three tracked descendants
+and none leaked, `cleanup_verified: true`, and `AOS_HOME` in the removed-variable list; the gate
+over that record is `official: true` with no reasons.
+
 That lane -- `darwin/macos-seatbelt/codex-cli.v1` at `STRICT` -- is the one row in the matrix
 that is official, and it is `SUPPORTED_WITH_CONSTRAINTS` rather than `SUPPORTED` for the four
 reasons the fixture lists: `sandbox-exec` is deprecated by Apple and still enforcing, so the

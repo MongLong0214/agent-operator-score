@@ -2325,6 +2325,15 @@ export const GUARDS = [
     to: "    const trackedSurvivors = [];",
     test: "tests/product/confinement-real-lane.test.mjs",
     name: "strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
+  },
+  {
+    guard: "an unknown isolation lane is refused, not defaulted",
+    reason: "AOS_ISOLATION=strict falling back to BEST_EFFORT_CLI would run and score under a lane the operator did not choose, and the record would look like they chose it",
+    file: "lib/cli.mjs",
+    from: '  if (chosen === "STRICT" || chosen === "BEST_EFFORT_CLI") return chosen;',
+    to: '  return chosen === "STRICT" ? chosen : "BEST_EFFORT_CLI";',
+    test: "tests/product/cli-refusals.test.mjs",
+    name: "the isolation lane is the operator's to name, and a name that is neither lane is refused"
   }
 ];
 
@@ -2446,6 +2455,7 @@ export const ACCOUNTED_GUARDS = [
   "an alias is the node it names",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an unknown isolation lane is refused, not defaulted",
   "an unproven lane blocks issuance",
   "artifact top-level mode",
   "artifact type in the envelope",
@@ -2627,5 +2637,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository",
+  "write access asked of the repository"
 ];

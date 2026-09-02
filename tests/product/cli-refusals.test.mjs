@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -102,6 +102,34 @@ test("a run that lists cleanly is still listed when a neighbour is damaged", () 
   try {
     const listed = run(cwd, ["session", "list"]);
     assert.match(listed.stdout, /run-corrupt/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("the isolation lane is the operator's to name, and a name that is neither lane is refused", async () => {
+  // #556: STRICT reaches the CLI through `AOS_ISOLATION`. The default is the lane every host can
+  // run; a value that is neither lane must not fall back to it, because "strict" landing on
+  // BEST_EFFORT_CLI would be indistinguishable from choosing BEST_EFFORT_CLI.
+  const { isolationLaneOf } = await import("../../lib/cli.mjs");
+  assert.equal(isolationLaneOf({}), "BEST_EFFORT_CLI");
+  assert.equal(isolationLaneOf({ AOS_ISOLATION: "" }), "BEST_EFFORT_CLI");
+  assert.equal(isolationLaneOf({ AOS_ISOLATION: "BEST_EFFORT_CLI" }), "BEST_EFFORT_CLI");
+  assert.equal(isolationLaneOf({ AOS_ISOLATION: "STRICT" }), "STRICT");
+  for (const wrong of ["strict", "NONE", "Strict ", "1"]) {
+    assert.throws(() => isolationLaneOf({ AOS_ISOLATION: wrong }), { message: /^AOS_ISOLATION_LEVEL_UNKNOWN/u }, wrong);
+  }
+
+  // At the CLI the refusal is classified (exit 2, not 70) and lands before any command runs: the
+  // store is untouched, so nothing was spent under a lane the operator did not name.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-refusals-"));
+  try {
+    const refused = run(cwd, ["init"], 2, { AOS_ISOLATION: "strict" });
+    assert.match(refused.stderr, /AOS_ISOLATION_LEVEL_UNKNOWN "strict"/u);
+    assert.equal(refused.stderr.includes("AOS_INTERNAL_ERROR"), false);
+    assert.equal(existsSync(join(cwd, ".aos")), false);
+    run(cwd, ["init"], 0, { AOS_ISOLATION: "STRICT" });
+    assert.equal(existsSync(join(cwd, ".aos")), true);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
