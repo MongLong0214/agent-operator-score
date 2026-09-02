@@ -84,25 +84,67 @@ test("one agent can complete a controlled assessment", () => {
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
-test("six vendor-neutral aliases share one operator score without agent-count bonus", () => {
-  const cwd = temporary("aos-six-");
+test("six vendor-neutral aliases produce the same numbers as one, with no agent-count bonus", () => {
+  // The name used to promise a comparison the body never made: it ran six agents and asserted the
+  // string "agent_count" was absent from the observations, which a bonus taken from
+  // `run.invocation_count` would leave true. So both runs happen here and their numbers are
+  // compared -- if the count fed anything, one of these two results would differ from the other.
+  const solo = temporary("aos-one-");
+  const six = temporary("aos-six-");
+  const ids = ["codex", "claude", "gemini", "grok", "hermes", "buzz"];
   try {
-    run(cwd, ["init"]);
-    const ids = ["codex", "claude", "gemini", "grok", "hermes", "buzz"];
-    for (const id of ids) addAgent(cwd, id);
-    const routes = Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]));
-    const plan = makePlan(cwd, routes);
-    run(cwd, ["assess", "--plan", plan, "--json"], 3);
-    const result = newestResult(cwd);
-    // Six agents, one score. The count is not an input, and the only way to keep that true is for
-    // nothing in the result to carry it.
-    const record = newestRecord(cwd);
+    run(solo, ["init"]);
+    addAgent(solo, "solo");
+    run(solo, ["assess", "--plan", makePlan(solo, { default: "solo" }), "--json"], 3);
+    const one = newestResult(solo);
+
+    run(six, ["init"]);
+    for (const id of ids) addAgent(six, id);
+    run(six, ["assess", "--plan", makePlan(six, Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]))), "--json"], 3);
+    const many = newestResult(six);
+
+    // The two runs really are one agent and six, and the field a bonus would be drawn from differs.
+    const record = newestRecord(six);
     assert.deepEqual(record.agent_portfolio.used, [...ids].sort());
     assert.equal(record.agent_portfolio.invocations, 6);
-    assert.deepEqual(result.run.agents_used, [...ids].sort());
-    assert.equal(JSON.stringify(result.observations).includes("agent_count"), false);
-    assert.equal(result.observations.filter((entry) => entry.value === 1).length >= 14, true);
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
+    assert.deepEqual(many.run.agents_used, [...ids].sort());
+    assert.deepEqual(one.run.agents_used, ["solo"]);
+    assert.equal(many.run.agents_used.length, 6);
+    assert.equal(one.run.agents_used.length, 1);
+    // The count this test varies is the number of agents. The number of invocations is six in both
+    // runs -- one per family -- which is worth stating rather than leaving a reader to assume this
+    // covers it: what is held here is that six agents earn nothing that one agent does not.
+    assert.equal(many.run.invocation_count, one.run.invocation_count);
+
+    // And every number the instrument issued is the same number.
+    assert.equal(many.system_outcome_profile.index, one.system_outcome_profile.index);
+    assert.equal(many.system_outcome_profile.raw_index, one.system_outcome_profile.raw_index);
+    assert.equal(many.aos_composite.value, one.aos_composite.value);
+    assert.equal(many.operator_process_profile.index, one.operator_process_profile.index);
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(many.system_outcome_profile.domains).map(([id, row]) => [id, row.value])),
+      Object.fromEntries(Object.entries(one.system_outcome_profile.domains).map(([id, row]) => [id, row.value]))
+    );
+    assert.deepEqual(many.operator_process_profile.coverage, one.operator_process_profile.coverage);
+    assert.deepEqual(many.system_outcome_profile.coverage, one.system_outcome_profile.coverage);
+    // What is withheld is withheld for the same reason in both, and what was issued is a number --
+    // so "identical" here is not two blanks compared with each other. An unattended run withholds
+    // the process index, and with it the outcome index and the composite; three of the four outcome
+    // domains are issued at 100 and are what the comparison actually rests on.
+    assert.deepEqual(many.aos_composite.withheld_for, one.aos_composite.withheld_for);
+    assert.deepEqual(many.system_outcome_profile.withheld_for, one.system_outcome_profile.withheld_for);
+    const issuedDomains = (result) => Object.entries(result.system_outcome_profile.domains)
+      .filter(([, row]) => row.status === "ISSUED")
+      .map(([id, row]) => [id, row.value]);
+    assert.equal(issuedDomains(one).length >= 3, true, "the runs issued nothing, so nothing was compared");
+    assert.deepEqual(issuedDomains(many), issuedDomains(one));
+    for (const field of ["agent_count", "invocation_count", "agents_used"]) {
+      assert.equal(JSON.stringify(many.observations).includes(field), false, `${field} reached the observations`);
+    }
+    assert.equal(many.observations.filter((entry) => entry.value === 1).length >= 14, true);
+  } finally {
+    for (const dir of [solo, six]) rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("parallel workers use isolated workspaces and evidence-bound handoffs", () => {

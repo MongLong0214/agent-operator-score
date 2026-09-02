@@ -2672,6 +2672,60 @@ export const GUARDS = [
     test: "tests/product/projection-consistency.test.mjs",
     name: "the CLI report and recover commands serve and regenerate the same rendering of a stored result"
   },
+  {
+    guard: "a digest is what this module produced, not what looks like one",
+    reason: "sixty-four hex characters are not evidence of having been hashed; reading the shape as a marker published an api_credential facet as `sha256:` plus every character of the secret, which is the leak wearing the label of the fix",
+    file: "lib/result-schema.mjs",
+    from: "const DIGEST_TEXT = /^sha256:[0-9a-f]{64}$/u;",
+    to: "const DIGEST_TEXT = /^(?:sha256:)?[0-9a-f]{64}$/u;",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a facet is not normalised into a digest",
+    reason: "normalising every facet value that looked like bare hex is what dressed a caller's secret as a digest; only the two facets this build derives are digests, and the rest go through the gate like any other string",
+    file: "lib/result-schema.mjs",
+    from: "    .map(([facet, value]) => [facet, DERIVED_DIGEST_FACETS.has(facet) ? normalisedDigest(value) : value]));",
+    to: "    .map(([facet, value]) => [facet, normalisedDigest(value)]));",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a named secret is a secret without a digit in it",
+    reason: "the digit was the length floor's heuristic borrowed a layer up, and it drew the line where a passphrase falls on the wrong side: `database password correcthorsebatterystaple` reached the published facets verbatim",
+    file: "lib/result-schema.mjs",
+    from: "const CREDENTIAL_SPACED = new RegExp(`\\\\b${SECRET_WORD}\\\\b\\\\s+[A-Za-z0-9][A-Za-z0-9._/+-]{3,}`, \"iu\");",
+    to: "const CREDENTIAL_SPACED = new RegExp(`\\\\b${SECRET_WORD}\\\\b\\\\s+(?=[A-Za-z0-9][A-Za-z0-9._/+-]*[0-9])[A-Za-z0-9][A-Za-z0-9._/+-]{3,}`, \"iu\");",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a withheld rate keeps the counts that withheld it",
+    reason: "SSOT section 21 withholds the rate below the opportunity floor and keeps the raw counts; dropping them left a metric with too few opportunities indistinguishable from one nobody computed, and took away the evidence for the withholding",
+    file: "lib/result-schema.mjs",
+    from: "      return { value: null, status: row.status, numerator: counted(row.numerator), denominator: counted(row.denominator) };",
+    to: "      return { value: null, status: row.status, numerator: null, denominator: null };",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a metric below the floor withholds its rate and keeps the counts that say why"
+  },
+  {
+    guard: "a metric's status and its value are one state",
+    reason: "the surface-level issuance triple was coupled and the metric one level below it was not, so a withheld metric carrying a zero validated and was rendered as 0.00 with WITHHELD beside it",
+    file: "schemas/aos-result.v2.schema.json",
+    from: "            \"status\": {\n              \"enum\": [\n                \"NOT_COMPUTED\",\n                \"WITHHELD\"\n              ]\n            },\n            \"value\": {\n              \"type\": \"null\"\n            }",
+    to: "            \"status\": {\n              \"enum\": [\n                \"NOT_COMPUTED\",\n                \"WITHHELD\"\n              ]\n            },\n            \"value\": {\n              \"type\": [\"null\", \"number\"]\n            }",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a metric below the floor withholds its rate and keeps the counts that say why"
+  },
+  {
+    guard: "a withheld metric says so rather than reading as uncomputed",
+    reason: "a rate withheld for too few opportunities and a rate nobody computed are different states, and printing both as \"not computed\" hides the one that has evidence behind it -- the row is read off the status, like every other number on this result",
+    file: "lib/result-schema.mjs",
+    from: "      : relianceMetrics[id].status === \"WITHHELD\" ? \"withheld\" : \"not computed\",",
+    to: "      : \"not computed\",",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a metric below the floor withholds its rate and keeps the counts that say why"
+  },
 ];
 
 /**
@@ -2773,11 +2827,15 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
+  "a digest is what this module produced, not what looks like one",
+  "a facet is not normalised into a digest",
   "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
+  "a metric's status and its value are one state",
   "a missed known incident is a regression",
   "a named secret assigned a value is a secret at any length",
+  "a named secret is a secret without a digit in it",
   "a new run is never scored by the old scorer",
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
@@ -2799,6 +2857,8 @@ export const ACCOUNTED_GUARDS = [
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
   "a withheld corpus does not pass",
+  "a withheld metric says so rather than reading as uncomputed",
+  "a withheld rate keeps the counts that withheld it",
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
   "an alias is the node it names",
