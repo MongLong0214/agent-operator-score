@@ -754,10 +754,23 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     writeFileSync(runtime, '#!/usr/bin/env node\nimport { readFileSync, readdirSync } from "node:fs";\nimport { join } from "node:path";\nconst dir = process.env.CODEX_HOME;\nfor (const name of readdirSync(dir)) process.stdout.write(readFileSync(join(dir, name), "utf8"));\n', { mode: 0o755 });
     const staged = await runProcess(
       { id: "codexish", command: runtime, args: [], adapter: "codex-cli.v1" },
-      { workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"), session: "staged-secret-run-2", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome } }
+      {
+        workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"),
+        session: "staged-secret-run-2", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome },
+        // The identity this run is about, supplied rather than read: whether a file under a CI
+        // runner's home is VERIFIED depends on that machine's directory permissions, and this test
+        // is about what happens to a credential once staging has been earned. The refusal above
+        // uses the real describer, so the two halves together cover both answers.
+        identify: (command) => ({
+          identity_status: "VERIFIED",
+          identity_digest: `sha256:${"3".repeat(64)}`,
+          resolved_realpath: command,
+          interpreter_chain: []
+        })
+      }
     );
     assert.equal(staged.confinement.runtime_identity.matches_adapter, true, "the runtime tree was not recognised as this adapter's");
-    assert.deepEqual(staged.confinement.holes[0]?.staged, ["auth.json", "config.toml"], "nothing was staged for the runtime");
+    assert.deepEqual(staged.confinement.holes[0]?.staged, ["auth.json", "config.toml"], `nothing was staged: ${JSON.stringify(staged.confinement.runtime_identity)}`);
     assert.equal(staged.exit_code, 0, staged.stderr_excerpt);
     assert.match(staged.stdout_excerpt, /redacted/u, "the staged credential was printed unredacted");
     assert.equal(JSON.stringify(staged).includes(token), false, "the staged credential reached the public result");
