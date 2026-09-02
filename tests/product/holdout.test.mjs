@@ -18,8 +18,11 @@ import {
   sessionDigestOf
 } from "../../lib/holdout.mjs";
 
-const DIGEST = sessionDigestOf("a session");
-const OTHER = sessionDigestOf("another session");
+// Bytes, not text: `sessionDigestOf` refuses a string outright rather than encoding one, so a
+// caller still handing over decoded text fails at the call site instead of writing a digest of
+// something else.
+const DIGEST = sessionDigestOf(Buffer.from("a session", "utf8"));
+const OTHER = sessionDigestOf(Buffer.from("another session", "utf8"));
 
 const withSession = (over = {}) =>
   recordSession(emptyLedger(), { digest: DIGEST, use: "holdout", reported_status: "COMPLETE", actual_evidence: "COMPLETE", ...over });
@@ -140,7 +143,9 @@ test("a transcript AOS could not read is never a clean bill of health", () => {
   const gate = acceptanceOf(passedOff).gates[1];
   assert.equal(gate.pass, false);
   assert.equal(gate.value, 1);
-  assert.match(gate.detail, new RegExp(DIGEST.slice(0, 12)));
+  // The algorithm label is taken off before the digest is shortened, so the twelve characters
+  // shown still identify the session rather than repeating "sha256:".
+  assert.match(gate.detail, new RegExp(DIGEST.replace(/^sha256:/, "").slice(0, 12)));
 });
 
 test("a tuning session cannot fail or pass the gates", () => {

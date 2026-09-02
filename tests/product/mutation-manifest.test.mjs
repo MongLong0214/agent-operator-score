@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
+import { ACCOUNTED_GUARDS, GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
@@ -54,4 +54,20 @@ test("the manifest covers the named guards and invents none", () => {
   }
   assert.equal(new Set(named).size, named.length, "a guard is listed twice");
   for (const entry of GUARDS) assert.equal(entry.reason.length > 20, true, `${entry.guard} has no stated reason`);
+});
+
+test("every guard in the manifest is accounted for, not only the eleven the specification names", () => {
+  // The floor above protects eleven guards and nothing else, so every guard added since could have
+  // been deleted from GUARDS with the whole suite still green -- the manifest failing at the one
+  // job it has. This is the same question asked about the whole list, and asked in both directions:
+  // a guard that is not accounted for fails, and an accounting entry whose guard has left fails.
+  const named = GUARDS.map((entry) => entry.guard).sort();
+  const accounted = [...ACCOUNTED_GUARDS].sort();
+  const unaccounted = named.filter((name) => !accounted.includes(name));
+  const departed = accounted.filter((name) => !named.includes(name));
+  assert.deepEqual(unaccounted, [], `add these to ACCOUNTED_GUARDS in tests/mutation/manifest.mjs: ${JSON.stringify(unaccounted)}`);
+  assert.deepEqual(departed, [], `these guards left GUARDS; remove them from ACCOUNTED_GUARDS only if that was deliberate: ${JSON.stringify(departed)}`);
+  assert.equal(new Set(accounted).size, accounted.length, "a guard is accounted for twice");
+  // The specification's own list is a subset of the accounting, so the two cannot disagree.
+  for (const required of REQUIRED_GUARDS) assert.equal(accounted.includes(required), true, `${required} is not accounted for`);
 });

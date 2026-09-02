@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { sha256Text, sha256Value } from "../../lib/core.mjs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 import { normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
 import { SUITE_ID, prepareScenario, suiteDigest, suiteManifest } from "../../lib/suite.mjs";
 
@@ -111,12 +112,17 @@ test("the manifest binds the grader, the verifier and the metric contract", () =
   assert.equal(manifest.suite_id, SUITE_ID);
   assert.match(manifest.generator_digest, /^[a-f0-9]{64}$/);
   assert.match(manifest.metric_contract_digest, /^[a-f0-9]{64}$/);
-  assert.match(manifest.verifier_digests["fam5-independent-verifier.v1"], /^[a-f0-9]{64}$/);
+  assert.match(manifest.verifier_digests["fam5-independent-verifier.v1"], /^sha256:[a-f0-9]{64}$/);
 
   // The verifier digest is the verifier's own bytes: editing it moves the manifest whether or not
   // anybody remembered to bump a version.
-  const verifier = readFileSync(new URL("../../lib/verifiers/fam5.mjs", import.meta.url), "utf8");
-  assert.equal(manifest.verifier_digests["fam5-independent-verifier.v1"], sha256Text(verifier.replace(/\r\n/g, "\n")));
+  //
+  // The bytes, not a decoding of them. This used to assert
+  // `sha256Text(verifier.replace(/\r\n/g, "\n"))`, which is the defect stated as a test: under it a
+  // verifier rewritten with CRLF line endings, or carrying one byte the UTF-8 decoder replaces,
+  // hashes to what it hashed before and two runs marked by different code claim the same suite.
+  const verifier = readFileSync(new URL("../../lib/verifiers/fam5.mjs", import.meta.url));
+  assert.equal(manifest.verifier_digests["fam5-independent-verifier.v1"], sha256Bytes(verifier));
 
   // And the fixture this seed actually produces, not just the seed that names it. Binding the label
   // alone would let the generator change what a seed means while the manifest stayed still.

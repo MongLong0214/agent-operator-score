@@ -37,7 +37,8 @@ replaced rather than extended, and named so that the next replacement is visible
 | `gates[0]` (`high-severity precision`) | `precision`, `precision_withheld`, `withheld_reason`, `floor` | the precision gate is gone: below the floor there is no rate to have failed |
 | `gates[1..2]` | `gates` | the two gates that are counts, each with `pass`; the failing ones are also in `violations` |
 
-New in this shape and not derivable from the old one: `decided_sessions`, `floor`
+New in this shape and not derivable from the old one: `legacy_sessions` (rows recorded under the
+pre-byte identity, counted in neither `sessions` nor `tuning_sessions`), `decided_sessions`, `floor`
 (`decided_sessions_required`, `decided_sessions_met`, `abstention_met` among them), `violations`,
 `moved_sessions`, `dataset_digest`.
 
