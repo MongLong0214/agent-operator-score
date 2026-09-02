@@ -64,8 +64,8 @@ export const GUARDS = [
     guard: "cycle search inside strongly connected components",
     reason: "a dense acyclic graph has zero cycles and exponentially many paths, and the search walked all of them",
     file: "lib/execution-plan.mjs",
-    from: "    if (component.length < 2) continue;",
-    to: "    if (false) continue;",
+    from: "  for (const component of stronglyConnected(byNumber)) {",
+    to: "  for (const component of [[...byNumber.keys()]]) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a dense acyclic graph finishes quickly instead of exploring every path"
   },
