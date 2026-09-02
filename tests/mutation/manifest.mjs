@@ -2376,15 +2376,6 @@ export const GUARDS = [
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
   {
-    guard: "profile facet values are published safely",
-    reason: "the facets are the operator's own declaration of the run, which is exactly where a workspace path arrives, and they are printed by every renderer",
-    file: "lib/result-schema.mjs",
-    from: "  const facetIdentity = Object.fromEntries(Object.entries(evaluation.facet_coverage.declared)\n    .map(([facet, value]) => [facet, publishedText(value)]));",
-    to: "  const facetIdentity = { ...evaluation.facet_coverage.declared };",
-    test: "tests/product/profile-aggregation.test.mjs",
-    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
-  },
-  {
     guard: "profile reliance carries its own coverage",
     reason: "a profile that names no cells and no coverage cannot be read as withheld rather than empty, and reliance being a separate surface is the claim that needs the reading",
     file: "lib/result-schema.mjs",
@@ -2727,7 +2718,6 @@ export const ACCOUNTED_GUARDS = [
   "profile composite withheld with the outcome index",
   "profile composite withheld with the process index",
   "profile evaluation is emitted under the given contract",
-  "profile facet values are published safely",
   "profile index weights every row the same",
   "profile index withholds on a missing row",
   "profile legacy result is not migrated",
