@@ -16,69 +16,6 @@
 
 export const GUARDS = [
   {
-    guard: "execution plan cycle detection",
-    reason: "a dependency cycle sends an agent to work that can never be unblocked",
-    file: "lib/execution-plan.mjs",
-    from: "      if (onStack.has(next)) {",
-    to: "      if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "a dependency cycle fails"
-  },
-  {
-    guard: "stale blocked status",
-    reason: "a successor still labelled blocked after its predecessors landed hides available work",
-    file: "lib/execution-plan.mjs",
-    from: 'if (one.status === "blocked" && one.blocked_by.length > 0 && unfinished.length === 0) {',
-    to: "if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "a blocked issue whose predecessors all passed is stale and fails"
-  },
-  {
-    guard: "hot-file single owner",
-    reason: "two primary owners of one surface is how the second merge silently overwrites the first",
-    file: "lib/execution-plan.mjs",
-    from: "      if (owners.has(surface)) {",
-    to: "      if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "two issues owning the same hot file fails"
-  },
-  {
-    guard: "phase-ready scope",
-    reason: "a phase opened while its issue is blocked must not merge the integration the block withholds",
-    file: "lib/execution-plan.mjs",
-    from: 'if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) {',
-    to: "if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
-  },
-  {
-    guard: "close-evidence issue-specific fields",
-    reason: "a closed issue whose own required digests are absent was not shown to be implemented",
-    file: "lib/execution-plan.mjs",
-    from: "    if (absent.length > 0) {",
-    to: "    if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "close evidence missing an issue-specific required field fails"
-  },
-  {
-    guard: "close-evidence verdict",
-    reason: "a record that says HOLD is not a record that says the work passed",
-    file: "lib/execution-plan.mjs",
-    from: 'if (record.verdict !== "PASS") {',
-    to: "if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "close evidence without CI run ids or a PASS verdict is not evidence"
-  },
-  {
-    guard: "trusted-process import prohibition",
-    reason: "a verdict computed in the process that loaded the assessed module is the module's verdict",
-    file: "lib/verifiers/fam5.mjs",
-    from: "  const target = resolveAssessed();",
-    to: "  const target = resolveAssessed(); if (target.path) await import(target.path);",
-    test: "tests/product/verifier-authority.test.mjs",
-    name: "the assessed module never executes in the trusted controller process"
-  },
-  {
     guard: "subject nonce non-disclosure",
     reason: "a subject process holding the nonce can write the verdict line itself",
     file: "lib/verifiers/fam5.mjs",
@@ -140,6 +77,69 @@ export const GUARDS = [
     to: "    results.set(probe.id, results.get(PROBES[0].id) ?? await runProbe(probe, target.path, deadline));",
     test: "tests/product/verifier-authority.test.mjs",
     name: "each probe runs in its own short-lived subject process"
+  },
+  {
+    guard: "execution plan cycle detection",
+    reason: "a dependency cycle sends an agent to work that can never be unblocked",
+    file: "lib/execution-plan.mjs",
+    from: "      if (onStack.has(next)) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a dependency cycle fails"
+  },
+  {
+    guard: "stale blocked status",
+    reason: "a successor still labelled blocked after its predecessors landed hides available work",
+    file: "lib/execution-plan.mjs",
+    from: 'if (one.status === "blocked" && one.blocked_by.length > 0 && unfinished.length === 0) {',
+    to: "if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a blocked issue whose predecessors all passed is stale and fails"
+  },
+  {
+    guard: "hot-file single owner",
+    reason: "two primary owners of one surface is how the second merge silently overwrites the first",
+    file: "lib/execution-plan.mjs",
+    from: "      if (owners.has(surface)) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "two issues owning the same hot file fails"
+  },
+  {
+    guard: "phase-ready scope",
+    reason: "a phase opened while its issue is blocked must not merge the integration the block withholds",
+    file: "lib/execution-plan.mjs",
+    from: 'if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) {',
+    to: "if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
+  },
+  {
+    guard: "close-evidence issue-specific fields",
+    reason: "a closed issue whose own required digests are absent was not shown to be implemented",
+    file: "lib/execution-plan.mjs",
+    from: "    if (absent.length > 0) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "close evidence missing an issue-specific required field fails"
+  },
+  {
+    guard: "close-evidence verdict",
+    reason: "a record that says HOLD is not a record that says the work passed",
+    file: "lib/execution-plan.mjs",
+    from: 'if (record.verdict !== "PASS") {',
+    to: "if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "close evidence without CI run ids or a PASS verdict is not evidence"
+  },
+  {
+    guard: "trusted-process import prohibition",
+    reason: "a verdict computed in the process that loaded the assessed module is the module's verdict",
+    file: "lib/verifiers/fam5.mjs",
+    from: "  const target = resolveAssessed();",
+    to: "  const target = resolveAssessed(); if (target.path) await import(target.path);",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the assessed module never executes in the trusted controller process"
   },
   {
     guard: "verification result check",
