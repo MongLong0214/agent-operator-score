@@ -68,6 +68,10 @@ const contractWithAPopulatedIndex = () => {
     const to = cellById.get(target);
     const moved = from.subcheck_ids.pop();
     from.minimum_opportunities = from.subcheck_ids.length;
+    // The subcheck keeps the family that administers it; what moves is which cell it stands for.
+    const administration = from.subcheck_administered_by.find((entry) => entry.subcheck_id === moved);
+    from.subcheck_administered_by = from.subcheck_administered_by.filter((entry) => entry.subcheck_id !== moved);
+    to.subcheck_administered_by = [administration];
     to.subcheck_ids = [moved];
     to.population_status = "SUBCHECK_BACKED";
     to.scoring_rule_id = "subcheck-mean.v1";
@@ -326,4 +330,70 @@ test("the estimates are deterministic", () => {
   const second = cellEstimates(observations);
   assert.deepEqual(first, second);
   assert.deepEqual(constructEstimates(first), constructEstimates(second));
+});
+
+test("a forged brand and a substituted row are not the objects this module produced", () => {
+  // The first version of this boundary was a Symbol-keyed property and a freeze, and both halves
+  // are forgeable: any caller can mint a Symbol of the same description and define the property,
+  // and a Proxy answers every property read the check performs while substituting what sits
+  // underneath. A review used a branded Proxy to make a below-minimum cell issue a value.
+  const contract = shippedEcdContract();
+  const real = opportunitiesOf(observationsWith({}), contract);
+
+  const forged = [...real];
+  for (const description of ["aos.ecd.derived", "aos.ecd.sealed"]) {
+    Object.defineProperty(forged, Symbol(description), { value: "opportunities:anything", enumerable: false });
+  }
+  assert.throws(() => estimateCell("C1.SB.01", forged, contract), /AOS_UNDERIVED_INPUT/);
+
+  // The Proxy answers for the genuine array and is not it.
+  const substitute = new Proxy(real, {
+    get: (target, key) => (key === "filter" ? () => [{ cell_id: "C1.SB.01", value_0_1: 1, observation_digest: null, verifier_id: null, evidence_ids: [] }] : Reflect.get(target, key))
+  });
+  assert.throws(() => estimateCell("C1.SB.01", substitute, contract), /AOS_UNDERIVED_INPUT/);
+
+  const contractProxy = new Proxy(contract, { get: (target, key) => Reflect.get(target, key) });
+  assert.throws(() => cellEstimates(observationsWith({}), contractProxy), /AOS_UNVERIFIED_CONTRACT/);
+  const forgedContract = { ...loadEcdContract() };
+  Object.defineProperty(forgedContract, Symbol("aos.ecd.sealed"), { value: "sha256:anything", enumerable: false });
+  assert.throws(() => evaluate(observationsWith({}), complete, forgedContract), /AOS_UNVERIFIED_CONTRACT/);
+});
+
+test("an observation this module cannot attribute is refused rather than scored", () => {
+  const good = observationsWith({});
+  // Booleans with a metric id and nobody behind them. The operator-process cells rest on evidence
+  // the assessed agent cannot write, and this was the door: the rows were read field by field off
+  // whatever object arrived.
+  const unattributed = good.map((one) => (one.metric_id === "M11" ? { ...one, verifier_id: null } : one));
+  assert.throws(() => evaluate(unattributed, complete), /AOS_INVALID_OBSERVATIONS.*M11.*verifier/s);
+
+  assert.throws(() => evaluate([...good, good[0]], complete), /AOS_INVALID_OBSERVATIONS.*more than once/s);
+  assert.throws(() => evaluate([{ metric_id: "M99", subchecks: [], state: "NOT_OBSERVED", value: null }], complete), /AOS_INVALID_OBSERVATIONS/);
+  assert.throws(() => evaluate([{ ...good[0], subchecks: good[0].subchecks.slice(0, 2) }], complete), /AOS_INVALID_OBSERVATIONS/);
+  assert.throws(() => evaluate("not an array", complete), /AOS_INVALID_OBSERVATIONS/);
+
+  // A metric nothing in the run spoke to is still allowed, because that is what NOT_OBSERVED is.
+  assert.equal(evaluate([], complete).cells.every((one) => one.status !== "ISSUED"), true);
+});
+
+test("every answered opportunity carries what decided it, and the cell carries what it rests on", () => {
+  const rows = opportunitiesOf(observationsWith({}));
+  const answered = rows.filter((row) => row.verdict !== "NOT_OBSERVED");
+  assert.ok(answered.length > 0);
+  for (const row of answered) {
+    assert.equal(row.verifier_id, "test.v1");
+    assert.match(row.observation_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.ok(typeof row.form_id === "string" && row.form_id.length > 0, row.subcheck_id);
+  }
+  for (const row of rows.filter((one) => one.verdict === "NOT_OBSERVED")) {
+    assert.equal(row.observation_digest, null);
+  }
+
+  const scope = cellEstimates(observationsWith({})).find((one) => one.cell_id === "C1.SB.01");
+  assert.equal(scope.bound_to.length, 1);
+  assert.equal(scope.bound_to[0].verifier_id, "test.v1");
+  assert.match(scope.bound_to[0].observation_digest, /^sha256:[0-9a-f]{64}$/);
+  // The digest moves with the observation, so a rebound claim cannot quote a stale one.
+  const changed = cellEstimates(observationsWith({ M02: false })).find((one) => one.cell_id === "C1.SB.01");
+  assert.notEqual(changed.bound_to[0].observation_digest, scope.bound_to[0].observation_digest);
 });

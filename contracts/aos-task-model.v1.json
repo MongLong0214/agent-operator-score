@@ -33,6 +33,11 @@
       "family": "FAM-1",
       "title": "Framing a delegated contract from a request",
       "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M01",
+        "M02",
+        "M03"
+      ],
       "scored_once_per_cycle": true,
       "construct_opportunity_cell_ids": [
         "C1.GF.01",
@@ -83,6 +88,11 @@
       "family": "FAM-2",
       "title": "Selecting evidence from documents that disagree",
       "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M04",
+        "M05",
+        "M06"
+      ],
       "scored_once_per_cycle": true,
       "construct_opportunity_cell_ids": [
         "C2.CS.01",
@@ -130,13 +140,19 @@
         "tool_count",
         "verbosity"
       ],
-      "declared_opportunity_count": 13
+      "declared_opportunity_count": 12
     },
     {
       "form_id": "FAM-3",
       "family": "FAM-3",
       "title": "Decomposing and routing multi-step work",
       "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M07",
+        "M08",
+        "M09",
+        "M10"
+      ],
       "scored_once_per_cycle": true,
       "construct_opportunity_cell_ids": [
         "C2.DC.01",
@@ -190,26 +206,26 @@
       "family": "FAM-4",
       "title": "Resuming from a checkpoint after an injected failure",
       "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M11",
+        "M12",
+        "M13"
+      ],
       "scored_once_per_cycle": true,
       "construct_opportunity_cell_ids": [
         "C3.ER.01",
         "C4.IQ.01",
         "C4.SR.01",
-        "C4.SR.02",
-        "C5.TC.01"
+        "C4.SR.02"
       ],
-      "shared_opportunity_cell_ids": [
-        "C5.TC.01"
-      ],
+      "shared_opportunity_cell_ids": [],
       "required_cell_ids": [
         "C3.ER.01",
         "C4.IQ.01",
         "C4.SR.01",
         "C4.SR.02"
       ],
-      "optional_cell_ids": [
-        "C5.TC.01"
-      ],
+      "optional_cell_ids": [],
       "required_perturbation": "An injected failure raised as a checkpoint during the run, and a checkpoint carrying a goal, a blocker and evidence",
       "required_oracle": "The checkpoint's goal, blocker, evidence and correlation id are seeded and compared for equality",
       "facets": {
@@ -239,13 +255,19 @@
         "verbosity",
         "wall_clock_speed"
       ],
-      "declared_opportunity_count": 13
+      "declared_opportunity_count": 12
     },
     {
       "form_id": "FAM-5",
       "family": "FAM-5",
       "title": "Fixing code under a hidden verifier and binding the claim to a revision",
       "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M14",
+        "M15",
+        "M16",
+        "M17"
+      ],
       "scored_once_per_cycle": true,
       "construct_opportunity_cell_ids": [
         "C5.FO.01",
@@ -254,9 +276,7 @@
         "C5.CI.01",
         "C5.TC.01"
       ],
-      "shared_opportunity_cell_ids": [
-        "C5.TC.01"
-      ],
+      "shared_opportunity_cell_ids": [],
       "required_cell_ids": [
         "C5.FO.01",
         "C5.IV.01",
@@ -301,6 +321,11 @@
       "family": "FAM-6",
       "title": "Recovering from an incident under least privilege",
       "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M18",
+        "M19",
+        "M20"
+      ],
       "scored_once_per_cycle": true,
       "construct_opportunity_cell_ids": [
         "C4.FD.01",
@@ -350,7 +375,7 @@
         "verbosity",
         "wall_clock_speed"
       ],
-      "declared_opportunity_count": 14
+      "declared_opportunity_count": 12
     }
   ],
   "unadministered_opportunity_sources": [

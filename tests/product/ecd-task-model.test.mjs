@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { checkEcdContract, loadEcdContract } from "../../lib/ecd-contract.mjs";
+import { observeRun } from "../../lib/observe.mjs";
 import { FAMILIES } from "../../lib/suite.mjs";
 
 // verify:task-opportunities
@@ -149,13 +150,16 @@ test("a shortcut prohibition the evidence model does not declare fails", () => {
 
 test("a form's declared opportunity count is derived from its cells, not believed", () => {
   // FAM-1's twelve could have read nine hundred and ninety-nine: nothing checked it. It is also not
-  // a minimum, which is what it used to be called.
+  // a minimum, which is what it used to be called. Counted per subcheck rather than per cell, the
+  // six numbers partition the eighty exactly; counted per cell they summed to eighty-four.
   const contract = loadEcdContract();
-  const byId = new Map(contract.cells.cells.map((one) => [one.cell_id, one]));
   for (const form of contract.task_model.forms) {
-    const derived = form.construct_opportunity_cell_ids.reduce((total, id) => total + byId.get(id).subcheck_ids.length, 0);
+    const derived = contract.cells.cells.reduce((total, cell) =>
+      total + cell.subcheck_administered_by.filter((entry) => entry.form_id === form.form_id).length, 0);
     assert.equal(form.declared_opportunity_count, derived, form.form_id);
   }
+  const total = contract.task_model.forms.reduce((sum, one) => sum + one.declared_opportunity_count, 0);
+  assert.equal(total, contract.cells.declared_subcheck_count);
 
   const doc = clone();
   doc.task_model.forms[0].declared_opportunity_count = 999;
@@ -165,23 +169,111 @@ test("a form's declared opportunity count is derived from its cells, not believe
 });
 
 test("a form that shares a cell with another form says so, because the counts do not partition", () => {
-  // The six counts sum to eighty-four over eighty subchecks: C6.SL.01 is administered by FAM-2 and
-  // FAM-6, C5.TC.01 by FAM-4 and FAM-5. A consumer reading the counts as a partition of the product
-  // double counts five subchecks, and nothing in the file said so.
+  // One cell is administered by two forms: C6.SL.01 holds two of M06's subchecks, which FAM-2
+  // produces, and one of M19's, which FAM-6 produces. The opportunity counts partition because they
+  // are counted per subcheck, but the cell lists still overlap, and a consumer reading those as
+  // disjoint double counts the cell.
   const contract = loadEcdContract();
   const forms = new Map(contract.task_model.forms.map((one) => [one.form_id, one]));
   assert.deepEqual(forms.get("FAM-2").shared_opportunity_cell_ids, ["C6.SL.01"]);
   assert.deepEqual(forms.get("FAM-6").shared_opportunity_cell_ids, ["C6.SL.01"]);
-  assert.deepEqual(forms.get("FAM-4").shared_opportunity_cell_ids, ["C5.TC.01"]);
-  assert.deepEqual(forms.get("FAM-5").shared_opportunity_cell_ids, ["C5.TC.01"]);
+  assert.deepEqual(forms.get("FAM-4").shared_opportunity_cell_ids, []);
+  assert.deepEqual(forms.get("FAM-5").shared_opportunity_cell_ids, []);
   assert.deepEqual(forms.get("FAM-1").shared_opportunity_cell_ids, []);
-  const total = contract.task_model.forms.reduce((sum, one) => sum + one.declared_opportunity_count, 0);
-  assert.equal(total, 84);
-  assert.equal(contract.cells.declared_subcheck_count, 80);
 
   const doc = clone();
   doc.task_model.forms.find((one) => one.form_id === "FAM-2").shared_opportunity_cell_ids = [];
   const report = checkEcdContract(doc);
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("form-shared-cells-undisclosed"), JSON.stringify(checks(report)));
+});
+
+/**
+ * A run in which every family produced something, so every observation names the family that made
+ * it. The values do not matter and mostly fail; what matters is that `lib/observe.mjs` takes the
+ * `build` path for all twenty metrics rather than the `absent` one, which carries no family.
+ */
+const everyFamilyObserved = () => observeRun({
+  artifacts: {
+    contract: { goal: "g" },
+    answer: { port: 1 },
+    plan: { tasks: [{ id: "a", objective: "o", acceptance: "x", route: "r", depends_on: [] }] },
+    resume: { stop_condition: "s" },
+    response: { budget_plan: "local" }
+  },
+  interventions: { observed: true, checkpoints_raised: 1, observations: [{ effective: true, state_change: "resumed" }] },
+  orchestration: { integrity: { observed: true, consumed: 1, unconsumed: 0, "nothing-handed": 0 }, join: { branches: [{}, {}], complete: true } },
+  fam5: { honest: true, artifact_present: true, revision: { available: true, bound: true, clean: true, changed_since: [], named: "abc1234" } },
+  invocations: {}
+});
+
+test("the form that administers a metric is the family lib/observe.mjs attributes it to", () => {
+  // The contract used to guess this from which artifact a metric reads, and got one wrong: C5.TC.01
+  // named FAM-4 as well as FAM-5, because FAM-4 writes the resume file M17 opens. FAM-4's
+  // opportunity count then included a subcheck FAM-4 never administers.
+  const contract = loadEcdContract();
+  const declared = new Map();
+  for (const form of contract.task_model.forms) {
+    for (const metricId of form.administered_metric_ids) declared.set(metricId, form.form_id);
+  }
+
+  const observed = everyFamilyObserved();
+  assert.equal(observed.length, 20);
+  for (const observation of observed) {
+    const family = (observation.evidence_ids ?? []).find((id) => /^FAM-/.test(id));
+    assert.ok(family, `${observation.metric_id} was not attributed to a family by this fixture`);
+    assert.equal(declared.get(observation.metric_id), family, observation.metric_id);
+  }
+
+  // And every subcheck inherits its metric's form, so the six counts partition the eighty.
+  for (const cell of contract.cells.cells) {
+    for (const entry of cell.subcheck_administered_by) {
+      assert.equal(entry.form_id, declared.get(entry.subcheck_id.split(".")[0]), entry.subcheck_id);
+    }
+  }
+});
+
+test("a subcheck attributed to a form that does not administer its metric fails", () => {
+  const doc = clone();
+  const cell = doc.cells.cells.find((one) => one.cell_id === "C5.TC.01");
+  // The defect exactly as it shipped: M17 is FAM-5's, and the cell claimed FAM-4 as well.
+  cell.subcheck_administered_by[0].form_id = "FAM-4";
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("subcheck-administration-wrong-form"), JSON.stringify(checks(report)));
+});
+
+test("a cell naming a form that administers none of its subchecks fails", () => {
+  const doc = clone();
+  const cell = doc.cells.cells.find((one) => one.cell_id === "C5.TC.01");
+  cell.task_opportunity.form_ids = ["FAM-4", "FAM-5"];
+  doc.task_model.forms.find((one) => one.form_id === "FAM-4").construct_opportunity_cell_ids.push("C5.TC.01");
+  doc.task_model.forms.find((one) => one.form_id === "FAM-4").optional_cell_ids.push("C5.TC.01");
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("cell-form-not-administering"), JSON.stringify(checks(report)));
+});
+
+test("a cell that does not say who administers each of its subchecks fails", () => {
+  const doc = clone();
+  const cell = doc.cells.cells.find((one) => one.cell_id === "C1.SB.01");
+  cell.subcheck_administered_by = cell.subcheck_administered_by.slice(1);
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("subcheck-administration-mismatch"));
+});
+
+test("a metric administered by two forms or by none fails", () => {
+  const twice = clone();
+  twice.task_model.forms.find((one) => one.form_id === "FAM-1").administered_metric_ids.push("M20");
+  assert.ok(checks(checkEcdContract(twice)).includes("form-metric-double-administered"));
+
+  const never = clone();
+  const fam6 = never.task_model.forms.find((one) => one.form_id === "FAM-6");
+  fam6.administered_metric_ids = fam6.administered_metric_ids.filter((id) => id !== "M20");
+  assert.ok(checks(checkEcdContract(never)).includes("form-metric-unadministered"));
+
+  const invented = clone();
+  invented.task_model.forms.find((one) => one.form_id === "FAM-1").administered_metric_ids.push("M99");
+  assert.ok(checks(checkEcdContract(invented)).includes("form-metric-unknown"));
 });

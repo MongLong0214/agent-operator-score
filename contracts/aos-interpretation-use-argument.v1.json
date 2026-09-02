@@ -52,10 +52,17 @@
     "status": "PRESENT",
     "modules": [
       "lib/scorer-v1.mjs",
-      "lib/cli.mjs"
+      "lib/cli.mjs",
+      "lib/report.mjs",
+      "lib/report-card.mjs",
+      "lib/dashboard.mjs"
     ],
+    "excluded_modules": [
+      "lib/ecd-contract.mjs"
+    ],
+    "exclusion_statement": "lib/ecd-contract.mjs names the ability categories in order to refuse them and sets band to null on every result it issues. It is excluded by name rather than by a pattern, so the exclusion is one line somebody has to write rather than a gap a rename could open.",
     "owner_issue": 568,
-    "statement": "lib/scorer-v1.mjs assigns an ability category to a legacy v1 result and lib/cli.mjs prints it. Nothing in this contract reads it, produces it or is derived from it, and no cell, construct or index defined here can acquire one. Issue #568 owns its removal. Until then the absence of an ability category is a property of this contract and not of the product, and this artifact says so rather than asserting the wider claim."
+    "statement": "lib/scorer-v1.mjs assigns an ability category to a legacy v1 result and lib/cli.mjs, lib/report.mjs, lib/report-card.mjs and lib/dashboard.mjs render it. Nothing in this contract reads it, produces it or is derived from it, and no cell, construct or index defined here can acquire one. Issue #568 owns its removal. Until then the absence of an ability category is a property of this contract and not of the product, and this artifact lists every module that carries it rather than asserting the wider claim."
   },
   "intended_uses": [
     "local self-diagnosis",
@@ -75,6 +82,15 @@
   ],
   "comparability_rules": [
     {
+      "rule_id": "contract-identity",
+      "facets": [
+        "contract_digest"
+      ],
+      "statement": "Two results scored under different measurement contracts are two instruments. A difference between them may be a difference between the contracts and cannot be read as a difference between the runs.",
+      "status": "ENFORCED",
+      "refusal_reason": "CONTRACT_IDENTITY_DIFFERS"
+    },
+    {
       "rule_id": "invariance-required",
       "facets": [
         "language",
@@ -84,7 +100,8 @@
         "harness"
       ],
       "statement": "Two results whose declared level differs on any of these facets may not be compared directly until measurement-invariance or DIF evidence supports the comparison.",
-      "status": "UNESTABLISHED"
+      "status": "UNESTABLISHED",
+      "refusal_reason": "INVARIANCE_UNESTABLISHED"
     },
     {
       "rule_id": "profile-identity",
@@ -93,9 +110,15 @@
         "occasion"
       ],
       "statement": "Two results from different profiles are two measurements. A difference between them is not a change in the operator.",
-      "status": "ENFORCED"
+      "status": "ENFORCED",
+      "refusal_reason": "PROFILE_IDENTITY_DIFFERS"
     }
   ],
+  "counterfactual_tests": {
+    "count": 5,
+    "file": "tests/product/ecd-aggregation.test.mjs",
+    "name_prefix": "counterfactual:"
+  },
   "inferences": [
     {
       "inference_id": "scoring",
@@ -125,7 +148,7 @@
         {
           "evidence_id": "counterfactual-and-mutation-tests",
           "status": "PASS",
-          "detail": "The six counterfactuals in the contract are tests, and the guards they rest on are in the mutation manifest."
+          "detail": "The counterfactuals in this contract are tests, counted in counterfactual_tests and checked against the file, and the guards they rest on are in the mutation manifest."
         },
         {
           "evidence_id": "raw-byte-evidence",
@@ -175,9 +198,19 @@
       ],
       "evidence": [
         {
-          "evidence_id": "profile-and-contract-identity",
+          "evidence_id": "contract-identity-recorded",
           "status": "PASS",
-          "detail": "The profile digest and the contract digest are recorded with the result."
+          "detail": "The combined contract digest is recorded on every result and is a gated comparability facet, so two results scored under different contracts are refused rather than compared."
+        },
+        {
+          "evidence_id": "profile-identity-recorded",
+          "status": "UNESTABLISHED",
+          "detail": "The result carries a profile_digest field and it is null until a profile is bound to the run. Issue #559 owns the profile shape and its aggregation; this contract emits the slot and does not invent what goes in it."
+        },
+        {
+          "evidence_id": "form-completion-exactly-once",
+          "status": "PASS",
+          "detail": "evaluate refuses a forms_completed list that repeats a form or names one the task model does not declare, so the assumption above is enforced rather than assumed."
         },
         {
           "evidence_id": "form-completion",
@@ -309,7 +342,7 @@
         {
           "evidence_id": "legacy-band-surface-disclosed",
           "status": "FAIL",
-          "detail": "The product as a whole still emits an ability category: lib/scorer-v1.mjs assigns one to a legacy result and lib/cli.mjs prints it. This evidence does not hold at the product level and is recorded as failing rather than scoped away, because the assumption above is only true of what this contract issues."
+          "detail": "The product as a whole still emits an ability category: lib/scorer-v1.mjs assigns one and four modules render it. This evidence does not hold at the product level and is recorded as failing rather than scoped away, because the assumption above is only true of what this contract issues."
         },
         {
           "evidence_id": "forbidden-use-copy",

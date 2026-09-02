@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-observable-cell.v1.schema.json",
   "title": "AOS observable cell registry",
-  "description": "Every scored cell in the AOS evidence-centred design, and the thirteen things a cell has to say before anything may be scored into it.",
+  "description": "Every scored cell in the AOS evidence-centred design, and everything a cell has to say before anything may be scored into it.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "contract_version", "declared_subcheck_count", "cells"],
@@ -23,7 +23,7 @@
         "cell_id", "construct_id", "axis", "title", "claim", "deferred_claim", "observable",
         "task_opportunity", "authority", "rival_explanations", "minimum_opportunities",
         "minimum_opportunities_basis", "minimum_opportunities_source",
-        "scoring_rule_id", "missing_policy", "facet_identity", "subcheck_ids",
+        "scoring_rule_id", "missing_policy", "facet_identity", "subcheck_ids", "subcheck_administered_by",
         "required_for_construct", "credit_bearing", "population_status"
       ],
       "properties": {
@@ -50,9 +50,22 @@
         "missing_policy": { "enum": ["NOT_OBSERVED", "INSUFFICIENT_OPPORTUNITIES", "WITHHELD"] },
         "facet_identity": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
         "subcheck_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^M[0-9]{2}\\.[a-z0-9-]+$" } },
+        "subcheck_administered_by": {
+          "description": "Which single form administers each of this cell's subchecks. Form ownership sits on the subcheck and not on the cell, because a cell can hold subchecks from two metrics that two different families produce; keyed on the cell, the per-form counts stop partitioning the product.",
+          "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/subcheck_administration" }
+        },
         "required_for_construct": { "type": "boolean" },
         "credit_bearing": { "type": "boolean" },
         "population_status": { "enum": ["SUBCHECK_BACKED", "DECLARED_UNPOPULATED"] }
+      }
+    },
+    "subcheck_administration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subcheck_id", "form_id"],
+      "properties": {
+        "subcheck_id": { "type": "string", "pattern": "^M[0-9]{2}\\.[a-z0-9-]+$" },
+        "form_id": { "type": "string", "minLength": 1 }
       }
     },
     "task_opportunity": {

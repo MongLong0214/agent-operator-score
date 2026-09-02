@@ -11,19 +11,21 @@ have produced it, and what happens when it is absent.
 
 | Artifact | File | What it settles |
 |---|---|---|
-| `aos-observable-cell.v1` | `contracts/aos-observable-cells.v1.json` | The 35 cells, each with its thirteen fields and the subchecks it owns, and the pinned count of subchecks the mapping claims |
+| `aos-observable-cell.v1` | `contracts/aos-observable-cells.v1.json` | The 35 cells, the subchecks each owns and the form that administers each of them, and the pinned count of subchecks the mapping claims |
 | `aos-construct-map.v1` | `contracts/aos-construct-map.v1.json` | C1–C7, which cells stand for each on which axis, and the one index |
 | `aos-evidence-model.v1` | `contracts/aos-evidence-model.v1.json` | Axes, authorities, scoring rules, missing policies, facets, prohibited value sources |
 | `aos-task-model.v1` | `contracts/aos-task-model.v1.json` | What each form administers, and which opportunity sources are declared but not administered |
 | `aos-interpretation-use-argument.v1` | `contracts/aos-interpretation-use-argument.v1.json` | Scoring → within-cycle generalization → extrapolation → use, with each link's status |
 
-## The thirteen fields every scored cell carries
+## The fields every scored cell carries
 
 `construct_id`, `axis`, `claim`, `deferred_claim`, `observable`, `task_opportunity`, `authority`,
 `rival_explanations`, `minimum_opportunities`, `minimum_opportunities_basis`,
-`minimum_opportunities_source`, `scoring_rule_id`, `missing_policy`, `facet_identity`. A cell
-missing any of them fails the schema; a cell whose authority the evidence model does not define
-fails `checkEcdContract`.
+`minimum_opportunities_source`, `scoring_rule_id`, `missing_policy`, `facet_identity`.
+
+A cell missing any of them fails the schema; a cell whose authority the evidence model does not
+define fails `checkEcdContract`. The heading used to carry a count and the list under it did not
+match it, so the list is now checked against the schema by a test instead of counted in prose.
 
 Two of those exist because a claim can be wider than the evidence behind it in two different ways.
 
@@ -42,6 +44,15 @@ number with nothing behind it is indistinguishable from a measured one once it i
 claims. It is pinned rather than inferred: duplicate a subcheck name inside one metric and the
 inferred count stays eighty while the distinct count drops to seventy-nine, and every mapping check
 is written over the distinct set.
+
+`subcheck_administered_by` puts form ownership on the subcheck rather than on the cell. A cell can
+hold subchecks two families produce -- `C6.SL.01` holds two of `M06`'s from FAM-2 and one of `M19`'s
+from FAM-6 -- so a form list on the cell says "one of these forms" where a count needs "this one".
+Each form declares `administered_metric_ids`, the verifier requires that the twenty metrics
+partition across the six forms, and a test checks that partition against what `lib/observe.mjs`
+actually attributes to each family. That check found the one error the guess had made: `C5.TC.01`
+named FAM-4 as well as FAM-5, because FAM-4 writes the resume artifact `M17` reads, and FAM-4's
+opportunity count included a subcheck FAM-4 never administers.
 
 ## Four axes, and why there are four
 
@@ -63,7 +74,9 @@ the operator plan is validated and digested but no scored opportunity is derived
 form administers an independent initial judgment, so no reliance opportunity exists at all.
 
 "By construction" is a structural statement and not a description of one call path. There is no
-argument to `processIndex`, and no order of calls, that issues a value from this contract.
+argument to `processIndex`, and no order of calls, that issues a value from this contract -- and
+that now rests on object identity rather than on a property, because a property brand can be forged
+with a `Symbol` and a frozen row can be substituted by a `Proxy`. A review did both.
 
 Two cells rest on the agent's own account of its behaviour with no effect to check it against
 (`C6.PB.01`, `C6.IJ.02`). Both are `credit_bearing: false` and required by nothing. Safety credit
@@ -107,18 +120,27 @@ Every tier-2 function defaults its contract argument to `shippedEcdContract()`, 
 is the short one: `evaluate(observations, context)`.
 
 **The seal.** `sealEcdContract(contract)` runs `checkEcdContract`, and on a failure throws with the
-failure list attached rather than returning it. On success it deep-copies, deep-freezes and brands
+failure list attached rather than returning it. On success it deep-copies, deep-freezes and registers
 the artifacts. A contract that has not been through it cannot reach any of the arithmetic: the
 functions above throw `AOS_UNVERIFIED_CONTRACT`. This is why the boundary is structural and not a
 convention -- the rules in `checkEcdContract` include the one refusing credit to a cell whose only
 authority is the agent's account of itself, and while the steps were exported raw that rule bound
 only callers who chose to run the verifier.
 
+**The capability is the object, not a mark on it.** The first version of this boundary wrote a
+`Symbol`-keyed property onto the sealed contract and onto each derived array. Both halves are
+forgeable: a caller can mint a `Symbol` with the same description and define the property, and a
+`Proxy` answers every property read the check performs while substituting whatever it likes
+underneath. A review used a branded `Proxy` to make a below-minimum cell issue a value, which is a
+release-contract invariant. Membership now lives in module-private `WeakMap`s, so a lookalike has
+nothing to forge and a `Proxy` is a different object from the one that was registered.
+
 **The stages are chained, not composable by hand.** `cellEstimates`, `constructEstimates` and
-`processIndex` brand what they return with the digest of the contract they came from, and each one
-refuses input that does not carry the brand of the same contract (`AOS_UNDERIVED_INPUT`). The rows
-are frozen as well as branded, because a brand alone would let a caller take real estimates, flip a
-`NOT_OBSERVED` to `ISSUED`, and pass them on still carrying a digest they no longer describe.
+`processIndex` register what they return against the contract they came from, and each one refuses
+input that is not the registered value for the same contract (`AOS_UNDERIVED_INPUT`). The rows are
+frozen as well as registered: the freeze stops them being edited in place between the stage that
+produced them and the stage that consumes them, and the registration stops a replacement being
+handed over in their place.
 
 **`estimateCell` takes a cell id, not a cell.** It looks the cell up in the sealed contract. Taking
 the object from the caller meant taking its `credit_bearing`, its minimum and its missing policy
@@ -131,15 +153,35 @@ not in the contract throws `AOS_UNKNOWN_CELL`.
   the artifact rather than inferred.
 - `contractDigests()` returns a digest per artifact plus `combined`, over the canonical form. This
   is what a result quotes.
+- `subcheckMapping()` rows carry `form_id`: the single form that administers that subcheck, not the
+  forms that touch its cell. Ownership sits on the subcheck because a cell can hold subchecks two
+  families produce, and the per-form opportunity counts partition the eighty only when counted this
+  way.
+- `opportunitiesOf(observations)` refuses anything `lib/metrics.mjs` would not call an observation.
+  It runs `validateObservations` and treats every problem as fatal except "absent from the result",
+  which is the case `NOT_OBSERVED` exists for -- so an unknown metric, a duplicate observation, a
+  partially answered metric, or an answer with no `verifier_id` throws `AOS_INVALID_OBSERVATIONS`.
+  Each row then carries `verifier_id`, `evidence_ids` and an `observation_digest`, and each cell
+  estimate carries `bound_to`, the distinct observations it rests on. That is the binding #560 needs;
+  the rows used to arrive stripped of it.
 - `evaluate(observations, context)` takes the observations `lib/observe.mjs` produces. `context`
-  carries `forms_completed` and `facets`; passing any prohibited value source throws
-  `AOS_PROHIBITED_VALUE_SOURCE`. `forms_completed` is a caller's claim, so the result also carries
-  `unsupported_forms`: a form named as completed whose declared cells produced no answer does not
-  support `PROFILE_BOUND`, and the run drops to `RUN_DIAGNOSTIC`.
-- `comparability(left, right)` takes two results from `evaluate` and reads their facets from
-  `facet_coverage.declared`. It refuses a comparison across language, interface, model, runtime or
-  harness until invariance evidence exists, and refuses one where either side declared no facets at
-  all (`FACETS_UNDECLARED`) rather than reading two absences as a match.
+  carries `forms_completed`, `facets` and an optional `profile_digest`; passing any prohibited value
+  source throws `AOS_PROHIBITED_VALUE_SOURCE`. `forms_completed` must name declared forms and may
+  not repeat one (`AOS_UNKNOWN_FORM`, `AOS_DUPLICATE_FORM`) -- "completed exactly once" is an
+  assumption in the interpretation argument and was checked with `.includes`. The result also
+  carries `unsupported_forms`: a form named as completed whose declared cells produced no answer
+  does not support `PROFILE_BOUND`, and the run drops to `RUN_DIAGNOSTIC`. The result is frozen.
+- `comparability(left, right)` takes two results `evaluate` emitted -- anything else throws
+  `AOS_UNEMITTED_RESULT`, because reading the facets off any object let a caller edit the facets a
+  result was scored under and ask again. It enforces **every** declared comparability rule, not the
+  ones with a particular status: the artifact's `ENFORCED` profile-identity rule over `operator` and
+  `occasion` gated nothing while the implementation filtered on `UNESTABLISHED`, so two runs by two
+  different people compared as one measurement. Each rule names its own `refusal_reason`, so the
+  refusals are `CONTRACT_IDENTITY_DIFFERS`, `PROFILE_IDENTITY_DIFFERS` and
+  `INVARIANCE_UNESTABLISHED`, and `FACETS_UNDECLARED` when either side did not declare a gated
+  facet. `contract_digest` is one of those facets and is derived from the contract rather than
+  supplied, so two results scored under different contracts are refused and a caller cannot declare
+  its way past the gate.
 
 ## What this contract does not do
 
@@ -155,8 +197,13 @@ one about the product: `lib/scorer-v1.mjs` still assigns a category to a legacy 
 modules and the issue that owns their removal (#568), and a test fails if the disclosure and the
 source files ever disagree.
 
-It also does not tell you how many opportunities a form is worth as a share of the product. The six
-`declared_opportunity_count` values are derived from the cells each form administers and checked
-against them, and they sum to eighty-four over eighty subchecks, because `C6.SL.01` is administered
-by FAM-2 and FAM-6 and `C5.TC.01` by FAM-4 and FAM-5. Each form names the cells it shares in
-`shared_opportunity_cell_ids`; read as a partition, the six numbers double count five subchecks.
+It does not bind a profile. `evaluate` emits `profile_digest` and it is null until something binds
+one; #559 owns the profile shape and its aggregation, and emitting a digest of something this module
+invented would be worse than emitting nothing. The argument records that as `UNESTABLISHED` rather
+than as passing evidence, which is what it said while only the contract digest was emitted.
+
+The six `declared_opportunity_count` values are derived from the subchecks each form administers and
+checked against them, and they partition the eighty exactly. Counted per cell they summed to
+eighty-four, because `C6.SL.01` holds two of `M06`'s subchecks from FAM-2 and one of `M19`'s from
+FAM-6. The cell lists still overlap there, so each form names the cells it shares in
+`shared_opportunity_cell_ids`: read as disjoint, they double count that cell.

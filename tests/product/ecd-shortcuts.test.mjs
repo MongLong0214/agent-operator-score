@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
-import { checkEcdContract, evaluate, loadEcdContract, opportunitiesOf } from "../../lib/ecd-contract.mjs";
+import { checkEcdContract, evaluate, loadEcdContract, loadEcdSchema, opportunitiesOf } from "../../lib/ecd-contract.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 
 // verify:no-construct-shortcuts
@@ -45,7 +45,16 @@ test("the implemented scoring rule reads a subcheck verdict and nothing else", (
   const rows = opportunitiesOf(allPass());
   for (const row of rows) {
     assert.ok([1, 0, null].includes(row.value_0_1), row.subcheck_id);
-    assert.deepEqual(Object.keys(row).sort(), ["axis", "cell_id", "construct_id", "subcheck_id", "value_0_1", "verdict"]);
+    assert.deepEqual(Object.keys(row).sort(), [
+      "axis", "cell_id", "construct_id", "evidence_ids", "form_id",
+      "observation_digest", "subcheck_id", "value_0_1", "verdict", "verifier_id"
+    ]);
+    // The fields added since carry provenance, not quantity. Nothing on a row is a number a
+    // scoring rule could reach for except the verdict's own value.
+    for (const key of PROHIBITED) assert.equal(Object.hasOwn(row, key), false, key);
+    for (const [key, value] of Object.entries(row)) {
+      if (key !== "value_0_1") assert.notEqual(typeof value, "number", key);
+    }
   }
 });
 
@@ -178,4 +187,49 @@ test("putting an ability band into the contract fails", () => {
   const report = checkEcdContract(doc);
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("band-vocabulary"));
+});
+
+test("every module that carries the legacy ability category is declared, not only the declared ones", () => {
+  // The first version of this test proved that every declared module contains the word, which is
+  // the easy direction: removing lib/cli.mjs from the disclosure passed it while the CLI still
+  // printed a band. Three more modules render one, and none of them was listed.
+  const use = loadEcdContract().interpretation_use;
+  const declared = new Set(use.legacy_band_surface.modules);
+  const excluded = new Set(use.legacy_band_surface.excluded_modules);
+  const root = new URL("../../lib/", import.meta.url);
+
+  const carriers = readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".mjs"))
+    .map((entry) => `lib/${entry.name}`)
+    .filter((path) => /\bband\b/i.test(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")));
+
+  for (const path of carriers) {
+    assert.ok(declared.has(path) || excluded.has(path), `${path} names an ability category and is in neither list`);
+  }
+  for (const path of declared) {
+    assert.ok(/\bband\b/i.test(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8")), `${path} is declared as carrying a band and does not`);
+    assert.equal(excluded.has(path), false, path);
+  }
+  // The exclusion has to earn itself: a module excluded from the disclosure may not assign one.
+  for (const path of excluded) {
+    const source = readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+    assert.ok(carriers.includes(path), `${path} is excluded from a list it does not belong to`);
+    for (const match of source.matchAll(/\bband\s*:\s*([A-Za-z0-9_."'`]+)/g)) {
+      assert.equal(match[1], "null", `${path} assigns ${match[1]} to a band`);
+    }
+  }
+});
+
+test("the documented cell fields are the fields the schema requires", () => {
+  // The heading used to carry a number and the list under it did not match it. A count nobody
+  // checks is a claim nobody checks, so the list is checked against the schema instead.
+  const doc = readFileSync(new URL("../../docs/ECD_CONTRACT.md", import.meta.url), "utf8");
+  const section = doc.split("## The fields every scored cell carries")[1];
+  assert.ok(section, "the documented field list is gone");
+  const listed = new Set([...section.split("\n\n")[1].matchAll(/`([a-z_]+)`/g)].map((match) => match[1]));
+
+  const required = loadEcdSchema("cells").$defs.cell.required;
+  // The structural fields are what a cell *is*; the rest are what it has to say.
+  const structural = ["cell_id", "title", "subcheck_ids", "subcheck_administered_by", "required_for_construct", "credit_bearing", "population_status"];
+  assert.deepEqual([...listed].sort(), required.filter((field) => !structural.includes(field)).sort());
 });

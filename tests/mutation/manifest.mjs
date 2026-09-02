@@ -16,11 +16,128 @@
 
 export const GUARDS = [
   {
+    guard: "ECD capabilities are identity, not a property",
+    reason: "a Symbol-keyed brand can be forged and a Proxy answers every property read the check performs, and a review used a branded Proxy to make a below-minimum cell issue a value",
+    file: "lib/ecd-contract.mjs",
+    from: "  const frozen = deepFreeze(rows);\n  derivedFrom.set(frozen, `${kind}:${digest}`);",
+    to: "  const frozen = deepFreeze(rows);\n  Object.defineProperty(frozen, Symbol.for(\"aos.ecd.derived\"), { value: `${kind}:${digest}` });",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a forged brand and a substituted row are not the objects this module produced"
+  },
+  {
+    guard: "ECD observations are what lib/metrics.mjs says they are",
+    reason: "the rows were read field by field off whatever object arrived, so unattributed booleans with a metric id populated the operator-process cells whose whole claim is that the assessed agent cannot write them",
+    file: "lib/ecd-contract.mjs",
+    from: '  const problems = validateObservations(observations).filter((entry) => entry.reason !== "absent from the result");',
+    to: "  const problems = [];",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "an observation this module cannot attribute is refused rather than scored"
+  },
+  {
+    guard: "ECD opportunities carry what decided them",
+    reason: "an opportunity whose verifier and evidence were dropped on the way in is an opportunity nothing downstream can bind a claim to",
+    file: "lib/ecd-contract.mjs",
+    from: '      observation_digest: `sha256:${createHash("sha256").update(canonicalJson(normalised)).digest("hex")}`',
+    to: '      observation_digest: "sha256:0"',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "every answered opportunity carries what decided it, and the cell carries what it rests on"
+  },
+  {
+    guard: "ECD comparability enforces every declared rule",
+    reason: "filtering on UNESTABLISHED meant the one rule the contract says it enforces enforced nothing, and two runs by two different operators compared as one measurement",
+    file: "lib/ecd-contract.mjs",
+    from: "  const broken = rules",
+    to: '  const broken = rules.filter((rule) => rule.status === "UNESTABLISHED")',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "every declared comparability rule is enforced, not only the ones with no invariance evidence"
+  },
+  {
+    guard: "ECD comparability compares emitted results",
+    reason: "an unfrozen result read as a plain object let a caller edit the facets it was scored under and turn a refusal into a comparison",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (!emittedResults.has(side)) throw new Error(`AOS_UNEMITTED_RESULT comparability compares results from evaluate; the ${name} argument is not one`);",
+    to: "    if (false) throw new Error(`AOS_UNEMITTED_RESULT ${name}`);",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a result is frozen, so the facets it was scored under are the facets it is compared on"
+  },
+  {
+    guard: "ECD contract identity is derived, not declared",
+    reason: "a facet the caller can set is a gate the caller can open, and results from two different contracts compared true whenever their other facets matched",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (Object.hasOwn(declaredFacets, "contract_digest")) {',
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "two results scored under different contracts are two instruments and are not compared"
+  },
+  {
+    guard: "ECD artifact versions are exact",
+    reason: "the schemas ask for a semantic version rather than this one, so four artifacts at 1.0.0 and one at 9.9.9 verified and every result then quoted the module's hard-coded version",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (contract[key].contract_version !== ECD_CONTRACT_VERSION) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "an artifact at a version this module does not issue fails"
+  },
+  {
+    guard: "ECD claim stages are the three this module scores",
+    reason: "minItems 3 is not three distinct stages, so three PROFILE_BOUND clones sealed and evaluate then read a definition off a stage it could not find",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (canonicalJson(stageIds) !== canonicalJson([...CLAIM_STAGES])) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a claim-stage list that is not the three stages fails rather than crashing the scorer"
+  },
+  {
+    guard: "ECD subcheck ownership follows the administering form",
+    reason: "form ownership guessed from which artifact a metric reads put C5.TC.01 on FAM-4 as well as FAM-5, and FAM-4's opportunity count then included a subcheck FAM-4 never administers",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (administering !== undefined && administering !== formId) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a subcheck attributed to a form that does not administer its metric fails"
+  },
+  {
+    guard: "ECD a cell names only forms that administer its subchecks",
+    reason: "a cell listing a form that administers none of its subchecks claims an opportunity that form never creates",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (canonicalJson([...cell.task_opportunity.form_ids].sort()) !== canonicalJson(administeringForms)) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a cell naming a form that administers none of its subchecks fails"
+  },
+  {
+    guard: "ECD every metric is administered exactly once",
+    reason: "a metric administered by two forms or by none makes the per-form opportunity counts stop partitioning the eighty subchecks",
+    file: "lib/ecd-contract.mjs",
+    from: '      else if (formOfMetric.has(metricId)) fail("form-metric-double-administered"',
+    to: '      else if (false) fail("form-metric-double-administered"',
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a metric administered by two forms or by none fails"
+  },
+  {
+    guard: "ECD a locked form is completed exactly once",
+    reason: "completion was checked with includes, which a list naming one form six times satisfies, against an assumption in the artifact that says exactly once",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (new Set(completed).size !== completed.length) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a form named twice or named at all without being declared is refused"
+  },
+  {
+    guard: "ECD comparability rules gate declared facets",
+    reason: "a rule naming a facet no result declares compares undefined with undefined and gates nothing, which is how an ENFORCED rule sat in the artifact enforcing nothing",
+    file: "lib/ecd-contract.mjs",
+    from: '      if (!facetIds.has(facet)) fail("comparability-facet-unknown"',
+    to: '      if (false) fail("comparability-facet-unknown"',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a comparability rule that gates an undeclared facet or contradicts its status fails"
+  },
+  {
     guard: "ECD contract seal required before an estimate",
     reason: "the aggregation steps were exported raw, so every rule in checkEcdContract -- including the one refusing credit to an agent's account of itself -- was advisory to any caller who did not run the verifier",
     file: "lib/ecd-contract.mjs",
-    from: '  if (contract !== null && typeof contract === "object" && typeof contract[SEALED] === "string") return contract[SEALED];',
-    to: '  if (true) return "";',
+    from: "  const digest = sealedContracts.get(contract);",
+    to: '  const digest = sealedContracts.get(contract) ?? "";',
     test: "tests/product/ecd-aggregation.test.mjs",
     name: "no estimate can be produced from a contract nobody checked"
   },
@@ -28,17 +145,17 @@ export const GUARDS = [
     guard: "ECD derived rows only",
     reason: "six construct rows written by hand issued a process index of 0.75 against a contract that documents the index as withheld by construction",
     file: "lib/ecd-contract.mjs",
-    from: '  if (rows !== null && typeof rows === "object" && rows[DERIVED] === `${kind}:${digest}`) return rows;',
+    from: '  if (derivedFrom.get(rows) === `${kind}:${digest}`) return rows;',
     to: "  if (true) return rows;",
     test: "tests/product/ecd-aggregation.test.mjs",
     name: "the process index refuses construct rows a caller assembled"
   },
   {
     guard: "ECD derived rows are frozen",
-    reason: "a brand without a freeze lets a caller take real estimates, flip a NOT_OBSERVED to ISSUED and pass them on still carrying the digest of the contract they no longer describe",
+    reason: "registration without a freeze lets a caller take real estimates, flip a NOT_OBSERVED to ISSUED and pass them on as the rows that were registered",
     file: "lib/ecd-contract.mjs",
-    from: "  return deepFreeze(rows);",
-    to: "  return rows;",
+    from: "  const frozen = deepFreeze(rows);",
+    to: "  const frozen = rows;",
     test: "tests/product/ecd-aggregation.test.mjs",
     name: "derived rows cannot be edited between the stages that produce and consume them"
   },
@@ -62,10 +179,10 @@ export const GUARDS = [
   },
   {
     guard: "ECD comparability reads the emitted facet identity",
-    reason: "the gates were read off the top level of the input while evaluate puts the facets under facet_coverage.declared, so two real results on different models and different languages compared as the same measurement",
+    reason: "the gates were read off the top level of the input while evaluate puts the facets under facet_coverage.declared, so two real results on different models and languages compared as one measurement",
     file: "lib/ecd-contract.mjs",
-    from: "    const declared = side?.facet_coverage?.declared;",
-    to: "    const declared = side;",
+    from: "  const sides = { left: left.facet_coverage.declared, right: right.facet_coverage.declared };",
+    to: "  const sides = { left, right };",
     test: "tests/product/ecd-interpretation-use.test.mjs",
     name: "two results differing only in language or interface may not be compared"
   },
@@ -73,8 +190,8 @@ export const GUARDS = [
     guard: "ECD comparability refuses an undeclared facet",
     reason: "every gate in the function is an inequality, so a facet that is absent on both sides read as a facet that matches and comparability({}, {}) returned true",
     file: "lib/ecd-contract.mjs",
-    from: "  if (undeclared.length > 0) {",
-    to: "  if (false) {",
+    from: '  if (missing.length > 0) return deepFreeze({ comparable: false, reason: "FACETS_UNDECLARED", facets: missing, rules: [], undeclared_sides: [] });',
+    to: '  if (false) return deepFreeze({ comparable: false, reason: "FACETS_UNDECLARED", facets: missing, rules: [], undeclared_sides: [] });',
     test: "tests/product/ecd-interpretation-use.test.mjs",
     name: "a comparison whose facets nobody declared is refused rather than allowed by default"
   },

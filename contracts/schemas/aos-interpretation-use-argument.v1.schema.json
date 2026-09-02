@@ -8,7 +8,8 @@
   "required": [
     "schema", "contract_version", "claim_stages", "default_claim_stage", "maximum_claim_stage",
     "generalizability_status", "standard_setting", "categories", "cut_scores", "legacy_band_surface",
-    "intended_uses", "forbidden_uses", "comparability_rules", "inferences", "validation_registry", "release_note"
+    "intended_uses", "forbidden_uses", "comparability_rules", "counterfactual_tests",
+    "inferences", "validation_registry", "release_note"
   ],
   "properties": {
     "schema": { "const": "aos-interpretation-use-argument.v1" },
@@ -24,10 +25,15 @@
       "description": "The ability category the rest of the product still emits, and which modules carry it. This contract issues none; asserting that as a property of the product rather than of the contract was false, so the artifact discloses the surface instead.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "modules", "owner_issue", "statement"],
+      "required": ["status", "modules", "excluded_modules", "exclusion_statement", "owner_issue", "statement"],
       "properties": {
         "status": { "enum": ["PRESENT", "REMOVED"] },
         "modules": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
+        "excluded_modules": {
+          "description": "Modules that name an ability category in order to refuse it. Listed by name so that the direction the test could not check -- every module that carries a band is declared -- has no pattern-shaped hole in it.",
+          "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 3 }
+        },
+        "exclusion_statement": { "type": "string", "minLength": 20 },
         "owner_issue": { "type": "integer", "minimum": 1 },
         "statement": { "type": "string", "minLength": 20 }
       }
@@ -35,6 +41,17 @@
     "intended_uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 5 } },
     "forbidden_uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 5 } },
     "comparability_rules": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/comparability" } },
+    "counterfactual_tests": {
+      "description": "How many counterfactual tests this contract claims and where they are, so the claim is counted against the file rather than written in prose.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "file", "name_prefix"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "file": { "type": "string", "minLength": 5 },
+        "name_prefix": { "type": "string", "minLength": 3 }
+      }
+    },
     "inferences": { "type": "array", "minItems": 4, "items": { "$ref": "#/$defs/inference" } },
     "validation_registry": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/registry_entry" } },
     "release_note": { "type": "string", "minLength": 20 }
@@ -54,12 +71,16 @@
     "comparability": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rule_id", "facets", "statement", "status"],
+      "required": ["rule_id", "facets", "statement", "status", "refusal_reason"],
       "properties": {
         "rule_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
         "facets": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
         "statement": { "type": "string", "minLength": 20 },
-        "status": { "enum": ["UNESTABLISHED", "ENFORCED"] }
+        "status": { "enum": ["UNESTABLISHED", "ENFORCED"] },
+        "refusal_reason": {
+          "description": "What comparability() reports when this rule's facets differ. Named in the artifact so the implementation is driven by the declared rules rather than by a status the code happens to recognise -- an ENFORCED rule the code did not look at is a rule that enforced nothing.",
+          "enum": ["CONTRACT_IDENTITY_DIFFERS", "PROFILE_IDENTITY_DIFFERS", "INVARIANCE_UNESTABLISHED"]
+        }
       }
     },
     "inference": {

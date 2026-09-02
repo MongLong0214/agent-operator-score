@@ -447,6 +447,12 @@
       "definition": "The operator's prior familiarity with the domain of the form.",
       "levels_observed_per_cycle": null,
       "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "contract_digest",
+      "definition": "The measurement contract the result was scored under, as its combined digest. A result scored under a different contract was produced by a different instrument, so it is a facet of the measurement and not a property of the operator.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
     }
   ],
   "minimum_opportunity_bases": [

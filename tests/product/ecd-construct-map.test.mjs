@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   ARTIFACT_KEYS,
+  ECD_CONTRACT_VERSION,
   checkEcdContract,
   contractDigests,
   declaredSubcheckIds,
@@ -195,4 +196,20 @@ test("a contract that pins a subcheck cardinality the product does not have fail
   assert.equal(shipped.cells.declared_subcheck_count, 80);
   assert.equal(new Set(declaredSubcheckIds()).size, 80);
   assert.equal(subcheckMapping().length, 80);
+});
+
+test("an artifact at a version this module does not issue fails", () => {
+  // The schemas ask for a semantic version, not for this one, so four artifacts at 1.0.0 and one at
+  // 9.9.9 verified and sealed. Every result then quoted the module's hard-coded version and
+  // described a mixed contract as a coherent one.
+  for (const key of ARTIFACT_KEYS) {
+    const doc = clone();
+    doc[key].contract_version = "9.9.9";
+    const report = checkEcdContract(doc);
+    assert.equal(report.ok, false, key);
+    assert.ok(checks(report).includes("artifact-version-mismatch"), key);
+  }
+  for (const key of ARTIFACT_KEYS) {
+    assert.equal(loadEcdContract()[key].contract_version, ECD_CONTRACT_VERSION, key);
+  }
 });
