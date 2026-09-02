@@ -554,6 +554,20 @@ test("a profile result that lost a surface, a row or a status it can read is ref
     // The row and the evidence that it was expected, removed together: the stored object cannot be
     // its own authority on what it should contain, so the contract's declaration is what is checked.
     ["a construct row and its weight are gone together", /AOS_RESULT_INCOMPLETE/, (r) => { delete r.operator_process_profile.constructs.C1; delete r.operator_process_profile.weights.C1; }],
+    // A member of a row, not the row: every field keeps its shape, the arithmetic over what is left
+    // agrees with itself, the coverage still reads full, and a required cell has left the artifact.
+    // This is the deletion the row-set check could not see, so the cells are held to the contract too.
+    ["a domain lost one of the cells it averages", /AOS_RESULT_INCOMPLETE/, (r) => {
+      r.system_outcome_profile.domains.O1.required_cells = r.system_outcome_profile.domains.O1.required_cells.slice(0, 1);
+      r.system_outcome_profile.domains.O1.cells = r.system_outcome_profile.domains.O1.cells.slice(0, 1);
+    }],
+    ["a domain averages a cell it does not require", /AOS_RESULT_INCOMPLETE/, (r) => {
+      r.system_outcome_profile.domains.O1.cells = r.system_outcome_profile.domains.O1.cells.slice(0, 1);
+    }],
+    ["a construct lost a required cell", /AOS_RESULT_INCOMPLETE/, (r) => {
+      r.aos_composite.delegated_artifact.constructs.C1.required_cells = r.aos_composite.delegated_artifact.constructs.C1.required_cells.slice(1);
+    }],
+    ["the cells the contract declared for each row are gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.contract.declared.declared_cells],
     ["a domain row and its weight are gone together", /AOS_RESULT_INCOMPLETE/, (r) => { delete r.system_outcome_profile.domains.O2; delete r.system_outcome_profile.weights.O2; }],
     // A weighting this instrument does not perform: every value is a legal weight and no row is
     // missing, so only the arithmetic says it is wrong.
@@ -661,6 +675,9 @@ test("no credential shape and no absolute path reaches the canonical result thro
     // Sixty-four hex characters are not evidence of having been hashed. This one was published as
     // `sha256:` plus itself -- the marker of a digest in front of every character of the secret.
     bare_hex_secret: "a".repeat(64),
+    // And the same secret with this module's own marker typed in front of it. Provenance cannot be
+    // read off a string: only a value this module boxed on its way through is one it produced.
+    marked_hex_secret: `sha256:${"a".repeat(64)}`,
     path_after_colon: "workspace:/Users/alice/private/customer.txt",
     spaced_secret_and_path: "database password hunter2; workspace:/Users/alice/private/customer.txt"
   };
@@ -714,6 +731,7 @@ test("no credential shape and no absolute path reaches the canonical result thro
     // A digest of the value, not the value wearing a digest's clothes. `sha256:` + the same
     // sixty-four characters passed every check above and published the secret in full.
     assert.equal(carried.endsWith(value), false, `${name} was prefixed rather than hashed`);
+    assert.equal(carried.includes(value.replace(/^sha256:/u, "")), false, `${name} was published with its own characters intact`);
   }
   // And the safe values a run legitimately carries are untouched, so redaction is not a way of
   // losing the record: an id with hyphens, a suite name, a digest, and ordinary prose.
