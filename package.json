@@ -16,7 +16,8 @@
     "verify:known-incident-corpus": "node --test tests/product/known-incident-corpus.test.mjs",
     "verify:no-raw-holdout-data": "node --test tests/product/no-raw-holdout-data.test.mjs",
     "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
-    "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json"
+    "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
+    "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
     "aos": "./bin/aos.mjs"
@@ -29,13 +30,15 @@
     "governance/",
     "schemas/",
     "scripts/",
+    "fixtures/execution-plan/",
     "README.md",
     "README.ko.md",
     "README.ja.md",
     "README.zh-CN.md",
     "LICENSE",
     "SECURITY.md",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "fixtures/attacks/"
   ],
   "os": [
     "darwin",

