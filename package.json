@@ -33,6 +33,7 @@
     "contracts/",
     "lib/",
     "fixtures/known-incidents/",
+    "fixtures/scoring/",
     "docs/",
     "governance/",
     "schemas/",
