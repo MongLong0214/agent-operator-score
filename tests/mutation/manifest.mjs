@@ -382,7 +382,7 @@ export const GUARDS = [
     // `resolved: null` was not enough: isolation then stripped the token on its own and only the
     // "child never starts" half of the name was exercised. This mutant carries the operator's own
     // variable through, which is what the refusal is actually preventing.
-    from: "const { resolved: resolvedAuth, verdict: identityVerdict } = resolveRuntimeAuthForAgent(spec, adapterFor(spec), {});",
+    from: "const { resolved: resolvedAuth, verdict: identityVerdict } = resolveRuntimeAuthForAgent(spec, adapter, {});",
     to: 'const { resolved: resolvedAuth, verdict: identityVerdict } = { resolved: { name: "CLAUDE_CODE_OAUTH_TOKEN", value: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? "", source: "environment" }, verdict: { ok: true, identity: null } };',
     test: "tests/product/runtime-identity.test.mjs",
     name: "an operator's own token does not reach a binary whose identity failed, and the child never starts"

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +9,7 @@ import { ENV_POLICY_SCHEMA, HARD_FORBIDDEN_CLASSES, RUN_METADATA_ENV, TRANSPORT_
 import { buildAgentEnv, isSensitiveName, isolationRecord } from "../../lib/isolation.mjs";
 import { ADAPTERS, buildProfile } from "../../lib/profile.mjs";
 import { runProcess } from "../../lib/core.mjs";
+import { describeExecutable } from "../../lib/runtime-identity.mjs";
 import { addAgent, cli, initBare, makePlan, newestResult, run } from "./helpers.mjs";
 
 /**
@@ -483,12 +484,22 @@ test("a run whose auto-auth found a credential reports a digest the profile coul
   //
   // The resolver's first branch is the operator's own environment variable, so no Keychain is
   // touched and the test does not depend on this machine having a login.
-  const agent = { adapter: "claude-code.v1", runtime_auth_env_names: [] };
-  const declared = buildProfile({ agent: { ...agent, id: "cc", command: process.execPath, args: [] }, probe: () => null });
+  //
+  // #554 hands an automatic credential only to the adapter's own binary, identified at registration,
+  // so the command is a `claude` in a private directory that execs this node, and the agent carries
+  // the identity registration would have recorded for it. Without both the resolver stops before
+  // the policy is ever built -- its job, and not what this test is about.
+  const runtimeDir = mkdtempSync(join(tmpdir(), "aos-envpolicy-runtime-"));
+  const claude = join(runtimeDir, "claude");
+  writeFileSync(claude, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} "$@"\n`, "utf8");
+  chmodSync(claude, 0o755);
+  const identity = describeExecutable(claude, { adapterId: "claude-code.v1" });
+  const agent = { adapter: "claude-code.v1", runtime_auth_env_names: [], runtime_identity: identity, command: claude };
+  const declared = buildProfile({ agent: { ...agent, id: "cc", args: [] }, probe: () => null });
 
   const { result, seen, cleanup } = await spawnAndReadEnv(
     { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-notarealtokenforthistest" },
-    { adapter: "claude-code.v1" }
+    agent
   );
   try {
     assert.equal(result.exit_code, 0, result.error ?? "");
@@ -508,7 +519,7 @@ test("a run whose auto-auth found a credential reports a digest the profile coul
   // And with automatic resolution switched off, the run carries what the profile predicted.
   const off = await spawnAndReadEnv(
     { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-notarealtokenforthistest" },
-    { adapter: "claude-code.v1", auto_runtime_auth: false }
+    { ...agent, auto_runtime_auth: false }
   );
   try {
     assert.deepEqual(off.result.isolation.runtime_auth_env_names, []);
@@ -516,6 +527,7 @@ test("a run whose auto-auth found a credential reports a digest the profile coul
     assert.equal(off.result.isolation.env_policy_digest, declared.env_policy_digest);
   } finally {
     off.cleanup();
+    rmSync(runtimeDir, { recursive: true, force: true });
   }
 });
 
