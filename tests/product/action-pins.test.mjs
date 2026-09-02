@@ -154,13 +154,17 @@ test("this repository has no mutable action reference anywhere", () => {
   assert.equal(report.ok, true);
 });
 
-test("discovery finds workflows by shape, and skips only .git", () => {
+test("discovery finds workflows by shape, and skips .git and symlinks", () => {
   const dir = sandbox({
     ".github/workflows/a.yml": workflow("./x"),
     ".github/workflows/nested/b.yaml": workflow("./x"),
     "sub/action.yaml": "runs:\n  using: composite\n",
     // Not excluded. A workflow saying `uses: ./dist` runs dist/action.yml, and skipping a directory
     // by name is skipping the place someone would put it.
+    //
+    // The nested file is scanned even though GitHub only runs workflows sitting directly in
+    // `.github/workflows`. Scanning one GitHub ignores costs nothing; missing one it runs is the
+    // failure this exists to prevent, and the same shape is a composite action's home too.
     "dist/action.yml": "runs:\n  using: composite\n",
     "node_modules/pkg/action.yml": "runs:\n  using: composite\n",
     ".git/hooks/action.yml": "runs:\n  using: composite\n",
@@ -360,9 +364,12 @@ test("the uses spellings GitHub honours are seen, escapes included, and inert te
   for (const seen of ["attacker/evil@main", "attacker/escaped@main", "attacker/continued@main", "attacker/flow@main", "attacker/anchored@main"]) {
     assert.ok(refs.includes(seen), `${seen} was invisible to the scanner`);
   }
-  // An alias and an expression cannot be resolved here, so they are refusals rather than passes.
-  assert.equal(found.filter((one) => one.form === "anchor").length, 1);
+  // An alias is the node it names, so `uses: *anchored` here points at a mapping -- which is not an
+  // action reference GitHub would run, and is refused rather than passed. An expression names an
+  // action chosen at run time, which no offline check can resolve, and is refused too.
+  assert.equal(found.filter((one) => one.form === "unrecognised").length, 1);
   assert.equal(found.filter((one) => one.form === "expression").length, 1);
+  assert.equal(found.filter((one) => one.raw === null).length, 2);
   // Neither of the two inert ones is an action anyone runs, and reporting them would teach people
   // to ignore this check.
   assert.equal(refs.includes("attacker/inert@main"), false);
@@ -481,12 +488,20 @@ test("a directory the scan cannot read is reported, not skipped", () => {
 test("the supply-chain digest covers the policy that decides what passes", () => {
   const policy = loadPolicy();
   const before = scanActionPins(root, policy);
-  const widened = { ...policy, reviewed_actions: [...policy.reviewed_actions, "someone/else"] };
-  const after = scanActionPins(root, widened);
-  // Hashing only the workflows left reviewed_actions and the permission baseline free to change
-  // while the digest stayed identical.
-  assert.equal(before.workflow_digest, after.workflow_digest);
-  assert.notEqual(before.supply_chain_digest, after.supply_chain_digest);
+  // Every part of the policy, not one of them: the claim is that the digest covers what decides
+  // the outcome, and the reviewed list, the permission baseline and the pattern a version comment
+  // has to match all decide it.
+  const changed = [
+    { ...policy, reviewed_actions: [...policy.reviewed_actions, "someone/else"] },
+    { ...policy, workflow_permissions: { ...policy.workflow_permissions, ".github/workflows/other.yml": { workflow: null, jobs: {} } } },
+    { ...policy, version_comment_pattern: "^.*$" }
+  ];
+  for (const one of changed) {
+    const after = scanActionPins(root, one);
+    // Hashing only the workflows left all three free to change while the digest stayed identical.
+    assert.equal(before.workflow_digest, after.workflow_digest);
+    assert.notEqual(before.supply_chain_digest, after.supply_chain_digest, JSON.stringify(Object.keys(one)));
+  }
 });
 
 test("every other job in this workflow waits for the pin check, and none overrides it", () => {
@@ -494,13 +509,17 @@ test("every other job in this workflow waits for the pin check, and none overrid
   // skip a failed dependency would otherwise cause, so a job can name the gate and still run after
   // it goes red -- and a job in a *separate* workflow cannot name it at all. What is checkable here
   // is a property of this file: every job waits, and none of them opts out of waiting.
-  const OVERRIDE = /always\s*\(|failure\s*\(|cancelled\s*\(/;
+  // Any status-check function, spelled in any case. GitHub adds the implicit `success()` that
+  // makes a job skip after a failed dependency *only* when the condition contains none of them, so
+  // `always()`, `Always()` and `!success()` all opt out, and a folded condition is the same
+  // condition. Naming three of them in one case was a predicate that let the fourth through.
+  const STATUS_FUNCTION = /(?:always|success|failure|cancelled)\s*\(/i;
   const bypassing = (document, gate) =>
     Object.entries(document.jobs)
       .filter(([id]) => id !== gate)
       .filter(([, job]) => {
         const needs = Array.isArray(job.needs) ? job.needs : [job.needs];
-        return !needs.includes(gate) || OVERRIDE.test(String(job.if ?? ""));
+        return !needs.includes(gate) || STATUS_FUNCTION.test(String(job.if ?? ""));
       })
       .map(([id]) => id);
 
@@ -519,15 +538,42 @@ jobs:
   action-pins:
     runs-on: ubuntu-latest
     steps:
-      - run: npm run verify:action-pins
-  debug:
+      - run: node scripts/verify-action-pins.mjs
+  waits:
+    needs: action-pins
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+  documented:
     needs: action-pins
     if: always()
     runs-on: ubuntu-latest
     steps:
       - run: true
+  capitalised:
+    needs: action-pins
+    if: Always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+  negated:
+    needs: action-pins
+    if: \${{ !success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+  folded:
+    needs: action-pins
+    if: >-
+      always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
 `);
-  assert.deepEqual(bypassing(evasion, "action-pins"), ["debug"]);
+  // `waits` is not in the list: a condition with no status-check function still carries the
+  // implicit success() and still skips when the gate fails.
+  assert.deepEqual(bypassing(evasion, "action-pins"), ["documented", "capitalised", "negated", "folded"]);
 });
 
 // --- what the second review broke, and what stops it now ---------------------------------------
@@ -590,6 +636,26 @@ test("a workflow with CRLF line endings reads the same as one without", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+
+  // "Reads the same" is the claim, so read both and compare. A carriage return survives inside a
+  // block scalar, where nothing trims it away, and a value that differs by a byte nobody typed is
+  // a value the permission audit compares against a baseline.
+  const both = `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@${sha} # v5.1.0
+      - if: |
+          github.event_name == 'push'
+        run: |
+          echo hi
+`;
+  assert.deepEqual(parseYamlSubset(both.replace(/\n/g, "\r\n")), parseYamlSubset(both));
+  assert.deepEqual(usesInText(both.replace(/\n/g, "\r\n")), usesInText(both));
 });
 
 test("a uses under with: or env: is an input, not an action reference", () => {
@@ -634,8 +700,9 @@ jobs:
     rmSync(dir, { recursive: true, force: true });
   }
 
-  // The safety net is not relaxed by the context: a spelling the scanner does not know still fails
-  // wherever it appears.
+  // The context rule narrows what counts as a reference; it does not widen what may pass. A
+  // `key: value` inside a flow sequence is a mapping of one pair, so the reader resolves this one
+  // rather than refusing it -- and it fails, by name, as the mutable reference it is.
   const strange = sandbox({
     ".github/workflows/ci.yml": `name: t
 on: [push]
@@ -649,7 +716,11 @@ jobs:
 `
   });
   try {
-    assert.equal(scanActionPins(strange, loadPolicy()).unparsable.length, 1);
+    const report = scanActionPins(strange, loadPolicy());
+    assert.deepEqual(report.unparsable, []);
+    assert.equal(report.mutable_refs.length, 1, JSON.stringify(report.mutable_refs));
+    assert.equal(report.mutable_refs[0].ref, "main");
+    assert.equal(report.ok, false);
   } finally {
     rmSync(strange, { recursive: true, force: true });
   }
@@ -718,9 +789,10 @@ test("the same-repository $/path syntax is a local reference, not an unreadable 
   }
 });
 
-test("a symlinked directory or action file is skipped, and a reference to one fails closed", () => {
+test("a symlinked directory or action file is skipped, and a reference to either fails closed", () => {
   const dir = sandbox({
     ".github/workflows/ci.yml": workflow("./linked"),
+    ".github/workflows/two.yml": workflow("./aliased"),
     "real/action.yml": "name: real\nruns:\n  using: composite\n  steps:\n    - run: true\n"
   });
   try {
@@ -731,27 +803,30 @@ test("a symlinked directory or action file is skipped, and a reference to one fa
     // Skipped, and documented as skipped: the walk enters directories and reads files, and a
     // symlink is neither.
     const found = discoverWorkflowFiles(dir).map((one) => one.replace(`${dir}/`, "")).sort();
-    assert.deepEqual(found, [".github/workflows/ci.yml", "real/action.yml"]);
+    assert.deepEqual(found, [".github/workflows/ci.yml", ".github/workflows/two.yml", "real/action.yml"]);
 
-    // Which is safe because skipping fails closed rather than open: `./linked` resolves to a file
-    // that is not in the scanned set, so the reference is unresolved and the report is not ok.
+    // Which is safe because skipping fails closed rather than open. Both kinds are referenced here,
+    // because a skip nobody points at proves nothing: `./linked` is the symlinked directory and
+    // `./aliased` the symlinked `action.yml`, and each resolves to a path that is not in the
+    // scanned set, so each is unresolved and the report is not ok.
     const report = scanActionPins(dir, loadPolicy());
     assert.deepEqual(report.mutable_refs, []);
-    assert.equal(report.local_action_unresolved.length, 1);
-    assert.equal(report.local_action_unresolved[0].reason, "the action it runs was not scanned");
+    assert.equal(report.local_action_unresolved.length, 2, JSON.stringify(report.local_action_unresolved));
+    for (const one of report.local_action_unresolved) assert.equal(one.reason, "the action it runs was not scanned");
+    assert.deepEqual(report.local_action_unresolved.map((one) => one.uses).sort(), ["./aliased", "./linked"]);
     assert.equal(report.ok, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("the supply-chain digest covers the verifier and the npm script that run the check", async () => {
+test("the supply-chain digest covers the verifier, the npm script and the .npmrc that run the check", async () => {
   const sha = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
   // The scanner is not the whole check. `scripts/verify-action-pins.mjs` combines the pin scan with
   // the permission audit and sets the exit status, and `package.json` decides which file the npm
   // script runs -- so a digest over the workflows, the policy and the scanner leaves the two places
   // that turn failure into success outside what provenance quotes.
-  const distribution = (edit) => {
+  const distribution = (edit, extra = {}) => {
     const dir = mkdtempSync(join(tmpdir(), "aos-action-pins-dist-"));
     for (const part of ["lib", "scripts", "governance", ".github/workflows"]) mkdirSync(join(dir, part), { recursive: true });
     copyFileSync(join(root, "lib", "action-pins.mjs"), join(dir, "lib", "action-pins.mjs"));
@@ -760,6 +835,7 @@ test("the supply-chain digest covers the verifier and the npm script that run th
       writeFileSync(join(dir, to), edit(to, readFileSync(join(root, from), "utf8")));
     }
     writeFileSync(join(dir, ".github/workflows/ci.yml"), workflow(`actions/checkout@${sha} # v5.1.0`));
+    for (const [path, body] of Object.entries(extra)) writeFileSync(join(dir, path), body);
     return dir;
   };
   const digests = async (dir) => {
@@ -776,16 +852,189 @@ test("the supply-chain digest covers the verifier and the npm script that run th
   // And the other one: the npm script runs something else entirely.
   const rerouted = distribution((path, body) =>
     path.endsWith("package.json") ? body.replace('"verify:action-pins": "node scripts/verify-action-pins.mjs"', '"verify:action-pins": "true"') : body);
+  // And the third: an `.npmrc` that makes every npm script exit zero without running anything.
+  const muffled = distribution((path, body) => body, { ".npmrc": "script-shell=/usr/bin/true\n" });
 
   try {
     const before = await digests(unchanged);
     const after = await digests(forged);
     const elsewhere = await digests(rerouted);
+    const quiet = await digests(muffled);
     assert.equal(before.workflow, after.workflow);
     assert.equal(before.workflow, elsewhere.workflow);
+    assert.equal(before.workflow, quiet.workflow);
     assert.notEqual(before.supply, after.supply, "changing the verifier left the supply-chain digest identical");
     assert.notEqual(before.supply, elsewhere.supply, "changing the npm script left the supply-chain digest identical");
+    assert.notEqual(before.supply, quiet.supply, "adding an .npmrc left the supply-chain digest identical");
   } finally {
-    for (const dir of [unchanged, forged, rerouted]) rmSync(dir, { recursive: true, force: true });
+    for (const dir of [unchanged, forged, rerouted, muffled]) rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// --- what the third review broke, and what stops it now ----------------------------------------
+
+test("a uses beside a block scalar in the same step is not swallowed by it", () => {
+  // Valid YAML, accepted by actionlint, run by GitHub: a step whose `if:` is a literal block, with
+  // the action reference after it. The block was measured from the dash rather than from the key,
+  // so every sibling of that key was two columns inside the block and invisible.
+  const found = usesInText([
+    "jobs:",
+    "  one:",
+    "    steps:",
+    "      - if: |",
+    "          github.event_name == 'push'",
+    "        uses: attacker/evil@main",
+    "      - name: after",
+    "        run: |",
+    "          uses: attacker/inert@main",
+    "      - uses: attacker/second@main"
+  ].join("\n"));
+  // The reference beside the block is seen; the text inside it still is not.
+  assert.deepEqual(found.map((one) => one.raw), ["attacker/evil@main", "attacker/second@main"], JSON.stringify(found));
+
+  const dir = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - if: |
+          github.event_name == 'push'
+        uses: attacker/evil@main
+`
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.equal(report.mutable_refs.length, 1, JSON.stringify(report, null, 2));
+    assert.equal(report.mutable_refs[0].ref, "main");
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("an explicit key, folded over lines, is still the key it spells", () => {
+  // `? key` / `: value` with the key written as a folded scalar. It resolves to `uses`, actionlint
+  // accepts it and GitHub runs it, and nothing that reads one line at a time can see it at all --
+  // which is why what reads this file now is a parser rather than a pattern.
+  const found = usesInText([
+    "jobs:",
+    "  one:",
+    "    steps:",
+    "      - ? >-",
+    "          uses",
+    "        : attacker/evil@main"
+  ].join("\n"));
+  assert.deepEqual(found.map((one) => one.raw), ["attacker/evil@main"], JSON.stringify(found));
+
+  // And the folded *value*, which used to be refused as unreadable rather than read.
+  const folded = usesInText("      - uses: >-\n          attacker/folded@main\n");
+  assert.deepEqual(folded.map((one) => one.raw), ["attacker/folded@main"]);
+
+  const dir = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - ? >-
+          uses
+        : attacker/evil@main
+`
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.equal(report.mutable_refs.length, 1, JSON.stringify(report, null, 2));
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a quoted permissions key is the same key, so a job cannot gain write access behind quotes", () => {
+  // The same class of bypass as the escaped `uses`, in the other reader: the permission audit read
+  // the characters rather than the key, observed no job permissions at all, and matched a baseline
+  // that recorded none.
+  const dir = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  release:
+    "permissions":
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+`
+  });
+  try {
+    const baseline = { reviewed_actions: [], update_automation: "dependabot", workflow_permissions: { ".github/workflows/ci.yml": { workflow: { contents: "read" }, jobs: {} } } };
+    const report = auditPermissions(dir, baseline);
+    assert.deepEqual(report.observed[".github/workflows/ci.yml"].jobs, { release: { contents: "write" } });
+    assert.ok(report.failures.some((one) => one.check === "permission-drift"), JSON.stringify(report.failures));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a file the reader cannot read fails the check rather than passing it", () => {
+  // The reader covers the YAML a workflow is written in and refuses the rest by name. Refusing has
+  // to fail: "I could not read this file" and "this file is clean" are the two answers that must
+  // never look the same.
+  for (const body of ["jobs:\n\tone:\n", "steps:\n  - uses: !!custom thing\n", "a: 1\n---\nb: 2\n"]) {
+    const dir = sandbox({ ".github/workflows/ci.yml": body });
+    try {
+      const report = scanActionPins(dir, loadPolicy());
+      assert.equal(report.unparsable.length, 1, `${JSON.stringify(body)} was not refused`);
+      assert.equal(report.ok, false);
+      // And the permission audit says so too, rather than reporting a workflow it could not read.
+      assert.ok(auditPermissions(dir, loadPolicy()).failures.some((one) => one.check === "workflow-unreadable"));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test("the required check runs the verifier directly, so an .npmrc cannot switch it off", () => {
+  // `script-shell=/usr/bin/true` in a repository-level `.npmrc` makes every `npm run` exit zero
+  // without executing anything. The gate job is the one place where the exit status is the whole
+  // point, so it invokes node with no shell in between.
+  const document = parseYamlSubset(readFileSync(join(root, ".github", "workflows", "ci.yml"), "utf8"));
+  const commands = document.jobs["action-pins"].steps.map((one) => one.run).filter(Boolean);
+  assert.ok(commands.some((one) => /node\s+scripts\/verify-action-pins\.mjs/.test(one)), JSON.stringify(commands));
+  assert.equal(commands.some((one) => /npm run verify:action-pins/.test(one)), false, "an .npmrc could make this exit zero without running the check");
+});
+
+test("an alias is the node it names, so a merge key cannot hide a reference or a permission", () => {
+  // Found by reading this reader against another one rather than by review: an alias that resolved
+  // to nothing meant a mapping's inherited keys simply vanished, and `<<: *defaults` is exactly
+  // where a step's action reference and a job's permissions can both live.
+  const found = usesInText([
+    "defaults: &step",
+    "  uses: attacker/evil@main",
+    "jobs:",
+    "  one:",
+    "    steps:",
+    "      - <<: *step",
+    "        name: innocent"
+  ].join("\n"));
+  assert.ok(found.some((one) => one.raw === "attacker/evil@main"), JSON.stringify(found));
+
+  const parsed = parseYamlSubset([
+    "defaults: &perms",
+    "  contents: write",
+    "jobs:",
+    "  one:",
+    "    permissions:",
+    "      <<: *perms"
+  ].join("\n"));
+  assert.deepEqual(parsed.jobs.one.permissions, { contents: "write" });
 });

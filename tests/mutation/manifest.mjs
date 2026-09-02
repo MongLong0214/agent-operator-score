@@ -16,50 +16,83 @@
 
 export const GUARDS = [
   {
-    guard: "directory skip list",
-    reason: "skipping node_modules and dist by name is skipping the place someone would put it",
+    guard: "an alias is the node it names",
+    reason: "an alias that resolves to nothing is a mapping's inherited keys silently vanishing, and answering wrongly is worse than refusing",
     file: "lib/action-pins.mjs",
-    from: 'const SKIP_DIRECTORIES = new Set([".git"]);',
-    to: 'const SKIP_DIRECTORIES = new Set([".git", "dist", "node_modules"]);',
+    from: "    const target = anchors.get(source.slice(from, at));",
+    to: "    const target = null;",
     test: "tests/product/action-pins.test.mjs",
-    name: "discovery finds workflows by shape, and skips only .git"
+    name: "an alias is the node it names, so a merge key cannot hide a reference or a permission"
   },
   {
-    guard: "quoted and escaped uses keys",
-    reason: "a quoted key and an escaped one are both real uses keys GitHub honours, and a scanner matching the bare spelling saw neither",
+    guard: "merge keys bring their keys with them",
+    reason: "`<<: *defaults` is where a step's action reference and a job's permissions live, and dropping it hides both",
     file: "lib/action-pins.mjs",
-    // The key as written, rather than the key YAML reads. This one regex decides every key on
-    // every line, so narrowing it to the bare spelling is what the scanner did before: a quoted
-    // or escaped `uses` becomes invisible and a quoted or escaped `run` stops hiding its block.
-    from: "const KEY_LINE = /^(\\s*(?:-\\s+)?)(\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^']|'')*'|[^\\s#\"'{}[\\],][^:{}[\\]#]*?)\\s*:(\\s.*|)$/;",
-    to: "const KEY_LINE = /^(\\s*(?:-\\s+)?)(uses)\\s*:(\\s.*|)$/;",
+    from: "    if (!node.entries.some((entry) => entry.key === \"<<\")) return node;",
+    to: "    return node;",
+    test: "tests/product/action-pins.test.mjs",
+    name: "an alias is the node it names, so a merge key cannot hide a reference or a permission"
+  },
+  {
+    guard: "quoted keys are keys",
+    reason: "a quoted key is a real mapping key GitHub honours, and a reader that only knows the bare spelling does not see the mapping at all",
+    file: "lib/action-pins.mjs",
+    from: "const KEY_TEXT = /^(?:\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^']|'')*'|[^\\s#\"'{}[\\],*&!|>%@`:](?:[^:#]|:(?=\\S))*?)\\s*:(\\s|$)/;",
+    to: "const KEY_TEXT = /^(?:[^\\s#\\\"'{}[\\],*&!|>%@`:](?:[^:#]|:(?=\\S))*?)\\s*:(\\s|$)/;",
     test: "tests/product/action-pins.test.mjs",
     name: "the uses spellings GitHub honours are seen, escapes included, and inert text is not"
   },
   {
-    guard: "flow-mapping uses",
-    reason: "`- { uses: attacker/evil@main }` is a step GitHub runs, and the ordinary key match never sees it",
+    guard: "a resolved key is the key",
+    reason: "the permission audit read the characters rather than the key, so a job-level \"permissions\" in quotes was no permission at all and the baseline that recorded none still matched",
     file: "lib/action-pins.mjs",
-    from: "    const flows = [...masked.matchAll(/\\{[^}]*\\}/g)];",
-    to: "    const flows = [];",
+    from: "      const key = character === '\"' ? readDoubleQuoted().value : readSingleQuoted().value;",
+    to: "      const key = JSON.stringify(character === '\"' ? readDoubleQuoted().value : readSingleQuoted().value);",
     test: "tests/product/action-pins.test.mjs",
-    name: "the uses spellings GitHub honours are seen, escapes included, and inert text is not"
+    name: "a quoted permissions key is the same key, so a job cannot gain write access behind quotes"
   },
   {
     guard: "escaped key resolved before it is a key",
-    reason: "YAML unescapes `\"r\\u0075n\"` to `run` before it is a key, so matching the characters on the line matches something YAML has stopped calling that key",
+    reason: "YAML unescapes \"r\\u0075n\" to run before it is a key, so matching the characters on the line matches something YAML has stopped calling that key",
     file: "lib/action-pins.mjs",
-    from: "    if (code.length > 1) return String.fromCodePoint(Number.parseInt(code.slice(1), 16));",
-    to: "    if (false) return \"\";",
+    from: "  if (code.length > 1) return String.fromCodePoint(Number.parseInt(code.slice(1), 16));",
+    to: "  if (false) return \"\";",
     test: "tests/product/action-pins.test.mjs",
     name: "a uses key spelled with an escape is seen, and an escaped run key stays inert"
+  },
+  {
+    guard: "flow-mapping uses",
+    reason: "`- { uses: attacker/evil@main }` is a step GitHub runs, and a reader that treats braces as text never sees it",
+    file: "lib/action-pins.mjs",
+    from: "    if (character === \"{\" || character === \"[\") return finishLine(readFlow());",
+    to: "    if (false) return finishLine(readFlow());",
+    test: "tests/product/action-pins.test.mjs",
+    name: "the uses spellings GitHub honours are seen, escapes included, and inert text is not"
+  },
+  {
+    guard: "block scalar measured from its key",
+    reason: "a block scalar on a dashed line ends two columns inside the dash, so measuring it from the line swallowed every sibling of that key -- the uses beside it included",
+    file: "lib/action-pins.mjs",
+    from: "        if (here < indent) break;",
+    to: "        if (here <= keyIndent - 2) break;",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a uses beside a block scalar in the same step is not swallowed by it"
+  },
+  {
+    guard: "explicit keys are keys",
+    reason: "`? uses` / `: value` resolves to a uses key GitHub runs, and it can be written as a folded scalar that no single-line pattern can see",
+    file: "lib/action-pins.mjs",
+    from: "      if (explicitHere()) entries.push(readExplicitEntry(indent));",
+    to: "      if (false) entries.push(readExplicitEntry(indent));",
+    test: "tests/product/action-pins.test.mjs",
+    name: "an explicit key, folded over lines, is still the key it spells"
   },
   {
     guard: "version comment after a flow mapping",
     reason: "the comment sits outside the braces, so losing it turns a correctly pinned reference into a pin with no readable version",
     file: "lib/action-pins.mjs",
-    from: "          const after = entries.length === 1 ? line.slice(entry.end) : \"\";",
-    to: "          const after = \"\";",
+    from: "    const carried = node.flow && node.comment && usesCount(node, chain) === 1 ? node.comment : inherited;",
+    to: "    const carried = inherited;",
     test: "tests/product/action-pins.test.mjs",
     name: "a version comment after a flow mapping is kept"
   },
@@ -67,8 +100,8 @@ export const GUARDS = [
     guard: "carriage returns stripped",
     reason: "a workflow written on Windows leaves a carriage return on every value, and an ordinary pinned reference came back unreadable",
     file: "lib/action-pins.mjs",
-    from: "  const lines = text.split(/\\r?\\n/);",
-    to: "  const lines = text.split(\"\\n\");",
+    from: "  const source = text.replace(/\\r\\n?/g, \"\\n\");",
+    to: "  const source = text;",
     test: "tests/product/action-pins.test.mjs",
     name: "a workflow with CRLF line endings reads the same as one without"
   },
@@ -76,10 +109,37 @@ export const GUARDS = [
     guard: "uses under with: or env: is an input",
     reason: "an input that happens to be called uses is not an action reference, and reporting it was a false positive on valid YAML",
     file: "lib/action-pins.mjs",
-    from: "    const isInput = scope.includes(\"with\") || scope.includes(\"env\");",
-    to: "    const isInput = false;",
+    from: "      if (entry.key === \"uses\" && !chain.includes(\"with\") && !chain.includes(\"env\")) {",
+    to: "      if (entry.key === \"uses\") {",
     test: "tests/product/action-pins.test.mjs",
     name: "a uses under with: or env: is an input, not an action reference"
+  },
+  {
+    guard: "a refused file fails the check",
+    reason: "\"I could not read this file\" and \"this file is clean\" are the two answers that must never look the same",
+    file: "lib/action-pins.mjs",
+    from: "    return [{ line: Number(/at line (\\d+)/.exec(error.message)?.[1] ?? 1), raw: null, comment: null, form: \"unreadable\" }];",
+    to: "    return [];",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a file the reader cannot read fails the check rather than passing it"
+  },
+  {
+    guard: "supply-chain digest covers the .npmrc",
+    reason: "script-shell in a repository .npmrc makes every npm script exit zero without running anything, which decides the outcome while leaving every other hashed byte identical",
+    file: "lib/action-pins.mjs",
+    from: "  const npmrcBytes = existsSync(npmrc) ? createHash(\"sha256\").update(readFileSync(npmrc)).digest(\"hex\") : \"absent\";",
+    to: "  const npmrcBytes = \"absent\";",
+    test: "tests/product/action-pins.test.mjs",
+    name: "the supply-chain digest covers the verifier, the npm script and the .npmrc that run the check"
+  },
+  {
+    guard: "directory skip list",
+    reason: "skipping node_modules and dist by name is skipping the place someone would put it",
+    file: "lib/action-pins.mjs",
+    from: 'const SKIP_DIRECTORIES = new Set([".git"]);',
+    to: 'const SKIP_DIRECTORIES = new Set([".git", "dist", "node_modules"]);',
+    test: "tests/product/action-pins.test.mjs",
+    name: "discovery finds workflows by shape, and skips .git and symlinks"
   },
   {
     guard: "supply-chain digest covers the verifier",
@@ -88,7 +148,7 @@ export const GUARDS = [
     from: "  const runnerBytes = createHash(\"sha256\").update(readFileSync(new URL(\"../scripts/verify-action-pins.mjs\", import.meta.url))).digest(\"hex\");",
     to: "  const runnerBytes = \"\";",
     test: "tests/product/action-pins.test.mjs",
-    name: "the supply-chain digest covers the verifier and the npm script that run the check"
+    name: "the supply-chain digest covers the verifier, the npm script and the .npmrc that run the check"
   },
   {
     guard: "local reference redirection",

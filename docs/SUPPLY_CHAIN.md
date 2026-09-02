@@ -45,44 +45,57 @@ would put it.
 
 **A local reference is a redirection, not a free pass.** `uses: ./path` is resolved to the action
 file it actually runs, and that file has to be one this scan read. A local reference pointing at
-nothing fails. `uses: $/path/to/action` — GitHub's other spelling for an action in this same
-repository, resolved against the repository root — is held to the same rule; refusing it as
-unreadable was fail-closed but wrong, and a check that fails on valid syntax is one people route
-around.
+nothing fails. `uses: $/path/to/action` — GitHub's other spelling for an action in the *same
+repository at the running commit*, which needs no checkout step and cannot carry an `@ref` — is
+held to the same rule; refusing it as unreadable was fail-closed but wrong, and a check that fails
+on valid syntax is one people route around. (It is a GitHub.com syntax; GitHub Enterprise Server
+does not have it.)
 
-**The spellings of `uses` that GitHub honours are seen.** Every one of these is a real key, and a
-scanner matching one of them saw none of the others:
+**The workflow is parsed, not pattern-matched.** This began as a line-and-indentation scan, and
+three independent reviews found three ways past it. Every one was valid YAML that `actionlint`
+accepts and GitHub runs:
 
 ```yaml
-- "uses": something@main           # a quoted key
-- "\u0075ses": something@main       # the same key, written with an escape
-- uses:                            # the value on the following line
-    something@main
-- { uses: something@main }         # a flow mapping
-- &anchor { uses: something@main }  # the same, behind an anchor
+- "\u0075ses": attacker/evil@main   # an escaped key. YAML resolves the escape before the key is a
+                                  # key, so matching the characters matches something YAML has
+                                  # stopped calling that key — and "r\u0075n": | hid a block
+                                  # scalar the same way, in the other direction
+
+- if: |                           # a block scalar on a dashed line. Its siblings are two columns
+    github.event_name == 'push'   # inside the dash, so a block measured from the line swallowed
+  uses: attacker/evil@main        # the reference sitting next to it
+
+- ? >-                            # an explicit key, written as a folded scalar. Nothing that reads
+    uses                          # one line at a time can see this at all
+  : attacker/evil@main
 ```
 
-The escaped one is the reason the key is read as YAML reads it rather than as the characters on the
-line. YAML resolves `\uXXXX`, `\xNN` and the ordinary escapes inside a double-quoted key *before* it
-is a key, so the bypass runs both ways: `"\u0075ses"` hid a live reference from the scanner, and
-`"r\u0075n": |` disguised a block scalar so that the inert text inside it was reported instead.
+Each fix was right and the next spelling was one nobody had thought of. That is the argument for
+what is here now: a reader that resolves the structure — keys are the keys YAML resolves, a block
+scalar ends where YAML ends it, an explicit key is a key — rather than a pattern that has to
+anticipate how somebody will write a mapping. Quoted keys, escaped keys, continued values, flow
+mappings, anchors, aliases and folded scalars are all simply read.
 
-An alias (`uses: *anchor`) and an expression (`uses: ${{ matrix.action }}`) cannot be resolved by a
-scanner and are refusals, not passes. Content inside a block scalar — `run: |` followed by a line
-reading `uses: …` — is text a shell prints, and reporting it would be a false positive that teaches
-people to ignore this check.
+An alias is the node it names, and `<<: *defaults` brings its keys with it. That one is not from a
+review: it came from reading this reader against an established one on a corpus of workflow-shaped
+documents, and an alias that resolved to nothing meant a mapping's inherited keys silently vanished
+— which is where a step's action reference and a job's permissions can both live. Answering wrongly
+is worse than refusing.
 
-Two things that look like references and are not. A `uses` under a step's `with:` or `env:` is an
-input that happens to be called that, and reporting it as a mutable reference was a false positive
-on valid YAML — so the scan tracks which key each `uses` sits under. And a file written with CRLF
-line endings is read the same as one without; a carriage return left on the value made an ordinary
-pinned reference unreadable.
+It is not a complete YAML implementation and does not try to be. It covers what a workflow is
+written in and **refuses the rest by name** — a tag, a second document, a tab used as indentation —
+and a refusal fails the check. "I could not read this file" and "this file is clean" are the two
+answers that must never look the same.
 
-Anything else that looks like a `uses` key and is not one of these spellings still fails. The
-context rule narrows what is called a reference; it does not widen what is allowed to pass.
+An alias (`uses: *anchor`) and an expression (`uses: ${{ matrix.action }}`) name something this
+check cannot resolve offline, so they are refusals rather than passes. Content inside a block
+scalar — `run: |` followed by a line reading `uses: …` — is text a shell prints, and reporting it
+would be a false positive that teaches people to ignore this check. A `uses` under a step's `with:`
+or `env:` is an input that happens to be called that, and is not a reference either. The context
+rule narrows what counts as a reference; it does not widen what is allowed to pass.
 
-**A line the scanner cannot parse is a failure, not a skip**, and so is a directory it cannot read.
-A scanner that shrugs at what it does not understand reports green on the one line that was written
+**A file the reader cannot read is a failure, not a skip**, and so is a directory it cannot read.
+A check that shrugs at what it does not understand reports green on the one file that was written
 to be misunderstood.
 
 ## Container actions
@@ -118,7 +131,10 @@ deliberate.
 depends on what the job is for. What a scanner can decide is whether the permissions *changed*.
 
 So `governance/action-pin-policy.json` records the permissions of every workflow, and the check
-fails when the file and the workflow disagree. Widening a permission then requires editing the
+fails when the file and the workflow disagree. The audit reads the same parsed document as the pin
+scan, which is what makes that comparison mean anything: a job-level `"permissions"` in quotes is
+the same key as `permissions`, and while the audit read the characters instead of the key it
+observed no job permissions at all and matched a baseline that recorded none. Widening a permission then requires editing the
 baseline in the same change, which is visible in review. The failure this watches for is a pin
 refresh that quietly arrives with `contents: write` attached.
 
@@ -128,29 +144,40 @@ not a decision anyone made in that file.
 ## The command
 
 ```bash
-npm run verify:action-pins          # required in CI, and every other job waits for it
-npm run verify:action-pins --json   # the pin table and the digests
+node scripts/verify-action-pins.mjs          # what CI runs, and every other job waits for it
+node scripts/verify-action-pins.mjs --json   # the pin table and the digests
+npm run verify:action-pins                   # the same thing, for a person at a terminal
 ```
 
-Two digests. `workflow_digest` covers every scanned file by content. `supply_chain_digest` also
-covers the policy — the reviewed list and the permission baseline — this scanner's own bytes,
-`scripts/verify-action-pins.mjs`, and the `scripts` block of `package.json`. Each of those decides
-the outcome while leaving the workflows untouched: a change to `reviewed_actions` changes what
-passes, `ok: pins.ok && permissions.ok` in the verifier is one edit away from `ok: true`, and the
-npm script decides which file `npm run verify:action-pins` runs at all. `supply_chain_digest` is the
-one release provenance should quote.
+CI invokes node directly rather than through npm. A repository-level `.npmrc` saying
+`script-shell=/usr/bin/true` makes every `npm run` exit zero without executing anything, and this
+is the one job whose exit status is the entire point.
 
-It is a digest of what this repository decides, not of the environment the check runs in. Node
-itself, the runner image and the actions the gate job checks out are outside it.
+Two digests. `workflow_digest` covers every scanned file by content. `supply_chain_digest` also
+covers the policy — the reviewed list, the permission baseline and the version-comment pattern —
+this scanner's own bytes, `scripts/verify-action-pins.mjs`, the `scripts` block of `package.json`,
+and `.npmrc` (including its absence). Each of those decides the outcome while leaving the workflows
+untouched: a change to `reviewed_actions` changes what passes, `ok: pins.ok && permissions.ok` in
+the verifier is one edit away from `ok: true`, the npm script decides which file
+`npm run verify:action-pins` runs, and an `.npmrc` decides whether it runs anything at all.
+`supply_chain_digest` is the one release provenance should quote.
+
+It is a digest of what this repository decides, not of everything that could change the answer.
+Node itself, the runner image, the actions the gate job checks out and the workflow file that
+invokes the check are outside it — the last of those because `ci.yml` is scanned content, and the
+job that reads it is the job an editor of `ci.yml` could remove.
 
 ## What this does not do
 
 **It is a merge gate, not an execution-prevention control.** The `action-pins` job runs first and
 every other job in `ci.yml` waits for it, and none of them opts out of waiting — a test asserts
-both, because `needs:` alone does not prove the second. GitHub documents `always()` as overriding
-the skip a failed dependency causes, so `needs: action-pins` with `if: always()` names the gate and
-runs after it goes red anyway. A job in a *separate* workflow cannot name it at all: there is no
-cross-workflow `needs`.
+both, because `needs:` alone does not prove the second. GitHub adds the implicit `success()` that
+makes a job skip after a failed dependency *only* when the condition names no status-check function
+of its own, so all of `if: always()`, `if: Always()` — the lookup is case-insensitive — and
+`if: ${{ !success() }}` name the gate and then run after it goes red, and a folded condition is the
+same condition written over two lines. The test rejects any status-check function, in any case,
+however the condition is written. A job in a *separate* workflow cannot name the gate at all: there
+is no cross-workflow `needs`.
 
 So the ordering claim is bounded: an unpinned reference added to another job *in this workflow*
 does not execute. It is not a statement about the repository. The workflow also runs from the pull

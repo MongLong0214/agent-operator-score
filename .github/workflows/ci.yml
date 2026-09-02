@@ -27,7 +27,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run verify:action-pins
+      # Not `npm run`: a repository-level `.npmrc` saying `script-shell=/usr/bin/true` makes every
+      # npm script exit zero without executing anything, and this is the one job whose exit status
+      # is the whole point. Node is invoked directly so there is no shell in between.
+      - run: node scripts/verify-action-pins.mjs
 
   # The runtimes this product says it supports, on the platforms it says it supports. macOS is a
   # lane of its own rather than an afterthought: the isolation layer replaces HOME, walks the
