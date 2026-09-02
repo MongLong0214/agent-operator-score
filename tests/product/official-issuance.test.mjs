@@ -81,7 +81,7 @@ const measured = (overrides = {}) => {
       survivors: [],
       group_sweep: { pgid: 4242, members: [] },
       survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] },
-      residual: "a descendant that sheds every marker is in none of the scans. Measured and accepted: a review reproduced it with a live pid reparented to init and regrouped to itself. The boundary is inherited and it cannot reach anything else"
+      residual: "a survivor with no marker, no handle and no pid AOS ever held is in none of the scans. Measured and accepted: a review reproduced it with a live pid reparented to init and regrouped to itself. A descendant whose pid AOS did hold is killed and checked, and a live one blocks. The boundary is inherited and the rest cannot reach anything else"
     },
     cleanup_verified: true,
     scratch_not_removed: [],
@@ -298,10 +298,15 @@ test("a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_sc
   assert.equal(canary.out_of_band.stripped.ran, true);
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: clean, networkPolicy }), true);
 
-  // Take the proof away and empty scans do not stand in for it.
+  // Take the proof away and empty scans do not stand in for it. `dead_after_cleanup` is among
+  // them: this escapee is AOS's own child and its pid was in hand, so one still alive is a leak
+  // this run detected, and a detected leak blocks. The residual is narrower than "a descendant we
+  // did not see" -- it is a survivor with no marker, no handle, and no pid AOS ever held.
   for (const broken of [
     { ...canary.out_of_band.stripped, confined: false },
     { ...canary.out_of_band.stripped, ran: false },
+    { ...canary.out_of_band.stripped, dead_after_cleanup: false },
+    { ...canary.out_of_band.stripped, pid: process.pid, dead_after_cleanup: false },
     undefined
   ]) {
     const without = { ...canary, out_of_band: { ...canary.out_of_band, stripped: broken } };
@@ -313,13 +318,19 @@ test("a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_sc
     assert.equal(issuanceGate(measured({ boundary_canary: without })).official, false);
   }
 
-  // And the record says what holds it, so a reader is not left to infer it from the scans.
+  // And the recorded lane carries all three: it ran, the kernel refused it outside the workspace,
+  // and AOS killed it and watched it go.
   const committed = observations("strict-lane.darwin.seatbelt.canary.json").captured;
   assert.equal(committed.out_of_band.stripped.confined, true, "the recorded lane did not demonstrate the confinement it claims");
-  assert.match(String(measured().descendants.residual), /cannot reach anything else/u);
-  // The record names the reproduction, so a reader sees the case was measured and accepted rather
-  // than missed: poll one holds the root, poll two holds a live process reparented to init and
-  // regrouped to itself, and the axis still reports enforced.
+  assert.equal(committed.out_of_band.stripped.dead_after_cleanup, true, "the recorded lane left its own escapee alive");
+  assert.ok(Number.isInteger(committed.out_of_band.stripped.pid) && committed.out_of_band.stripped.pid > 1, "the recorded lane dropped the pid it held");
+
+  // What remains is narrower than "a descendant nothing saw". The ancestry poll genuinely cannot
+  // follow a process that reparents and regroups between two polls -- poll one holds the root, poll
+  // two holds a live pid at ppid 1 with a group of its own -- and no scan can find one that also
+  // sheds its marker and its handles. That process is held by the inherited boundary, and AOS never
+  // had its pid. The moment AOS *does* have a pid, as it does for its own canary escapee, a live
+  // process is a leak and blocks: the loop above proves that half.
   const { descendantTracker } = await import("../../lib/confinement.mjs");
   let poll = 0;
   const table = () => {
@@ -331,8 +342,8 @@ test("a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_sc
   const tracker = descendantTracker(100, { table, intervalMs: 10 });
   tracker.poll();
   tracker.poll();
-  assert.deepEqual(tracker.tracked(), [100], "the reproduction no longer reproduces");
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: clean, networkPolicy }), true, "the accepted residual was quietly closed by weakening the proof");
+  assert.deepEqual(tracker.tracked(), [100], "the ancestry poll is not expected to follow a reparented, regrouped process");
+  assert.match(String(measured().descendants.residual), /no pid AOS ever held/u);
   assert.match(String(measured().descendants.residual), /reparented to init and regrouped/u);
 });
 
@@ -747,6 +758,32 @@ test("a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
     else process.env.AOS_WORKSPACES = previous;
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+test("the_label_cannot_relax_what_the_gate_requires_of_a_row", () => {
+  // The composed failure: the evidence kinds were required only when the row's own `official` label
+  // was already true, and the renderer shows the derived decision. Set the label false, delete two
+  // citations, and the gate found nothing missing while the decision still came out official -- so
+  // a row citing neither host nor exec evidence printed OFFICIAL. The label may declare which rows
+  // are expected to be official; it may never relax what the gate checks.
+  const composed = JSON.parse(JSON.stringify(matrix));
+  const row = composed.lanes.find((one) => one.official === true);
+  row.official = false;
+  delete row.evidence.host;
+  delete row.evidence.exec;
+  const decided = supportMatrixDecisions(composed).find((one) => one.platform === "darwin" && one.adapter === "codex-cli.v1" && one.level === "STRICT");
+  assert.deepEqual([...decided.evidence_missing].sort(), ["exec", "host"], "the label decided what evidence was required");
+  assert.equal(decided.decision.official, false, "a row citing neither host nor exec evidence was issued");
+  assert.ok(decided.decision.reasons.includes(ISSUANCE_REASONS.EVIDENCE_MISSING), decided.decision.reasons.join(", "));
+  assert.equal(renderSupportMatrix([decided]).includes("OFFICIAL"), false, "the table published a row the gate refused");
+
+  // The label alone changes nothing either way: with every citation in place, a row labelled false
+  // is still judged on its evidence, and the decision is the same one the labelled row gets.
+  const relabelled = JSON.parse(JSON.stringify(matrix));
+  relabelled.lanes.find((one) => one.official === true).official = false;
+  const same = supportMatrixDecisions(relabelled).find((one) => one.platform === "darwin" && one.adapter === "codex-cli.v1" && one.level === "STRICT");
+  assert.equal(same.decision.official, true, "the label was still deciding");
+  assert.deepEqual(same.evidence_missing, []);
 });
 
 test("the_rendered_matrix_shows_the_decisions_it_was_handed", () => {

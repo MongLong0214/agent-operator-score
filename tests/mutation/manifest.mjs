@@ -2617,6 +2617,24 @@ export const GUARDS = [
     name: "a_lane_whose_adapter_stages_a_credential_is_official_only_for_that_runtime"
   },
   {
+    guard: "the canary's own escapee is killed and checked",
+    reason: "its pid is in hand at spawn, so a live one is a leak this run detected rather than the residual the lane carries; dropping the liveness check publishes a still-running descendant as a clean teardown",
+    file: "lib/confinement.mjs",
+    from: '  if (stripped === null || ["ran", "confined", "dead_after_cleanup"].some((name) => stripped[name] !== true)) return "FAIL";',
+    to: '  if (stripped === null || ["ran", "confined"].some((name) => stripped[name] !== true)) return "FAIL";',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_scanners"
+  },
+  {
+    guard: "the evidence a row must cite follows its level, not its label",
+    reason: "keyed on the row's own official label, the requirement composed away: label false plus two deleted citations gave no missing evidence while the derived decision stayed official and the renderer printed it",
+    file: "lib/confinement.mjs",
+    from: 'const strictEvidenceKinds = (row) => (row.level === "STRICT" ? [...STRICT_EVIDENCE_KINDS] : []);',
+    to: 'const strictEvidenceKinds = (row) => (row.level === "STRICT" && row.official === true ? [...STRICT_EVIDENCE_KINDS] : []);',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_label_cannot_relax_what_the_gate_requires_of_a_row"
+  },
+  {
     guard: "a symlinked staging source is refused by name",
     reason: "statSync follows the last component, so a config file that is a link to anywhere on the host was copied into the agent's private HOME; plain host content is not credential-shaped and no redactor takes it out again",
     file: "lib/confinement.mjs",
@@ -2782,9 +2800,9 @@ export const GUARDS = [
   },
   {
     guard: "the canary proves the stripped descendant was confined",
-    reason: "without the cell the axis has nothing to read but empty enumerations, which is the thing this decision replaced",
+    reason: "without the cell the axis has nothing to read but empty enumerations, which is the thing this decision replaced; and liveness is in the cell because this escapee is AOS's own child -- a leak whose pid was in hand is detected, not residual",
     file: "lib/confinement.mjs",
-    from: '  for (const name of ["ran", "confined"]) {\n    if (strippedOut[name] !== true) failed.push(`stripped.${name}`);\n  }',
+    from: '  for (const name of ["ran", "confined", "dead_after_cleanup"]) {\n    if (strippedOut[name] !== true) failed.push(`stripped.${name}`);\n  }',
     to: "",
     test: "tests/product/confinement.test.mjs",
     name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
@@ -3080,6 +3098,7 @@ export const ACCOUNTED_GUARDS = [
   "the canary proves the stripped descendant was confined",
   "the canary that certifies the boundary is the one that shipped",
   "the canary verdict is derived from its cells",
+  "the canary's own escapee is killed and checked",
   "the capture time names a day that exists",
   "the closing pull request changed something the issue owns",
   "the command prints the floored result",
@@ -3087,6 +3106,7 @@ export const ACCOUNTED_GUARDS = [
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
   "the escaped descendant is proved confined",
+  "the evidence a row must cite follows its level, not its label",
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
   "the group sweep is recorded from the group",
