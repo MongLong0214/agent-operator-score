@@ -2359,10 +2359,10 @@ export const GUARDS = [
   },
   {
     guard: "profile projection refuses a result that lost a surface",
-    reason: "a renderer that defaults a missing coverage to zero prints a full index over a coverage nobody has, which is the one reading a stored result must never produce",
+    reason: "shape is checked against the schema once, on the way in to every rendering; with that line gone a result missing a coverage, a status or a whole surface reaches the renderers and is printed as whatever is left of it",
     file: "lib/result-schema.mjs",
-    from: "    if (!isPlainObject(value)) throw new Error(`AOS_RESULT_INCOMPLETE ${key} is missing from this result and cannot be shown`);",
-    to: "    if (!isPlainObject(value)) return { coverage: { required: 0, issued: 0 } };",
+    from: "  const invalid = validateAgainstSchema(result, cachedResultSchema());",
+    to: "  const invalid = { ok: true, errors: [] };",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
   },
@@ -2404,12 +2404,12 @@ export const GUARDS = [
   },
   {
     guard: "the reader checks the state it was handed",
-    reason: "a builder that cannot emit a contradiction is not a reader that cannot be handed one: the file on disk was written by some other build, or edited",
-    file: "lib/result-schema.mjs",
-    from: "  assertIssuanceState(\"the stored operator process profile\", { issued: process.issued, value: process.index, withheld_reason: process.withheld_reason ?? null });",
-    to: "",
-    test: "tests/product/projection-consistency.test.mjs",
-    name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
+    reason: "a builder that cannot emit a contradiction is not a reader that cannot be handed one: the file on disk was written by some other build, or edited, and the fields no renderer may default -- the uncertainty among them -- are required by the schema or by nothing",
+    file: "schemas/aos-result.v2.schema.json",
+    from: "    \"uncertainty\",\n    \"permitted_interpretation\",",
+    to: "    \"permitted_interpretation\",",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
   },
   {
     guard: "the withheld reason travels with the surface",
@@ -2424,8 +2424,8 @@ export const GUARDS = [
     guard: "provider credential formats are recognised",
     reason: "an AWS key id or a GitHub token carries its own prefix and no English word beside it, so the word-plus-value rule walks straight past it and the result publishes the key",
     file: "lib/result-schema.mjs",
-    from: "    CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
-    to: "    CREDENTIAL_TEXT.test(text) || OPAQUE_TOKEN.test(text));",
+    from: "    CREDENTIAL_SPACED.test(text) || CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) ||",
+    to: "    CREDENTIAL_SPACED.test(text) || CREDENTIAL_TEXT.test(text) ||",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
@@ -2433,15 +2433,15 @@ export const GUARDS = [
     guard: "a one-segment absolute path is a path",
     reason: "/private names a place on this machine as surely as /Users/alice/notes does, and requiring a second segment let the shorter one through",
     file: "lib/result-schema.mjs",
-    from: "  \"|\\\\/[A-Za-z0-9._~-]\",                        // /private -- one segment is a place on this machine",
-    to: "  \"|\\\\/[A-Za-z0-9._~-]+[\\\\/\\\\\\\\]\",",
+    from: "  `|${NOT_PATH}\\\\/[A-Za-z0-9._~-]`,             // /private -- one segment is a place on this machine",
+    to: "  `|${NOT_PATH}\\\\/[A-Za-z0-9._~-]+[\\\\/]`,",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
   {
     guard: "oneOf means exactly one",
     reason: "the alternatives describe states that exclude each other, and a validator that accepted a value matching none of them would let the schema say the coupling while checking nothing",
-    file: "lib/execution-plan.mjs",
+    file: "lib/json-schema.mjs",
     from: "      if (matched.length !== 1) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     to: "      if (false) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     test: "tests/product/projection-consistency.test.mjs",
@@ -2467,10 +2467,10 @@ export const GUARDS = [
   },
   {
     guard: "a status this build does not know is refused",
-    reason: "a status is a state, not a word in a file; printing an unrecognised one is trusting whoever wrote it, and every renderer would carry it through to the reader",
-    file: "lib/result-schema.mjs",
-    from: "    if (!allowed.includes(status)) throw new Error(`AOS_RESULT_UNKNOWN_STATUS ${where} carries ${JSON.stringify(status)}, which is not one of ${allowed.join(\", \")}`);",
-    to: "",
+    reason: "a status is a state, not a word in a file; the schema enumerates the states a cell may be in, and a schema that admits one more admits every one a renderer would then carry through to the reader",
+    file: "schemas/aos-result.v2.schema.json",
+    from: "    \"cell_status\": {\n      \"enum\": [\n        \"ISSUED\",",
+    to: "    \"cell_status\": {\n      \"enum\": [\n        \"ATTACKER_DEFINED\",\n        \"ISSUED\",",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
   },
@@ -2494,10 +2494,10 @@ export const GUARDS = [
   },
   {
     guard: "a filesystem location is one however it is spelled",
-    reason: "each round found the next spelling: one segment, then two slashes, then a UNC share -- a predicate written as a list of remembered forms is a list somebody adds to after the next review",
+    reason: "each round found the next spelling: one segment, then two slashes, then a UNC share, then a root pasted after a colon -- a predicate written as a list of remembered forms is a list somebody adds to after the next review",
     file: "lib/result-schema.mjs",
-    from: "  \"|\\\\/\\\\/[A-Za-z0-9._~-]\",                     // //server/share -- POSIX double slash and SMB alike\n  \"|\\\\\\\\\\\\\\\\[A-Za-z0-9._~-]\",                    // \\\\server\\share -- a Windows UNC path",
-    to: "  \"|(?!)\",\n  \"|(?!)\",",
+    from: "  \"|(?:^|[\\\\s\\\"'`=(,\\\\[])\\\\/\\\\/[A-Za-z0-9._~-]\", // //server/share -- POSIX double slash and SMB alike",
+    to: "  \"|(?!)\",",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
@@ -2566,10 +2566,10 @@ export const GUARDS = [
   },
   {
     guard: "a row is read as a whole",
-    reason: "an absent field is not an empty one: a row that lost the cells it was averaged over was read as a row averaged over nothing, and its number printed anyway",
-    file: "lib/result-schema.mjs",
-    from: "      for (const [field, kind] of ROW_FIELDS[idKey]) {",
-    to: "      for (const [field, kind] of []) {",
+    reason: "an absent field is not an empty one: a row that lost the cells it was averaged over was read as a row averaged over nothing, and its number printed anyway -- the schema's required list is where that is now said",
+    file: "schemas/aos-result.v2.schema.json",
+    from: "\"required\": [\n        \"domain_id\",\n        \"title\",\n        \"axis\",\n        \"estimate\",\n        \"value\",\n        \"status\",\n        \"required_cells\",\n        \"cells\",",
+    to: "\"required\": [\n        \"domain_id\",\n        \"title\",\n        \"axis\",\n        \"estimate\",\n        \"value\",\n        \"status\",\n        \"required_cells\",",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
   },
@@ -2617,7 +2617,61 @@ export const GUARDS = [
     to: "",
     test: "tests/product/verify-run.test.mjs",
     name: "a result carrying reliance evidence is recomputed from its own record too"
-  }
+  },
+  {
+    guard: "a weight is a share of an equal-weight mean",
+    reason: "six rows each claiming half is a weighting this instrument does not perform, and every value in it is a legal weight, so only the arithmetic catches it -- without this a surface can describe an aggregation nobody computed while printing the number of the one that was",
+    file: "lib/result-schema.mjs",
+    from: "    const uneven = Object.entries(weights).filter(([, weight]) => !isFiniteNumber(weight) || Math.abs(weight - share) > AGREEMENT);",
+    to: "    const uneven = [];",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "a weight is a reciprocal or it is not a weight",
+    reason: "a weight of 0 alongside one of 0.5 is not a share of anything; the schema enumerates the reciprocals so the impossible values are refused where every consumer of the artifact reads it, not only where this repository looks",
+    file: "schemas/aos-result.v2.schema.json",
+    from: "      \"additionalProperties\": {\n        \"enum\": [1, 0.5,",
+    to: "      \"additionalProperties\": {\n        \"enum\": [0, 1, 0.5,",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "a secret handed over with a space is still handed over",
+    reason: "`database password hunter2` names a secret and gives it, and an operator writing a note does not type an equals sign first -- without this rule the assignment form and the length floor let it out between them",
+    file: "lib/result-schema.mjs",
+    from: "    CREDENTIAL_SPACED.test(text) || CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) ||",
+    to: "    CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) ||",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a root is a root wherever it starts",
+    reason: "the boundary was a list of separators somebody remembered, so `workspace:/Users/alice/private.txt` was published verbatim; what makes a root a root is that nothing path-like precedes it, which is also what keeps `lib/result-schema.mjs` a relative path",
+    file: "lib/result-schema.mjs",
+    from: "const NOT_PATH = `(?:^|[^${PATH_CHARACTER}\\\\\\\\/-])`;",
+    to: "const NOT_PATH = \"(?:^|\\\\s)\";",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "every projection is compared with the result",
+    reason: "the card was outside the comparison and outside the recovery callback, so a deleted or edited card.svg came back as \"reports match the result\" -- a projection nobody checks is a projection that can say anything, and the card is the one most likely to be forwarded on its own",
+    file: "lib/store.mjs",
+    from: "    [\"card.svg\", p.card, rendered.card]",
+    to: "",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "the CLI report and recover commands serve and regenerate the same rendering of a stored result"
+  },
+  {
+    guard: "the report command serves what the result projects to",
+    reason: "report.md replaced with a score line was served verbatim, because the command read the file and never asked whether it still followed from result.json",
+    file: "lib/cli.mjs",
+    from: "  regenerateReports(home, runId, projectionsOf);",
+    to: "",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "the CLI report and recover commands serve and regenerate the same rendering of a stored result"
+  },
 ];
 
 /**
@@ -2731,7 +2785,9 @@ export const ACCOUNTED_GUARDS = [
   "a refused file fails the check",
   "a resolved key is the key",
   "a result has to agree with itself",
+  "a root is a root wherever it starts",
   "a row is read as a whole",
+  "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
   "a status this build does not know is refused",
@@ -2740,6 +2796,8 @@ export const ACCOUNTED_GUARDS = [
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a violation decides before the floor does",
+  "a weight is a reciprocal or it is not a weight",
+  "a weight is a share of an equal-weight mean",
   "a withheld corpus does not pass",
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
@@ -2790,6 +2848,7 @@ export const ACCOUNTED_GUARDS = [
   "env policy digest binding",
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
+  "every projection is compared with the result",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
   "evidence bound to the audited revision",
@@ -2920,6 +2979,7 @@ export const ACCOUNTED_GUARDS = [
   "the printed shape is named",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",
+  "the report command serves what the result projects to",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
   "the rows a result must carry come from its contract",
