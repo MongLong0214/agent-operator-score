@@ -81,6 +81,16 @@
       "note": "keyed by workflow file name relative to .github/workflows, a path with a dot and an extension that no prototype key can spell"
     },
     {
+      "file": "lib/ecd-contract.mjs",
+      "match": "const loaded = {};",
+      "note": "keyed by the ARTIFACTS constant this module declares; the contract files are the values, never a key"
+    },
+    {
+      "file": "lib/ecd-contract.mjs",
+      "match": "const per = {};",
+      "note": "keyed by ARTIFACT_KEYS, the module's own fixed list; a digest per named artefact"
+    },
+    {
       "file": "lib/verifiers/fam5.mjs",
       "match": "const subchecks = {};",
       "note": "keyed by SUBCHECKS, a constant list of names the verifier itself declares; nothing the assessed module chose reaches the key"
