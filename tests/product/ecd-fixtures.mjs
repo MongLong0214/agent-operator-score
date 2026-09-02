@@ -6,6 +6,7 @@
 // module documenting the index as withheld -- a fixture that bypasses the contract is a test of
 // nothing.
 
+import { sha256Value } from "../../lib/core.mjs";
 import { loadEcdContract, sealEcdContract } from "../../lib/ecd-contract.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 
@@ -14,7 +15,11 @@ export const complete = { forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", 
 // The identity `comparability` compares. A run that names every identity facet and a profile digest
 // is what PROFILE_BOUND is defined over; `complete` alone stops at RUN_DIAGNOSTIC.
 export const facets = Object.freeze({ language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", operator: "alice", occasion: 1 });
-export const identified = Object.freeze({ ...complete, facets, profile_digest: "sha256:aaa" });
+// A digest, not a label. `sha256:aaa` is three nibbles and cannot bind an exact profile, which is
+// what a profile-bound claim rests on; the fixture states a real one so the tests exercise the
+// shape the product requires rather than a shorthand only the tests accept.
+export const FIXTURE_PROFILE_DIGEST = `sha256:${sha256Value({ fixture: "aos-profile-fixture.v1" })}`;
+export const identified = Object.freeze({ ...complete, facets, profile_digest: FIXTURE_PROFILE_DIGEST });
 
 /** `overrides` maps a metric id to a verdict, a subcheck map, or null for "not observed at all". */
 export const observationsWith = (overrides = {}) => METRIC_IDS.map((id) => {
