@@ -205,7 +205,9 @@ test("a missing V3 body marker fails", () => {
 
 test("an issue closed while the manifest still has it open fails", () => {
   const snapshot = state();
-  snapshot.issues.find((one) => one.number === 570).state = "closed";
+  // Any issue the plan still holds open; #570 was the example until it was done.
+  const open = plan().issues.find((one) => one.status !== "done" && one.kind !== "epic");
+  snapshot.issues.find((one) => one.number === open.issue).state = "closed";
   assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "open-state-mismatch"));
 });
 

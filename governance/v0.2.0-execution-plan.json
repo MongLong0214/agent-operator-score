@@ -822,7 +822,7 @@
     {
       "issue": 570,
       "kind": "release",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
