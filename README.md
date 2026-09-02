@@ -61,9 +61,10 @@ model, so it uses no model quota. `/aos-assess` runs agents again and therefore 
 The plugin removes repository cloning, manual agent registration, and hand-written plan setup.
 It still requires Node `>=22.18 <25`, plus an installed and signed-in Claude Code or Codex CLI.
 
-`/aos-assess` cannot make checkpoint decisions for you. To obtain an official score, follow its
-instructions and answer the checkpoint questions in your own terminal. An agent answering on your
-behalf would measure that agent's policy, not yours.
+`/aos-assess` cannot make checkpoint decisions for you. The operator-process profile is issued
+from checkpoint turns and is withheld without them, so to have your own operation measured at all,
+follow its instructions and answer the checkpoint questions in your own terminal. An agent
+answering on your behalf would measure that agent's policy, not yours.
 
 To run directly from the repository:
 
@@ -100,7 +101,7 @@ unsafe action, and verified the arrival.
 | What it does | Finds potentially risky patterns in real sessions and presents them for human review | Runs six controlled tasks and summarizes the observed operation and outcome as a conditional score |
 | Input | Local Codex, Claude Code, and Grok CLI transcripts | Registered agent CLIs such as Codex and Claude Code |
 | Model quota | None; it only reads existing records | Yes; it runs the registered agents |
-| Output | The suspicious step and supporting evidence | A score out of 100, or the exact reason no score was issued |
+| Output | The suspicious step and supporting evidence | Three profiles — how the operator ran the work, how the system turned out, how reliance was calibrated — each issued or withheld with its reason |
 
 Start with `review`. It lets you inspect how AOS reasons about work you actually did, without
 spending model quota.
@@ -151,7 +152,7 @@ the operator does at a blocker.
 node bin/aos.mjs init                   # find Claude Code and Codex on PATH
 node bin/aos.mjs doctor                 # check commands and known credential paths
 
-node bin/aos.mjs assess                 # unattended diagnostic: no official score
+node bin/aos.mjs assess                 # unattended diagnostic: the process profile is withheld
 node bin/aos.mjs assess --checkpoints   # attended run that can issue a score
 ```
 
@@ -163,7 +164,7 @@ is not a scoring input.
 never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
 a broken setup into a low operator score.
 
-## The six things on the scorecard
+## The six things measured
 
 AOS asks six practical questions.
 
@@ -375,15 +376,16 @@ See [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
 An assessment produces:
 
-- **`card.svg`** — one image with the score, six dimensions, conditions, and the first thing to fix
+- **`card.svg`** — one image with the three profiles, what each rests on, the conditions, and the first thing to fix
 - **Markdown and HTML reports** — metric-level evidence, failures, unobserved items, blockers, and ceilings
 - **JSON** — the machine-readable result
 
-A card for a run without an issued score says **NO SCORE** and gives the reason. It never presents
-`provisional_raw` as a shareable score.
+A card shows a withheld profile as withheld, with its reason. A legacy run without an issued
+score says **NO SCORE** and gives the reason; it never presents `provisional_raw` as a shareable
+score.
 
 The report can be regenerated with
-`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and scorecard
+`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and the card
 currently render in Korean for a Korean locale and in English for every other locale. Japanese and
 Chinese report UI are not yet localized.
 

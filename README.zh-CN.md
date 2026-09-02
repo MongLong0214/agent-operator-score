@@ -59,8 +59,9 @@
 插件省去了克隆仓库、手动注册 Agent 和手写计划文件。不过仍然需要 Node `>=22.18 <25`，
 以及已经安装并登录的 Claude Code 或 Codex CLI。
 
-`/aos-assess` 不能替你回答检查点问题。要获得正式分数，请按提示在自己的终端里作答。
-如果由 Agent 代答，测到的将是 Agent 的策略，而不是你的判断。
+`/aos-assess` 不能替你回答检查点问题。operator process profile 由检查点上的作答签发，
+没有作答就会被保留；要测到你自己的操作，请按提示在自己的终端里作答。如果由 Agent 代答，
+测到的将是 Agent 的策略，而不是你的判断。
 
 从仓库直接运行：
 
@@ -144,7 +145,7 @@ node bin/aos.mjs review --json                  # 输出 JSON
 node bin/aos.mjs init                   # 从 PATH 自动注册 Claude Code 和 Codex
 node bin/aos.mjs doctor                 # 检查命令与已知凭据路径
 
-node bin/aos.mjs assess                 # 无人诊断：不会签发正式分数
+node bin/aos.mjs assess                 # 无人诊断：operator process profile 被保留
 node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分数的运行
 ```
 
@@ -349,11 +350,12 @@ EXPERIMENTAL。扣留意味着没有该值，而不是 0；该命令打印的每
 
 `assess` 完成后会生成：
 
-- **`card.svg`** — 在一张图中显示分数、六个维度、运行条件和最先应修复的一项
+- **`card.svg`** — 在一张图中显示三份 profile 及各自的依据、运行条件和最先应修复的一项
 - **Markdown 与 HTML 报告** — 指标级证据、失败、未观察项、扣留原因与上限
 - **JSON 结果** — 供其他工具读取的原始数据
 
-未签发正式分数时，卡片会显示 **NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
+卡片会把被保留的 profile 显示为保留，并附上原因。旧运行未签发正式分数时，卡片会显示
+**NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
 
 可用 `node bin/aos.mjs report --run <id> --format markdown|html|json` 重新生成报告。HTML 报告与
 评分卡在韩语 Locale 下显示韩语，其他 Locale 下显示英语。目前尚无日语或中文报告界面。

@@ -19,6 +19,32 @@ const READMES = ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"]
 // What each README has to say about a cycle's aggregate, in its own language: that a cycle of
 // profile runs has none, that the median belongs to the legacy scorer, and never the flat promise
 // the four of them used to carry.
+// Phrases that promise what a run of the current instrument does not produce. Each is a sentence
+// one of these files carried in its setup or its output section while a later section said the
+// opposite; they are listed per language because the claim, not the wording, is what must not
+// come back.
+const PROMISES_A_RUN_DOES_NOT_KEEP = {
+  "README.md": [
+    [/To obtain an official score/u, "still tells the reader a run of this instrument issues one"],
+    [/A score out of 100, or the exact reason no score was issued/u, "still describes the output as a score out of 100"],
+    [/one image with the score, six dimensions/u, "still calls the card a picture of a score"]
+  ],
+  "README.ko.md": [
+    [/공식 점수를 받으려면/u, "still tells the reader a run of this instrument issues one"],
+    [/100점 만점 점수 또는 점수를 내지 않은 정확한 이유/u, "still describes the output as a score out of 100"],
+    [/점수, 여섯 영역, 실행 조건/u, "still calls the card a picture of a score"]
+  ],
+  "README.ja.md": [
+    [/公式スコアを得るには/u, "still tells the reader a run of this instrument issues one"],
+    [/100 点満点のスコア、またはスコアを出さなかった正確な理由/u, "still describes the output as a score out of 100"],
+    [/スコア、六つの領域、実行条件/u, "still calls the card a picture of a score"]
+  ],
+  "README.zh-CN.md": [
+    [/要获得正式分数/u, "still tells the reader a run of this instrument issues one"],
+    [/在一张图中显示分数、六个维度/u, "still calls the card a picture of a score"]
+  ]
+};
+
 const AGGREGATION = {
   "README.md": {
     withheld: /A cycle of profile runs has no single number/u,
@@ -134,6 +160,13 @@ test("the cycle sequence every README documents runs on a fresh clone", () => {
       // readable as being about a particular instrument rather than about the product.
       assert.match(said, /aos-result\.v2/u, `${file} describes score gates without saying which instrument they belong to`);
       assert.match(said, /aos-mvp-result\.v1/u, `${file} does not name the legacy result the gates and bands belong to`);
+      // The sections a reader meets first -- what to run, and what comes out of it -- were still
+      // promising one official score out of 100 and a card with a score on it, while the sections
+      // further down said the current instrument issues neither. A README whose opening contradicts
+      // its middle is read from the opening.
+      for (const [phrase, why] of PROMISES_A_RUN_DOES_NOT_KEEP[file]) {
+        assert.doesNotMatch(said, phrase, `${file} ${why}`);
+      }
     }
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
