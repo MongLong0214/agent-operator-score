@@ -2869,7 +2869,7 @@ export const GUARDS = [
     guard: "an absent boundary is not a passing one",
     reason: "a caller who says nothing about the boundary has established nothing about it; the version that read `context.boundary ?? null` and withheld only on a non-null value gave an omitted, null or undefined boundary a PROFILE_BOUND claim and an issued composite of 100",
     file: "lib/ecd-contract.mjs",
-    from: "  const boundaryWithheld = boundary === null\n    ? [\"AOS_ISOLATION_NOT_MEASURED\"]",
+    from: "  const boundaryWithheld = boundary === null\n    ? [UNUSABLE_BOUNDARY_REASONS.NOT_MEASURED]",
     to: "  const boundaryWithheld = boundary === null\n    ? []",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"

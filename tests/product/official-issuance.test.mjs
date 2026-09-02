@@ -24,7 +24,7 @@ import { renderCard } from "../../lib/report-card.mjs";
 import { createRun, writeResult } from "../../lib/store.mjs";
 import { METRIC_IDS, METRICS, observationOf } from "../../lib/metrics.mjs";
 import { newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
-import { evaluate } from "../../lib/ecd-contract.mjs";
+import { UNUSABLE_BOUNDARY_REASONS, evaluate } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
@@ -1596,7 +1596,7 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
   }
   assert.deepEqual(
     buildResult({ contract, evaluation: evaluate(observationsWith(), { ...unbounded }, contract) }).boundary_withheld,
-    ["AOS_ISOLATION_NOT_MEASURED"],
+    [UNUSABLE_BOUNDARY_REASONS.NOT_MEASURED],
     "an unmeasured boundary is not named as such"
   );
   // The verdict's own two halves have to agree. `issuanceGate` publishes `claim_stage_ceiling`
@@ -1608,7 +1608,7 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
     contract,
     evaluation: evaluate(observationsWith(), { ...unbounded, boundary: { official: true, reasons: [], claim_stage_ceiling: "RUN_DIAGNOSTIC" } }, contract)
   });
-  assert.deepEqual(contradictory.boundary_withheld, ["AOS_ISOLATION_VERDICT_INCONSISTENT"]);
+  assert.deepEqual(contradictory.boundary_withheld, [UNUSABLE_BOUNDARY_REASONS.VERDICT_INCONSISTENT]);
   assert.equal(contradictory.aos_composite.issued, false);
   assert.equal(contradictory.claim_stage, "RUN_DIAGNOSTIC");
   // And a ceiling that agrees with an official verdict changes nothing, so the check cannot be
@@ -1621,7 +1621,7 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
   assert.equal(agreeing.aos_composite.issued, true);
   // The card is the surface with no room, and it clips: the condition has to survive the clip, so
   // the codes lead the sentence rather than trailing behind prose.
-  assert.match(renderCard(contradictory), /AOS_ISOLATION_VERDICT_INCONSISTENT/u);
+  assert.match(renderCard(contradictory), new RegExp(UNUSABLE_BOUNDARY_REASONS.VERDICT_INCONSISTENT, "u"));
   assert.deepEqual(held.boundary_withheld, []);
 });
 
