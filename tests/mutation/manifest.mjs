@@ -2552,13 +2552,12 @@ export const GUARDS = [
   },
   {
     guard: "the spawn refuses a workspace inside the store",
-    reason: "the layout is decided three files away from the spawn; without this assertion a caller could hand runProcess a workspace under the store and the child would read the store's path out of its own cwd",
-    platform: "darwin",
+    reason: "the layout is decided three files away from the spawn, and a run that never renders a profile -- any BEST_EFFORT run -- passes no other check: without this one a caller hands runProcess a workspace under the store and the child reads the store's path out of its own cwd",
     file: "lib/core.mjs",
     from: "            throw new Error(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE ${candidate}`);",
     to: "",
-    test: "tests/product/confinement-real-lane.test.mjs",
-    name: "strict_run_refuses_a_workspace_that_contains_the_store_and_leaves_no_scratch"
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
   },
   {
     guard: "a committed observation carries no transcript",
@@ -2681,8 +2680,8 @@ export const GUARDS = [
     guard: "an observation's markers are read, not only its exit code",
     reason: "a login that reported no login and an execution that did not answer both exit zero; the markers are what say the runtime did the thing the lane claims",
     file: "lib/confinement.mjs",
-    from: "    const unmetMarkers = [",
-    to: "    const unmetMarkers = [].concat([",
+    from: '      ...(byKind.get("runtime") && !(byKind.get("runtime").stderr?.markers?.logged_in || byKind.get("runtime").stdout?.markers?.logged_in) ? ["runtime: no login was reported"] : []),',
+    to: "",
     test: "tests/product/official-issuance.test.mjs",
     name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
   },
