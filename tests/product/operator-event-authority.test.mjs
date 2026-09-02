@@ -28,8 +28,8 @@ const mint = (over = {}, secret = SECRET) => mintOperatorEvent({
   decision_type: "spec.goal",
   construct_cell_id: "C1.OF.01",
   opportunity_id: "opp-d1-goal",
-  challenge_digest: { asked: "state the goal" },
-  value_digest: { goal: "ship it" },
+  challenge: { asked: "state the goal" },
+  value: { goal: "ship it" },
   state_revision: 1,
   ...over
 }, { secret });
@@ -159,4 +159,36 @@ test("the source the call site declared and the source the record claims have to
 test("the schema digest is over the schema file's bytes", () => {
   assert.equal(operatorEventSchemaDigest(), sha256Bytes(readFileSync(OPERATOR_EVENT_SCHEMA_URL)));
   assert.match(operatorEventSchemaDigest(), /^sha256:[0-9a-f]{64}$/u);
+});
+
+// --- round 2 ------------------------------------------------------------------------------------
+
+test("a raw value is digested because it was supplied as a raw value, never because of how it looks", () => {
+  // Round 1: `digestOf` decided by string shape, so a raw judgment that happened to be 64 hex
+  // characters was emitted as `value_digest: "sha256:<the secret itself>"`. Which field the caller
+  // supplied is the only thing that may decide this.
+  const secret = "0123456789abcdef".repeat(4);
+  const event = mintOperatorEvent({
+    run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-raw",
+    challenge: { asked: "state it" }, value: secret, state_revision: 1
+  }, { secret: SECRET });
+  assert.notEqual(event.value_digest, `sha256:${secret}`, "the raw value was published as its own digest");
+  assert.equal(event.value_digest.includes(secret), false);
+  assert.match(event.value_digest, /^sha256:[0-9a-f]{64}$/u);
+});
+
+test("a value and a value digest may not both be supplied, and neither may be omitted", () => {
+  const base = {
+    run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-raw", challenge: { asked: "x" }, state_revision: 1
+  };
+  assert.throws(() => mintOperatorEvent({ ...base, value: "a", value_digest: `sha256:${"b".repeat(64)}` }, { secret: SECRET }), /both/u);
+  assert.throws(() => mintOperatorEvent({ ...base }, { secret: SECRET }), /value/u);
+  assert.throws(() => mintOperatorEvent({ ...base, value_digest: "not-a-digest" }, { secret: SECRET }), /value_digest/u);
+  // Round 1 digested `null` for an omitted challenge, so an event that stated nothing still minted.
+  assert.throws(() => mintOperatorEvent({
+    run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-raw", value: "a", state_revision: 1
+  }, { secret: SECRET }), /challenge/u);
 });

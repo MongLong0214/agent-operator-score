@@ -27,6 +27,7 @@
     "verify:no-agent-artifact-process-credit": "node --test tests/product/no-agent-artifact-process-credit.test.mjs",
     "verify:initial-before-advice-interface": "node --test tests/product/initial-before-advice.test.mjs",
     "verify:operator-event-projection": "node --test tests/product/operator-event-projection.test.mjs",
+    "verify:operator-channel-authority": "node --test tests/product/operator-channel-authority.test.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {

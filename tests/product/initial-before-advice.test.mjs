@@ -6,15 +6,25 @@ import { RELIANCE_REJECTED, createRelianceTrace } from "../../lib/operator-event
 const SECRET = "7c30".repeat(16);
 const RUN = "run-560-reliance";
 
-const trace = () => createRelianceTrace({ run_id: RUN, secret: SECRET });
+/** A journal that survives the trace it was made for, the way a run's event log does. */
+const journal = () => {
+  const stages = [];
+  return {
+    stages,
+    record: (opportunity_id, stage) => stages.push({ opportunity_id, stage }),
+    read: () => stages.map((entry) => ({ ...entry }))
+  };
+};
+
+const trace = () => createRelianceTrace({ run_id: RUN, secret: SECRET, journal: journal() });
 
 const judgment = (over = {}) => ({
   source: "interactive-tty",
   construct_cell_id: "C3.ER.01",
   opportunity_id: "opp-reliance-1",
-  challenge_digest: { question: "is this migration safe to run" },
-  value_digest: { answer: "no, it drops a column" },
-  named_evidence_ids: ["migrations/0042.sql"],
+  challenge: { question: "is this migration safe to run" },
+  judgment: { answer: "no, it drops a column" },
+  named_evidence_ids: ["migrations.0042.sql"],
   reported_confidence: 0.6,
   proactive_delegation: "DECIDE_ALONE",
   ...over
@@ -26,7 +36,7 @@ test("an initial judgment is one commit carrying the judgment, its confidence, i
   assert.equal(event.decision_type, "initial.judgment");
   assert.equal(event.state_revision, 1);
   assert.equal(event.reported_confidence, 0.6);
-  assert.deepEqual(event.named_evidence_ids, ["migrations/0042.sql"]);
+  assert.deepEqual(event.named_evidence_ids, ["migrations.0042.sql"]);
   assert.equal(event.proactive_delegation, "DECIDE_ALONE");
   assert.match(event.value_digest, /^sha256:[0-9a-f]{64}$/u);
   // One event, not four that a caller could assemble in any order afterwards.
@@ -61,7 +71,7 @@ test("advice cannot be revealed for an opportunity with no committed judgment, a
   assert.throws(() => reliance.recordAdviceResponse(judgment()), /no revealed advice/u);
   reliance.commitInitialJudgment(judgment());
   reliance.revealAdvice("opp-reliance-1");
-  const response = reliance.recordAdviceResponse(judgment({ value_digest: { answer: "I kept my own answer" } }));
+  const response = reliance.recordAdviceResponse(judgment({ judgment: { answer: "I kept my own answer" } }));
   assert.equal(response.decision_type, "advice.response");
   assert.equal(response.state_revision, 2);
 });
@@ -86,7 +96,7 @@ test("what #583 is handed is the ordered evidence and no rate, index or error ta
   const reliance = trace();
   reliance.commitInitialJudgment(judgment());
   reliance.revealAdvice("opp-reliance-1");
-  reliance.recordAdviceResponse(judgment({ value_digest: { answer: "adopted" } }));
+  reliance.recordAdviceResponse(judgment({ judgment: { answer: "adopted" } }));
   const [opportunity] = reliance.opportunities();
   assert.deepEqual(Object.keys(opportunity).sort(), ["advice_response", "advice_revealed", "initial_judgment", "opportunity_id"]);
   assert.equal(opportunity.initial_judgment.decision_type, "initial.judgment");
@@ -97,4 +107,35 @@ test("what #583 is handed is the ordered evidence and no rate, index or error ta
   for (const metric of ["cair", "csr", "appropriate", "over_reliance", "under_reliance", "rate", "index"]) {
     assert.equal(rendered.toLowerCase().includes(metric), false, `${metric} is computed here and belongs to #583`);
   }
+});
+
+// --- round 2 ------------------------------------------------------------------------------------
+
+test("an initial judgment with no named evidence, no challenge or no delegation decision is refused", () => {
+  // Round 1 required only a numeric confidence and defaulted an omitted challenge, judgment,
+  // evidence list and delegation decision into digests of null and []. A calibration opportunity
+  // assembled out of nothing is not one.
+  const shared = journal();
+  const reliance = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  assert.throws(() => reliance.commitInitialJudgment(judgment({ named_evidence_ids: [] })), /evidence/u);
+  assert.throws(() => reliance.commitInitialJudgment(judgment({ named_evidence_ids: undefined })), /evidence/u);
+  assert.throws(() => reliance.commitInitialJudgment(judgment({ proactive_delegation: undefined })), /delegation/u);
+  assert.throws(() => reliance.commitInitialJudgment(judgment({ challenge: undefined, challenge_digest: undefined })), /challenge/u);
+  assert.throws(() => reliance.commitInitialJudgment(judgment({ judgment: undefined })), /states its value/u);
+  assert.equal(shared.read().length, 0);
+});
+
+test("a second trace for the same run cannot commit an initial judgment after the first revealed the advice", () => {
+  // Round 1 kept the reveal in an in-memory Set, so reconstructing the trace reset it.
+  const shared = journal();
+  const first = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  first.commitInitialJudgment(judgment());
+  first.revealAdvice("opp-reliance-1");
+  const rebuilt = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  assert.throws(() => rebuilt.commitInitialJudgment(judgment()), /already revealed|already carries/u);
+});
+
+test("a reliance trace with no journal is refused, because a reveal nobody recorded cannot be checked later", () => {
+  assert.throws(() => createRelianceTrace({ run_id: RUN, secret: SECRET }), /journal/u);
+  assert.throws(() => createRelianceTrace({ run_id: RUN, secret: SECRET, journal: {} }), /journal/u);
 });

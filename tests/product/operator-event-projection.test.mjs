@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { canonicalJson } from "../../lib/core.mjs";
-import { PROJECTED_FIELDS, loadOperatorEventSchema, mintOperatorEvent, projectOperatorEvent } from "../../lib/operator-events.mjs";
+import { DERIVED_PROJECTION_FIELDS, PROJECTED_FIELDS, loadOperatorEventSchema, mintOperatorEvent, projectOperatorEvent } from "../../lib/operator-events.mjs";
 
 const SECRET = "51ab".repeat(16);
 const RUN = "run-560-projection";
@@ -19,9 +19,9 @@ const event = mintOperatorEvent({
   decision_type: "context.include",
   construct_cell_id: "C2.OD.01",
   opportunity_id: "opp-d2-include",
-  challenge_digest: { question: TYPED },
-  value_digest: { answer: TYPED },
-  named_evidence_ids: ["docs/authoritative.md"],
+  challenge: { question: TYPED },
+  value: { answer: TYPED },
+  named_evidence_ids: ["docs.authoritative.md"],
   state_revision: 1,
   candidate_source: { source_id: PATH, authority_class: "AUTHORITATIVE", version: "2026-08-01", untrusted_content: false, size_bytes: 4096 },
   file_provenance: { path_digest: `sha256:${"1".repeat(64)}`, file_digest: `sha256:${"2".repeat(64)}`, attested_by: "local-owner", attested_at: "2026-09-03T00:00:00Z" }
@@ -43,7 +43,7 @@ test("the projection carries digests and structural values, and no text the oper
 
 test("the projection is an allowlist, so a field added to the schema is absent until somebody adds it here", () => {
   const declared = Object.keys(loadOperatorEventSchema().properties);
-  const structural = ["candidate_source", "proactive_delegation", "declared_route", "relay_attestation", "file_provenance"];
+  const structural = [...DERIVED_PROJECTION_FIELDS];
   // Every projected field is a declared one, and every declared field is either projected, projected
   // in a reshaped form, or deliberately absent. The list is stated here rather than derived, because
   // "whatever the schema has" is exactly the default that publishes a field nobody considered.
@@ -76,7 +76,7 @@ test("an operator event cannot be minted carrying a length or a turn count, what
   // and turn count are named shortcut prohibitions on the cells these events are evidence for.
   const minted = mintOperatorEvent({
     run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
-    construct_cell_id: "C1.OF.01", opportunity_id: "opp-shortcut", value_digest: { goal: "x" }, state_revision: 1,
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-shortcut", challenge: { asked: "x" }, value: { goal: "x" }, state_revision: 1,
     instruction_length: 4096, turn_count: 12, duration_ms: 900, prompt_length: 77
   }, { secret: SECRET });
   for (const forbidden of ["instruction_length", "turn_count", "duration_ms", "prompt_length"]) {
@@ -88,16 +88,91 @@ test("an operator event cannot be minted carrying a length or a turn count, what
 test("two operator events that differ only in how much the operator wrote project the same structure", () => {
   const short = mintOperatorEvent({
     run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
-    construct_cell_id: "C1.OF.01", opportunity_id: "opp-len", value_digest: { goal: "x" }, state_revision: 1,
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-len", challenge: { asked: "x" }, value: { goal: "x" }, state_revision: 1,
     event_id: "operator-00000000-0000-4000-8000-000000000001", created_at: "2026-09-03T00:00:00Z"
   }, { secret: SECRET });
   const long = mintOperatorEvent({
     run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
-    construct_cell_id: "C1.OF.01", opportunity_id: "opp-len", value_digest: { goal: "x".repeat(20000) }, state_revision: 1,
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-len", challenge: { asked: "x" }, value: { goal: "x".repeat(20000) }, state_revision: 1,
     event_id: "operator-00000000-0000-4000-8000-000000000001", created_at: "2026-09-03T00:00:00Z"
   }, { secret: SECRET });
   const shape = (projected) => Object.keys(projected).sort().map((key) => (key.endsWith("_digest") || key === "session_binding" ? key : [key, projected[key]]));
   assert.deepEqual(shape(projectOperatorEvent(short)), shape(projectOperatorEvent(long)),
     "the two projections differ in something other than their digests, so length reached a consumer");
   assert.notEqual(projectOperatorEvent(short).value_digest, projectOperatorEvent(long).value_digest);
+});
+
+// --- round 2 ------------------------------------------------------------------------------------
+
+// The strings a public projection publishes, and the values none of them may ever be.
+const HOSTILE = [
+  "secret:hunter2",
+  "/Users/alice/.ssh/id_ed25519",
+  "../../etc/passwd",
+  "hunter2 password",
+  "AKIAIOSFODNN7EXAMPLE=x",
+  "~/clients/acme-confidential"
+];
+
+test("no string the projection publishes can be minted as a secret or a path", () => {
+  // Round 1: `named_evidence_ids`, the candidate source's version and the relay id were copied
+  // verbatim from a schema that permitted any 1-128 characters, so
+  // ["secret:hunter2", "/Users/alice/.ssh/id_ed25519"] came out of the projection unchanged.
+  for (const hostile of HOSTILE) {
+    assert.throws(() => mintOperatorEvent({
+      run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
+      construct_cell_id: "C1.OF.01", opportunity_id: "opp-hostile",
+      challenge: { asked: "x" }, value: { goal: "y" }, state_revision: 1,
+      named_evidence_ids: [hostile]
+    }, { secret: SECRET }), /AOS_INVALID_OPERATOR_EVENT/u, `named_evidence_ids accepted ${hostile}`);
+    assert.throws(() => mintOperatorEvent({
+      run_id: RUN, source: "interactive-tty", decision_type: "context.include",
+      construct_cell_id: "C2.OD.01", opportunity_id: "opp-hostile",
+      challenge: { asked: "x" }, value: { goal: "y" }, state_revision: 1,
+      candidate_source: { source_id: "docs/a.md", authority_class: "AUTHORITATIVE", version: hostile, untrusted_content: false, size_bytes: 1 }
+    }, { secret: SECRET }), /AOS_INVALID_OPERATOR_EVENT/u, `candidate_source.version accepted ${hostile}`);
+    assert.throws(() => mintOperatorEvent({
+      run_id: RUN, source: "interactive-tty", decision_type: "route.assign",
+      construct_cell_id: "C2.OD.01", opportunity_id: "opp-hostile",
+      challenge: { asked: "x" }, value: { goal: "y" }, state_revision: 1,
+      declared_route: [hostile]
+    }, { secret: SECRET }), /AOS_INVALID_OPERATOR_EVENT/u, `declared_route accepted ${hostile}`);
+    assert.throws(() => mintOperatorEvent({
+      run_id: RUN, source: "agent-relay", decision_type: "spec.goal",
+      construct_cell_id: "C1.OF.01", opportunity_id: "opp-hostile",
+      challenge: { asked: "x" }, value: { goal: "y" }, state_revision: 1,
+      relay_attestation: { relay_id: hostile, owner_challenge_digest: `sha256:${"0".repeat(64)}`, attested_at: "2026-09-03T00:00:00Z" }
+    }, { secret: SECRET }), /AOS_INVALID_OPERATOR_EVENT/u, `relay_id accepted ${hostile}`);
+  }
+});
+
+test("a named evidence id reaches the projection as a digest, not as itself", () => {
+  const minted = mintOperatorEvent({
+    run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-evidence",
+    challenge: { asked: "x" }, value: { goal: "y" }, state_revision: 1,
+    named_evidence_ids: ["migrations.0042.sql"]
+  }, { secret: SECRET });
+  const projected = projectOperatorEvent(minted);
+  const rendered = canonicalJson(projected);
+  assert.equal(rendered.includes("migrations.0042.sql"), false, "a named evidence id was published verbatim");
+  assert.equal(Array.isArray(projected.named_evidence_digests), true);
+  assert.match(projected.named_evidence_digests[0], /^sha256:[0-9a-f]{64}$/u);
+});
+
+test("every string field the projection publishes is a digest, an enum, or a constrained token", () => {
+  // Stated as a property of the schema rather than of one fixture, because the round-1 test put its
+  // secret only in fields that were already hashed and so could not have caught this class.
+  const schema = loadOperatorEventSchema();
+  const unconstrained = [];
+  const walk = (node, path) => {
+    if (!node || typeof node !== "object") return;
+    if (node.type === "string" || (Array.isArray(node.type) && node.type.includes("string"))) {
+      if (node.enum === undefined && node.const === undefined && node.pattern === undefined) unconstrained.push(path);
+    }
+    for (const [key, child] of Object.entries(node.properties ?? {})) walk(child, `${path}.${key}`);
+    if (node.items) walk(node.items, `${path}[]`);
+  };
+  walk(schema, "$");
+  assert.deepEqual(unconstrained, [], `these string fields accept anything: ${unconstrained.join(", ")}`);
 });
