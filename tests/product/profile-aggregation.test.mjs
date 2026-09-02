@@ -7,7 +7,8 @@ import test from "node:test";
 import { canonicalJson, writeJson } from "../../lib/core.mjs";
 import { LOOPBACK, startDashboard } from "../../lib/dashboard.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
-import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
+import { evaluate, loadEcdContract, shippedEcdContract } from "../../lib/ecd-contract.mjs";
+import { METRICS, METRIC_IDS } from "../../lib/metrics.mjs";
 import { loadSchema, validateAgainstSchema } from "../../lib/execution-plan.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
@@ -392,7 +393,44 @@ test("a result whose schema is neither the profile schema nor the legacy one is 
   assert.equal(isLegacyResult(buildResult({ contract: populated, evaluation: fullRun() })), false);
 });
 
-test("a profile result missing its coverage is refused rather than shown as zero of zero", () => {
+test("the sanitiser publishes the instrument's own vocabulary and digests only what must not be published", () => {
+  // The gate every published value passes through is only safe if it is also accurate. A rule wide
+  // enough to eat `authoritative-source-selected` -- a subcheck this product declares, digested
+  // because "auth" starts it -- takes the words out of the report and nobody notices until one is
+  // missing. So the whole declared vocabulary goes through it: every string the contract and the
+  // metric set are written in has to come out unchanged.
+  const contract = loadEcdContract();
+  const words = new Set();
+  const walk = (value) => {
+    if (typeof value === "string") words.add(value);
+    else if (Array.isArray(value)) for (const entry of value) walk(entry);
+    else if (value !== null && typeof value === "object") for (const [key, entry] of Object.entries(value)) { words.add(key); walk(entry); }
+  };
+  walk(contract);
+  for (const id of METRIC_IDS) { words.add(id); for (const subcheck of METRICS[id].subchecks) words.add(subcheck); }
+  assert.ok(words.size > 500, `only ${words.size} declared strings were checked`);
+
+  const result = buildResult({ contract: populated, evaluation: fullRun(), observations: observationsWith() });
+  const flat = canonicalJson(result);
+  // Every declared string that appears in a result appears as itself.
+  for (const observation of result.observations) {
+    assert.equal(observation.metric_id.startsWith("sha256:"), false, observation.metric_id);
+    assert.equal(observation.verifier_id?.startsWith("sha256:") ?? false, false);
+    for (const subcheck of observation.subchecks) {
+      assert.equal(words.has(subcheck.id), true, `${subcheck.id} is not a declared subcheck`);
+      assert.equal(subcheck.id.startsWith("sha256:"), false, `${subcheck.id} was digested`);
+    }
+  }
+  for (const cell of result.cells) assert.equal(cell.cell_id.startsWith("sha256:"), false, cell.cell_id);
+  assert.ok(flat.includes("authoritative-source-selected"), "a declared subcheck was digested out of the result");
+  assert.ok(flat.includes("PROFILE-BOUND"), "the boundary statement was digested");
+  // And the things that must not be published still are not, in the same run.
+  const leaky = buildResult({ contract: populated, evaluation: fullRun(), run: { run_id: "AKIAIOSFODNN7EXAMPLE", suite: "aos-suite-v1" } });
+  assert.match(leaky.run.run_id, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(leaky.run.suite, "aos-suite-v1");
+});
+
+test("a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left", () => {
   const stored = JSON.parse(canonicalJson(buildResult({ contract: populated, evaluation: fullRun() })));
   assert.equal(projectResult(stored).process.coverage, `${stored.operator_process_profile.coverage.issued} of ${stored.operator_process_profile.coverage.required} required cells issued`);
   for (const key of ["operator_process_profile", "system_outcome_profile", "reliance_calibration_profile"]) {
@@ -406,9 +444,45 @@ test("a profile result missing its coverage is refused rather than shown as zero
   const noComposite = JSON.parse(canonicalJson(stored));
   delete noComposite.aos_composite;
   assert.throws(() => projectResult(noComposite), /AOS_RESULT_INCOMPLETE/);
+
+  // A surface that keeps its shape and loses a row is the same loss by a quieter route: five
+  // constructs read as a five-construct profile rather than as a profile missing one, and a
+  // composite whose artifact surface is gone reads as one with nothing delegated. The rows a
+  // surface says it averaged are the rows it must carry -- no more and no fewer.
+  const damage = (mutate) => { const copy = JSON.parse(canonicalJson(stored)); mutate(copy); return copy; };
+  const refusals = [
+    ["a construct row is gone", (r) => delete r.operator_process_profile.constructs.C1],
+    ["a domain row is gone", (r) => delete r.system_outcome_profile.domains.O2],
+    ["a reliance metric is gone", (r) => delete r.reliance_calibration_profile.metrics.csr],
+    ["the delegated-artifact surface is gone", (r) => delete r.aos_composite.delegated_artifact],
+    ["a row nobody averaged was added", (r) => { r.operator_process_profile.constructs.C9 = { ...r.operator_process_profile.constructs.C1, construct_id: "C9" }; }],
+    ["the weights that say what was averaged are gone", (r) => delete r.operator_process_profile.weights]
+  ];
+  for (const [why, mutate] of refusals) {
+    const damaged = damage(mutate);
+    for (const call of [() => projectResult(damaged), () => renderMarkdown(damaged), () => renderHtml(damaged), () => renderCard(damaged)]) {
+      assert.throws(call, /AOS_RESULT_INCOMPLETE/, why);
+    }
+  }
+
+  // And a status this build does not know is a word in a file, not a state: refused by name
+  // wherever it appears, rather than printed because it was there.
+  const unknownStatuses = [
+    ["a construct row", (r) => { r.operator_process_profile.constructs.C1.status = "ATTACKER_DEFINED"; }],
+    ["a domain row", (r) => { r.system_outcome_profile.domains.O1.status = "ATTACKER_DEFINED"; }],
+    ["a cell inside a domain", (r) => { r.system_outcome_profile.domains.O1.cells[0].status = "ATTACKER_DEFINED"; }],
+    ["a reliance metric", (r) => { r.reliance_calibration_profile.metrics.cair.status = "ATTACKER_DEFINED"; }],
+    ["the reliance surface", (r) => { r.reliance_calibration_profile.status = "ATTACKER_DEFINED"; }],
+    ["an artifact row", (r) => { r.aos_composite.delegated_artifact.constructs.C1.status = "ATTACKER_DEFINED"; }]
+  ];
+  for (const [where, mutate] of unknownStatuses) {
+    const damaged = damage(mutate);
+    assert.throws(() => projectResult(damaged), /AOS_RESULT_UNKNOWN_STATUS/, where);
+    assert.throws(() => renderMarkdown(damaged), /AOS_RESULT_UNKNOWN_STATUS/, where);
+  }
 });
 
-test("no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched", () => {
+test("no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched", () => {
   // The result is the artifact an operator publishes. Everything the caller hands it that is not a
   // declared field with a declared shape is carried as a digest of itself: accountable, and not a
   // token somebody can use.
@@ -429,10 +503,17 @@ test("no credential shape and no absolute path reaches the canonical result or a
     windows_path: "C:\\Users\\alice\\creds.txt",
     private_key: "-----BEGIN RSA PRIVATE KEY-----"
   };
-  const evaluation = evaluate(observationsWith(), { ...identified, facets: { ...identified.facets, workspace: secretPath, ...shapes } }, populated);
+  // Injected at every door into the result, not only the ones a previous round happened to use:
+  // the facets, the run record, a cap and its trigger -- and the observations, which the contract
+  // copies into every cell binding it issues.
+  const observations = observationsWith().map((observation, index) => (index === 0
+    ? { ...observation, verifier_id: "sk-live-DO-NOT-PUBLISH-1234567890", evidence_ids: [secretPath], reason: `read ${secretPath}` }
+    : observation));
+  const evaluation = evaluate(observations, { ...identified, facets: { ...identified.facets, workspace: secretPath, ...shapes } }, populated);
   const result = buildResult({
     contract: populated,
     evaluation,
+    observations,
     run: {
       run_id: "run-1", suite: "aos-suite-v1", invocation_count: 3, operator_plan_authored: true,
       api_token: canary, workspace: secretPath
@@ -443,6 +524,17 @@ test("no credential shape and no absolute path reaches the canonical result or a
     }]
   });
   const rendered = [canonicalJson(result), renderMarkdown(result), renderHtml(result), renderCard(result), canonicalJson(projectResult(result))].join("\n");
+  // The bindings the contract itself carried: a cell says what it was answered by, and that is a
+  // string the caller supplied. Every one of them is published or digested, never copied through.
+  const bindings = result.cells.flatMap((cell) => cell.bound_to);
+  assert.ok(bindings.length >= 3, "the fixture produced no cell bindings, so this checked nothing");
+  for (const binding of bindings) {
+    assert.doesNotMatch(binding.verifier_id, /sk-live/u);
+    for (const id of binding.evidence_ids) assert.equal(id.includes("/Users/"), false);
+  }
+  assert.equal(result.observations[0].verifier_id.startsWith("sha256:"), true);
+  assert.equal(result.observations[0].evidence_ids[0].startsWith("sha256:"), true);
+  assert.equal(result.observations[0].reason.startsWith("sha256:"), true);
   assert.equal(rendered.includes(canary), false, "the credential survived");
   assert.equal(rendered.includes(secretPath), false, "the absolute path survived");
   assert.equal(rendered.includes("/Users/"), false);
@@ -570,19 +662,25 @@ const cycleWith = (runs) => ({
 const legacyRecord = (seed, finalScore) => ({ seed, valid: true, invalid_reason: null, result_schema: LEGACY_RESULT_SCHEMA_ID, final_score: finalScore, dimensions: { D1: 80 } });
 const profileRecord = (seed) => ({ seed, valid: true, invalid_reason: null, result_schema: RESULT_SCHEMA_ID, final_score: null, dimensions: {} });
 
-test("a cycle of profile results aggregates only the legacy ledger, says so, and a mixed cycle is refused outright", async () => {
+test("a cycle of profile results has no aggregate and names the issue that owns one, and a mixed cycle is refused outright", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-cycle-schema-"));
   const home = join(cwd, ".aos");
   initHome(home);
   try {
     writeJson(join(home, "cycle.json"), cycleWith([profileRecord("0000000000000001"), profileRecord("0000000000000002"), profileRecord("0000000000000003")]));
-    // The profiles are not aggregated: #563 owns saying what a cycle of profiles is. What the
-    // ledger still carries is the legacy scorer's own number, named as the legacy number it is, so
-    // nothing on this page reads as an operator score over the new instrument.
-    const profiles = runCli(cwd, ["cycle"], 0);
+    // No aggregate, and no borrowed one: re-deriving the legacy scorer's number from a profile
+    // run's observations would be a number about the new run under an instrument that never
+    // measured it. #563 owns saying what a cycle of profiles aggregates to, and the command says
+    // so rather than printing something in the meantime.
+    const profiles = runCli(cwd, ["cycle"], 1);
     assert.equal(profiles.stdout.includes("Operator Score"), false);
-    assert.match(profiles.stdout, /legacy ledger median/u);
-    assert.match(profiles.stdout, /the profiles themselves are not aggregated/u);
+    assert.equal(/\b\d+ \/ 100\b/u.test(profiles.stdout), false, "a number was printed for a cycle of profiles");
+    assert.match(profiles.stdout, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
+    assert.match(profiles.stdout, /#563/u);
+    const asJson = JSON.parse(runCli(cwd, ["cycle", "--json"], 1).stdout);
+    assert.equal(asJson.aggregate, null);
+    assert.equal(asJson.complete, false);
+    assert.match(asJson.withheld_reason, /#563/u);
     writeJson(join(home, "cycle.json"), cycleWith([legacyRecord("0000000000000001", 71), legacyRecord("0000000000000002", 74), profileRecord("0000000000000003")]));
     const mixed = runCli(cwd, ["cycle"], 2);
     assert.match(mixed.stderr, /AOS_MIXED_RESULT_SCHEMAS/u);

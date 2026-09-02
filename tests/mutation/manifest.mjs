@@ -2166,7 +2166,7 @@ export const GUARDS = [
     from: 'const runId = listRuns(home).find((id) => !before.has(id)) ?? null;',
     to: "const runId = listRuns(home)[0];",
     test: "tests/product/cycle-command.test.mjs",
-    name: "three attended runs produce a legacy ledger median, and it is the median of all of them"
+    name: "three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one"
   },
   {
     guard: "operator decision window",
@@ -2364,7 +2364,7 @@ export const GUARDS = [
     from: "    if (!isPlainObject(value)) throw new Error(`AOS_RESULT_INCOMPLETE ${key} is missing from this result and cannot be shown`);",
     to: "    if (!isPlainObject(value)) return { coverage: { required: 0, issued: 0 } };",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "a profile result missing its coverage is refused rather than shown as zero of zero"
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
   },
   {
     guard: "profile undeclared run fields are digested",
@@ -2373,7 +2373,7 @@ export const GUARDS = [
     from: "    if (kind === undefined) {\n      extra.set(key, value);\n      redacted.push(key);\n      continue;\n    }",
     to: "    if (kind === undefined) {\n      kept.set(key, value);\n      continue;\n    }",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
   {
     guard: "profile facet values are published safely",
@@ -2382,7 +2382,7 @@ export const GUARDS = [
     from: "  const facetIdentity = Object.fromEntries(Object.entries(evaluation.facet_coverage.declared)\n    .map(([facet, value]) => [facet, publishedText(value)]));",
     to: "  const facetIdentity = { ...evaluation.facet_coverage.declared };",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
   {
     guard: "profile reliance carries its own coverage",
@@ -2436,7 +2436,7 @@ export const GUARDS = [
     from: "  (ABSOLUTE_PATH.test(text) || CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
     to: "  (ABSOLUTE_PATH.test(text) || CREDENTIAL_TEXT.test(text) || OPAQUE_TOKEN.test(text));",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
   {
     guard: "a one-segment absolute path is a path",
@@ -2445,7 +2445,7 @@ export const GUARDS = [
     from: "const ABSOLUTE_PATH = /(?:^|[\\s\"'`=(,:\\[])(?:~(?:\\/|$)|[A-Za-z]:\\\\|\\/[A-Za-z0-9._~-])/u;",
     to: "const ABSOLUTE_PATH = /(?:^|[\\s\"'`=(,:\\[])(?:~(?:\\/|$)|[A-Za-z]:\\\\|\\/[A-Za-z0-9._~-]+[/\\\\])/u;",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
   {
     guard: "oneOf means exactly one",
@@ -2455,6 +2455,51 @@ export const GUARDS = [
     to: "      if (false) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     test: "tests/product/projection-consistency.test.mjs",
     name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+  },
+  {
+    guard: "everything published passes the one gate",
+    reason: "field-by-field sanitising is a list of places somebody remembered, and each round found the next one it omitted -- the cell bindings the contract's own evaluation carried were the fourth",
+    file: "lib/result-schema.mjs",
+    from: "  return deepFreeze(publishedDeep(result));",
+    to: "  return deepFreeze(result);",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a surface carries the rows it says it averaged",
+    reason: "a profile with a construct deleted reads as a profile of five constructs rather than one missing its sixth: the withheld state is not shown as zero, it is not shown at all",
+    file: "lib/result-schema.mjs",
+    from: "    if (present.length !== expected.length || present.some((id, index) => id !== expected[index])) {",
+    to: "    if (false) {",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "a status this build does not know is refused",
+    reason: "a status is a state, not a word in a file; printing an unrecognised one is trusting whoever wrote it, and every renderer would carry it through to the reader",
+    file: "lib/result-schema.mjs",
+    from: "    if (!allowed.includes(status)) throw new Error(`AOS_RESULT_UNKNOWN_STATUS ${where} carries ${JSON.stringify(status)}, which is not one of ${allowed.join(\", \")}`);",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "a new run is never scored by the old scorer",
+    reason: "re-deriving the legacy number from a profile run's observations produces a number about that run under an instrument that never measured it, and a cycle then averages the old model beside the new one",
+    file: "lib/cli.mjs",
+    from: "      const legacyLedger = result === null || resultSchema === RESULT_SCHEMA_ID ? null : result;",
+    to: "      const legacyLedger = result === null ? null : resultSchema === RESULT_SCHEMA_ID ? scoreRun(result.observations, { safetyState: \"S0\" }) : result;",
+    test: "tests/product/cycle-command.test.mjs",
+    name: "three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one"
+  },
+  {
+    guard: "a cycle of profiles withholds its aggregate by name",
+    reason: "falling through to the legacy median over runs that carry no legacy score is how a cycle prints a number nothing computed, and #563 owns what a cycle of profiles means",
+    file: "lib/cli.mjs",
+    from: "  if (cycleSchema === RESULT_SCHEMA_ID) {",
+    to: "  if (false) {",
+    test: "tests/product/cycle-command.test.mjs",
+    name: "three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one"
   }
 ];
 
@@ -2554,9 +2599,11 @@ export const ACCOUNTED_GUARDS = [
   "a .NET startup hook is a pre-main hook like the rest",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cycle of profiles withholds its aggregate by name",
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
   "a missed known incident is a regression",
+  "a new run is never scored by the old scorer",
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
@@ -2564,6 +2611,8 @@ export const ACCOUNTED_GUARDS = [
   "a resolved key is the key",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
+  "a status this build does not know is refused",
+  "a surface carries the rows it says it averaged",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a violation decides before the floor does",
@@ -2618,6 +2667,7 @@ export const ACCOUNTED_GUARDS = [
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
   "every transport spelling needs the transport approval",
+  "everything published passes the one gate",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
   "exact revision binding",
