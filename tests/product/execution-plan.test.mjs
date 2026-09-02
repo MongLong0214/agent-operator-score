@@ -1119,3 +1119,32 @@ test("a phase that has begun on a blocked issue cannot integrate code either", (
   }
   assert.equal(checkPlan(doc).ok, true);
 });
+
+test("an issue number from a comment cannot become a pattern", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  // `record.issue` arrives in a fenced JSON block on an issue comment, so it is attacker-controlled
+  // text until something proves otherwise. Interpolated raw, `".*"` matched any pull request body,
+  // and the confirmation stored in the snapshot -- and carried into the evidence bundle -- was a
+  // recorded fact that was false.
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/" }], link: null };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: "c".repeat(40), body: "Closes #12345 unrelated work" } };
+    }
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    return { body: { conclusion: "success", head_sha: "b".repeat(40) } };
+  };
+
+  for (const issue of [".*", "588|.*", "\\d+", "588", null, 1.5, -1]) {
+    const checked = await verifyCompletionRecord("o/r", { issue, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1] }, { get, issue: { issue: 588, owned_paths: ["lib/"], evidence_bindings: {} } });
+    assert.equal(checked.pr_closes_issue, false, `${JSON.stringify(issue)} was accepted as an issue number`);
+  }
+
+  // The honest case still works.
+  const honest = async (path) =>
+    path.includes("/pulls/")
+      ? { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: "c".repeat(40), body: "Closes #588" } }
+      : get(path);
+  const good = await verifyCompletionRecord("o/r", { issue: 588, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1] }, { get: honest, issue: { issue: 588, owned_paths: ["lib/"], evidence_bindings: {} } });
+  assert.equal(good.pr_closes_issue, true);
+});

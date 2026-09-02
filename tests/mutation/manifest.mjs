@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "an issue number is a number before it is a pattern",
+    reason: "a record carrying \"issue\": \".*\" made pr_closes_issue true against any pull request body",
+    file: "lib/github-state.mjs",
+    from: "    const number = Number.isInteger(record.issue) && record.issue > 0 ? String(record.issue) : null;",
+    to: "    const number = String(record.issue);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an issue number from a comment cannot become a pattern"
+  },
+  {
     guard: "a started phase cannot integrate code on a blocked issue",
     reason: "checking only `ready` left the permission reachable by moving the phase forward",
     file: "lib/execution-plan.mjs",
