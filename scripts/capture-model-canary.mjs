@@ -2,15 +2,24 @@
 //
 // The rest of the suite writes its own transcript rows, which proves the reader reads what the
 // tests write and cannot prove the shapes are the ones Codex and Claude Code actually write. This
-// records the real thing -- and records only the event this product carries forward plus the
-// SHA-256 of each row's raw bytes, because the rows themselves are somebody's session.
+// records the real thing.
 //
 //   node scripts/capture-model-canary.mjs <workspace> [<workspace>]
 //
 // Each argument is a directory some real session ran in. What comes out is
 // `fixtures/model-identity/runtime-canary.json`, which `tests/product/model-canary.test.mjs`
-// re-derives every verdict from. Re-run it when the alias or issuance policy changes: a canary
-// that quietly disagrees with the runtimes it stands for is worse than none.
+// re-derives every verdict from and re-computes every digest in.
+//
+// Two rules the fixture is written under, because it is committed and the sessions are somebody's:
+//
+//   - No absolute path leaves this script. A workspace is recorded as the SHA-256 of its bytes,
+//     which is enough to tell two observations apart and nothing else.
+//   - Every digest in the file verifies against something else in the file. Each observation
+//     carries a canonical event line -- one JSON object holding exactly the fields the reader
+//     extracts, with no session content in it -- and `event_digest` is the SHA-256 of that line's
+//     bytes, so a test can recompute it. The digest of the row as it was on disk is recorded
+//     separately and labelled as what it is: a name for that line on the capture machine, which
+//     nothing offline can verify.
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -19,6 +28,7 @@ import { fileURLToPath } from "node:url";
 import { sha256Bytes } from "../lib/digest.mjs";
 import {
   aliasClassOf,
+  canonicalModelEventLine,
   issuancePolicyFor,
   observeModelEvents,
   resolveModelProvenance,
@@ -70,12 +80,12 @@ for (const runtime of ["codex", "claude-code"]) {
     }
   }
   if (found.length === 0) {
-    blockers.set(runtime, `no ${runtime} transcript naming a model was found under the workspaces given (${workspaces.join(", ")})`);
+    blockers.set(runtime, `no ${runtime} transcript naming a model was found under the workspaces given to this script`);
     continue;
   }
   // One agreement and one disagreement per runtime, which is what makes it a canary rather than a
   // demonstration: the declaration that is not what ran is the case an operator actually hits.
-  const event = found[0].event;
+  const { event, workspace } = found[0];
   const ran = `${event.provider}/${event.model}`;
   const other = ran === "anthropic/claude-3-5-sonnet-20241022" ? "openai/gpt-4o-2024-08-06" : "anthropic/claude-3-5-sonnet-20241022";
   for (const declared of [ran, other]) {
@@ -83,15 +93,16 @@ for (const runtime of ["codex", "claude-code"]) {
     const verification = verifyModelIdentity(provenance, [event], { runtime });
     const policy = issuancePolicyFor({ provenance, verification, runtimeIdentity: boundRuntimeIdentity(verifiedIdentity()) });
     const alias = aliasClassOf(ran);
+    const line = canonicalModelEventLine(event);
     observations.push({
       runtime,
-      workspace: found[0].workspace,
+      // The path is a digest. Which project somebody was working on is theirs, and this file ships.
+      workspace_digest: sha256Bytes(Buffer.from(workspace, "utf8")),
       provider: event.provider,
       model: event.model,
-      row_digest: event.row_digest,
-      // The transcript file is not named: which project somebody was working on is theirs. The
-      // digest of the row above is what ties a re-capture to the same line.
-      source_file_digest: sha256Bytes(Buffer.from(`${runtime} ${found[0].workspace}`, "utf8")),
+      event_line: line,
+      event_digest: sha256Bytes(Buffer.from(line, "utf8")),
+      observed_row_digest: event.row_digest,
       alias_class: alias.alias_class,
       mutable_alias: alias.mutable_alias,
       declared,
@@ -107,7 +118,7 @@ const record = {
   capture: {
     platform: process.platform,
     command: "observeModelEvents({ env: { HOME }, workspace, since: 0, runtime }) over the workspaces given to scripts/capture-model-canary.mjs",
-    note: "No transcript content is copied. Each observation is the event this product carries forward plus the SHA-256 of the row's raw bytes on disk."
+    note: "No transcript content and no absolute path is copied. `event_line` is the canonical form of the event this product carries forward and `event_digest` is the SHA-256 of its bytes; `observed_row_digest` names the transcript row on the capture machine and cannot be verified from this file."
   },
   blockers: Object.fromEntries(blockers),
   observations

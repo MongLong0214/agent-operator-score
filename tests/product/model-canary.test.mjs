@@ -6,8 +6,9 @@
 // pass every one of them. So the observation is committed -- captured from real transcripts on a
 // real machine by `scripts/capture-model-canary.mjs`, recorded as the events this product carries
 // forward plus the SHA-256 of each row's raw bytes, with no transcript content copied -- and this
-// file re-derives every verdict from it. If the policy moves, the canary has to be re-captured
-// rather than quietly disagreeing with the runtimes it stands for.
+// file re-derives every verdict from it and recomputes every digest it can. If the policy moves,
+// the canary has to be re-captured rather than quietly disagreeing with the runtimes it stands
+// for -- and a digest that verifies nothing is worse than no digest, because it reads as proof.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -18,11 +19,13 @@ import { fileURLToPath } from "node:url";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import {
   aliasClassOf,
+  canonicalModelEventLine,
   issuancePolicyFor,
   resolveModelProvenance,
   verifyModelIdentity
 } from "../../lib/model-identity.mjs";
 import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
+
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const path = join(root, "fixtures", "model-identity", "runtime-canary.json");
@@ -54,7 +57,7 @@ const eventOf = (observation) => ({
   runtime: observation.runtime,
   provider: observation.provider,
   model: observation.model,
-  row_digest: observation.row_digest,
+  row_digest: observation.observed_row_digest,
   value_digest: null
 });
 
@@ -71,21 +74,41 @@ test("the canary was captured from both runtimes this product reads, or says why
   assert.ok(canary.observations.length >= 2, "a canary of one runtime is half a canary");
 });
 
-test("no transcript content was copied into the canary", () => {
-  // The rows are somebody's session. What is recorded is the event and the digest of the bytes,
-  // and this is the test that keeps it that way when the fixture is next re-captured.
+test("no transcript content and no absolute path was copied into the canary", () => {
+  // The rows are somebody's session and this file ships in the repository. What is recorded is the
+  // event, its digest, and digests of the things that would otherwise be paths. This is the test
+  // that keeps it that way when the fixture is next re-captured.
   const text = readFileSync(path, "utf8");
-  for (const key of ["\"content\"", "\"text\"", "\"message\""]) {
+  for (const key of ["\"content\"", "\"text\"", "\"message\"", "/Users/", "/home/", "/tmp/", "/private/"]) {
     assert.equal(text.includes(key), false, `${key} appears in the canary`);
   }
   for (const observation of canary.observations) {
     assert.deepEqual(
       Object.keys(observation).sort(),
-      ["alias_class", "declared", "issuance", "model", "mutable_alias", "provider", "row_digest", "runtime", "source_file_digest", "verification", "workspace"]
+      ["alias_class", "declared", "event_digest", "event_line", "issuance", "model", "mutable_alias", "observed_row_digest", "provider", "runtime", "verification", "workspace_digest"]
     );
-    assert.match(observation.row_digest, /^sha256:[0-9a-f]{64}$/u);
-    assert.match(observation.source_file_digest, /^sha256:[0-9a-f]{64}$/u);
+    for (const field of ["event_digest", "observed_row_digest", "workspace_digest"]) {
+      assert.match(observation[field], /^sha256:[0-9a-f]{64}$/u, field);
+    }
   }
+});
+
+test("every digest the canary can verify is recomputed from what the canary carries", () => {
+  // The point of the fixture is that it cannot be edited into agreement. Its event digests are
+  // over the canonical event line stored beside them, so replacing a digest -- or the line -- makes
+  // this fail. The row digest names a line on the capture machine and is labelled as such: the
+  // note has to say so, because a digest nothing checks reads as proof of something.
+  for (const observation of canary.observations) {
+    const line = canonicalModelEventLine(eventOf(observation));
+    assert.equal(observation.event_line, line, `${observation.model}: the canonical event line`);
+    assert.equal(observation.event_digest, sha256Bytes(Buffer.from(observation.event_line, "utf8")), `${observation.model}: event digest`);
+    assert.notEqual(observation.event_digest, observation.observed_row_digest);
+  }
+  assert.match(canary.capture.note, /cannot be verified from this file/u);
+  // Two observations of different runtimes are two different digests, so a fixture that repeated
+  // one row four times could not pass either.
+  const digests = new Set(canary.observations.map((one) => one.event_digest));
+  assert.ok(digests.size >= 2, "every observation digested to the same value");
 });
 
 test("every recorded verdict is the verdict this product reaches from the recorded observation", () => {
@@ -117,6 +140,6 @@ test("the canary carries a real disagreement, not only agreements", () => {
   assert.ok(mismatch, "no mismatch was recorded");
   assert.equal(mismatch.issuance.reason, "MODEL_IDENTITY_MISMATCH");
   assert.notEqual(mismatch.declared, `${mismatch.provider}/${mismatch.model}`);
-  // And the digest is over bytes, so a re-capture of the same row yields the same digest.
-  assert.equal(sha256Bytes(Buffer.from("", "utf8")).startsWith("sha256:"), true);
+  // And its digest is over the canonical line, so the mismatch case is verifiable too.
+  assert.equal(mismatch.event_digest, sha256Bytes(Buffer.from(mismatch.event_line, "utf8")));
 });

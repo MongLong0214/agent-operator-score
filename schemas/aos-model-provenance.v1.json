@@ -11,10 +11,22 @@
     "evidence_digest": "sha256:<hex>|null. Digest over the bytes of the canonical claim that produced the record (source, provider, id, runtime, row digest). Null when unknown.",
     "mutable_alias": "true | false | null. True for `latest`, `default`, `gpt`, `sonnet` and every provider-managed name without a snapshot marker; false for an exact snapshot; null when no model was identified."
   },
-  "source_precedence": ["runtime-event", "runtime-config", "declared", "unknown"],
+  "source_precedence": [
+    "runtime-event",
+    "runtime-config",
+    "declared",
+    "unknown"
+  ],
   "mismatch": "When two present sources name different models the record has status MISMATCH, id null, source unknown, confidence NONE and `mismatch: { code: \"AOS_MODEL_IDENTITY_MISMATCH\", detected, declared }`. It is never resolved to either side.",
   "alias_policy": {
-    "bare_aliases": ["latest", "default", "gpt", "sonnet", "opus", "haiku"],
+    "bare_aliases": [
+      "latest",
+      "default",
+      "gpt",
+      "sonnet",
+      "opus",
+      "haiku"
+    ],
     "exact_snapshot_marker": "a YYYYMMDD or YYYY-MM-DD segment delimited by `-`, `_`, `.`, `:`, `@` or the ends of the name",
     "otherwise": "provider-managed-alias, mutable"
   },
@@ -24,7 +36,7 @@
     "id": "openai/gpt-4o-2024-08-06",
     "source": "declared",
     "confidence": "LOW",
-    "evidence_digest": "sha256:5876aa9b2f9d4e6b08d75e70fbc462294bac31dfe77be98e06c52948f117c85a",
+    "evidence_digest": "sha256:59c6b48d25906d78a0537779f6b09443cb0d5c7ddf23b9393f315f3044a58e97",
     "mutable_alias": false
   }
 }

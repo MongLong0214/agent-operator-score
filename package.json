@@ -42,8 +42,7 @@
     "LICENSE",
     "SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
-    "fixtures/attacks/",
-    "fixtures/model-identity/"
+    "fixtures/attacks/"
   ],
   "os": [
     "darwin",
