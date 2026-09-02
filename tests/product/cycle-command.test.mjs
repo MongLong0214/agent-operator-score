@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -97,6 +97,25 @@ test("each run takes the next locked seed, and a seed that produced a result is 
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
+});
+
+test("the cycle command quotes the stored decision rather than deriving its own", () => {
+  // The other half of the same rule the dashboard is tested for. Both surfaces read the decision
+  // that was made when the cycle was written; a sentinel in the stored lines is how that is
+  // checked, because a derived line cannot contain one.
+  const { cwd, home } = opened();
+  const stored = cycleOf(home);
+  const decision = stored.decision;
+  writeFileSync(join(home, "cycle.json"), `${JSON.stringify({
+    ...stored,
+    decision: { ...decision, model_identity: { ...decision.model_identity, lines: ["SENTINEL_FROM_THE_STORED_CYCLE"] } }
+  }, null, 2)}\n`);
+  const printed = spawnSync(process.execPath, [cli, "cycle"], {
+    cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home }
+  });
+  assert.match(printed.stdout, /SENTINEL_FROM_THE_STORED_CYCLE/u);
+  assert.equal(/Model \(solo\)/u.test(printed.stdout), false, "the command derived its own lines");
+  rmSync(cwd, { recursive: true, force: true });
 });
 
 test("three attended runs produce an operator score, and it is the median of all of them", () => {

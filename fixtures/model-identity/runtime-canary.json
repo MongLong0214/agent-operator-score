@@ -1,10 +1,12 @@
 {
   "schema_id": "aos-model-canary.v1",
-  "captured_at": "2026-09-02T13:30:53.584Z",
+  "captured_at": "2026-09-02T15:24:24.541Z",
+  "kind": "replay-fixture",
+  "unverifiable_from_repository": "The capture happened on one operator machine against unsigned local transcript files. No attestation channel exists between that machine and this repository, so the capture itself is asserted by the committed record and not proved by it.",
   "capture": {
     "platform": "darwin",
     "command": "observeModelEvents({ env: { HOME }, workspace, since: 0, runtime }) over the workspaces given to scripts/capture-model-canary.mjs",
-    "note": "No transcript content and no absolute path is copied. `event_line` is the canonical form of the event this product carries forward and `event_digest` is the SHA-256 of its bytes; `observed_row_digest` names the transcript row on the capture machine and cannot be verified from this file."
+    "note": "No transcript content and no absolute path is copied. `event_line` is the canonical form of the event this product carries forward and `event_digest` is the SHA-256 of its bytes, so the derived verdicts can be recomputed from what is written here."
   },
   "blockers": {},
   "observations": [

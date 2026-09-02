@@ -34,7 +34,6 @@ import {
   resolveModelProvenance,
   verifyModelIdentity
 } from "../lib/model-identity.mjs";
-import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA } from "../lib/runtime-identity.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const out = join(root, "fixtures", "model-identity", "runtime-canary.json");
@@ -44,28 +43,11 @@ if (workspaces.length === 0) {
   process.exit(2);
 }
 
-// A verified executable, so that what the recorded policy reports is the model half of the profile
-// and not the other one. The digest is recomputed from the record, the way binding does it.
-const verifiedIdentity = () => {
-  const base = {
-    schema_id: IDENTITY_SCHEMA,
-    command_input: "codex",
-    resolved_realpath: "/usr/bin/codex",
-    realpath_digest: `sha256:${"a".repeat(64)}`,
-    file_fingerprint: { size: 1024, mtime_ms: 1, inode: 2, device: 3 },
-    interpreter_digest: null,
-    interpreter_chain: [],
-    owner_uid: 501,
-    mode: "0755",
-    parent_security: { world_writable: false, group_writable_untrusted: false, foreign_owner: false, acl_writable: false },
-    platform_identity: { macos_codesign_team: null, macos_requirement_digest: null },
-    adapter_id: "codex-cli.v1",
-    identity_status: "VERIFIED",
-    untrusted_reasons: [],
-    verified_at: "2026-09-02T00:00:00.000Z"
-  };
-  return { ...base, identity_digest: identityDigestOf(base) };
-};
+// No executable identity is invented here. An earlier version of this script supplied a made-up
+// VERIFIED record so the recorded policy would report the model half alone; that put a fictional
+// digest in a file whose whole purpose is to record what a machine actually produced. The policy
+// is recorded with no runtime identity, which is what this capture actually knows, and the
+// executable half of every recorded issuance therefore reads RUNTIME_IDENTITY_UNVERIFIED.
 
 const observations = [];
 // A Map, because the keys are runtime names read from a loop and a plain object as a keyed store
@@ -91,7 +73,7 @@ for (const runtime of ["codex", "claude-code"]) {
   for (const declared of [ran, other]) {
     const provenance = resolveModelProvenance({ runtimeEvent: event, declared: { model: declared, provider: null } });
     const verification = verifyModelIdentity(provenance, [event], { runtime });
-    const policy = issuancePolicyFor({ provenance, verification, runtimeIdentity: boundRuntimeIdentity(verifiedIdentity()) });
+    const policy = issuancePolicyFor({ provenance, verification, runtimeIdentity: null });
     const alias = aliasClassOf(ran);
     const line = canonicalModelEventLine(event);
     observations.push({
@@ -115,10 +97,19 @@ for (const runtime of ["codex", "claude-code"]) {
 const record = {
   schema_id: "aos-model-canary.v1",
   captured_at: new Date().toISOString(),
+  // What this file is, stated where a reader meets it. It is a replay fixture: a recording of a
+  // real capture on one machine, and nothing in it proves that capture to anyone else. The
+  // transcripts are local files with no signature and there is no attestation channel between the
+  // machine that read them and this repository, so a reviewer holding only the repository cannot
+  // distinguish this from a well-formed invention. What it does establish is that the reader, the
+  // alias policy and the issuance rules produce these verdicts for the shapes Codex and Claude
+  // Code actually write -- and that a later change to any of them shows up here as a failure.
+  kind: "replay-fixture",
+  unverifiable_from_repository: "The capture happened on one operator machine against unsigned local transcript files. No attestation channel exists between that machine and this repository, so the capture itself is asserted by the committed record and not proved by it.",
   capture: {
     platform: process.platform,
     command: "observeModelEvents({ env: { HOME }, workspace, since: 0, runtime }) over the workspaces given to scripts/capture-model-canary.mjs",
-    note: "No transcript content and no absolute path is copied. `event_line` is the canonical form of the event this product carries forward and `event_digest` is the SHA-256 of its bytes; `observed_row_digest` names the transcript row on the capture machine and cannot be verified from this file."
+    note: "No transcript content and no absolute path is copied. `event_line` is the canonical form of the event this product carries forward and `event_digest` is the SHA-256 of its bytes, so the derived verdicts can be recomputed from what is written here."
   },
   blockers: Object.fromEntries(blockers),
   observations

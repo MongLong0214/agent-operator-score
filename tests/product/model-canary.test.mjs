@@ -6,9 +6,16 @@
 // pass every one of them. So the observation is committed -- captured from real transcripts on a
 // real machine by `scripts/capture-model-canary.mjs`, recorded as the events this product carries
 // forward plus the SHA-256 of each row's raw bytes, with no transcript content copied -- and this
-// file re-derives every verdict from it and recomputes every digest it can. If the policy moves,
-// the canary has to be re-captured rather than quietly disagreeing with the runtimes it stands
-// for -- and a digest that verifies nothing is worse than no digest, because it reads as proof.
+// file re-derives every verdict from it and recomputes every digest it can.
+//
+// What it is not: proof that the capture happened. The transcripts are unsigned local files on one
+// operator machine and there is no attestation channel between that machine and this repository,
+// so a reviewer holding only the repository cannot tell this from a well-formed invention. The
+// fixture says so in its own `kind` and `unverifiable_from_repository` fields, and the first test
+// below asserts that it says so -- because the failure mode here is not a wrong digest, it is a
+// record that reads as evidence for more than it holds. What it does establish is that the reader,
+// the alias policy and the issuance rules produce these verdicts for the shapes Codex and Claude
+// Code actually write, and that a change to any of them shows up here as a failure.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -24,34 +31,11 @@ import {
   resolveModelProvenance,
   verifyModelIdentity
 } from "../../lib/model-identity.mjs";
-import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
 
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const path = join(root, "fixtures", "model-identity", "runtime-canary.json");
 const canary = JSON.parse(readFileSync(path, "utf8"));
-
-// A verified executable, so that what the policy reports is the model half and not the other one.
-const verifiedIdentity = () => {
-  const base = {
-    schema_id: IDENTITY_SCHEMA,
-    command_input: "codex",
-    resolved_realpath: "/usr/bin/codex",
-    realpath_digest: `sha256:${"a".repeat(64)}`,
-    file_fingerprint: { size: 1024, mtime_ms: 1, inode: 2, device: 3 },
-    interpreter_digest: null,
-    interpreter_chain: [],
-    owner_uid: 501,
-    mode: "0755",
-    parent_security: { world_writable: false, group_writable_untrusted: false, foreign_owner: false, acl_writable: false },
-    platform_identity: { macos_codesign_team: null, macos_requirement_digest: null },
-    adapter_id: "codex-cli.v1",
-    identity_status: "VERIFIED",
-    untrusted_reasons: [],
-    verified_at: "2026-09-02T00:00:00.000Z"
-  };
-  return { ...base, identity_digest: identityDigestOf(base) };
-};
 
 const eventOf = (observation) => ({
   runtime: observation.runtime,
@@ -59,6 +43,19 @@ const eventOf = (observation) => ({
   model: observation.model,
   row_digest: observation.observed_row_digest,
   value_digest: null
+});
+
+test("the canary says what it is: a replay fixture, and what it cannot prove", () => {
+  // The claim this file makes about itself is the thing most worth checking, because an
+  // overclaiming fixture is worse than none: it reads as a canary and is a recording.
+  assert.equal(canary.kind, "replay-fixture");
+  assert.match(canary.unverifiable_from_repository, /not proved by it/u);
+  assert.match(canary.capture.command, /observeModelEvents/u);
+  // And no fabricated executable identity: the capture records the model half it observed, so the
+  // issuance it recorded is the one with no runtime identity in hand.
+  for (const observation of canary.observations) {
+    assert.equal(observation.issuance.status, "withheld");
+  }
 });
 
 test("the canary was captured from both runtimes this product reads, or says why it was not", () => {
@@ -104,7 +101,7 @@ test("every digest the canary can verify is recomputed from what the canary carr
     assert.equal(observation.event_digest, sha256Bytes(Buffer.from(observation.event_line, "utf8")), `${observation.model}: event digest`);
     assert.notEqual(observation.event_digest, observation.observed_row_digest);
   }
-  assert.match(canary.capture.note, /cannot be verified from this file/u);
+  assert.match(canary.capture.note, /recomputed from what is written here/u);
   // Two observations of different runtimes are two different digests, so a fixture that repeated
   // one row four times could not pass either.
   const digests = new Set(canary.observations.map((one) => one.event_digest));
@@ -124,7 +121,7 @@ test("every recorded verdict is the verdict this product reaches from the record
     });
     const verification = verifyModelIdentity(provenance, [eventOf(observation)], { runtime: observation.runtime });
     assert.equal(verification.status, observation.verification, `${observation.model}: verification`);
-    const policy = issuancePolicyFor({ provenance, verification, runtimeIdentity: boundRuntimeIdentity(verifiedIdentity()) });
+    const policy = issuancePolicyFor({ provenance, verification, runtimeIdentity: null });
     assert.equal(policy.profile_bound_aggregation.status, observation.issuance.status, `${observation.model}: issuance`);
     assert.equal(policy.profile_bound_aggregation.reason, observation.issuance.reason, `${observation.model}: reason`);
     checked += 1;

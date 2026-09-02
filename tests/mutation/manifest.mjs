@@ -2385,13 +2385,121 @@ export const GUARDS = [
     name: "a date-shaped substring is not snapshot proof"
   },
   {
-    guard: "an uncorroborated declaration is not profile-bound",
-    reason: "issuing on the operator's word alone made the binding self-certifying: type a model id, write no transcript, and the aggregate is issued as though the runtime had agreed",
+    guard: "an unknown status is not a verdict",
+    reason: "only null and NOT_OBSERVED counted as absent, so a shape this module never emits was carried into the record and read by every check that asks what the verification said -- it could claim a confirmation or mask a contradiction",
     file: "lib/model-identity.mjs",
-    from: "  if (verification === null || verification.status === \"NOT_OBSERVED\" || verification.status === \"OBSERVED_UNBOUND\") return \"MODEL_EVENT_NOT_OBSERVED\";",
-    to: "  if (false) return \"MODEL_EVENT_NOT_OBSERVED\";",
+    from: "    const verification = knownVerification(entry?.verification) ? entry.verification : null;",
+    to: "    const verification = entry?.verification ?? null;",
     test: "tests/product/model-identity.test.mjs",
-    name: "a declaration nothing confirmed is not a profile-bound claim, and says which blocker stopped it"
+    name: "a verdict this product did not produce is ignored, never read as agreement"
+  },
+  {
+    guard: "the assessed process does not decide issuance",
+    reason: "the transcript is written by the child into the HOME it was given, so requiring it handed that child the flip from withheld to issued; the operator's own statement is what may issue and the transcript may only contradict it",
+    file: "lib/model-identity.mjs",
+    from: "  return null;\n};\n\nconst mismatchSides",
+    to: "  if (verification === null || verification.status === \"NOT_OBSERVED\") return \"MODEL_EVENT_NOT_OBSERVED\";\n  return null;\n};\n\nconst mismatchSides",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the assessed process cannot flip a run from withheld to issued"
+  },
+  {
+    guard: "a status the record asserts about itself is not evidence",
+    reason: "the digest was taken over every field except the verdict, so an identity #554 recorded as UNTRUSTED could be relabelled VERIFIED with the digest still recomputing, and the run issued over an executable nobody vouched for",
+    file: "lib/runtime-identity.mjs",
+    from: "    identity_status: identity.identity_status,\n    resolved_realpath: identity.resolved_realpath,",
+    to: "    resolved_realpath: identity.resolved_realpath,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an untrusted identity cannot be relabelled VERIFIED without the digest saying so"
+  },
+  {
+    guard: "a risky security state is never VERIFIED",
+    reason: "the second lock for a record produced before the status was in the digest: a parent directory somebody else can write is not a verified executable whatever the field says",
+    file: "lib/runtime-identity.mjs",
+    from: "  if (risky && identity.identity_status === \"VERIFIED\") return unbound(\"UNVERIFIABLE\");",
+    to: "  if (false) return unbound(\"UNVERIFIABLE\");",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an untrusted identity cannot be relabelled VERIFIED without the digest saying so"
+  },
+  {
+    guard: "the run reports the executable it spawned",
+    reason: "the identity came off the registration, so a binary replaced between `agent add` and the run left the result claiming a VERIFIED identity for a file that no longer existed -- and #554's check is skipped whenever no credential is at stake",
+    file: "lib/core.mjs",
+    from: "    const appliedIdentity = identityVerdict.identity ?? describeExecutable(spec.command, { adapterId: adapter?.id ?? null });",
+    to: "    const appliedIdentity = identityVerdict.identity ?? null;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the executable a run records is the one it spawned, not the one it was registered with"
+  },
+  {
+    guard: "missing invariance evidence withholds",
+    reason: "an absent rule made the withholding condition false, so a contract with no invariance rule read as one permitting cross-model comparison -- absent evidence failing open",
+    file: "lib/model-identity.mjs",
+    from: "  const withheld = invariance === null || invariance.status !== \"ENFORCED\";",
+    to: "  const withheld = invariance !== null && invariance.status !== \"ENFORCED\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "cross-model and generalizability are read from the contract, not restated beside it"
+  },
+  {
+    guard: "the cohort key describes the policy that was applied",
+    reason: "automatic credential resolution can add an environment name the declared policy never had, and the pre-run digest cannot know it; two runs that differ in what the child could see are two measurements",
+    file: "lib/profile.mjs",
+    from: "  env_policy_digest: envPolicyDigest ?? profile.env_policy_digest",
+    to: "  env_policy_digest: profile.env_policy_digest",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the cohort key describes what was applied: the policy, the executable and the model"
+  },
+  {
+    guard: "both sides resolve the same set of agents",
+    reason: "the cycle resolved expected provenance for every configured agent while the run resolved it only for the ones that ran, so a registered and unused agent moved the run's key away from the cycle's and the run was excluded as PROFILE_CHANGED",
+    file: "lib/cli.mjs",
+    from: "        provenance: resolved ?? expectedRunProvenance({ ...built.model_inputs, runtime: built.runtime_transcript }),",
+    to: "        provenance: resolved,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a configured agent that never ran does not move the cohort out from under the run"
+  },
+  {
+    guard: "an imported run names the producer of its evidence",
+    reason: "an empty by_agent map produced lines mentioning neither a model nor an executable, which reads as a Run with nothing to say rather than one saying that nothing here observed either",
+    file: "lib/cli.mjs",
+    from: "    by_agent: new Map([[producer, {",
+    to: "    by_agent: new Map([].slice(0) ?? [[producer, {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an imported run is a Run, so it carries a provenance record and a result on disk"
+  },
+  {
+    guard: "the card carries the model and the aggregation state",
+    reason: "the card is the surface that leaves the page, and a number on it with no model, no executable and no withholding reason beside it is the reading this issue exists to refuse",
+    file: "lib/report-card.mjs",
+    from: "    [language === \"ko\" ? \"모델\" : \"model\", model],",
+    to: "",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the card carries the identity too, and never renders what is missing as a zero"
+  },
+  {
+    guard: "absent coverage is not a measured zero",
+    reason: "a result with no coverage recorded was drawn on the card as `0/20`, a measurement nobody made",
+    file: "lib/report-card.mjs",
+    from: "      typeof coverage.observed === \"number\" && typeof coverage.total === \"number\" ? `${coverage.observed}/${coverage.total}` : \"—\"",
+    to: "      `${coverage.observed ?? 0}/${coverage.total ?? 20}`",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the card carries the identity too, and never renders what is missing as a zero"
+  },
+  {
+    guard: "the run listing says what each run may claim",
+    reason: "two runs identical in score, status and coverage can be a profile-bound measurement and a run diagnostic over a model nobody named, and the listing could not tell them apart",
+    file: "lib/dashboard.mjs",
+    from: "  const claim = identity === null\n    ? \"—\"\n    : `${identity.claim_stage}${aggregation && aggregation.status !== \"issued\" ? ` · ${aggregation.reason}` : \"\"}`;",
+    to: "  const claim = \"—\";",
+    test: "tests/product/dashboard.test.mjs",
+    name: "the run listing says what each run may claim, not only what it scored"
+  },
+  {
+    guard: "the cycle command quotes the stored decision",
+    reason: "the dashboard test named both surfaces and exercised one, so the command could derive its own answer while the named guard stayed green",
+    file: "lib/cli.mjs",
+    from: "  const summary = stored.decision ?? summariseCycle(stored);",
+    to: "  const summary = summariseCycle(stored);",
+    test: "tests/product/cycle-command.test.mjs",
+    name: "the cycle command quotes the stored decision rather than deriving its own"
   },
   {
     guard: "the identity record names the agents that ran",
@@ -2418,7 +2526,7 @@ export const GUARDS = [
     from: "const VERIFICATION_RANK = new Map([[\"MISMATCH\", 0], [\"UNNAMEABLE\", 1], [\"AMBIGUOUS\", 2], [\"OBSERVED_UNBOUND\", 3], [\"NOT_OBSERVED\", 4], [\"CONFIRMED\", 5]]);",
     to: "const VERIFICATION_RANK = new Map([[\"MISMATCH\", 0], [\"UNNAMEABLE\", 1], [\"AMBIGUOUS\", 2], [\"OBSERVED_UNBOUND\", 3], [\"CONFIRMED\", 4], [\"NOT_OBSERVED\", 5]]);",
     test: "tests/product/model-identity.test.mjs",
-    name: "one uncorroborated run withholds the whole cycle, however many others confirmed"
+    name: "one contradicted run withholds the whole cycle, however many others agreed"
   },
   {
     guard: "only the configured runtime corroborates its own binding",
@@ -2427,7 +2535,7 @@ export const GUARDS = [
     from: "  const fromRuntime = (Array.isArray(events) ? events : []).filter((event) => typeof runtime === \"string\" && runtime !== \"\" && event?.runtime === runtime);",
     to: "  const fromRuntime = Array.isArray(events) ? events : [];",
     test: "tests/product/model-identity.test.mjs",
-    name: "a transcript the configured runtime did not write is not corroboration"
+    name: "a transcript the configured runtime did not write is not evidence either way"
   },
   {
     guard: "only the configured runtime's transcript tree is read",
@@ -2436,7 +2544,7 @@ export const GUARDS = [
     from: "    if (root === null || kind !== runtime) continue;",
     to: "    if (root === null) continue;",
     test: "tests/product/model-identity.test.mjs",
-    name: "a transcript the configured runtime did not write is not corroboration"
+    name: "a transcript the configured runtime did not write is not evidence either way"
   },
   {
     guard: "the profile digest covers the provenance record",
@@ -2451,8 +2559,8 @@ export const GUARDS = [
     guard: "a cycle locks the profile its runs will have",
     reason: "the digest covers the provenance and a run resolves its own before digesting, so a cycle that locked the pre-run binding would exclude every run its runtime confirmed",
     file: "lib/cli.mjs",
-    from: "      expectedRunProvenance({ ...profile.model_inputs, runtime: profile.runtime_transcript })",
-    to: "      profile.model_provenance",
+    from: "      provenance: expectedRunProvenance({ ...profile.model_inputs, runtime: profile.runtime_transcript })",
+    to: "      provenance: profile.model_provenance",
     test: "tests/product/cycle-command.test.mjs",
     name: "three attended runs produce an operator score, and it is the median of all of them"
   },
@@ -2473,15 +2581,6 @@ export const GUARDS = [
     to: "  return middle.every(() => true);",
     test: "tests/product/model-identity.test.mjs",
     name: "a date-shaped substring is not snapshot proof"
-  },
-  {
-    guard: "a verdict this module did not emit is not a verification",
-    reason: "only null and NOT_OBSERVED counted as absent, so an empty object or a status from another vocabulary passed every gate and issued",
-    file: "lib/model-identity.mjs",
-    from: "  const verification = knownVerification(rawVerification) ? rawVerification : null;\n  if (!provenance || typeof provenance !== \"object\") return \"MODEL_PROVENANCE_ABSENT\";",
-    to: "  const verification = rawVerification;\n  if (!provenance || typeof provenance !== \"object\") return \"MODEL_PROVENANCE_ABSENT\";",
-    test: "tests/product/model-identity.test.mjs",
-    name: "a verification this product did not produce is not a verification"
   },
   {
     guard: "a transcript is never sufficient on its own",
@@ -2505,8 +2604,8 @@ export const GUARDS = [
     guard: "an imported run is written down",
     reason: "aos import and aos bridge create a Run; leaving it with events and no result meant a Run with nothing on disk saying what produced its evidence",
     file: "lib/cli.mjs",
-    from: "  const modelIdentity = modelIdentityRecord({ by_agent: new Map(), profile_digest: null, ceiling: \"RUN_DIAGNOSTIC\" });",
-    to: "  const modelIdentity = null;",
+    from: "    profile_digest: null,\n    ceiling: \"RUN_DIAGNOSTIC\"",
+    to: "    profile_digest: null,\n    ceiling: null",
     test: "tests/product/model-identity.test.mjs",
     name: "an imported run is a Run, so it carries a provenance record and a result on disk"
   },
@@ -2559,8 +2658,8 @@ export const GUARDS = [
     guard: "a diagnostic never issues a profile-bound aggregate",
     reason: "one run against the operator's own repository is not a measurement, whatever model it names",
     file: "lib/cli.mjs",
-    from: "    profile_digest: built.profile_digest,\n    ceiling: \"RUN_DIAGNOSTIC\"",
-    to: "    profile_digest: built.profile_digest,\n    ceiling: null",
+    from: "    profile_digest: profileDigest,\n    ceiling: \"RUN_DIAGNOSTIC\"",
+    to: "    profile_digest: profileDigest,\n    ceiling: null",
     test: "tests/product/model-identity.test.mjs",
     name: "an observation run carries the same provenance record as a scored one"
   },
@@ -2707,34 +2806,38 @@ export const ACCOUNTED_GUARDS = [
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a refused file fails the check",
   "a resolved key is the key",
+  "a risky security state is never VERIFIED",
   "a run that failed still records what it was bound to",
   "a run under a different profile digest is not a run in this cycle",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
+  "a status the record asserts about itself is not evidence",
   "a transcript is never sufficient on its own",
   "a transcript that names another model contradicts the binding",
   "a transcript value is never printed unless it is a model name",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
-  "a verdict this module did not emit is not a verification",
   "a violation decides before the floor does",
   "a withheld corpus does not pass",
+  "absent coverage is not a measured zero",
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
   "an UNTRUSTED identity is not a verified one",
   "an alias is the node it names",
   "an imported run is written down",
+  "an imported run names the producer of its evidence",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "an observation run carries a provenance record too",
-  "an uncorroborated declaration is not profile-bound",
   "an unknown model withholds the aggregate by its own name",
+  "an unknown status is not a verdict",
   "an unnameable transcript row withholds the aggregate",
   "an unverified executable withholds the aggregate",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
   "block scalar measured from its key",
+  "both sides resolve the same set of agents",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
@@ -2809,6 +2912,7 @@ export const ACCOUNTED_GUARDS = [
   "locked cycle seed",
   "malformed-row reporting",
   "merge keys bring their keys with them",
+  "missing invariance evidence withholds",
   "missing-result refusal",
   "no eligible evidence is said to be none",
   "observation channel size bound",
@@ -2870,11 +2974,15 @@ export const ACCOUNTED_GUARDS = [
   "symlink escape refusal",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
+  "the assessed process does not decide issuance",
   "the canary's digests verify against what it carries",
   "the capture time names a day that exists",
+  "the card carries the model and the aggregation state",
   "the closing pull request changed something the issue owns",
+  "the cohort key describes the policy that was applied",
   "the command prints the floored result",
   "the comparison projection is read from the contract",
+  "the cycle command quotes the stored decision",
   "the dashboard quotes the stored cycle decision",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
@@ -2892,6 +3000,8 @@ export const ACCOUNTED_GUARDS = [
   "the profile-bound claim is printed only when it was reached",
   "the projection verb is the record's own source",
   "the renderers quote the stored identity lines",
+  "the run listing says what each run may claim",
+  "the run reports the executable it spawned",
   "the run resolves its provenance again once its own events are in hand",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",

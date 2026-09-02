@@ -273,7 +273,35 @@ test("the operator score sits above the runs it was computed from", async () => 
   }
 });
 
-test("the dashboard and the CLI quote one stored cycle decision rather than deriving two", async () => {
+test("the run listing says what each run may claim, not only what it scored", async () => {
+  // The listing showed a score, a status and a coverage count. Two runs identical on all three can
+  // be a profile-bound measurement and a run diagnostic over a model nobody named, and the row
+  // that cannot tell them apart is the row an operator reads first (#561).
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-claim-"));
+  initHome(home);
+  const { runId } = createRun(home, { mode: "TEST" });
+  const metrics = METRIC_IDS.map((id) => observationOf({
+    metric_id: id, verifier_id: "aos-verify.v1",
+    subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: true })),
+    evidence_ids: ["e"], reason: "fixture"
+  }));
+  const unknown = modelIdentityRecord({
+    by_agent: { solo: { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: null, runtime_identity_status: "MIGRATION_REQUIRED" } },
+    profile_digest: "e".repeat(64)
+  });
+  writeResult(home, runId, { ...scoreRun(metrics), run_id: runId, metrics, model_identity: unknown, limitations: [] }, "# r", "<h1>r</h1>");
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    assert.match(body, /RUN_DIAGNOSTIC/);
+    assert.match(body, /MODEL_UNKNOWN/);
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("the dashboard quotes the stored cycle decision rather than deriving its own", async () => {
   // Two surfaces each rebuilt the aggregate and the model policy from the raw cycle, so the page
   // and the command were two opinions that happened to agree. The decision is computed once, when
   // the cycle is written, and both surfaces quote it -- the same rule the run renderers follow.
