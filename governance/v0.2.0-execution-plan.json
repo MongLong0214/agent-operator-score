@@ -120,7 +120,7 @@
     {
       "issue": 554,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -179,6 +179,7 @@
         "adapter-env-allowlist"
       ],
       "owned_paths": [
+        "lib/env-policy.mjs",
         "lib/isolation.mjs"
       ],
       "evidence_bindings": {},
@@ -440,7 +441,7 @@
     {
       "issue": 561,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 1,
       "blocked_by": [
         554,

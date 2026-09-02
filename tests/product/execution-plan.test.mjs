@@ -272,23 +272,32 @@ test("a completion record with every part present and confirmed raises no audit 
 
 test("the next batch is decidable from the manifest alone", () => {
   const doc = plan();
-  // Batch 0 is the set that starts with nothing to wait for. Stated as the invariant rather than
-  // as a frozen list, so closing an issue does not require editing this assertion -- an assertion
-  // that has to be edited on every merge stops being read.
-  const batchZero = [553, 554, 555, 556, 565, 567, 570, 572, 582, 588];
+  // Ready is exactly the set whose predecessors are all done and that is not done itself. Stated as
+  // the invariant rather than as a frozen list, so closing an issue does not require editing this
+  // assertion -- an assertion that has to be edited on every merge stops being read. The earlier
+  // form enumerated batch 0, which was the same set until the first batch-1 issue came due.
+  const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
   const ready = doc.issues.filter((one) => one.status === "ready").map((one) => one.issue).sort((a, b) => a - b);
-  const expected = batchZero
-    .filter((number) => entry(doc, number).blocked_by.length === 0)
-    .filter((number) => entry(doc, number).status !== "done");
+  const expected = doc.issues
+    .filter((one) => one.kind !== "epic" && one.status !== "done" && one.blocked_by.every((number) => done.has(number)))
+    .map((one) => one.issue)
+    .sort((a, b) => a - b);
   assert.deepEqual(ready, expected);
   assert.ok(ready.length > 0, "the plan has run out of startable work");
+  // And batch 0 is the set that started with nothing to wait for: every one of them is done or ready.
+  for (const one of doc.issues.filter((one) => one.batch === 0 && one.blocked_by.length === 0)) {
+    assert.ok(one.status === "done" || one.status === "ready", `#${one.issue} is batch 0 and ${one.status}`);
+  }
 
-  // #556 is the phase case: blocked as an issue, open as a probe. It must never appear as ready.
-  assert.equal(ready.includes(556), false);
-  const phaseReady = doc.issues
+  // #556 is the phase case: open as a probe while its issue waits, and ready as an issue only once
+  // every predecessor is done. Until then it is the one issue in the plan that is startable through
+  // a phase and not as itself.
+  const issueReady = entry(doc, 556).blocked_by.every((number) => done.has(number));
+  assert.equal(ready.includes(556), issueReady);
+  const phaseOnly = doc.issues
     .filter((one) => one.status !== "ready" && (one.phases ?? []).some((p) => p.status === "ready"))
     .map((one) => one.issue);
-  assert.deepEqual(phaseReady, [556]);
+  assert.deepEqual(phaseOnly, issueReady ? [] : [556]);
 });
 
 test("a done issue is closed on GitHub and a not-done issue is open", () => {

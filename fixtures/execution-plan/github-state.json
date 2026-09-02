@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T06:01:37.998Z",
+  "captured_at": "2026-09-02T06:14:51.553Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -64,18 +64,46 @@
     {
       "number": 554,
       "title": "[P0][security] automatic runtime credential을 verified executable identity에 결박한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 554,
+        "final_sha": "c0e5b3ee734767b6a4f13ac4c74858f41e584cd3",
+        "pr": 596,
+        "ci_run_ids": [
+          33597114897
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "executable_identity_binding": "lib/runtime-identity.mjs at c0e5b3ee — aos-runtime-identity.v1: resolveExecutable (absolute PATH entries only, execute bit checked for this process), describeExecutable (identity read from the opened descriptor, never by reopening the name: resolved_realpath, realpath_digest, file_fingerprint, interpreter_digest via shebang/env parsing, owner_uid, mode, parent_security incl. world/untrusted-group-writable parents and symlink hops, macOS codesign team + requirement digest, adapter_id), identityDigestOf, identityDrift compared field by field before any credential resolver runs; lib/runtime-auth.mjs resolveRuntimeAuthForAgent gates the credential on that comparison and lib/core.mjs spawns the verified file; profile digest moves with identity (test l.463); stored assessments carry the identity each invocation was bound to (l.847); docs/RUNTIME_EXECUTABLE_IDENTITY.md is the contract",
+          "credential_canary": "tests/product/runtime-identity.test.mjs at c0e5b3ee: 'an operator's own token does not reach a binary whose identity failed, and the child never starts' (l.382) plants the operator token, swaps the binary, and asserts the exfiltration file is never written; 'a credential the child quotes back does not survive into anything the run keeps' (l.821); 'no credential value is ever written into an identity record' (l.428); 'the identity check runs before the credential resolver, not after' (l.335); 36 identity tests in total covering replaced binary, symlink retarget, PATH shadowing wrapper, owner/mode drift, writable parents, ACL replace rights, shebang interpreter identity, unresolvable interpreter, legacy agent refused not promoted",
+          "mutation": "119/119 guards are load-bearing (CI mutation job on c0e5b3ee, run 33597114897)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#554",
         "#573",
@@ -251,7 +279,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
