@@ -2586,8 +2586,12 @@ export const GUARDS = [
     file: "lib/core.mjs",
     from: "    redactedFailures.push(...cleanupFailures.map(redactCleanupFailure));",
     to: "    redactedFailures.push(...cleanupFailures);",
-    test: "tests/product/official-issuance.test.mjs",
-    name: "a_cleanup_failure_is_redacted_on_every_surface_that_publishes_it"
+    // Witnessed by the test that runs a real process whose cleanup really fails -- an agent that
+    // seals a directory inside its own HOME -- because this line only has an effect when the list
+    // is non-empty. The surfaces test beside it hands the failures in already redacted, which is
+    // the right shape for asking what a renderer publishes and no test of what fills the list.
+    test: "tests/product/operator-reported.test.mjs",
+    name: "what cleanup could not remove is reported by class and digest, never by path"
   },
   {
     guard: "a credential is staged for the runtime, not for the label",
