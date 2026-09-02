@@ -16,6 +16,78 @@
 
 export const GUARDS = [
   {
+    guard: "realpath compare",
+    reason: "a registered path that now resolves somewhere else is a different program under the same name",
+    file: "lib/runtime-identity.mjs",
+    from: "if (registered[field] !== current[field]) drifted.push(field);",
+    to: "if (false) drifted.push(field);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a path that has become a symlink to somewhere else is refused"
+  },
+  {
+    guard: "fingerprint compare",
+    reason: "a binary rewritten in place keeps its path, its name, its owner and its mode; only the bytes say so",
+    file: "lib/runtime-identity.mjs",
+    from: "file_fingerprint: fingerprintOf(resolved.realpath, stat),",
+    to: 'file_fingerprint: "sha256:unchanged",',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a binary replaced between registration and spawn is refused"
+  },
+  {
+    guard: "parent writable refusal",
+    reason: "anyone who can write the directory can replace the verified program between the check and the spawn",
+    file: "lib/runtime-auth.mjs",
+    from: 'if (autoRequested && current.identity_status !== "VERIFIED") {',
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a world-writable parent directory is refused however verified the file looks"
+  },
+  {
+    guard: "identity-before-resolver ordering",
+    reason: "a check that runs after the resolver has already read the operator's keychain for an unidentified program",
+    file: "lib/runtime-auth.mjs",
+    from: "if (!verdict.ok) throw new Error(`${verdict.code} ${verdict.detail}`);",
+    to: "if (false) throw new Error(`${verdict.code} ${verdict.detail}`);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity check runs before the credential resolver, not after"
+  },
+  {
+    guard: "operator-env credential gate",
+    reason: "a token already in the operator's shell must not travel to a binary whose identity failed, and the child must not start",
+    file: "lib/core.mjs",
+    from: "const { resolved: resolvedAuth, verdict: identityVerdict } = resolveRuntimeAuthForAgent(spec, adapterFor(spec), {});",
+    to: "const { resolved: resolvedAuth, verdict: identityVerdict } = { resolved: null, verdict: { ok: true } };",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an operator's own token does not reach a binary whose identity failed, and the child never starts"
+  },
+  {
+    guard: "resolver ownership",
+    reason: "a keychain entry belongs to the adapter that owns the resolver, not to whatever command was registered under it",
+    file: "lib/runtime-auth.mjs",
+    from: "if ((registered.adapter_id ?? null) !== (adapter?.id ?? null)) {",
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the adapter that owns the credential resolver is not the adapter being spawned"
+  },
+  {
+    guard: "legacy migration guard",
+    reason: "an agent registered before identities were recorded must be migrated, not promoted to verified by silence",
+    file: "lib/runtime-auth.mjs",
+    from: 'if (registered === null || typeof registered !== "object") {',
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a legacy agent with no identity record is refused, not promoted"
+  },
+  {
+    guard: "secret-value scan",
+    reason: "provenance names the credential variable and its source; a record that carried the value would publish it",
+    file: "lib/runtime-auth.mjs",
+    from: "credential_env_name: resolved?.name ?? null,",
+    to: "credential_env_name: resolved?.value ?? null,",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "no credential value is ever written into an identity record"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
