@@ -790,6 +790,123 @@ export const GUARDS = [
     name: "no entry recommends deletion without a reason"
   },
   {
+    guard: "undeclared isolation is the weakest lane",
+    reason: "resolving silence to STRICT manufactures the strongest claim out of no information",
+    file: "lib/verifiers/fam5.mjs",
+    from: 'const OBSERVATION_TRUST = DECLARED_ISOLATION === "STRICT"',
+    to: 'const OBSERVATION_TRUST = DECLARED_ISOLATION !== "STRICT"',
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the verdict records the isolation lane it was observed under"
+  },
+  {
+    guard: "cleanup claim not overstated",
+    reason: "a scan blind to setsid reporting nothing must not be stored as nothing having leaked",
+    file: "lib/verifier-run.mjs",
+    from: "export const DESCENDANT_SCAN_ESTABLISHES_CLEANUP = false;",
+    to: "export const DESCENDANT_SCAN_ESTABLISHES_CLEANUP = true;",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the verifier never claims a cleanup its scan cannot establish"
+  },
+  {
+    guard: "subject nonce non-disclosure",
+    reason: "the parent's authentication secret has no business in a process running assessed code",
+    file: "lib/verifiers/fam5.mjs",
+    from: 'const subjectEnv = (home) => ({ PATH: SAFE_PATH, HOME: home, TMPDIR: home, LANG: "C", NODE_ENV: "production" });',
+    to: 'const subjectEnv = (home) => ({ PATH: SAFE_PATH, HOME: home, TMPDIR: home, LANG: "C", NODE_ENV: "production", AOS_VERIFIER_NONCE: nonce });',
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the subject process is never given the verdict nonce"
+  },
+  {
+    guard: "probe result authentication",
+    reason: "assessed code shares the result descriptor, so an unauthenticated line is its line",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: 'if (typeof token !== "string" || seenToken !== token) return refuse("unauthenticated-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an observation nobody can authenticate is refused"
+  },
+  {
+    guard: "single observation per probe",
+    reason: "a forged line plus the real one must not resolve to whichever was read first",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: 'if (lines.length > 1) return refuse("duplicate-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "a duplicate observation on the result channel is refused"
+  },
+  {
+    guard: "observation schema",
+    reason: "an unvalidated result channel is an assessed-code-controlled field in the verdict",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: "  if (fields.length !== 5 || fields[0] !== MARKER) return refuse(\"malformed-result\");",
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "observation channel size bound",
+    reason: "an unbounded result channel is memory the assessed module decides how much of to take",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: '  if (channel.length > MAX_CHANNEL_BYTES) return refuse("oversized-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "observation line size bound",
+    reason: "a row bound the channel bound does not imply, and the schema would misreport as malformed",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: '  if (line.length > MAX_RESULT_BYTES) return refuse("oversized-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "subject runner executed from memory",
+    reason: "a runner spawned by path is the attacker's runner from the second probe onwards",
+    file: "lib/verifiers/fam5.mjs",
+    from: "      SUBJECT_SOURCE,",
+    to: '      readFileSync(new URL("./fam5-subject.mjs", import.meta.url), "utf8"),',
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the controller reads the subject runner once, before it spawns anything"
+  },
+  {
+    guard: "trusted-file integrity re-check",
+    reason: "a verifier that cannot vouch for its own code has nothing to say about anybody else's",
+    file: "lib/verifiers/fam5.mjs",
+    from: "  if (modifiedTrustedFiles().length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "a write into the AOS installation refuses the verdict even when the probes would pass"
+  },
+  {
+    guard: "missing-result refusal",
+    reason: "a probe nobody answered is not a probe that passed",
+    file: "lib/verifiers/fam5.mjs",
+    from: "    if (!result || result.ok !== true || result.observation === null) return false;",
+    to: "    if (!result) return true;",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "a subject that exits zero without reporting is refused"
+  },
+  {
+    guard: "pristine error classification",
+    reason: "instanceof consults a global the assessed module can replace with its own class",
+    file: "lib/verifiers/fam5-subject.mjs",
+    from: "      if (node === ERROR_PROTOTYPES[index]) return ERROR_NAMES[index];",
+    to: "      if (value instanceof globalThis[ERROR_NAMES[index]]) return ERROR_NAMES[index];",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "replacing the global error classes cannot make the verdict pass"
+  },
+  {
+    guard: "probe process independence",
+    reason: "probes sharing one observation share whatever the first probe's module body broke",
+    file: "lib/verifiers/fam5.mjs",
+    from: "  const settled = await Promise.all(PROBES.map((probe) => runProbe(probe, target.path, deadline)));",
+    to: "  const first = await runProbe(PROBES[0], target.path, deadline); const settled = PROBES.map(() => first);",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "each probe runs in its own short-lived subject process"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
@@ -836,12 +953,12 @@ export const GUARDS = [
   },
   {
     guard: "trusted-process import prohibition",
-    reason: "the assessed module must not be able to read the nonce that authenticates a verdict",
+    reason: "a verdict computed in the process that loaded the assessed module is the module's verdict",
     file: "lib/verifiers/fam5.mjs",
-    from: "delete process.env.AOS_VERIFIER_NONCE;",
-    to: "",
-    test: "tests/product/verifier-isolation.test.mjs",
-    name: "assessed code cannot forge a verdict"
+    from: "  const target = resolveAssessed();",
+    to: "  const target = resolveAssessed(); if (target.path) await import(target.path);",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the assessed module never executes in the trusted controller process"
   },
   {
     guard: "verification result check",
@@ -1042,6 +1159,7 @@ export const ACCOUNTED_GUARDS = [
   "captured stream byte authority",
   "central redaction",
   "checkpoint evidence preserved",
+  "cleanup claim not overstated",
   "close-evidence author trust",
   "close-evidence component confirmations",
   "close-evidence issue-specific fields",
@@ -1076,7 +1194,11 @@ export const ACCOUNTED_GUARDS = [
   "legacy ledger row is not holdout evidence",
   "locked cycle seed",
   "malformed-row reporting",
+  "missing-result refusal",
   "no eligible evidence is said to be none",
+  "observation channel size bound",
+  "observation line size bound",
+  "observation schema",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
   "one fixture id, one item",
@@ -1085,6 +1207,9 @@ export const ACCOUNTED_GUARDS = [
   "owned paths are not only prose",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
+  "pristine error classification",
+  "probe process independence",
+  "probe result authentication",
   "production-quality needs both lanes",
   "pull request produced the commit",
   "rate denominator floor",
@@ -1098,6 +1223,7 @@ export const ACCOUNTED_GUARDS = [
   "restricted readiness",
   "safety cap",
   "session ledger byte identity",
+  "single observation per probe",
   "skipped directory is still an entry",
   "snapshot provenance",
   "snapshot source matches how it was read",
@@ -1105,6 +1231,8 @@ export const ACCOUNTED_GUARDS = [
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
   "started statuses need finished predecessors",
+  "subject nonce non-disclosure",
+  "subject runner executed from memory",
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
@@ -1117,8 +1245,10 @@ export const ACCOUNTED_GUARDS = [
   "the same evidence cannot be counted twice",
   "top-level artifact open does not follow",
   "trend dedupe",
+  "trusted-file integrity re-check",
   "trusted-process import prohibition",
   "undecided items are in neither denominator",
+  "undeclared isolation is the weakest lane",
   "verification result check",
   "withheld precision is absent",
   "workspace containment",
