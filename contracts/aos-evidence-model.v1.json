@@ -463,6 +463,15 @@
       "definition": "No basis exists. minimum_opportunities is null and the cell can never reach its minimum, so the estimate is INSUFFICIENT_OPPORTUNITIES until a basis is established."
     }
   ],
+  "minimum_opportunity_source_clauses": [
+    {
+      "clause_id": "issue-582-reliance-cell",
+      "value": 4,
+      "locator": "github:MongLong0214/agent-operator-score#582, the worked observable-cell example",
+      "quote": "\"minimum_opportunities\": 4",
+      "statement": "The commissioning issue fixes the reliance cell's minimum at four episodes. It is a coverage decision about how many reliance episodes have to be answered before the cell is issued at all, and it carries no precision evidence: nobody has estimated the standard error of a four-episode reliance estimate, and this clause may not be read as one."
+    }
+  ],
   "precision_basis": {
     "status": "UNESTABLISHED",
     "statement": "No minimum in this contract is derived from a precision or generalizability study. A local three-run median or a low deviation is repeat evidence for one profile, not a reliability coefficient. No number here should be read as one."

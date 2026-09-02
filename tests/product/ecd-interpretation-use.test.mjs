@@ -19,6 +19,7 @@ const allPass = () => METRIC_IDS.map((id) => observationOf({
   reason: "test"
 }));
 const complete = { forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"] };
+const facets = { language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1" };
 
 test("the four inferences are present, ordered, and each carries assumptions, evidence and rebuttals", () => {
   const { inferences } = loadEcdContract().interpretation_use;
@@ -71,6 +72,24 @@ test("a complete cycle claims PROFILE_BOUND and an incomplete one drops to RUN_D
   const partial = evaluate(allPass(), { forms_completed: ["FAM-1", "FAM-2"] });
   assert.equal(partial.claim_stage, "RUN_DIAGNOSTIC");
   assert.deepEqual(partial.incomplete_forms, ["FAM-3", "FAM-4", "FAM-5", "FAM-6"]);
+  assert.deepEqual(partial.unsupported_forms, []);
+});
+
+test("naming every form as completed does not make a run that observed nothing PROFILE_BOUND", () => {
+  // `forms_completed` is a list of names a caller hands in. On its own it was the whole basis of the
+  // claim stage, so this call reported performance observed across every locked form over zero
+  // observed opportunities.
+  const empty = evaluate([], complete);
+  assert.equal(empty.claim_stage, "RUN_DIAGNOSTIC");
+  assert.deepEqual(empty.incomplete_forms, []);
+  assert.deepEqual(empty.unsupported_forms, ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"]);
+
+  // Nor does claiming a form the run touched nowhere. M11 and M12 are FAM-4's operator-process
+  // opportunities; without them the form was not administered as claimed.
+  const partial = evaluate(allPass().filter((one) => !["M11", "M12"].includes(one.metric_id)), complete);
+  assert.equal(partial.claim_stage, "RUN_DIAGNOSTIC");
+  assert.ok(partial.unsupported_forms.includes("FAM-4"));
+  assert.equal(partial.unsupported_forms.includes("FAM-1"), false);
 });
 
 test("nothing this contract issues is ever GENERALIZABILITY_SUPPORTED", () => {
@@ -80,21 +99,49 @@ test("nothing this contract issues is ever GENERALIZABILITY_SUPPORTED", () => {
 });
 
 test("two results differing only in language or interface may not be compared", () => {
-  const base = { language: "en", interface: "cli", model: "m", runtime: "r", harness: "h" };
-  assert.equal(comparability(base, { ...base }).comparable, true);
+  // The inputs are the results this module emits, which is where the first version of this test
+  // went wrong: it passed hand-built bare facet objects, and `evaluate` puts the facets under
+  // `facet_coverage.declared`. Two real results, one English on one model and one Korean on
+  // another, came back comparable because every gate is an inequality over a field that was not
+  // there on either side.
+  const result = (overrides) => evaluate(allPass(), { ...complete, facets: { ...facets, ...overrides } });
+  assert.equal(comparability(result({}), result({})).comparable, true);
 
-  const language = comparability(base, { ...base, language: "ko" });
+  const language = comparability(result({}), result({ language: "ko" }));
   assert.equal(language.comparable, false);
   assert.equal(language.reason, "INVARIANCE_UNESTABLISHED");
   assert.deepEqual(language.facets, ["language"]);
 
-  const surface = comparability(base, { ...base, interface: "ide" });
+  const surface = comparability(result({}), result({ interface: "ide" }));
   assert.equal(surface.comparable, false);
   assert.deepEqual(surface.facets, ["interface"]);
 
-  const model = comparability(base, { ...base, model: "other" });
+  const model = comparability(result({}), result({ model: "other" }));
   assert.equal(model.comparable, false);
   assert.deepEqual(model.facets, ["model"]);
+
+  const both = comparability(result({}), result({ language: "ko", model: "other" }));
+  assert.equal(both.comparable, false);
+  assert.deepEqual(both.facets, ["language", "model"]);
+});
+
+test("a comparison whose facets nobody declared is refused rather than allowed by default", () => {
+  assert.equal(comparability({}, {}).comparable, false);
+  assert.equal(comparability({}, {}).reason, "FACETS_UNDECLARED");
+  assert.deepEqual(comparability({}, {}).undeclared_sides, ["left", "right"]);
+
+  // A real result run without a facet context declares none of them, and that is not a match.
+  const undeclared = evaluate(allPass(), complete);
+  const declared = evaluate(allPass(), { ...complete, facets });
+  const one = comparability(declared, undeclared);
+  assert.equal(one.comparable, false);
+  assert.equal(one.reason, "FACETS_UNDECLARED");
+  assert.deepEqual(one.facets, ["language", "interface", "model", "runtime", "harness"]);
+
+  // Half a facet identity is still not one.
+  const partial = evaluate(allPass(), { ...complete, facets: { language: "en", interface: "cli" } });
+  assert.equal(comparability(declared, partial).comparable, false);
+  assert.deepEqual(comparability(declared, partial).facets, ["model", "runtime", "harness"]);
 });
 
 // --- negative --------------------------------------------------------------------------------

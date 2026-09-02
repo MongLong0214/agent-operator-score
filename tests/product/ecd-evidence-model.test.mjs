@@ -181,3 +181,52 @@ test("scoring a cell with a rule declared unimplemented fails", () => {
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("scoring-rule-unimplemented"));
 });
+
+test("a contract-specified minimum names the clause that fixed it, and cannot drift from it", () => {
+  // C3.RA.01's minimum of four is a design decision. The verifier used to ask only that it be an
+  // integer, so it could have read ninety-nine and the contract would still have passed -- and a
+  // decided number with nothing behind it is indistinguishable from a measured one once it is in
+  // the file, which is what UNESTABLISHED exists one row down to prevent.
+  const shipped = loadEcdContract();
+  const cell = cellIn(shipped, "C3.RA.01");
+  assert.equal(cell.minimum_opportunities_basis, "CONTRACT_SPECIFIED");
+  const clause = shipped.evidence_model.minimum_opportunity_source_clauses
+    .find((one) => one.clause_id === cell.minimum_opportunities_source);
+  assert.ok(clause, "the shipped contract-specified minimum names no clause");
+  assert.equal(clause.value, cell.minimum_opportunities);
+
+  const drifted = clone();
+  cellIn(drifted, "C3.RA.01").minimum_opportunities = 99;
+  assert.ok(checks(checkEcdContract(drifted)).includes("minimum-source-mismatch"), "99 still passed");
+
+  const unsourced = clone();
+  cellIn(unsourced, "C3.RA.01").minimum_opportunities_source = null;
+  assert.ok(checks(checkEcdContract(unsourced)).includes("minimum-source-unknown"));
+
+  const invented = clone();
+  cellIn(invented, "C1.SB.01").minimum_opportunities_source = "issue-582-reliance-cell";
+  assert.ok(checks(checkEcdContract(invented)).includes("minimum-source-unexpected"));
+});
+
+test("a cell may not be scored while part of its claim is deferred to an authority it does not hold", () => {
+  // C5.VD.01 rests on the operator's plan, digested before the run. A plan cannot witness the
+  // operator later refusing an unsupported completion, and C6.OG.01's cannot witness a permission
+  // widened mid-run. Both claimed it anyway; the unobservable half is now named in the file.
+  const shipped = loadEcdContract();
+  for (const id of ["C5.VD.01", "C6.OG.01"]) {
+    const cell = cellIn(shipped, id);
+    assert.ok(typeof cell.deferred_claim === "string" && cell.deferred_claim.length > 20, id);
+    assert.equal(cell.population_status, "DECLARED_UNPOPULATED", id);
+  }
+  for (const cell of shipped.cells.cells) {
+    if (cell.population_status === "SUBCHECK_BACKED") assert.equal(cell.deferred_claim, null, cell.cell_id);
+  }
+
+  const doc = clone();
+  const cell = cellIn(doc, "C5.VD.01");
+  cell.population_status = "SUBCHECK_BACKED";
+  cell.subcheck_ids = ["M14.output-deterministic-where-required"];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("deferred-claim-scored"), JSON.stringify(checks(report)));
+});

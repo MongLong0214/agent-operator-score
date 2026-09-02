@@ -146,3 +146,42 @@ test("a shortcut prohibition the evidence model does not declare fails", () => {
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("shortcut-unknown"));
 });
+
+test("a form's declared opportunity count is derived from its cells, not believed", () => {
+  // FAM-1's twelve could have read nine hundred and ninety-nine: nothing checked it. It is also not
+  // a minimum, which is what it used to be called.
+  const contract = loadEcdContract();
+  const byId = new Map(contract.cells.cells.map((one) => [one.cell_id, one]));
+  for (const form of contract.task_model.forms) {
+    const derived = form.construct_opportunity_cell_ids.reduce((total, id) => total + byId.get(id).subcheck_ids.length, 0);
+    assert.equal(form.declared_opportunity_count, derived, form.form_id);
+  }
+
+  const doc = clone();
+  doc.task_model.forms[0].declared_opportunity_count = 999;
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-opportunity-count-mismatch"), JSON.stringify(checks(report)));
+});
+
+test("a form that shares a cell with another form says so, because the counts do not partition", () => {
+  // The six counts sum to eighty-four over eighty subchecks: C6.SL.01 is administered by FAM-2 and
+  // FAM-6, C5.TC.01 by FAM-4 and FAM-5. A consumer reading the counts as a partition of the product
+  // double counts five subchecks, and nothing in the file said so.
+  const contract = loadEcdContract();
+  const forms = new Map(contract.task_model.forms.map((one) => [one.form_id, one]));
+  assert.deepEqual(forms.get("FAM-2").shared_opportunity_cell_ids, ["C6.SL.01"]);
+  assert.deepEqual(forms.get("FAM-6").shared_opportunity_cell_ids, ["C6.SL.01"]);
+  assert.deepEqual(forms.get("FAM-4").shared_opportunity_cell_ids, ["C5.TC.01"]);
+  assert.deepEqual(forms.get("FAM-5").shared_opportunity_cell_ids, ["C5.TC.01"]);
+  assert.deepEqual(forms.get("FAM-1").shared_opportunity_cell_ids, []);
+  const total = contract.task_model.forms.reduce((sum, one) => sum + one.declared_opportunity_count, 0);
+  assert.equal(total, 84);
+  assert.equal(contract.cells.declared_subcheck_count, 80);
+
+  const doc = clone();
+  doc.task_model.forms.find((one) => one.form_id === "FAM-2").shared_opportunity_cell_ids = [];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-shared-cells-undisclosed"), JSON.stringify(checks(report)));
+});

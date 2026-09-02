@@ -68,6 +68,43 @@ test("an issued result carries no category, cut score, percentile, rank or band"
   }
 });
 
+test("the no-band claim is made about this contract and not about a product that still emits one", () => {
+  // The interpretation argument used to assume "no category, band, cut score, percentile or rank is
+  // emitted at any stage" and mark the evidence PASS. That is true of everything this contract
+  // issues and false of the product: lib/scorer-v1.mjs assigns a category to a legacy result and
+  // lib/cli.mjs prints it. A schema-complete argument that records a false statement as passing
+  // evidence is worse than a gap, because it reads as having been checked.
+  const use = loadEcdContract().interpretation_use;
+  const source = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+  const stillEmitted = /\bband\b/.test(source("lib/scorer-v1.mjs"));
+
+  assert.equal(use.legacy_band_surface.status, stillEmitted ? "PRESENT" : "REMOVED");
+  assert.equal(use.legacy_band_surface.owner_issue, 568);
+  assert.ok(use.legacy_band_surface.modules.length > 0);
+  for (const path of use.legacy_band_surface.modules) {
+    assert.ok(/\bband\b/.test(source(path)), `${path} is disclosed as carrying a band and does not`);
+  }
+
+  // No assumption anywhere in the argument may state the absence without saying whose absence it is.
+  for (const inference of use.inferences) {
+    for (const assumption of inference.assumptions) {
+      if (/band/i.test(assumption)) assert.match(assumption, /this contract/);
+    }
+  }
+  const evidence = use.inferences.flatMap((one) => one.evidence);
+  const disclosed = evidence.find((one) => one.evidence_id === "legacy-band-surface-disclosed");
+  assert.ok(disclosed, "the legacy band surface is not recorded as evidence at all");
+  assert.equal(disclosed.status, stillEmitted ? "FAIL" : "PASS");
+});
+
+test("a legacy band surface declared present and naming nothing fails", () => {
+  const doc = clone();
+  doc.interpretation_use.legacy_band_surface.modules = [];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.map((one) => one.check).includes("legacy-band-undisclosed"));
+});
+
 test("no contract artifact carries an ability category", () => {
   const contract = loadEcdContract();
   const serialized = JSON.stringify(contract);

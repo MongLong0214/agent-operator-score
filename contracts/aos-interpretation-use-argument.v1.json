@@ -48,6 +48,15 @@
   "standard_setting": null,
   "categories": null,
   "cut_scores": null,
+  "legacy_band_surface": {
+    "status": "PRESENT",
+    "modules": [
+      "lib/scorer-v1.mjs",
+      "lib/cli.mjs"
+    ],
+    "owner_issue": 568,
+    "statement": "lib/scorer-v1.mjs assigns an ability category to a legacy v1 result and lib/cli.mjs prints it. Nothing in this contract reads it, produces it or is derived from it, and no cell, construct or index defined here can acquire one. Issue #568 owns its removal. Until then the absence of an ability category is a property of this contract and not of the product, and this artifact says so rather than asserting the wider claim."
+  },
   "intended_uses": [
     "local self-diagnosis",
     "profile-bound feedback",
@@ -287,7 +296,7 @@
       "order": 4,
       "claim": "The result supports local self-diagnosis without unacceptable adverse consequences.",
       "assumptions": [
-        "No category, band, cut score, percentile or rank is emitted at any stage.",
+        "No category, band, cut score, percentile or rank is emitted by anything this contract issues, at any stage. The legacy scorer's category is a separate surface and is disclosed in legacy_band_surface.",
         "Forbidden uses are stated on the result itself.",
         "Uncertainty and limitations travel with the number."
       ],
@@ -295,7 +304,12 @@
         {
           "evidence_id": "no-standard-setting-no-category",
           "status": "PASS",
-          "detail": "category, cut_scores, percentile and rank are null in the construct map and in every issued result."
+          "detail": "category, cut_scores, percentile and rank are null in the construct map and null on every result this contract issues, and checkEcdContract fails the contract if any of them is set or if an ability category appears anywhere in the artifacts."
+        },
+        {
+          "evidence_id": "legacy-band-surface-disclosed",
+          "status": "FAIL",
+          "detail": "The product as a whole still emits an ability category: lib/scorer-v1.mjs assigns one to a legacy result and lib/cli.mjs prints it. This evidence does not hold at the product level and is recorded as failing rather than scoped away, because the assumption above is only true of what this contract issues."
         },
         {
           "evidence_id": "forbidden-use-copy",
@@ -348,6 +362,11 @@
           "rebuttal_id": "privacy-or-security-harm",
           "status": "PARTIALLY_MITIGATED",
           "detail": "Raw evidence stays local and the public projection is a digest or safe summary."
+        },
+        {
+          "rebuttal_id": "legacy-category-read-as-this-contract",
+          "status": "OPEN",
+          "detail": "A reader who sees the legacy scorer's category in the same CLI may take it for something this contract issued. Legacy results are rendered as historical and nothing here is derived from them, which is a presentation control and not a structural one."
         }
       ],
       "status": "SUPPORTED_FOR_LOCAL_SELF_DIAGNOSIS_ONLY",

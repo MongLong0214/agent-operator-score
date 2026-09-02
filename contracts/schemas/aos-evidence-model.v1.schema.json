@@ -7,7 +7,8 @@
   "additionalProperties": false,
   "required": [
     "schema", "contract_version", "axes", "authorities", "separation_rules", "scoring_rules",
-    "missing_policies", "prohibited_value_sources", "facets", "minimum_opportunity_bases", "precision_basis"
+    "missing_policies", "prohibited_value_sources", "facets", "minimum_opportunity_bases",
+    "minimum_opportunity_source_clauses", "precision_basis"
   ],
   "properties": {
     "schema": { "const": "aos-evidence-model.v1" },
@@ -20,6 +21,7 @@
     "prohibited_value_sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/prohibited" } },
     "facets": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/facet" } },
     "minimum_opportunity_bases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/basis" } },
+    "minimum_opportunity_source_clauses": { "type": "array", "items": { "$ref": "#/$defs/source_clause" } },
     "precision_basis": {
       "type": "object",
       "additionalProperties": false,
@@ -118,6 +120,19 @@
       "properties": {
         "basis_id": { "enum": ["DECLARED_COVERAGE", "CONTRACT_SPECIFIED", "UNESTABLISHED"] },
         "definition": { "type": "string", "minLength": 20 }
+      }
+    },
+    "source_clause": {
+      "description": "Where a CONTRACT_SPECIFIED minimum came from. It carries the number so that moving the minimum without moving the clause is a contract failure rather than an edit nobody can see.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clause_id", "value", "locator", "quote", "statement"],
+      "properties": {
+        "clause_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "value": { "type": "integer", "minimum": 1 },
+        "locator": { "type": "string", "minLength": 10 },
+        "quote": { "type": "string", "minLength": 3 },
+        "statement": { "type": "string", "minLength": 20 }
       }
     }
   }

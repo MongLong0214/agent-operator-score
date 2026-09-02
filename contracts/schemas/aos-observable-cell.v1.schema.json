@@ -2,13 +2,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-observable-cell.v1.schema.json",
   "title": "AOS observable cell registry",
-  "description": "Every scored cell in the AOS evidence-centred design, and the eleven things a cell has to say before anything may be scored into it.",
+  "description": "Every scored cell in the AOS evidence-centred design, and the thirteen things a cell has to say before anything may be scored into it.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "contract_version", "cells"],
+  "required": ["schema", "contract_version", "declared_subcheck_count", "cells"],
   "properties": {
     "schema": { "const": "aos-observable-cell.v1" },
     "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "declared_subcheck_count": {
+      "description": "How many distinct fully qualified subchecks this contract claims to map. Pinned rather than inferred: a subcheck name duplicated inside one metric leaves the inferred count unchanged and the distinct count one lower, and every mapping check below is written over the distinct set.",
+      "type": "integer", "minimum": 1
+    },
     "cells": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/cell" } }
   },
   "$defs": {
@@ -16,8 +20,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "cell_id", "construct_id", "axis", "title", "claim", "observable", "task_opportunity",
-        "authority", "rival_explanations", "minimum_opportunities", "minimum_opportunities_basis",
+        "cell_id", "construct_id", "axis", "title", "claim", "deferred_claim", "observable",
+        "task_opportunity", "authority", "rival_explanations", "minimum_opportunities",
+        "minimum_opportunities_basis", "minimum_opportunities_source",
         "scoring_rule_id", "missing_policy", "facet_identity", "subcheck_ids",
         "required_for_construct", "credit_bearing", "population_status"
       ],
@@ -27,12 +32,20 @@
         "axis": { "enum": ["operator_process", "reliance_calibration", "system_outcome", "delegated_artifact"] },
         "title": { "type": "string", "minLength": 3 },
         "claim": { "type": "string", "minLength": 20 },
+        "deferred_claim": {
+          "description": "The part of the intended claim this cell's authority cannot observe, or null. A cell that names one may not be scored: a partly observable claim scored as a whole one reports something nobody saw.",
+          "type": ["string", "null"], "minLength": 20
+        },
         "observable": { "type": "string", "minLength": 20 },
         "task_opportunity": { "$ref": "#/$defs/task_opportunity" },
         "authority": { "type": "string", "minLength": 3 },
         "rival_explanations": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/rival" } },
         "minimum_opportunities": { "type": ["integer", "null"], "minimum": 1 },
         "minimum_opportunities_basis": { "enum": ["DECLARED_COVERAGE", "CONTRACT_SPECIFIED", "UNESTABLISHED"] },
+        "minimum_opportunities_source": {
+          "description": "The evidence-model clause that fixed a CONTRACT_SPECIFIED minimum, and null for every other basis. Without it a decided number is indistinguishable from a measured one.",
+          "type": ["string", "null"], "minLength": 3
+        },
         "scoring_rule_id": { "type": "string", "minLength": 3 },
         "missing_policy": { "enum": ["NOT_OBSERVED", "INSUFFICIENT_OPPORTUNITIES", "WITHHELD"] },
         "facet_identity": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },

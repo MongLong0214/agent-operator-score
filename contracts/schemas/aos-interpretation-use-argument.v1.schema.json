@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": [
     "schema", "contract_version", "claim_stages", "default_claim_stage", "maximum_claim_stage",
-    "generalizability_status", "standard_setting", "categories", "cut_scores",
+    "generalizability_status", "standard_setting", "categories", "cut_scores", "legacy_band_surface",
     "intended_uses", "forbidden_uses", "comparability_rules", "inferences", "validation_registry", "release_note"
   ],
   "properties": {
@@ -20,6 +20,18 @@
     "standard_setting": { "type": "null" },
     "categories": { "type": "null" },
     "cut_scores": { "type": "null" },
+    "legacy_band_surface": {
+      "description": "The ability category the rest of the product still emits, and which modules carry it. This contract issues none; asserting that as a property of the product rather than of the contract was false, so the artifact discloses the surface instead.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "modules", "owner_issue", "statement"],
+      "properties": {
+        "status": { "enum": ["PRESENT", "REMOVED"] },
+        "modules": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
+        "owner_issue": { "type": "integer", "minimum": 1 },
+        "statement": { "type": "string", "minLength": 20 }
+      }
+    },
     "intended_uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 5 } },
     "forbidden_uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 5 } },
     "comparability_rules": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/comparability" } },

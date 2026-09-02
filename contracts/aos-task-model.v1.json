@@ -41,6 +41,7 @@
         "C1.AE.01",
         "C1.SD.01"
       ],
+      "shared_opportunity_cell_ids": [],
       "required_cell_ids": [
         "C1.GF.01",
         "C1.AO.01",
@@ -75,7 +76,7 @@
         "prompt_length",
         "verbosity"
       ],
-      "minimum_opportunity_count": 12
+      "declared_opportunity_count": 12
     },
     {
       "form_id": "FAM-2",
@@ -89,6 +90,9 @@
         "C6.SL.01",
         "C6.IJ.01",
         "C6.IJ.02"
+      ],
+      "shared_opportunity_cell_ids": [
+        "C6.SL.01"
       ],
       "required_cell_ids": [
         "C2.CS.01",
@@ -126,7 +130,7 @@
         "tool_count",
         "verbosity"
       ],
-      "minimum_opportunity_count": 13
+      "declared_opportunity_count": 13
     },
     {
       "form_id": "FAM-3",
@@ -141,6 +145,7 @@
         "C2.IB.01",
         "C2.HJ.01"
       ],
+      "shared_opportunity_cell_ids": [],
       "required_cell_ids": [
         "C2.DC.01",
         "C2.DG.01",
@@ -178,7 +183,7 @@
         "verbosity",
         "wall_clock_speed"
       ],
-      "minimum_opportunity_count": 16
+      "declared_opportunity_count": 16
     },
     {
       "form_id": "FAM-4",
@@ -191,6 +196,9 @@
         "C4.IQ.01",
         "C4.SR.01",
         "C4.SR.02",
+        "C5.TC.01"
+      ],
+      "shared_opportunity_cell_ids": [
         "C5.TC.01"
       ],
       "required_cell_ids": [
@@ -231,7 +239,7 @@
         "verbosity",
         "wall_clock_speed"
       ],
-      "minimum_opportunity_count": 13
+      "declared_opportunity_count": 13
     },
     {
       "form_id": "FAM-5",
@@ -244,6 +252,9 @@
         "C5.IV.01",
         "C5.RB.01",
         "C5.CI.01",
+        "C5.TC.01"
+      ],
+      "shared_opportunity_cell_ids": [
         "C5.TC.01"
       ],
       "required_cell_ids": [
@@ -283,7 +294,7 @@
         "verbosity",
         "wall_clock_speed"
       ],
-      "minimum_opportunity_count": 16
+      "declared_opportunity_count": 16
     },
     {
       "form_id": "FAM-6",
@@ -297,6 +308,9 @@
         "C6.PB.01",
         "C6.EB.01",
         "C6.BP.01"
+      ],
+      "shared_opportunity_cell_ids": [
+        "C6.SL.01"
       ],
       "required_cell_ids": [
         "C4.FD.01",
@@ -336,7 +350,7 @@
         "verbosity",
         "wall_clock_speed"
       ],
-      "minimum_opportunity_count": 14
+      "declared_opportunity_count": 14
     }
   ],
   "unadministered_opportunity_sources": [

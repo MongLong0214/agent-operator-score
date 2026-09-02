@@ -178,3 +178,21 @@ test("moving the longitudinal lane into the index fails", () => {
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("longitudinal-in-index"));
 });
+
+test("a contract that pins a subcheck cardinality the product does not have fails", () => {
+  // The eighty-row claim was unfalsifiable while the count was inferred. Duplicate a subcheck name
+  // inside one metric and `declaredSubcheckIds()` stays eighty long and goes seventy-nine distinct,
+  // and every mapping check is written over the distinct set -- the verifier passed a contract that
+  // described seventy-nine questions and called it eighty. The count is now pinned in the artifact,
+  // so a product that has stopped having eighty has to say so in the file to stay green.
+  const doc = clone();
+  doc.cells.declared_subcheck_count = 79;
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("subcheck-cardinality"), JSON.stringify(checks(report)));
+
+  const shipped = loadEcdContract();
+  assert.equal(shipped.cells.declared_subcheck_count, 80);
+  assert.equal(new Set(declaredSubcheckIds()).size, 80);
+  assert.equal(subcheckMapping().length, 80);
+});

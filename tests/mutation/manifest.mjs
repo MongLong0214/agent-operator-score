@@ -16,6 +16,123 @@
 
 export const GUARDS = [
   {
+    guard: "ECD contract seal required before an estimate",
+    reason: "the aggregation steps were exported raw, so every rule in checkEcdContract -- including the one refusing credit to an agent's account of itself -- was advisory to any caller who did not run the verifier",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (contract !== null && typeof contract === "object" && typeof contract[SEALED] === "string") return contract[SEALED];',
+    to: '  if (true) return "";',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "no estimate can be produced from a contract nobody checked"
+  },
+  {
+    guard: "ECD derived rows only",
+    reason: "six construct rows written by hand issued a process index of 0.75 against a contract that documents the index as withheld by construction",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (rows !== null && typeof rows === "object" && rows[DERIVED] === `${kind}:${digest}`) return rows;',
+    to: "  if (true) return rows;",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "the process index refuses construct rows a caller assembled"
+  },
+  {
+    guard: "ECD derived rows are frozen",
+    reason: "a brand without a freeze lets a caller take real estimates, flip a NOT_OBSERVED to ISSUED and pass them on still carrying the digest of the contract they no longer describe",
+    file: "lib/ecd-contract.mjs",
+    from: "  return deepFreeze(rows);",
+    to: "  return rows;",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "derived rows cannot be edited between the stages that produce and consume them"
+  },
+  {
+    guard: "ECD cell resolved from the contract",
+    reason: "taking the cell object from the caller took its credit_bearing, its minimum and its missing policy from the caller too, so a self-report cell could be handed in claiming credit",
+    file: "lib/ecd-contract.mjs",
+    from: "  const cell = contract.cells.cells.find((entry) => entry.cell_id === cellId);",
+    to: '  const cell = typeof cellId === "object" ? cellId : contract.cells.cells.find((entry) => entry.cell_id === cellId);',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a cell estimate is taken from the contract's own cell and never from the caller's"
+  },
+  {
+    guard: "ECD claim stage rests on what was observed",
+    reason: "forms_completed is a list of names the caller hands in, and on its own it made a run that observed nothing report performance observed across every locked form",
+    file: "lib/ecd-contract.mjs",
+    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    to: '  const claimStage = missingForms.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "naming every form as completed does not make a run that observed nothing PROFILE_BOUND"
+  },
+  {
+    guard: "ECD comparability reads the emitted facet identity",
+    reason: "the gates were read off the top level of the input while evaluate puts the facets under facet_coverage.declared, so two real results on different models and different languages compared as the same measurement",
+    file: "lib/ecd-contract.mjs",
+    from: "    const declared = side?.facet_coverage?.declared;",
+    to: "    const declared = side;",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "two results differing only in language or interface may not be compared"
+  },
+  {
+    guard: "ECD comparability refuses an undeclared facet",
+    reason: "every gate in the function is an inequality, so a facet that is absent on both sides read as a facet that matches and comparability({}, {}) returned true",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (undeclared.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a comparison whose facets nobody declared is refused rather than allowed by default"
+  },
+  {
+    guard: "ECD subcheck cardinality is pinned",
+    reason: "a subcheck name duplicated inside one metric leaves the inferred count at eighty and the distinct count at seventy-nine, and every mapping check is written over the distinct set",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (declaredList.length !== pinnedCount || declared.size !== pinnedCount) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a contract that pins a subcheck cardinality the product does not have fails"
+  },
+  {
+    guard: "ECD contract-specified minimum cannot drift from its clause",
+    reason: "a decided minimum with nothing behind it is indistinguishable from a measured one, and the verifier asked only that it be an integer, so four could have read ninety-nine",
+    file: "lib/ecd-contract.mjs",
+    from: "      } else if (clause.value !== cell.minimum_opportunities) {",
+    to: "      } else if (false) {",
+    test: "tests/product/ecd-evidence-model.test.mjs",
+    name: "a contract-specified minimum names the clause that fixed it, and cannot drift from it"
+  },
+  {
+    guard: "ECD deferred claim may not be scored",
+    reason: "a cell whose authority cannot observe half its claim, scored as though it observed all of it, reports something nobody saw",
+    file: "lib/ecd-contract.mjs",
+    from: '    if (cell.deferred_claim !== null && cell.population_status !== "DECLARED_UNPOPULATED") {',
+    to: "    if (false) {",
+    test: "tests/product/ecd-evidence-model.test.mjs",
+    name: "a cell may not be scored while part of its claim is deferred to an authority it does not hold"
+  },
+  {
+    guard: "ECD form opportunity count is derived",
+    reason: "the per-form counts were believed rather than derived, so a form could declare nine hundred and ninety-nine opportunities over twelve",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (form.declared_opportunity_count !== derived) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form's declared opportunity count is derived from its cells, not believed"
+  },
+  {
+    guard: "ECD shared form cells are disclosed",
+    reason: "the six form counts sum to eighty-four over eighty subchecks because two cells are administered twice, and a consumer reading them as a partition double counts",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (canonicalJson([...form.shared_opportunity_cell_ids].sort()) !== canonicalJson(shared)) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form that shares a cell with another form says so, because the counts do not partition"
+  },
+  {
+    guard: "ECD legacy band surface is disclosed, not asserted away",
+    reason: "the argument recorded no ability category anywhere in the product as passing evidence while the old scorer still assigns one, which reads as a claim that was checked",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (use.legacy_band_surface.status === "PRESENT" && use.legacy_band_surface.modules.length === 0) {',
+    to: "  if (false) {",
+    test: "tests/product/ecd-shortcuts.test.mjs",
+    name: "a legacy band surface declared present and naming nothing fails"
+  },
+  {
     guard: "ECD subcheck double ownership",
     reason: "a subcheck owned by two cells is counted twice, and the construct it inflates is the one nobody notices",
     file: "lib/ecd-contract.mjs",
@@ -82,8 +199,8 @@ export const GUARDS = [
     guard: "ECD missing evidence keeps its own reason",
     reason: "a cell nothing answered is not the same fact as a cell answered too few times, and collapsing the two hides whether an opportunity was ever administered",
     file: "lib/ecd-contract.mjs",
-    from: "  if (values.length === 0) return { ...base, estimate: null, status: cell.missing_policy };",
-    to: '  if (values.length === 0) return { ...base, estimate: null, status: "INSUFFICIENT_OPPORTUNITIES" };',
+    from: "  if (values.length === 0) return deepFreeze({ ...base, estimate: null, status: cell.missing_policy });",
+    to: '  if (values.length === 0) return deepFreeze({ ...base, estimate: null, status: "INSUFFICIENT_OPPORTUNITIES" });',
     test: "tests/product/ecd-aggregation.test.mjs",
     name: "a cell nothing answered takes its own missing policy, which is not a zero"
   },
@@ -100,8 +217,8 @@ export const GUARDS = [
     guard: "ECD process index withheld on a missing construct",
     reason: "an index computed over the constructs that happened to have evidence is a different scale from one result to the next",
     file: "lib/ecd-contract.mjs",
-    from: '  if (withheld.length > 0) return { ...base, value: null, status: "WITHHELD" };',
-    to: '  if (false) return { ...base, value: null, status: "WITHHELD" };',
+    from: '  if (withheld.length > 0) return deepFreeze({ ...base, value: null, status: "WITHHELD" });',
+    to: '  if (false) return deepFreeze({ ...base, value: null, status: "WITHHELD" });',
     test: "tests/product/ecd-aggregation.test.mjs",
     name: "the process index is withheld while any construct in it has no operator-process evidence"
   },

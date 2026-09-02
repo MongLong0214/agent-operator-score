@@ -46,8 +46,9 @@
       "additionalProperties": false,
       "required": [
         "form_id", "family", "title", "class", "scored_once_per_cycle",
-        "construct_opportunity_cell_ids", "required_cell_ids", "optional_cell_ids",
-        "required_perturbation", "required_oracle", "facets", "shortcut_prohibitions", "minimum_opportunity_count"
+        "construct_opportunity_cell_ids", "shared_opportunity_cell_ids",
+        "required_cell_ids", "optional_cell_ids",
+        "required_perturbation", "required_oracle", "facets", "shortcut_prohibitions", "declared_opportunity_count"
       ],
       "properties": {
         "form_id": { "type": "string", "minLength": 1 },
@@ -56,13 +57,20 @@
         "class": { "enum": ["WARMUP", "PRACTICE", "OPERATIONAL", "TRANSFER"] },
         "scored_once_per_cycle": { "type": "boolean" },
         "construct_opportunity_cell_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
+        "shared_opportunity_cell_ids": {
+          "description": "The cells this form administers that another form also administers. Declared so that the six counts are not read as a partition of the eighty subchecks: they sum to eighty-four.",
+          "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" }
+        },
         "required_cell_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
         "optional_cell_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
         "required_perturbation": { "type": "string", "minLength": 10 },
         "required_oracle": { "type": "string", "minLength": 10 },
         "facets": { "$ref": "#/$defs/form_facets" },
         "shortcut_prohibitions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
-        "minimum_opportunity_count": { "type": "integer", "minimum": 1 }
+        "declared_opportunity_count": {
+          "description": "The subchecks the cells this form administers declare, summed. Derived and compared by checkEcdContract rather than believed; it is not a minimum and was misnamed as one.",
+          "type": "integer", "minimum": 1
+        }
       }
     },
     "form_facets": {

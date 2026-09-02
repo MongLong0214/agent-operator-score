@@ -4,10 +4,13 @@ import test from "node:test";
 import {
   cellEstimates,
   constructEstimates,
+  estimateCell,
   evaluate,
   loadEcdContract,
   opportunitiesOf,
-  processIndex
+  processIndex,
+  sealEcdContract,
+  shippedEcdContract
 } from "../../lib/ecd-contract.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 
@@ -34,6 +37,55 @@ const observationsWith = (overrides = {}) => METRIC_IDS.map((id) => {
     reason: "test"
   });
 });
+
+/**
+ * A contract in which every construct in the index has a populated operator-process cell.
+ *
+ * The shipped contract cannot issue the index, and that is the finding rather than a gap. But it
+ * leaves the only state the aggregation arithmetic computes in untested, and the first version of
+ * the test below bought that coverage by handing `processIndex` six rows written by hand. Those
+ * rows issued 0.75 while this module documented the index as withheld by construction -- the helper
+ * had a test proving it would bypass the contract.
+ *
+ * The coverage is bought here the only way that means anything: a different contract, built by
+ * moving one declared subcheck into each unpopulated operator-process cell, and put through the
+ * same verifier and the same seal as the shipped one. If any of these edits broke a rule,
+ * `sealEcdContract` throws and this test fails rather than measuring an arrangement the contract
+ * forbids.
+ */
+const POPULATED = [
+  { target: "C1.OF.01", donor: "C1.GF.01", form: "FAM-1" },
+  { target: "C2.OD.01", donor: "C2.CS.01", form: "FAM-2" },
+  { target: "C5.VD.01", donor: "C5.FO.01", form: "FAM-5" },
+  { target: "C6.OG.01", donor: "C6.BP.01", form: "FAM-6" }
+];
+
+const contractWithAPopulatedIndex = () => {
+  const doc = JSON.parse(JSON.stringify(loadEcdContract()));
+  const cellById = new Map(doc.cells.cells.map((one) => [one.cell_id, one]));
+  for (const { target, donor, form: formId } of POPULATED) {
+    const from = cellById.get(donor);
+    const to = cellById.get(target);
+    const moved = from.subcheck_ids.pop();
+    from.minimum_opportunities = from.subcheck_ids.length;
+    to.subcheck_ids = [moved];
+    to.population_status = "SUBCHECK_BACKED";
+    to.scoring_rule_id = "subcheck-mean.v1";
+    to.minimum_opportunities = 1;
+    to.minimum_opportunities_basis = "DECLARED_COVERAGE";
+    to.minimum_opportunities_source = null;
+    // The cell may be scored only once its authority can observe the whole claim, so populating it
+    // means answering the deferred half rather than dropping the field.
+    to.deferred_claim = null;
+    to.task_opportunity.form_ids = [formId];
+    const form = doc.task_model.forms.find((one) => one.form_id === formId);
+    form.construct_opportunity_cell_ids.push(target);
+    form.required_cell_ids.push(target);
+  }
+  doc.task_model.unadministered_opportunity_sources = doc.task_model.unadministered_opportunity_sources
+    .filter((source) => source.source_id !== "operator-authored-plan");
+  return sealEcdContract(doc);
+};
 
 const cell = (result, id) => result.cells.find((one) => one.cell_id === id);
 const construct = (result, id, axis) => result.constructs.find((one) => one.construct_id === id && one.axis === axis);
@@ -195,16 +247,13 @@ test("the process index is withheld while any construct in it has no operator-pr
 });
 
 test("the index arithmetic is an equal-weight mean once every construct is issued", () => {
-  // Exercised against synthetic construct estimates, because the shipped contract cannot issue all
-  // six yet. Without this the aggregation rule would be untested in the only state it computes in.
-  const contract = loadEcdContract();
-  const rows = ["C1", "C2", "C3", "C4", "C5", "C6"].map((id, index) => ({
-    construct_id: id,
-    axis: "operator_process",
-    status: "ISSUED",
-    estimate: index < 3 ? 1 : 0.5
-  }));
-  const index = processIndex(rows, contract);
+  const contract = contractWithAPopulatedIndex();
+  // C1 1, C2 1, C3 0.5, C4 1, C5 1, C6 0 over six equally weighted constructs.
+  const observations = observationsWith({
+    M11: { "injected-failure-detected": true, "failure-class-correct": true, "critical-evidence-inspected": false, "blocked-before-unsafe-continuation": false },
+    M20: { "no-no-progress-loop": true, "verified-outcome-within-budget": false }
+  });
+  const index = evaluate(observations, complete, contract).process_index;
   assert.equal(index.status, "ISSUED");
   assert.equal(index.value, 0.75);
   assert.equal(index.category, null);
@@ -213,12 +262,62 @@ test("the index arithmetic is an equal-weight mean once every construct is issue
   assert.equal(index.rank, null);
   assert.equal(index.band, null);
 
-  rows[2].status = "WITHHELD";
-  rows[2].estimate = null;
-  const withheld = processIndex(rows, contract);
+  // One construct short and it withholds rather than averaging the five that remain.
+  const withheld = evaluate(observationsWith({ M14: null }), complete, contract).process_index;
   assert.equal(withheld.status, "WITHHELD");
   assert.equal(withheld.value, null);
-  assert.deepEqual(withheld.withheld_for, ["C3"]);
+  assert.deepEqual(withheld.withheld_for, ["C5"]);
+});
+
+// --- the boundary ------------------------------------------------------------------------------
+
+test("no estimate can be produced from a contract nobody checked", () => {
+  const unchecked = loadEcdContract();
+  for (const call of [
+    () => opportunitiesOf(observationsWith({}), unchecked),
+    () => cellEstimates(observationsWith({}), unchecked),
+    () => evaluate(observationsWith({}), complete, unchecked),
+    () => processIndex([], unchecked)
+  ]) {
+    assert.throws(call, /AOS_UNVERIFIED_CONTRACT/);
+  }
+  // And a contract that fails the verifier cannot be sealed into one, so there is no second route.
+  const broken = JSON.parse(JSON.stringify(loadEcdContract()));
+  broken.cells.cells[0].credit_bearing = "yes";
+  assert.throws(() => sealEcdContract(broken), /AOS_CONTRACT_INVALID/);
+});
+
+test("the process index refuses construct rows a caller assembled", () => {
+  // The exact call that used to issue 0.75 against a contract documenting the index as withheld.
+  const rows = ["C1", "C2", "C3", "C4", "C5", "C6"].map((id) => ({
+    construct_id: id, axis: "operator_process", status: "ISSUED", estimate: 1
+  }));
+  assert.throws(() => processIndex(rows, shippedEcdContract()), /AOS_UNDERIVED_INPUT/);
+
+  // Nor may rows derived from one contract be scored against another.
+  const real = constructEstimates(cellEstimates(observationsWith({})));
+  assert.throws(() => processIndex(real, contractWithAPopulatedIndex()), /AOS_UNDERIVED_INPUT/);
+});
+
+test("a cell estimate is taken from the contract's own cell and never from the caller's", () => {
+  const opportunities = opportunitiesOf(observationsWith({}));
+  // A cell resting on the agent's own account of itself, handed in claiming credit. The old
+  // signature took this object and computed from it without consulting the contract at all.
+  const invented = {
+    cell_id: "C6.PB.01", construct_id: "C6", axis: "delegated_artifact",
+    credit_bearing: true, minimum_opportunities: 1, missing_policy: "NOT_OBSERVED"
+  };
+  assert.throws(() => estimateCell(invented, opportunities), /AOS_UNKNOWN_CELL/);
+  assert.equal(estimateCell("C6.PB.01", opportunities).credit_bearing, false);
+  assert.throws(() => estimateCell("C9.ZZ.99", opportunities), /AOS_UNKNOWN_CELL/);
+  assert.throws(() => estimateCell("C6.PB.01", [...opportunities]), /AOS_UNDERIVED_INPUT/);
+});
+
+test("derived rows cannot be edited between the stages that produce and consume them", () => {
+  const cells = cellEstimates(observationsWith({}));
+  const target = cells.find((one) => one.cell_id === "C6.PB.01");
+  assert.throws(() => { target.estimate = 1; }, TypeError);
+  assert.throws(() => { cells.push({ cell_id: "C0.XX.00" }); }, TypeError);
 });
 
 test("the estimates are deterministic", () => {
