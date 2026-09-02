@@ -2395,10 +2395,10 @@ export const GUARDS = [
   },
   {
     guard: "withheld is never a number, and issued is never a reason",
-    reason: "the three fields are one state, and three fields nothing binds together are three fields a stored file can disagree with itself in -- writing 0 over a withheld index left the reasons in place and printed 0.0 with nothing beside it, which is the one reading this instrument exists to refuse",
-    file: "lib/result-schema.mjs",
-    from: "  if (issued !== (value !== null) || issued !== (reason === null)) {",
-    to: "  if (false) {",
+    reason: "the three fields are one state, and three fields nothing binds together are three fields a stored file can disagree with itself in -- writing 0 over a withheld index left the reasons in place and printed 0.0 with nothing beside it, which is the one reading this instrument exists to refuse; the coupling is stated in the schema, where a reader of the artifact outside this repository checks it too",
+    file: "schemas/aos-result.v2.schema.json",
+    from: "\"operator_process_profile\": {\n      \"type\": \"object\",\n      \"additionalProperties\": false,\n      \"oneOf\": [\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": true\n            },\n            \"index\": {\n              \"type\": \"number\"\n            },\n            \"withheld_reason\": {\n              \"type\": \"null\"\n            }\n          }\n        },\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": false\n            },\n            \"index\": {\n              \"type\": \"null\"\n            },",
+    to: "\"operator_process_profile\": {\n      \"type\": \"object\",\n      \"additionalProperties\": false,\n      \"oneOf\": [\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": true\n            },\n            \"index\": {\n              \"type\": \"number\"\n            },\n            \"withheld_reason\": {\n              \"type\": \"null\"\n            }\n          }\n        },\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": false\n            },\n            \"index\": {\n              \"type\": [\"null\", \"number\"]\n            },",
     test: "tests/product/projection-consistency.test.mjs",
     name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
   },
