@@ -52,7 +52,6 @@
     "status": "PRESENT",
     "modules": [
       "lib/scorer-v1.mjs",
-      "lib/cli.mjs",
       "lib/report.mjs",
       "lib/report-card.mjs",
       "lib/dashboard.mjs"
@@ -63,7 +62,7 @@
     ],
     "exclusion_statement": "lib/ecd-contract.mjs names the ability categories in order to refuse them and sets band to null on every result it issues, and lib/result-schema.mjs carries that null onto the profile-bound result and its schema forbids any other value. Both are excluded by name rather than by a pattern, so each exclusion is one line somebody has to write rather than a gap a rename could open.",
     "owner_issue": 568,
-    "statement": "lib/scorer-v1.mjs assigns an ability category to a legacy v1 result and lib/cli.mjs, lib/report.mjs, lib/report-card.mjs and lib/dashboard.mjs render it. Nothing in this contract reads it, produces it or is derived from it, and no cell, construct or index defined here can acquire one. Issue #568 owns its removal. Until then the absence of an ability category is a property of this contract and not of the product, and this artifact lists every module that carries it rather than asserting the wider claim."
+    "statement": "lib/scorer-v1.mjs assigns an ability category to a legacy v1 result and lib/report.mjs, lib/report-card.mjs and lib/dashboard.mjs render it for the legacy records that carry one. Since #559 the assessment path writes a profile result and lib/cli.mjs prints no category at all, so it has left this list. Nothing in this contract reads a category, produces one or is derived from one, and no cell, construct or index defined here can acquire one. Issue #568 owns removing the remaining legacy surfaces. Until then the absence of an ability category is a property of this contract and of the active path, and this artifact lists every module that still carries one rather than asserting the wider claim."
   },
   "intended_uses": [
     "local self-diagnosis",
