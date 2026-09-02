@@ -2673,15 +2673,6 @@ export const GUARDS = [
     name: "the CLI report and recover commands serve and regenerate the same rendering of a stored result"
   },
   {
-    guard: "a digest is what this module produced, not what looks like one",
-    reason: "sixty-four hex characters are not evidence of having been hashed; reading the shape as a marker published an api_credential facet as `sha256:` plus every character of the secret, which is the leak wearing the label of the fix",
-    file: "lib/result-schema.mjs",
-    from: "const DIGEST_TEXT = /^sha256:[0-9a-f]{64}$/u;",
-    to: "const DIGEST_TEXT = /^(?:sha256:)?[0-9a-f]{64}$/u;",
-    test: "tests/product/profile-aggregation.test.mjs",
-    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
-  },
-  {
     guard: "a facet is not normalised into a digest",
     reason: "normalising every facet value that looked like bare hex is what dressed a caller's secret as a digest; only the two facets this build derives are digests, and the rest go through the gate like any other string",
     file: "lib/result-schema.mjs",
@@ -2728,7 +2719,7 @@ export const GUARDS = [
   },
   {
     guard: "a sanitised value is one this module boxed",
-    reason: "provenance cannot be read off a string: with the box gone, `sha256:` plus sixty-four characters a caller typed is published verbatim, which is the leak wearing the label of the fix",
+    reason: "provenance cannot be read off a string: with the box gone, `sha256:` plus sixty-four characters a caller typed is published verbatim, which is the leak wearing the label of the fix -- this is the whole of that rule now, and the guard that broke the digest pattern was retired when the pattern stopped being what the gate consults",
     file: "lib/result-schema.mjs",
     from: "  if (value instanceof Sanitised) return String(value);",
     to: "  if (typeof value === \"string\" && DIGEST_TEXT.test(value)) return value;",
@@ -2890,7 +2881,6 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
-  "a digest is what this module produced, not what looks like one",
   "a facet is not normalised into a digest",
   "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
