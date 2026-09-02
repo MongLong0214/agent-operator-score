@@ -22,7 +22,9 @@ const opened = () => {
   // a real family because that is what "exact" means -- a family this product has naming rules for
   // and a date the provider promised not to move. The unknown and mutable paths have their own
   // fixtures in tests/product/model-identity.test.mjs.
-  addAgent(cwd, "solo", undefined, ["--model-id", FIXTURE_MODEL], verifiedRunner(cwd));
+  // Under the Codex adapter, because only the runtime that was configured can corroborate its own
+  // binding: an adapter that declares no transcript shape is never corroborated (#561 round 3).
+  addAgent(cwd, "solo", undefined, ["--model-id", FIXTURE_MODEL, "--adapter", "codex-cli.v1"], verifiedRunner(cwd));
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["cycle", "start", ...SEEDS.flatMap((seed) => ["--seed", seed])]);
   return { cwd, plan, home: join(cwd, ".aos") };

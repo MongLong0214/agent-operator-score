@@ -19,7 +19,7 @@
     "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
     "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
     "verify:action-pins": "node scripts/verify-action-pins.mjs",
-    "verify:model-identity": "node --test tests/product/model-identity.test.mjs tests/product/profile.test.mjs tests/product/cycle-command.test.mjs",
+    "verify:model-identity": "node --test tests/product/model-identity.test.mjs tests/product/model-canary.test.mjs tests/product/profile.test.mjs tests/product/cycle-command.test.mjs tests/product/dashboard.test.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
@@ -42,7 +42,8 @@
     "LICENSE",
     "SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
-    "fixtures/attacks/"
+    "fixtures/attacks/",
+    "fixtures/model-identity/"
   ],
   "os": [
     "darwin",

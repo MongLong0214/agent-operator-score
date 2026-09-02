@@ -1,0 +1,76 @@
+{
+  "schema_id": "aos-model-canary.v1",
+  "captured_at": "2026-09-02T12:16:24.954Z",
+  "capture": {
+    "platform": "darwin",
+    "command": "observeModelEvents({ env: { HOME }, workspace, since: 0, runtime }) over the workspaces given to scripts/capture-model-canary.mjs",
+    "note": "No transcript content is copied. Each observation is the event this product carries forward plus the SHA-256 of the row's raw bytes on disk."
+  },
+  "blockers": {},
+  "observations": [
+    {
+      "runtime": "codex",
+      "workspace": "/tmp/rv-bumps",
+      "provider": "openai",
+      "model": "gpt-5.6-sol",
+      "row_digest": "sha256:2f53b04fc22040cc3f7acbebaff5e1fc83450eddbfb55debacd360fedaae4086",
+      "source_file_digest": "sha256:f5cddbbf59a0f5bfc539536f08f1301c2c86553e58d47f04f62c7d3f9612605a",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "openai/gpt-5.6-sol",
+      "verification": "CONFIRMED",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_MUTABLE_ALIAS"
+      }
+    },
+    {
+      "runtime": "codex",
+      "workspace": "/tmp/rv-bumps",
+      "provider": "openai",
+      "model": "gpt-5.6-sol",
+      "row_digest": "sha256:2f53b04fc22040cc3f7acbebaff5e1fc83450eddbfb55debacd360fedaae4086",
+      "source_file_digest": "sha256:f5cddbbf59a0f5bfc539536f08f1301c2c86553e58d47f04f62c7d3f9612605a",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "anthropic/claude-3-5-sonnet-20241022",
+      "verification": "MISMATCH",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_IDENTITY_MISMATCH"
+      }
+    },
+    {
+      "runtime": "claude-code",
+      "workspace": "/private/tmp/v-590",
+      "provider": "anthropic",
+      "model": "claude-fable-5-1",
+      "row_digest": "sha256:e16baf78fbbeb9483463b5c0bf46b5cf7dcebd0598bfb7a0759ee80d6ddb69cb",
+      "source_file_digest": "sha256:e47797a7a6c271bb8b736cb83d717912897d075dd321bb99677b1cdb307a0d68",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "anthropic/claude-fable-5-1",
+      "verification": "CONFIRMED",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_MUTABLE_ALIAS"
+      }
+    },
+    {
+      "runtime": "claude-code",
+      "workspace": "/private/tmp/v-590",
+      "provider": "anthropic",
+      "model": "claude-fable-5-1",
+      "row_digest": "sha256:e16baf78fbbeb9483463b5c0bf46b5cf7dcebd0598bfb7a0759ee80d6ddb69cb",
+      "source_file_digest": "sha256:e47797a7a6c271bb8b736cb83d717912897d075dd321bb99677b1cdb307a0d68",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "anthropic/claude-3-5-sonnet-20241022",
+      "verification": "MISMATCH",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_IDENTITY_MISMATCH"
+      }
+    }
+  ]
+}

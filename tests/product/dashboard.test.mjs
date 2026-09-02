@@ -10,6 +10,7 @@ import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
 import { writeJson } from "../../lib/core.mjs";
+import { summariseCycle } from "../../lib/cycle.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { modelIdentityRecord, resolveModelProvenance, verifyModelIdentity } from "../../lib/model-identity.mjs";
 import { identityDigestOf, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
@@ -45,7 +46,7 @@ const confirmedRun = () => modelIdentityRecord({
   by_agent: {
     solo: {
       provenance: provenance(),
-      verification: verifyModelIdentity(provenance(), [{ runtime: "codex", provider: "openai", model: "gpt-4o-2024-08-06", row_digest: `sha256:${"1".repeat(64)}` }]),
+      verification: verifyModelIdentity(provenance(), [{ runtime: "codex", provider: "openai", model: "gpt-4o-2024-08-06", row_digest: `sha256:${"1".repeat(64)}` }], { runtime: "codex" }),
       runtime_identity_digest: identityRecord().identity_digest,
       runtime_identity_status: "VERIFIED"
     }
@@ -266,6 +267,40 @@ test("the operator score sits above the runs it was computed from", async () => 
     assert.match(body, /PROFILE-BOUND/);
     assert.match(body, /Model \(solo\): declared openai\/gpt-4o-2024-08-06/, "the same identity lines every other surface shows");
     assert.equal(/confidence/i.test(body), false);
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("the dashboard and the CLI quote one stored cycle decision rather than deriving two", async () => {
+  // Two surfaces each rebuilt the aggregate and the model policy from the raw cycle, so the page
+  // and the command were two opinions that happened to agree. The decision is computed once, when
+  // the cycle is written, and both surfaces quote it -- the same rule the run renderers follow.
+  // The sentinel is how that is tested: a derived line cannot contain it.
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-stored-"));
+  initHome(home);
+  const stored = {
+    schema_id: "aos-cycle.v1",
+    cycle_id: "cycle-stored",
+    profile_digest: "d".repeat(64),
+    suite_major: 1,
+    scorer_major: 1,
+    model_identity: bound(),
+    seeds: ["0000000000000001", "0000000000000002", "0000000000000003"],
+    runs: [
+      { seed: "0000000000000001", valid: true, invalid_reason: null, final_score: 71, dimensions: { D1: 80 }, model_identity: confirmedRun() },
+      { seed: "0000000000000002", valid: true, invalid_reason: null, final_score: 74, dimensions: { D1: 80 }, model_identity: confirmedRun() },
+      { seed: "0000000000000003", valid: true, invalid_reason: null, final_score: 77, dimensions: { D1: 80 }, model_identity: confirmedRun() }
+    ]
+  };
+  stored.decision = { ...summariseCycle(stored), model_identity: { ...summariseCycle(stored).model_identity, lines: ["SENTINEL_FROM_THE_STORED_CYCLE"] } };
+  writeJson(join(home, "cycle.json"), stored);
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    assert.match(body, /SENTINEL_FROM_THE_STORED_CYCLE/);
+    assert.equal(/Model \(solo\)/.test(body), false, "the page derived its own lines");
   } finally {
     await dashboard.close();
     rmSync(home, { recursive: true, force: true });

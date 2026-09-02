@@ -26,6 +26,7 @@ import { sha256Bytes } from "../../lib/digest.mjs";
 import { isolationPolicyDigestOf } from "../../lib/isolation.mjs";
 import {
   aliasClassOf,
+  cycleModelIdentity,
   issuancePolicyFor,
   modelIdentityLines,
   modelIdentityRecord,
@@ -219,7 +220,7 @@ test("an exact model issues profile-bound aggregation and still leaves generaliz
   const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
   const policy = issuancePolicyFor({
     provenance,
-    verification: verifyModelIdentity(provenance, [confirming(EXACT_A)]),
+    verification: verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" }),
     runtimeIdentity: boundRuntimeIdentity(identity())
   });
   assert.equal(policy.claim_stage, "PROFILE_BOUND");
@@ -275,7 +276,10 @@ test("a fixture replay of Codex and Claude transcript rows yields the model, dig
     writeFileSync(join(claudeDir, "stale.jsonl"), `${JSON.stringify({ type: "assistant", cwd: workspace, message: { model: "claude-old" } })}\n`);
     utimesSync(join(claudeDir, "stale.jsonl"), new Date(Date.now() - 86_400_000), new Date(Date.now() - 86_400_000));
 
-    const events = observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000 });
+    const events = [
+      ...observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "codex" }),
+      ...observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "claude-code" })
+    ];
     const codex = events.find((entry) => entry.runtime === "codex");
     assert.equal(codex.model, "gpt-5.6-terra");
     assert.equal(codex.provider, "openai");
@@ -302,20 +306,20 @@ test("a runtime event confirms a bound identity, contradicts it by name, or was 
   const bound = resolveModelProvenance({ declared: declared(EXACT_A) });
   const same = { model: "gpt-4o-2024-08-06", provider: "openai", runtime: "codex", row_digest: "sha256:" + "0".repeat(64) };
   const other = { ...same, model: "gpt-4o-2024-11-20" };
-  assert.equal(verifyModelIdentity(bound, [same]).status, "CONFIRMED");
-  const contradicted = verifyModelIdentity(bound, [other]);
+  assert.equal(verifyModelIdentity(bound, [same], { runtime: "codex" }).status, "CONFIRMED");
+  const contradicted = verifyModelIdentity(bound, [other], { runtime: "codex" });
   assert.equal(contradicted.status, "MISMATCH");
   assert.equal(contradicted.code, "AOS_MODEL_IDENTITY_MISMATCH");
   assert.equal(contradicted.observed[0].id, EXACT_B);
-  assert.equal(verifyModelIdentity(bound, []).status, "NOT_OBSERVED");
+  assert.equal(verifyModelIdentity(bound, [], { runtime: "codex" }).status, "NOT_OBSERVED");
   // Two different models in one run is not one model.
-  assert.equal(verifyModelIdentity(bound, [same, other]).status, "AMBIGUOUS");
+  assert.equal(verifyModelIdentity(bound, [same, other], { runtime: "codex" }).status, "AMBIGUOUS");
   // An unknown binding is not confirmed by an event that arrived after the digest was locked.
   const unknown = resolveModelProvenance({});
-  assert.equal(verifyModelIdentity(unknown, [same]).status, "OBSERVED_UNBOUND");
-  assert.equal(issuancePolicyFor({ provenance: unknown, verification: verifyModelIdentity(unknown, [same]) }).profile_bound_aggregation.reason, "MODEL_UNKNOWN");
+  assert.equal(verifyModelIdentity(unknown, [same], { runtime: "codex" }).status, "OBSERVED_UNBOUND");
+  assert.equal(issuancePolicyFor({ provenance: unknown, verification: verifyModelIdentity(unknown, [same], { runtime: "codex" }) }).profile_bound_aggregation.reason, "MODEL_UNKNOWN");
   assert.equal(issuancePolicyFor({ provenance: bound, verification: contradicted }).profile_bound_aggregation.reason, "MODEL_IDENTITY_MISMATCH");
-  assert.equal(issuancePolicyFor({ provenance: bound, verification: verifyModelIdentity(bound, [same, other]) }).profile_bound_aggregation.reason, "MODEL_EVENT_AMBIGUOUS");
+  assert.equal(issuancePolicyFor({ provenance: bound, verification: verifyModelIdentity(bound, [same, other], { runtime: "codex" }) }).profile_bound_aggregation.reason, "MODEL_EVENT_AMBIGUOUS");
 });
 
 test("a transcript value that is not a plausible model name leaves as a digest, never as text", () => {
@@ -333,7 +337,7 @@ test("a transcript value that is not a plausible model name leaves as a digest, 
       JSON.stringify({ type: "assistant", cwd: workspace, message: { model: "x".repeat(300) } })
     ];
     writeFileSync(join(dir, "s1.jsonl"), `${rows.join("\n")}\n`);
-    const events = observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000 });
+    const events = observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "claude-code" });
     assert.equal(events.length, 2);
     for (const event of events) {
       assert.equal(event.model, null);
@@ -342,7 +346,7 @@ test("a transcript value that is not a plausible model name leaves as a digest, 
     assert.equal(events[0].value_digest, sha256Bytes(Buffer.from(secret, "utf8")));
 
     const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
-    const verification = verifyModelIdentity(provenance, events);
+    const verification = verifyModelIdentity(provenance, events, { runtime: "claude-code" });
     assert.equal(verification.status, "UNNAMEABLE");
     assert.equal(verification.code, "AOS_MODEL_EVENT_UNNAMEABLE");
     const record = modelIdentityRecord({
@@ -369,7 +373,7 @@ test("a declaration nothing confirmed is not a profile-bound claim, and says whi
   // read, and the number is issued as though the runtime had agreed. The transcript is the only
   // statement the runtime itself makes, so its absence withholds.
   const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
-  const verification = verifyModelIdentity(provenance, []);
+  const verification = verifyModelIdentity(provenance, [], { runtime: "codex" });
   assert.equal(verification.status, "NOT_OBSERVED");
   assert.equal(verification.code, "AOS_MODEL_EVENT_NOT_OBSERVED");
   const policy = issuancePolicyFor({ provenance, verification, runtimeIdentity: boundRuntimeIdentity(identity()) });
@@ -383,7 +387,7 @@ test("a declaration nothing confirmed is not a profile-bound claim, and says whi
   });
   assert.equal(unconfirmed.profile_bound_aggregation.reason, "MODEL_EVENT_NOT_OBSERVED");
   // And a transcript that agrees is what lifts it.
-  const confirmed = verifyModelIdentity(provenance, [{ runtime: "codex", provider: "openai", model: "gpt-4o-2024-08-06", row_digest: `sha256:${"1".repeat(64)}` }]);
+  const confirmed = verifyModelIdentity(provenance, [{ runtime: "codex", provider: "openai", model: "gpt-4o-2024-08-06", row_digest: `sha256:${"1".repeat(64)}` }], { runtime: "codex" });
   assert.equal(confirmed.status, "CONFIRMED");
   assert.equal(issuancePolicyFor({
     provenance, verification: confirmed, runtimeIdentity: boundRuntimeIdentity(identity())
@@ -413,11 +417,89 @@ test("a date-shaped substring is not snapshot proof", () => {
   assert.deepEqual(aliasClassOf("newco/llm-2026-01-01"), { alias_class: "unrecognised-family", mutable_alias: true });
 });
 
+test("one uncorroborated run withholds the whole cycle, however many others confirmed", () => {
+  // The merge ranked NOT_OBSERVED as the mildest verdict, so a cycle whose runs were
+  // [CONFIRMED, NOT_OBSERVED, NOT_OBSERVED] reported CONFIRMED and issued: two runs nobody could
+  // corroborate disappeared into the one that was. A cycle is three runs of one model or it is
+  // not a cycle.
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const binding = modelIdentityRecord({
+    by_agent: { solo: { provenance, verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const runWith = (verification) => ({
+    valid: true,
+    model_identity: modelIdentityRecord({
+      by_agent: { solo: { provenance, verification, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+      profile_digest: "d".repeat(64)
+    })
+  });
+  const confirmed = verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" });
+  const silent = verifyModelIdentity(provenance, [], { runtime: "codex" });
+  const mixed = cycleModelIdentity({ binding, runs: [runWith(confirmed), runWith(silent), runWith(silent)] });
+  assert.equal(mixed.by_agent.solo.verification.status, "NOT_OBSERVED");
+  assert.equal(mixed.profile_bound_aggregation.status, "withheld");
+  assert.equal(mixed.profile_bound_aggregation.reason, "MODEL_EVENT_NOT_OBSERVED");
+  // Three corroborated runs are the only shape that issues, and a contradiction still outranks
+  // everything: a mismatch in one run is not softened by two agreements.
+  const allConfirmed = cycleModelIdentity({ binding, runs: [runWith(confirmed), runWith(confirmed), runWith(confirmed)] });
+  assert.equal(allConfirmed.profile_bound_aggregation.status, "issued");
+  const other = verifyModelIdentity(provenance, [confirming(EXACT_B)], { runtime: "codex" });
+  const contradicted = cycleModelIdentity({ binding, runs: [runWith(confirmed), runWith(other), runWith(confirmed)] });
+  assert.equal(contradicted.profile_bound_aggregation.reason, "MODEL_IDENTITY_MISMATCH");
+});
+
+test("a transcript the configured runtime did not write is not corroboration", () => {
+  // Confirmation compared the model name and nothing else, so any process that could write a
+  // Codex-shaped row under the run's HOME could corroborate a declaration -- including an agent
+  // whose adapter is not Codex at all. Evidence is evidence of the runtime that was configured.
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const foreign = { runtime: "not-the-configured-runtime", provider: "openai", model: "gpt-4o-2024-08-06", row_digest: `sha256:${"2".repeat(64)}` };
+  const verdict = verifyModelIdentity(provenance, [foreign], { runtime: "codex" });
+  assert.equal(verdict.status, "NOT_OBSERVED");
+  assert.equal(issuancePolicyFor({
+    provenance, verification: verdict, runtimeIdentity: boundRuntimeIdentity(identity())
+  }).profile_bound_aggregation.reason, "MODEL_EVENT_NOT_OBSERVED");
+  // An adapter that writes no transcript this product knows how to read can never be corroborated,
+  // rather than being corroborated by whatever happens to be lying in the temporary HOME.
+  assert.equal(verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: null }).status, "NOT_OBSERVED");
+  assert.equal(verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" }).status, "CONFIRMED");
+  // And the reader only opens the tree the configured runtime writes.
+  const home = mkdtempSync(join(tmpdir(), "aos-model-foreign-"));
+  try {
+    const workspace = "/tmp/aos-runs/run-3/workspaces/FAM-1";
+    const claudeDir = join(home, ".claude", "projects", "-tmp-aos-runs-run-3-workspaces-FAM-1");
+    mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(join(claudeDir, "s1.jsonl"), `${JSON.stringify({ type: "assistant", cwd: workspace, message: { model: "claude-opus-5" } })}\n`);
+    assert.deepEqual(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex" }), []);
+    assert.equal(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "claude-code" }).length, 1);
+    assert.deepEqual(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: null }), []);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------------------------------------
 // The profile digest
 
 test("declared A vs declared B gives a different profile digest", () => {
   assert.notEqual(build({ agent: agent({ model_id: EXACT_A }) }).profile_digest, build({ agent: agent({ model_id: EXACT_B }) }).profile_digest);
+});
+
+test("the profile digest binds the model identity, not how the identity was learned", () => {
+  // The digest is locked when a cycle opens, before any run, and the runtime's own event arrives
+  // after it. Covering `source`, `confidence` and the evidence digest meant the record could never
+  // be upgraded to the higher-precedence source without moving the cohort key -- so the issue's
+  // stated precedence could not operate on the live path at all. What identifies the cohort is
+  // which model ran, not which of three ways this product came to know its name.
+  const base = build();
+  for (const over of [
+    { model_source: "runtime-event" },
+    { model_confidence: "HIGH" },
+    { model_evidence_digest: `sha256:${"f".repeat(64)}` }
+  ]) {
+    assert.equal(profileDigestOf({ ...base, ...over }), base.profile_digest, Object.keys(over)[0]);
+  }
 });
 
 test("the profile digest moves for each model, runtime, adapter, environment, isolation and language field on its own", () => {
@@ -426,9 +508,6 @@ test("the profile digest moves for each model, runtime, adapter, environment, is
     ["model_provider", { model_provider: "other" }],
     ["model_family", { model_family: "other" }],
     ["model_id", { model_id: EXACT_B }],
-    ["model_source", { model_source: "runtime-config" }],
-    ["model_confidence", { model_confidence: "HIGH" }],
-    ["model_evidence_digest", { model_evidence_digest: "sha256:" + "f".repeat(64) }],
     ["model_mutable_alias", { model_mutable_alias: true }],
     ["runtime_identity_digest", { runtime_identity_digest: "sha256:" + "2".repeat(64) }],
     ["adapter_id", { adapter_id: "claude-code.v1" }],
@@ -488,7 +567,7 @@ test("a missing, untrusted or unverifiable executable identity withholds the agg
     ["UNTRUSTED", identity({ identity_status: "UNTRUSTED", untrusted_reasons: ["world_writable /usr/bin"] })],
     ["UNVERIFIABLE", { schema_id: IDENTITY_SCHEMA, identity_digest: `sha256:${"a".repeat(64)}`, identity_status: "VERIFIED" }]
   ];
-  const verification = verifyModelIdentity(provenance, [confirming(EXACT_A)]);
+  const verification = verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" });
   for (const [status, record] of cases) {
     const bound = boundRuntimeIdentity(record);
     assert.equal(bound.identity_status, status, status);
@@ -570,7 +649,7 @@ test("same exact profile with a verified executable is the only combination that
   assert.equal(left.profile_digest, right.profile_digest);
   const policy = issuancePolicyFor({
     provenance: left.model_provenance,
-    verification: verifyModelIdentity(left.model_provenance, [confirming(EXACT_A)]),
+    verification: verifyModelIdentity(left.model_provenance, [confirming(EXACT_A)], { runtime: "codex" }),
     runtimeIdentity: { identity_digest: left.runtime_identity_digest, identity_status: left.runtime_identity_status }
   });
   assert.equal(policy.profile_bound_aggregation.status, "issued");
@@ -606,7 +685,7 @@ test("cross-model comparison is the shipped contract's rule, and this issue ship
 test("the model identity lines are the same strings for JSON, CLI and Markdown", () => {
   const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
   const record = modelIdentityRecord({
-    by_agent: { main: { provenance, verification: verifyModelIdentity(provenance, [confirming(EXACT_A)]), runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    by_agent: { main: { provenance, verification: verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" }), runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
     profile_digest: "d".repeat(64)
   });
   const lines = modelIdentityLines(record);
@@ -664,7 +743,7 @@ test("a report whose aggregate is withheld does not also print the profile-bound
   assert.equal(withheld.includes("Profile-bound aggregation: withheld"), true);
   const exact = resolveModelProvenance({ declared: declared(EXACT_A) });
   const issued = modelIdentityRecord({
-    by_agent: { main: { provenance: exact, verification: verifyModelIdentity(exact, [confirming(EXACT_A)]), runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    by_agent: { main: { provenance: exact, verification: verifyModelIdentity(exact, [confirming(EXACT_A)], { runtime: "codex" }), runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
     profile_digest: "d".repeat(64)
   });
   const bound = renderMarkdown({ ...base, model_identity: issued });
@@ -688,7 +767,7 @@ test("a mutable, unknown or mismatched model is said in the Model line and in th
 
   const bound = resolveModelProvenance({ declared: declared(EXACT_A) });
   const other = { model: "gpt-4o-2024-11-20", provider: "openai", runtime: "codex", row_digest: "sha256:" + "0".repeat(64) };
-  const mismatchLines = modelIdentityLines(modelIdentityRecord({ by_agent: { main: { provenance: bound, verification: verifyModelIdentity(bound, [other]), runtime_identity_digest: null } }, profile_digest: "d".repeat(64) }));
+  const mismatchLines = modelIdentityLines(modelIdentityRecord({ by_agent: { main: { provenance: bound, verification: verifyModelIdentity(bound, [other], { runtime: "codex" }), runtime_identity_digest: null } }, profile_digest: "d".repeat(64) }));
   assert.equal(mismatchLines[0], `Model (main): mismatch — detected ${EXACT_B}, declared ${EXACT_A} (AOS_MODEL_IDENTITY_MISMATCH)`);
   assert.equal(mismatchLines[3], `Profile-bound aggregation: withheld — MODEL_IDENTITY_MISMATCH: detected ${EXACT_B} but declared ${EXACT_A}`);
 
@@ -756,7 +835,10 @@ test("a scored run records model provenance, and the CLI and Markdown show the s
     // any machine: registering the ambient Node binds whatever identity #554 gives it, and on a
     // host where that binary sits in a group-writable directory the aggregate is withheld -- which
     // is the intended posture, and not what this test is about.
-    addAgent(cwd, "exact", undefined, ["--model-id", EXACT_A], verifiedRunner(cwd));
+    // Registered under the Codex adapter, because corroboration is evidence from the runtime that
+    // was configured: an adapter that declares no transcript shape can never be corroborated, and
+    // the fixture stands in for a runtime that writes one (#561 round 3).
+    addAgent(cwd, "exact", undefined, ["--model-id", EXACT_A, "--adapter", "codex-cli.v1"], verifiedRunner(cwd));
     const plan = makePlan(cwd, { default: "exact" });
     const printed = spawnSync(process.execPath, [cli, "assess", "--plan", plan, "--checkpoints", "--seed", SEEDS[0]], {
       cwd, encoding: "utf8", input: UNBLOCK, timeout: 300000,
@@ -767,13 +849,18 @@ test("a scored run records model provenance, and the CLI and Markdown show the s
     const result = newestResult(cwd);
     const record = result.model_identity;
     assert.equal(record.by_agent.exact.provenance.id, EXACT_A);
-    // The stored source is the one the digest was locked on, and the transcript is corroboration
-    // beside it -- so the JSON and the line say the same thing about where the name came from.
-    assert.equal(record.by_agent.exact.provenance.source, "declared");
+    // The runtime's own event outranks the declaration once it is in hand, and the digest the
+    // cycle locked does not move for it: the stored record says the run was detected, at HIGH
+    // confidence, against the transcript row's own digest.
+    assert.equal(record.by_agent.exact.provenance.source, "runtime-event");
+    assert.equal(record.by_agent.exact.provenance.confidence, "HIGH");
     assert.equal(record.by_agent.exact.verification.status, "CONFIRMED");
+    assert.equal(record.by_agent.exact.provenance.evidence.row_digest, record.by_agent.exact.verification.observed[0].row_digest);
     assert.match(record.by_agent.exact.verification.observed[0].row_digest, /^sha256:[0-9a-f]{64}$/u);
-    assert.equal(record.lines[0].includes("confirmed by the runtime's own transcript"), true, record.lines[0]);
-    assert.equal(record.lines[0].includes("detected"), false, record.lines[0]);
+    assert.equal(record.lines[0].includes("detected"), true, record.lines[0]);
+    // The digest the profile was built with is the digest the result carries: upgrading the
+    // provenance after the run must not silently re-cohort it.
+    assert.equal(record.profile_digest, result.profile_digest);
     assert.equal(record.profile_bound_aggregation.status, "issued");
     assert.equal(record.claim_stage, "PROFILE_BOUND");
     assert.equal(record.generalizability_status, "UNESTABLISHED");
@@ -819,6 +906,36 @@ test("the agent that actually ran is the agent the identity record names", () =>
     // so the aggregate is withheld rather than issued under the planned agent's exact model.
     assert.equal(result.model_identity.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
     assert.equal(result.model_identity.claim_stage, "RUN_DIAGNOSTIC");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("an observation run carries the same provenance record as a scored one", () => {
+  // `aos observe` creates and persists a Run. The issue says every Run has model and runtime
+  // provenance; this one carried the raw process record and no resolved identity at all, so the
+  // one command an operator points at their real project produced the artefact with the least to
+  // say about what produced it.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-model-observe-"));
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "exact", undefined, ["--model-id", EXACT_A, "--adapter", "codex-cli.v1"], verifiedRunner(cwd));
+    const printed = spawnSync(process.execPath, [cli, "observe", "--agent", "exact", "--task", "look at this project", "--json"], {
+      cwd, encoding: "utf8", timeout: 300000,
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_MODEL: EXACT_A }
+    });
+    const diagnostic = JSON.parse(printed.stdout);
+    const record = diagnostic.model_identity;
+    assert.equal(record.schema_id, "aos-model-identity.v1");
+    assert.equal(record.by_agent.exact.provenance.id, EXACT_A);
+    assert.equal(record.by_agent.exact.provenance.alias_class, "exact-snapshot");
+    // Bare hex, the way every other profile digest in the ledger is written.
+    assert.match(record.profile_digest, /^[0-9a-f]{64}$/u);
+    // A diagnostic never issues a profile-bound aggregate whatever the model is -- it is one run
+    // against the operator's own project, not a measurement -- and it still says which model.
+    assert.equal(record.claim_stage, "RUN_DIAGNOSTIC");
+    assert.equal(diagnostic.claim_stage, "RUN_DIAGNOSTIC");
+    for (const line of record.lines) assert.equal(printed.stdout.includes(line.slice(0, 24)), true, line);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

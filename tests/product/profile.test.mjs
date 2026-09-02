@@ -33,13 +33,16 @@ test("a version read from the runtime is detected, one typed by the operator is 
   assert.equal(neither.runtime_version_source, "unknown");
 });
 
-test("an undetectable model does not block a score", () => {
-  // Refusing to run because a version string could not be parsed would make the product unusable
-  // against exactly the runtimes it exists to be neutral about.
+test("an undetectable model does not stop the run from being scorable", () => {
+  // Named for what it checks. Refusing to run because no model could be identified would make the
+  // product unusable against exactly the runtimes it exists to be neutral about -- the run happens
+  // and scores, and what an unknown model costs is the profile-bound claim, which
+  // `issuancePolicyFor` withholds by name and `tests/product/model-identity.test.mjs` covers.
   const profile = build();
   assert.equal(profile.model_id, null);
   assert.equal(profile.model_source, "unknown");
   assert.equal(profile.scoring_permitted, true);
+  assert.equal(issuancePolicyFor({ provenance: profile.model_provenance }).run_diagnostic_permitted, true);
 });
 
 test("isolation NONE is recorded as not scorable", () => {
