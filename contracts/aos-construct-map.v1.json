@@ -1,0 +1,204 @@
+{
+  "schema": "aos-construct-map.v1",
+  "contract_version": "1.0.0",
+  "process_index": {
+    "label": "PROFILE-BOUND OPERATOR PROCESS INDEX",
+    "interpretation": "descriptive only",
+    "axis": "operator_process",
+    "construct_ids": [
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6"
+    ],
+    "aggregation": "equal-weight mean of the six construct estimates",
+    "issued_only_when": "every construct in construct_ids has an issued operator_process estimate",
+    "category": null,
+    "cut_scores": null,
+    "percentile": null,
+    "rank": null
+  },
+  "longitudinal_lane": {
+    "construct_ids": [
+      "C7"
+    ],
+    "note": "Not summed into the process index, the outcome profile, or any composite. Transfer evidence does not raise a short-cycle number."
+  },
+  "constructs": [
+    {
+      "construct_id": "C1",
+      "title": "Framing & Contracting",
+      "definition": "Defines the goal, constraints, non-goals, acceptance evidence, and stop condition before delegation.",
+      "in_process_index": true,
+      "axes": {
+        "operator_process": {
+          "required_cell_ids": [
+            "C1.OF.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "delegated_artifact": {
+          "required_cell_ids": [
+            "C1.GF.01",
+            "C1.AO.01",
+            "C1.SB.01",
+            "C1.AE.01",
+            "C1.SD.01"
+          ],
+          "optional_cell_ids": []
+        }
+      }
+    },
+    {
+      "construct_id": "C2",
+      "title": "Context, Decomposition & Delegation",
+      "definition": "Selects evidence, decomposes work, chooses routes, allocates authority, and controls dependencies.",
+      "in_process_index": true,
+      "axes": {
+        "operator_process": {
+          "required_cell_ids": [
+            "C2.OD.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "system_outcome": {
+          "required_cell_ids": [
+            "C2.IB.01",
+            "C2.HJ.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "delegated_artifact": {
+          "required_cell_ids": [
+            "C2.CS.01",
+            "C2.PV.01",
+            "C2.DC.01",
+            "C2.DG.01",
+            "C2.RF.01"
+          ],
+          "optional_cell_ids": []
+        }
+      }
+    },
+    {
+      "construct_id": "C3",
+      "title": "Monitoring & Reliance Calibration",
+      "definition": "Decides when to rely on AI, when to rely on self, inspects evidence, and calibrates confidence to correctness.",
+      "in_process_index": true,
+      "axes": {
+        "operator_process": {
+          "required_cell_ids": [
+            "C3.ER.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "reliance_calibration": {
+          "required_cell_ids": [
+            "C3.RA.01"
+          ],
+          "optional_cell_ids": [
+            "C3.CC.01"
+          ]
+        }
+      }
+    },
+    {
+      "construct_id": "C4",
+      "title": "Steering, Intervention & Recovery",
+      "definition": "Diagnoses problems, changes instructions or routes, stops unsafe continuation, and resumes from the correct state.",
+      "in_process_index": true,
+      "axes": {
+        "operator_process": {
+          "required_cell_ids": [
+            "C4.IQ.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "delegated_artifact": {
+          "required_cell_ids": [
+            "C4.SR.01",
+            "C4.SR.02",
+            "C4.FD.01"
+          ],
+          "optional_cell_ids": []
+        }
+      }
+    },
+    {
+      "construct_id": "C5",
+      "title": "Verification & Epistemic Governance",
+      "definition": "Requires independent checks, binds conclusions to exact evidence and revision, and rejects unsupported completion.",
+      "in_process_index": true,
+      "axes": {
+        "operator_process": {
+          "required_cell_ids": [
+            "C5.VD.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "system_outcome": {
+          "required_cell_ids": [
+            "C5.FO.01",
+            "C5.IV.01",
+            "C5.RB.01",
+            "C5.CI.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "delegated_artifact": {
+          "required_cell_ids": [],
+          "optional_cell_ids": [
+            "C5.TC.01"
+          ]
+        }
+      }
+    },
+    {
+      "construct_id": "C6",
+      "title": "Safety, Boundary & Resource Governance",
+      "definition": "Applies least privilege, respects execution boundaries, controls external actions, and manages cost and resource risk.",
+      "in_process_index": true,
+      "axes": {
+        "operator_process": {
+          "required_cell_ids": [
+            "C6.OG.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "system_outcome": {
+          "required_cell_ids": [
+            "C6.SL.01",
+            "C6.IJ.01",
+            "C6.EB.01"
+          ],
+          "optional_cell_ids": []
+        },
+        "delegated_artifact": {
+          "required_cell_ids": [
+            "C6.BP.01"
+          ],
+          "optional_cell_ids": [
+            "C6.IJ.02",
+            "C6.PB.01"
+          ]
+        }
+      }
+    },
+    {
+      "construct_id": "C7",
+      "title": "Learning & Transfer",
+      "definition": "Retains and transfers what the collaboration produced to work attempted without the agent.",
+      "in_process_index": false,
+      "axes": {
+        "system_outcome": {
+          "required_cell_ids": [
+            "C7.TR.01"
+          ],
+          "optional_cell_ids": []
+        }
+      }
+    }
+  ]
+}

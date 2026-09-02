@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T06:14:51.553Z",
+  "captured_at": "2026-09-02T06:35:11.156Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -115,25 +115,54 @@
     {
       "number": 555,
       "title": "[P0][security] child environment를 adapter allowlist-only policy로 전환한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 555,
+        "final_sha": "7d1afeba3ec85ef4f1725f431ec9ac3cf2c0b5b8",
+        "pr": 599,
+        "ci_run_ids": [
+          33598659896
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "env_allowlist_digest": "envPolicyDigestOf(envPolicyFor(adapter)) at PR #599 head 7d1afeb: claude-code.v1 sha256:351b8c07e0f74b873417df419e039a40301ab1b96e761728b660c973906fb4a0; codex-cli.v1 sha256:198097a3ac762018dc3130fef6b832a2cf0862cabe08961ff4d31b42fbe49579; generic-command.v1 sha256:689ff2773b39a871f6f3621cf979115343e0760c59129f3139255ce2ee19745a",
+          "leak_canary": "tests/product/adapter-env-policy.test.mjs: 'a credential in the operator's shell never reaches the child, listed or not' -- ACME_UNLISTED_THING, ACME_DEPLOY_TOKEN, GITHUB_TOKEN, SSH_AUTH_SOCK, DATABASE_URL planted in the parent env, none seen by the spawned child and the postgres URL absent from the isolation record; 'no process-injection variable in the operator's shell reaches the spawned child' and 'NODE_OPTIONS cannot make the child run code before its own first line' cover the pre-main hook classes. 34/34 in that file, 752/752 suite at 7d1afeb.",
+          "mutation": "150/150 guards are load-bearing (CI mutation job on 7d1afeb, run 33598659896)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#555",
         "#573",
         "#574",
         "#575",
         "#562",
-        "#578"
+        "#578",
+        "#599"
       ]
     },
     {
@@ -145,7 +174,7 @@
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",

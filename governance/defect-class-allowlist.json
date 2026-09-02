@@ -76,6 +76,16 @@
       "note": "the demonstration object the corpus test poisons on purpose"
     },
     {
+      "file": "lib/ecd-contract.mjs",
+      "match": "const loaded = {};",
+      "note": "keyed by the ARTIFACTS constant this module declares; the contract files are the values, never a key"
+    },
+    {
+      "file": "lib/ecd-contract.mjs",
+      "match": "const per = {};",
+      "note": "keyed by ARTIFACT_KEYS, the module's own fixed list; a digest per named artefact"
+    },
+    {
       "file": "lib/verifiers/fam5.mjs",
       "match": "const subchecks = {};",
       "note": "keyed by SUBCHECKS, a constant list of names the verifier itself declares; nothing the assessed module chose reaches the key"
@@ -146,6 +156,16 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "const original = readFileSync(path, \"utf8\");",
       "note": "reads the allowlist for restore; nothing here is hashed"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "sessionDigestOf(Buffer.from(readFileSync(sessionPath, \"utf8\"), \"utf8\"))",
+      "note": "a mutation `to` string quoting the decoded-read digest #567 removed; the manifest never runs it, and the `createHash(` that makes this file eligible sits in another guard's `from` string"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "sha256Bytes(Buffer.from(readFileSync(full, \"utf8\").replace(",
+      "note": "a mutation `to` string quoting the CRLF-folding digest #567 removed; the manifest never runs it"
     }
   ],
   "regex-no-unicode": [

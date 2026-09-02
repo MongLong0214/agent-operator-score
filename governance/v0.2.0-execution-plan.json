@@ -162,7 +162,7 @@
     {
       "issue": 555,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -204,7 +204,7 @@
     {
       "issue": 556,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 1,
       "blocked_by": [
         554,
@@ -247,7 +247,7 @@
         },
         {
           "id": "final-integration",
-          "status": "blocked",
+          "status": "ready",
           "blocked_by": [
             554,
             555,
@@ -1212,10 +1212,9 @@
         "observable-cell"
       ],
       "owned_paths": [
-        "lib/ecd.mjs",
-        "schemas/aos-construct-map",
-        "schemas/aos-evidence-model",
-        "governance/aos-construct-map"
+        "lib/ecd-contract.mjs",
+        "contracts/",
+        "docs/ECD_CONTRACT.md"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [

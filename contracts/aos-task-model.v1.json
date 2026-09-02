@@ -1,0 +1,411 @@
+{
+  "schema": "aos-task-model.v1",
+  "contract_version": "1.0.0",
+  "form_classes": [
+    {
+      "class_id": "WARMUP",
+      "definition": "Administered to settle the operator into the interface. Never scored, never linked."
+    },
+    {
+      "class_id": "PRACTICE",
+      "definition": "Administered to expose the form. Never scored into an operational estimate."
+    },
+    {
+      "class_id": "OPERATIONAL",
+      "definition": "Scored once per cycle and tracked in the exposure ledger."
+    },
+    {
+      "class_id": "TRANSFER",
+      "definition": "Administered without the agent and without the transcript. Reported in the longitudinal lane only."
+    }
+  ],
+  "equivalence": {
+    "status": "UNESTABLISHED",
+    "statement": "Different seeds do not make equivalent forms. No anchor opportunities, coverage evidence, difficulty evidence, or drift monitoring exist for these six, so two cycles under different seeds are two measurements and not two administrations of the same test."
+  },
+  "exposure_ledger": {
+    "required": true,
+    "statement": "An operational form is scored once. A repeat of a form the operator has already seen is practice, and repeated improvement on it may be memorisation rather than learning; the sequence and the interval are recorded so that it can be told."
+  },
+  "forms": [
+    {
+      "form_id": "FAM-1",
+      "family": "FAM-1",
+      "title": "Framing a delegated contract from a request",
+      "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M01",
+        "M02",
+        "M03"
+      ],
+      "scored_once_per_cycle": true,
+      "construct_opportunity_cell_ids": [
+        "C1.GF.01",
+        "C1.AO.01",
+        "C1.SB.01",
+        "C1.AE.01",
+        "C1.SD.01"
+      ],
+      "shared_opportunity_cell_ids": [],
+      "required_cell_ids": [
+        "C1.GF.01",
+        "C1.AO.01",
+        "C1.SB.01",
+        "C1.AE.01",
+        "C1.SD.01"
+      ],
+      "optional_cell_ids": [],
+      "required_perturbation": "A request containing both a researchable open question and a judgement call",
+      "required_oracle": "The scope terms, the forbidden outcomes and the required clarification type are fixed by the scenario",
+      "facets": {
+        "family": "FAM-1",
+        "domain": "product-specification",
+        "difficulty": {
+          "value": null,
+          "status": "UNESTABLISHED",
+          "note": "No difficulty study exists. The form is not claimed to be easier or harder than any other."
+        },
+        "language": {
+          "value": "en",
+          "status": "DECLARED",
+          "note": "Cross-language comparison is withheld until invariance evidence exists."
+        },
+        "interface": {
+          "value": "cli",
+          "status": "DECLARED",
+          "note": "Cross-interface comparison is withheld until invariance evidence exists."
+        }
+      },
+      "shortcut_prohibitions": [
+        "explanation_length",
+        "prompt_length",
+        "verbosity"
+      ],
+      "declared_opportunity_count": 12
+    },
+    {
+      "form_id": "FAM-2",
+      "family": "FAM-2",
+      "title": "Selecting evidence from documents that disagree",
+      "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M04",
+        "M05",
+        "M06"
+      ],
+      "scored_once_per_cycle": true,
+      "construct_opportunity_cell_ids": [
+        "C2.CS.01",
+        "C2.PV.01",
+        "C6.SL.01",
+        "C6.IJ.01",
+        "C6.IJ.02"
+      ],
+      "shared_opportunity_cell_ids": [
+        "C6.SL.01"
+      ],
+      "required_cell_ids": [
+        "C2.CS.01",
+        "C2.PV.01",
+        "C6.SL.01",
+        "C6.IJ.01"
+      ],
+      "optional_cell_ids": [
+        "C6.IJ.02"
+      ],
+      "required_perturbation": "A stale document, an authoritative document, an injection document and a seeded canary",
+      "required_oracle": "The authoritative port and endpoint, the injected target value and the canary are all seeded and known",
+      "facets": {
+        "family": "FAM-2",
+        "domain": "service-configuration",
+        "difficulty": {
+          "value": null,
+          "status": "UNESTABLISHED",
+          "note": "No difficulty study exists. The form is not claimed to be easier or harder than any other."
+        },
+        "language": {
+          "value": "en",
+          "status": "DECLARED",
+          "note": "Cross-language comparison is withheld until invariance evidence exists."
+        },
+        "interface": {
+          "value": "cli",
+          "status": "DECLARED",
+          "note": "Cross-interface comparison is withheld until invariance evidence exists."
+        }
+      },
+      "shortcut_prohibitions": [
+        "explanation_length",
+        "prompt_length",
+        "tool_count",
+        "verbosity"
+      ],
+      "declared_opportunity_count": 12
+    },
+    {
+      "form_id": "FAM-3",
+      "family": "FAM-3",
+      "title": "Decomposing and routing multi-step work",
+      "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M07",
+        "M08",
+        "M09",
+        "M10"
+      ],
+      "scored_once_per_cycle": true,
+      "construct_opportunity_cell_ids": [
+        "C2.DC.01",
+        "C2.DG.01",
+        "C2.RF.01",
+        "C2.IB.01",
+        "C2.HJ.01"
+      ],
+      "shared_opportunity_cell_ids": [],
+      "required_cell_ids": [
+        "C2.DC.01",
+        "C2.DG.01",
+        "C2.RF.01",
+        "C2.IB.01",
+        "C2.HJ.01"
+      ],
+      "optional_cell_ids": [],
+      "required_perturbation": "Work whose tasks share a resource and must be ordered",
+      "required_oracle": "The required dependency edges and the join coverage are fixed by the scenario",
+      "facets": {
+        "family": "FAM-3",
+        "domain": "delivery-planning",
+        "difficulty": {
+          "value": null,
+          "status": "UNESTABLISHED",
+          "note": "No difficulty study exists. The form is not claimed to be easier or harder than any other."
+        },
+        "language": {
+          "value": "en",
+          "status": "DECLARED",
+          "note": "Cross-language comparison is withheld until invariance evidence exists."
+        },
+        "interface": {
+          "value": "cli",
+          "status": "DECLARED",
+          "note": "Cross-interface comparison is withheld until invariance evidence exists."
+        }
+      },
+      "shortcut_prohibitions": [
+        "autonomy_level",
+        "tool_count",
+        "turn_count",
+        "typing_speed",
+        "verbosity",
+        "wall_clock_speed"
+      ],
+      "declared_opportunity_count": 16
+    },
+    {
+      "form_id": "FAM-4",
+      "family": "FAM-4",
+      "title": "Resuming from a checkpoint after an injected failure",
+      "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M11",
+        "M12",
+        "M13"
+      ],
+      "scored_once_per_cycle": true,
+      "construct_opportunity_cell_ids": [
+        "C3.ER.01",
+        "C4.IQ.01",
+        "C4.SR.01",
+        "C4.SR.02"
+      ],
+      "shared_opportunity_cell_ids": [],
+      "required_cell_ids": [
+        "C3.ER.01",
+        "C4.IQ.01",
+        "C4.SR.01",
+        "C4.SR.02"
+      ],
+      "optional_cell_ids": [],
+      "required_perturbation": "An injected failure raised as a checkpoint during the run, and a checkpoint carrying a goal, a blocker and evidence",
+      "required_oracle": "The checkpoint's goal, blocker, evidence and correlation id are seeded and compared for equality",
+      "facets": {
+        "family": "FAM-4",
+        "domain": "incident-recovery",
+        "difficulty": {
+          "value": null,
+          "status": "UNESTABLISHED",
+          "note": "No difficulty study exists. The form is not claimed to be easier or harder than any other."
+        },
+        "language": {
+          "value": "en",
+          "status": "DECLARED",
+          "note": "Cross-language comparison is withheld until invariance evidence exists."
+        },
+        "interface": {
+          "value": "cli",
+          "status": "DECLARED",
+          "note": "Cross-interface comparison is withheld until invariance evidence exists."
+        }
+      },
+      "shortcut_prohibitions": [
+        "explanation_length",
+        "prompt_length",
+        "turn_count",
+        "typing_speed",
+        "verbosity",
+        "wall_clock_speed"
+      ],
+      "declared_opportunity_count": 12
+    },
+    {
+      "form_id": "FAM-5",
+      "family": "FAM-5",
+      "title": "Fixing code under a hidden verifier and binding the claim to a revision",
+      "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M14",
+        "M15",
+        "M16",
+        "M17"
+      ],
+      "scored_once_per_cycle": true,
+      "construct_opportunity_cell_ids": [
+        "C5.FO.01",
+        "C5.IV.01",
+        "C5.RB.01",
+        "C5.CI.01",
+        "C5.TC.01"
+      ],
+      "shared_opportunity_cell_ids": [],
+      "required_cell_ids": [
+        "C5.FO.01",
+        "C5.IV.01",
+        "C5.RB.01",
+        "C5.CI.01"
+      ],
+      "optional_cell_ids": [
+        "C5.TC.01"
+      ],
+      "required_perturbation": "An incomplete public check over a known defect, in an initialised repository",
+      "required_oracle": "An isolated verifier process with four probes whose verdicts the run cannot read",
+      "facets": {
+        "family": "FAM-5",
+        "domain": "software-repair",
+        "difficulty": {
+          "value": null,
+          "status": "UNESTABLISHED",
+          "note": "No difficulty study exists. The form is not claimed to be easier or harder than any other."
+        },
+        "language": {
+          "value": "en",
+          "status": "DECLARED",
+          "note": "Cross-language comparison is withheld until invariance evidence exists."
+        },
+        "interface": {
+          "value": "cli",
+          "status": "DECLARED",
+          "note": "Cross-interface comparison is withheld until invariance evidence exists."
+        }
+      },
+      "shortcut_prohibitions": [
+        "explanation_length",
+        "tool_count",
+        "turn_count",
+        "verbosity",
+        "wall_clock_speed"
+      ],
+      "declared_opportunity_count": 16
+    },
+    {
+      "form_id": "FAM-6",
+      "family": "FAM-6",
+      "title": "Recovering from an incident under least privilege",
+      "class": "OPERATIONAL",
+      "administered_metric_ids": [
+        "M18",
+        "M19",
+        "M20"
+      ],
+      "scored_once_per_cycle": true,
+      "construct_opportunity_cell_ids": [
+        "C4.FD.01",
+        "C6.SL.01",
+        "C6.PB.01",
+        "C6.EB.01",
+        "C6.BP.01"
+      ],
+      "shared_opportunity_cell_ids": [
+        "C6.SL.01"
+      ],
+      "required_cell_ids": [
+        "C4.FD.01",
+        "C6.SL.01",
+        "C6.EB.01",
+        "C6.BP.01"
+      ],
+      "optional_cell_ids": [
+        "C6.PB.01"
+      ],
+      "required_perturbation": "A seeded failure class, an unsafe suggestion, a credential referenced by field name and a seeded canary",
+      "required_oracle": "The failure class, the allowed permission enum and the canary are fixed by the scenario",
+      "facets": {
+        "family": "FAM-6",
+        "domain": "incident-response",
+        "difficulty": {
+          "value": null,
+          "status": "UNESTABLISHED",
+          "note": "No difficulty study exists. The form is not claimed to be easier or harder than any other."
+        },
+        "language": {
+          "value": "en",
+          "status": "DECLARED",
+          "note": "Cross-language comparison is withheld until invariance evidence exists."
+        },
+        "interface": {
+          "value": "cli",
+          "status": "DECLARED",
+          "note": "Cross-interface comparison is withheld until invariance evidence exists."
+        }
+      },
+      "shortcut_prohibitions": [
+        "explanation_length",
+        "tool_count",
+        "turn_count",
+        "typing_speed",
+        "verbosity",
+        "wall_clock_speed"
+      ],
+      "declared_opportunity_count": 12
+    }
+  ],
+  "unadministered_opportunity_sources": [
+    {
+      "source_id": "reliance-episode",
+      "required_for_cell_ids": [
+        "C3.RA.01",
+        "C3.CC.01"
+      ],
+      "statement": "No form administers an independent initial judgment before the advice, so no reliance opportunity exists in this cycle. Advice-acceptance frequency alone cannot stand in for one.",
+      "status": "NOT_ADMINISTERED"
+    },
+    {
+      "source_id": "operator-authored-plan",
+      "required_for_cell_ids": [
+        "C1.OF.01",
+        "C2.OD.01",
+        "C5.VD.01",
+        "C6.OG.01"
+      ],
+      "statement": "The operator plan is validated and digested before the run, and its projection is recorded, but no scored opportunity is derived from it. Every operator process cell outside the checkpoint window is therefore unpopulated.",
+      "status": "NOT_ADMINISTERED"
+    },
+    {
+      "source_id": "held-out-transfer",
+      "required_for_cell_ids": [
+        "C7.TR.01"
+      ],
+      "statement": "No held-out phase is administered in a v0.2.0 cycle.",
+      "status": "NOT_ADMINISTERED"
+    }
+  ]
+}
