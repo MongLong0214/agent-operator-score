@@ -148,6 +148,11 @@ test("strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
     assert.equal(result.survivor, false);
     assert.equal(isDead(probe.descendant), true, "the detached descendant survived teardown");
     const record = result.confinement;
+    // The tracker is what reached it. The survivor sweep is the backstop for what the tracker
+    // cannot see, and a run where the sweep had to kill a descendant the tracker was holding is a
+    // run whose teardown did not do its job -- `found_before_signal` is absent when it did.
+    assert.equal(Object.hasOwn(record.descendants.survivor_sweep, "found_before_signal"), false, "the sweep had to kill what the tracker tracked");
+    assert.deepEqual(record.descendants.survivor_sweep.survivors, []);
     assert.equal(record.level, "STRICT");
     assert.equal(record.backend, "macos-seatbelt");
     assert.equal(record.filesystem_enforced, true);

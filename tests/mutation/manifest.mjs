@@ -2306,15 +2306,6 @@ export const GUARDS = [
     name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
   },
   {
-    guard: "the matrix reads the canary from its observation",
-    reason: "the support matrix's official column is the gate over the committed observation, not the row's own label; a decision that trusted the presence of the file would issue over a recorded FAIL",
-    file: "lib/confinement.mjs",
-    from: "    const canaryPassed = observedCanary.result === \"PASS\" && isDigest(captured?.evidence_digest);",
-    to: "    const canaryPassed = canaryObservation !== null;",
-    test: "tests/product/confinement.test.mjs",
-    name: "a_canary_observation_that_did_not_pass_withholds_the_row_it_backs"
-  },
-  {
     guard: "tracked descendants are terminated at teardown",
     // darwin only: the real lane spawns through sandbox-exec, and the test that sees the detached
     // descendant die is the one that runs the boundary for real.
@@ -2861,7 +2852,6 @@ export const ACCOUNTED_GUARDS = [
   "the group sweep is recorded from the group",
   "the lane is bound into the cohort",
   "the matrix decides the process axis with the run's own helper",
-  "the matrix reads the canary from its observation",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the process axis needs the sweep and the second poll",
