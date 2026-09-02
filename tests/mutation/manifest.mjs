@@ -2059,10 +2059,10 @@ export const GUARDS = [
     reason:
       "without this, flipping the status is the whole cost of deleting before the evidence was preserved -- 'only after #578' has to be a checked precondition, not a sentence in a document",
     file: "lib/branch-audit.mjs",
-    from: "      if (!entry) findings.push(`the deletion log says COMPLETED without recording that #${issue} cleared`);",
-    to: "",
+    from: "      if (!entry) findings.push(`the deletion log says COMPLETED without recording that #${issue} cleared`);\n      else if (!isNonEmptyString(entry.evidence, 11)) findings.push(`the deletion log says #${issue} cleared but cites nothing for it`);",
+    to: "      if (entry && !isNonEmptyString(entry.evidence, 11)) findings.push(`the deletion log says #${issue} cleared but cites nothing for it`);",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
-    name: "a COMPLETED deletion log that does not record #578 and #588 as cleared is refused"
+    name: "a COMPLETED deletion log that does not record both blocking issues as cleared is refused"
   },
   {
     guard: "a tag's ref object is part of its identity",
@@ -2089,8 +2089,8 @@ export const GUARDS = [
     reason:
       "the one thing a cleanup must not touch; checking it afterwards is the only way to find out that it did",
     file: "lib/branch-audit.mjs",
-    from: "        if (!still.has(entry.branch)) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) is gone after the deletion`);",
-    to: "",
+    from: "        if (!still.has(entry.branch)) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) is gone after the deletion`);\n        else if (still.get(entry.branch) !== entry.sha) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) moved across the deletion`);",
+    to: "        if (still.has(entry.branch) && still.get(entry.branch) !== entry.sha) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) moved across the deletion`);",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "an open PR head that is gone or moved across the deletion is refused"
   },

@@ -109,7 +109,7 @@ test("a deletion log that drops #578 or #588 from what blocks it is refused whil
 
 // The prohibition the whole issue is built on: deletion happens only after the evidence is
 // preserved. Without this, flipping the status is the entire cost of deleting early.
-test("a COMPLETED deletion log that does not record #578 and #588 as cleared is refused", () => {
+test("a COMPLETED deletion log that does not record both blocking issues as cleared is refused", () => {
   assert.notDeepEqual(deletionLogFindings(completedLog({ blockers_cleared: [] })), [], "a COMPLETED log with no cleared blockers passed the check");
   assert.notDeepEqual(
     deletionLogFindings(completedLog({ blockers_cleared: [{ issue: 578, evidence: "final release/E2E evidence bundle captured at <sha>" }] })),
