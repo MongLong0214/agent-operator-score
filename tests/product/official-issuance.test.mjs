@@ -81,7 +81,7 @@ const measured = (overrides = {}) => {
       survivors: [],
       group_sweep: { pgid: 4242, members: [] },
       survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] },
-      residual: "a descendant that sheds every marker is in none of the scans; the boundary is inherited and it cannot reach anything else"
+      residual: "a descendant that sheds every marker is in none of the scans. Measured and accepted: a review reproduced it with a live pid reparented to init and regrouped to itself. The boundary is inherited and it cannot reach anything else"
     },
     cleanup_verified: true,
     scratch_not_removed: [],
@@ -317,6 +317,23 @@ test("a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_sc
   const committed = observations("strict-lane.darwin.seatbelt.canary.json").captured;
   assert.equal(committed.out_of_band.stripped.confined, true, "the recorded lane did not demonstrate the confinement it claims");
   assert.match(String(measured().descendants.residual), /cannot reach anything else/u);
+  // The record names the reproduction, so a reader sees the case was measured and accepted rather
+  // than missed: poll one holds the root, poll two holds a live process reparented to init and
+  // regrouped to itself, and the axis still reports enforced.
+  const { descendantTracker } = await import("../../lib/confinement.mjs");
+  let poll = 0;
+  const table = () => {
+    poll += 1;
+    return poll === 1
+      ? [{ pid: 100, ppid: 1, pgid: 100, start: "A" }]
+      : [{ pid: 100, ppid: 1, pgid: 100, start: "A" }, { pid: 200, ppid: 1, pgid: 200, start: "B" }];
+  };
+  const tracker = descendantTracker(100, { table, intervalMs: 10 });
+  tracker.poll();
+  tracker.poll();
+  assert.deepEqual(tracker.tracked(), [100], "the reproduction no longer reproduces");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: clean, networkPolicy }), true, "the accepted residual was quietly closed by weakening the proof");
+  assert.match(String(measured().descendants.residual), /reparented to init and regrouped/u);
 });
 
 test("a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group", async () => {
@@ -1060,6 +1077,76 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+test("a_symlinked_runtime_config_is_refused_rather_than_copied", async () => {
+  // `statSync` follows the last component, so `~/.codex/config.toml -> /somewhere/else` was a
+  // regular file by that test and its bytes were copied into the agent's private HOME. What comes
+  // out is not credential-shaped -- plain host content with spaces in it -- so nothing downstream
+  // removes it and the agent prints it into the public result. The rule the issue states for the
+  // boundary is the rule here: a symlink fails closed, by name.
+  const { stageRuntimeConfig } = await import("../../lib/confinement.mjs");
+  const { ADAPTERS } = await import("../../lib/profile.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-symlink-stage-"));
+  try {
+    const operator = join(base, "operator");
+    const agentHome = join(base, "agent");
+    const outside = join(base, "private.txt");
+    mkdirSync(join(operator, ".codex"), { recursive: true });
+    mkdirSync(agentHome, { recursive: true });
+    writeFileSync(outside, "PRIVATE HOST DATA WITH SPACES\n");
+    writeFileSync(join(operator, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: "aaaaaaaaaaaaaaaa" } }));
+    symlinkSync(outside, join(operator, ".codex", "config.toml"));
+    const identity = { identity_status: "VERIFIED", identity_digest: `sha256:${"5".repeat(64)}`, resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js", interpreter_chain: [] };
+
+    const staged = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], {}, agentHome, operator, identity);
+    assert.deepEqual(staged.staged, ["auth.json"], "a symlinked source was copied into the agent's HOME");
+    assert.deepEqual(staged.refused, ["config.toml: symlink"]);
+    assert.deepEqual(readdirSync(join(agentHome, ".codex")).sort(), ["auth.json"]);
+    assert.equal(Object.hasOwn(staged.digests, "config.toml"), false, "a refused file was bound into the cohort");
+    // Nothing of the outside file's content came with it, which is the point: it is not credential
+    // shaped and no redactor downstream would have taken it out again.
+    assert.equal(staged.secrets.some((value) => value.includes("PRIVATE HOST DATA")), false);
+
+    // A link in a parent directory moves the file just as effectively, and the realpath is what
+    // decides: a config directory that is itself a link is fine as long as the file it holds is
+    // really inside it.
+    const elsewhere = join(base, "elsewhere");
+    mkdirSync(elsewhere);
+    writeFileSync(join(elsewhere, "config.toml"), 'model = "stub"\n');
+    writeFileSync(join(elsewhere, "auth.json"), "{}");
+    const linkedDir = join(base, "linked-codex");
+    symlinkSync(elsewhere, linkedDir);
+    const secondHome = mkdtempSync(join(tmpdir(), "aos-symlink-stage-agent-"));
+    const throughLink = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], { CODEX_HOME: linkedDir }, secondHome, operator, identity);
+    assert.deepEqual(throughLink.staged, ["auth.json", "config.toml"], "a real file inside a linked directory was refused");
+    assert.deepEqual(throughLink.refused, []);
+    rmSync(secondHome, { recursive: true, force: true });
+
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("the_adapter_table_and_the_lane_table_cannot_disagree_about_support", async () => {
+  // Two mappings of one fact drift, and this pair did: `claude-code.v1` claimed STRICT while the
+  // lane table the gate reads records that lane as NOT_OBSERVED. `supported_isolation` is derived
+  // from the lane table now, so the adapter cannot claim a lane the release has not proven.
+  const { ADAPTERS } = await import("../../lib/profile.mjs");
+  const { SUPPORT_LANES, SUPPORTED_RELEASE_SET, laneOf } = await import("../../lib/confinement.mjs");
+  for (const [id, adapter] of Object.entries(ADAPTERS)) {
+    for (const level of adapter.supported_isolation) {
+      if (level !== "STRICT") continue;
+      const proven = SUPPORT_LANES.some((lane) => (lane.adapter === id || lane.adapter === "*") && lane.level === "STRICT" && SUPPORTED_RELEASE_SET.has(lane.support_status));
+      assert.ok(proven, `${id} claims STRICT and the lane table has no proven STRICT lane for it`);
+    }
+    // The diagnostic levels are always available: every adapter can be run under them, and the
+    // table's BLOCKED there is about issuance rather than about running.
+    assert.ok(adapter.supported_isolation.includes("BEST_EFFORT_CLI") && adapter.supported_isolation.includes("NONE"), id);
+  }
+  assert.deepEqual([...ADAPTERS["codex-cli.v1"].supported_isolation], ["STRICT", "BEST_EFFORT_CLI", "NONE"]);
+  assert.deepEqual([...ADAPTERS["claude-code.v1"].supported_isolation], ["BEST_EFFORT_CLI", "NONE"], "the Claude adapter still claims a lane nobody measured");
+  assert.equal(laneOf({ platform: "darwin", backend: "macos-seatbelt", adapter: "claude-code.v1", level: "STRICT" }).support_status, "NOT_OBSERVED");
 });
 
 test("a_staged_credential_never_reaches_a_public_surface", async () => {

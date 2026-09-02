@@ -318,6 +318,13 @@ containment. `process_containment` on the record says which of the two a lane ha
 `inherited-profile` on Seatbelt, `pid-namespace` under bubblewrap's `--unshare-pid`, where
 membership cannot be shed at all and the case does not arise.
 
+The case is measured, not assumed away. A review reproduced it against an injected process table --
+poll 1 holding root PID 100, poll 2 additionally holding PID 200 reparented to PID 1 and regrouped
+to PGID 200 -- and `processAxisEnforced` returned true while PID 200 was still in the table. That is
+the known-undetectable case, and it is accepted with the bound below rather than papered over: the
+alternative would be to weaken the canary until the finding disappeared, which would remove the only
+evidence the lane has.
+
 **The residual, exactly.** An undetected survivor of that kind can outlive the run, and it can write
 inside *that run's own workspace* after AOS has digested the evidence. It cannot read or write
 anything else: not the store, not another run's workspace, not the operator's home, not the staged
@@ -507,6 +514,12 @@ descendant is dead after teardown; the installed Codex runtime, run through the 
 without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
 reason and does not pass on nothing.
 
+A staged file must be the file it claims to be: `lstat`, not `stat`, so a `config.toml` that is a
+link to anywhere on the host is refused by name rather than copied into the agent's private HOME.
+Its bytes would not be credential-shaped -- plain host content walks straight through the redactor
+-- so this is a fail-closed rule and not a redaction problem, and the record lists what was refused
+so the operator sees why the runtime came up without it.
+
 The staged copy is also what the run scrubs by value: `stageRuntimeConfig` hands the caller the
 credential-shaped strings it copied, and `runProcess` rebuilds its exact-value scrubber from them
 before the agent starts. The scrubber used to be built from the environment alone, so a task that
@@ -562,7 +575,7 @@ measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to 
 Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
 what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
 digest
-`sha256:64772f142792aa19e57e4f251b1f5978a98cb1ce24a98dcb8689e81682cd705e`. The `Official` column
+`sha256:72bf132a650a4750f41f7646004409c291997cfb5cf21b2a8d967a9df7254a85`. The `Official` column
 is the gate's decision over the row's committed evidence, not the row's own label: the test forges
 an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
 by digest*, and the digest is checked against the bytes before the observation is read -- a row

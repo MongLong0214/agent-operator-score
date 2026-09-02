@@ -2617,6 +2617,24 @@ export const GUARDS = [
     name: "a_lane_whose_adapter_stages_a_credential_is_official_only_for_that_runtime"
   },
   {
+    guard: "a symlinked staging source is refused by name",
+    reason: "statSync follows the last component, so a config file that is a link to anywhere on the host was copied into the agent's private HOME; plain host content is not credential-shaped and no redactor takes it out again",
+    file: "lib/confinement.mjs",
+    from: '  if (entry.isSymbolicLink()) return { ok: false, reason: "symlink" };',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_symlinked_runtime_config_is_refused_rather_than_copied"
+  },
+  {
+    guard: "support is read from the lane table, not restated",
+    reason: "two mappings of one fact drift: the Claude adapter claimed STRICT while the table the gate reads records that lane as NOT_OBSERVED",
+    file: "lib/profile.mjs",
+    from: "  const proven = SUPPORT_LANES\n    .filter((lane) => (lane.adapter === adapterId || lane.adapter === \"*\") && SUPPORTED_RELEASE_SET.has(lane.support_status))\n    .map((lane) => lane.level);",
+    to: '  const proven = ["STRICT"];',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_adapter_table_and_the_lane_table_cannot_disagree_about_support"
+  },
+  {
     guard: "bubblewrap mounts what the policy declares",
     reason: "the linux renderer kept a list of its own -- all of /etc and all of /sbin against a policy declaring /etc/ssl and /etc/resolv.conf -- so the digest described one boundary and the argument vector applied another, with /etc/hostname and /etc/machine-id inside it",
     file: "lib/confinement.mjs",
@@ -2890,6 +2908,7 @@ export const ACCOUNTED_GUARDS = [
   "a sequence at its key's indentation is the value",
   "a skipped real lane is not a verified one",
   "a started phase cannot integrate code on a blocked issue",
+  "a symlinked staging source is refused by name",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a violation decides before the floor does",
@@ -3046,6 +3065,7 @@ export const ACCOUNTED_GUARDS = [
   "supply-chain digest covers the .npmrc",
   "supply-chain digest covers the policy",
   "supply-chain digest covers the verifier",
+  "support is read from the lane table, not restated",
   "symlink chain audit",
   "symlink chain containment",
   "symlink component expansion",
