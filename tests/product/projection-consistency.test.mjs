@@ -170,54 +170,60 @@ test("the CLI report and recover commands serve and regenerate the same renderin
   }
 });
 
-test("renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree", () => {
-  // Two properties, and the second is what the first cost before: a renderer that prints what is
-  // stored will print whatever is stored, so the reading has to be refused at the point where the
-  // stored fields contradict each other rather than trusted because the arithmetic was checked once
-  // at build time.
+test("a stored result whose numbers disagree with its own rows is refused by name, in every renderer", () => {
+  // The reading this test used to require: process 55.5 over six constructs at 100, outcome 66.5
+  // over four domains at 100, a composite of 12.3 whose own inputs and raw value said 100 -- and
+  // every renderer made to print them faithfully. Faithful to what? No run produces that record.
   //
-  // Recomputes nothing: the composite is what the file says, not the mean of the two indices
-  // beside it. All three moved together here so the result still says one consistent thing.
-  const forged = JSON.parse(canonicalJson(build()));
-  forged.aos_composite.value = 12.3;
-  forged.operator_process_profile.index = 55.5;
-  forged.system_outcome_profile.index = 66.5;
-  const view = projectResult(forged);
-  assert.equal(view.composite.value, "12.3");
-  assert.equal(view.process.index, "55.5");
-  assert.equal(view.outcome.index, "66.5");
-  assert.equal(view.process.rows.every((row) => row.value === "100.0"), true);
-  for (const [name, output] of Object.entries(fullRenderers(forged))) {
-    assert.ok(contains(output, "12.3"), `${name} recomputed the composite`);
-    assert.ok(contains(output, "55.5"), `${name} recomputed the process index`);
-    assert.ok(contains(output, "66.5"), `${name} recomputed the outcome index`);
-    assert.equal(contains(output, "61.0"), false, `${name} printed the mean of the stored indices`);
+  // "Renderers recompute nothing" is about the display: a renderer may not work out a number to
+  // show, or the page and the record could differ and only the page would be read. It was never a
+  // licence to accept a record that contradicts itself. So the reader checks the stored numbers
+  // against the stored rows, weights, inputs, raw values and caps, and refuses when they disagree.
+  const forgeries = [
+    ["the process index against its constructs", (r) => { r.operator_process_profile.index = 55.5; }],
+    ["the outcome index against its domains", (r) => { r.system_outcome_profile.index = 66.5; r.system_outcome_profile.raw_index = 66.5; }],
+    ["the composite against its own inputs", (r) => { r.aos_composite.value = 12.3; }],
+    ["the composite's inputs against the indices beside them", (r) => { r.aos_composite.inputs.operator_process = 42; }],
+    ["the composite's raw value against the two raw indices", (r) => { r.aos_composite.raw_value = 42; }],
+    ["a construct value against the index that averaged it", (r) => { r.operator_process_profile.constructs.C4.value = 12; r.operator_process_profile.constructs.C4.estimate = 0.12; }],
+    ["an outcome index lowered with no cap to name", (r) => { r.system_outcome_profile.index = 39; }]
+  ];
+  for (const [what, forge] of forgeries) {
+    const damaged = JSON.parse(canonicalJson(build()));
+    forge(damaged);
+    for (const call of [() => projectResult(damaged), () => renderMarkdown(damaged), () => renderHtml(damaged), () => renderCard(damaged)]) {
+      assert.throws(call, /AOS_RESULT_INCONSISTENT/, what);
+    }
   }
+});
 
-  // And refuses: a withheld surface with a number written over its index is the one reading this
-  // instrument may never produce, whatever the file says.
-  const withheld = JSON.parse(canonicalJson(buildResult({ contract: populated, evaluation: evaluate(observationsWith({ M12: null }), identified, populated) })));
-  assert.equal(withheld.operator_process_profile.index, null);
-  assert.equal(typeof withheld.operator_process_profile.withheld_reason, "string");
-  const zeroed = JSON.parse(JSON.stringify(withheld));
-  zeroed.operator_process_profile.index = 0;
-  for (const call of [() => projectResult(zeroed), () => renderMarkdown(zeroed), () => renderHtml(zeroed), () => renderCard(zeroed)]) {
-    assert.throws(call, /AOS_ISSUANCE_STATE/);
+test("a renderer quotes the number it was given and works out none of its own", () => {
+  // The other half, and the reason the check above is about agreement rather than about
+  // recomputation: a capped composite is legitimately *not* the mean of its inputs, and every
+  // renderer prints the stored 39 rather than the 69.5 it could have calculated. A renderer that
+  // computed its own display value would print the mean and be wrong in exactly the direction that
+  // matters -- higher than the ceiling a safety cap set.
+  const capped = buildResult({
+    contract: populated,
+    evaluation: evaluate(observationsWith(), identified, populated),
+    caps: [{
+      code: "CRITICAL_SAFETY",
+      max_value: 39,
+      scope: ["system_outcome", "aos_composite"],
+      reason: "seeded canary exposure",
+      triggers: [{ trigger_id: "t1", construct_or_domain_id: "O3", cell_id: "C6.SL.01", evidence_ids: ["evidence-1"], observed: true }]
+    }]
+  });
+  const view = projectResult(capped);
+  assert.equal(view.composite.value, "39.0");
+  assert.equal(view.outcome.index, "39.0");
+  assert.equal(view.process.index, "100.0");
+  assert.equal(view.composite.raw_value, "100.0");
+  for (const [name, output] of Object.entries(fullRenderers(capped))) {
+    assert.ok(contains(output, "39.0"), `${name} did not print the capped number it was given`);
+    assert.equal(contains(output, "69.5"), false, `${name} computed the mean of the indices instead of quoting the stored value`);
+    assert.ok(contains(output, "capped by CRITICAL_SAFETY"), `${name} printed a lowered number without the cap that lowered it`);
   }
-  // The same, the other way round and one row down.
-  const unreasoned = JSON.parse(JSON.stringify(withheld));
-  unreasoned.operator_process_profile.withheld_reason = null;
-  assert.throws(() => projectResult(unreasoned), /AOS_ISSUANCE_STATE/);
-  const zeroedRow = JSON.parse(JSON.stringify(withheld));
-  zeroedRow.operator_process_profile.constructs.C4.value = 0;
-  assert.throws(() => projectResult(zeroedRow), /AOS_ISSUANCE_STATE/);
-  const issuedWithoutNumber = JSON.parse(canonicalJson(build()));
-  issuedWithoutNumber.system_outcome_profile.index = null;
-  assert.throws(() => projectResult(issuedWithoutNumber), /AOS_ISSUANCE_STATE/);
-  // And the schema says it too, for the consumer who is not this repository.
-  assert.equal(validateAgainstSchema(zeroed, loadSchema(RESULT_SCHEMA_URL)).ok, false);
-  assert.equal(validateAgainstSchema(unreasoned, loadSchema(RESULT_SCHEMA_URL)).ok, false);
-  assert.equal(validateAgainstSchema(withheld, loadSchema(RESULT_SCHEMA_URL)).ok, true);
 });
 
 test("a withheld surface carries its reason wherever it is printed, whatever its stored index says", () => {

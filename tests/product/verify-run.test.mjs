@@ -144,6 +144,17 @@ test("a claim the stored result is not entitled to make is caught by the verifie
     assert.match(raisedCeiling.stdout, /FAIL\trecompute/);
     assert.match(raisedCeiling.stdout, /do(?:es)? not follow from the stored observations/);
 
+    // The same shape one level down: a row, its weight and the declaration that named it, edited
+    // together. A reader holding this contract catches it; a reader that does not cannot, and this
+    // is the check that covers that case for every contract, because it rebuilds from the run.
+    const trimmed = JSON.parse(JSON.stringify(result));
+    trimmed.contract.declared.process_constructs = result.contract.declared.process_constructs.slice(1);
+    delete trimmed.operator_process_profile.constructs[result.contract.declared.process_constructs[0]];
+    delete trimmed.operator_process_profile.weights[result.contract.declared.process_constructs[0]];
+    writeFileSync(resultPath, JSON.stringify(trimmed, null, 2));
+    const trimmedRun = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(trimmedRun.stdout + trimmedRun.stderr, /FAIL\trecompute|AOS_RESULT_INCOMPLETE/);
+
     // And the cruder forgery -- the claim raised in one place only -- is refused before any
     // comparison, because a result whose surfaces disagree with its own top line is unreadable.
     writeFileSync(resultPath, JSON.stringify({ ...result, claim_stage: "GENERALIZABILITY_SUPPORTED" }, null, 2));

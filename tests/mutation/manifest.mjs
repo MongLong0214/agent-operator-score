@@ -2283,7 +2283,7 @@ export const GUARDS = [
     from: "      value: shown(composite.value),",
     to: "      value: shown(compositeOf(process.index, outcome.index).value),",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+    name: "a renderer quotes the number it was given and works out none of its own"
   },
   {
     guard: "profile legacy result is not migrated",
@@ -2400,7 +2400,7 @@ export const GUARDS = [
     from: "  if (issued !== (value !== null) || issued !== (reason === null)) {",
     to: "  if (false) {",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+    name: "a renderer quotes the number it was given and works out none of its own"
   },
   {
     guard: "the reader checks the state it was handed",
@@ -2409,7 +2409,7 @@ export const GUARDS = [
     from: "  assertIssuanceState(\"the stored operator process profile\", { issued: process.issued, value: process.index, withheld_reason: process.withheld_reason ?? null });",
     to: "",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+    name: "a renderer quotes the number it was given and works out none of its own"
   },
   {
     guard: "the withheld reason travels with the surface",
@@ -2424,8 +2424,8 @@ export const GUARDS = [
     guard: "provider credential formats are recognised",
     reason: "an AWS key id or a GitHub token carries its own prefix and no English word beside it, so the word-plus-value rule walks straight past it and the result publishes the key",
     file: "lib/result-schema.mjs",
-    from: "    CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
-    to: "    OPAQUE_TOKEN.test(text));",
+    from: "    CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
+    to: "    CREDENTIAL_TEXT.test(text) || OPAQUE_TOKEN.test(text));",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
@@ -2445,7 +2445,7 @@ export const GUARDS = [
     from: "      if (matched.length !== 1) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     to: "      if (false) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+    name: "a renderer quotes the number it was given and works out none of its own"
   },
   {
     guard: "everything published passes the one gate",
@@ -2505,8 +2505,8 @@ export const GUARDS = [
     guard: "a URL carrying userinfo is a credential",
     reason: "`postgresql://alice:hunter2@db/prod` is a password whatever the scheme is, and no English word names it, so the word rule and the provider formats both walk past it",
     file: "lib/result-schema.mjs",
-    from: "  (FILESYSTEM_LOCATION.test(text) || URL_USERINFO.test(text) || CREDENTIAL_TEXT.test(text) ||",
-    to: "  (FILESYSTEM_LOCATION.test(text) || CREDENTIAL_TEXT.test(text) ||",
+    from: "  (FILESYSTEM_LOCATION.test(text) || URL_USERINFO.test(text) || CREDENTIAL_ASSIGNMENT.test(text) ||",
+    to: "  (FILESYSTEM_LOCATION.test(text) || CREDENTIAL_ASSIGNMENT.test(text) ||",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
@@ -2541,7 +2541,7 @@ export const GUARDS = [
     guard: "the claim is compared like the numbers are",
     reason: "verify recomputes the result from its own record, and a comparison that omitted the claim reported that an elevated one still followed from the observations",
     file: "lib/cli.mjs",
-    from: "      one.forbidden_uses, one.profile_digest, one.contract?.maximum_claim_stage",
+    from: "      one.forbidden_uses, one.profile_digest, one.contract",
     to: "      one.forbidden_uses, one.profile_digest",
     test: "tests/product/verify-run.test.mjs",
     name: "a claim the stored result is not entitled to make is caught by the verifier, not only by the reader"
@@ -2554,6 +2554,60 @@ export const GUARDS = [
     to: "    ...[].map((row, index) => text(",
     test: "tests/product/projection-consistency.test.mjs",
     name: "a reliance metric that was computed is printed with its value in every renderer, not summarised away"
+  },
+  {
+    guard: "the rows a result must carry come from its contract",
+    reason: "asking the stored object for its own expected keys is a question that answers itself: a construct and its weight deleted together read as a five-construct profile, and the artifact surface compared its keys with those same keys",
+    file: "lib/result-schema.mjs",
+    from: "  const declared = result.contract?.declared;",
+    to: "  const declared = { process_constructs: Object.keys(process.constructs ?? {}), outcome_domains: Object.keys(outcome.domains ?? {}), delegated_artifact_constructs: Object.keys(composite.delegated_artifact?.constructs ?? {}) };",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "a row is read as a whole",
+    reason: "an absent field is not an empty one: a row that lost the cells it was averaged over was read as a row averaged over nothing, and its number printed anyway",
+    file: "lib/result-schema.mjs",
+    from: "      for (const [field, kind] of ROW_FIELDS[idKey]) {",
+    to: "      for (const [field, kind] of []) {",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "a result has to agree with itself",
+    reason: "a process index of 55.5 over six constructs at 100 is not a result this instrument can have produced, and printing it faithfully prints a number that means nothing",
+    file: "lib/result-schema.mjs",
+    from: "  if (process.issued && (processValues.some((value) => !isFiniteNumber(value)) || disagrees(process.index, meanOf(processValues)))) {",
+    to: "  if (false) {",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
+  },
+  {
+    guard: "the composite has to agree with its own inputs",
+    reason: "a composite of 12.3 whose inputs and raw value both say 100 is a number with no arithmetic behind it, and the cap that would explain a lower one is named nowhere",
+    file: "lib/result-schema.mjs",
+    from: "    if (composite.cap_applied === null && disagrees(composite.value, throughOutcome)) {",
+    to: "    if (false) {",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
+  },
+  {
+    guard: "a named secret assigned a value is a secret at any length",
+    reason: "the length floor that keeps \"the token was observed\" as prose let `password=hunter2` through the universal publication gate",
+    file: "lib/result-schema.mjs",
+    from: "  (FILESYSTEM_LOCATION.test(text) || URL_USERINFO.test(text) || CREDENTIAL_ASSIGNMENT.test(text) ||",
+    to: "  (FILESYSTEM_LOCATION.test(text) || URL_USERINFO.test(text) ||",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "the result states the rows its contract declared",
+    reason: "a reader has no contract in hand, so a result that did not say what it was computed over would leave the reader checking the rows against themselves",
+    file: "lib/result-schema.mjs",
+    from: "      declared: declaredOver(contract),",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
   }
 ];
 
@@ -2660,12 +2714,15 @@ export const ACCOUNTED_GUARDS = [
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
   "a missed known incident is a regression",
+  "a named secret assigned a value is a secret at any length",
   "a new run is never scored by the old scorer",
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a refused file fails the check",
   "a resolved key is the key",
+  "a result has to agree with itself",
+  "a row is read as a whole",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
   "a status this build does not know is refused",
@@ -2845,6 +2902,7 @@ export const ACCOUNTED_GUARDS = [
   "the claim is compared like the numbers are",
   "the closing pull request changed something the issue owns",
   "the command prints the floored result",
+  "the composite has to agree with its own inputs",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
   "the evidence contract is pinned outside the plan",
@@ -2853,6 +2911,8 @@ export const ACCOUNTED_GUARDS = [
   "the printed shape is named",
   "the reader checks the state it was handed",
   "the result states the claim ceiling it was issued under",
+  "the result states the rows its contract declared",
+  "the rows a result must carry come from its contract",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",

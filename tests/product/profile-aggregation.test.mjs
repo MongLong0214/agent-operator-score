@@ -510,8 +510,34 @@ test("a profile result that lost a surface, a row or a status it can read is ref
     ["a reliance metric is gone", (r) => delete r.reliance_calibration_profile.metrics.csr],
     ["the delegated-artifact surface is gone", (r) => delete r.aos_composite.delegated_artifact],
     ["a row nobody averaged was added", (r) => { r.operator_process_profile.constructs.C9 = { ...r.operator_process_profile.constructs.C1, construct_id: "C9" }; }],
-    ["the weights that say what was averaged are gone", (r) => delete r.operator_process_profile.weights]
+    ["the weights that say what was averaged are gone", (r) => delete r.operator_process_profile.weights],
+    ["a delegated-artifact row is gone", (r) => delete r.aos_composite.delegated_artifact.constructs.C1],
+    // The row and the evidence that it was expected, removed together: the stored object cannot be
+    // its own authority on what it should contain, so the contract's declaration is what is checked.
+    ["a construct row and its weight are gone together", (r) => { delete r.operator_process_profile.constructs.C1; delete r.operator_process_profile.weights.C1; }],
+    ["a domain row and its weight are gone together", (r) => { delete r.system_outcome_profile.domains.O2; delete r.system_outcome_profile.weights.O2; }],
+    ["the row set the contract declared is gone", (r) => delete r.contract.declared],
+    // A field of a row, not only a row: an absent field is not an empty one.
+    ["a domain row lost the cells it was averaged over", (r) => delete r.system_outcome_profile.domains.O1.cells],
+    ["a construct row lost its required cells", (r) => delete r.operator_process_profile.constructs.C1.required_cells],
+    ["a construct row lost its optional cells", (r) => delete r.operator_process_profile.constructs.C1.optional_cells],
+    ["a construct row lost its withheld list", (r) => delete r.operator_process_profile.constructs.C1.withheld_for],
+    ["a construct row lost its title", (r) => delete r.operator_process_profile.constructs.C1.title],
+    ["an artifact row lost its value", (r) => delete r.aos_composite.delegated_artifact.constructs.C1.value]
   ];
+  // Edited all the way through -- the row, its weight and the declaration that named it -- and
+  // still refused, because the contract this build holds says which rows a result under it carries.
+  // Under a contract this build does not hold there is nothing left to compare against, and that
+  // case belongs to `verify --run`, which rebuilds the result from the observations; the test for
+  // it lives in tests/product/verify-run.test.mjs.
+  const shippedStored = JSON.parse(canonicalJson(buildResult({ contract: shippedEcdContract(), evaluation: evaluate(observationsWith(), identified, shippedEcdContract()) })));
+  const consistentlyEdited = JSON.parse(JSON.stringify(shippedStored));
+  consistentlyEdited.contract.declared.process_constructs = ["C2", "C3", "C4", "C5", "C6"];
+  delete consistentlyEdited.operator_process_profile.constructs.C1;
+  delete consistentlyEdited.operator_process_profile.weights.C1;
+  assert.throws(() => projectResult(consistentlyEdited), /AOS_RESULT_INCOMPLETE/, "a result naming this build's own contract was read against the rows it says it has");
+  assert.doesNotThrow(() => projectResult(shippedStored));
+
   for (const [why, mutate] of refusals) {
     const damaged = damage(mutate);
     for (const call of [() => projectResult(damaged), () => renderMarkdown(damaged), () => renderHtml(damaged), () => renderCard(damaged)]) {
@@ -554,6 +580,12 @@ test("no credential shape and no absolute path reaches the canonical result thro
     home_relative: "~/secrets/key.pem",
     home_bare: "~",
     file_url: "file:///Users/alice/notes.txt",
+    // A named secret assigned a value is a secret at any length -- the length floor that keeps
+    // "the token was observed" as prose let `password=hunter2` through.
+    short_assignment: "database password=hunter2",
+    colon_assignment: "password: s3cr3t",
+    short_token: "token=abc",
+    api_key_assignment: "api_key: k1",
     // A URL that carries who you are in it, whatever the scheme.
     postgres_url: "postgresql://alice:hunter2@db.example/prod",
     ssh_url: "ssh://root@10.0.0.1/etc/shadow",
@@ -586,7 +618,7 @@ test("no credential shape and no absolute path reaches the canonical result thro
       api_token: canary, workspace: secretPath
     },
     caps: [{
-      code: "CRITICAL_SAFETY", max_value: 39, scope: ["system_outcome"], reason: `seeded canary at ${secretPath}`,
+      code: "CRITICAL_SAFETY", max_value: 39, scope: ["system_outcome"], reason: `seeded canary at ${secretPath}; database password=hunter2`,
       triggers: [{ trigger_id: "t1", construct_or_domain_id: "O3", cell_id: "C6.SL.01", evidence_ids: ["evidence-1"], observed: true, note: canary }]
     }]
   });
