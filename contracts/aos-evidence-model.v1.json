@@ -453,6 +453,12 @@
       "definition": "The measurement contract the result was scored under, as its combined digest. A result scored under a different contract was produced by a different instrument, so it is a facet of the measurement and not a property of the operator.",
       "levels_observed_per_cycle": 1,
       "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "profile_digest",
+      "definition": "The profile the run was administered under, as a digest. A profile is the operator, the model, the runtime and the harness taken together, and two results that do not both identify one cannot be shown to share one.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
     }
   ],
   "minimum_opportunity_bases": [

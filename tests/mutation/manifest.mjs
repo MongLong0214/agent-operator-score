@@ -16,6 +16,51 @@
 
 export const GUARDS = [
   {
+    guard: "ECD an observation agrees with its own subchecks",
+    reason: "validateObservations skips the verifier and reason checks for anything whose state reads NOT_OBSERVED, so twenty objects declaring NOT_OBSERVED over four passing subchecks each produced PROFILE_BOUND with every binding naming no verifier",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (Object.hasOwn(observation, field) && observation[field] !== normalised[field]) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "an observation this module cannot attribute is refused rather than scored"
+  },
+  {
+    guard: "ECD an answered opportunity names its verifier",
+    reason: "an opportunity with no verifier identity is an assertion rather than an observation, and the rule has to live in this module rather than be inherited from a validator with its own reasons to be lenient",
+    file: "lib/ecd-contract.mjs",
+    from: '    if (answers.length > 0 && (typeof normalised.verifier_id !== "string" || normalised.verifier_id.length === 0)) {',
+    to: "    if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "an observation this module cannot attribute is refused rather than scored"
+  },
+  {
+    guard: "ECD comparability is governed by the contract the results were scored under",
+    reason: "comparability applied whichever sealed contract the caller supplied, so a clone with the invariance rule deleted -- which verifies, nothing in it is invalid -- compared two shipped results across models as though the gate had never been written",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (contract !== null && contract !== policy) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a comparison is governed by the contract the results were scored under, not by one passed in"
+  },
+  {
+    guard: "ECD a bound profile identity is compared",
+    reason: "the profile digest sat on the result and outside the compared facets, so two results under two different profiles compared as one measurement: the field was written down and then not read by the only function whose job is to read it",
+    file: "lib/ecd-contract.mjs",
+    from: "  declaredFacets.profile_digest = profileDigest;",
+    to: "  declaredFacets.profile_digest = declaredFacets.profile_digest;",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a profile identity that was bound is compared, not merely recorded"
+  },
+  {
+    guard: "ECD PROFILE_BOUND names the profile it claims",
+    reason: "the stage was issued from form completion and coverage alone, so a run with no facets and no profile digest claimed performance under one exact profile it had never named",
+    file: "lib/ecd-contract.mjs",
+    from: "  const unidentifiedFacets = identityFacets.filter((facet) => declaredFacets[facet] === undefined || declaredFacets[facet] === null);",
+    to: "  const unidentifiedFacets = [];",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "PROFILE_BOUND is not issued to a run that never named the profile it claims"
+  },
+  {
     guard: "ECD capabilities are identity, not a property",
     reason: "a Symbol-keyed brand can be forged and a Proxy answers every property read the check performs, and a review used a branded Proxy to make a below-minimum cell issue a value",
     file: "lib/ecd-contract.mjs",
@@ -28,7 +73,7 @@ export const GUARDS = [
     guard: "ECD observations are what lib/metrics.mjs says they are",
     reason: "the rows were read field by field off whatever object arrived, so unattributed booleans with a metric id populated the operator-process cells whose whole claim is that the assessed agent cannot write them",
     file: "lib/ecd-contract.mjs",
-    from: '  const problems = validateObservations(observations).filter((entry) => entry.reason !== "absent from the result");',
+    from: '  const problems = validateObservations(normalisedAll).filter((entry) => entry.reason !== "absent from the result");',
     to: "  const problems = [];",
     test: "tests/product/ecd-aggregation.test.mjs",
     name: "an observation this module cannot attribute is refused rather than scored"
@@ -55,7 +100,7 @@ export const GUARDS = [
     guard: "ECD comparability compares emitted results",
     reason: "an unfrozen result read as a plain object let a caller edit the facets it was scored under and turn a refusal into a comparison",
     file: "lib/ecd-contract.mjs",
-    from: "    if (!emittedResults.has(side)) throw new Error(`AOS_UNEMITTED_RESULT comparability compares results from evaluate; the ${name} argument is not one`);",
+    from: "    if (policy === undefined) throw new Error(`AOS_UNEMITTED_RESULT comparability compares results from evaluate; the ${name} argument is not one`);",
     to: "    if (false) throw new Error(`AOS_UNEMITTED_RESULT ${name}`);",
     test: "tests/product/ecd-interpretation-use.test.mjs",
     name: "a result is frozen, so the facets it was scored under are the facets it is compared on"
@@ -172,8 +217,8 @@ export const GUARDS = [
     guard: "ECD claim stage rests on what was observed",
     reason: "forms_completed is a list of names the caller hands in, and on its own it made a run that observed nothing report performance observed across every locked form",
     file: "lib/ecd-contract.mjs",
-    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
-    to: '  const claimStage = missingForms.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    to: '  const claimStage = missingForms.length === 0 && unidentifiedFacets.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
     test: "tests/product/ecd-interpretation-use.test.mjs",
     name: "naming every form as completed does not make a run that observed nothing PROFILE_BOUND"
   },
@@ -233,12 +278,12 @@ export const GUARDS = [
   },
   {
     guard: "ECD shared form cells are disclosed",
-    reason: "the six form counts sum to eighty-four over eighty subchecks because two cells are administered twice, and a consumer reading them as a partition double counts",
+    reason: "the per-form counts partition the eighty, but the cell lists still overlap where one cell is administered by two forms, and a consumer reading those as disjoint double counts it",
     file: "lib/ecd-contract.mjs",
     from: "    if (canonicalJson([...form.shared_opportunity_cell_ids].sort()) !== canonicalJson(shared)) {",
     to: "    if (false) {",
     test: "tests/product/ecd-task-model.test.mjs",
-    name: "a form that shares a cell with another form says so, because the counts do not partition"
+    name: "a form that shares a cell with another form says so, because the cell lists still overlap"
   },
   {
     guard: "ECD legacy band surface is disclosed, not asserted away",
@@ -576,8 +621,12 @@ export const REQUIRED_GUARDS = [
  * here, in the same commit.
  */
 export const ACCOUNTED_GUARDS = [
+  "ECD PROFILE_BOUND names the profile it claims",
+  "ECD a bound profile identity is compared",
   "ECD a cell names only forms that administer its subchecks",
   "ECD a locked form is completed exactly once",
+  "ECD an answered opportunity names its verifier",
+  "ECD an observation agrees with its own subchecks",
   "ECD artifact versions are exact",
   "ECD capabilities are identity, not a property",
   "ECD cell claims a real subcheck",
@@ -587,6 +636,7 @@ export const ACCOUNTED_GUARDS = [
   "ECD claim stages are the three this module scores",
   "ECD comparability compares emitted results",
   "ECD comparability enforces every declared rule",
+  "ECD comparability is governed by the contract the results were scored under",
   "ECD comparability reads the emitted facet identity",
   "ECD comparability refuses an undeclared facet",
   "ECD comparability rules gate declared facets",

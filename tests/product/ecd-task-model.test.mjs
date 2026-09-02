@@ -168,7 +168,7 @@ test("a form's declared opportunity count is derived from its cells, not believe
   assert.ok(checks(report).includes("form-opportunity-count-mismatch"), JSON.stringify(checks(report)));
 });
 
-test("a form that shares a cell with another form says so, because the counts do not partition", () => {
+test("a form that shares a cell with another form says so, because the cell lists still overlap", () => {
   // One cell is administered by two forms: C6.SL.01 holds two of M06's subchecks, which FAM-2
   // produces, and one of M19's, which FAM-6 produces. The opportunity counts partition because they
   // are counted per subcheck, but the cell lists still overlap, and a consumer reading those as

@@ -158,23 +158,34 @@ not in the contract throws `AOS_UNKNOWN_CELL`.
   families produce, and the per-form opportunity counts partition the eighty only when counted this
   way.
 - `opportunitiesOf(observations)` refuses anything `lib/metrics.mjs` would not call an observation.
-  It runs `validateObservations` and treats every problem as fatal except "absent from the result",
-  which is the case `NOT_OBSERVED` exists for -- so an unknown metric, a duplicate observation, a
-  partially answered metric, or an answer with no `verifier_id` throws `AOS_INVALID_OBSERVATIONS`.
+  Each one is rebuilt from its own parts through `observationOf`, checked against the header it
+  arrived with (`AOS_INCONSISTENT_OBSERVATION` -- a metric that answers four questions and files
+  itself as unobserved is a forgery, and `validateObservations` skips the verifier and reason checks
+  for anything whose `state` reads `NOT_OBSERVED`), refused if it answers anything without naming a
+  verifier (`AOS_UNATTRIBUTED_OBSERVATION` -- an opportunity with no verifier identity is an
+  assertion, not an observation), and only then validated as the rebuilt thing, where every problem
+  is fatal except "absent from the result".
   Each row then carries `verifier_id`, `evidence_ids` and an `observation_digest`, and each cell
   estimate carries `bound_to`, the distinct observations it rests on. That is the binding #560 needs;
   the rows used to arrive stripped of it.
 - `evaluate(observations, context)` takes the observations `lib/observe.mjs` produces. `context`
-  carries `forms_completed`, `facets` and an optional `profile_digest`; passing any prohibited value
+  carries `forms_completed`, `facets` and `profile_digest`; passing any prohibited value
   source throws `AOS_PROHIBITED_VALUE_SOURCE`. `forms_completed` must name declared forms and may
   not repeat one (`AOS_UNKNOWN_FORM`, `AOS_DUPLICATE_FORM`) -- "completed exactly once" is an
   assumption in the interpretation argument and was checked with `.includes`. The result also
   carries `unsupported_forms`: a form named as completed whose declared cells produced no answer
-  does not support `PROFILE_BOUND`, and the run drops to `RUN_DIAGNOSTIC`. The result is frozen.
+  does not support `PROFILE_BOUND`, and the run drops to `RUN_DIAGNOSTIC` -- as does a run that did
+  not name its profile, which is listed in `unidentified_facets`. The result is frozen.
 - `comparability(left, right)` takes two results `evaluate` emitted -- anything else throws
   `AOS_UNEMITTED_RESULT`, because reading the facets off any object let a caller edit the facets a
-  result was scored under and ask again. It enforces **every** declared comparability rule, not the
-  ones with a particular status: the artifact's `ENFORCED` profile-identity rule over `operator` and
+  result was scored under and ask again. **The policy is the contract those results were scored
+  under**, recovered from the results themselves; the third argument is optional and must be that
+  same contract or the call throws `AOS_CONTRACT_MISMATCH`. It used to apply whichever sealed
+  contract the caller supplied, so a clone with `invariance-required` deleted -- which verifies,
+  nothing in it is invalid -- compared two shipped results across models as though the gate had
+  never been written. Two results from two different contracts refuse with
+  `CONTRACT_IDENTITY_DIFFERS` before any policy is consulted. It enforces **every** declared
+  comparability rule, not the ones with a particular status: the artifact's `ENFORCED` profile-identity rule over `operator` and
   `occasion` gated nothing while the implementation filtered on `UNESTABLISHED`, so two runs by two
   different people compared as one measurement. Each rule names its own `refusal_reason`, so the
   refusals are `CONTRACT_IDENTITY_DIFFERS`, `PROFILE_IDENTITY_DIFFERS` and
@@ -192,15 +203,26 @@ category, cut score, percentile, rank or band; those fields exist on the result 
 That is a statement about this contract, and the interpretation argument now says so in those words.
 An earlier draft assumed "no category, band, cut score, percentile or rank is emitted at any stage"
 and recorded the evidence as passing, which was a true claim about the contract published as a false
-one about the product: `lib/scorer-v1.mjs` still assigns a category to a legacy result and
-`lib/cli.mjs` still prints it. The artifact carries a `legacy_band_surface` block naming those two
-modules and the issue that owns their removal (#568), and a test fails if the disclosure and the
-source files ever disagree.
+one about the product: `lib/scorer-v1.mjs` still assigns a category to a legacy result, and
+`lib/cli.mjs`, `lib/report.mjs`, `lib/report-card.mjs` and `lib/dashboard.mjs` render it. The
+artifact carries a `legacy_band_surface` block naming all five modules, the modules excluded from it
+by name and why, and the issue that owns the removal (#568). A test scans `lib/` in both directions
+and fails if the disclosure and the source ever disagree -- checking only that every declared module
+carries a band is the easy direction, and it passed while three of those five were undeclared.
 
-It does not bind a profile. `evaluate` emits `profile_digest` and it is null until something binds
-one; #559 owns the profile shape and its aggregation, and emitting a digest of something this module
-invented would be worse than emitting nothing. The argument records that as `UNESTABLISHED` rather
-than as passing evidence, which is what it said while only the contract digest was emitted.
+It does not define what a profile is. `evaluate` takes `context.profile_digest` and does not compute
+one: #559 owns the profile shape and its aggregation, and a digest of something this module invented
+would be worse than none. What this contract does do is require one and compare it. `profile_digest`
+is a declared facet gated by the `profile-identity` rule, so two results under different profiles are
+refused; and `PROFILE_BOUND` requires every facet the comparability rules gate to be declared, so a
+run that names no profile drops to `RUN_DIAGNOSTIC` and lists what it did not name in
+`unidentified_facets`. The stage is defined as performance observed "under one exact profile and
+measurement contract", and it was previously issued from form completion and coverage alone -- a
+profile-bound claim with a null profile is a contradiction in a field name.
+
+The identity the stage requires is read from the same rules `comparability` uses, so the two cannot
+drift apart: a result that could not be compared with another under the same profile has no business
+claiming it was measured under one.
 
 The six `declared_opportunity_count` values are derived from the subchecks each form administers and
 checked against them, and they partition the eighty exactly. Counted per cell they summed to

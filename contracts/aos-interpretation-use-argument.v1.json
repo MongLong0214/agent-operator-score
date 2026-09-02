@@ -107,9 +107,10 @@
       "rule_id": "profile-identity",
       "facets": [
         "operator",
-        "occasion"
+        "occasion",
+        "profile_digest"
       ],
-      "statement": "Two results from different profiles are two measurements. A difference between them is not a change in the operator.",
+      "statement": "Two results from different profiles are two measurements. A difference between them is not a change in the operator, and a result that does not identify its profile cannot be shown to share one with anything.",
       "status": "ENFORCED",
       "refusal_reason": "PROFILE_IDENTITY_DIFFERS"
     }
@@ -204,8 +205,13 @@
         },
         {
           "evidence_id": "profile-identity-recorded",
+          "status": "PASS",
+          "detail": "A result that does not carry a profile identity cannot reach PROFILE_BOUND: the claim stage requires every facet the comparability rules gate to be declared, and the profile digest is one of them. A digest that is carried is compared, so two results under different profiles are refused."
+        },
+        {
+          "evidence_id": "profile-shape-defined",
           "status": "UNESTABLISHED",
-          "detail": "The result carries a profile_digest field and it is null until a profile is bound to the run. Issue #559 owns the profile shape and its aggregation; this contract emits the slot and does not invent what goes in it."
+          "detail": "What a profile digest is computed over is not defined here. Issue #559 owns the profile shape and its aggregation; this contract requires that one is bound and compares it, and does not invent what goes into it."
         },
         {
           "evidence_id": "form-completion-exactly-once",

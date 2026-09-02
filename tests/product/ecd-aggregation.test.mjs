@@ -365,12 +365,29 @@ test("an observation this module cannot attribute is refused rather than scored"
   // the assessed agent cannot write, and this was the door: the rows were read field by field off
   // whatever object arrived.
   const unattributed = good.map((one) => (one.metric_id === "M11" ? { ...one, verifier_id: null } : one));
-  assert.throws(() => evaluate(unattributed, complete), /AOS_INVALID_OBSERVATIONS.*M11.*verifier/s);
+  assert.throws(() => evaluate(unattributed, complete), /AOS_UNATTRIBUTED_OBSERVATION M11/);
+
+  // The same assertion wearing an unobserved header. `validateObservations` skips the verifier and
+  // reason checks for anything whose state reads NOT_OBSERVED, so twenty of these produced
+  // PROFILE_BOUND over twenty-eight issued cells with every binding naming no verifier at all.
+  const forged = METRIC_IDS.map((id) => ({
+    metric_id: id, dimension: METRICS[id].dimension, state: "NOT_OBSERVED", value: null,
+    verifier_id: null, reason: "", evidence_ids: [],
+    subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: true }))
+  }));
+  assert.throws(() => evaluate(forged, complete), /AOS_INCONSISTENT_OBSERVATION/);
+
+  // And with the header corrected, the missing verifier is what refuses it -- the rule is this
+  // module's, not one inherited from a function with its own reasons to be lenient.
+  const honest = forged.map((one) => ({ ...one, state: "PASS", value: 1, reason: "test" }));
+  assert.throws(() => evaluate(honest, complete), /AOS_UNATTRIBUTED_OBSERVATION/);
+  assert.equal(evaluate(honest.map((one) => ({ ...one, verifier_id: "test.v1" })), complete).cells.some((one) => one.status === "ISSUED"), true);
 
   assert.throws(() => evaluate([...good, good[0]], complete), /AOS_INVALID_OBSERVATIONS.*more than once/s);
-  assert.throws(() => evaluate([{ metric_id: "M99", subchecks: [], state: "NOT_OBSERVED", value: null }], complete), /AOS_INVALID_OBSERVATIONS/);
-  assert.throws(() => evaluate([{ ...good[0], subchecks: good[0].subchecks.slice(0, 2) }], complete), /AOS_INVALID_OBSERVATIONS/);
+  assert.throws(() => evaluate([{ metric_id: "M99", subchecks: [], state: "NOT_OBSERVED", value: null }], complete), /AOS_UNKNOWN_METRIC M99/);
+  assert.throws(() => evaluate([{ ...good[0], subchecks: good[0].subchecks.slice(0, 2) }], complete), /AOS_SUBCHECK_MISMATCH/);
   assert.throws(() => evaluate("not an array", complete), /AOS_INVALID_OBSERVATIONS/);
+  assert.throws(() => evaluate([null], complete), /AOS_INVALID_OBSERVATIONS/);
 
   // A metric nothing in the run spoke to is still allowed, because that is what NOT_OBSERVED is.
   assert.equal(evaluate([], complete).cells.every((one) => one.status !== "ISSUED"), true);
