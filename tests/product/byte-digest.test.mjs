@@ -12,12 +12,14 @@ import {
   canonicalTreeDigest,
   canonicalTreeManifest,
   fileByteDigest,
+  handoffDigestsSameMultiset,
   isByteDigest,
   optionalFileTextDigest,
-  sha256Bytes
+  sha256Bytes,
+  treeByteDigest
 } from "../../lib/digest.mjs";
 import { runProcess } from "../../lib/core.mjs";
-import { loadLedger } from "../../lib/holdout.mjs";
+import { acceptanceOf, emptyLedger, judge, loadLedger, recordSession } from "../../lib/holdout.mjs";
 import { DIRECTORY, safeWalk } from "../../lib/safe-fs.mjs";
 import { run } from "./helpers.mjs";
 
@@ -178,7 +180,12 @@ test("file evidence carries the byte digest, the size and the media, and never o
     const manifest = canonicalTreeManifest(root);
     const byPath = Object.fromEntries(manifest.entries.map((entry) => [entry.path, entry]));
 
-    assert.equal(byPath["a.txt"].schema_id, "aos-file-evidence.v2");
+    // v3, not the v2 the issue names: this record carries `path_bytes`, records `mode` as the
+    // permission bits alone, and is refused by `canonicalTreeDigest` in the old shape. An
+    // identifier that stayed put over a redefinition is the silent schema upgrade the contract
+    // forbids.
+    assert.equal(byPath["a.txt"].schema_id, "aos-file-evidence.v3");
+    assert.equal(byPath["a.txt"].path_bytes, Buffer.from("a.txt", "utf8").toString("hex"));
     assert.equal(byPath["a.txt"].type, "file");
     assert.equal(byPath["a.txt"].size_bytes, 7);
     assert.equal(byPath["a.txt"].media, "text");
@@ -348,7 +355,7 @@ test("a refusal is part of the tree digest", () => {
   });
 });
 
-test("a directory that resolves outside the tree is refused without being walked", () => {
+test("a directory reached through a link out of the tree is refused without being walked", () => {
   const outside = scratch();
   withScratch((root) => {
     try {
@@ -467,7 +474,10 @@ test("a snapshot digest is the file's bytes and nothing else", () => {
 
 // --- artifact identity ----------------------------------------------------------------------------
 
-test("an artifact digest moves with the bytes, the name and the mode", () => {
+// The mode is not in this test's name because it is not in this test: it has one of its own,
+// "an artifact digest changes when the artifact's own mode changes". A name that lists a third
+// thing the assertions never touch is a claim of coverage that does not exist.
+test("an artifact digest moves with the bytes and the name it was handed under", () => {
   withScratch((root) => {
     const file = join(root, "report.md");
     writeFileSync(file, Buffer.from("line\n", "utf8"), { mode: 0o644 });
@@ -518,6 +528,15 @@ test("a symlink handed as an artifact is refused, and so is a special file", () 
     writeFileSync(join(root, "real"), Buffer.from("x", "utf8"));
     symlinkSync("real", join(root, "link"));
     assert.throws(() => artifactByteDigest(join(root, "link"), "link"), /AOS_SYMLINK_ARTIFACT/);
+    // The refusal is made by the open itself, so there is no window in which the target could be
+    // read instead: the target is a perfectly ordinary readable file and its digest is not what
+    // comes back under the link's name.
+    assert.match(artifactByteDigest(join(root, "real"), "link"), /^sha256:[0-9a-f]{64}$/);
+    // And a directory reached through a link is refused the same way, not walked.
+    mkdirSync(join(root, "bundle"));
+    writeFileSync(join(root, "bundle", "a"), Buffer.from("y", "utf8"));
+    symlinkSync("bundle", join(root, "linked-bundle"));
+    assert.throws(() => artifactByteDigest(join(root, "linked-bundle"), "linked-bundle"), /AOS_SYMLINK_ARTIFACT/);
     const fifo = join(root, "pipe");
     if (spawnSync("mkfifo", [fifo], { stdio: "ignore" }).status === 0) {
       assert.throws(() => artifactByteDigest(fifo, "pipe"), /AOS_UNSUPPORTED_ARTIFACT/);
@@ -567,51 +586,71 @@ test("a captured stream digest is over the bytes the agent produced", async () =
     // gave them the same value, and the failure signature an operator is shown is built from it.
     const digestOf = async (byte) => {
       const result = await runProcess(
-        { command: process.execPath, args: ["-e", `process.stdout.write(Buffer.from([${byte}]))`] },
+        {
+          command: process.execPath,
+          args: ["-e", `process.stdout.write(Buffer.from([${byte}]));process.stderr.write(Buffer.from([${byte}]))`]
+        },
         { prompt: "", workspace, session: "s", family: "FAM-1", timeoutMs: 30000, isolation: "BEST_EFFORT_CLI" }
       );
-      return result.stdout_digest;
+      return result;
     };
     const first = await digestOf(0xff);
     const second = await digestOf(0xfe);
-    assert.match(first, /^sha256:[0-9a-f]{64}$/);
-    assert.notEqual(first, second, "two different agent outputs carried the same evidence digest");
-    assert.equal(first, sha256Bytes(Buffer.from([0xff])));
+    assert.match(first.stdout_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.notEqual(first.stdout_digest, second.stdout_digest, "two different agent outputs carried the same evidence digest");
+    assert.equal(first.stdout_digest, sha256Bytes(Buffer.from([0xff])));
+    // Both streams, which "the bytes the agent produced" has always claimed. An agent that says
+    // nothing on stdout and everything on stderr is the ordinary shape of a failing one, and a
+    // decode there would give two different failures the same signature.
+    assert.match(first.stderr_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.notEqual(first.stderr_digest, second.stderr_digest, "two different agent error streams carried the same evidence digest");
+    assert.equal(first.stderr_digest, sha256Bytes(Buffer.from([0xff])));
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }
 });
 
-test("an unreadable directory or file is a refusal, not the end of the walk", () => {
+test("an unreadable directory is a refusal, not the end of the walk", () => {
   withScratch((root) => {
     // `chmod 000` is something an assessed agent can do to its own workspace. Letting the exception
     // out would report nothing at all about the tree rather than reporting the entry that failed.
     mkdirSync(join(root, "closed"));
     writeFileSync(join(root, "closed", "inside"), Buffer.from("x", "utf8"));
-    // The file half of the name, which this test used to leave out: only the directory was made
-    // unreadable, so nothing here said what happens to a file the walk can stat and cannot read.
-    writeFileSync(join(root, "shut.txt"), Buffer.alloc(11, 0x41), { mode: 0o644 });
     writeFileSync(join(root, "open.txt"), Buffer.from("y", "utf8"));
     chmodSync(join(root, "closed"), 0o000);
-    chmodSync(join(root, "shut.txt"), 0o000);
     try {
       const manifest = canonicalTreeManifest(root);
       const byPath = Object.fromEntries(manifest.entries.map((entry) => [entry.path, entry]));
       assert.equal(byPath.closed.refused, "unreadable-directory");
       assert.equal(byPath.closed.byte_digest, null);
-      // Running as root defeats mode 0000, and a test that silently passed there would be checking
-      // nothing. Where the mode holds, the entry is present, refused, and keeps what was knowable.
-      if (byPath["shut.txt"].refused !== null) {
-        assert.equal(byPath["shut.txt"].refused, "unreadable-entry");
-        assert.equal(byPath["shut.txt"].byte_digest, null);
-        assert.equal(byPath["shut.txt"].size_bytes, 11);
-        assert.equal(byPath["shut.txt"].mode, "0000");
-      }
       // The rest of the tree is still evidence.
       assert.match(byPath["open.txt"].byte_digest, /^sha256:[0-9a-f]{64}$/);
       assert.equal(manifest.refusals.some((entry) => entry.reason === "unreadable-directory"), true);
     } finally {
       chmodSync(join(root, "closed"), 0o755);
+    }
+  });
+});
+
+test("an unreadable file is a refusal that keeps its size and its mode", () => {
+  withScratch((root) => {
+    // Its own test rather than a conditional half of the directory one: an assertion that runs only
+    // when a mode happens to be enforced is not what a name promising "or file" claims. Mode 0000
+    // does not stop root, so this returns rather than asserting there -- the same shape as the
+    // tests that need `mkfifo`, and for the same reason.
+    if (process.getuid?.() === 0) return;
+    writeFileSync(join(root, "shut.txt"), Buffer.alloc(11, 0x41), { mode: 0o644 });
+    chmodSync(join(root, "shut.txt"), 0o000);
+    try {
+      const entry = canonicalTreeManifest(root).entries[0];
+      assert.equal(entry.path, "shut.txt");
+      assert.equal(entry.refused, "unreadable-entry");
+      assert.equal(entry.byte_digest, null);
+      // Present, sized, and not readable -- an omitted entry would read as a file that was never
+      // there, which is what an agent would want it to read as.
+      assert.equal(entry.size_bytes, 11);
+      assert.equal(entry.mode, "0000");
+    } finally {
       chmodSync(join(root, "shut.txt"), 0o644);
     }
   });
@@ -629,6 +668,14 @@ test("a refused entry appears exactly once, and a max-depth refusal names the di
     } finally {
       chmodSync(join(root, "closed"), 0o755);
     }
+
+    // And the second half of the name, which used to have no assertion under it: the refusal is
+    // recorded at the directory that exceeded the depth, named as that directory, exactly once.
+    mkdirSync(join(root, "a", "b", "c"), { recursive: true });
+    const deep = canonicalTreeManifest(root, { maxDepth: 2 });
+    const depths = deep.entries.filter((entry) => entry.refused === "max-depth");
+    assert.deepEqual(depths.map((entry) => entry.path), ["a/b/c"]);
+    assert.deepEqual(deep.refusals.filter((entry) => entry.reason === "max-depth").map((entry) => entry.path), ["a/b/c"]);
   });
 });
 
@@ -771,10 +818,12 @@ test("a filename's raw bytes are its identity in the tree", () => {
       const path = Buffer.concat([Buffer.from(`${directory}/`, "utf8"), Buffer.from([byte])]);
       try {
         writeFileSync(path, Buffer.from("the same contents", "utf8"));
-      } catch {
+      } catch (error) {
         // APFS refuses a filename that is not valid UTF-8 with EILSEQ, so the case cannot be built
         // on macOS at all. It can be on Linux, where every byte but `/` and NUL is a legal name and
-        // where CI runs the mutation this test is named by.
+        // where CI runs the mutation this test is named by. Only EILSEQ is skipped: catching every
+        // error would turn a genuine failure to write into a silent pass.
+        if (error.code !== "EILSEQ") throw error;
         return null;
       }
       return directory;
@@ -924,4 +973,207 @@ test("a recorded session's ledger identity is its bytes", () => {
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
+});
+
+// --- what a digest must refuse to answer ---------------------------------------------------------
+//
+// The round above was about two different things sharing one identity. These are the other shape of
+// the same mistake: a value handed back as exact identity when the thing it identifies was never
+// fully seen, and a manifest accepted as canonical when no walk would have produced it.
+
+test("an artifact whose tree carries a refusal is refused rather than identified", () => {
+  withScratch((root) => {
+    const bundle = join(root, "bundle");
+    mkdirSync(bundle);
+    writeFileSync(join(bundle, "a"), Buffer.from("x", "utf8"));
+    const whole = artifactByteDigest(bundle, "bundle");
+
+    // A refused entry keeps its path, type, mode, size and reason, and by construction not its
+    // bytes -- so two artifacts differing only inside a refused entry are one digest. That is a
+    // tolerable evidence manifest and an intolerable artifact identity, and the two were the same
+    // value.
+    mkdirSync(join(bundle, ".git"));
+    writeFileSync(join(bundle, ".git", "loose"), Buffer.from("bookkeeping", "utf8"));
+    assert.throws(() => artifactByteDigest(bundle, "bundle"), /AOS_ARTIFACT_INCOMPLETE .*skipped-directory/);
+    // The reason travels with the refusal rather than being reduced to "no".
+    rmSync(join(bundle, ".git"), { recursive: true, force: true });
+    symlinkSync("../../outside", join(bundle, "escape"));
+    assert.throws(() => artifactByteDigest(bundle, "bundle"), /AOS_ARTIFACT_INCOMPLETE .*symlink-escapes-tree/);
+
+    // And the separation this rests on: the tree digest is still available for the caller that
+    // wants an evidence manifest, and it is not the same question.
+    assert.match(treeByteDigest(bundle), /^sha256:[0-9a-f]{64}$/);
+    rmSync(join(bundle, "escape"));
+    assert.equal(artifactByteDigest(bundle, "bundle"), whole);
+  });
+});
+
+test("an artifact name's raw bytes are its identity", () => {
+  withScratch((root) => {
+    const file = join(root, "artifact");
+    writeFileSync(file, Buffer.from("the same contents", "utf8"));
+    // The name is the only thing separating two artifacts of identical content, and a caller that
+    // enumerated its outputs with a plain `readdirSync` hands over a decoded one: the raw bytes FF
+    // and FE both arrive as U+FFFD and two different artifacts are handed on under one digest.
+    assert.notEqual(
+      artifactByteDigest(file, Buffer.from([0xff])),
+      artifactByteDigest(file, Buffer.from([0xfe])),
+      "two artifact names differing by one byte produced one artifact digest"
+    );
+    // A string name and the same bytes are the same artifact, so this is a widening and not a
+    // second encoding.
+    assert.equal(artifactByteDigest(file, "report.md"), artifactByteDigest(file, Buffer.from("report.md", "utf8")));
+  });
+});
+
+test("a link through a symlinked directory out of the tree is refused", () => {
+  const outside = scratch();
+  withScratch((root) => {
+    try {
+      // Every component, not only the last one. `outer` names `linkdir/missing`, which reads as
+      // inside the tree as a string; `linkdir` is a link out of it, so following `outer` leaves the
+      // tree. Resolving the target as one lexical path accepted this.
+      symlinkSync(outside, join(root, "linkdir"));
+      symlinkSync("linkdir/missing", join(root, "outer"));
+      const byPath = Object.fromEntries(canonicalTreeManifest(root).entries.map((entry) => [entry.path, entry]));
+      assert.equal(byPath.linkdir.refused, "symlink-escapes-tree");
+      assert.equal(byPath.outer.refused, "symlink-escapes-tree", "a link through a symlinked ancestor was accepted");
+
+      // A link through an in-tree directory is still a link, so this is not a refusal of everything
+      // with more than one component in its target.
+      mkdirSync(join(root, "real"));
+      writeFileSync(join(root, "real", "file"), Buffer.from("x", "utf8"));
+      symlinkSync("real/file", join(root, "near"));
+      assert.equal(canonicalTreeManifest(root).entries.find((entry) => entry.path === "near").refused, null);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+});
+
+test("an entry that claims to be a file must carry the digest that identifies it", () => {
+  const entry = (over) => ({
+    schema_id: FILE_EVIDENCE_SCHEMA,
+    path: "a",
+    path_bytes: "61",
+    type: "file",
+    mode: "0644",
+    size_bytes: 1,
+    byte_digest: sha256Bytes(Buffer.from("A", "utf8")),
+    text_digest: null,
+    media: "text",
+    refused: null,
+    ...over
+  });
+  const manifest = (entries) => ({ schema_id: TREE_MANIFEST_SCHEMA, entries, refusals: [], totals: { entries: entries.length, bytes: 0 } });
+
+  // Every field was drawn from its own alphabet and the combination was one no walk produces: an
+  // unrefused regular file with no byte digest. Two of those, differing only in the text projection
+  // the row deliberately ignores, digested the same -- a row that claims to identify a file and
+  // carries nothing that does.
+  const noIdentity = (text) => entry({ byte_digest: null, text_digest: text });
+  assert.throws(
+    () => canonicalTreeDigest(manifest([noIdentity(sha256Bytes(Buffer.from("A", "utf8")))])),
+    /AOS_TREE_MANIFEST_ENTRY/
+  );
+  assert.throws(
+    () => canonicalTreeDigest(manifest([noIdentity(sha256Bytes(Buffer.from("B", "utf8")))])),
+    /AOS_TREE_MANIFEST_ENTRY/
+  );
+
+  for (const incoherent of [
+    { type: "file", refused: "file-too-large" },
+    { type: "file", size_bytes: null },
+    { type: "file", mode: null },
+    { type: "dir", byte_digest: sha256Bytes(Buffer.alloc(0)) },
+    { type: "dir", size_bytes: 0, byte_digest: null, mode: "0755" },
+    { type: "symlink", mode: "0777", byte_digest: sha256Bytes(Buffer.from("t", "utf8")) },
+    { type: "refused", refused: null, byte_digest: null },
+    { type: "refused", refused: "file-too-large", byte_digest: sha256Bytes(Buffer.alloc(0)) }
+  ]) {
+    assert.throws(() => canonicalTreeDigest(manifest([entry(incoherent)])), /AOS_TREE_MANIFEST_ENTRY/, JSON.stringify(incoherent));
+  }
+
+  // The combinations the walk does produce still hash.
+  assert.match(canonicalTreeDigest(manifest([entry({})])), /^sha256:[0-9a-f]{64}$/);
+  assert.match(
+    canonicalTreeDigest(manifest([entry({ type: "symlink", mode: null, byte_digest: sha256Bytes(Buffer.from("t", "utf8")), refused: "symlink-escapes-tree" })])),
+    /^sha256:[0-9a-f]{64}$/
+  );
+});
+
+test("a manifest that lists a path twice, or out of canonical order, is refused", () => {
+  const at = (name) => ({
+    schema_id: FILE_EVIDENCE_SCHEMA,
+    path: name,
+    path_bytes: Buffer.from(name, "utf8").toString("hex"),
+    type: "file",
+    mode: "0644",
+    size_bytes: 1,
+    byte_digest: sha256Bytes(Buffer.from("x", "utf8")),
+    text_digest: null,
+    media: "text",
+    refused: null
+  });
+  const manifest = (names) => ({
+    schema_id: TREE_MANIFEST_SCHEMA,
+    entries: names.map(at),
+    refusals: [],
+    totals: { entries: names.length, bytes: 0 }
+  });
+
+  // One path listed twice is two rows for one entry, and a reader keyed by path sees whichever came
+  // last while the digest carries both.
+  assert.throws(() => canonicalTreeDigest(manifest(["a", "a"])), /AOS_TREE_MANIFEST_ORDER/);
+  // And the order is part of the encoding, not an accident of who built the list: the same entries
+  // in another order are a different digest, so a manifest in an order no walk emits is refused
+  // rather than given a value nothing can reproduce.
+  assert.throws(() => canonicalTreeDigest(manifest(["b", "a"])), /AOS_TREE_MANIFEST_ORDER/);
+  assert.match(canonicalTreeDigest(manifest(["a", "b"])), /^sha256:[0-9a-f]{64}$/);
+  // Segment by segment, a parent before its children: `a-b` sorts before `a/b` byte-wise, and the
+  // walk emits `a`, `a/b`, `a-b`.
+  assert.match(canonicalTreeDigest(manifest(["a", "a/b", "a-b"])), /^sha256:[0-9a-f]{64}$/);
+  assert.throws(() => canonicalTreeDigest(manifest(["a", "a-b", "a/b"])), /AOS_TREE_MANIFEST_ORDER/);
+});
+
+test("a session recorded under the legacy identity is not counted, and not hidden either", () => {
+  const legacy = { digest: "a".repeat(64), use: "holdout", reported_status: "COMPLETE", actual_evidence: "COMPLETE" };
+  // `recordSession` refuses this shape now, so a legacy row can only arrive from a ledger written
+  // before the migration. That is the case: the migration was enforced going forward and ignored
+  // going backward, and one legacy holdout session with one true-positive judgement was accepted.
+  const withLegacy = { ...emptyLedger(), sessions: [legacy] };
+  const judged = judge(withLegacy, {
+    session_digest: legacy.digest, finding_id: "f1", rule: "completion-claimed-without-verification",
+    severity: "high", judgement: "true-positive"
+  });
+  const acceptance = acceptanceOf(judged);
+  assert.equal(acceptance.accepted, false, "a legacy row carried a product acceptance decision");
+  assert.equal(acceptance.precision.precision, null, "a legacy row was counted in the precision denominator");
+  assert.equal(acceptance.holdout_sessions, 0);
+  // Not silently dropped either: it is neither holdout nor tuning, and it is counted where an owner
+  // can see that their holdout is smaller than the file suggests.
+  assert.equal(acceptance.tuning_sessions, 0);
+  assert.equal(acceptance.legacy_sessions, 1);
+
+  // A row recorded under the byte identity still counts, so this is a check on the identity and not
+  // a refusal of the ledger.
+  const current = recordSession(emptyLedger(), {
+    digest: sha256Bytes(Buffer.from("a session", "utf8")), use: "holdout",
+    reported_status: "COMPLETE", actual_evidence: "COMPLETE"
+  });
+  assert.equal(acceptanceOf(current).holdout_sessions, 1);
+  assert.equal(acceptanceOf(current).legacy_sessions, 0);
+});
+
+test("the reordering diagnostic is not a second way to compare digests", () => {
+  const a = `sha256:${"1".repeat(64)}`;
+  const b = `sha256:${"2".repeat(64)}`;
+  assert.equal(handoffDigestsSameMultiset([a, b], [b, a]), true);
+  assert.equal(handoffDigestsSameMultiset([a, a], [a, b]), false, "duplicate counts have to survive");
+  // It says which of two mistakes was made and never accepts anything, so it has to refuse the
+  // values the exact comparison refuses. Without the digest check `[undefined]` and `[null]` are
+  // the same multiset, and "you had the right artifacts" about two lists holding no artifact at all
+  // is worse than no diagnosis.
+  assert.equal(handoffDigestsSameMultiset([undefined], [null]), false);
+  assert.equal(handoffDigestsSameMultiset(["a".repeat(64)], ["a".repeat(64)]), false, "a legacy bare-hex digest is not a digest here");
 });

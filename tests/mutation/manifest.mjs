@@ -16,11 +16,83 @@
 
 export const GUARDS = [
   {
+    guard: "refused tree is not artifact identity",
+    reason: "a tree carrying a refusal identifies no descendant inside it, so two artifacts differing only there are one digest",
+    file: "lib/digest.mjs",
+    from: "    if (manifest.refusals.length > 0) {",
+    to: "    if (false) {",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "an artifact whose tree carries a refusal is refused rather than identified"
+  },
+  {
+    guard: "raw artifact name bytes",
+    reason: "an artifact name decoded as UTF-8 hands two artifacts whose names differ by one byte on under one digest",
+    file: "lib/digest.mjs",
+    from: 'const nameBytes = (relative) => (Buffer.isBuffer(relative) ? relative : Buffer.from(String(relative), "utf8"));',
+    to: 'const nameBytes = (relative) => Buffer.from(String(relative), "utf8");',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "an artifact name's raw bytes are its identity"
+  },
+  {
+    guard: "symlink component expansion",
+    reason: "a target resolved as one lexical string accepts a link through an ancestor that points out of the tree",
+    file: "lib/digest.mjs",
+    from: "    if (!stats.isSymbolicLink()) {",
+    to: "    if (true) {",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a link through a symlinked directory out of the tree is refused"
+  },
+  {
+    guard: "entry state coherence",
+    reason: "field alphabets alone accept an unrefused regular file with no byte digest, which is a row that identifies nothing",
+    file: "lib/digest.mjs",
+    from: "const coherentEntry = (entry) => {",
+    to: "const coherentEntry = () => true; const unusedCoherentEntry = (entry) => {",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "an entry that claims to be a file must carry the digest that identifies it"
+  },
+  {
+    guard: "canonical manifest order and uniqueness",
+    reason: "a manifest listing one path twice, or in an order no walk emits, digests to a value nothing can reproduce",
+    file: "lib/digest.mjs",
+    from: "    if (compareCanonical(manifest.entries[at - 1].path_bytes, manifest.entries[at].path_bytes) >= 0) {",
+    to: "    if (false) {",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a manifest that lists a path twice, or out of canonical order, is refused"
+  },
+  {
+    guard: "top-level artifact open does not follow",
+    reason: "lstat then read is two questions at two moments, and the answer to the first does not bind the second",
+    file: "lib/digest.mjs",
+    from: "const ARTIFACT_OPEN = constants.O_RDONLY | O_NOFOLLOW | (constants.O_NONBLOCK ?? 0);",
+    to: "const ARTIFACT_OPEN = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a symlink handed as an artifact is refused, and so is a special file"
+  },
+  {
+    guard: "legacy ledger row is not holdout evidence",
+    reason: "a session digest that cannot tell two files apart must not carry a product acceptance decision",
+    file: "lib/holdout.mjs",
+    from: '    ledger.sessions.filter((entry) => entry.use === "holdout" && isByteDigest(entry.digest)).map((entry) => entry.digest)',
+    to: '    ledger.sessions.filter((entry) => entry.use === "holdout").map((entry) => entry.digest)',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a session recorded under the legacy identity is not counted, and not hidden either"
+  },
+  {
+    guard: "captured stderr byte authority",
+    reason: "an agent that says nothing on stdout and everything on stderr is the ordinary failing one, and a decode there gives two failures one signature",
+    file: "lib/core.mjs",
+    from: "      stderr_digest: sha256Bytes(stderr),",
+    to: '      stderr_digest: sha256Bytes(Buffer.from(stderr.toString("utf8"), "utf8")),',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a captured stream digest is over the bytes the agent produced"
+  },
+  {
     guard: "artifact type in the envelope",
     reason: "without it a regular file and a directory are handed on under one artifact identity",
     file: "lib/digest.mjs",
-    from: 'if (stat.isFile()) return sha256Bytes(artifactPreimage("file", stat, relative, fileByteDigest(path)));',
-    to: 'if (stat.isFile()) return sha256Bytes(artifactPreimage("dir", stat, relative, fileByteDigest(path)));',
+    from: 'if (stat.isFile()) return sha256Bytes(artifactPreimage("file", stat, relative, digestOf(readFileSync(fd))));',
+    to: 'if (stat.isFile()) return sha256Bytes(artifactPreimage("dir", stat, relative, digestOf(readFileSync(fd))));',
     test: "tests/product/byte-digest.test.mjs",
     name: "a file artifact and a directory artifact are different even where their contents digest the same"
   },
@@ -28,8 +100,8 @@ export const GUARDS = [
     guard: "artifact top-level mode",
     reason: "a script handed on identically at 0644 and 0755 is a digest that cannot see whether the receiver can run it",
     file: "lib/digest.mjs",
-    from: '  Buffer.from(`${ARTIFACT_SCHEMA}\\n${type}\\n${modeOf(stats)}\\n${Buffer.from(relative, "utf8").toString("hex")}\\n${digest}\\n`, "utf8");',
-    to: '  Buffer.from(`${ARTIFACT_SCHEMA}\\n${type}\\n${Buffer.from(relative, "utf8").toString("hex")}\\n${digest}\\n`, "utf8");',
+    from: '  Buffer.from(`${ARTIFACT_SCHEMA}\\n${type}\\n${modeOf(stats)}\\n${nameBytes(relative).toString("hex")}\\n${digest}\\n`, "utf8");',
+    to: '  Buffer.from(`${ARTIFACT_SCHEMA}\\n${type}\\n${nameBytes(relative).toString("hex")}\\n${digest}\\n`, "utf8");',
     test: "tests/product/byte-digest.test.mjs",
     name: "an artifact digest changes when the artifact's own mode changes"
   },
@@ -76,8 +148,8 @@ export const GUARDS = [
     guard: "symlink chain containment",
     reason: "checking only the first hop accepts a dangling chain whose end is outside the tree",
     file: "lib/digest.mjs",
-    from: "      if (!containsBytes(base, current)) return false;",
-    to: "",
+    from: "    const resolved = resolveChain(directory, target);\n    return resolved !== null && containsBytes(base, resolved);",
+    to: "    return true;",
     test: "tests/product/byte-digest.test.mjs",
     name: "a chain of dangling links that leaves the tree is refused"
   },
@@ -94,8 +166,8 @@ export const GUARDS = [
     guard: "canonical row field alphabet",
     reason: "an exported digest over unchecked fields lets a hand-built manifest forge a row boundary",
     file: "lib/digest.mjs",
-    from: '    if (!wellFormedEntry(entry)) throw new Error(`AOS_TREE_MANIFEST_ENTRY ${entry?.path ?? "?"}`);',
-    to: "",
+    from: '    if (!wellFormedFields(entry) || !coherentEntry(entry)) throw new Error(`AOS_TREE_MANIFEST_ENTRY ${entry?.path ?? "?"}`);',
+    to: '    if (!coherentEntry(entry)) throw new Error(`AOS_TREE_MANIFEST_ENTRY ${entry?.path ?? "?"}`);',
     test: "tests/product/byte-digest.test.mjs",
     name: "a manifest whose fields could forge a row boundary is refused rather than hashed"
   },
@@ -395,9 +467,9 @@ export const GUARDS = [
 /**
  * The guard names the specification lists, in its order.
  *
- * The manifest may hold more than these -- work since has added guards of its own -- so this is
- * checked as a floor rather than as an equality. What it forbids is one of the named eleven quietly
- * leaving the list.
+ * A contract with the specification rather than with this file: these eleven have to be here
+ * whatever else is. It is not what keeps the rest of the list honest -- see `ACCOUNTED_GUARDS`
+ * below, which exists because this one on its own could not.
  */
 export const REQUIRED_GUARDS = [
   "trusted-process import prohibition",
@@ -411,4 +483,81 @@ export const REQUIRED_GUARDS = [
   "malformed-row reporting",
   "workspace containment",
   "locked cycle seed"
+];
+
+/**
+ * Every guard in `GUARDS`, accounted for, checked as an exact set.
+ *
+ * `REQUIRED_GUARDS` was a floor, and a floor only protects what is standing on it. Every guard
+ * added after the specification -- which by now is most of them -- could have been deleted from
+ * `GUARDS` and the ordinary suite would have stayed green, because nothing outside `GUARDS`
+ * mentioned it. A manifest whose whole purpose is to notice a guard that quietly stopped being
+ * load-bearing was doing exactly that to itself.
+ *
+ * The check is equality in both directions, which is what makes it different from the floor it
+ * replaces rather than a second copy of the same mistake. A floor falls behind by default: adding a
+ * guard and not listing it was allowed, so the list drifted while the suite stayed green. Under
+ * equality neither drift is possible -- an unlisted guard fails, and a listed guard that has left
+ * `GUARDS` fails -- so the list cannot be out of date and green at the same time, which is the only
+ * property that matters.
+ *
+ * Adding a guard means adding its name here, in the same commit, sorted. Two branches adding guards
+ * conflict here exactly as they already conflict in `GUARDS` above, and the resolution is the union.
+ *
+ * The version of this that needs no list at all puts the witness next to each guarded test -- a
+ * marker in the test file naming the guard, checked as a bijection against `GUARDS`. That is the
+ * better shape and it is not this one, because it means editing every test file that any guard
+ * names, and most of those belong to other issues. It is worth doing as one deliberate pass once
+ * the release's branches have landed.
+ */
+export const ACCOUNTED_GUARDS = [
+  "artifact top-level mode",
+  "artifact type in the envelope",
+  "binary handling",
+  "canonical manifest order and uniqueness",
+  "canonical path, type and mode tuple",
+  "canonical row field alphabet",
+  "captured stderr byte authority",
+  "captured stream byte authority",
+  "central redaction",
+  "checkpoint evidence preserved",
+  "close-evidence issue-specific fields",
+  "close-evidence verdict",
+  "coverage gate",
+  "credential env refusal",
+  "cycle run identity",
+  "entry state coherence",
+  "escaping link keeps its own bytes",
+  "exact revision binding",
+  "execution plan cycle detection",
+  "false completion cap",
+  "handoff exact compare",
+  "hot-file single owner",
+  "legacy digest separation",
+  "legacy ledger row is not holdout evidence",
+  "locked cycle seed",
+  "malformed-row reporting",
+  "operator decision window",
+  "phase-ready scope",
+  "raw Buffer authority",
+  "raw artifact name bytes",
+  "raw filename bytes",
+  "raw link target bytes",
+  "refusal marker in the tree digest",
+  "refused size in the tree digest",
+  "refused tree is not artifact identity",
+  "safety cap",
+  "session ledger byte identity",
+  "skipped directory is still an entry",
+  "stale blocked status",
+  "symlink chain containment",
+  "symlink component expansion",
+  "symlink escape refusal",
+  "top-level artifact open does not follow",
+  "trend dedupe",
+  "trusted-process import prohibition",
+  "verification result check",
+  "workspace containment",
+  "workspace snapshot reads bytes",
+  "workspace snapshot records directories"
 ];
