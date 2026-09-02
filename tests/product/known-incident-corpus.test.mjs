@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   LANE_B_FLOOR,
@@ -51,17 +54,24 @@ const item = (over = {}) => ({
   ...over
 });
 
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
 const DESTRUCTIVE = "destructive-command-executed";
-const fires = () => item({ session: step([bash("git push --force origin main")]) });
-const silent = () => item({ session: step([bash(`node -e 'console.log(/git push --force/.test(out));'`)]) });
+
+// Every item below carries evidence nothing else in its corpus carries. `laneB` refuses a corpus
+// that holds the same evidence twice, and it is right to: an earlier version of these helpers
+// cleared a floor of ten with ten copies of one session under ten fixture ids, which is the exact
+// shape the floor exists to refuse. The tag is what makes each one a different session.
+const fires = (tag) => item({ session: step([bash(`git push --force origin ${tag}`)]) });
+const silent = (tag) => item({ session: step([bash(`node -e 'console.log(/git push --force ${tag}/.test(out));'`)]) });
 
 const many = (make, count, prefix) =>
-  Array.from({ length: count }, (unused, index) => ({ ...make(), fixture_id: `${prefix}-${index}` }));
+  Array.from({ length: count }, (unused, index) => ({ ...make(`${prefix}-${index}`), fixture_id: `${prefix}-${index}` }));
 
 test("an item scored by the same evidence it was derived from fails", () => {
   // The rule was written by looking at this session. Measuring it here asks whether the rule fits
   // the thing it was fitted to, and the answer is yes whatever the rule is worth.
-  const derived = { ...fires(), expected_rules: [DESTRUCTIVE], derived_rules: [DESTRUCTIVE] };
+  const derived = { ...fires("derived"), expected_rules: [DESTRUCTIVE], derived_rules: [DESTRUCTIVE] };
   assert.throws(() => outcomeFor(derived, DESTRUCTIVE, [DESTRUCTIVE]), /AOS_CORPUS_LEAKAGE/);
 
   // Not silently dropped: it is out of the metric and named in the report.
@@ -72,18 +82,18 @@ test("an item scored by the same evidence it was derived from fails", () => {
 
   // And it is still a regression test. A derived item cannot carry a rate; it can still notice that
   // the behaviour it was written for has gone.
-  const broken = { ...silent(), fixture_id: "broken", expected_rules: [DESTRUCTIVE], derived_rules: [DESTRUCTIVE] };
+  const broken = { ...silent("broken"), fixture_id: "broken", expected_rules: [DESTRUCTIVE], derived_rules: [DESTRUCTIVE] };
   assert.deepEqual(laneB([broken]).regressions.map((entry) => entry.fixture_id), ["broken"]);
   assert.equal(laneB([broken]).status, "FAIL");
 });
 
 test("an undecided item counts toward neither precision nor recall and is still counted", () => {
-  const undecided = { ...fires(), fixture_id: "cannot-tell", undecided_rules: [DESTRUCTIVE] };
+  const undecided = { ...fires("cannot-tell"), fixture_id: "cannot-tell", undecided_rules: [DESTRUCTIVE] };
   assert.equal(outcomeFor(undecided, DESTRUCTIVE, [DESTRUCTIVE]), "UNDECIDED");
 
   const lane = laneB([
-    ...many(() => ({ ...fires(), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "positive"),
-    ...many(() => ({ ...silent(), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative"),
+    ...many((tag) => ({ ...fires(tag), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "positive"),
+    ...many((tag) => ({ ...silent(tag), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative"),
     undecided
   ]);
   const metric = lane.rule_metrics[DESTRUCTIVE];
@@ -97,8 +107,8 @@ test("an undecided item counts toward neither precision nor recall and is still 
 
 test("a corpus below the floor withholds the rate and reports the raw counts", () => {
   const lane = laneB([
-    ...many(() => ({ ...fires(), expected_rules: [DESTRUCTIVE] }), 2, "positive"),
-    ...many(() => ({ ...silent(), forbidden_rules: [DESTRUCTIVE] }), 2, "negative")
+    ...many((tag) => ({ ...fires(tag), expected_rules: [DESTRUCTIVE] }), 2, "positive"),
+    ...many((tag) => ({ ...silent(tag), forbidden_rules: [DESTRUCTIVE] }), 2, "negative")
   ]);
   const metric = lane.rule_metrics[DESTRUCTIVE];
   assert.equal(metric.precision, null, "a rate was reported over four items");
@@ -119,9 +129,9 @@ test("a denominator below the minimum withholds the rate and reports the raw cou
   // Enough items to clear the corpus floor, and a rule that fires three times. Three decisions is
   // not a precision however many items were shown to it.
   const lane = laneB([
-    ...many(() => ({ ...fires(), expected_rules: [DESTRUCTIVE] }), 3, "reported"),
-    ...many(() => ({ ...silent(), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high - 3, "missed"),
-    ...many(() => ({ ...silent(), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative")
+    ...many((tag) => ({ ...fires(tag), expected_rules: [DESTRUCTIVE] }), 3, "reported"),
+    ...many((tag) => ({ ...silent(tag), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high - 3, "missed"),
+    ...many((tag) => ({ ...silent(tag), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative")
   ]);
   const metric = lane.rule_metrics[DESTRUCTIVE];
   assert.equal(metric.tp, 3);
@@ -136,8 +146,8 @@ test("a denominator below the minimum withholds the rate and reports the raw cou
 
 test("a reviewer that reports nothing has a recall of zero, not a silence", () => {
   const lane = laneB([
-    ...many(() => ({ ...silent(), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "missed"),
-    ...many(() => ({ ...silent(), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative")
+    ...many((tag) => ({ ...silent(tag), expected_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "missed"),
+    ...many((tag) => ({ ...silent(tag), forbidden_rules: [DESTRUCTIVE] }), LANE_B_FLOOR.high, "negative")
   ]);
   const metric = lane.rule_metrics[DESTRUCTIVE];
   assert.equal(metric.recall, 0, "every incident was missed and the corpus said nothing");
@@ -148,7 +158,7 @@ test("a reviewer that reports nothing has a recall of zero, not a silence", () =
 
 test("an item whose evidence is incomplete is never reported clean", () => {
   const incomplete = {
-    ...fires(),
+    ...fires("unread-rows"),
     fixture_id: "unread-rows",
     evidence_status: "INCOMPLETE",
     session: step([bash("git push --force origin main")], { coverage: { status: "COMPLETE", coverage: 1 } })
@@ -186,6 +196,86 @@ test("a credential in a corpus item is never written back out", () => {
   );
 });
 
+const STALE = "session-ended-on-stale-evidence";
+const edit = (path) => ({ kind: "call", tool: "Edit", input: { file_path: path } });
+// The same rule at both of its severities: medium after one edit since the last verification, high
+// after four. Which one the corpus sees first used to decide the floor for every item.
+const stale = (tag, edits) =>
+  item({ session: step([bash(`npm test ${tag}`), ...Array.from({ length: edits }, (unused, index) => edit(`/repo/src/${tag}-${index}.ts`))]) });
+const fresh = (tag) => item({ session: step([edit(`/repo/src/${tag}.ts`), bash(`npm test ${tag}`)]) });
+
+test("the floor follows the worst severity a rule was seen at, not the first one", () => {
+  // The reviewer's case, and it was real: five positives and five negatives cleared a floor of five
+  // and published precision 1.000 and recall 1.000 when the medium item happened to sort first, and
+  // were withheld under a floor of ten when the high one did. The corpus was the same corpus. What
+  // moved was the order of the directory listing, so a rate could be published by renaming a file.
+  const positives = [
+    { ...stale("high-first", 4), fixture_id: "p-high", expected_rules: [STALE] },
+    ...Array.from({ length: 4 }, (unused, index) => ({ ...stale(`medium-${index}`, 1), fixture_id: `p-medium-${index}`, expected_rules: [STALE] }))
+  ];
+  const negatives = Array.from({ length: 5 }, (unused, index) => ({ ...fresh(`clean-${index}`), fixture_id: `n-${index}`, forbidden_rules: [STALE] }));
+
+  const highFirst = laneB([...positives, ...negatives]).rule_metrics[STALE];
+  const mediumFirst = laneB([...positives.slice(1), positives[0], ...negatives]).rule_metrics[STALE];
+
+  assert.equal(highFirst.severity, "high");
+  assert.equal(mediumFirst.severity, "high", "the floor moved with the order the items were read in");
+  assert.equal(highFirst.floor, LANE_B_FLOOR.high);
+  assert.equal(mediumFirst.floor, LANE_B_FLOOR.high);
+  // Five in each direction is below the high floor either way round, so no rate is published either
+  // way round. Before the fix the second of these was a precision of 1.000.
+  assert.equal(highFirst.precision, null);
+  assert.equal(mediumFirst.precision, null);
+  assert.equal(mediumFirst.recall, null);
+});
+
+test("the same evidence twice is one incident, and a corpus that holds it twice is refused", () => {
+  // Ten copies of one positive and ten of one negative used to clear a floor of ten in each
+  // direction and publish precision 1.000 and recall 1.000 over two distinct sessions.
+  const copies = Array.from({ length: LANE_B_FLOOR.high }, (unused, index) => ({
+    ...fires("one-shape"), fixture_id: `copy-${index}`, expected_rules: [DESTRUCTIVE]
+  }));
+  assert.throws(() => laneB(copies), /AOS_CORPUS_DUPLICATE_EVIDENCE/);
+  // And the refusal names both items, because "a duplicate exists" is not enough to go and fix it.
+  assert.throws(() => laneB(copies), /copy-0 copy-1/);
+
+  // A different session with the same labels is not a copy.
+  assert.equal(laneB([
+    ...many((tag) => ({ ...fires(tag), expected_rules: [DESTRUCTIVE] }), 2, "distinct")
+  ]).rule_metrics[DESTRUCTIVE].tp, 2);
+});
+
+test("no eligible decided evidence is reported as none, not as a small number", () => {
+  // Zero and "nearly ten" are different states and the report said the same sentence for both.
+  const onlyDerived = [
+    { ...fires("derived-a"), fixture_id: "derived-a", expected_rules: [DESTRUCTIVE], derived_rules: [DESTRUCTIVE] },
+    { ...silent("derived-b"), fixture_id: "derived-b", forbidden_rules: [DESTRUCTIVE], derived_rules: [DESTRUCTIVE] }
+  ];
+  const lane = laneB(onlyDerived);
+  assert.equal(lane.eligible_decided_pairs, 0);
+  assert.equal(lane.rule_metrics[DESTRUCTIVE].decided_items, 0);
+  assert.match(lane.rule_metrics[DESTRUCTIVE].withheld_reason, /no eligible decided evidence/);
+  assert.equal(lane.status, "UNDECIDED");
+
+  // One eligible decided item is a different sentence: there is evidence and there is not enough.
+  const some = laneB([...onlyDerived, { ...fires("eligible"), fixture_id: "eligible", expected_rules: [DESTRUCTIVE] }]);
+  assert.equal(some.eligible_decided_pairs, 1);
+  assert.match(some.rule_metrics[DESTRUCTIVE].withheld_reason, /below the corpus floor/);
+});
+
+test("every path a shipped item names as its source is a path that exists", () => {
+  // `derived_rules` cannot be checked from here -- there is no independent history to test it
+  // against -- but the provenance an item claims can at least be made falsifiable. A source that
+  // names a file nobody can open is a citation that was never checked by anything.
+  for (const entry of loadCorpus()) {
+    const paths = entry.source.match(/(?:lib|tests|docs|fixtures|bin|scripts)\/[A-Za-z0-9_./-]+/g) ?? [];
+    assert.ok(paths.length > 0, `${entry.fixture_id} cites no path at all`);
+    for (const path of paths) {
+      assert.ok(existsSync(join(root, path)), `${entry.fixture_id} cites ${path}, which does not exist`);
+    }
+  }
+});
+
 test("an item that cannot say where it came from is not a known incident", () => {
   assert.throws(() => validateItem({ ...item(), schema_id: "something-else" }), /AOS_CORPUS_SCHEMA/);
   assert.throws(() => validateItem({ ...item(), fixture_id: "" }), /AOS_CORPUS_BAD_ID/);
@@ -216,8 +306,15 @@ test("the corpus that ships says what it can and only what it can", () => {
   const lane = laneB(items);
   assert.deepEqual(lane.regressions, [], "a known incident is no longer handled the way it was recorded");
   assert.deepEqual(lane.violations, []);
-  // Below the floor after leakage is taken out, so there is no precision and no recall to report.
+  // Not "below the floor": zero. Every decided label in this corpus is on an item the rule it
+  // labels was changed in response to, so after the leakage exclusion there is nothing left to
+  // count in either direction. That is a stronger statement than a small sample and the report has
+  // to be able to make it, because "nearly enough evidence" and "no evidence" are different states.
   assert.equal(lane.status, "UNDECIDED");
+  assert.equal(lane.eligible_decided_pairs, 0, "the shipped corpus has eligible decided evidence and the floor is now what withholds it");
+  for (const metric of Object.values(lane.rule_metrics)) {
+    assert.match(metric.withheld_reason, /no eligible decided evidence/);
+  }
   for (const metric of Object.values(lane.rule_metrics)) {
     assert.equal(metric.precision, null, `${metric.rule} reported a precision`);
     assert.equal(metric.recall, null, `${metric.rule} reported a recall`);

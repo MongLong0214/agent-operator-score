@@ -62,12 +62,19 @@ test("an agent that does the work is still scored when the operator changes noth
 
 // A ledger that has judged nothing printed `FAIL high-severity precision`, which reads as the
 // reviewer falling short of its target. Nothing had been measured at all.
+//
+// The word this asserts changed from "undecided" to "withheld" when the report stopped being
+// generated from the unfloored acceptance object: there is no longer a gate line with a value in
+// it, so there is no longer a place for a value to be missing from. What is asserted is the same
+// property and one more of it -- the state is named, it is not named as a failure, and there is no
+// rate anywhere on the page.
 test("a gate with nothing to measure is not reported as a failure", () => {
   const home = temporary("aos-undecided-");
   try {
     const shown = aos(home, home, ["holdout"]);
-    assert.match(shown.stdout, /high-severity precision — undecided/);
+    assert.match(shown.stdout, /high-severity precision: withheld/);
     assert.doesNotMatch(shown.stdout, /FAIL {2}high-severity precision/);
+    assert.doesNotMatch(shown.stdout, /\b\d\.\d{3}\b/);
     // Undecided is still not accepted: the word changed, the bar did not.
     assert.notEqual(shown.status, 0);
     assert.match(shown.stdout, /not accepted/);

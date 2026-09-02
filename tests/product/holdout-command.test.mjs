@@ -72,11 +72,53 @@ test("recording, judging and reporting go through the ledger on disk", () => {
     const listed = run(cwd, ["holdout", "--session", session]);
     assert.match(listed.stdout, new RegExp(`${id}.*false-positive`));
 
+    // This assertion used to read `FAIL  high-severity precision`, which encoded the defect: a rate
+    // over one decided finding, printed as a gate verdict. One false positive made it "— 0" and one
+    // true positive made it "— 1", and a notice underneath saying the number was not a measurement
+    // does not unprint a number. Withheld has to mean absent, so what is asserted here now is that
+    // the rate is gone and the counts and the reason are not.
     const report = run(cwd, ["holdout"], 1);
     assert.match(report.stdout, /1 holdout session/);
-    assert.match(report.stdout, /FAIL {2}high-severity precision/);
+    assert.match(report.stdout, /high-severity precision: withheld/);
+    assert.equal(/high-severity precision — /.test(report.stdout), false, "the unfloored gate line is back");
+    assert.equal(/\b\d\.\d{3}\b/.test(report.stdout), false, "a rate reached a report below the floor");
+    // The evidence the withheld rate would have been computed from is still printed.
+    assert.match(report.stdout, /0 right, 1 wrong/);
     assert.match(report.stdout, /not accepted/);
     assert.match(report.stdout, /local product acceptance/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("neither report the command can print carries a rate below the floor", () => {
+  // Two output paths and only one of them used to be floored. `--lanes` was built on the lane
+  // result and withheld correctly; the default report was built on the acceptance object, which
+  // carries an unfloored precision, so the plain text printed a gate verdict over one decision and
+  // `--json` carried `precision` alongside it. Absent means absent on every path out of here.
+  const { cwd, session } = withSession();
+  try {
+    run(cwd, ["holdout", "--session", session, "--use", "holdout"]);
+    const listed = run(cwd, ["holdout", "--session", session]);
+    const id = /^\s{2}([0-9a-f]{16})\s{2}\[high\]/m.exec(listed.stdout)[1];
+    run(cwd, ["holdout", "--session", session, "--finding", id, "--verdict", "true-positive"]);
+
+    // One true positive and nothing else: the arithmetic says 1.000 and the sample says nothing.
+    const json = JSON.parse(run(cwd, ["holdout", "--json"], 1).stdout);
+    assert.equal(json.status, "UNDECIDED");
+    assert.equal(json.precision, null);
+    assert.equal(json.precision_withheld, true);
+    assert.equal(json.tp, 1, "the counts went with the rate");
+    assert.equal(json.decided_high, 1);
+    assert.equal(/"precision":\s*[0-9]/.test(JSON.stringify(json)), false);
+
+    const plain = run(cwd, ["holdout"], 1);
+    assert.match(plain.stdout, /high-severity precision: withheld/);
+    assert.equal(/\b1\.000\b|\b100%/.test(plain.stdout), false, "a perfect score over one finding");
+
+    const lanes = run(cwd, ["holdout", "--lanes"], 1);
+    assert.match(lanes.stdout, /precision withheld/);
+    assert.equal(/\b1\.000\b/.test(lanes.stdout), false);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

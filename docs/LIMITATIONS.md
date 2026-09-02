@@ -83,13 +83,29 @@ not be wrong in.
 That measurement is below the floor the product now applies to itself. `aos holdout --lanes`
 reports two lanes and will not publish a rate from either one until the sample can carry it.
 
-Lane A is the local holdout: fifty held-back sessions and twenty decided high-severity findings
-before a precision is reported at all. Below either figure the status is `UNDECIDED` -- not PASS,
-not FAIL -- and the precision is **withheld**, which means absent from the report rather than
-printed as zero or as an interval. The counts stay: right, wrong, and the ones the owner could
-not decide. A verdict of `unclear` is counted and shown and enters neither side of the rate,
-because a reviewer graded only on the findings somebody could label has a precision that
-describes the easy ones.
+Lane A is the local holdout: fifty held-back sessions, twenty decided high-severity findings, those
+decisions reaching at least ten different sessions, and at least as many decided findings as
+undecided ones. Below any of those the status is `UNDECIDED` -- not PASS, not FAIL -- and the
+precision is **withheld**, which means absent from the report rather than printed as zero or as an
+interval. Both reports the command can print are generated from that floored result; an earlier
+version printed the default report from an unfloored acceptance object, so a single decided finding
+produced a gate line reading `FAIL high-severity precision — 0` with a sentence underneath saying
+the number was not a measurement. A notice under a printed number is not absence.
+
+The counts stay: right, wrong, and the ones the owner could not decide. A verdict of `unclear` is
+counted and shown and enters neither side of the rate, because a reviewer graded only on the
+findings somebody could label has a precision that describes the easy ones -- which is why the
+abstentions are now part of the floor rather than only printed beside it. The spread figure is there
+for the same kind of reason: fifty sessions and twenty decisions were both satisfied by forty-nine
+sessions that contributed nothing and one that carried every verdict.
+
+**None of those four numbers is derived from a power calculation, and none of them should be read as
+one.** Twenty decisions at a measured 0.90 is consistent with a true rate of roughly 0.70 to 0.97.
+They are declared product-acceptance thresholds: clearing them buys a number that may be published,
+not a number that is precise. The Lane A floor was also set after the 0.400 measurement below
+already existed, which makes it a threshold chosen with the result in view rather than before it.
+It does not retire that result -- the 0.400 stays on this page and a test fails if it leaves -- but
+it is not a preregistered threshold and is not defended as one.
 
 Lane B is a **known-incident fixture** rate over `fixtures/known-incidents/`: sessions
 reconstructed from incidents this repository already recorded, each labelled with the rules that
@@ -97,14 +113,51 @@ must fire and the rules that must stay silent. It has a recall, which lane A can
 name is the limit -- it is a rate over fixtures somebody chose, never a recall over anybody's
 sessions.
 
-Almost every item in that corpus is an incident a rule was **changed in response to**, and an item
-cannot measure the rule it wrote. Those pairs are excluded from the arithmetic by name and stay in
-the corpus as regression tests. What is left is far below the floor of ten labelled items in each
-direction per high-severity rule, so every rate in lane B is withheld too. The gate works and
-correctly reports that it has nothing to report; that is not the same as having a number.
+Every item in that corpus is an incident a rule was **changed in response to**, and an item cannot
+measure the rule it wrote. Those pairs are excluded from the arithmetic by name and stay in the
+corpus as regression tests. What is left is not a small sample: it is **nothing**. After the
+exclusion there are zero eligible decided labels, and the report says zero rather than "below the
+floor of ten", because a corpus that is nearly there and a corpus with no evidence in it are
+different states.
+
+Two other things decide that floor and both used to be wrong. A rule does not have one severity --
+`session-ended-on-stale-evidence` is medium after one edit and high after four -- and the first
+version of this kept whichever severity the corpus produced first, so the floor for a rule was ten
+or five depending on the order the directory listed. It is now the worst severity the rule was seen
+at. And nothing stopped a corpus from holding the same session ten times under ten fixture ids,
+which cleared a floor of ten in each direction with two distinct shapes; identical evidence is now
+refused outright. Near-identical evidence is not: an item with one character changed is a different
+digest and counts again, and no check here can tell that from a second incident.
+
+The larger limit is what a declaration can be worth. `derived_rules` is the field the whole
+separation rests on, and it is a claim the author of the rules wrote about their own rules, in the
+same change, with no independent history to check it against. Omitting a rule name from that array
+makes the item eligible and nothing in the product would notice. The items are also reconstructions
+rather than recordings: they isolate one cause from a session that had several, and where an item
+does that its own `incident` field now says so. So this is a corpus of reconstructions written by
+the author of the rules. It can show that a rule stopped doing what it was recorded doing. It cannot
+establish that a rule was measured on evidence it did not come from.
 
 So: `aos review` is EXPERIMENTAL, its precision claim is WITHHELD, and the only measured figure
 this product has about its own reviewer is still the 0.400 above.
+
+### Two ways a destructive command is still missed
+
+Both were found while building the corpus above, and neither is fixed here.
+
+A Codex `local_shell_call` row is a shape this parser does not read. The session is correctly
+reported as `INCOMPLETE` -- coverage falls and nothing is passed off as clean -- but any command
+inside one is invisible, so `rm -rf` in that shape produces no finding at all. The 929/931 incident
+was the neighbouring shape, `custom_tool_call`, and that one is read.
+
+A destructive command inside a quoted argument is not reported even when the row is read.
+`psql -c 'DROP TABLE runs'` parses correctly and raises nothing, because a match inside quotes is
+treated as text rather than as a command -- the guard that stops a `DROP TABLE` in a migration body
+being read as a command that ran. That exclusion is right about patch bodies and wrong about `-c`.
+
+An earlier version of the corpus carried the first of these as an item labelled `UNDECIDED`, which
+turned a miss the evidence was explicit about into an abstention. Both are written down here
+instead, where they read as what they are.
 
 ## What a real run looks like
 

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   MVP_DECIDED_HIGH,
+  MVP_DECIDED_SESSIONS,
   MVP_HOLDOUT_SESSIONS,
   emptyLedger,
   judge,
@@ -10,6 +11,7 @@ import {
   recordSession,
   sessionDigestOf
 } from "../../lib/holdout.mjs";
+import { laneReport } from "../../lib/review-lanes.mjs";
 
 // The floor, and what a report is allowed to say below it.
 //
@@ -17,7 +19,7 @@ import {
 // ledger already refused to invent a rate when nothing was decided; it did not refuse to print one
 // when almost nothing was. These tests are about the second case, which is the one that ships.
 
-const ledgerWith = ({ sessions = 0, verdicts = [], over = {} } = {}) => {
+const ledgerWith = ({ sessions = 0, verdicts = [], over = {}, into = null } = {}) => {
   const digests = Array.from({ length: sessions }, (unused, index) => sessionDigestOf(`session ${index}`));
   let ledger = emptyLedger();
   for (const digest of digests) {
@@ -27,7 +29,9 @@ const ledgerWith = ({ sessions = 0, verdicts = [], over = {} } = {}) => {
   }
   verdicts.forEach((judgement, index) => {
     ledger = judge(ledger, {
-      session_digest: digests[index % digests.length],
+      // `into` concentrates every verdict in the first few sessions. The default spreads them, which
+      // is what a real holdout does and what the floor now requires.
+      session_digest: digests[index % Math.min(into ?? digests.length, digests.length)],
       finding_id: `f${index}`,
       rule: "destructive-command-executed",
       severity: "high",
@@ -105,6 +109,83 @@ test("an undecided finding counts toward neither side and is still counted", () 
   assert.equal(undecidable.status, "UNDECIDED");
   assert.equal(undecidable.unclear, 40);
   assert.equal(undecidable.precision, null);
+});
+
+test("twenty decisions inside one session is a fact about one session", () => {
+  // Fifty sessions and twenty decisions were both satisfied while forty-nine of the sessions
+  // contributed nothing, so the sessions figure was decoration: it counted what was held back, not
+  // what was decided. A precision quoted about a reviewer is a claim across sessions.
+  const concentrated = laneA(ledgerWith({
+    sessions: MVP_HOLDOUT_SESSIONS,
+    verdicts: repeat("true-positive", MVP_DECIDED_HIGH),
+    into: 1
+  }));
+  assert.equal(concentrated.status, "UNDECIDED");
+  assert.equal(concentrated.precision, null);
+  assert.equal(concentrated.decided_sessions, 1);
+  assert.equal(concentrated.floor.sessions_met, true, "the other two figures were met and are reported as met");
+  assert.equal(concentrated.floor.decided_met, true);
+  assert.equal(concentrated.floor.decided_sessions_met, false);
+  assert.match(concentrated.withheld_reason, /fewer than 10 sessions/);
+
+  // One short of the required spread is still short.
+  const nearly = laneA(ledgerWith({
+    sessions: MVP_HOLDOUT_SESSIONS,
+    verdicts: repeat("true-positive", MVP_DECIDED_HIGH),
+    into: MVP_DECIDED_SESSIONS - 1
+  }));
+  assert.equal(nearly.status, "UNDECIDED");
+  assert.equal(nearly.decided_sessions, MVP_DECIDED_SESSIONS - 1);
+
+  const spread = laneA(ledgerWith({
+    sessions: MVP_HOLDOUT_SESSIONS,
+    verdicts: repeat("true-positive", MVP_DECIDED_HIGH),
+    into: MVP_DECIDED_SESSIONS
+  }));
+  assert.equal(spread.status, "PASS");
+  assert.equal(spread.decided_sessions, MVP_DECIDED_SESSIONS);
+});
+
+test("a rate over the findings that could be judged, when most could not, is withheld", () => {
+  // The abstentions were counted and printed and that was all they did. Twenty decisions and a
+  // thousand shrugs is a rate over the twenty that were easy, published as a rate about a reviewer.
+  const mostlyUnclear = laneA(ledgerWith({
+    sessions: MVP_HOLDOUT_SESSIONS,
+    verdicts: [...repeat("true-positive", MVP_DECIDED_HIGH), ...repeat("unclear", MVP_DECIDED_HIGH + 1)]
+  }));
+  assert.equal(mostlyUnclear.status, "UNDECIDED");
+  assert.equal(mostlyUnclear.precision, null);
+  assert.equal(mostlyUnclear.floor.abstention_met, false);
+  assert.match(mostlyUnclear.withheld_reason, /more findings undecided than decided/);
+  // The counts are still there. Withholding a rate is not withholding the evidence.
+  assert.equal(mostlyUnclear.unclear, MVP_DECIDED_HIGH + 1);
+  assert.equal(mostlyUnclear.decided_high, MVP_DECIDED_HIGH);
+
+  // Half is the line, and at the line the rate is reported.
+  const half = laneA(ledgerWith({
+    sessions: MVP_HOLDOUT_SESSIONS,
+    verdicts: [...repeat("true-positive", MVP_DECIDED_HIGH), ...repeat("unclear", MVP_DECIDED_HIGH)]
+  }));
+  assert.equal(half.floor.abstention_met, true);
+  assert.equal(half.status, "PASS");
+});
+
+test("an undecided lane is not a quiet pass", () => {
+  // The claim is what a reader carries away, so it is the thing that must not outrun the evidence.
+  // Lane A passing on its own is not a production-quality review product: lane B has no rate.
+  const passing = ledgerWith({ sessions: MVP_HOLDOUT_SESSIONS, verdicts: repeat("true-positive", MVP_DECIDED_HIGH) });
+  assert.equal(laneA(passing).status, "PASS");
+
+  const report = laneReport({ ledger: passing });
+  assert.equal(report.lane_b.status, "UNDECIDED");
+  assert.equal(report.claim, "EXPERIMENTAL", "one passing lane was read as both");
+  assert.equal(report.review_stage, "EXPERIMENTAL");
+  assert.equal(report.precision_claim, "REPORTED", "lane A has a rate and the claim about the rate says so");
+
+  // And with neither lane passing, which is where this product actually is.
+  const undecided = laneReport({ ledger: ledgerWith({ sessions: 1, verdicts: ["true-positive"] }) });
+  assert.equal(undecided.claim, "EXPERIMENTAL");
+  assert.equal(undecided.precision_claim, "WITHHELD");
 });
 
 test("a violation below the floor fails rather than waiting for a bigger sample", () => {

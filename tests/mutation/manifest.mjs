@@ -16,10 +16,64 @@
 
 export const GUARDS = [
   {
+    guard: "decisions must reach past one session",
+    reason: "twenty verdicts inside one held-back session clear a floor of fifty sessions and twenty decisions and measure one session",
+    file: "lib/holdout.mjs",
+    from: "    decided_sessions_met: precision.decided_sessions >= MVP_DECIDED_SESSIONS,",
+    to: "    decided_sessions_met: true,",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "twenty decisions inside one session is a fact about one session"
+  },
+  {
+    guard: "abstention cannot outweigh decision",
+    reason: "a rate over the findings that could be judged, when most of them could not, describes the ones that were easy",
+    file: "lib/holdout.mjs",
+    from: "    abstention_met: precision.unclear <= precision.decided",
+    to: "    abstention_met: true",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "a rate over the findings that could be judged, when most could not, is withheld"
+  },
+  {
+    guard: "the command prints the floored result",
+    reason: "the unfloored acceptance object was the one the default report was generated from, so a rate over one decision reached the screen with a notice under it",
+    file: "lib/cli.mjs",
+    from: "    emit(io, canonicalJson(lane).trimEnd());",
+    to: "    emit(io, canonicalJson({ ...lane, precision: lane.tp / (lane.tp + lane.fp) }).trimEnd());",
+    test: "tests/product/holdout-command.test.mjs",
+    name: "neither report the command can print carries a rate below the floor"
+  },
+  {
+    guard: "the floor follows the worst severity observed",
+    reason: "keeping the first severity seen let the corpus order decide whether a rule's floor was ten or five, so a rate could be published by renaming a file",
+    file: "lib/incident-corpus.mjs",
+    from: "      severities.set(finding.rule, worseOf(severities.get(finding.rule), finding.severity));",
+    to: "      if (!severities.has(finding.rule)) severities.set(finding.rule, finding.severity);",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "the floor follows the worst severity a rule was seen at, not the first one"
+  },
+  {
+    guard: "the same evidence cannot be counted twice",
+    reason: "ten copies of one session under ten fixture ids cleared a floor of ten in each direction and published a rate over two distinct shapes",
+    file: "lib/incident-corpus.mjs",
+    from: "  refuseDuplicateEvidence(items);",
+    to: "  items.length;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "the same evidence twice is one incident, and a corpus that holds it twice is refused"
+  },
+  {
+    guard: "no eligible evidence is said to be none",
+    reason: "reporting zero eligible decided items as \"below the floor of ten\" reads as a corpus that is nearly there, and the corpus that ships has nothing at all",
+    file: "lib/incident-corpus.mjs",
+    from: "    metric.withheld_reason = metric.decided_items === 0",
+    to: "    metric.withheld_reason = false",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "no eligible decided evidence is reported as none, not as a small number"
+  },
+  {
     guard: "holdout floor",
     reason: "a precision over one decided finding describes that finding and is published as a product claim",
     file: "lib/holdout.mjs",
-    from: "const met = floor.sessions_met && floor.decided_met;",
+    from: "const met = floor.sessions_met && floor.decided_met && floor.decided_sessions_met && floor.abstention_met;",
     to: "const met = true;",
     test: "tests/product/review-holdout-floor.test.mjs",
     name: "one true positive and no false positives is undecided, not perfect"
@@ -111,8 +165,11 @@ export const GUARDS = [
     file: "lib/review-lanes.mjs",
     from: 'const both = lane_a.status === "PASS" && lane_b.status === "PASS";',
     to: "const both = true;",
-    test: "tests/product/no-raw-holdout-data.test.mjs",
-    name: "nothing that goes into the lane report came out of a transcript"
+    // Named against a test about the claim, not one about transcript provenance. The mutation did
+    // die under that test, but only against an incidental assertion at the end of it: a guard whose
+    // killing assertion is a bystander is one refactor away from being a guard nothing checks.
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "an undecided lane is not a quiet pass"
   },
   {
     guard: "execution plan cycle detection",
