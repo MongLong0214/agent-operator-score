@@ -44,6 +44,9 @@ test("cleaning up scratch cannot end a run", async () => {
     );
     // The property under test: cleanup reports what it could not remove instead of throwing from
     // a `finally` and replacing the run's own result. The run has a result, and it is the agent's.
+    // The writer above is a race -- the sweep may kill it before the walk -- so the assertions on
+    // the reported shape live in the deterministic case below, which makes its own HOME
+    // unremovable.
     assert.equal(result.exit_code, 0, "the run did not survive its own cleanup");
     assert.match(result.stdout_excerpt, /did the work/u);
     assert.equal(Array.isArray(result.scratch_not_removed), true);
@@ -62,6 +65,39 @@ test("cleaning up scratch cannot end a run", async () => {
 });
 
 // #459
+test("what cleanup could not remove is reported by class and digest, never by path", async () => {
+  // Deterministic, where the sibling above is a race: the agent makes a directory inside its own
+  // HOME unwritable, so removing the file in it is refused and the walk raises. #556 publishes this
+  // list in the run result and in the confinement record, and both are absolute paths on the
+  // operator's machine -- their home directory, the run's own id -- so both carry a class, a digest
+  // of the path and the errno instead.
+  const workspace = temporary("aos-cleanup-refused-");
+  try {
+    const lockItsOwnHome = [
+      'const { mkdirSync, writeFileSync, chmodSync } = require("node:fs");',
+      'const { join } = require("node:path");',
+      'const dir = join(process.env.HOME, "sealed");',
+      'mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, "x"), "y"); chmodSync(dir, 0o500);',
+      'process.stdout.write("sealed\\n");'
+    ].join("");
+    const result = await runProcess(
+      { id: "x", command: process.execPath, args: ["-e", lockItsOwnHome] },
+      { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "cleanup-refused-run", timeoutMs: 30000 }
+    );
+    assert.equal(result.exit_code, 0);
+    assert.ok(result.scratch_not_removed.length > 0, "the sealed directory was removed after all");
+    const published = JSON.stringify(result);
+    assert.equal(/\/(Users|home)\//u.test(published.replace(/"stdout_excerpt":"[^"]*"/u, "")), false, "an absolute home path reached the result");
+    for (const entry of result.scratch_not_removed) {
+      assert.deepEqual(Object.keys(entry).sort(), ["class", "code", "path_digest"]);
+      assert.match(entry.path_digest, /^sha256:[0-9a-f]{64}$/u);
+      assert.match(entry.class, /agent-home|run-scratch|confinement-scratch|other/u);
+    }
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("an agent that fails two families identically stops the run", () => {
   // A Claude Code route exited 1 after a second with `Not logged in · Please run /login`, four
   // times, and the report blamed the operator for producing no contract.

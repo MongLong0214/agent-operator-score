@@ -18,7 +18,7 @@
   "stderr": {
     "bytes": 426,
     "lines": 18,
-    "digest": "sha256:b9026657b554d9f4a00b3b496ab036f72e571dd915fbfdef5fa8ca66b32fa139",
+    "digest": "sha256:95cbf7039bd16b289cf96831a3fe4a377327c1ef6801c361671d33003477a8ed",
     "markers": {
       "logged_in": false,
       "answered_ok": true,
@@ -28,7 +28,7 @@
   },
   "parse_error": null,
   "captured": {
-    "duration_ms": 4755,
+    "duration_ms": 4911,
     "staging": {
       "dir": "@AGENT_TEMP_HOME@/.codex",
       "staged": [

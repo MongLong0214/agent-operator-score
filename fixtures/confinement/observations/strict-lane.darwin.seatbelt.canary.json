@@ -109,7 +109,7 @@
         "run_store": true
       },
       "descendant": {
-        "pid": 38356,
+        "pid": 58351,
         "observed_by_scan": true,
         "dead_after_cleanup": true,
         "escapee_confined": true,
@@ -117,36 +117,45 @@
         "survivors": []
       },
       "orphan": {
-        "pid": 38358,
+        "pid": 58354,
         "found_by_sweep": true,
         "dead_after_cleanup": true,
         "scanners": [
           "environment-marker",
+          "process-group",
           "open-path"
         ]
       }
     },
-    "evidence_digest": "sha256:7328fbde69dbb8493d4b097003485f84bb6c45c9f581df2f2585e1e83f8307f3",
+    "evidence_digest": "sha256:0e44c0aa85366e567413e1fb20131478f92181212492ce0de54bc5f16b9ca096",
     "program_digest": "sha256:c9514b838895344c8675ec911134d36608a838813a38e659b04ac59bd1b0c863",
     "policy_digest": "sha256:640abcfb0c5bcce628b70a814bc258bfa87c15730a6781eb9f12162e5880dff5",
-    "rendered_profile_digest": "sha256:fac4408259ec746bbdf2fa612ae34b31ad2135bac1186aee5b5565f2bf992648",
+    "rendered_profile_digest": "sha256:ff4469046dde6f273ea64a1890268ec61c17cf1028526583146cf77781401bb2",
     "scan_polls": 7,
     "group_sweep": {
-      "pgid": 38338,
+      "pgid": 58317,
       "members": []
     },
     "survivor_sweep": {
       "scanned": true,
       "scanners": [
         "environment-marker",
+        "process-group",
         "open-path"
       ],
       "marker_used": true,
       "paths": 3,
+      "group_enumerated": 0,
       "survivors": [],
       "found_before_signal": [
-        38358
+        58354
       ]
+    },
+    "runtime_identity": {
+      "status": "VERIFIED",
+      "digest": "sha256:1436bfbd0f443198d529ea9a342c600a48397e104cd048aba5910331076318c1",
+      "matches_adapter": true,
+      "reason": null
     },
     "network_policy": "provider-required-unrestricted",
     "bindings": {

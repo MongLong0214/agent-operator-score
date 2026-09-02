@@ -169,6 +169,10 @@ const resolvedOr = (path) => {
         // matrix requires it, so a recorded lane that never looked for the orphan cannot be
         // official.
         survivor_sweep: canary.survivor_sweep,
+        // Which executable the lane was measured with, and whether #554 verified it as this
+        // adapter's runtime. The matrix reads it: a row whose recorded run staged a credential for
+        // an unidentified program is not the lane the release proved.
+        runtime_identity: handle.staging.identity,
         network_policy: handle.policy.network.policy,
         bindings: Object.fromEntries(Object.entries(handle.bindings).map(([key, value]) => [key, value === null ? null : scrubber(value)]))
       }

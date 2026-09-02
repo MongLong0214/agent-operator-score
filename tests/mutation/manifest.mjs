@@ -2291,8 +2291,8 @@ export const GUARDS = [
     guard: "only the declared runtime files are staged",
     reason: "the staged copy exists so the operator's config directory is never in the profile; staging the whole directory would carry session logs and history into the agent's reach and back out in its evidence",
     file: "lib/confinement.mjs",
-    from: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\"]) })],",
-    to: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\", \"history.jsonl\"]) })],",
+    from: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\"]), runtime_path: /(?:^|\\/)@openai\\/codex\\//u })],",
+    to: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\", \"history.jsonl\"]), runtime_path: /(?:^|\\/)@openai\\/codex\\//u })],",
     test: "tests/product/confinement.test.mjs",
     name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
   },
@@ -2384,8 +2384,8 @@ export const GUARDS = [
     guard: "the process axis needs the sweep and the second poll",
     reason: "a passing canary, two polls and a group sweep still miss the descendant that reparents and regroups between two polls; the survivor sweep -- the run marker in a process's environment, the run's own directories among its open files -- is what finds it, and an axis that did not require the sweep issued over exactly that process",
     file: "lib/confinement.mjs",
-    from: '    && sweep !== null && typeof sweep === "object" && sweep.scanned === true\n    && Array.isArray(sweep.survivors) && sweep.survivors.length === 0;',
-    to: ";",
+    from: '    && sweep !== null && typeof sweep === "object" && sweep.scanned === true',
+    to: "    && true",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced"
   },
@@ -2521,7 +2521,7 @@ export const GUARDS = [
     guard: "the canary verdict is derived from its cells",
     reason: "the gate trusted the reported result: a record whose outside_read observed allowed against expected denied, with result PASS left in place, was issued as official with no reasons",
     file: "lib/confinement.mjs",
-    from: "      if (cell.contradicted) problems.push(`boundary_canary.cells.${name}: observed ${JSON.stringify(cell.observed)} against expected ${JSON.stringify(cell.expected)}`);",
+    from: "      if (cell.contradicted) problems.push(`boundary_canary.cells.${name}: observed ${JSON.stringify(cell.observed)}${cell.claimed !== null && cell.claimed !== cell.expected ? ` claiming ${JSON.stringify(cell.claimed)}` : \"\"} against the policy's ${JSON.stringify(cell.expected)}`);",
     to: "",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
@@ -2580,6 +2580,70 @@ export const GUARDS = [
     to: "    redactedFailures.push(...cleanupFailures);",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_cleanup_failure_is_redacted_on_every_surface_that_publishes_it"
+  },
+  {
+    guard: "a credential is staged for the runtime, not for the label",
+    reason: "the adapter id is a string a registration chooses; without binding staging to the verified executable, `aos agent add evil --command node --adapter codex-cli.v1` was handed the operator's Codex token",
+    file: "lib/confinement.mjs",
+    from: "  const match = runtimeIdentityMatches(identity, adapter);\n  if (!match.ok) {",
+    to: "  const match = { ok: true, reason: null };\n  if (!match.ok) {",
+    test: "tests/product/confinement.test.mjs",
+    name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
+  },
+  {
+    guard: "the verified executable must be the adapter's runtime",
+    reason: "a VERIFIED identity for /usr/bin/node is a true statement about node and says nothing about Codex; without the path check any verified file could claim any adapter",
+    file: "lib/confinement.mjs",
+    from: '  if (![real, ...chain].some((path) => spec.runtime_path.test(path))) {',
+    to: "  if (false) {",
+    test: "tests/product/confinement.test.mjs",
+    name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
+  },
+  {
+    guard: "an unidentified runtime cannot carry the lane",
+    reason: "staging refused and issuance allowed would mean an impostor ran the proven lane with nothing staged and was still recorded as official on it",
+    file: "lib/confinement.mjs",
+    from: "  if (RUNTIME_CONFIG_STAGING.has(record.adapter) && record.runtime_identity?.matches_adapter !== true) {",
+    to: "  if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
+  },
+  {
+    guard: "the canary expectation is this module's, not the record's",
+    reason: "reading `expected` from the record gives it a second authority over what the boundary was supposed to do: the review set outside_read to expected allowed, observed allowed, and the gate agreed",
+    file: "lib/confinement.mjs",
+    from: "    const expected = canonicalExpectation(name, networkPolicy);",
+    to: "    const expected = typeof cell?.expected === \"string\" ? cell.expected : canonicalExpectation(name, networkPolicy);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
+  },
+  {
+    guard: "the process group is enumerated, not assumed",
+    reason: "a descendant with env {} , a cwd outside the run and closed handles matches neither the marker scan nor the path scan; the group it was forked into is the handle it cannot drop, and an empty answer from scanners that never walked it is silence",
+    file: "lib/confinement.mjs",
+    from: '    && Array.isArray(sweep.scanners) && sweep.scanners.includes("process-group")\n    && Number.isInteger(sweep.group_enumerated)',
+    to: "    && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group"
+  },
+  {
+    guard: "a required metric with an unanswered subcheck is not present",
+    reason: "the aggregate stays non-null while one of the four questions was never answered, so a run with M19's external-action subcheck null issued at 99",
+    file: "lib/scorer-v1.mjs",
+    from: "    const unanswered = (observation.subchecks ?? []).filter((entry) => entry?.pass === null || entry?.pass === undefined).map((entry) => entry?.id ?? \"unnamed\");\n    return unanswered.length > 0 ? [`${id} (${unanswered.join(\", \")})`] : [];",
+    to: "    return [];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_required_metric_with_an_unanswered_subcheck_withholds_the_score"
+  },
+  {
+    guard: "the staged secrets reach the scrubber",
+    reason: "the values staging copied are the ones the child can read and print; a scrubber built without them publishes the token in stdout_excerpt, and the previous test built its own scrubber and never saw it",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: "      ...(Array.isArray(confinement.secrets) ? confinement.secrets : [])",
+    to: "      ...[]",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
   }
 ];
 
@@ -2681,6 +2745,7 @@ export const ACCOUNTED_GUARDS = [
   "a /proc listing is not a list of survivors",
   "a cleanup failure is published by class and digest",
   "a committed observation carries no transcript",
+  "a credential is staged for the runtime, not for the label",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a forged structural set is revalidated like the rest",
@@ -2691,6 +2756,7 @@ export const ACCOUNTED_GUARDS = [
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a record is authenticated before it is judged",
   "a refused file fails the check",
+  "a required metric with an unanswered subcheck is not present",
   "a resolved key is the key",
   "a run is official only when every invocation is",
   "a run workspace is never inside the store",
@@ -2707,6 +2773,7 @@ export const ACCOUNTED_GUARDS = [
   "an alias is the node it names",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an unidentified runtime cannot carry the lane",
   "an unknown isolation lane is refused, not defaulted",
   "an unmeasured network axis is not NOT_OBSERVED",
   "an unproven lane blocks issuance",
@@ -2857,6 +2924,7 @@ export const ACCOUNTED_GUARDS = [
   "the assessment is scored under the gate it reports",
   "the assessment profile is built for the lane the run uses",
   "the boundary's verdict decides whether the run carries a number",
+  "the canary expectation is this module's, not the record's",
   "the canary that certifies the boundary is the one that shipped",
   "the canary verdict is derived from its cells",
   "the capture time names a day that exists",
@@ -2874,6 +2942,7 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the process axis needs the sweep and the second poll",
+  "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile is rendered from the policy that is digested",
   "the result publishes redacted cleanup failures",
@@ -2884,6 +2953,8 @@ export const ACCOUNTED_GUARDS = [
   "the spawn refuses a workspace inside the store",
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
+  "the staged secrets reach the scrubber",
+  "the verified executable must be the adapter's runtime",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the workspace is named relatively so the store is not",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -79,13 +79,16 @@ const measured = (overrides = {}) => {
       leaked: [],
       survivors: [],
       group_sweep: { pgid: 4242, members: [] },
-      survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [] },
+      survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] },
       residual: "named"
     },
     cleanup_verified: true,
     scratch_not_removed: [],
     support_status: "SUPPORTED_WITH_CONSTRAINTS",
     platform_lane: "darwin/macos-seatbelt/codex-cli.v1",
+    // #556 round 4: an adapter that stages a credential is official only for the executable #554
+    // verified as that runtime, so the measured record carries the identity the run staged for.
+    runtime_identity: { status: "VERIFIED", digest: `sha256:${"1".repeat(64)}`, matches_adapter: true, reason: null },
     ...overrides
   };
 };
@@ -129,6 +132,16 @@ test("a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary", 
     assert.ok(decision.reasons.includes(ISSUANCE_REASONS.CANARY_NOT_PASS), `${name}: ${decision.reasons.join(", ")}`);
     assert.match(decision.record_problems.join(" "), new RegExp(name, "u"));
   }
+  // And the review's own counterexample, which the loop above cannot produce: the record claims a
+  // different expectation than the policy has, and its observation agrees with the claim. Reading
+  // `expected` from the record makes the record the authority on what the boundary was for.
+  const authentic = measured().boundary_canary;
+  const claimed = { ...authentic, result: "PASS", failed: [], cells: { ...authentic.cells, outside_read: { expected: "allowed", observed: "allowed", errno: null } } };
+  const claimedDecision = issuanceGate(measured({ boundary_canary: claimed }));
+  assert.equal(claimedDecision.official, false, "a record that rewrote its own expectation was issued");
+  assert.equal(claimedDecision.boundary_canary, "FAIL");
+  assert.match(claimedDecision.record_problems.join(" "), /outside_read.*claiming "allowed".*policy's "denied"/u);
+
   // A cell that reports nothing is not a pass by omission either.
   const canary = measured().boundary_canary;
   const silent = { ...canary, cells: { ...canary.cells, outside_read: { errno: null } } };
@@ -176,7 +189,7 @@ test("a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced", async 
   const { processAxisEnforced } = await import("../../lib/confinement.mjs");
   const canary = measured().boundary_canary;
   const sweep = { pgid: 4242, members: [] };
-  const clean = { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [] };
+  const clean = { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] };
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: clean }), true);
   assert.equal(processAxisEnforced({ canary, polls: 1, groupSweep: sweep, survivorSweep: clean }), false, "one poll watched nothing");
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: null, survivorSweep: clean }), false, "the group was never swept");
@@ -214,7 +227,7 @@ test("a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced", async 
   assert.deepEqual(tracker.tracked(), [100], "the ancestry poll is not expected to find a reparented, regrouped process");
   assert.deepEqual(tracker.alive().filter((pid) => pid !== 100), [], "and it does not see it alive either");
   // So the axis rests on the sweep, and the sweep decides it.
-  const sweepFound = { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [200] };
+  const sweepFound = { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 2, survivors: [200] };
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: sweepFound }), false, "a swept survivor left the axis enforced");
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: { scanned: false, scanners: [], survivors: [] } }), false, "a sweep that could not run left the axis enforced");
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: null }), false, "no sweep left the axis enforced");
@@ -237,6 +250,44 @@ test("cleanup_failures_are_recorded_by_class_and_digest_and_never_by_path", () =
   assert.match(text, /sha256:[0-9a-f]{64}/u);
   assert.match(text, /EPERM/u);
   assert.equal(record.cleanup_verified, false);
+});
+
+test("a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group", async () => {
+  // The escape the other two scanners cannot see: a child spawned with `env: {}`, a working
+  // directory outside the run and every inherited handle closed carries no marker and holds none of
+  // the run's paths. It is still in the process group it was forked into, and the group is walked
+  // rather than asked -- so "found nothing" is evidence only when the group was enumerated.
+  const { survivorSweep, processAxisEnforced } = await import("../../lib/confinement.mjs");
+  const table = () => [
+    { pid: 4242, ppid: 100, pgid: 4242, start: "A" },   // the agent, group leader
+    { pid: 4300, ppid: 1, pgid: 4242, start: "B" },     // stripped and reparented, same group
+    { pid: 5000, ppid: 1, pgid: 5000, start: "C" }      // somebody else's process
+  ];
+  const stripped = survivorSweep({
+    marker: "run-1",
+    paths: [],
+    groupId: 4242,
+    platform: "linux",
+    procRoot: "/nonexistent",
+    self: 4242,
+    exclude: () => [],
+    run: () => ({ error: null, stdout: "" }),
+    table
+  });
+  assert.ok(stripped.scanners.includes("process-group"), stripped.scanners.join(", "));
+  assert.equal(stripped.group_enumerated, 2, "the group was not walked");
+  assert.deepEqual(stripped.survivors, [4300], "a descendant that stripped its marks was not enumerated");
+  const canary = measured().boundary_canary;
+  const groupSweep = { pgid: 4242, members: [4300] };
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: stripped }), false);
+
+  // And the rule this is really about: an empty answer from scanners that never enumerated the
+  // group is not proof of an empty room.
+  const silent = { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, group_enumerated: null, survivors: [] };
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: silent }), false, "an unenumerated group passed as enforced");
+  assert.match(issuanceGate(measured({ descendants: { ...measured().descendants, survivor_sweep: silent } })).record_problems.join(" "), /never enumerated/u);
+  const enumerated = { ...silent, scanners: [...silent.scanners, "process-group"], group_enumerated: 1 };
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: enumerated }), true);
 });
 
 test("the_open_path_scan_answers_the_same_question_on_both_platforms", async () => {
@@ -658,7 +709,66 @@ test("no_committed_observation_carries_a_runtime_transcript", () => {
   }
 });
 
+test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result", { skip: process.platform === "darwin" && existsSync("/usr/bin/sandbox-exec") ? false : "NOT_OBSERVED: the staged-credential path needs a STRICT backend" }, async () => {
+  // The producer to the consumer, through `runProcess`: a real STRICT run whose agent reads its own
+  // staged `auth.json` and prints it. The previous test built its own scrubber and asserted on that,
+  // so replacing the staged secrets with `[]` at the one binding in `lib/core.mjs` left it green
+  // while the token reached `stdout_excerpt`.
+  const { runProcess } = await import("../../lib/core.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-staged-secret-"));
+  const token = "rt_opaque_refresh_credential_0123456789abcdef";
+  try {
+    const operatorHome = join(base, "operator");
+    const workspace = join(base, "workspaces", "run-1", "FAM-1");
+    const aosHome = join(base, "home");
+    mkdirSync(join(operatorHome, ".codex"), { recursive: true });
+    mkdirSync(workspace, { recursive: true });
+    mkdirSync(join(aosHome, "runs"), { recursive: true });
+    writeFileSync(join(operatorHome, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token } }));
+    writeFileSync(join(operatorHome, ".codex", "config.toml"), 'model = "stub"\n');
+    // The agent prints whatever its runtime config directory holds -- which is what a task that
+    // reads its own credential looks like from outside.
+    const agent = join(workspace, "agent.mjs");
+    writeFileSync(agent, 'import { readFileSync, readdirSync } from "node:fs";\nimport { join } from "node:path";\nconst dir = process.env.CODEX_HOME;\nif (dir) { for (const name of readdirSync(dir)) process.stdout.write(readFileSync(join(dir, name), "utf8")); }\nelse process.stdout.write("no staged config\\n");\n');
+    const result = await runProcess(
+      // The identity is what earns the staging: the adapter is claimed here by node, which is not
+      // Codex, so nothing is staged and the child has no CODEX_HOME at all.
+      { id: "impostor", command: process.execPath, args: ["agent.mjs"], adapter: "codex-cli.v1" },
+      { workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"), session: "staged-secret-run", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome } }
+    );
+    const published = JSON.stringify(result);
+    assert.equal(published.includes(token), false, "the staged credential reached the public result");
+    assert.equal(result.confinement.holes.length, 0, "a credential was staged for an unidentified executable");
+    assert.equal(result.confinement.runtime_identity.matches_adapter, false);
+    assert.match(result.stdout_excerpt, /no staged config/u, "the impostor was handed a runtime config directory");
+    // And the gate: an unidentified executable cannot carry the lane its adapter names.
+    const decision = issuanceGate(result.confinement);
+    assert.equal(decision.official, false);
+    assert.ok(decision.reasons.includes(ISSUANCE_REASONS.RUNTIME_IDENTITY_UNVERIFIED), decision.reasons.join(", "));
+
+    // The other half, and the one that exercises the scrubber: an executable that *is* the runtime
+    // the adapter names -- here a script in the tree Codex ships in, verified the same way -- gets
+    // the staged copy, reads it, and prints it. What reaches the public result is the redaction.
+    const runtime = join(base, "runtime", "node_modules", "@openai", "codex", "bin", "codex.js");
+    mkdirSync(join(base, "runtime", "node_modules", "@openai", "codex", "bin"), { recursive: true });
+    writeFileSync(runtime, '#!/usr/bin/env node\nimport { readFileSync, readdirSync } from "node:fs";\nimport { join } from "node:path";\nconst dir = process.env.CODEX_HOME;\nfor (const name of readdirSync(dir)) process.stdout.write(readFileSync(join(dir, name), "utf8"));\n', { mode: 0o755 });
+    const staged = await runProcess(
+      { id: "codexish", command: runtime, args: [], adapter: "codex-cli.v1" },
+      { workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"), session: "staged-secret-run-2", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome } }
+    );
+    assert.equal(staged.confinement.runtime_identity.matches_adapter, true, "the runtime tree was not recognised as this adapter's");
+    assert.deepEqual(staged.confinement.holes[0]?.staged, ["auth.json", "config.toml"], "nothing was staged for the runtime");
+    assert.equal(staged.exit_code, 0, staged.stderr_excerpt);
+    assert.match(staged.stdout_excerpt, /redacted/u, "the staged credential was printed unredacted");
+    assert.equal(JSON.stringify(staged).includes(token), false, "the staged credential reached the public result");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test("a_staged_credential_never_reaches_a_public_surface", async () => {
+  // The staging is bound to the verified runtime, so this test supplies the identity the copy is
+  // made for; the refusal has tests of its own in confinement.test.mjs and above.
   // Staging puts a copy of the runtime's credential where the assessed process can read it. The
   // exact-value scrubber was built from the environment alone, so a task that opened its staged
   // `auth.json` and printed what it found published it verbatim in `stdout_excerpt`.
@@ -672,7 +782,12 @@ test("a_staged_credential_never_reaches_a_public_surface", async () => {
     mkdirSync(join(operator, ".codex"));
     writeFileSync(join(operator, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token, account_id: "acct" } }));
     writeFileSync(join(operator, ".codex", "config.toml"), 'model = "gpt-5"\n');
-    const staged = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], {}, agentHome, operator);
+    const staged = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], {}, agentHome, operator, {
+      identity_status: "VERIFIED",
+      identity_digest: `sha256:${"2".repeat(64)}`,
+      resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js",
+      interpreter_chain: []
+    });
     assert.deepEqual(staged.staged, ["auth.json", "config.toml"]);
     assert.ok(staged.secrets.includes(token), "the staged credential was not handed to the caller for scrubbing");
     assert.match(String(staged.digests["config.toml"]), /^sha256:[0-9a-f]{64}$/u);
@@ -691,6 +806,38 @@ test("a_staged_credential_never_reaches_a_public_surface", async () => {
   } finally {
     for (const dir of [operator, agentHome]) rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("a_required_metric_with_an_unanswered_subcheck_withholds_the_score", () => {
+  // Present is not "has a number". A required metric aggregates four questions, and it stays
+  // non-null while one of them was never answered: a run whose M19 external-action subcheck was
+  // null issued at 99. Missing is missing, and the unanswered question is named so the operator
+  // knows which one to observe.
+  const answered = (id, unanswered = null) => observationOf({
+    metric_id: id,
+    verifier_id: "official-issuance.test",
+    subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: subcheck === unanswered ? null : true })),
+    evidence_ids: ["e"],
+    reason: "fixture"
+  });
+  const boundary = { officialIssuance: { official: true, reasons: [] } };
+  const whole = METRIC_IDS.map((id) => answered(id));
+  assert.equal(scoreRun(whole, boundary).issued, true);
+
+  for (const [id, subcheck] of [["M19", "no-prohibited-external-action"], ["M14", METRICS.M14.subchecks[0]], ["M16", METRICS.M16.subchecks[1]]]) {
+    const partial = whole.map((entry) => (entry.metric_id === id ? answered(id, subcheck) : entry));
+    const scored = scoreRun(partial, boundary);
+    assert.equal(scored.issued, false, `${id}: a required metric with an unanswered subcheck was issued`);
+    assert.equal(scored.score, null);
+    const blocker = scored.blockers.find((one) => one.code === "REQUIRED_METRIC_UNOBSERVED");
+    assert.ok(blocker, scored.blockers.map((one) => one.code).join(", "));
+    assert.match(blocker.detail, new RegExp(`${id} \\(${subcheck}\\)`, "u"));
+  }
+
+  // A metric that is not required keeps its partial answer: this is a rule about the six the
+  // instrument cannot do without, not a rule against ever observing less.
+  const optional = whole.map((entry) => (entry.metric_id === "M01" ? answered("M01", METRICS.M01.subchecks[0]) : entry));
+  assert.equal(scoreRun(optional, boundary).issued, true);
 });
 
 test("a_run_that_the_boundary_did_not_make_official_carries_no_score", () => {

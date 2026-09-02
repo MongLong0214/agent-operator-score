@@ -94,9 +94,13 @@ const passingRecord = (overrides = {}) => {
       program_digest: sha256Bytes(Buffer.from(BOUNDARY_CANARY_PROGRAM)),
       scan_polls: 7
     },
-    descendants: { scan: DESCENDANT_SCAN, poll_interval_ms: 200, polls: 12, tracked: [4242], leaked: [], survivors: [], group_sweep: { pgid: 4242, members: [] }, survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [] }, residual: "x" },
+    descendants: { scan: DESCENDANT_SCAN, poll_interval_ms: 200, polls: 12, tracked: [4242], leaked: [], survivors: [], group_sweep: { pgid: 4242, members: [] }, survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] }, residual: "x" },
     cleanup_verified: true,
     support_status: "SUPPORTED_WITH_CONSTRAINTS",
+    // #556 round 4: the lane belongs to the runtime, not to the adapter label. A record whose
+    // adapter stages a credential is official only when #554 verified the executable as that
+    // runtime.
+    runtime_identity: { status: "VERIFIED", digest: sha256Bytes(Buffer.from("identity")), matches_adapter: true, reason: null },
     ...overrides
   };
 };
@@ -371,7 +375,11 @@ test("stages_only_the_declared_runtime_config_files_into_the_agent_home", () => 
     writeFileSync(join(operatorHome, ".codex", "history.jsonl"), "{\"prompt\":\"private\"}\n");
     // Unset in the operator's environment, the way it is on this machine: the source is the
     // runtime's own default under the operator HOME, which is what the runtime would have read.
-    const byDefault = stageRuntimeConfig(codex, { PATH: "/usr/bin" }, agentHome, operatorHome);
+    // The identity that earns the staging: #556 round 4 binds the copy to the verified executable
+    // rather than to the adapter label, so every call here supplies one and the refusal has a test
+    // of its own below.
+    const identity = { identity_status: "VERIFIED", identity_digest: "sha256:aa", resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js", interpreter_chain: [] };
+    const byDefault = stageRuntimeConfig(codex, { PATH: "/usr/bin" }, agentHome, operatorHome, identity);
     assert.equal(byDefault.source, "default_dir");
     assert.deepEqual(byDefault.staged, ["auth.json", "config.toml"]);
     assert.deepEqual(byDefault.env, Object.assign(Object.create(null), { CODEX_HOME: join(agentHome, ".codex") }));
@@ -383,14 +391,28 @@ test("stages_only_the_declared_runtime_config_files_into_the_agent_home", () => 
     const elsewhere = join(base, "elsewhere");
     mkdirSync(elsewhere);
     writeFileSync(join(elsewhere, "config.toml"), "model = \"other\"\n");
-    const fromEnv = stageRuntimeConfig(codex, { CODEX_HOME: elsewhere }, agentHome, operatorHome);
+    const fromEnv = stageRuntimeConfig(codex, { CODEX_HOME: elsewhere }, agentHome, operatorHome, identity);
     assert.equal(fromEnv.source, "operator_env");
     assert.deepEqual(fromEnv.staged, ["config.toml"]);
     assert.deepEqual(fromEnv.missing, ["auth.json"]);
     rmSync(join(agentHome, ".codex"), { recursive: true });
     // An adapter with no config variable stages nothing and sets nothing.
-    const none = stageRuntimeConfig(generic, { CODEX_HOME: elsewhere }, agentHome, operatorHome);
+    const none = stageRuntimeConfig(generic, { CODEX_HOME: elsewhere }, agentHome, operatorHome, identity);
     assert.deepEqual([none.source, none.staged, Object.keys(none.env)], ["none", [], []]);
+    // And the refusal: an executable that is not this adapter's runtime -- however well verified as
+    // a file -- gets no copy of the operator's credential and no configuration variable at all.
+    for (const wrong of [
+      null,
+      { identity_status: "UNTRUSTED", resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js" },
+      { identity_status: "VERIFIED", resolved_realpath: "/usr/local/bin/node", interpreter_chain: [] }
+    ]) {
+      const refused = stageRuntimeConfig(codex, { PATH: "/usr/bin" }, agentHome, operatorHome, wrong);
+      assert.equal(refused.source, "refused", JSON.stringify(wrong));
+      assert.deepEqual(refused.staged, []);
+      assert.deepEqual(Object.keys(refused.env), []);
+      assert.equal(refused.identity.matches_adapter, false);
+      assert.equal(existsSync(join(agentHome, ".codex")), false, "a directory was created for a refused staging");
+    }
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
