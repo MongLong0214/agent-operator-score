@@ -52,6 +52,8 @@ export function addAgent(cwd, id, script = fakeAgent, extraArgs = [], command = 
     "agent", "add", id, "--command", command, "--arg", script,
     "--allow-env", "FAKE_AGENT_PROFILE",
     "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE",
+    // What the fixture runtime announces in its own transcript, the way Codex and Claude Code do.
+    "--allow-env", "FAKE_AGENT_MODEL",
     ...extraArgs
   ]);
 }

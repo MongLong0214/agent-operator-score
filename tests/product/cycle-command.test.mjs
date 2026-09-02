@@ -11,13 +11,18 @@ import { addAgent, makePlan, run, verifiedRunner } from "./helpers.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const SEEDS = ["0000000000000011", "0000000000000012", "0000000000000013"];
+const FIXTURE_MODEL = "openai/gpt-4o-2024-08-06";
 
 const opened = () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-cycle-"));
   run(cwd, ["init"]);
-  // Registered with an exact model: a cycle over a model nobody named completes its runs and
-  // withholds its aggregate (#561), and these tests are about the aggregate.
-  addAgent(cwd, "solo", undefined, ["--model-id", "fixture/fake-agent-20260101"], verifiedRunner(cwd));
+  // Registered with an exact model, and the fixture runtime announces the same one in its own
+  // transcript below: a cycle over a model nobody named, or one no runtime corroborated, withholds
+  // its aggregate (#561), and these tests are about the aggregate. The name is a real snapshot of
+  // a real family because that is what "exact" means -- a family this product has naming rules for
+  // and a date the provider promised not to move. The unknown and mutable paths have their own
+  // fixtures in tests/product/model-identity.test.mjs.
+  addAgent(cwd, "solo", undefined, ["--model-id", FIXTURE_MODEL], verifiedRunner(cwd));
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["cycle", "start", ...SEEDS.flatMap((seed) => ["--seed", seed])]);
   return { cwd, plan, home: join(cwd, ".aos") };
@@ -34,7 +39,7 @@ const cycleRun = (cwd, plan, { profile = "needs-instruction", answers = UNBLOCK 
     encoding: "utf8",
     input: answers,
     timeout: 300000,
-    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: profile }
+    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: profile, FAKE_AGENT_MODEL: FIXTURE_MODEL }
   });
 
 const cycleOf = (home) => JSON.parse(readFileSync(join(home, "cycle.json"), "utf8"));

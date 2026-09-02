@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
@@ -8,6 +8,29 @@ import { join } from "node:path";
 
 const family = process.env.AOS_FAMILY;
 const root = process.cwd();
+
+// The transcript a runtime writes about itself. Codex records `session_meta` and one
+// `turn_context` per turn under `$HOME/.codex/sessions/…`, and #561 reads those rows as the only
+// statement the runtime itself makes about which model answered. A fixture that wrote none stood
+// for a runtime that never says -- which is a real case, and not the one a test about aggregation
+// is exercising. The model is declared by the test through `FAKE_AGENT_MODEL`; without it the
+// fixture stays silent, so the "nothing corroborated the binding" path keeps a fixture too.
+const announced = process.env.FAKE_AGENT_MODEL;
+if (typeof announced === "string" && announced !== "" && typeof process.env.HOME === "string") {
+  const [provider, model] = announced.includes("/") ? announced.split("/") : [null, announced];
+  const stamp = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  const directory = join(
+    process.env.HOME, ".codex", "sessions",
+    String(stamp.getUTCFullYear()), pad(stamp.getUTCMonth() + 1), pad(stamp.getUTCDate())
+  );
+  mkdirSync(directory, { recursive: true });
+  const rows = [
+    JSON.stringify({ type: "session_meta", payload: { cwd: root, model_provider: provider, cli_version: "0.0.0-fixture" } }),
+    JSON.stringify({ type: "turn_context", payload: { cwd: root, model } })
+  ];
+  writeFileSync(join(directory, `rollout-${process.pid}.jsonl`), `${rows.join("\n")}\n`);
+}
 
 // A scripted profile: the same agent behaving in one of the specific ways the scorer is supposed to
 // recognise. Named rather than random, so a band that moves can be traced to a behaviour.
