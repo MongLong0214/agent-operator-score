@@ -162,3 +162,19 @@ test("a reconstructed trace hands #583 the evidence the first one committed, not
   assert.equal(opportunity.advice_response.length, 1);
   assert.deepEqual(rebuilt.opportunities(), first.opportunities());
 });
+
+test("a rebuilt trace refuses a second response to advice that was already answered", () => {
+  // Round 3: the ledger is fresh on every reconstruction, and `recordAdviceResponse` checked only
+  // that the advice had been revealed -- so committing, revealing, responding, rebuilding and
+  // responding again produced two responses for one opportunity. Replay across a reconstruction is
+  // the case the journal exists for.
+  const shared = journal();
+  const first = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  first.commitInitialJudgment(judgment());
+  first.revealAdvice("opp-reliance-1");
+  first.recordAdviceResponse(judgment({ judgment: { answer: "adopted" } }));
+  const rebuilt = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  assert.throws(() => rebuilt.recordAdviceResponse(judgment({ judgment: { answer: "again" } })), /already answered/u);
+  assert.equal(rebuilt.opportunities()[0].advice_response.length, 1);
+  assert.equal(shared.read().filter((entry) => entry.stage === "advice-responded").length, 1);
+});

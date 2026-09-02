@@ -3246,6 +3246,33 @@ export const GUARDS = [
     test: "tests/product/operator-channel-authority.test.mjs",
     name: "an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it"
   },
+  {
+    guard: "advice is answered once",
+    reason: "the ledger is fresh on every reconstruction, so a rebuilt trace accepted a second response to advice already answered -- one operator turn counted twice",
+    file: "lib/operator-events.mjs",
+    from: '      if (staged(opportunity, "advice-responded")) {',
+    to: "      if (false) {",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a rebuilt trace refuses a second response to advice that was already answered"
+  },
+  {
+    guard: "a decision binds to the construct it is evidence about",
+    reason: "an admitted decision landing on the wrong construct's cell is a scored row about something the operator did not decide, and the table is the only place that says which is which",
+    file: "lib/operator-plan.mjs",
+    from: '  ["verification.choose", "C5"],',
+    to: '  ["verification.choose", "C1"],',
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "every decision type the schema admits binds to the construct and the dimension it is evidence about"
+  },
+  {
+    guard: "a decision names the dimension it belongs to",
+    reason: "the dimension is what a reader groups D1, D2 and D3 rows by, and a wrong one files a routing decision under framing",
+    file: "lib/operator-plan.mjs",
+    from: '  ["route.assign", "D3"],',
+    to: '  ["route.assign", "D1"],',
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "every decision type the schema admits binds to the construct and the dimension it is evidence about"
+  },
 ];
 
 /**
@@ -3349,6 +3376,8 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
+  "a decision binds to the construct it is evidence about",
+  "a decision names the dimension it belongs to",
   "a declared route is published as digests",
   "a facet is not normalised into a digest",
   "a filesystem location is one however it is spelled",
@@ -3395,6 +3424,7 @@ export const ACCOUNTED_GUARDS = [
   "a withheld metric says so rather than reading as uncomputed",
   "a withheld rate keeps the counts that withheld it",
   "abstention cannot outweigh decision",
+  "advice is answered once",
   "agent-relay event needs its attestation",
   "allowlist-only child environment",
   "an alias is the node it names",

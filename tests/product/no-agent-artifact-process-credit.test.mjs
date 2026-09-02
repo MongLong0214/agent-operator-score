@@ -282,12 +282,40 @@ test("a decision bound to a cell on another axis, another construct, or no cell 
   for (const binding of [wrongAxis, wrongConstruct, noCell]) assert.equal(binding.rows.length, 0);
 });
 
-test("every decision type the schema admits has a construct and a dimension, so none can be minted and then produce no row", () => {
+test("every decision type the schema admits binds to the construct and the dimension it is evidence about", () => {
+  // The values, not only that there are values. Round 3: this compared key sets and checked for
+  // non-null, so moving `verification.choose` from C5 to C1 -- an admitted decision landing on the
+  // wrong construct's cell -- left it passing.
   const declared = [...DECISION_TYPES].sort();
   assert.deepEqual(boundDecisionTypes(), declared);
-  for (const decisionType of declared) {
-    assert.ok(constructForDecision(decisionType) !== null, `${decisionType} has no construct`);
-    assert.ok(dimensionForDecision(decisionType) !== null, `${decisionType} has no dimension`);
+  const expected = new Map([
+    ["spec.goal", ["C1", "D1"]],
+    ["constraint.add", ["C1", "D1"]],
+    ["plan.approve", ["C1", "D1"]],
+    ["plan.edit", ["C1", "D1"]],
+    ["context.include", ["C2", "D2"]],
+    ["context.exclude", ["C2", "D2"]],
+    ["context.inspect", ["C2", "D2"]],
+    ["context.request-metadata", ["C2", "D2"]],
+    ["route.assign", ["C2", "D3"]],
+    ["parallelism.choose", ["C2", "D3"]],
+    ["verification.choose", ["C5", "D3"]],
+    ["budget.set", ["C6", "D3"]],
+    ["checkpoint.observe", ["C3", "D4"]],
+    ["intervention.decide", ["C4", "D4"]],
+    ["initial.judgment", ["C3", "reliance"]],
+    ["advice.response", ["C3", "reliance"]]
+  ]);
+  assert.deepEqual(declared, [...expected.keys()].sort());
+  for (const [decisionType, [construct, dimension]] of expected) {
+    assert.equal(constructForDecision(decisionType), construct, decisionType);
+    assert.equal(dimensionForDecision(decisionType), dimension, decisionType);
+  }
+  // And the construct each one names is one this contract actually declares an operator-process
+  // cell for, so the table cannot drift away from the contract without this failing.
+  const cells = bindOperatorDecisions([], { contract: shipped }).cells;
+  for (const construct of new Set(expected.values().map(([id]) => id))) {
+    assert.equal(cells.some((cell) => cell.construct_id === construct), true, `${construct} has no operator-process cell`);
   }
   assert.equal(constructForDecision("something.else"), null);
 });
