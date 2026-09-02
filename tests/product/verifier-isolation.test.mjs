@@ -101,10 +101,20 @@ test("assessed code that exits the process is a verifier failure, not a pass", a
   // silence as success would score it as verified.
   const { graded } = await withAssessed(`${CORRECT}\nprocess.exit(0);\n`);
   assert.equal(graded.metrics.M15, 0, "an exiting module was scored as verified");
-  // The exit code is 0 and nothing timed out, so "the run succeeded" is true and useless here. The
-  // fact that separates this from a real pass is that the verifier never reported.
+  // The exit code is 0 and nothing timed out, so "the run succeeded" is true and useless here.
   assert.equal(graded.details.verifier.exit_code, 0);
-  assert.equal(graded.details.verifier.reported, false, "silence was read as a verdict");
+  // This assertion used to read `reported === false`: the exit killed the one process that both
+  // imported the module and wrote the verdict, so the whole verifier fell silent. That silence was
+  // the old architecture's symptom, and it is gone -- the module can only exit the subject process
+  // now, and the controller reports the probe it never got an answer from. The property under test
+  // is unchanged and the evidence is stronger: an exit is still not a pass, and the report now says
+  // which probes went unanswered instead of saying nothing at all.
+  assert.equal(graded.details.verifier.reported, true, "assessed code silenced the trusted controller");
+  assert.equal(graded.details.hidden, false, "silence was read as a verdict");
+  for (const probe of Object.values(graded.details.verifier.probes)) {
+    assert.equal(probe.passed, false, "a probe whose subject exited without answering was scored as passed");
+    assert.equal(probe.refused, "no-result", "the refusal reason was not recorded");
+  }
 });
 
 test("assessed code that never returns hits the timeout", async () => {

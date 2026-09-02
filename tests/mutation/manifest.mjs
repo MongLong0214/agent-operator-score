@@ -71,12 +71,75 @@ export const GUARDS = [
   },
   {
     guard: "trusted-process import prohibition",
-    reason: "the assessed module must not be able to read the nonce that authenticates a verdict",
+    reason: "a verdict computed in the process that loaded the assessed module is the module's verdict",
     file: "lib/verifiers/fam5.mjs",
-    from: "delete process.env.AOS_VERIFIER_NONCE;",
+    from: "  const target = resolveAssessed();",
+    to: "  const target = resolveAssessed(); if (target.path) await import(target.path);",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the assessed module never executes in the trusted controller process"
+  },
+  {
+    guard: "subject nonce non-disclosure",
+    reason: "a subject process holding the nonce can write the verdict line itself",
+    file: "lib/verifiers/fam5.mjs",
+    from: 'const subjectEnv = (home) => ({ PATH: SAFE_PATH, HOME: home, TMPDIR: home, LANG: "C", NODE_ENV: "production" });',
+    to: 'const subjectEnv = (home) => ({ PATH: SAFE_PATH, HOME: home, TMPDIR: home, LANG: "C", NODE_ENV: "production", AOS_VERIFIER_NONCE: nonce });',
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the subject process is never given the verdict nonce"
+  },
+  {
+    guard: "probe result authentication",
+    reason: "assessed code shares the result descriptor, so an unauthenticated line is its line",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: 'if (typeof token !== "string" || seenToken !== token) return refuse("unauthenticated-result");',
     to: "",
-    test: "tests/product/verifier-isolation.test.mjs",
-    name: "assessed code cannot forge a verdict"
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an observation nobody can authenticate is refused"
+  },
+  {
+    guard: "single observation per probe",
+    reason: "a forged line plus the real one must not resolve to whichever was read first",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: 'if (lines.length > 1) return refuse("duplicate-result");',
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "a duplicate observation on the result channel is refused"
+  },
+  {
+    guard: "observation schema and size",
+    reason: "an unvalidated result channel is an assessed-code-controlled field in the verdict",
+    file: "lib/verifiers/fam5-result.mjs",
+    from: "  if (fields.length !== 5 || fields[0] !== MARKER) return refuse(\"malformed-result\");",
+    to: "",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "an oversized or malformed observation is refused"
+  },
+  {
+    guard: "missing-result refusal",
+    reason: "a probe nobody answered is not a probe that passed",
+    file: "lib/verifiers/fam5.mjs",
+    from: "    if (!result || result.ok !== true || result.observation === null) return false;",
+    to: "    if (!result) return true;",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "a subject that exits zero without reporting is refused"
+  },
+  {
+    guard: "pristine error classification",
+    reason: "instanceof consults a global the assessed module can replace with its own class",
+    file: "lib/verifiers/fam5-subject.mjs",
+    from: "      if (node === ERROR_PROTOTYPES[index]) return ERROR_NAMES[index];",
+    to: "      if (value instanceof globalThis[ERROR_NAMES[index]]) return ERROR_NAMES[index];",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "replacing the global error classes cannot make the verdict pass"
+  },
+  {
+    guard: "probe process independence",
+    reason: "probes sharing one observation share whatever the first probe's module body broke",
+    file: "lib/verifiers/fam5.mjs",
+    from: "    results.set(probe.id, await runProbe(probe, target.path, deadline));",
+    to: "    results.set(probe.id, results.get(PROBES[0].id) ?? await runProbe(probe, target.path, deadline));",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "each probe runs in its own short-lived subject process"
   },
   {
     guard: "verification result check",
