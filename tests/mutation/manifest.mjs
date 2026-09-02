@@ -25,6 +25,15 @@ export const GUARDS = [
     name: "an issue number from a comment cannot become a pattern"
   },
   {
+    guard: "a phase's predecessors must be in the plan",
+    reason: "a phase blocked by #999 was withheld forever and never reported stale once its real predecessor landed",
+    file: "lib/execution-plan.mjs",
+    from: "        if (!byNumber.has(predecessor)) {\n          fail(\"unknown-dependency\", `#${one.issue} phase \"${phase.id}\" is blocked by #${predecessor}, which is not in the plan`, one.issue);",
+    to: "        if (false) {\n          fail(\"unknown-dependency\", `#${one.issue} phase \"${phase.id}\" is blocked by #${predecessor}, which is not in the plan`, one.issue);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a phase blocked by a number outside the plan is refused like an issue would be"
+  },
+  {
     guard: "a started phase cannot integrate code on a blocked issue",
     reason: "checking only `ready` left the permission reachable by moving the phase forward",
     file: "lib/execution-plan.mjs",

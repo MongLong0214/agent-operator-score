@@ -397,6 +397,17 @@ test("a phase left blocked after its predecessors landed is stale", () => {
   assert.ok(failures(checkPlan(doc)).includes("stale-blocked-phase"));
 });
 
+test("a phase blocked by a number outside the plan is refused like an issue would be", () => {
+  const doc = plan();
+  entry(doc, 572).phases[1].blocked_by = [999, 588];
+  const report = checkPlan(doc);
+  assert.ok(failures(report).includes("unknown-dependency"));
+  assert.match(report.failures.find((one) => one.check === "unknown-dependency").detail, /phase "final-deletion".*#999/);
+  // The counterfactual: the same phase naming only planned issues is not an unknown dependency.
+  entry(doc, 572).phases[1].blocked_by = [578, 588];
+  assert.equal(failures(checkPlan(doc)).includes("unknown-dependency"), false);
+});
+
 test("a batch that runs behind something it waits on fails", () => {
   const doc = plan();
   entry(doc, 578).batch = 0;
