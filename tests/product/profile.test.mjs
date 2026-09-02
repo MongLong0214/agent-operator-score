@@ -90,10 +90,15 @@ test("a node patch release is not a new cohort", () => {
   assert.notEqual(build({ nodeVersion: "22.18.0" }).profile_digest, build({ nodeVersion: "24.0.0" }).profile_digest);
 });
 
-test("same digest is the whole test for comparability", () => {
-  assert.equal(sameCohort(build(), build()), true);
-  assert.equal(sameCohort(build(), build({ isolation: "STRICT" })), false);
-  assert.equal(sameCohort(build(), null), false);
+test("same digest is necessary for comparability, and an unknown model is never sufficient", () => {
+  // Two profiles that could not name their model share a digest and still are not one cohort:
+  // the provider may have moved the default between them (#561). With an exact model named, the
+  // digest is the remaining test.
+  assert.equal(sameCohort(build(), build()), false);
+  const exact = (over = {}) => build({ agent: agent({ model_id: "gpt-4o-2024-08-06" }), ...over });
+  assert.equal(sameCohort(exact(), exact()), true);
+  assert.equal(sameCohort(exact(), exact({ isolation: "STRICT" })), false);
+  assert.equal(sameCohort(exact(), null), false);
 });
 
 test("a runtime nobody wrote an adapter for is accepted", () => {
@@ -118,11 +123,14 @@ test("every declared adapter can answer the questions a profile asks", () => {
   for (const adapter of Object.values(ADAPTERS)) {
     assert.equal(Array.isArray(adapter.version_args), true, adapter.id);
     assert.equal(typeof adapter.version_of, "function", adapter.id);
-    assert.equal(typeof adapter.model_of, "function", adapter.id);
+    // The model is never read off version output; it comes through the flags the adapter names
+    // (#561), and an adapter that names none reads no model at all.
+    assert.equal(Array.isArray(adapter.model_flags), true, adapter.id);
+    assert.equal("model_of" in adapter, false, adapter.id);
+    assert.equal(Number.isInteger(adapter.version), true, adapter.id);
     assert.equal(adapter.supported_isolation.length > 0, true, adapter.id);
     // A parser that throws on unexpected output would take the run down at the probe.
     assert.doesNotThrow(() => adapter.version_of(""));
-    assert.doesNotThrow(() => adapter.model_of("garbage output \u0000"));
   }
 });
 

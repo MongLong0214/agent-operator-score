@@ -15,7 +15,9 @@ const SEEDS = ["0000000000000011", "0000000000000012", "0000000000000013"];
 const opened = () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-cycle-"));
   run(cwd, ["init"]);
-  addAgent(cwd, "solo");
+  // Registered with an exact model: a cycle over a model nobody named completes its runs and
+  // withholds its aggregate (#561), and these tests are about the aggregate.
+  addAgent(cwd, "solo", undefined, ["--model-id", "fixture/fake-agent-20260101"]);
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["cycle", "start", ...SEEDS.flatMap((seed) => ["--seed", seed])]);
   return { cwd, plan, home: join(cwd, ".aos") };

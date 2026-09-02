@@ -2194,6 +2194,141 @@ export const GUARDS = [
     to: '"checkpoint.raised": ["family", "kind", "evidence_digest"],',
     test: "tests/product/checkpoint-runtime.test.mjs",
     name: "the record keeps what the operator was shown, not just that they were shown something"
+  },
+  {
+    guard: "a detected model that contradicts the declared one is a mismatch",
+    reason: "the first-ranked source silently winning over a declaration that named another model is the mismatch-ignored case the issue forbids; a run under a model nobody can name would be filed as the declared one",
+    file: "lib/model-identity.mjs",
+    from: "  const disagreeing = rest.find((candidate) => !sameModel(winner, candidate));",
+    to: "  const disagreeing = undefined;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "detected A vs declared B is a named mismatch that fails closed"
+  },
+  {
+    guard: "a mismatch cannot be bound into a profile",
+    reason: "a profile digest locked over a contradiction would file three runs under a model this product could not name, and the number would look exact",
+    file: "lib/model-identity.mjs",
+    from: "  if (record?.status === \"MISMATCH\") {",
+    to: "  if (false) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "detected A vs declared B is a named mismatch that fails closed"
+  },
+  {
+    guard: "a bare alias is never an exact identity",
+    reason: "`latest` names whatever the provider points it at today; a profile that took it for a model would compare two runs of two models",
+    file: "lib/model-identity.mjs",
+    from: "  if (BARE_ALIASES.has(parsed.model)) return { alias_class: \"bare-alias\", mutable_alias: true };",
+    to: "  if (false) return { alias_class: \"bare-alias\", mutable_alias: true };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "latest, default, gpt and sonnet are mutable aliases, never exact identities"
+  },
+  {
+    guard: "a name without snapshot proof is a mutable alias",
+    reason: "the fail-closed direction is that an unproven snapshot is mutable; reversing it makes every provider-managed name exact and every drift invisible",
+    file: "lib/model-identity.mjs",
+    from: "  return { alias_class: \"provider-managed-alias\", mutable_alias: true };",
+    to: "  return { alias_class: \"provider-managed-alias\", mutable_alias: false };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a provider-managed name without a snapshot marker is a mutable alias"
+  },
+  {
+    guard: "a mutable alias withholds the profile-bound aggregate",
+    reason: "a mutable alias may run, and the issue caps what it may claim at a run diagnostic; without this line the alias is issued as profile-bound",
+    file: "lib/model-identity.mjs",
+    from: "  if (provenance.mutable_alias !== false || provenance.status === \"MUTABLE\") return \"MODEL_MUTABLE_ALIAS\";",
+    to: "  if (false) return \"MODEL_MUTABLE_ALIAS\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a mutable alias may run, but its claim stage is capped and profile-bound aggregation withheld by name"
+  },
+  {
+    guard: "an unknown model withholds the aggregate by its own name",
+    reason: "an unknown model is not a mutable one and not an exact one; a reader told the wrong reason cannot act on it, and the historical cycles this touches are filed under exactly this reason",
+    file: "lib/model-identity.mjs",
+    from: "  if (provenance.status === \"UNKNOWN\" || typeof provenance.id !== \"string\") return \"MODEL_UNKNOWN\";",
+    to: "  if (false) return \"MODEL_UNKNOWN\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an unknown model may run, but profile-bound aggregation is withheld by name"
+  },
+  {
+    guard: "the runtime's own event outranks the declaration",
+    reason: "the source precedence is the issue's contract; a declaration that outranked the runtime's own transcript would let the operator name the model the run used",
+    file: "lib/model-identity.mjs",
+    from: "  const [winner, ...rest] = candidates;",
+    to: "  const winner = candidates.at(-1); const rest = candidates.slice(0, -1);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "source precedence is runtime event, then runtime config, then declared, then unknown"
+  },
+  {
+    guard: "a transcript that names another model contradicts the binding",
+    reason: "verification that confirmed any observed model would turn the runtime's own evidence into a rubber stamp for the declaration it was meant to check",
+    file: "lib/model-identity.mjs",
+    from: "  if (boundName !== null && sameModel(boundName, observed[0])) return { status: \"CONFIRMED\", code: null, observed };",
+    to: "  if (boundName !== null) return { status: \"CONFIRMED\", code: null, observed };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a runtime event confirms a bound identity, contradicts it by name, or was not observed"
+  },
+  {
+    guard: "the profile digest covers the mutable alias state",
+    reason: "an alias and the snapshot it currently points at would share a digest, and a number produced under one would aggregate with a number produced under the other",
+    file: "lib/profile.mjs",
+    from: "    model_mutable_alias: profile.model_mutable_alias ?? null,",
+    to: "    model_mutable_alias: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the profile digest moves for each model, runtime, adapter, environment, isolation and language field on its own"
+  },
+  {
+    guard: "the profile digest covers the executable identity",
+    reason: "the issue forbids a digest over the model id alone; the same model through a rebuilt or replaced executable is a different environment and must not form one cohort",
+    file: "lib/profile.mjs",
+    from: "    runtime_identity_digest: profile.runtime_identity_digest,",
+    to: "    runtime_identity_digest: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "same exact model with a different executable identity is not one cohort"
+  },
+  {
+    guard: "the profile digest covers the isolation policy",
+    reason: "two runs under different HOME regimes or withheld prefixes are different measurements, and the level's name alone does not say what the level committed the run to",
+    file: "lib/profile.mjs",
+    from: "    isolation_policy_digest: profile.isolation_policy_digest ?? null,",
+    to: "    isolation_policy_digest: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the profile digest moves for each model, runtime, adapter, environment, isolation and language field on its own"
+  },
+  {
+    guard: "an unknown or mutable model is never one cohort with itself",
+    reason: "two unknown-model profiles share a digest while the provider's default may have moved between them; digest equality alone was the drift the issue names",
+    file: "lib/profile.mjs",
+    from: "  if (!exactModel(a) || !exactModel(b)) return { comparable: false, reason: \"MODEL_NOT_EXACT\" };",
+    to: "  if (false) return { comparable: false, reason: \"MODEL_NOT_EXACT\" };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "provider default drift cannot form a cohort: two identical unknown-model profiles are not comparable"
+  },
+  {
+    guard: "a different profile digest is a different cohort",
+    reason: "the same exact model through a different executable, adapter, environment or isolation is a different profile, and comparability that stopped at the model name would merge them",
+    file: "lib/profile.mjs",
+    from: "  if (a.profile_digest !== b.profile_digest) return { comparable: false, reason: \"PROFILE_DIGEST_DIFFERS\" };",
+    to: "  if (false) return { comparable: false, reason: \"PROFILE_DIGEST_DIFFERS\" };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "same exact model with a different executable identity is not one cohort"
+  },
+  {
+    guard: "cross-model comparison is withheld before invariance evidence",
+    reason: "two exact models are two cohorts until #585 shows the instrument reads them the same; a comparability verdict that did not say so by name would let a model change read as an improvement",
+    file: "lib/profile.mjs",
+    from: "  if (a.model_id !== b.model_id) return { comparable: false, reason: \"CROSS_MODEL_WITHHELD\", until: \"INVARIANCE_UNESTABLISHED\" };",
+    to: "  if (false) return { comparable: false, reason: \"CROSS_MODEL_WITHHELD\", until: \"INVARIANCE_UNESTABLISHED\" };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cross-model result is withheld from direct comparison before invariance evidence"
+  },
+  {
+    guard: "a complete cycle is not an issued cycle",
+    reason: "three valid runs of a model nobody named were issued as a profile-bound Operator Score before #561; a historical cycle promoted to an exact profile is the auto-promotion the issue forbids",
+    file: "lib/cli.mjs",
+    from: "  const issued = aggregate.complete && policy.profile_bound_aggregation.status === \"issued\";",
+    to: "  const issued = aggregate.complete;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a historical cycle without a provenance record is never promoted to an exact profile"
   }
 ];
 
@@ -2291,17 +2426,25 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck ownership follows the administering form",
   "PATH carries no relative entry",
   "a .NET startup hook is a pre-main hook like the rest",
+  "a bare alias is never an exact identity",
+  "a complete cycle is not an issued cycle",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a detected model that contradicts the declared one is a mismatch",
+  "a different profile digest is a different cohort",
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
+  "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
+  "a mutable alias withholds the profile-bound aggregate",
+  "a name without snapshot proof is a mutable alias",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a refused file fails the check",
   "a resolved key is the key",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
+  "a transcript that names another model contradicts the binding",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a violation decides before the floor does",
@@ -2311,6 +2454,8 @@ export const ACCOUNTED_GUARDS = [
   "an alias is the node it names",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an unknown model withholds the aggregate by its own name",
+  "an unknown or mutable model is never one cohort with itself",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
@@ -2339,6 +2484,7 @@ export const ACCOUNTED_GUARDS = [
   "credential env refusal",
   "credential names a shape rule cannot see are listed",
   "credential names are matched whatever their capitalisation",
+  "cross-model comparison is withheld before invariance evidence",
   "cycle run identity",
   "cycle search inside strongly connected components",
   "decisions must reach past one session",
@@ -2455,8 +2601,12 @@ export const ACCOUNTED_GUARDS = [
   "the floor follows the worst severity observed",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
+  "the profile digest covers the executable identity",
+  "the profile digest covers the isolation policy",
+  "the profile digest covers the mutable alias state",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
+  "the runtime's own event outranks the declaration",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
   "the whole policy is revalidated against its adapter at the point of use",

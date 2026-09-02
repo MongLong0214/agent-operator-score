@@ -29,11 +29,12 @@ export function run(cwd, args, expected = 0, env = {}) {
  * them is what a real adapter does with `CODEX_HOME`, and it keeps the fixture on the same footing
  * as the runtimes it stands in for.
  */
-export function addAgent(cwd, id, script = fakeAgent) {
+export function addAgent(cwd, id, script = fakeAgent, extraArgs = []) {
   run(cwd, [
     "agent", "add", id, "--command", process.execPath, "--arg", script,
     "--allow-env", "FAKE_AGENT_PROFILE",
-    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE"
+    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE",
+    ...extraArgs
   ]);
 }
 
