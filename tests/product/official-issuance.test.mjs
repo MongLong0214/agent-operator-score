@@ -717,6 +717,7 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
   const { runProcess } = await import("../../lib/core.mjs");
   const base = mkdtempSync(join(tmpdir(), "aos-staged-secret-"));
   const token = "rt_opaque_refresh_credential_0123456789abcdef";
+  const opaque = "Zm9vYmFyLXVucmVjb2duaXNhYmxlLWNyZWRlbnRpYWwtMDEyMzQ1Njc4OQ";
   try {
     const operatorHome = join(base, "operator");
     const workspace = join(base, "workspaces", "run-1", "FAM-1");
@@ -724,7 +725,10 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     mkdirSync(join(operatorHome, ".codex"), { recursive: true });
     mkdirSync(workspace, { recursive: true });
     mkdirSync(join(aosHome, "runs"), { recursive: true });
-    writeFileSync(join(operatorHome, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token } }));
+    // Two values, deliberately: one the shape rules know (`rt_…`, a vendor-prefixed token) and one
+    // nothing could guess -- an opaque blob under a field name no pattern lists. The second is what
+    // proves the binding, because only the exact values staging copied can remove it.
+    writeFileSync(join(operatorHome, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token }, session: { material: opaque } }));
     writeFileSync(join(operatorHome, ".codex", "config.toml"), 'model = "stub"\n');
     // The agent prints whatever its runtime config directory holds -- which is what a task that
     // reads its own credential looks like from outside.
@@ -778,6 +782,10 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     assert.equal(staged.exit_code, 0, staged.stderr_excerpt);
     assert.match(staged.stdout_excerpt, /redacted/u, "the staged credential was printed unredacted");
     assert.equal(JSON.stringify(staged).includes(token), false, "the staged credential reached the public result");
+    // The one no shape knows: this is the exact-value scrubber built from what staging copied, and
+    // nothing else in the product can remove it.
+    assert.equal(JSON.stringify(staged).includes(opaque), false, "an unrecognisable staged credential reached the public result");
+    assert.match(staged.stdout_excerpt, /\[redacted: runtime credential\]/u, "the staged values were not scrubbed by value");
   } finally {
     rmSync(base, { recursive: true, force: true });
   }

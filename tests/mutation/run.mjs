@@ -25,6 +25,10 @@ if (dirty && process.env.AOS_MUTATION_ALLOW_DIRTY !== "1") {
   process.exit(2);
 }
 
+// `--test-name-pattern` is a regular expression, and a test name is prose: parentheses, dots and
+// question marks in it would otherwise match something else or nothing at all.
+const escapeForPattern = (name) => `^${name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`;
+
 const worktree = mkdtempSync(join(tmpdir(), "aos-mutation-"));
 rmSync(worktree, { recursive: true, force: true });
 const added = run("git", ["worktree", "add", "--detach", worktree, "HEAD"]);
@@ -61,7 +65,16 @@ try {
     // non-terminal changed between the version this is developed on and the one CI runs, so every
     // mutation came back with no `not ok` lines at all and was reported as a crash. Fifteen guards
     // read as not load-bearing when all fifteen were.
-    const test = run("node", ["--test", "--test-reporter=tap", entry.test], { cwd: worktree, timeout: 900000 });
+    // The named test first, on its own. A guard's question is "does this test notice?", and asking
+    // it of one test answers it in a second where running its whole file takes a minute -- with
+    // 288 guards that is the difference between a job that finishes and one that is still going.
+    // The whole file is run only when the named test passed, because that is the case where the
+    // two answers differ: SURVIVED (nothing noticed) and WRONG-TEST (something else noticed) are
+    // told apart by what the rest of the file does.
+    const named = run("node", ["--test", "--test-reporter=tap", "--test-name-pattern", escapeForPattern(entry.name), entry.test], { cwd: worktree, timeout: 900000 });
+    const namedFailed = /^TAP version/m.test(named.stdout)
+      && [...named.stdout.matchAll(/^not ok \d+ - (.+)$/gm)].map((match) => match[1].trim()).includes(entry.name);
+    const test = namedFailed ? named : run("node", ["--test", "--test-reporter=tap", entry.test], { cwd: worktree, timeout: 900000 });
     writeFileSync(path, original);
 
     // If the output is not TAP at all, nothing below can be trusted: "no test failed" and "the
