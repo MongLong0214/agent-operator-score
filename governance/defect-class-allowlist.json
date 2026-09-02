@@ -51,11 +51,6 @@
       "note": "pre-existing when the rule landed"
     },
     {
-      "file": "lib/safe-fs.mjs",
-      "match": "const files = {};",
-      "note": "the live __proto__ defect — fixed on task/issue-567-work; this entry dies with that merge"
-    },
-    {
       "file": "lib/scorer-v1.mjs",
       "match": "const dimensions = {};",
       "note": "pre-existing when the rule landed"
@@ -89,6 +84,11 @@
       "file": "lib/ecd-contract.mjs",
       "match": "const per = {};",
       "note": "keyed by ARTIFACT_KEYS, the module's own fixed list; a digest per named artefact"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "const files = {};",
+      "note": "a mutation `to` string quoting the plain-object shape safe-fs used to have; the manifest never runs it"
     }
   ],
   "text-digest": [
@@ -130,11 +130,6 @@
     {
       "file": "scripts/check-defect-classes.mjs",
       "match": "const text = readFileSync(path, \"utf8\");",
-      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
-    },
-    {
-      "file": "scripts/check-defect-classes.mjs",
-      "match": "// A digest over decoded text is not an identity. `readFileSync(p, \"utf8\")` folds encoding",
       "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
@@ -210,11 +205,6 @@
       "note": "pre-existing when the rule landed"
     },
     {
-      "file": "tests/product/holdout.test.mjs",
-      "match": "assert.match(gate.detail, new RegExp(DIGEST.slice(0, 12)));",
-      "note": "pre-existing when the rule landed"
-    },
-    {
       "file": "tests/product/operator-reported.test.mjs",
       "match": "assert.match(listed.stderr, new RegExp(elsewhere.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")));",
       "note": "pre-existing when the rule landed"
@@ -283,6 +273,11 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "export const pattern = (p) => new RegExp(p);",
       "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "tests/product/holdout.test.mjs",
+      "match": "assert.match(gate.detail, new RegExp(DIGEST.replace(/^sha256:/, \"\").slice(0, 12)));",
+      "note": "twelve hex characters of a fixed test digest; no astral input can reach it"
     }
   ],
   "date-parse-validator": [
@@ -327,5 +322,12 @@
       "note": "reads an instant for the age report after checkGithubState has refused any captured_at that is not a real calendar instant; not a validator"
     }
   ],
-  "unbounded-schema-array": []
+  "unbounded-schema-array": [],
+  "assertless-test": [
+    {
+      "file": "tests/product/handoff-exact-digest.test.mjs",
+      "match": "a handoff consumed with the digests it was handed is accepted",
+      "note": "the assertion is the expected exit status the run() helper checks; the body has no bare assert because the helper owns it"
+    }
+  ]
 }

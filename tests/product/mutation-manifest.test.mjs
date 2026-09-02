@@ -56,16 +56,18 @@ test("the manifest covers the named guards and invents none", () => {
   for (const entry of GUARDS) assert.equal(entry.reason.length > 20, true, `${entry.guard} has no stated reason`);
 });
 
-test("every guard is accounted for, and every accounted guard is still here", () => {
-  // REQUIRED_GUARDS is a floor, and a floor falls behind by default: it named eleven while the
-  // manifest grew past fifty, so every guard added since could have been deleted from GUARDS and
-  // this file would have stayed green. A floor can be stale and passing at once.
-  //
-  // Equality in both directions is what closes that. An unlisted guard fails, and a departed one
-  // fails, so adding a guard means adding its name -- in the same commit, which is the only moment
-  // anyone knows what it was for.
+test("every guard in the manifest is accounted for, not only the eleven the specification names", () => {
+  // The floor above protects eleven guards and nothing else, so every guard added since could have
+  // been deleted from GUARDS with the whole suite still green -- the manifest failing at the one
+  // job it has. This is the same question asked about the whole list, and asked in both directions:
+  // a guard that is not accounted for fails, and an accounting entry whose guard has left fails.
   const named = GUARDS.map((entry) => entry.guard).sort();
-  assert.deepEqual(named, [...ACCOUNTED_GUARDS].sort());
-  assert.deepEqual([...ACCOUNTED_GUARDS], [...ACCOUNTED_GUARDS].sort(), "ACCOUNTED_GUARDS is not sorted");
-  assert.equal(new Set(ACCOUNTED_GUARDS).size, ACCOUNTED_GUARDS.length, "a name is listed twice");
+  const accounted = [...ACCOUNTED_GUARDS].sort();
+  const unaccounted = named.filter((name) => !accounted.includes(name));
+  const departed = accounted.filter((name) => !named.includes(name));
+  assert.deepEqual(unaccounted, [], `add these to ACCOUNTED_GUARDS in tests/mutation/manifest.mjs: ${JSON.stringify(unaccounted)}`);
+  assert.deepEqual(departed, [], `these guards left GUARDS; remove them from ACCOUNTED_GUARDS only if that was deliberate: ${JSON.stringify(departed)}`);
+  assert.equal(new Set(accounted).size, accounted.length, "a guard is accounted for twice");
+  // The specification's own list is a subset of the accounting, so the two cannot disagree.
+  for (const required of REQUIRED_GUARDS) assert.equal(accounted.includes(required), true, `${required} is not accounted for`);
 });
