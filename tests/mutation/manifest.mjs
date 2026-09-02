@@ -16,13 +16,31 @@
 
 export const GUARDS = [
   {
+    guard: "a truncated reachability answer is not an answer",
+    reason: "returning false on an exhausted budget said `these do not depend on each other` when they do",
+    file: "lib/execution-plan.mjs",
+    from: '      if (steps > budget) return "unknown";',
+    to: "      if (steps > budget) return false;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a reachability answer that ran out of budget is reported, not returned as no"
+  },
+  {
+    guard: "a leap second only where one can occur",
+    reason: "accepting second 60 unconditionally made 12:34:60 an instant, which it never is",
+    file: "lib/execution-plan.mjs",
+    from: "    return utcMinutes === 23 * 60 + 59;",
+    to: "    return true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the calendar and the clock accept what RFC 3339 accepts, and nothing else"
+  },
+  {
     guard: "offline runs do not print or report a pass",
     reason: "ok, the exit status and the printed line all said success on a run that established nothing",
     file: "lib/execution-plan.mjs",
     from: "        : reports.evidence.established === true || (reports.evidence.unestablished ?? []).length === 0",
     to: "        : true",
     test: "tests/product/execution-plan.test.mjs",
-    name: "an offline run does not signal success through its verdict, and a live one does"
+    name: "an offline run reports INCOMPLETE as its verdict while ok and the exit status stay true"
   },
   {
     guard: "a live audit needs a live snapshot",
@@ -61,13 +79,13 @@ export const GUARDS = [
     name: "the evidence contract lives outside the document it checks"
   },
   {
-    guard: "graph analysis only on a canonical plan",
-    reason: "a twelve-thousand-node ring is schema-valid, already rejected, and took ninety seconds to analyse",
+    guard: "independent checks survive a non-canonical plan",
+    reason: "an early return here suppressed six checks that need no graph, and a reader needs them in the same run",
     file: "lib/execution-plan.mjs",
-    from: "  if (missing.length > 0 || unknown.length > 0 || byNumber.size !== CANONICAL_ISSUE_COUNT) {",
-    to: "  if (false) {",
+    from: "  if (!canonicalShape) {",
+    to: "  if (!canonicalShape) { return { ok: false, failures, owners: {} }; } if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "a long ring is reported, not a stack overflow"
+    name: "a non-canonical plan still reports everything that does not need the graph"
   },
   {
     guard: "evidence bound to the audited revision",
@@ -94,7 +112,7 @@ export const GUARDS = [
     from: "    if (!isLive) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "offline, close evidence is unestablished in the report and in every signal the command emits"
+    name: "offline, close evidence is reported as unestablished and never as a failure"
   },
   {
     guard: "evidence contract cannot be switched off",
@@ -103,7 +121,7 @@ export const GUARDS = [
     from: "    if (!one.close_evidence_required) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "no single edit to the manifest weakens the evidence, phase or ownership contract"
+    name: "the manifest edits that used to weaken a gate now fail"
   },
   {
     guard: "phases are a contract",
@@ -112,7 +130,7 @@ export const GUARDS = [
     from: "    if (JSON.stringify(declared) !== JSON.stringify(Object.keys(required).sort())) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "no single edit to the manifest weakens the evidence, phase or ownership contract"
+    name: "the manifest edits that used to weaken a gate now fail"
   },
   {
     guard: "cycle search inside strongly connected components",
@@ -211,7 +229,7 @@ export const GUARDS = [
     from: "        if (!inside.has(next) || next < start) continue;",
     to: "        if (!inside.has(next)) continue;",
     test: "tests/product/execution-plan.test.mjs",
-    name: "within its bound, each reported cycle is real, distinct, and named from its smallest member"
+    name: "the two-cycles a shared visited set used to drop are each reported once"
   },
   {
     guard: "close-evidence repository confirmation",

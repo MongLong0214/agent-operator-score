@@ -326,7 +326,7 @@ test("only a fenced record that names the schema counts, and a later trusted one
   assert.equal(parseCompletionRecord(["body", first]).verdict, "HOLD");
 });
 
-test("the audit summary carries no title, body or path when it is reporting failures", () => {
+test("the audit summary carries no issue title, path or token when it is reporting failures", () => {
   // What the command prints is what goes into the release evidence bundle, and the bundle is
   // published. Built here with real failures in it, because a version of this test that asserted an
   // empty failure list was empty would have stayed green while a title was added to the output.
@@ -541,7 +541,7 @@ test("an outsider cannot overwrite a maintainer's record, and the attempt is rec
 
 // --- the cycle diagnostic names every edge someone would have to remove ---------------------
 
-test("within its bound, each reported cycle is real, distinct, and named from its smallest member", () => {
+test("the two-cycles a shared visited set used to drop are each reported once", () => {
   const doc = plan();
   // Three issues that all wait on each other. A depth-first search with one shared visited set
   // finds only some of these, and the one it drops is the edge the reader has to remove.
@@ -788,7 +788,7 @@ test("the published summary keeps the key names its schema version promised", ()
 
 // --- round three: the offline audit does not get to assert a pass ---------------------------
 
-test("offline, close evidence is unestablished in the report and in every signal the command emits", () => {
+test("offline, close evidence is reported as unestablished and never as a failure", () => {
   const doc = plan();
   const snapshot = state();
   // The confirmations live in a file the author of the change controls. A contributor who cannot
@@ -812,7 +812,7 @@ test("offline, close evidence is unestablished in the report and in every signal
   assert.deepEqual(established.unestablished, []);
 });
 
-test("no single edit to the manifest weakens the evidence, phase or ownership contract", () => {
+test("the manifest edits that used to weaken a gate now fail", () => {
   // The whole bypass in one edit: mark it done, drop the phases, drop the evidence requirement.
   const doc = plan();
   const one = entry(doc, 572);
@@ -924,7 +924,7 @@ test("a pattern that is not a valid unicode regular expression is a schema error
 
 // --- round four: the command's own signals must agree with its verdict -----------------------
 
-test("an offline run does not signal success through its verdict, and a live one does", () => {
+test("an offline run reports INCOMPLETE as its verdict while ok and the exit status stay true", () => {
   const script = new URL("../../scripts/verify-v020-execution-plan.mjs", import.meta.url).pathname;
   const result = spawnSync(process.execPath, [script, "--json"], { encoding: "utf8", timeout: 120000 });
   const summary = JSON.parse(result.stdout);
@@ -959,12 +959,11 @@ test("the live audit is a job in CI, not only a command in the documentation", (
   assert.match(ci, /npm run verify:execution-plan:live/);
 });
 
-test("a long ring is reported, not a stack overflow", () => {
-  // Twelve thousand nodes in a directed ring: schema-valid, deeply recursive, and the previous
-  // implementation raised RangeError before any bound could report anything. A crash is not a
-  // finding -- it reads as the tool being broken rather than the plan being wrong. It is also not
-  // the canonical set, so the graph is not analysed at all: answering a question about a plan that
-  // is already rejected is work nobody asked for and nobody bounded.
+test("a plan far larger than the release is refused by the schema, quickly", () => {
+  // Twelve thousand nodes in a directed ring. The previous implementation walked it recursively and
+  // raised RangeError before any bound reported anything; a crash reads as the tool being broken
+  // rather than the plan being wrong. It is now refused at the schema, which is the earliest place
+  // that can say what is wrong with it, and the same bound stops the unbounded-edge case below.
   const doc = plan();
   const size = 12_000;
   doc.issues = Array.from({ length: size }, (_, index) => ({
@@ -975,13 +974,59 @@ test("a long ring is reported, not a stack overflow", () => {
   }));
   const started = Date.now();
   const report = checkPlan(doc);
-  assert.ok(Date.now() - started < 20_000, "the check did not finish on a long ring");
+  assert.ok(Date.now() - started < 10_000, "the check did not finish on a long ring");
   assert.equal(report.ok, false);
-  assert.ok(failures(report).includes("canonical-issue-count"));
-  assert.ok(failures(report).includes("graph-checks-skipped"));
+  assert.ok(failures(report).includes("schema-invalid"));
 });
 
-test("a ring the size of the real plan is reported as a cycle, iteratively", () => {
+test("a canonical-sized plan cannot carry unbounded edges", () => {
+  // Thirty-two entries and a hundred thousand references. The count check looks at entries, so this
+  // stayed canonical-sized while forcing unbounded work below it -- and it made the reachability
+  // search exhaust its budget before reaching the real edge.
+  const doc = plan();
+  entry(doc, 553).blocked_by = [...Array.from({ length: 100_001 }, (_, index) => 900_000 + index), 554];
+  const started = Date.now();
+  const report = checkPlan(doc);
+  assert.ok(Date.now() - started < 10_000);
+  assert.ok(failures(report).includes("schema-invalid"));
+});
+
+test("a reachability answer that ran out of budget is reported, not returned as no", () => {
+  // The schema bounds the edges, so this cannot arise from a valid plan -- which is why the check
+  // is run here against a permissive schema. The budget is defence for a caller that skips
+  // validation, and what it must not do is answer: returning `false` when it gave up said "these
+  // two do not depend on each other" about a pair that does.
+  const doc = plan();
+  const one = entry(doc, 559);
+  one.blocked_by = [...Array.from({ length: 120_000 }, (_, index) => 800_000 + index), 582, 588];
+  one.allowed_parallel_with = [...one.allowed_parallel_with, 582];
+  entry(doc, 582).allowed_parallel_with = [...entry(doc, 582).allowed_parallel_with, 559];
+
+  const names = failures(checkPlan(doc, { schema: true })).filter((check) => check.startsWith("parallel"));
+  assert.ok(names.includes("parallel-check-truncated"), names.join(", "));
+  // And it must not have quietly said "no": the relation is real, and the truncation is what is
+  // reported instead of a wrong answer.
+  assert.equal(names.includes("parallel-with-dependency"), false);
+});
+
+test("a non-canonical plan still reports everything that does not need the graph", () => {
+  // The early return suppressed the evidence, ownership, phase, status, batch and gate checks --
+  // all answerable without the graph, and all needed in the same run. A verifier that reports one
+  // problem when there are six sends someone back five times.
+  const doc = plan();
+  doc.issues = doc.issues.filter((each) => each.issue !== 566);
+  entry(doc, 553).close_evidence_required = false;
+  entry(doc, 553).owner_surfaces = [];
+  delete doc.gates.X;
+
+  const names = failures(checkPlan(doc));
+  assert.ok(names.includes("canonical-issue-set"));
+  assert.ok(names.includes("graph-checks-skipped"));
+  assert.ok(names.includes("release-critical-needs-close-evidence"), "the evidence check was skipped");
+  assert.ok(names.includes("gate-missing"), "the gate check was skipped");
+});
+
+test("a ring the size of the real plan is reported as exactly one cycle", () => {
   // The same shape at canonical size, where the graph *is* analysed. This is what proves the walk
   // no longer recurses: thirty-two frames is nothing, but the ring is what the old code walked
   // depth-first to its full length.
@@ -997,16 +1042,24 @@ test("a ring the size of the real plan is reported as a cycle, iteratively", () 
   assert.equal(reported[0].detail.split(" -> ").length, numbers.length + 1);
 });
 
-test("the calendar accepts what RFC 3339 accepts", () => {
+test("the calendar and the clock accept what RFC 3339 accepts, and nothing else", () => {
   // Year 0000 is a leap year in the proleptic Gregorian calendar, and `Date.UTC(0, …)` maps years
   // 0-99 to 1900-1999, so February 0000 was told it had twenty-eight days.
   assert.equal(isRealInstant("0000-02-29T00:00:00Z"), true);
   assert.equal(isRealInstant("1900-02-29T00:00:00Z"), false);
   assert.equal(isRealInstant("2000-02-29T00:00:00Z"), true);
-  // A leap second is a valid instant that Date.parse refuses.
+  // A leap second is a valid instant that Date.parse refuses -- but only where one can occur.
   assert.equal(isRealInstant("1990-12-31T23:59:60Z"), true);
+  assert.equal(isRealInstant("2026-06-30T23:59:60Z"), true);
+  // Accepting second 60 unconditionally made this an instant, which it never is.
+  assert.equal(isRealInstant("2026-01-01T12:34:60Z"), false);
+  // The offset has to be undone before the test: 08:59:60+09:00 is 23:59:60 UTC.
+  assert.equal(isRealInstant("2026-07-01T08:59:60+09:00"), true);
+  assert.equal(isRealInstant("2026-07-01T09:00:60+09:00"), false);
   assert.equal(isRealInstant("1990-12-31T23:59:61Z"), false);
   assert.equal(isRealInstant("2026-02-30T00:00:00Z"), false);
+  // Lowercase t and z are valid RFC 3339 and were being rejected.
+  assert.equal(isRealInstant("2026-09-02t00:00:00z"), true);
 });
 
 test("the phase contract pins what a phase may do, not only what it is called", () => {

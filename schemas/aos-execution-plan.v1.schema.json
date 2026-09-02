@@ -67,7 +67,8 @@
       "items": {
         "type": "integer"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "maxItems": 64
     },
     "phase_output_vocabulary": {
       "type": "array",
@@ -76,7 +77,8 @@
       "items": {
         "type": "string",
         "minLength": 1
-      }
+      },
+      "maxItems": 64
     },
     "gates": {
       "type": "object",
@@ -95,7 +97,8 @@
       "minItems": 1,
       "items": {
         "$ref": "#/$defs/issue"
-      }
+      },
+      "maxItems": 64
     }
   },
   "$defs": {
@@ -156,14 +159,16 @@
           "items": {
             "type": "integer"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "maxItems": 64
         },
         "blocks": {
           "type": "array",
           "items": {
             "type": "integer"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "maxItems": 64
         },
         "priority": {
           "enum": [
@@ -191,7 +196,8 @@
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9-]+$"
-          }
+          },
+          "maxItems": 64
         },
         "owned_paths": {
           "type": "array",
@@ -200,7 +206,8 @@
           "items": {
             "type": "string",
             "minLength": 1
-          }
+          },
+          "maxItems": 64
         },
         "evidence_bindings": {
           "type": "object",
@@ -214,13 +221,15 @@
           "items": {
             "type": "integer"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "maxItems": 64
         },
         "phases": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/phase"
-          }
+          },
+          "maxItems": 8
         },
         "close_evidence_required": {
           "type": "boolean"
@@ -231,7 +240,8 @@
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9_]+$"
-          }
+          },
+          "maxItems": 64
         }
       }
     },
