@@ -562,3 +562,76 @@ export const REQUIRED_GUARDS = [
   "workspace containment",
   "locked cycle seed"
 ];
+
+/**
+ * Every guard in this manifest, by name, sorted.
+ *
+ * REQUIRED_GUARDS above is a floor, and a floor falls behind by default: it listed the original
+ * eleven while the manifest grew to fifty-eight, so any guard added since could have been deleted
+ * from GUARDS and the ordinary suite would have stayed green. A floor can be stale and passing at
+ * the same time, which is the state a check exists to make impossible.
+ *
+ * This is checked as an equality in both directions, so a guard that is added without being
+ * accounted for fails, and a guard that leaves fails too. Adding a guard means adding its name
+ * here, in the same commit.
+ */
+export const ACCOUNTED_GUARDS = [
+  "ECD a cell names only forms that administer its subchecks",
+  "ECD a locked form is completed exactly once",
+  "ECD artifact versions are exact",
+  "ECD capabilities are identity, not a property",
+  "ECD cell claims a real subcheck",
+  "ECD cell has an owning construct",
+  "ECD cell resolved from the contract",
+  "ECD claim stage rests on what was observed",
+  "ECD claim stages are the three this module scores",
+  "ECD comparability compares emitted results",
+  "ECD comparability enforces every declared rule",
+  "ECD comparability reads the emitted facet identity",
+  "ECD comparability refuses an undeclared facet",
+  "ECD comparability rules gate declared facets",
+  "ECD construct withheld on a missing required cell",
+  "ECD contract identity is derived, not declared",
+  "ECD contract seal required before an estimate",
+  "ECD contract-specified minimum cannot drift from its clause",
+  "ECD deferred claim may not be scored",
+  "ECD derived rows are frozen",
+  "ECD derived rows only",
+  "ECD every metric is administered exactly once",
+  "ECD form and cell name each other",
+  "ECD form opportunity count is derived",
+  "ECD insufficient opportunities yields null",
+  "ECD legacy band surface is disclosed, not asserted away",
+  "ECD missing evidence keeps its own reason",
+  "ECD observations are what lib/metrics.mjs says they are",
+  "ECD opportunities carry what decided them",
+  "ECD process index withheld on a missing construct",
+  "ECD prohibited value source refused",
+  "ECD self-report earns no credit",
+  "ECD shared form cells are disclosed",
+  "ECD subcheck cardinality is pinned",
+  "ECD subcheck double ownership",
+  "ECD subcheck exhaustive mapping",
+  "ECD subcheck ownership follows the administering form",
+  "central redaction",
+  "checkpoint evidence preserved",
+  "close-evidence issue-specific fields",
+  "close-evidence verdict",
+  "coverage gate",
+  "credential env refusal",
+  "cycle run identity",
+  "exact revision binding",
+  "execution plan cycle detection",
+  "false completion cap",
+  "hot-file single owner",
+  "locked cycle seed",
+  "malformed-row reporting",
+  "operator decision window",
+  "phase-ready scope",
+  "safety cap",
+  "stale blocked status",
+  "trend dedupe",
+  "trusted-process import prohibition",
+  "verification result check",
+  "workspace containment"
+];

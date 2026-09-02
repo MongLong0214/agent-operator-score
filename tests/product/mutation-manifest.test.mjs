@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
+import { ACCOUNTED_GUARDS, GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
@@ -54,4 +54,18 @@ test("the manifest covers the named guards and invents none", () => {
   }
   assert.equal(new Set(named).size, named.length, "a guard is listed twice");
   for (const entry of GUARDS) assert.equal(entry.reason.length > 20, true, `${entry.guard} has no stated reason`);
+});
+
+test("every guard is accounted for, and every accounted guard is still here", () => {
+  // REQUIRED_GUARDS is a floor, and a floor falls behind by default: it named eleven while the
+  // manifest grew past fifty, so every guard added since could have been deleted from GUARDS and
+  // this file would have stayed green. A floor can be stale and passing at once.
+  //
+  // Equality in both directions is what closes that. An unlisted guard fails, and a departed one
+  // fails, so adding a guard means adding its name -- in the same commit, which is the only moment
+  // anyone knows what it was for.
+  const named = GUARDS.map((entry) => entry.guard).sort();
+  assert.deepEqual(named, [...ACCOUNTED_GUARDS].sort());
+  assert.deepEqual([...ACCOUNTED_GUARDS], [...ACCOUNTED_GUARDS].sort(), "ACCOUNTED_GUARDS is not sorted");
+  assert.equal(new Set(ACCOUNTED_GUARDS).size, ACCOUNTED_GUARDS.length, "a name is listed twice");
 });
