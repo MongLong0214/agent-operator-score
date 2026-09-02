@@ -1,0 +1,15 @@
+{
+  "backend_run": "best-effort-cli.leak-launch",
+  "command": "cd @WORKSPACE@ && <env from buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/leak-probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"parent_pid\": 36745,\n  \"descendant_pid\": 36809,\n  \"marker\": \"@WORKSPACE@/leak-verdict.txt\"\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "parent_pid": 36745,
+    "descendant_pid": 36809,
+    "marker": "@WORKSPACE@/leak-verdict.txt"
+  }
+}

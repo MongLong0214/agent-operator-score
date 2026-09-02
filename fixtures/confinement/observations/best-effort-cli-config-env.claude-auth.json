@@ -1,0 +1,11 @@
+{
+  "backend_run": "best-effort-cli-config-env.claude-auth",
+  "command": "cd @WORKSPACE@ && CODEX_HOME=@OPERATOR_HOME@/.codex CLAUDE_CONFIG_DIR=@OPERATOR_HOME@/.claude <env from buildAgentEnv with allow:[CODEX_HOME,CLAUDE_CONFIG_DIR]> claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+  "exit_status": 1,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"loggedIn\": false,\n  \"authMethod\": \"none\"\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

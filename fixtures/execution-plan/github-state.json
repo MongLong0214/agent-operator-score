@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T07:00:18.389Z",
+  "captured_at": "2026-09-02T07:13:45.141Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -587,23 +587,53 @@
     {
       "number": 570,
       "title": "[P1][supply-chain] 모든 external GitHub Action을 immutable full SHA에 pin한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:release",
         "priority:P1",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 570,
+        "final_sha": "515fb55ab8849e0588a8949d018def843b1c4d13",
+        "pr": 590,
+        "ci_run_ids": [
+          33601468431
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "pinned_action_shas": "sha256:a36ccdb39e5d29f94a1b10f631b26c131ce92373ccd18a0577b80b3ff3b8ad03",
+          "supply_chain_check": "scripts/verify-action-pins.mjs (lib/action-pins.mjs) runs first in CI as the action-pins job and every other job declares needs: action-pins with no always() override; it fails on a mutable tag, an unreviewed owner, a pin without a version comment, a workflow whose permissions differ from the recorded baseline or declares none, a quoted or aliased key that would hide a reference or a permission. Dependabot (.github/dependabot.yml) is the recorded update channel. docs/SUPPLY_CHAIN.md states what the check is and is not: ordering is not an execution-prevention control against someone who can edit the workflow. 44/44 in tests/product/action-pins.test.mjs; verifier output 'PASS every external action is pinned, reviewed and readable' at 515fb55.",
+          "mutation": "238/238 guards are load-bearing (CI mutation job on 515fb55, run 33601468431)",
+          "pin_inventory": "16 external references in .github/workflows/ci.yml, all pinned to full 40-hex commits with a readable version comment: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 (v5.1.0) and actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 (v5.0.0) across 8 jobs. Reviewed-owner list, version-comment pattern and per-workflow permission baseline live in governance/action-pin-policy.json (pinned_action_shas is the sha256 of its bytes) at PR #590 head 515fb55; ci.yml bytes sha256:e01c37a43299cb38511269891307ce2a0a72bff3bfced20843ae893fdbcc77cc; verifier pin digest sha256:421eb320a6c01df307a03049c1f892320ee37e8d45bbc2c98da766668add6a59 (workflows-only sha256:cd11e2ad465946900032d96ad0861d1048b0158e78478b339aeef65ddcf04a97)."
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#570",
         "#577",
         "#578",
-        "#571"
+        "#571",
+        "#590"
       ]
     },
     {

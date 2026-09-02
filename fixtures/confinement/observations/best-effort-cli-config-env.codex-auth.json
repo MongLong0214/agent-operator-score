@@ -1,0 +1,11 @@
+{
+  "backend_run": "best-effort-cli-config-env.codex-auth",
+  "command": "cd @WORKSPACE@ && CODEX_HOME=@OPERATOR_HOME@/.codex CLAUDE_CONFIG_DIR=@OPERATOR_HOME@/.claude <env from buildAgentEnv with allow:[CODEX_HOME,CLAUDE_CONFIG_DIR]> codex login status",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "",
+  "stderr_excerpt": "Logged in using ChatGPT\n",
+  "parse_error": null,
+  "captured": null
+}
