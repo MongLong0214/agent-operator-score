@@ -9,7 +9,8 @@ import { LOOPBACK, startDashboard } from "../../lib/dashboard.mjs";
 import { evaluate } from "../../lib/ecd-contract.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
-import { SECTION_ORDER, buildResult, projectResult } from "../../lib/result-schema.mjs";
+import { loadSchema, validateAgainstSchema } from "../../lib/execution-plan.mjs";
+import { RESULT_SCHEMA_URL, SECTION_ORDER, buildResult, projectResult } from "../../lib/result-schema.mjs";
 import { createRun, initHome, runPaths, writeResult } from "../../lib/store.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 import { run as runCli } from "./helpers.mjs";
@@ -149,7 +150,14 @@ test("the CLI report and recover commands serve and regenerate the same renderin
   }
 });
 
-test("renderers print the stored composite and indices even when they disagree with the rows, because they recompute nothing", () => {
+test("renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree", () => {
+  // Two properties, and the second is what the first cost before: a renderer that prints what is
+  // stored will print whatever is stored, so the reading has to be refused at the point where the
+  // stored fields contradict each other rather than trusted because the arithmetic was checked once
+  // at build time.
+  //
+  // Recomputes nothing: the composite is what the file says, not the mean of the two indices
+  // beside it. All three moved together here so the result still says one consistent thing.
   const forged = JSON.parse(canonicalJson(build()));
   forged.aos_composite.value = 12.3;
   forged.operator_process_profile.index = 55.5;
@@ -164,6 +172,44 @@ test("renderers print the stored composite and indices even when they disagree w
     assert.ok(contains(output, "55.5"), `${name} recomputed the process index`);
     assert.ok(contains(output, "66.5"), `${name} recomputed the outcome index`);
     assert.equal(contains(output, "61.0"), false, `${name} printed the mean of the stored indices`);
+  }
+
+  // And refuses: a withheld surface with a number written over its index is the one reading this
+  // instrument may never produce, whatever the file says.
+  const withheld = JSON.parse(canonicalJson(buildResult({ contract: populated, evaluation: evaluate(observationsWith({ M12: null }), identified, populated) })));
+  assert.equal(withheld.operator_process_profile.index, null);
+  assert.equal(typeof withheld.operator_process_profile.withheld_reason, "string");
+  const zeroed = JSON.parse(JSON.stringify(withheld));
+  zeroed.operator_process_profile.index = 0;
+  for (const call of [() => projectResult(zeroed), () => renderMarkdown(zeroed), () => renderHtml(zeroed), () => renderCard(zeroed)]) {
+    assert.throws(call, /AOS_ISSUANCE_STATE/);
+  }
+  // The same, the other way round and one row down.
+  const unreasoned = JSON.parse(JSON.stringify(withheld));
+  unreasoned.operator_process_profile.withheld_reason = null;
+  assert.throws(() => projectResult(unreasoned), /AOS_ISSUANCE_STATE/);
+  const zeroedRow = JSON.parse(JSON.stringify(withheld));
+  zeroedRow.operator_process_profile.constructs.C4.value = 0;
+  assert.throws(() => projectResult(zeroedRow), /AOS_ISSUANCE_STATE/);
+  const issuedWithoutNumber = JSON.parse(canonicalJson(build()));
+  issuedWithoutNumber.system_outcome_profile.index = null;
+  assert.throws(() => projectResult(issuedWithoutNumber), /AOS_ISSUANCE_STATE/);
+  // And the schema says it too, for the consumer who is not this repository.
+  assert.equal(validateAgainstSchema(zeroed, loadSchema(RESULT_SCHEMA_URL)).ok, false);
+  assert.equal(validateAgainstSchema(unreasoned, loadSchema(RESULT_SCHEMA_URL)).ok, false);
+  assert.equal(validateAgainstSchema(withheld, loadSchema(RESULT_SCHEMA_URL)).ok, true);
+});
+
+test("a withheld surface carries its reason wherever it is printed, whatever its stored index says", () => {
+  const withheld = buildResult({ contract: populated, evaluation: evaluate(observationsWith({ M12: null }), identified, populated) });
+  const view = projectResult(withheld);
+  assert.match(view.process.withheld_summary, /^withheld · /u);
+  assert.equal(view.process.index, "withheld");
+  assert.match(view.composite.withheld_summary, /^withheld · /u);
+  assert.equal(view.process.rows.find((row) => row.id === "C4").reason.length > 0, true);
+  for (const [name, output] of Object.entries(fullRenderers(withheld))) {
+    assert.ok(contains(output, view.process.withheld_summary), `${name} printed a withheld process index without its reason`);
+    assert.ok(contains(output, view.composite.withheld_summary), `${name} printed a withheld composite without its reason`);
   }
 });
 

@@ -16,7 +16,6 @@ import {
   COMPOSITE_FORMULA,
   LABELS,
   LEGACY_RESULT_SCHEMA_ID,
-  OUTCOME_DOMAINS,
   RELIANCE_METRIC_IDS,
   RESULT_SCHEMA_ID,
   RESULT_SCHEMA_URL,
@@ -33,7 +32,7 @@ import {
 } from "../../lib/result-schema.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
 import { initHome } from "../../lib/store.mjs";
-import { complete, contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
+import { complete, contractWithAPopulatedIndex, contractWithSwappedDomains, contractWithoutDomains, identified, observationsWith } from "./ecd-fixtures.mjs";
 import { run as runCli } from "./helpers.mjs";
 
 // verify:profile-aggregation
@@ -139,7 +138,7 @@ test("outcome domains O1-O4 partition the contract's required credit-bearing sys
     .sort();
   assert.deepEqual([...claimed].sort(), expected);
   assert.equal(claimed.includes("C7.TR.01"), false);
-  assert.deepEqual(OUTCOME_DOMAINS.map((domain) => domain.domain_id), ["O1", "O2", "O3", "O4"]);
+  assert.deepEqual(outcomeDomains(populated).map((domain) => domain.domain_id), ["O1", "O2", "O3", "O4"]);
 });
 
 test("outcomeDomains refuses a contract whose system-outcome cells the declared grouping does not cover", () => {
@@ -346,21 +345,34 @@ test("the composite is unchanged by anything on the reliance surface", () => {
   assert.deepEqual(withReliance.system_outcome_profile, without.system_outcome_profile);
 });
 
-test("outcome domain membership is bound to what the contract says about each cell, so a swap between domains is refused", () => {
-  // The partition check sees only the flattened set, and swapping two cells between two domains
-  // leaves that set identical while changing which cells are averaged together -- the equal-weight
-  // domain mean moves and no named test noticed. Each domain therefore carries a digest over what
-  // the contract says about the cells it claims, so a swap is a mismatch on both domains.
-  const swapped = OUTCOME_DOMAINS.map((domain) => ({
-    ...domain,
-    cell_ids: domain.cell_ids.map((id) => (id === "C5.FO.01" ? "C6.SL.01" : id === "C6.SL.01" ? "C5.FO.01" : id))
-  }));
-  assert.deepEqual([...swapped.flatMap((domain) => domain.cell_ids)].sort(), [...OUTCOME_DOMAINS.flatMap((domain) => domain.cell_ids)].sort());
-  assert.throws(() => outcomeDomains(populated, swapped), /AOS_OUTCOME_DOMAIN_MEMBERSHIP/);
-  const renamed = OUTCOME_DOMAINS.map((domain) => (domain.domain_id === "O1" ? { ...domain, contract_binding: "sha256:" + "0".repeat(64) } : domain));
-  assert.throws(() => outcomeDomains(populated, renamed), /AOS_OUTCOME_DOMAIN_MEMBERSHIP/);
-  assert.equal(outcomeDomains(populated).length, 4);
-  for (const domain of outcomeDomains(populated)) assert.match(domain.contract_binding, /^sha256:[0-9a-f]{64}$/u);
+test("the outcome grouping is the contract's, so moving a cell between domains moves the outcome index and nothing here overrides it", () => {
+  // The grouping is not this module's to hold. It is declared in #582's construct map beside the
+  // cells it groups, and read from there: a list in lib/ would be a second mapping of the same
+  // cells, and swapping two of them between domains would move the equal-weight outcome index with
+  // nothing to check it against. The test for that is direct -- move the cells in the contract and
+  // watch the result follow.
+  const shipped = outcomeDomains(populated);
+  assert.deepEqual(shipped.map((domain) => domain.domain_id), ["O1", "O2", "O3", "O4"]);
+  assert.deepEqual(shipped.find((domain) => domain.domain_id === "O1").cell_ids, ["C5.FO.01", "C2.HJ.01"]);
+  assert.deepEqual(shipped.find((domain) => domain.domain_id === "O3").cell_ids, ["C6.SL.01", "C6.IJ.01", "C5.CI.01"]);
+
+  const swapped = contractWithSwappedDomains();
+  const moved = outcomeDomains(swapped);
+  assert.deepEqual(moved.find((domain) => domain.domain_id === "O1").cell_ids, ["C6.SL.01", "C2.HJ.01"]);
+  assert.deepEqual(moved.find((domain) => domain.domain_id === "O3").cell_ids, ["C5.FO.01", "C6.IJ.01", "C5.CI.01"]);
+  // And the numbers follow the contract's grouping, which is the whole reason the grouping matters:
+  // one failing cell lands in a two-cell domain under one grouping and a three-cell domain under
+  // the other, and the equal-weight outcome index differs.
+  const failing = { M14: { "hidden-functional-checks-pass": false, "deterministic-output-verified": true, "public-checks-pass": true } };
+  const asShipped = buildResult({ contract: populated, evaluation: evaluate(observationsWith(failing), identified, populated) });
+  const asSwapped = buildResult({ contract: swapped, evaluation: evaluate(observationsWith(failing), identified, swapped) });
+  assert.notEqual(asShipped.system_outcome_profile.index, asSwapped.system_outcome_profile.index);
+  assert.equal(asShipped.system_outcome_profile.domains.O1.cells.some((cell) => cell.cell_id === "C5.FO.01"), true);
+  assert.equal(asSwapped.system_outcome_profile.domains.O3.cells.some((cell) => cell.cell_id === "C5.FO.01"), true);
+
+  // A contract that declares no grouping is refused rather than grouped by something this module
+  // decided, and a grouping that does not cover the contract's own cells is drift.
+  assert.throws(() => outcomeDomains(contractWithoutDomains()), /AOS_OUTCOME_DOMAINS_UNDECLARED/);
 });
 
 test("a result whose schema is neither the profile schema nor the legacy one is refused by name, not rendered as legacy", () => {
@@ -396,13 +408,28 @@ test("a profile result missing its coverage is refused rather than shown as zero
   assert.throws(() => projectResult(noComposite), /AOS_RESULT_INCOMPLETE/);
 });
 
-test("a credential-shaped value and a private absolute path never reach the canonical result or any rendering", () => {
+test("no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched", () => {
   // The result is the artifact an operator publishes. Everything the caller hands it that is not a
   // declared field with a declared shape is carried as a digest of itself: accountable, and not a
   // token somebody can use.
   const canary = "sk-live-DO-NOT-PUBLISH-4d5f6a7b8c9d";
   const secretPath = "/Users/alice/private/customer.txt";
-  const evaluation = evaluate(observationsWith(), { ...identified, facets: { ...identified.facets, workspace: secretPath } }, populated);
+  // Every shape that has to be caught, each one in a facet of its own: the provider formats carry
+  // their own prefix and no English word beside them, and a path can be one segment long.
+  const shapes = {
+    aws_key: "AKIAIOSFODNN7EXAMPLE",
+    github_token: "ghp_16CharactersOrMoreOfTokenHere1234",
+    slack_token: "xoxb-123456789012-abcdefghijkl",
+    google_key: "AIzaSyA1234567890abcdefghijklmnopqrstuvw",
+    jwt: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+    bearer: "Authorization: Bearer 9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c",
+    root_path: "/private",
+    home_path: secretPath,
+    tilde_path: "~/secrets/key.pem",
+    windows_path: "C:\\Users\\alice\\creds.txt",
+    private_key: "-----BEGIN RSA PRIVATE KEY-----"
+  };
+  const evaluation = evaluate(observationsWith(), { ...identified, facets: { ...identified.facets, workspace: secretPath, ...shapes } }, populated);
   const result = buildResult({
     contract: populated,
     evaluation,
@@ -419,6 +446,21 @@ test("a credential-shaped value and a private absolute path never reach the cano
   assert.equal(rendered.includes(canary), false, "the credential survived");
   assert.equal(rendered.includes(secretPath), false, "the absolute path survived");
   assert.equal(rendered.includes("/Users/"), false);
+  for (const [name, value] of Object.entries(shapes)) {
+    assert.equal(rendered.includes(value), false, `${name} survived into the result or a rendering`);
+    assert.match(result.facet_identity[name], /^sha256:[0-9a-f]{64}$/u, `${name} was not carried as a digest`);
+  }
+  // And the safe values a run legitimately carries are untouched, so redaction is not a way of
+  // losing the record: an id with hyphens, a suite name, a digest, and ordinary prose.
+  const safe = buildResult({
+    contract: populated,
+    evaluation,
+    run: { run_id: "run-b804de78-ab88-42cb-b542-894f2e021495", suite: "aos-suite-v1", suite_digest: `sha256:${"a".repeat(64)}`, invocation_count: 3 }
+  });
+  assert.equal(safe.run.run_id, "run-b804de78-ab88-42cb-b542-894f2e021495");
+  assert.equal(safe.run.suite, "aos-suite-v1");
+  assert.deepEqual(safe.run.redacted, []);
+  assert.equal(safe.observations.every((row) => row.reason === "test" || row.reason === "not observed in this run"), true, "ordinary prose was digested");
   // What is declared and safe is kept verbatim, so redaction is not a way of losing the record.
   assert.equal(result.run.run_id, "run-1");
   assert.equal(result.run.suite, "aos-suite-v1");

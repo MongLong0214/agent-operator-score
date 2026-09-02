@@ -2247,7 +2247,7 @@ export const GUARDS = [
     from: "const outcomeCapped = outcomeRaw.value !== null && outcomeCeiling !== null && outcomeCeiling.max_value < outcomeRaw.value;",
     to: "const outcomeCapped = false;",
     test: "tests/product/process-outcome-counterfactual.test.mjs",
-    name: "an outcome safety violation with a safe operator decision caps the outcome and composite and leaves the process profile uncapped"
+    name: "an outcome safety violation with a safe operator decision caps the outcome and leaves the process profile uncapped"
   },
   {
     guard: "profile cap reaches the composite",
@@ -2256,7 +2256,7 @@ export const GUARDS = [
     from: "const compositeCapped = compositeThroughOutcome.value !== null && compositeCeiling !== null && compositeCeiling.max_value < compositeThroughOutcome.value;",
     to: "const compositeCapped = false;",
     test: "tests/product/process-outcome-counterfactual.test.mjs",
-    name: "an outcome safety violation with a safe operator decision caps the outcome and composite and leaves the process profile uncapped"
+    name: "an outcome safety violation with a safe operator decision caps the outcome and leaves the process profile uncapped"
   },
   {
     guard: "profile cap never names the process axis",
@@ -2274,7 +2274,7 @@ export const GUARDS = [
     from: "      index: processIndex.value,",
     to: "      index: outcomeCeiling === null || processIndex.value === null ? processIndex.value : Math.min(processIndex.value, outcomeCeiling.max_value),",
     test: "tests/product/process-outcome-counterfactual.test.mjs",
-    name: "an outcome safety violation with a safe operator decision caps the outcome and composite and leaves the process profile uncapped"
+    name: "an outcome safety violation with a safe operator decision caps the outcome and leaves the process profile uncapped"
   },
   {
     guard: "profile renderer recomputes nothing",
@@ -2283,7 +2283,7 @@ export const GUARDS = [
     from: "      value: shown(composite.value),",
     to: "      value: shown(compositeOf(process.index, outcome.index).value),",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "renderers print the stored composite and indices even when they disagree with the rows, because they recompute nothing"
+    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
   },
   {
     guard: "profile legacy result is not migrated",
@@ -2340,13 +2340,13 @@ export const GUARDS = [
     name: "the process index is exactly the index the contract issued, never a second average of the same rows"
   },
   {
-    guard: "profile outcome domain membership is bound",
-    reason: "without the binding the partition check sees only the flattened set, so swapping two cells between two domains changes what is averaged together and nothing notices",
+    guard: "profile outcome grouping comes from the contract",
+    reason: "a grouping held in lib/ is a second mapping of the contract's own cells: the flattened set stays identical when two cells swap domains, the equal-weight outcome index moves, and nothing has anything to check it against",
     file: "lib/result-schema.mjs",
-    from: "    if (binding !== domain.contract_binding) {",
-    to: "    if (false) {",
+    from: "  const declared = contract.construct_map.outcome_domains?.domains;",
+    to: "  const declared = [{ domain_id: \"O1\", title: \"Functional & Artifact Outcome\", cell_ids: [\"C6.SL.01\", \"C2.HJ.01\"] }, { domain_id: \"O2\", title: \"Verification & Exact Revision\", cell_ids: [\"C5.IV.01\", \"C5.RB.01\"] }, { domain_id: \"O3\", title: \"Safety, Scope & Completion Integrity\", cell_ids: [\"C5.FO.01\", \"C6.IJ.01\", \"C5.CI.01\"] }, { domain_id: \"O4\", title: \"Efficiency & Resource Outcome\", cell_ids: [\"C2.IB.01\", \"C6.EB.01\"] }];",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "outcome domain membership is bound to what the contract says about each cell, so a swap between domains is refused"
+    name: "the outcome grouping is the contract's, so moving a cell between domains moves the outcome index and nothing here overrides it"
   },
   {
     guard: "profile unknown result schema is refused",
@@ -2373,7 +2373,7 @@ export const GUARDS = [
     from: "    if (kind === undefined) {\n      extra.set(key, value);\n      redacted.push(key);\n      continue;\n    }",
     to: "    if (kind === undefined) {\n      kept.set(key, value);\n      continue;\n    }",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "a credential-shaped value and a private absolute path never reach the canonical result or any rendering"
+    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
   },
   {
     guard: "profile facet values are published safely",
@@ -2382,7 +2382,7 @@ export const GUARDS = [
     from: "  const facetIdentity = Object.fromEntries(Object.entries(evaluation.facet_coverage.declared)\n    .map(([facet, value]) => [facet, publishedText(value)]));",
     to: "  const facetIdentity = { ...evaluation.facet_coverage.declared };",
     test: "tests/product/profile-aggregation.test.mjs",
-    name: "a credential-shaped value and a private absolute path never reach the canonical result or any rendering"
+    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
   },
   {
     guard: "profile reliance carries its own coverage",
@@ -2401,6 +2401,60 @@ export const GUARDS = [
     to: "    const result = buildResult({\n      evaluation: (() => { throw new Error(\"AOS_MUTANT\"); })(),\n      contract: ecdContract,",
     test: "tests/product/no-operator-score-hero.test.mjs",
     name: "the assessment the product actually runs stores a profile result and prints no Operator Score"
+  },
+  {
+    guard: "withheld is never a number, and issued is never a reason",
+    reason: "the three fields are one state, and three fields nothing binds together are three fields a stored file can disagree with itself in -- writing 0 over a withheld index left the reasons in place and printed 0.0 with nothing beside it, which is the one reading this instrument exists to refuse",
+    file: "lib/result-schema.mjs",
+    from: "  if (issued !== (value !== null) || issued !== (reason === null)) {",
+    to: "  if (false) {",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+  },
+  {
+    guard: "the reader checks the state it was handed",
+    reason: "a builder that cannot emit a contradiction is not a reader that cannot be handed one: the file on disk was written by some other build, or edited",
+    file: "lib/result-schema.mjs",
+    from: "  assertIssuanceState(\"the stored operator process profile\", { issued: process.issued, value: process.index, withheld_reason: process.withheld_reason ?? null });",
+    to: "",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
+  },
+  {
+    guard: "the withheld reason travels with the surface",
+    reason: "reading the reason out only when the index happens to be null is how a withheld surface prints as a number with nothing beside it; the reason is present exactly when the number is absent",
+    file: "lib/result-schema.mjs",
+    from: "  const withheldSummary = (reason) => (typeof reason === \"string\" && reason.length > 0 ? `withheld · ${reason}` : null);",
+    to: "  const withheldSummary = () => null;",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "a withheld surface carries its reason wherever it is printed, whatever its stored index says"
+  },
+  {
+    guard: "provider credential formats are recognised",
+    reason: "an AWS key id or a GitHub token carries its own prefix and no English word beside it, so the word-plus-value rule walks straight past it and the result publishes the key",
+    file: "lib/result-schema.mjs",
+    from: "  (ABSOLUTE_PATH.test(text) || CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
+    to: "  (ABSOLUTE_PATH.test(text) || CREDENTIAL_TEXT.test(text) || OPAQUE_TOKEN.test(text));",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
+  },
+  {
+    guard: "a one-segment absolute path is a path",
+    reason: "/private names a place on this machine as surely as /Users/alice/notes does, and requiring a second segment let the shorter one through",
+    file: "lib/result-schema.mjs",
+    from: "const ABSOLUTE_PATH = /(?:^|[\\s\"'`=(,:\\[])(?:~(?:\\/|$)|[A-Za-z]:\\\\|\\/[A-Za-z0-9._~-])/u;",
+    to: "const ABSOLUTE_PATH = /(?:^|[\\s\"'`=(,:\\[])(?:~(?:\\/|$)|[A-Za-z]:\\\\|\\/[A-Za-z0-9._~-]+[/\\\\])/u;",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result or any rendering, and safe values are untouched"
+  },
+  {
+    guard: "oneOf means exactly one",
+    reason: "the alternatives describe states that exclude each other, and a validator that accepted a value matching none of them would let the schema say the coupling while checking nothing",
+    file: "lib/execution-plan.mjs",
+    from: "      if (matched.length !== 1) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
+    to: "      if (false) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "renderers print the stored numbers rather than recomputing them, and refuse a stored result whose own fields disagree"
   }
 ];
 
@@ -2503,6 +2557,7 @@ export const ACCOUNTED_GUARDS = [
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
   "a missed known incident is a regression",
+  "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a refused file fails the check",
@@ -2604,6 +2659,7 @@ export const ACCOUNTED_GUARDS = [
   "offline runs do not print or report a pass",
   "one fixture id, one item",
   "one snapshot entry per issue",
+  "oneOf means exactly one",
   "operator decision window",
   "operator-env credential gate",
   "owned paths are not only prose",
@@ -2625,8 +2681,8 @@ export const ACCOUNTED_GUARDS = [
   "profile index weights every row the same",
   "profile index withholds on a missing row",
   "profile legacy result is not migrated",
-  "profile outcome domain membership is bound",
   "profile outcome domains match the contract",
+  "profile outcome grouping comes from the contract",
   "profile process index is never capped",
   "profile process index is the contract's own",
   "profile projection refuses a result that lost a surface",
@@ -2636,6 +2692,7 @@ export const ACCOUNTED_GUARDS = [
   "profile results are not aggregated with legacy ones",
   "profile undeclared run fields are digested",
   "profile unknown result schema is refused",
+  "provider credential formats are recognised",
   "pull request produced the commit",
   "quoted keys are keys",
   "rate denominator floor",
@@ -2685,12 +2742,14 @@ export const ACCOUNTED_GUARDS = [
   "the floor follows the worst severity observed",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
+  "the reader checks the state it was handed",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
+  "the withheld reason travels with the surface",
   "top-level artifact open does not follow",
   "transport approval binding",
   "trend dedupe",
@@ -2706,6 +2765,7 @@ export const ACCOUNTED_GUARDS = [
   "version comment after a flow mapping",
   "version comment is a version",
   "what was withheld outright is recorded as such",
+  "withheld is never a number, and issued is never a reason",
   "withheld precision is absent",
   "workflow permission drift",
   "workspace containment",

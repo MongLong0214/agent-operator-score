@@ -83,3 +83,26 @@ export const contractWithAPopulatedIndex = () => {
     .filter((source) => source.source_id !== "operator-authored-plan");
   return sealEcdContract(doc);
 };
+
+/**
+ * The shipped contract with two outcome cells moved between domains.
+ *
+ * Not a different instrument: the same cells, the same estimates, grouped differently. It exists so
+ * a test can prove the outcome grouping is read from the contract rather than held in lib/ -- move
+ * it here and the domains and the index follow, which a hardcoded list could not do.
+ */
+export const contractWithSwappedDomains = () => {
+  const doc = JSON.parse(JSON.stringify(loadEcdContract()));
+  const swap = (id) => (id === "C5.FO.01" ? "C6.SL.01" : id === "C6.SL.01" ? "C5.FO.01" : id);
+  for (const domain of doc.construct_map.outcome_domains.domains) domain.cell_ids = domain.cell_ids.map(swap);
+  return sealEcdContract(doc);
+};
+
+/** The shipped contract with the outcome grouping taken out, so the refusal can be tested. */
+export const contractWithoutDomains = () => {
+  const doc = JSON.parse(JSON.stringify(loadEcdContract()));
+  doc.construct_map.outcome_domains.domains = [];
+  // Sealed past its own schema on purpose: what is under test is the reader refusing a contract
+  // that declares no grouping, not the contract checker refusing to seal one.
+  return { ...sealEcdContract(loadEcdContract()), construct_map: doc.construct_map };
+};
