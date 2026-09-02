@@ -8,21 +8,23 @@ changed, no isolation backend was implemented, and `lib/isolation.mjs` and the s
 The question is narrow and answerable: on this machine, and on Linux, can AOS enforce a workspace
 boundary on a child agent process, and does a real agent CLI's authentication survive inside it?
 
-Every row below was produced by running a probe and keeping what came back. The raw output of each
-run is committed under `fixtures/confinement/observations/`, one file per run, holding the exact
-command, the exit status, the captured stdout and the parsed result; the `Raw` column names the
-file a row was read out of. The probes themselves are committed under
+Every observed row below was produced by running a probe and keeping what came back; a row that
+says `not_observed` names the reason no run exists instead. The raw output of each run is committed
+under `fixtures/confinement/observations/`, one file per run, holding the command with the
+machine-specific paths replaced by the placeholders the record lists, the exit status, excerpts of
+the captured output and the parsed result; the `Raw` column names the file a row was read out of. The probes themselves are committed under
 `fixtures/confinement/probes/` and printed at the end of this document, so a reader can run them
-and disagree. Nothing in the matrix is typed by hand: the record is generated from the artefacts,
-and `tests/product/confinement-probe.test.mjs` re-derives every row from the same artefacts and
-fails if one disagrees.
+and disagree. The matrix is rendered from the record, and `tests/product/confinement-probe.test.mjs`
+holds the three together: every observed row's outcome is re-read from its raw artefact, every
+artefact whose captured stdout is JSON must parse to the result it recorded, and every rendered
+cell -- outcome, enforcement, errno, command, raw file, note -- must be the record's.
 
 Where nothing was run, the row says `not_observed`, carries the reason, and names no command and
 no evidence. It never says `denied`, because a boundary that was not tested is not a boundary, and
 a support table that cannot tell those apart is how an untested lane ends up marked OFFICIAL.
 
 The machine-readable form is `fixtures/confinement/probe.json`, digest
-`sha256:63dcf902eb1eaac47429b1def2da5c06ed5b7d382e8f7d3a0c20f92d3c39f813`.
+`sha256:c3a4ff0eb363cd168f941be9374b98591ab2a1acf5ac710040f9a348012e58c5`.
 
 ## The finding
 
@@ -86,10 +88,13 @@ part of the adapter env allow list.
 What the cells support:
 
 - **HOME replacement without the adapter's config directory loses the Codex credential; carrying
-  `CODEX_HOME` restores it with HOME still replaced.** The adapter already declares
-  `config_env: "CODEX_HOME"` (`lib/profile.mjs`) and the discovered agent already allows the name
-  through (`lib/cli.mjs`). On this machine `CODEX_HOME` was simply not set in the operator's
-  environment, so there was nothing for the allow list to carry.
+  `CODEX_HOME` restores it.** The adapter already declares `config_env: "CODEX_HOME"`
+  (`lib/profile.mjs`) and the discovered agent already allows the name through (`lib/cli.mjs`). On
+  this machine `CODEX_HOME` was simply not set in the operator's environment, so there was nothing
+  for the allow list to carry. That HOME was the temporary directory in the restoring run comes from
+  the environment having been built by `buildAgentEnv`, whose replacement of HOME
+  `tests/product/isolation.test.mjs` covers; the cell's artefact records the login banner and the
+  command, not the value of HOME, so it is not this cell that proves the replacement.
 - **Confinement and authentication are not in conflict.** The provider lane confines the filesystem
   with the kernel, keeps the operator's real HOME, and logs in.
 - **Nothing here shows that Claude Code cannot authenticate under confinement.** Its cells are not
@@ -120,7 +125,10 @@ signalling it is no longer signalling one's own group and the profile refuses, s
 EPERM from the probe rather than a fact about process groups. Asking from outside the boundary,
 which is where AOS actually stands, answers it -- see the `survive_cleanup_as_detached_descendant`
 rows in the matrix, every one of which observed a descendant with its own pgid, reparented to pid 1,
-and alive after the group kill.
+and alive after the group-kill attempt. In the Seatbelt and unconfined runs that attempt returned
+ESRCH: by then the agent's own group had emptied, and the descendant was not in it to be signalled.
+The AOS enumeration run below sent the kill to a group that still had members and the descendant
+survived it all the same.
 
 `/bin/ps` cannot be exec'd inside any profile here, including `(allow default)`, because it is
 setgid. Anything that needs to enumerate processes from inside a boundary has to do it another way.
@@ -210,7 +218,7 @@ Available on the probing machine: yes. Support status: **BLOCKED**.
 | `escape_via_symlink` | allowed | none | -- | A | `none.filesystem.json` |  |
 | `spawn_child_process` | allowed | none | -- | A | `none.filesystem.json` |  |
 | `act_outside_boundary_from_descendant` | allowed | none | -- | B | `none.descendant.json` |  |
-| `survive_cleanup_as_detached_descendant` | allowed | none | -- | C | `none.leak-observed.json` | The detached descendant took its own process group, was reparented to pid 1, and was still alive after kill(-pgid, SIGKILL). |
+| `survive_cleanup_as_detached_descendant` | allowed | none | -- | C | `none.leak-observed.json` | The detached descendant took its own process group, was reparented to pid 1, and was still alive after the parent's kill(-pgid, SIGKILL) -- which returned ESRCH, because the agent's own group had already emptied and the descendant was no longer in it to be signalled. |
 | `act_outside_boundary_after_orphaning` | allowed | none | -- | C | `none.leak-observed.json` |  |
 | `open_outbound_network_socket` | allowed | none | -- | A | `none.filesystem.json` |  |
 | `read_operator_keychain_secret` | allowed | none | -- | D | `none.credentials.json` |  |
@@ -266,7 +274,7 @@ Blocking: `filesystem_enforced`, `process_enforced`, `boundary_canary`, `cleanup
 
 - Every filesystem row here is `allowed`. Reading through $HOME finds an empty temp directory, which reads like a boundary; the same paths read absolutely are fully reachable.
 - The environment was built by the product's own buildAgentEnv rather than by an approximation, so these rows describe the shipped behaviour and not a harness.
-- The authentication rows are about a missing config directory, not about confinement. See the authentication cells: carrying CODEX_HOME restores the Codex login with HOME still replaced.
+- The authentication rows are about a missing config directory, not about confinement. See the authentication cells: carrying CODEX_HOME restores the Codex login under the same buildAgentEnv environment.
 
 ### macos-seatbelt-deny-default
 
@@ -430,7 +438,9 @@ Blocking: `authenticated_runtime`.
 - `boundary_canary: PASS` covers the fifteen properties that were observed here. The orphan row is not_observed, because no orphan survived to test.
 - Running an agent here means the container carries its own Linux install of the CLI and its own copy of the credential -- live credential material inside the namespace the assessed agent writes to.
 - The Linux kernel reached from this host is a VM. A result produced here describes the VM, not the operator's macOS machine.
-- A macOS keychain credential cannot be delivered into a Linux namespace at all.
+- Nothing inside the Linux namespace can read the macOS keychain. What the parent injects into
+  the container's environment or mounts into it is what the agent gets -- a copy AOS chose to hand
+  over, which is the same exposure as the environment injection on macOS, now on a second host.
 
 ### linux-bubblewrap
 

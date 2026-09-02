@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 // The Phase-0 evidence for #556 is a document a person reads, a record a machine reads, and the raw
 // output of every probe run that produced them. All three have to agree, and none of them is
@@ -213,13 +213,23 @@ const documentedMatrix = () => {
   const parsed = new Map();
   for (const section of sections) {
     const id = section.slice(0, section.indexOf("\n")).trim();
-    const rows = [...section.matchAll(/^\| `([a-z_]+)` \| (\w+) \| ([\w-]+|--) \| (\S+) \|/gm)];
-    parsed.set(id, rows.map((match) => ({
+    // Every column, not the first four. The earlier form read property, outcome, enforcement and
+    // errno and ignored the rest, so a row could cite the wrong raw artefact, the wrong command or a
+    // note the record never made and still match. The Cmd letter resolves through the section's own
+    // legend so what is compared is the command, not the letter.
+    const legend = new Map(
+      [...section.matchAll(/^([A-Z])  (.+)$/gm)].map((match) => [match[1], match[2].trim()])
+    );
+    const rows = [...section.matchAll(/^\| `([a-z_]+)` \| (\w+) \| ([\w-]+|--) \| (\S+) \| ([A-Z]|--) \| (?:`([^`]+)`|--) \| ([^|]*) \|/gm)];
+    parsed.set(id, { text: section, rows: rows.map((match) => ({
       property: match[1],
       observed: match[2],
       enforcement: match[3] === "--" ? null : match[3],
-      errno: match[4] === "--" ? null : match[4]
-    })));
+      errno: match[4] === "--" ? null : match[4],
+      command: match[5] === "--" ? null : (legend.get(match[5]) ?? `unknown legend letter ${match[5]}`),
+      raw: match[6] ?? null,
+      note: match[7].trim() === "" || match[7].trim() === "--" ? null : match[7].trim()
+    })) });
   }
   return parsed;
 };
@@ -246,10 +256,13 @@ test("every observed row is backed by a committed raw run that says the same thi
   assert.ok(checked > 60, `expected the matrix to be mostly measured, only ${checked} rows were`);
 });
 
-test("each raw run is internally consistent with its own recorded output", () => {
+test("each raw run whose captured stdout is JSON parses to the result it recorded", () => {
   // Forging a row now means forging the run behind it. This raises that price again: an artefact's
   // parsed result has to be what its recorded stdout actually parses to, so a fabricated run cannot
-  // just assert a captured outcome next to unrelated output.
+  // just assert a captured outcome next to unrelated output. It reaches the artefacts whose stdout
+  // is a JSON document -- the probe programs' own output. Runs that captured a ps line, a shell
+  // status or a tool's banner are checked for presence and outcome above, not re-parsed here, and
+  // the count below says how many this test actually read.
   const files = new Set();
   for (const backend of record.backends) {
     for (const observation of backend.observations) {
@@ -257,6 +270,7 @@ test("each raw run is internally consistent with its own recorded output", () =>
     }
   }
   assert.ok(files.size > 0);
+  let reparsedFiles = 0;
   for (const file of files) {
     const artefact = readArtefact(file);
     if (artefact.parse_error !== null || artefact.captured === null) continue;
@@ -265,7 +279,9 @@ test("each raw run is internally consistent with its own recorded output", () =>
     catch { continue; }
     assert.deepEqual(artefact.captured, reparsed,
       `${file}: the parsed result is not what its recorded stdout parses to`);
+    reparsedFiles += 1;
   }
+  assert.ok(reparsedFiles >= 18, `expected the probe programs' runs to be re-parsed, only ${reparsedFiles} were`);
 });
 
 test("the probe programs printed in the document are the committed ones", () => {
@@ -293,14 +309,29 @@ test("every matrix row in the document matches the record row it renders", () =>
   // result they contained while still passing.
   const documented = documentedMatrix();
   for (const backend of record.backends) {
-    const rows = documented.get(backend.id);
-    assert.ok(rows, `${backend.id} has no table in the document`);
+    const section = documented.get(backend.id);
+    assert.ok(section, `${backend.id} has no table in the document`);
+    const { rows, text } = section;
     assert.equal(rows.length, backend.observations.length, `${backend.id}: the document renders a different number of rows`);
     for (const [index, row] of rows.entries()) {
       const source = backend.observations[index];
+      // A row that was not observed carries a `reason` instead of a `note`. The document renders it
+      // in the Note column when one row was skipped, and once in the section's prose when the whole
+      // backend was; either way the words must be the record's, or the document is explaining a gap
+      // in terms the record never used.
+      const reason = source.observed === "not_observed" ? source.reason ?? null : null;
+      const explainedInProse = reason !== null && row.note === null && text.includes(reason);
       assert.deepEqual(
-        { property: row.property, observed: row.observed, enforcement: row.enforcement, errno: row.errno },
-        { property: source.property, observed: source.observed, enforcement: source.enforcement, errno: source.errno },
+        { property: row.property, observed: row.observed, enforcement: row.enforcement, errno: row.errno, command: row.command, raw: row.raw, note: row.note },
+        {
+          property: source.property,
+          observed: source.observed,
+          enforcement: source.enforcement,
+          errno: source.errno,
+          command: source.command ?? null,
+          raw: source.evidence ? basename(source.evidence.file) : null,
+          note: source.note ?? (explainedInProse ? null : reason)
+        },
         `${backend.id}/${source.property}: the document and the record disagree`
       );
     }
@@ -434,20 +465,31 @@ test("an edited record whose digest was not recomputed is rejected", () => {
   assert.ok(violations(broken).some((one) => one.includes("does not describe this record")));
 });
 
-test("the process-axis evidence is present and says what the document says it says", () => {
+test("the process-axis record is what its raw runs captured", () => {
   const axis = record.process_axis;
   const unconfined = axis.setsid_probes.find((one) => one.id === "setsid.none");
   assert.equal(unconfined.child_leads_own_process_group, true);
   for (const attempt of ["setsid.deny-syscall-by-name", "setsid.deny-syscall-by-number"]) {
     const probe = axis.setsid_probes.find((one) => one.id === attempt);
     assert.equal(probe.child_leads_own_process_group, true, `${attempt} was expected to fail to stop the escape`);
-    assert.ok(existsSync(artefactPath(probe.evidence.file)), `${attempt} has no raw run`);
+  }
+  // Presence was all this checked before, and a record can name a file that says the opposite.
+  // Each figure the document quotes is read back out of the run it cites.
+  for (const probe of axis.setsid_probes) {
+    const captured = readArtefact(probe.evidence.file).captured;
+    assert.equal(captured[probe.evidence.key], probe.child_leads_own_process_group,
+      `${probe.id}: the record disagrees with ${probe.evidence.file}`);
   }
   const enumeration = axis.aos_cleanup_enumeration;
   assert.equal(enumeration.detached_descendant_reported_by_processGroupMembers, false);
   assert.equal(enumeration.detached_descendant_alive_after_group_kill, true);
   assert.equal(enumeration.in_group_child_alive_after_group_kill, false);
-  assert.ok(existsSync(artefactPath(enumeration.evidence.file)));
+  const run = readArtefact(enumeration.evidence.file).captured;
+  assert.equal(run.group_kill, "sent", "the enumeration run did not actually send the group kill");
+  assert.equal(run.before_cleanup.detached_descendant.reported, enumeration.detached_descendant_reported_by_processGroupMembers);
+  assert.equal(run.before_cleanup.in_group_child.reported, enumeration.in_group_child_reported_by_processGroupMembers);
+  assert.equal(run[enumeration.evidence.key].detached_descendant_alive, enumeration.detached_descendant_alive_after_group_kill);
+  assert.equal(run[enumeration.evidence.key].in_group_child_alive, enumeration.in_group_child_alive_after_group_kill);
 });
 
 test("the record still says the feasibility phase forbade code integration", () => {

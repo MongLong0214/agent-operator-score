@@ -295,7 +295,7 @@
             "file": "observations/none.leak-observed.json",
             "key": "survive_cleanup_as_detached_descendant"
           },
-          "note": "The detached descendant took its own process group, was reparented to pid 1, and was still alive after kill(-pgid, SIGKILL)."
+          "note": "The detached descendant took its own process group, was reparented to pid 1, and was still alive after the parent's kill(-pgid, SIGKILL) -- which returned ESRCH, because the agent's own group had already emptied and the descendant was no longer in it to be signalled."
         },
         {
           "property": "act_outside_boundary_after_orphaning",
@@ -2240,5 +2240,5 @@
       }
     }
   },
-  "evidence_digest": "sha256:63dcf902eb1eaac47429b1def2da5c06ed5b7d382e8f7d3a0c20f92d3c39f813"
+  "evidence_digest": "sha256:c3a4ff0eb363cd168f941be9374b98591ab2a1acf5ac710040f9a348012e58c5"
 }
