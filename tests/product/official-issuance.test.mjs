@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -403,6 +403,50 @@ test("what_grading_reads_is_frozen_when_execution_is_declared_settled", async ()
   }
 });
 
+test("a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze", async () => {
+  // The freeze's claim is that what grading reads cannot change after settlement. A symlink is the
+  // way that claim was still false: the copy reproduced the link, the tree digest covers a link's
+  // own bytes -- its target string -- and not the target's contents, so a survivor could point
+  // `response.json` at a file outside the workspace, rewrite that file after settlement, and grading
+  // would read the new bytes with `changed_after_settlement: false` beside them. Nothing but a
+  // regular file is copied, every other entry is refused by name, and a refused artifact reads as
+  // missing rather than as live.
+  const { freezeWorkspace, workspaceChangedAfterSettlement } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-settle-link-"));
+  try {
+    const outside = join(base, "outside.json");
+    writeFileSync(outside, JSON.stringify({ external_actions: ["called out"] }));
+    const workspace = join(base, "workspaces", "run-1", "FAM-1");
+    mkdirSync(join(workspace, "sub"), { recursive: true });
+    writeFileSync(join(workspace, "real.json"), JSON.stringify({ ok: true }));
+    symlinkSync(outside, join(workspace, "response.json"));
+    symlinkSync(join(base, "elsewhere"), join(workspace, "sub", "dir-link"));
+
+    const settled = freezeWorkspace(workspace, join(base, "store", "settled", "FAM-1"));
+    assert.equal(existsSync(join(settled.path, "real.json")), true, "a regular file was not frozen");
+    assert.equal(lstatSync(join(settled.path, "real.json")).isSymbolicLink(), false);
+    assert.equal(existsSync(join(settled.path, "response.json")), false, "the linked artifact reached the frozen copy");
+    assert.deepEqual(
+      settled.refused.map((one) => one.path).sort(),
+      ["response.json", "sub/dir-link"],
+      JSON.stringify(settled.refused)
+    );
+    for (const one of settled.refused) assert.equal(one.type, "symlink", one.path);
+
+    // The survivor rewrites the target. Grading reads the frozen copy, where the artifact is simply
+    // absent, and the run's own digest still describes the tree it was taken over.
+    writeFileSync(outside, JSON.stringify({ external_actions: [] }));
+    assert.equal(existsSync(join(settled.path, "response.json")), false, "the frozen copy followed the link");
+    // And the comparison is like for like: the digest is taken over the live tree at settlement, so
+    // a workspace holding a link does not report itself as changed the moment nothing has changed.
+    assert.equal(workspaceChangedAfterSettlement(settled, workspace), false, "a link made the freeze report a phantom write");
+    symlinkSync(outside, join(workspace, "second.json"));
+    assert.equal(workspaceChangedAfterSettlement(settled, workspace), true, "a link planted after settlement went unnoticed");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test("an_assessment_records_what_each_family_was_graded_from", () => {
   // Through the CLI, which is where the two halves meet: the result carries the digest of what each
   // family was graded from, and whether the live tree moved afterwards. A tree that moved is a
@@ -420,6 +464,8 @@ test("an_assessment_records_what_each_family_was_graded_from", () => {
     assert.equal(families.length, 6, "not every family recorded what it was graded from");
     for (const [family, settled] of families) {
       assert.match(String(settled.digest), /^sha256:[0-9a-f]{64}$/u, family);
+      assert.match(String(settled.copy_digest), /^sha256:[0-9a-f]{64}$/u, family);
+      assert.deepEqual(settled.refused, [], `${family} had an entry the freeze would not copy`);
       assert.equal(settled.changed_after_settlement, false, `${family} was written to after it was settled`);
       assert.match(String(settled.settled_at), /^\d{4}-\d{2}-\d{2}T/u, family);
     }

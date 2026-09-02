@@ -368,7 +368,22 @@ before the sweep runs -- and such a process is still inside the same kernel-enfo
 the escapee cell measures on every run. On a backend with a pid namespace (bubblewrap's
 `--unshare-pid`) the case cannot arise at all. That residual is named on
 `descendants.residual`, in the lane's constraints, and in the support table -- it is why the lane
-is `SUPPORTED_WITH_CONSTRAINTS` and not `SUPPORTED`. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
+is `SUPPORTED_WITH_CONSTRAINTS` and not `SUPPORTED`.
+
+What bounds it is the settlement freeze. Such a survivor is granted this run's own workspace by the
+same profile that holds it, and grading used to read that tree afterwards -- so a process nothing
+could see could write an artifact between the last invocation and the grader and change the
+measurement. `freezeWorkspace` copies each family's workspace at the moment execution is declared
+settled, grading and every artifact read run against that copy, and the live tree is digested again
+afterwards: a difference is `AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT` and the run is not
+official. The copy holds regular files and directories and nothing else. A symlink is refused by
+name, because a link's own bytes are in the tree digest and its target's are not: reproduced in the
+copy, it would have let a survivor point `response.json` outside the workspace, rewrite that file
+after settlement, and be graded on the new bytes with `changed_after_settlement: false` beside them.
+A refused artifact reads as missing, which is the rule staging, the cohort digest and the workspaces
+root already hold. The settlement digest is taken over the live tree rather than over the copy, so
+the two sides of the comparison are the same question asked twice; the copy's own digest is recorded
+beside it as `copy_digest`. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
 directory were removed and `survivors` is empty; it is set in `settleConfinement`, after the
 `finally` in `runProcess` has done the removal, so a cleanup failure it cannot see is not one it
 can vouch for.

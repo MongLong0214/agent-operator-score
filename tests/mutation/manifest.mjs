@@ -2630,6 +2630,24 @@ export const GUARDS = [
     name: "an_assessment_records_what_each_family_was_graded_from"
   },
   {
+    guard: "the freeze copies no link",
+    reason: "a link's own bytes are in the tree digest and its target's are not, so a survivor could point response.json outside the workspace, rewrite the target after settlement, and be graded on the new bytes with changed_after_settlement false beside them",
+    file: "lib/confinement.mjs",
+    from: "    if (!stats.isFile()) { refused.push({ path, type: stats.isSymbolicLink() ? \"symlink\" : \"other\" }); continue; }",
+    to: "    if (!stats.isFile() && !stats.isSymbolicLink()) { refused.push({ path, type: \"other\" }); continue; }",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
+  },
+  {
+    guard: "the settlement digest is over the tree the comparison recomputes",
+    reason: "taking it over the copy instead made a workspace holding a link digest differently from the tree it was copied from, so every later comparison reported a write that never happened and the run withheld for a phantom",
+    file: "lib/confinement.mjs",
+    from: "    digest: digest(workspace),\n    // And the copy's own digest",
+    to: "    digest: digest(into),\n    // And the copy's own digest",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
+  },
+  {
     guard: "a write after settlement is visible",
     reason: "the frozen copy keeps a later write out of the number; the digest beside it is what makes such a write reportable instead of silent",
     file: "lib/confinement.mjs",
@@ -3886,6 +3904,7 @@ export const ACCOUNTED_GUARDS = [
   "the evidence a row must cite follows its level, not its label",
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
+  "the freeze copies no link",
   "the group sweep is recorded from the group",
   "the lane is bound into the cohort",
   "the lane's identity comes from the runtime that authenticated",
@@ -3912,6 +3931,7 @@ export const ACCOUNTED_GUARDS = [
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
+  "the settlement digest is over the tree the comparison recomputes",
   "the spawn refuses a workspace inside the store",
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
