@@ -33,6 +33,12 @@ const escapeForPattern = (name) => `^${name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$
 
 const LEDGER_SCHEMA = "aos-mutation-measurement-ledger.v1";
 
+// One guard at a time when asked, so a lane that exists only to measure a platform-specific guard
+// -- a Linux container run from a macOS machine, say -- measures exactly that one and leaves the
+// rest of the ledger alone. A filtered run makes no claim about what it did not run, so it does
+// not require the guards it skipped to have been measured elsewhere.
+const only = process.env.AOS_MUTATION_ONLY ?? null;
+
 const worktree = mkdtempSync(join(tmpdir(), "aos-mutation-"));
 rmSync(worktree, { recursive: true, force: true });
 const added = run("git", ["worktree", "add", "--detach", worktree, "HEAD"]);
@@ -44,10 +50,6 @@ if (added.status !== 0) {
 const results = [];
 const deferred = [];
 try {
-  // One guard at a time when asked, so a lane that exists only to measure a platform-specific
-  // guard -- a Linux container run from a macOS machine, say -- can measure exactly that one and
-  // leave the rest of the ledger alone.
-  const only = process.env.AOS_MUTATION_ONLY ?? null;
   for (const entry of GUARDS) {
     if (only !== null && entry.guard !== only) continue;
     // A guard for behaviour only one platform has. The ACL walk is macOS-only, and running its
