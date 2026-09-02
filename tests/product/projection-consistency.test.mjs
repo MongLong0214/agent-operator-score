@@ -77,10 +77,47 @@ test("every renderer prints every phrase of the projection -- the card included,
   const result = mixed();
   const view = projectResult(result);
   assert.ok(view.phrases.length >= 40, `only ${view.phrases.length} phrases`);
+  // The oracle has to name the content, or "every renderer prints every phrase" is a statement
+  // about whatever the list happens to hold. The delegated-artifact rows were not in it, so the
+  // card omitted all six and this test went green over the omission -- an oracle that excludes
+  // what it should check. Every row of every surface is named here, and so is every line the
+  // renderers are required to carry.
+  for (const row of [...view.process.rows, ...view.outcome.rows, ...view.composite.artifact_rows]) {
+    assert.ok(view.phrases.includes(`${row.id} ${row.title}`), `phrases omits the row ${row.id}`);
+    assert.ok(view.phrases.includes(row.value), `phrases omits the value of ${row.id}`);
+    if (row.reason) assert.ok(view.phrases.includes(row.reason), `phrases omits the reason on ${row.id}`);
+  }
+  assert.ok(view.composite.artifact_rows.length > 0, "the fixture has no artifact rows, so this checked nothing");
+  for (const line of [view.summary, view.process.coverage, view.outcome.coverage, view.reliance.coverage,
+    view.process.index, view.outcome.index, view.composite.value, view.composite.formula,
+    view.claim.stage, view.claim.uncertainty, view.claim.generalizability]) {
+    assert.ok(view.phrases.includes(line), `phrases omits ${line}`);
+  }
   assert.ok(view.headline.length >= 8);
   for (const phrase of view.headline) assert.ok(view.phrases.includes(phrase), `headline phrase not in phrases: ${phrase}`);
   for (const [name, output] of Object.entries(fullRenderers(result))) {
     for (const phrase of view.phrases) assert.ok(contains(output, phrase), `${name} lacks: ${phrase}`);
+  }
+});
+
+test("the card carries every declared facet and every forbidden use, not the ones that fitted", () => {
+  // A card is the rendering somebody forwards on its own, and it was dropping whatever ran past a
+  // fixed height: the ninth facet, and any forbidden use after the twelfth. The facets are the
+  // conditions the whole result is bound to and the forbidden uses are what it may not be used
+  // for, so "did not fit" is the wrong reason for either to be missing. The card grows instead.
+  const facets = { ...identified.facets, workspace: "isolated", lane: "container", occasion: 2, seed: "s-1", pack: "aos-suite-v1" };
+  const result = buildResult({
+    contract: populated,
+    evaluation: evaluate(observationsWith(), { ...identified, facets }, populated)
+  });
+  const view = projectResult(result);
+  assert.ok(view.claim.facets.length >= 9, `only ${view.claim.facets.length} facets, so nothing was crowded out`);
+  const card = renderCard(result);
+  for (const facet of view.claim.facets) {
+    assert.ok(contains(card, facet), `the card dropped the facet ${facet}`);
+  }
+  for (const use of view.claim.forbidden_uses) {
+    assert.ok(contains(card, use), `the card dropped the forbidden use ${use}`);
   }
 });
 
