@@ -1,0 +1,11 @@
+{
+  "schema": "aos-action-pin-policy.v1",
+  "reviewed_owners": ["actions"],
+  "update_automation": "dependabot",
+  "workflow_permissions": {
+    ".github/workflows/ci.yml": {
+      "workflow": { "contents": "read" },
+      "jobs": {}
+    }
+  }
+}

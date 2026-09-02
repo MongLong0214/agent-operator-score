@@ -1,0 +1,16 @@
+# Refreshes the action pins, and does not merge them.
+#
+# A pull request from here is a proposal to run different code in CI with the repository's
+# credentials, which is exactly the decision the pinning exists to make deliberate. It arrives with
+# the old and new SHA and the release it corresponds to, and a person reads it.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - area:release

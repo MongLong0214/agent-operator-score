@@ -16,6 +16,60 @@
 
 export const GUARDS = [
   {
+    guard: "full-SHA action reference",
+    reason: "a tag is a name whose owner decides which commit it means, at any time and retroactively",
+    file: "lib/action-pins.mjs",
+    from: "export const ACTION_REF = /^[0-9a-f]{40}$/;",
+    to: "export const ACTION_REF = /^[0-9a-fA-Fv.]{2,40}$/;",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a full lowercase forty-character SHA is the only external reference that passes"
+  },
+  {
+    guard: "repository-wide workflow discovery",
+    reason: "naming the files is how the release workflow added next month ends up outside the check",
+    file: "lib/action-pins.mjs",
+    from: "      const isAction = /^action\\.ya?ml$/.test(entry.name);",
+    to: '      const isAction = entry.name === "never-matches.yml";',
+    test: "tests/product/action-pins.test.mjs",
+    name: "a mutable tag fails and a pinned SHA passes, wherever the workflow lives"
+  },
+  {
+    guard: "unreadable uses: fails closed",
+    reason: "a scanner that shrugs at what it cannot parse reports green on the line written to be misunderstood",
+    file: "lib/action-pins.mjs",
+    from: "        unparsable.push(where);",
+    to: "        continue;",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a uses: line the scanner cannot parse fails rather than being skipped"
+  },
+  {
+    guard: "reviewed action owner allowlist",
+    reason: "a pinned commit from an owner nobody looked at is still code nobody looked at",
+    file: "lib/action-pins.mjs",
+    from: "      if (!policy.reviewed_owners.includes(reference.owner)) {",
+    to: "      if (false) {",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a pinned action from an owner nobody reviewed fails"
+  },
+  {
+    guard: "readable pin version comment",
+    reason: "forty hex characters do not tell a reviewer whether the refresh moved to v5.1.0 or elsewhere",
+    file: "lib/action-pins.mjs",
+    from: "      if (!use.comment) {",
+    to: "      if (false) {",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a pin with no human-readable version comment fails"
+  },
+  {
+    guard: "workflow permission drift",
+    reason: "a pin refresh that quietly arrives with contents: write is the change this watches for",
+    file: "lib/action-pins.mjs",
+    from: 'if (before !== after) fail("permission-drift", name, `recorded ${before}, found ${after}`);',
+    to: "if (false) fail();",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a workflow's permissions must match the recorded baseline exactly"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
