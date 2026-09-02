@@ -48,7 +48,7 @@ Every fact below came from a read command against `MongLong0214/agent-operator-s
 - `git log`, `git branch -r --contains`, `git tag --contains` -- authorship, dates, and whether a
   commit exists on any other ref.
 - `gh pr list --repo MongLong0214/agent-operator-score --state all --limit 500 --json ...` (355+ PRs
-  fetched in full, not the default 200) -- whether any PR, open or closed, ever used a branch as its
+  fetched in full, not the default 30) -- whether any PR, open or closed, ever used a branch as its
   head, or mentioned its name in a PR body.
 - `gh pr view <number>` -- current state and head SHA of specific PRs.
 - `gh api -X GET search/issues -f q='repo:... "<branch name>"'` -- whether any issue anywhere on the
