@@ -13,10 +13,10 @@
     },
     {
       "generated_at": "2026-09-02T00:29:41Z",
-      "note": "Coordinator correction: PR #591 was opened against task/issue-588-mark-done after the first snapshot, and further review-round commits are reported to have landed on it locally. Re-collected live state: moved task/issue-588-mark-done into open_pr_heads_excluded, refreshed task/issue-570-action-pins's SHA (34ad44c, one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (task/issue-572-work, PR #592) to open_pr_heads_excluded. Recorded dev_sha_at_snapshot and this revision_history so a reader can tell how far the repository has moved. See branches_reported_but_not_found_on_origin for a discrepancy this correction did not resolve by assumption."
+      "note": "Coordinator correction: PR #591 (opened 00:13:30Z, five minutes before the first snapshot's stated generation time of 00:18:26Z) was already open against task/issue-588-mark-done when the first snapshot was generated; that snapshot's PR-list query had gone stale before the document was produced and missed it. Further review-round commits are reported to have landed on the branch locally since. Re-collected live state: moved task/issue-588-mark-done into open_pr_heads_excluded, refreshed task/issue-570-action-pins's SHA (34ad44c, one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (task/issue-572-work, PR #592) to open_pr_heads_excluded. Recorded dev_sha_at_snapshot and this revision_history so a reader can tell how far the repository has moved. See branches_reported_but_not_found_on_origin for a discrepancy this correction did not resolve by assumption."
     }
   ],
-  "method": "Read-only: git ls-remote --heads origin, git merge-base --is-ancestor and git rev-list against origin/dev and origin/main, gh pr list --state all --limit 500 --json ..., gh api search/issues, gh api repos/.../branches/<b>/protection, and independently gh api repos/.../branches --paginate to cross-check git ls-remote against the REST API directly. No ref was created, deleted, force-pushed, or renamed to produce this file.",
+  "method": "Read-only: git ls-remote --heads origin, git merge-base --is-ancestor and git rev-list against origin/dev and origin/main, gh pr list --state all --limit 500 --json ..., gh api search/issues, gh api repos/.../branches/<b>/protection, and independently gh api repos/.../branches --paginate to cross-check git ls-remote against the REST API directly. No ref was deleted, force-pushed, or renamed, and none was created or deleted for audit purposes, to produce this file. The one ref created and pushed to origin while this file was being produced is this agent's own required task branch (task/issue-572-work) -- the normal artifact of submitting this file via PR #592, not an audit action; it is recorded in open_pr_heads_excluded like any other branch.",
   "excluded_refs": ["main", "dev"],
   "ls_remote_snapshot": [
     { "name": "dev", "sha": "499bb11b004024fc46b9e97300ad8909d86a5073" },
@@ -66,7 +66,7 @@
       "merged_into_dev": false,
       "merged_into_main": false,
       "unmerged_commit_count": 2,
-      "reason": "Head of open PR #591 ('fix(governance): bind the close-evidence confirmation to one piece of work') targeting dev, opened after this audit's first snapshot was taken. The first snapshot classified this branch must_be_preserved under branches because at that time no PR referenced it and it existed on no other ref -- see revision_history. That finding is now stronger, not weaker: real, active work is landing on it (the coordinator reports further review-round commits, up to 88523a4, beyond origin's snapshot head of 034fcac at generated_at -- unverified by this audit's own read-only remote commands as of generated_at; see the Known limitation note in docs/STALE_BRANCH_AUDIT.md). Whatever its exact current SHA, it must not be deleted while PR #591 is open."
+      "reason": "Head of open PR #591 ('fix(governance): bind the close-evidence confirmation to one piece of work') targeting dev. PR #591 was in fact already open (created 00:13:30Z) five minutes before this audit's first snapshot was generated (00:18:26Z); the first snapshot's own PR-list query had gone stale before generation and missed it, which is why the first snapshot classified this branch must_be_preserved under branches on the different basis that no PR referenced it and it existed on no other ref -- see revision_history. That finding is now stronger, not weaker: real, active work is landing on it (the coordinator reports further review-round commits, up to 88523a4, beyond origin's snapshot head of 034fcac at generated_at -- unverified by this audit's own read-only remote commands as of generated_at; see the Known limitation note in docs/STALE_BRANCH_AUDIT.md). Whatever its exact current SHA, it must not be deleted while PR #591 is open."
     }
   ],
   "branches": [
@@ -115,6 +115,6 @@
     "rulesets": [],
     "main_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
     "dev_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
-    "candidate_branch_protection": "none of the 7 non-main/dev branches on origin (checked via gh api repos/.../branches/<b>/protection) have branch protection configured"
+    "candidate_branch_protection": "none of the 5 non-main/dev branches on origin (7 heads in ls_remote_snapshot minus main and dev; checked via gh api repos/.../branches/<b>/protection) have branch protection configured"
   }
 }

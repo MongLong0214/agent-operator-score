@@ -23,7 +23,7 @@ export const GUARDS = [
     from: '"name": "task/issue-588-mark-done",\n      "recommendation": "must_be_preserved"',
     to: '"name": "task/issue-588-mark-done",\n      "recommendation": "safe_to_delete_after_578"',
     test: "tests/product/stale-branch-audit.test.mjs",
-    name: "an open-PR-head branch with unmerged work found nowhere else must be marked must be preserved"
+    name: "an entry with commits merged into neither dev nor main must be marked must_be_preserved, across the audited-branches and open-PR-head tables"
   },
   {
     guard: "stale-branch audit deletion recommendations carry a reason",

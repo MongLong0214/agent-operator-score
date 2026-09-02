@@ -18,10 +18,12 @@ import { dirname, join } from "node:path";
 // it was produced.
 //
 // The fixture has already needed one correction: its first version classified
-// task/issue-588-mark-done as must_be_preserved because no PR referenced it yet, and shortly after
-// that snapshot was taken, PR #591 was opened against it. That is expected under a batch this size,
-// not a bug -- which is why the fixture carries an explicit snapshot_warning, a dev_sha_at_snapshot,
-// and a revision_history rather than presenting itself as current. Those are checked below too.
+// task/issue-588-mark-done as must_be_preserved because its PR-list query found no PR referencing
+// it -- but PR #591 had in fact already been opened against the branch five minutes before that
+// first snapshot was even generated; the query was stale before the document was produced, not the
+// branch changing afterward. That kind of staleness is expected under a batch this size, not a bug
+// -- which is why the fixture carries an explicit snapshot_warning, a dev_sha_at_snapshot, and a
+// revision_history rather than presenting itself as current. Those are checked below too.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const auditPath = join(root, "fixtures", "stale-branches", "audit.json");
@@ -42,7 +44,7 @@ test("the audit doc exists and is not empty", () => {
   assert.ok(doc.length > 200, "docs/STALE_BRANCH_AUDIT.md reads as a stub");
 });
 
-test("the audit records how it was produced, and it was read-only", () => {
+test("the audit declares a read-only-audit phase, a method string, and a non-empty ls_remote snapshot excluding main/dev", () => {
   const audit = loadAudit();
   assert.equal(audit.schema, "aos-stale-branch-audit.v1");
   assert.equal(audit.phase, "read-only-audit");
@@ -102,7 +104,7 @@ test("branches the coordinator reported but this audit could not find on origin 
   }
 });
 
-test("every remote branch other than main/dev is covered exactly once: audited or recorded as an open PR head", () => {
+test("every branch in the snapshot other than main/dev is covered exactly once: audited or recorded as an open PR head", () => {
   const audit = loadAudit();
   const snapshotNames = audit.ls_remote_snapshot.map((entry) => entry.name);
   assert.ok(snapshotNames.includes("main"), "the snapshot must include main to prove it was excluded, not forgotten");
@@ -124,7 +126,7 @@ test("every remote branch other than main/dev is covered exactly once: audited o
   for (const name of openPrHeadNames) assert.ok(target.has(name), `${name} is recorded as an open PR head but not in the ls-remote snapshot`);
 });
 
-test("every open-PR-head exclusion names a real open PR, with a recognized recommendation and a reason", () => {
+test("every open-PR-head exclusion records an OPEN pr_state, a pr_number, a recognized recommendation, and a reason", () => {
   const audit = loadAudit();
   assert.ok(audit.open_pr_heads_excluded.length > 0);
   for (const entry of audit.open_pr_heads_excluded) {
@@ -173,45 +175,40 @@ test("every branch entry has the fields the issue asks for, a reason, and a reco
   }
 });
 
-test("an audited branch with unmerged work found nowhere else must be marked must be preserved", () => {
-  const audit = loadAudit();
-  for (const entry of audit.branches) {
-    const unmergedAndOrphaned = entry.merged_into_dev === false && entry.merged_into_main === false && entry.unmerged_commit_count > 0;
-    if (unmergedAndOrphaned) {
-      assert.equal(
-        entry.recommendation,
-        "must_be_preserved",
-        `${entry.name}: carries ${entry.unmerged_commit_count} unmerged commit(s) present on no other ref, so it must be preserved, not "${entry.recommendation}"`
-      );
-      assert.ok(entry.unmerged_summary && entry.unmerged_summary.length > 20, `${entry.name}: must_be_preserved with unmerged work needs a summary of what would be lost`);
-    }
-  }
-  // No branch in the `branches` table happens to be unmerged-and-orphaned right now -- the three
-  // branches that were in that state (#570, #572, #588) all picked up open PRs and moved to
-  // open_pr_heads_excluded, which is exactly the outcome the rule exists to encourage. The rule is
-  // still checked above; it is just not exercised from this side today. The next test exercises the
-  // equivalent case on the other side of the coverage split, which the fixture does still contain.
-});
-
 // This is the guard tests/mutation/manifest.mjs exercises: flip task/issue-588-mark-done's
 // "must_be_preserved" to "safe_to_delete_after_578" and this test must be the one that notices.
-test("an open-PR-head branch with unmerged work found nowhere else must be marked must be preserved", () => {
+//
+// Checked as one invariant across both tables (audited branches and open-PR heads), because the
+// audit moves an entry between them as its status changes -- exactly what happened to
+// task/issue-588-mark-done between this fixture's two snapshots -- and the rule has to hold no
+// matter which table an entry currently sits in. Splitting this into two per-table tests previously
+// left one of them vacuous: nothing in the `branches` table has ever been in this state, because the
+// three branches that were (#570, #572, #588) all picked up open PRs and moved to
+// open_pr_heads_excluded, so a `branches`-only version of this test would loop over nothing and pass
+// without checking anything -- a test that cannot fail. Folding both tables into one loop keeps it
+// exercised via open_pr_heads_excluded even when `branches` holds no such case, and the closing
+// assertion below fails loudly if that ever stops being true for both tables at once.
+test("an entry with commits merged into neither dev nor main must be marked must_be_preserved, across the audited-branches and open-PR-head tables", () => {
   const audit = loadAudit();
-  for (const entry of audit.open_pr_heads_excluded) {
-    const unmergedAndOrphaned = entry.merged_into_dev === false && entry.merged_into_main === false && entry.unmerged_commit_count > 0;
-    if (unmergedAndOrphaned) {
+  const entries = [...audit.branches, ...audit.open_pr_heads_excluded];
+  let exercised = false;
+  for (const entry of entries) {
+    const unmergedAndNotIntegrated = entry.merged_into_dev === false && entry.merged_into_main === false && entry.unmerged_commit_count > 0;
+    if (unmergedAndNotIntegrated) {
+      exercised = true;
       assert.equal(
         entry.recommendation,
         "must_be_preserved",
-        `${entry.name}: carries ${entry.unmerged_commit_count} unmerged commit(s), so it must be preserved, not "${entry.recommendation}"`
+        `${entry.name}: carries ${entry.unmerged_commit_count} commit(s) merged into neither dev nor main, so it must be preserved, not "${entry.recommendation}"`
       );
+      if ("unmerged_summary" in entry) {
+        assert.ok(entry.unmerged_summary && entry.unmerged_summary.length > 20, `${entry.name}: must_be_preserved with unmerged work needs a summary of what would be lost`);
+      }
     }
   }
-  // The fixture is expected to actually contain this case today; otherwise the assertion above
-  // never runs and the guard is decorative.
   assert.ok(
-    audit.open_pr_heads_excluded.some((entry) => entry.merged_into_dev === false && entry.merged_into_main === false && entry.unmerged_commit_count > 0),
-    "no open-PR-head entry in the fixture exercises the unmerged-work-must-be-preserved case"
+    exercised,
+    "no entry in branches or open_pr_heads_excluded exercises the merged-into-neither-dev-nor-main-must-be-preserved case -- this test would otherwise pass without checking anything"
   );
 });
 

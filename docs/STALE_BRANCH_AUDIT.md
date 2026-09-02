@@ -6,9 +6,11 @@
 > **Phase B (blocked on #578) must re-collect every fact in this document from scratch** --
 > `git ls-remote`, merge status, and `gh pr list` -- rather than trust any SHA, merge state, or PR
 > number written here. This is not a hypothetical caution: this document's first version (generated
-> 2026-09-02T00:18:26Z) classified `task/issue-588-mark-done` as `must_be_preserved` because no PR
-> referenced it yet; within minutes, PR #591 was opened against it and further commits landed. See
-> "Revision history" below for exactly what changed and why.
+> 2026-09-02T00:18:26Z) classified `task/issue-588-mark-done` as `must_be_preserved` because its
+> PR-list query found no PR referencing it -- but PR #591 had in fact already been opened against it
+> five minutes earlier (00:13:30Z). The query was stale before this document was even generated, not
+> the branch state changing after the fact. See "Revision history" below for exactly what changed and
+> why.
 
 Generated: 2026-09-02T00:29:41Z (corrected; see Revision history)
 Repository SHA at snapshot: `dev` was at `499bb11b004024fc46b9e97300ad8909d86a5073`
@@ -17,7 +19,11 @@ Machine-readable source of truth: [`fixtures/stale-branches/audit.json`](../fixt
 (checked by [`tests/product/stale-branch-audit.test.mjs`](../tests/product/stale-branch-audit.test.mjs))
 
 **This is Phase A of #572 only.** Phase A is read-only: inventory, classify, and record what would
-be lost. No branch was created, deleted, renamed, or force-pushed to produce this document. The
+be lost. No branch was deleted, renamed, or force-pushed, and no branch was created or deleted for
+audit purposes, to produce this document. (The one branch that *was* created and pushed to origin
+while this document was being written is this agent's own required task branch,
+`task/issue-572-work` -- the normal, unavoidable artifact of submitting this document via PR #592,
+not an action the audit process took. It is recorded in the tables below like any other branch.) The
 destructive phase (Phase B / "final-deletion") is explicitly out of scope here and remains blocked
 on **#578** -- final release/E2E evidence must be preserved before anything is deleted. Nothing in
 this document authorizes deletion; it only records what a future, separate deletion step should do
@@ -28,7 +34,7 @@ and why.
 | generated at | what changed |
 |---|---|
 | 2026-09-02T00:18:26Z | Initial version. `task/issue-588-mark-done` classified `must_be_preserved` under the per-branch table because no PR referenced it at that time. |
-| 2026-09-02T00:29:41Z | Coordinator correction. PR #591 was opened against `task/issue-588-mark-done` after the first snapshot, and further review-round commits are reported to have landed on it locally. Re-collected live state: moved `task/issue-588-mark-done` into the open-PR-heads table (alongside `#570`), refreshed `task/issue-570-action-pins`'s SHA (one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (`task/issue-572-work`, PR #592) to the same table. Recorded the `dev` SHA at snapshot time and this history. Also recorded, rather than assumed, a discrepancy with the coordinator's report of seven other new branches -- see "Branches reported but not found on origin" below. |
+| 2026-09-02T00:29:41Z | Coordinator correction. PR #591 (opened 00:13:30Z, five minutes before the first snapshot's stated generation time of 00:18:26Z) was already open against `task/issue-588-mark-done` when the first snapshot was generated; that snapshot's PR-list query had gone stale before the document was produced and missed it. Further review-round commits are reported to have landed on the branch locally since. Re-collected live state: moved `task/issue-588-mark-done` into the open-PR-heads table (alongside `#570`), refreshed `task/issue-570-action-pins`'s SHA (one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (`task/issue-572-work`, PR #592) to the same table. Recorded the `dev` SHA at snapshot time and this history. Also recorded, rather than assumed, a discrepancy with the coordinator's report of seven other new branches -- see "Branches reported but not found on origin" below. |
 
 ## Method
 
@@ -186,13 +192,15 @@ old with its only content long since merged elsewhere. Deleting it after #578 lo
 ## Why `task/issue-588-mark-done` is no longer in the stale-branch table
 
 The first version of this document audited `task/issue-588-mark-done` here, with `must_be_preserved`,
-because at that time (0 of 355 PRs checked) nothing referenced it and it existed on no other ref --
-it was carrying two real, unmerged commits hardening the #588 execution-plan governance gate with
-nobody watching it. That finding was correct as of when it was made, and the underlying facts about
-the commits themselves have not changed. What changed is that PR #591 was opened against it shortly
-after, which moves it from "orphaned unmerged work" to "active work under review" -- a stronger, not
-weaker, reason to preserve it. It now lives in the open-PR-heads table above instead of here, per the
-issue's own scoping rule.
+because its PR-list query (355 PRs checked) found nothing referencing it and it existed on no other
+ref -- it was carrying two real, unmerged commits hardening the #588 execution-plan governance gate
+with nobody watching it, so far as that query could tell. That finding was correct given what the
+query saw, and the underlying facts about the commits themselves have not changed. What changed is
+that the correction found PR #591, which had in fact already been opened against the branch five
+minutes before the first snapshot was generated (00:13:30Z vs. 00:18:26Z) -- the first snapshot's own
+query was stale, not the branch. Once found, this moves the branch from "orphaned unmerged work" to
+"active work under review" -- a stronger, not weaker, reason to preserve it. It now lives in the
+open-PR-heads table above instead of here, per the issue's own scoping rule.
 
 ## Repository-level facts
 
@@ -202,7 +210,8 @@ issue's own scoping rule.
   removed automatically on merge, consistent with the general policy this issue documents
   (feature/task/fix branches deleted after merge; `tmp/*` capped at 7 days or task end;
   release/hotfix branches deleted after release + back-merge).
-- None of the 7 branches on origin other than `main`/`dev` have any branch protection of their own.
+- None of the 5 branches on origin other than `main`/`dev` (7 heads total minus `main` and `dev`) have
+  any branch protection of their own.
 
 ## Why the JSON lives at `fixtures/stale-branches/audit.json`, not under `governance/`
 
