@@ -442,8 +442,34 @@
       }
     },
     "reliance_metric": {
+      "description": "A metric's status and its value are one state, the same way a surface's are: ISSUED carries a rate, and NOT_COMPUTED or WITHHELD carries none. The raw counts are kept in every state, because SSOT section 21 withholds the rate below the opportunity floor and keeps the counts that say why.",
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "enum": [
+                "NOT_COMPUTED",
+                "WITHHELD"
+              ]
+            },
+            "value": {
+              "type": "null"
+            }
+          }
+        }
+      ],
       "required": [
         "value",
         "status",

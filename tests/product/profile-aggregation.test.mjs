@@ -333,6 +333,37 @@ test("a reliance metric supplied below the operational floor is refused rather t
   assert.throws(() => buildResult({ contract: populated, evaluation, reliance: { status: "PARTIAL", metrics: { net: { value: 1, status: "ISSUED", numerator: 4, denominator: 4 } } } }), /AOS_RELIANCE_METRIC/);
 });
 
+test("a metric below the floor withholds its rate and keeps the counts that say why", () => {
+  // SSOT section 21: below four opportunities the *rate* is withheld and the raw counts stay. The
+  // builder was dropping both, so a metric with too few opportunities and one nobody computed
+  // arrived at the reader as the same four nulls, and the evidence for the withholding was gone.
+  const evaluation = fullRun();
+  const built = buildResult({
+    contract: populated,
+    evaluation,
+    reliance: { status: "WITHHELD", metrics: { cair: { value: null, status: "WITHHELD", numerator: 1, denominator: 3 } } }
+  });
+  const cair = built.reliance_calibration_profile.metrics.cair;
+  assert.deepEqual(cair, { value: null, status: "WITHHELD", numerator: 1, denominator: 3 });
+  assert.deepEqual(built.reliance_calibration_profile.metrics.csr, { value: null, status: "NOT_COMPUTED", numerator: null, denominator: null });
+  // And what the reader is shown: the rate withheld by name, the opportunities it rested on beside
+  // it. Formatting whatever finite number was in the field printed a withheld metric as `0.00`.
+  const row = projectResult(built).reliance.rows.find((one) => one.id === "cair");
+  assert.deepEqual(row, { id: "cair", value: "withheld", status: "WITHHELD", opportunities: "3" });
+
+  // The state is one state here too, and the schema is where this build says so: a withheld metric
+  // carrying a number is refused wherever a stored result is read, not printed as a zero.
+  const forged = JSON.parse(canonicalJson(built));
+  forged.reliance_calibration_profile.metrics.cair = { value: 0, status: "WITHHELD", numerator: null, denominator: null };
+  for (const call of [() => projectResult(forged), () => renderMarkdown(forged), () => renderHtml(forged), () => renderCard(forged)]) {
+    assert.throws(call, /AOS_RESULT_SCHEMA_INVALID/, "a withheld metric was rendered with a value");
+  }
+  assert.equal(validateAgainstSchema(forged, loadSchema(RESULT_SCHEMA_URL)).ok, false);
+  const stripped = JSON.parse(canonicalJson(built));
+  stripped.reliance_calibration_profile.metrics.csr = { value: 0.5, status: "NOT_COMPUTED", numerator: null, denominator: null };
+  assert.equal(validateAgainstSchema(stripped, loadSchema(RESULT_SCHEMA_URL)).ok, false, "a metric nobody computed carried a value");
+});
+
 test("the composite is unchanged by anything on the reliance surface", () => {
   const evaluation = fullRun();
   const without = buildResult({ contract: populated, evaluation });
@@ -624,6 +655,12 @@ test("no credential shape and no absolute path reaches the canonical result thro
     // starts after a colon is still a root -- neither is a new spelling of a credential, both are
     // the same credential written the way somebody types it into a note.
     spaced_secret: "database password hunter2",
+    // No digit anywhere in it. The rule that asked for one was the length floor's heuristic borrowed
+    // a layer up, and a passphrase is chosen by a person, not to suit a regular expression.
+    spaced_passphrase: "database password correcthorsebatterystaple",
+    // Sixty-four hex characters are not evidence of having been hashed. This one was published as
+    // `sha256:` plus itself -- the marker of a digest in front of every character of the secret.
+    bare_hex_secret: "a".repeat(64),
     path_after_colon: "workspace:/Users/alice/private/customer.txt",
     spaced_secret_and_path: "database password hunter2; workspace:/Users/alice/private/customer.txt"
   };
@@ -674,6 +711,9 @@ test("no credential shape and no absolute path reaches the canonical result thro
     assert.equal(rendered.includes(value), false, `${name} survived into the result or a rendering`);
     const carried = (Object.hasOwn(firstHalf, name) ? result : second).facet_identity[name];
     assert.match(carried, /^sha256:[0-9a-f]{64}$/u, `${name} was not carried as a digest`);
+    // A digest of the value, not the value wearing a digest's clothes. `sha256:` + the same
+    // sixty-four characters passed every check above and published the secret in full.
+    assert.equal(carried.endsWith(value), false, `${name} was prefixed rather than hashed`);
   }
   // And the safe values a run legitimately carries are untouched, so redaction is not a way of
   // losing the record: an id with hyphens, a suite name, a digest, and ordinary prose.
