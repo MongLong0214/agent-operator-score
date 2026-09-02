@@ -79,16 +79,25 @@ test("a self dependency fails", () => {
   assert.ok(failures(checkPlan(doc)).includes("self-dependency"));
 });
 
+// Several tests need an issue that is still blocked behind unfinished work. #559 was that example
+// until #582 and #588 were done and it became ready; the plan moves, so the example is taken from
+// whatever it says today rather than from a number that was true when the test was written.
+const blockedBehindUnfinished = (doc) => {
+  const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
+  const one = doc.issues.find((each) => each.status === "blocked" && each.blocked_by.some((number) => !done.has(number)));
+  assert.ok(one, "the plan has no blocked issue left to serve as the example");
+  return one;
+};
+
 test("a ready issue with an unfinished predecessor fails", () => {
   const doc = plan();
-  const one = entry(doc, 559);
-  one.status = "ready";
+  blockedBehindUnfinished(doc).status = "ready";
   assert.ok(failures(checkPlan(doc)).includes("ready-with-unfinished-predecessor"));
 });
 
 test("a blocked issue whose predecessors all passed is stale and fails", () => {
   const doc = plan();
-  for (const number of entry(doc, 559).blocked_by) entry(doc, number).status = "done";
+  for (const number of blockedBehindUnfinished(doc).blocked_by) entry(doc, number).status = "done";
   assert.ok(failures(checkPlan(doc)).includes("stale-blocked-status"));
 });
 
@@ -176,7 +185,9 @@ test("the committed snapshot agrees with the manifest", () => {
 
 test("a status label that contradicts the manifest fails", () => {
   const snapshot = state();
-  snapshot.issues.find((one) => one.number === 559).labels = ["release:v0.2.0", "priority:P0", "area:measurement", "status:ready"];
+  const example = blockedBehindUnfinished(plan());
+  const issue = snapshot.issues.find((one) => one.number === example.issue);
+  issue.labels = issue.labels.map((label) => (label === "status:blocked" ? "status:ready" : label));
   assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "status-label-mismatch"));
 });
 
@@ -399,10 +410,11 @@ test("the excluded-issue check cannot be switched off from inside the plan", () 
 test("in-progress and done are constrained by predecessors, not just ready", () => {
   for (const status of ["in-progress", "done", "ready"]) {
     const doc = plan();
-    entry(doc, 559).status = status;
+    const one = blockedBehindUnfinished(doc);
+    one.status = status;
     assert.ok(
       failures(checkPlan(doc)).includes("ready-with-unfinished-predecessor"),
-      `#559 was allowed to be ${status} while #582 is unfinished`
+      `#${one.issue} was allowed to be ${status} while a predecessor is unfinished`
     );
   }
 });
@@ -504,7 +516,7 @@ test("the committed snapshot says it is a snapshot, so an offline run cannot rea
 
 test("two contradictory status labels do not pass", () => {
   const snapshot = state();
-  const issue = snapshot.issues.find((one) => one.number === 559);
+  const issue = snapshot.issues.find((one) => one.number === blockedBehindUnfinished(plan()).issue);
   issue.labels = [...issue.labels, "status:ready"];
   assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "status-label-mismatch"));
 });
