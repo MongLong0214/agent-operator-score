@@ -41,6 +41,7 @@ const PROMISES_A_RUN_DOES_NOT_KEEP = {
   ],
   "README.zh-CN.md": [
     [/要获得正式分数/u, "still tells the reader a run of this instrument issues one"],
+    [/百分制分数，或未签发分数的准确原因/u, "still describes the output as a score out of 100"],
     [/在一张图中显示分数、六个维度/u, "still calls the card a picture of a score"]
   ]
 };
