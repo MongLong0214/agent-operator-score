@@ -74,6 +74,17 @@ export function newestResult(cwd) {
   return JSON.parse(readFileSync(join(cwd, ".aos", "runs", runId, "result.json"), "utf8"));
 }
 
+/**
+ * The run's working record: everything the store keeps about how the run went.
+ *
+ * Separate from the result since #559: the result is the artifact an operator publishes, and the
+ * suite manifest, the per-agent environment and the operator's plan projection live beside it.
+ */
+export function newestRecord(cwd) {
+  const runId = newestRunId(cwd);
+  return JSON.parse(readFileSync(join(cwd, ".aos", "runs", runId, "record.json"), "utf8"));
+}
+
 export function makePlan(cwd, routes) {
   const route = (family) => routes[family] ?? routes.default;
   const baseInstruction = (family) => `For ${family}, execute only the assigned controlled responsibility, create the requested evidence, verify it, and report any blocker honestly.`;

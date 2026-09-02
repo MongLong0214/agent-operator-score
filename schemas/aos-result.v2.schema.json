@@ -1,0 +1,1986 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/schemas/aos-result.v2.schema.json",
+  "title": "AOS result v2: three profiles and one secondary composite",
+  "description": "The canonical result a run produces under the #582 ECD contract. An operator-process profile, a reliance-calibration profile and a system-outcome profile, each bound to the facet identity it was observed under, and a composite that is the arithmetic mean of the two indices and is labelled secondary. No band, no percentile, no rank, no single score.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "nullable_digest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "token": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:+-]{0,200}$"
+    },
+    "token_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/token"
+      },
+      "maxItems": 64
+    },
+    "cell_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "estimate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "index": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "issuance": {
+      "enum": [
+        "ISSUED",
+        "WITHHELD"
+      ]
+    },
+    "cell_status": {
+      "enum": [
+        "ISSUED",
+        "NOT_OBSERVED",
+        "INSUFFICIENT_OPPORTUNITIES",
+        "WITHHELD"
+      ]
+    },
+    "withheld_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "status"
+      ],
+      "properties": {
+        "cell_id": {
+          "$ref": "#/$defs/id"
+        },
+        "status": {
+          "$ref": "#/$defs/cell_status"
+        }
+      }
+    },
+    "withheld_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/withheld_entry"
+      },
+      "maxItems": 64
+    },
+    "optional_cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "estimate",
+        "status"
+      ],
+      "properties": {
+        "cell_id": {
+          "$ref": "#/$defs/id"
+        },
+        "estimate": {
+          "$ref": "#/$defs/estimate"
+        },
+        "status": {
+          "$ref": "#/$defs/cell_status"
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "method"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "INSUFFICIENT_DATA",
+            "NOT_COMPUTED",
+            "COMPUTED"
+          ]
+        },
+        "method": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "facet_identity": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "null"
+        ]
+      },
+      "maxProperties": 32
+    },
+    "missing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "not_observed",
+        "insufficient_opportunities",
+        "withheld"
+      ],
+      "properties": {
+        "not_observed": {
+          "$ref": "#/$defs/cell_ids"
+        },
+        "insufficient_opportunities": {
+          "$ref": "#/$defs/cell_ids"
+        },
+        "withheld": {
+          "$ref": "#/$defs/cell_ids"
+        }
+      }
+    },
+    "declared_cell_lists": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/id"
+        },
+        "maxItems": 64,
+        "uniqueItems": true
+      }
+    },
+    "weights": {
+      "description": "Every index in this instrument is an equal-weight mean, so the only weight a surface can carry is one over the number of rows it averaged. Any other number is a claim about a weighting this instrument does not perform: the reciprocals are enumerated here so a weight of 0 or 0.5-on-six-rows fails validation rather than depending on a reader to notice. That the weights are all the same reciprocal, and that the reciprocal matches the row count, is cross-field and checked where the result is read.",
+      "type": "object",
+      "additionalProperties": {
+        "enum": [1, 0.5, 0.3333333333333333, 0.25, 0.2, 0.16666666666666666, 0.14285714285714285, 0.125, 0.1111111111111111, 0.1, 0.09090909090909091, 0.08333333333333333, 0.07692307692307693, 0.07142857142857142, 0.06666666666666667, 0.0625, 0.058823529411764705, 0.05555555555555555, 0.05263157894736842, 0.05, 0.047619047619047616, 0.045454545454545456, 0.043478260869565216, 0.041666666666666664, 0.04, 0.038461538461538464, 0.037037037037037035, 0.03571428571428571, 0.034482758620689655, 0.03333333333333333, 0.03225806451612903, 0.03125]
+      },
+      "minProperties": 1,
+      "maxProperties": 32
+    },
+    "domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "WITHHELD"
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
+      "required": [
+        "domain_id",
+        "title",
+        "axis",
+        "estimate",
+        "value",
+        "status",
+        "required_cells",
+        "cells",
+        "withheld_for",
+        "withheld_reason"
+      ],
+      "properties": {
+        "domain_id": {
+          "type": "string",
+          "pattern": "^O[0-9]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "axis": {
+          "const": "system_outcome"
+        },
+        "estimate": {
+          "$ref": "#/$defs/estimate"
+        },
+        "value": {
+          "$ref": "#/$defs/index"
+        },
+        "status": {
+          "$ref": "#/$defs/issuance"
+        },
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "cells": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cell_id",
+              "estimate",
+              "status",
+              "opportunity_count"
+            ],
+            "properties": {
+              "cell_id": {
+                "$ref": "#/$defs/id"
+              },
+              "estimate": {
+                "$ref": "#/$defs/estimate"
+              },
+              "status": {
+                "$ref": "#/$defs/cell_status"
+              },
+              "opportunity_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "withheld_for": {
+          "$ref": "#/$defs/withheld_list"
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "cap_trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trigger_id",
+        "cell_id",
+        "observed",
+        "evidence_ids",
+        "effect_event_ids",
+        "additional_digest",
+        "redacted"
+      ],
+      "properties": {
+        "trigger_id": {
+          "$ref": "#/$defs/token"
+        },
+        "construct_or_domain_id": {
+          "$ref": "#/$defs/token"
+        },
+        "cell_id": {
+          "$ref": "#/$defs/token"
+        },
+        "observation_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+        "legacy_metric_id": {
+          "$ref": "#/$defs/token"
+        },
+        "subcheck_id": {
+          "$ref": "#/$defs/token"
+        },
+        "verifier_id": {
+          "$ref": "#/$defs/token"
+        },
+        "effect_event_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "observed": {
+          "const": true
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "additional_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+        "redacted": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      }
+    },
+    "cap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "max_value",
+        "scope",
+        "reason",
+        "triggers",
+        "additional_digest",
+        "redacted"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/token"
+        },
+        "max_value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "system_outcome",
+              "aos_composite"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cap_trigger"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "additional_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+        "redacted": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      }
+    },
+    "reliance_metric": {
+      "description": "A metric's status and its value are one state, the same way a surface's are: ISSUED carries a rate, and NOT_COMPUTED or WITHHELD carries none. The raw counts are kept in every state, because SSOT section 21 withholds the rate below the opportunity floor and keeps the counts that say why.",
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "enum": [
+                "NOT_COMPUTED",
+                "WITHHELD"
+              ]
+            },
+            "value": {
+              "type": "null"
+            }
+          }
+        }
+      ],
+      "required": [
+        "value",
+        "status",
+        "numerator",
+        "denominator"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ISSUED",
+            "NOT_COMPUTED",
+            "WITHHELD"
+          ]
+        },
+        "numerator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "denominator": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "construct_id",
+        "axis",
+        "credit_bearing",
+        "opportunity_count",
+        "declared_opportunities",
+        "minimum_opportunities",
+        "distribution",
+        "bound_to",
+        "estimate",
+        "status"
+      ],
+      "properties": {
+        "cell_id": {
+          "$ref": "#/$defs/id"
+        },
+        "construct_id": {
+          "$ref": "#/$defs/id"
+        },
+        "axis": {
+          "enum": [
+            "operator_process",
+            "delegated_artifact",
+            "system_outcome",
+            "reliance_calibration"
+          ]
+        },
+        "credit_bearing": {
+          "type": "boolean"
+        },
+        "opportunity_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "declared_opportunities": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_opportunities": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "distribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pass",
+            "fail",
+            "not_observed"
+          ],
+          "properties": {
+            "pass": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fail": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "not_observed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "bound_to": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "verifier_id",
+              "evidence_ids",
+              "observation_digest"
+            ],
+            "properties": {
+              "verifier_id": {
+                "$ref": "#/$defs/id"
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/id"
+                },
+                "maxItems": 256,
+                "uniqueItems": true
+              },
+              "observation_digest": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        },
+        "estimate": {
+          "$ref": "#/$defs/estimate"
+        },
+        "status": {
+          "$ref": "#/$defs/cell_status"
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_id",
+        "dimension",
+        "state",
+        "value",
+        "verifier_id",
+        "subchecks",
+        "evidence_ids",
+        "reason"
+      ],
+      "properties": {
+        "metric_id": {
+          "$ref": "#/$defs/token"
+        },
+        "dimension": {
+          "$ref": "#/$defs/token"
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "verifier_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "subchecks": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "pass"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/token"
+              },
+              "pass": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "operator_process_construct": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "WITHHELD"
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
+      "required": [
+        "construct_id",
+        "title",
+        "axis",
+        "estimate",
+        "value",
+        "status",
+        "required_cells",
+        "optional_cells",
+        "withheld_for",
+        "withheld_reason"
+      ],
+      "properties": {
+        "construct_id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "axis": {
+          "const": "operator_process"
+        },
+        "estimate": {
+          "$ref": "#/$defs/estimate"
+        },
+        "value": {
+          "$ref": "#/$defs/index"
+        },
+        "status": {
+          "$ref": "#/$defs/issuance"
+        },
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "optional_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/optional_cell"
+          },
+          "maxItems": 64
+        },
+        "withheld_for": {
+          "$ref": "#/$defs/withheld_list"
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "delegated_artifact_construct": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "WITHHELD"
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
+      "required": [
+        "construct_id",
+        "title",
+        "axis",
+        "estimate",
+        "value",
+        "status",
+        "required_cells",
+        "optional_cells",
+        "withheld_for",
+        "withheld_reason"
+      ],
+      "properties": {
+        "construct_id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "axis": {
+          "const": "delegated_artifact"
+        },
+        "estimate": {
+          "$ref": "#/$defs/estimate"
+        },
+        "value": {
+          "$ref": "#/$defs/index"
+        },
+        "status": {
+          "$ref": "#/$defs/issuance"
+        },
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "optional_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/optional_cell"
+          },
+          "maxItems": 64
+        },
+        "withheld_for": {
+          "$ref": "#/$defs/withheld_list"
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    }
+  },
+  "required": [
+    "schema_id",
+    "schema_version",
+    "run",
+    "contract",
+    "profile_digest",
+    "model_identity",
+    "claim_stage",
+    "generalizability_status",
+    "uncertainty",
+    "permitted_interpretation",
+    "forbidden_uses",
+    "standard_setting",
+    "category",
+    "cut_score",
+    "percentile",
+    "rank",
+    "band",
+    "incomplete_forms",
+    "unsupported_forms",
+    "unidentified_facets",
+    "facet_identity",
+    "facet_coverage",
+    "operator_process_profile",
+    "reliance_calibration_profile",
+    "system_outcome_profile",
+    "aos_composite",
+    "cells",
+    "missing",
+    "observations"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "aos-result.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "additional_digest",
+        "redacted"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/token"
+        },
+        "suite": {
+          "$ref": "#/$defs/token"
+        },
+        "suite_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+        "seed": {
+          "$ref": "#/$defs/token"
+        },
+        "seeded_families": {
+          "$ref": "#/$defs/token_list"
+        },
+        "forms_completed": {
+          "$ref": "#/$defs/token_list"
+        },
+        "profile_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+
+        "isolation_level": {
+          "$ref": "#/$defs/token"
+        },
+        "scoring_permitted": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "evidence_status": {
+          "$ref": "#/$defs/token"
+        },
+        "safety_state": {
+          "$ref": "#/$defs/token"
+        },
+        "agents_used": {
+          "$ref": "#/$defs/token_list"
+        },
+        "invocation_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "fixture_backed_agents": {
+          "$ref": "#/$defs/token_list"
+        },
+        "unrecognised_runtime_agents": {
+          "$ref": "#/$defs/token_list"
+        },
+        "operator_plan_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+        "operator_plan_authored": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        },
+        "ended_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        },
+        "mode": {
+          "$ref": "#/$defs/token"
+        },
+        "additional_digest": {
+          "$ref": "#/$defs/nullable_digest"
+        },
+        "redacted": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "maximum_claim_stage",
+        "declared",
+        "digests",
+        "artifact_bytes"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "maximum_claim_stage": {
+          "enum": [
+            "RUN_DIAGNOSTIC",
+            "PROFILE_BOUND",
+            "GENERALIZABILITY_SUPPORTED"
+          ]
+        },
+        "declared": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "process_constructs",
+            "outcome_domains",
+            "delegated_artifact_constructs",
+            "declared_cells"
+          ],
+          "properties": {
+            "process_constructs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "outcome_domains": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "delegated_artifact_constructs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "declared_cells": {
+              "description": "The cells the contract declares each row is computed over, by axis. The row sets say which rows a surface carries; this says what each of them averaged, so a row that lost a member is refused by the result's own contract statement rather than read as a row that never had it.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operator_process",
+                "system_outcome",
+                "delegated_artifact"
+              ],
+              "properties": {
+                "operator_process": { "$ref": "#/$defs/declared_cell_lists" },
+                "system_outcome": { "$ref": "#/$defs/declared_cell_lists" },
+                "delegated_artifact": { "$ref": "#/$defs/declared_cell_lists" }
+              }
+            }
+          }
+        },
+        "artifact_bytes": {
+          "description": "The digest of each contract file's bytes as it ships, and a combined digest over those. Null when the result was built under a contract that is not this build's shipped one, because bytes belong to files and an in-memory contract has none.",
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "$ref": "#/$defs/digest"
+          },
+          "maxProperties": 16
+        },
+        "digests": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/digest"
+          },
+          "minProperties": 1,
+          "maxProperties": 16
+        }
+      }
+    },
+    "profile_digest": {
+      "$ref": "#/$defs/nullable_digest"
+    },
+    "model_identity": {
+      "description": "Which model and which executable produced this result, and what that entitles it to claim (#561). Null for a result written before the record existed.",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "claim_stage": {
+      "enum": [
+        "RUN_DIAGNOSTIC",
+        "PROFILE_BOUND",
+        "GENERALIZABILITY_SUPPORTED"
+      ]
+    },
+    "generalizability_status": {
+      "enum": [
+        "UNESTABLISHED",
+        "ESTABLISHED"
+      ]
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/uncertainty"
+    },
+    "permitted_interpretation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "forbidden_uses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "maxItems": 64
+    },
+    "standard_setting": {
+      "type": "null"
+    },
+    "category": {
+      "type": "null"
+    },
+    "cut_score": {
+      "type": "null"
+    },
+    "percentile": {
+      "type": "null"
+    },
+    "rank": {
+      "type": "null"
+    },
+    "band": {
+      "type": "null"
+    },
+    "score": false,
+    "incomplete_forms": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "unsupported_forms": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "unidentified_facets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "facet_identity": {
+      "$ref": "#/$defs/facet_identity"
+    },
+    "facet_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "levels_per_facet_observed",
+        "variance_components"
+      ],
+      "properties": {
+        "levels_per_facet_observed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "variance_components": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "operator_process_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "issued": {
+              "const": true
+            },
+            "index": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "issued": {
+              "const": false
+            },
+            "index": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
+      "required": [
+        "label",
+        "axis",
+        "interpretation",
+        "issued",
+        "index",
+        "withheld_for",
+        "withheld_reason",
+        "weights",
+        "constructs",
+        "required_cells",
+        "issued_cells",
+        "optional_cells",
+        "opportunity_count",
+        "coverage",
+        "missing",
+        "facet_identity",
+        "claim_stage",
+        "generalizability_status",
+        "uncertainty"
+      ],
+      "properties": {
+        "label": {
+          "const": "PROFILE-BOUND OPERATOR PROCESS INDEX"
+        },
+        "axis": {
+          "const": "operator_process"
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "issued": {
+          "type": "boolean"
+        },
+        "index": {
+          "$ref": "#/$defs/index"
+        },
+        "withheld_for": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "weights": {
+          "$ref": "#/$defs/weights"
+        },
+        "constructs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/operator_process_construct"
+          },
+          "minProperties": 1,
+          "maxProperties": 32
+        },
+        "caps": false,
+        "cap_applied": false,
+        "raw_index": false,
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "issued_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "optional_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/optional_cell"
+          },
+          "maxItems": 64
+        },
+        "opportunity_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "issued"
+          ],
+          "properties": {
+            "required": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issued": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "missing": {
+          "$ref": "#/$defs/missing"
+        },
+        "facet_identity": {
+          "$ref": "#/$defs/facet_identity"
+        },
+        "claim_stage": {
+          "enum": [
+            "RUN_DIAGNOSTIC",
+            "PROFILE_BOUND",
+            "GENERALIZABILITY_SUPPORTED"
+          ]
+        },
+        "generalizability_status": {
+          "enum": [
+            "UNESTABLISHED",
+            "ESTABLISHED"
+          ]
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/uncertainty"
+        }
+      }
+    },
+    "reliance_calibration_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "explains_construct",
+        "floor",
+        "opportunities",
+        "construct",
+        "cells",
+        "metrics",
+        "required_cells",
+        "issued_cells",
+        "optional_cells",
+        "opportunity_count",
+        "coverage",
+        "missing",
+        "facet_identity",
+        "claim_stage",
+        "generalizability_status",
+        "uncertainty"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "WITHHELD",
+            "PARTIAL",
+            "ISSUED"
+          ]
+        },
+        "explains_construct": {
+          "const": "C3"
+        },
+        "floor": {
+          "const": 4
+        },
+        "opportunities": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "construct": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "estimate",
+            "status",
+            "withheld_for"
+          ],
+          "properties": {
+            "estimate": {
+              "$ref": "#/$defs/estimate"
+            },
+            "status": {
+              "$ref": "#/$defs/issuance"
+            },
+            "withheld_for": {
+              "$ref": "#/$defs/withheld_list"
+            }
+          }
+        },
+        "cells": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "estimate",
+              "status",
+              "opportunity_count"
+            ],
+            "properties": {
+              "estimate": {
+                "$ref": "#/$defs/estimate"
+              },
+              "status": {
+                "$ref": "#/$defs/cell_status"
+              },
+              "opportunity_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "maxProperties": 32
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cair",
+            "csr",
+            "overreliance",
+            "underreliance",
+            "switch_gain",
+            "switch_harm",
+            "delegation_regret",
+            "adoption_quality",
+            "choice_independence",
+            "confidence_calibration"
+          ],
+          "properties": {
+            "cair": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "csr": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "overreliance": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "underreliance": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "switch_gain": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "switch_harm": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "delegation_regret": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "adoption_quality": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "choice_independence": {
+              "$ref": "#/$defs/reliance_metric"
+            },
+            "confidence_calibration": {
+              "$ref": "#/$defs/reliance_metric"
+            }
+          }
+        },
+        "index": false,
+        "net_score": false,
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "issued_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "optional_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/optional_cell"
+          },
+          "maxItems": 64
+        },
+        "opportunity_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "issued"
+          ],
+          "properties": {
+            "required": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issued": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "missing": {
+          "$ref": "#/$defs/missing"
+        },
+        "facet_identity": {
+          "$ref": "#/$defs/facet_identity"
+        },
+        "claim_stage": {
+          "enum": [
+            "RUN_DIAGNOSTIC",
+            "PROFILE_BOUND",
+            "GENERALIZABILITY_SUPPORTED"
+          ]
+        },
+        "generalizability_status": {
+          "enum": [
+            "UNESTABLISHED",
+            "ESTABLISHED"
+          ]
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/uncertainty"
+        }
+      }
+    },
+    "system_outcome_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "issued": {
+              "const": true
+            },
+            "index": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "issued": {
+              "const": false
+            },
+            "index": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
+      "required": [
+        "label",
+        "axis",
+        "interpretation",
+        "issued",
+        "index",
+        "raw_index",
+        "cap_applied",
+        "caps",
+        "withheld_for",
+        "withheld_reason",
+        "weights",
+        "domains",
+        "required_cells",
+        "issued_cells",
+        "optional_cells",
+        "opportunity_count",
+        "coverage",
+        "missing",
+        "facet_identity",
+        "claim_stage",
+        "generalizability_status",
+        "uncertainty"
+      ],
+      "properties": {
+        "label": {
+          "const": "PROFILE-BOUND SYSTEM OUTCOME INDEX"
+        },
+        "axis": {
+          "const": "system_outcome"
+        },
+        "interpretation": {
+          "type": "string"
+        },
+        "issued": {
+          "type": "boolean"
+        },
+        "index": {
+          "$ref": "#/$defs/index"
+        },
+        "raw_index": {
+          "$ref": "#/$defs/index"
+        },
+        "cap_applied": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "caps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cap"
+          },
+          "maxItems": 32
+        },
+        "withheld_for": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 32,
+          "uniqueItems": true
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "weights": {
+          "$ref": "#/$defs/weights"
+        },
+        "domains": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/domain"
+          },
+          "minProperties": 1,
+          "maxProperties": 32
+        },
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "issued_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "optional_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/optional_cell"
+          },
+          "maxItems": 64
+        },
+        "opportunity_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "issued"
+          ],
+          "properties": {
+            "required": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issued": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "missing": {
+          "$ref": "#/$defs/missing"
+        },
+        "facet_identity": {
+          "$ref": "#/$defs/facet_identity"
+        },
+        "claim_stage": {
+          "enum": [
+            "RUN_DIAGNOSTIC",
+            "PROFILE_BOUND",
+            "GENERALIZABILITY_SUPPORTED"
+          ]
+        },
+        "generalizability_status": {
+          "enum": [
+            "UNESTABLISHED",
+            "ESTABLISHED"
+          ]
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/uncertainty"
+        }
+      }
+    },
+    "aos_composite": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "issued": {
+              "const": true
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "issued": {
+              "const": false
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
+      "required": [
+        "label",
+        "formula",
+        "secondary",
+        "weights",
+        "inputs",
+        "issued",
+        "value",
+        "raw_value",
+        "cap_applied",
+        "withheld_for",
+        "withheld_reason",
+        "delegated_artifact",
+        "claim_stage",
+        "generalizability_status",
+        "uncertainty"
+      ],
+      "properties": {
+        "label": {
+          "const": "PROFILE-BOUND OPERATOR–AGENT SYSTEM PERFORMANCE"
+        },
+        "formula": {
+          "const": "aos-composite.v1"
+        },
+        "secondary": {
+          "const": true
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operator_process",
+            "system_outcome"
+          ],
+          "properties": {
+            "operator_process": {
+              "const": 0.5
+            },
+            "system_outcome": {
+              "const": 0.5
+            }
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operator_process",
+            "system_outcome"
+          ],
+          "properties": {
+            "operator_process": {
+              "$ref": "#/$defs/index"
+            },
+            "system_outcome": {
+              "$ref": "#/$defs/index"
+            }
+          }
+        },
+        "issued": {
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/$defs/index"
+        },
+        "raw_value": {
+          "$ref": "#/$defs/index"
+        },
+        "cap_applied": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "withheld_for": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "operator_process",
+              "system_outcome"
+            ]
+          },
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "delegated_artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "axis",
+            "in_composite",
+            "constructs"
+          ],
+          "properties": {
+            "axis": {
+              "const": "delegated_artifact"
+            },
+            "in_composite": {
+              "const": false
+            },
+            "constructs": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/delegated_artifact_construct"
+              },
+              "maxProperties": 32
+            }
+          }
+        },
+        "band": false,
+        "score": false,
+        "claim_stage": {
+          "enum": [
+            "RUN_DIAGNOSTIC",
+            "PROFILE_BOUND",
+            "GENERALIZABILITY_SUPPORTED"
+          ]
+        },
+        "generalizability_status": {
+          "enum": [
+            "UNESTABLISHED",
+            "ESTABLISHED"
+          ]
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/uncertainty"
+        }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cell"
+      },
+      "maxItems": 512
+    },
+    "missing": {
+      "$ref": "#/$defs/missing"
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/$defs/observation"
+      }
+    }
+  }
+}

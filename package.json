@@ -20,6 +20,10 @@
     "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
     "verify:action-pins": "node scripts/verify-action-pins.mjs",
     "verify:model-identity": "node --test tests/product/model-identity.test.mjs tests/product/model-canary.test.mjs tests/product/profile.test.mjs tests/product/cycle-command.test.mjs tests/product/dashboard.test.mjs",
+    "verify:profile-aggregation": "node --test tests/product/profile-aggregation.test.mjs",
+    "verify:process-outcome-counterfactual": "node --test tests/product/process-outcome-counterfactual.test.mjs",
+    "verify:projection-consistency": "node --test tests/product/projection-consistency.test.mjs",
+    "verify:no-operator-score-hero": "node --test tests/product/no-operator-score-hero.test.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
@@ -30,6 +34,7 @@
     "contracts/",
     "lib/",
     "fixtures/known-incidents/",
+    "fixtures/scoring/",
     "docs/",
     "governance/",
     "schemas/",

@@ -25,6 +25,7 @@ const observations = (over = {}) =>
 const resultOf = (over = {}, context = {}) => {
   const metrics = observations(over);
   return {
+    schema_id: "aos-mvp-result.v1",
     ...scoreRun(metrics, context),
     run_id: "run-fixture",
     metrics,
@@ -193,7 +194,7 @@ test("markdown carries the same content as the page", () => {
 
 test("a result carrying no metrics still renders", () => {
   // Recovery re-renders whatever is on disk, and a half-written result must not take the page down.
-  const bare = { run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, dimensions: {}, coverage: { observed: 0, total: 20 }, caps: [], blockers: [] };
+  const bare = { schema_id: "aos-mvp-result.v1", run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, dimensions: {}, coverage: { observed: 0, total: 20 }, caps: [], blockers: [] };
   assert.doesNotThrow(() => renderHtml(bare));
   assert.doesNotThrow(() => renderMarkdown(bare));
 });
@@ -204,6 +205,10 @@ test("markup in a result never becomes markup in the page", () => {
   // numbers were interpolated raw, so a string where a number belongs was markup.
   const payload = '"><script>alert(1)</script>';
   const hostile = {
+    // It says which instrument it is; a record that says nothing is refused by name now, and that
+    // refusal has its own test. What this one is about is markup in the fields of a record that
+    // does say.
+    schema_id: "aos-mvp-result.v1",
     run_id: payload,
     status: payload,
     score: { final: payload, raw: payload, band: payload },

@@ -59,8 +59,9 @@
 插件省去了克隆仓库、手动注册 Agent 和手写计划文件。不过仍然需要 Node `>=22.18 <25`，
 以及已经安装并登录的 Claude Code 或 Codex CLI。
 
-`/aos-assess` 不能替你回答检查点问题。要获得正式分数，请按提示在自己的终端里作答。
-如果由 Agent 代答，测到的将是 Agent 的策略，而不是你的判断。
+`/aos-assess` 不能替你回答检查点问题。operator process profile 由检查点上的作答签发，
+没有作答就会被保留；要测到你自己的操作，请按提示在自己的终端里作答。如果由 Agent 代答，
+测到的将是 Agent 的策略，而不是你的判断。
 
 从仓库直接运行：
 
@@ -96,7 +97,7 @@ AOS 问的是另一件事：
 | 做什么 | 从真实会话中找出可能有风险的模式，作为人工复核候选 | 运行六个受控任务，用受条件约束的分数概括操作过程与结果 |
 | 对象 | 本地保存的 Codex、Claude Code、Grok CLI 会话记录 | 已注册的 Codex、Claude Code 等 Agent CLI |
 | 模型额度 | 不消耗，只读取已有记录 | 会消耗，因为会实际运行 Agent |
-| 结果 | 可疑步骤与支持证据 | 百分制分数，或未签发分数的准确原因 |
+| 结果 | 可疑步骤与支持证据 | 三份 profile（操作过程 · 系统结果 · reliance），各自签发或带理由保留 |
 
 建议先使用 `review`。它不会消耗模型额度，可以先用自己的真实工作记录理解 AOS 的判断方式，
 再决定是否运行 `assess`。
@@ -144,7 +145,7 @@ node bin/aos.mjs review --json                  # 输出 JSON
 node bin/aos.mjs init                   # 从 PATH 自动注册 Claude Code 和 Codex
 node bin/aos.mjs doctor                 # 检查命令与已知凭据路径
 
-node bin/aos.mjs assess                 # 无人诊断：不会签发正式分数
+node bin/aos.mjs assess                 # 无人诊断：operator process profile 被保留
 node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分数的运行
 ```
 
@@ -220,6 +221,12 @@ AOS 会区分：
 
 `provisional_raw` 只是排查运行问题时参考的临时计算值，不是正式分数。
 
+这条签发门槛、下面的上限与等级，以及 `provisional_raw`，都属于旧计分器：它们决定能否给出一个
+数字。现在 `aos assess` 运行的量具不给这样的数字。每个构念、每个结果域各自签发，或者带着理由
+被保留；reliance 是一份不会被加权进任何指数的独立 profile；composite 是描述性的次级指标，只要
+其中一半被保留，它也一并保留。你读到的是哪一种，结果自身写着 —— profile 是 `aos-result.v2`，
+分数是 `aos-mvp-result.v1`。
+
 ## 两个 83 分不能直接比较
 
 不同车辆、路线和天气下得到的两个 83 分，不是同一场考试。AOS 分数也是如此。
@@ -259,22 +266,25 @@ AOS 会把这些条件与结果一起记录。这就是 `PROFILE-BOUND`：不同
 ```bash
 node bin/aos.mjs cycle start                                  # 锁定三个种子
 node bin/aos.mjs cycle run --checkpoints                      # 按顺序运行
-node bin/aos.mjs cycle                                        # 有效运行的中位数
+node bin/aos.mjs cycle                                        # 这个周期里有什么
 node bin/aos.mjs dashboard                                    # 本机只读面板
 ```
 
 目前六个任务中只有三个会随种子改变细节。因此，三次本地重复不能被扩大解释为总体层面的统计
 置信度，也不能证明通用能力。
 
-只有使用锁定种子、相同 Profile、相同 suite major 和 scorer major，并且具备终止记录与正式
-分数的运行才会进入汇总。被排除的运行会显示原因。有效低分不能被丢弃，也不能用同一种子重跑。
+汇总规则属于旧周期，对旧周期仍然适用。只有使用锁定种子、相同 Profile、相同 suite major 和
+scorer major，并且具备终止记录与正式分数的运行才会进入汇总。被排除的运行会显示原因。有效低分不能被丢弃，也不能用同一种子重跑。
 
 如果周期配置错误，可以用 `--force --reason "<原因>"` 终止并重新开始。旧周期、种子、运行和
 分数不会删除。
 
-Operator Score 是所有有效运行的**中位数**。极差、中位绝对偏差（MAD）和
-**local repeat evidence** 只描述这台机器上的重复波动；AOS 不把它称为统计
-`confidence`。
+由 profile 运行组成的周期没有单一数值，`cycle` 会直接说明这一点，而不是硬凑一个。中位数是
+旧计分器汇总旧计分器数字的方式，而 profile 结果并不带这些数字；一个 profile 周期意味着什么，
+仍是周期负责人（#563）尚未回答的问题。因此该命令列出各次运行、保留聚合，并指明这个问题归谁。
+每次运行的 profile 都在它自己的报告里。由旧结果组成的周期仍然报告所有有效运行的**中位数**，
+其中极差、中位绝对偏差（MAD）和 **local repeat evidence** 只描述这台机器上的重复波动；
+AOS 不把它称为统计 `confidence`。
 
 ## 没有分数与分数上限
 
@@ -289,9 +299,11 @@ AOS 不会因为能做算术就一定签发正式分数。观察不足的运行�
 
 例如，泄露敏感信息的运行无论其他部分多好，都不能超过 39 分。严重问题不能被其他高分平均掉。
 
-只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。
-`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 只概括当次运行，
-不代表一个人的整体能力或行业排名。
+只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。在 profile
+结果里，上限只压低 system outcome 指数和 composite，不动 operator process 指数，并保留未压低
+前的值。`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 是旧计分器对
+旧运行的概括，只概括当次运行，不代表一个人的整体能力或行业排名；profile 结果没有等级 ——
+schema 直接禁止等级、百分位和排名。
 
 ## 已有实测结果与当前限制
 
@@ -338,11 +350,12 @@ EXPERIMENTAL。扣留意味着没有该值，而不是 0；该命令打印的每
 
 `assess` 完成后会生成：
 
-- **`card.svg`** — 在一张图中显示分数、六个维度、运行条件和最先应修复的一项
+- **`card.svg`** — 在一张图中显示三份 profile 及各自的依据、运行条件和最先应修复的一项
 - **Markdown 与 HTML 报告** — 指标级证据、失败、未观察项、扣留原因与上限
 - **JSON 结果** — 供其他工具读取的原始数据
 
-未签发正式分数时，卡片会显示 **NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
+卡片会把被保留的 profile 显示为保留，并附上原因。旧运行未签发正式分数时，卡片会显示
+**NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
 
 可用 `node bin/aos.mjs report --run <id> --format markdown|html|json` 重新生成报告。HTML 报告与
 评分卡在韩语 Locale 下显示韩语，其他 Locale 下显示英语。目前尚无日语或中文报告界面。

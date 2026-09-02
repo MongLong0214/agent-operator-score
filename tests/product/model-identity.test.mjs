@@ -495,7 +495,8 @@ test("a transcript value that is not a plausible model name leaves as a digest, 
     });
     assert.equal(record.profile_bound_aggregation.reason, "MODEL_EVENT_UNNAMEABLE");
     const surfaces = [canonicalJson(record), record.lines.join("\n"), renderMarkdown({
-      run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
+      schema_id: "aos-mvp-result.v1",
+    run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
       metrics: [], dimensions: {}, limitations: [], model_identity: record
     })];
     for (const surface of surfaces) {
@@ -857,7 +858,7 @@ test("a cycle and its runs bind the executable as it is now, not as it was regis
       env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: "needs-instruction", FAKE_AGENT_MODEL: EXACT_A }
     });
     const result = newestResult(cwd);
-    assert.equal(result.profile_digest, cycle.profile_digest, "a registration from a previous release excluded the run");
+    assert.equal(result.profile_digest, `sha256:${cycle.profile_digest}`, "a registration from a previous release excluded the run");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -1052,12 +1053,13 @@ test("the model identity lines are the same strings for JSON, CLI and Markdown",
   assert.deepEqual(lines, [
     `Model (main): declared ${EXACT_A} (exact-snapshot, confirmed by the runtime's own transcript)`,
     `Runtime executable identity (main): ${identity().identity_digest.slice("sha256:".length, "sha256:".length + 12)}`,
-    `Profile digest: ${"d".repeat(64)}`,
+    `Profile digest: sha256:${"d".repeat(64)}`,
     "Profile-bound aggregation: issued"
   ]);
   // JSON carries the lines verbatim; Markdown and HTML quote them verbatim.
   assert.deepEqual(record.lines, lines);
   const result = {
+    schema_id: "aos-mvp-result.v1",
     run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
     metrics: [], dimensions: {}, limitations: [], model_identity: record
   };
@@ -1077,6 +1079,7 @@ test("Markdown and HTML quote the stored identity lines instead of deriving them
   });
   const stored = { ...record, lines: ["SENTINEL_FROM_THE_STORED_RECORD"] };
   const result = {
+    schema_id: "aos-mvp-result.v1",
     run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
     metrics: [], dimensions: {}, limitations: [], model_identity: stored
   };
@@ -1104,6 +1107,7 @@ test("the card quotes the stored identity lines, every agent of them, and render
     lines: sentinels
   };
   const result = {
+    schema_id: "aos-mvp-result.v1",
     run_id: "r", status: "SCORED", score: { final: 71, band: "MODERATE", raw: 71 }, coverage: { observed: 20, total: 20 },
     metrics: [], dimensions: {}, limitations: [], seed: "0000000000000011", profile_digest: "d".repeat(64),
     agent_portfolio: { used: ["first", "second"] }, model_identity: stored
@@ -1114,7 +1118,8 @@ test("the card quotes the stored identity lines, every agent of them, and render
     assert.equal(card.includes("gpt-4o-2024-08-06"), false, `${locale}: the card derived its own model line`);
   }
   // Missing is not zero: a result with no coverage says so rather than drawing a measured 0 of 20.
-  const bare = renderCard({ run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, metrics: [], dimensions: {}, limitations: [] }, { locale: "en-US" });
+  const bare = renderCard({ schema_id: "aos-mvp-result.v1",
+    run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, metrics: [], dimensions: {}, limitations: [] }, { locale: "en-US" });
   assert.equal(/0\/20/u.test(bare), false, "absent coverage was rendered as a measurement");
   assert.match(bare, /—/u);
 });
@@ -1125,6 +1130,7 @@ test("a report whose aggregate is withheld does not also print the profile-bound
     profile_digest: "d".repeat(64)
   });
   const base = {
+    schema_id: "aos-mvp-result.v1",
     run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
     metrics: [], dimensions: {}, limitations: []
   };
@@ -1258,9 +1264,9 @@ test("a scored run records model provenance, and the CLI and Markdown show the s
     assert.equal(record.cross_model_comparison, "WITHHELD");
     assert.equal(record.profile_digest, result.profile_digest);
     for (const line of record.lines) assert.equal(printed.stdout.includes(line), true, `CLI lacks: ${line}`);
-    const markdown = readFileSync(join(cwd, ".aos", "runs", result.run_id, "report.md"), "utf8");
+    const markdown = readFileSync(join(cwd, ".aos", "runs", result.run_id ?? result.run.run_id, "report.md"), "utf8");
     for (const line of record.lines) assert.equal(markdown.includes(`- ${line}`), true, `Markdown lacks: ${line}`);
-    const html = readFileSync(join(cwd, ".aos", "runs", result.run_id, "report.html"), "utf8");
+    const html = readFileSync(join(cwd, ".aos", "runs", result.run_id ?? result.run.run_id, "report.html"), "utf8");
     for (const line of record.lines) assert.equal(html.includes(`<li>${htmlEscape(line)}</li>`), true, `HTML lacks: ${line}`);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
@@ -1290,9 +1296,10 @@ test("the agent that actually ran is the agent the identity record names", () =>
     // The plan named one agent; the reroute put a second one to work. Both ran, so both are in the
     // executed set and both are in the record -- an identity built from the plan alone would list
     // only the first, and the number would be filed under a model the other one never used.
-    assert.deepEqual(result.agent_portfolio.planned, ["primary"], "the agent the plan named");
-    assert.equal(result.agent_portfolio.executed.includes("spare"), true, "the agent the operator rerouted to");
-    assert.deepEqual(Object.keys(result.model_identity.by_agent).sort(), result.agent_portfolio.executed);
+    const working = JSON.parse(readFileSync(join(cwd, ".aos", "runs", result.run.run_id, "record.json"), "utf8"));
+    assert.deepEqual(working.agent_portfolio.planned, ["primary"], "the agent the plan named");
+    assert.equal(working.agent_portfolio.executed.includes("spare"), true, "the agent the operator rerouted to");
+    assert.deepEqual(Object.keys(result.model_identity.by_agent).sort(), working.agent_portfolio.executed);
     // And the rerouted agent's own model decides what may be claimed: nobody declared one for it,
     // so the aggregate is withheld rather than issued under the planned agent's exact model.
     assert.equal(result.model_identity.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
@@ -1352,8 +1359,9 @@ test("an observation run carries the same provenance record as a scored one", ()
     assert.equal(record.schema_id, "aos-model-identity.v1");
     assert.equal(record.by_agent.exact.provenance.id, EXACT_A);
     assert.equal(record.by_agent.exact.provenance.alias_class, "exact-snapshot");
-    // Bare hex, the way every other profile digest in the ledger is written.
-    assert.match(record.profile_digest, /^[0-9a-f]{64}$/u);
+    // The `sha256:` spelling a published record uses, which is the one the ledger's own digests
+    // are normalised to.
+    assert.match(record.profile_digest, /^sha256:[0-9a-f]{64}$/u);
     // A diagnostic never issues a profile-bound aggregate whatever the model is -- it is one run
     // against the operator's own project, not a measurement -- and it still says which model.
     assert.equal(record.claim_stage, "RUN_DIAGNOSTIC");
@@ -1481,8 +1489,8 @@ test("the cohort key describes what was applied: the policy, the executable and 
     const silent = observeWith({});
     // The record's own digest and the profile digest the run stored agree -- the record is not
     // describing one profile while the ledger files it under another.
-    assert.equal(confirmed.model_identity.profile_digest, confirmed.profile_digest);
-    assert.equal(silent.model_identity.profile_digest, silent.profile_digest);
+    assert.equal(confirmed.model_identity.profile_digest, `sha256:${confirmed.profile_digest}`);
+    assert.equal(silent.model_identity.profile_digest, `sha256:${silent.profile_digest}`);
     // The record keeps the issue's source precedence: the runtime's own statement outranks the
     // declaration and is what the run says it used.
     assert.equal(confirmed.model_identity.by_agent.exact.provenance.source, "runtime-event");
@@ -1518,7 +1526,7 @@ test("a configured agent that never ran does not move the cohort out from under 
     });
     assert.equal(assessed.status !== null, true);
     const result = newestResult(cwd);
-    assert.equal(result.profile_digest, cycle.profile_digest, "the run landed outside the cohort its own cycle locked");
+    assert.equal(result.profile_digest, `sha256:${cycle.profile_digest}`, "the run landed outside the cohort its own cycle locked");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -1613,7 +1621,7 @@ test("a run that failed still says which model and which executable it was going
     // And the terminal names the result that was written. It carried a null digest beside a
     // persisted result, so recovery read this Run as invalid -- the provenance it does carry was
     // unreadable through the front door (#561 round 7).
-    const recovered = spawnSync(process.execPath, [cli, "session", "recover", result.run_id, "--json"], {
+    const recovered = spawnSync(process.execPath, [cli, "session", "recover", result.run_id ?? result.run.run_id, "--json"], {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
     });
     assert.equal(`${recovered.stdout}${recovered.stderr}`.includes("terminal/result digest mismatch"), false, recovered.stdout);
@@ -1634,24 +1642,29 @@ test("a cycle over an unknown model completes its runs and withholds the profile
     assert.equal(opened.model_identity.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
     for (let index = 0; index < 3; index += 1) {
       const output = cycleRun(cwd, plan).stdout;
-      // Run diagnostics are still produced: the run has a score of its own.
-      assert.match(output, /^Score: \d+ \//mu);
+      // Run diagnostics are still produced: the run has profiles of its own (#559 removed the
+      // single score, so what says the run happened is the profile it printed).
+      assert.match(output, /Operator process:/u);
     }
     const report = spawnSync(process.execPath, [cli, "cycle", "--json"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") } });
     const summary = JSON.parse(report.stdout);
-    assert.equal(summary.valid_runs, 3, JSON.stringify(summary.excluded));
-    assert.equal(summary.complete, true);
-    assert.equal(summary.issued, false);
-    assert.equal(summary.operator_score, null);
-    assert.equal(summary.composite, "WITHHELD");
-    assert.equal(summary.claim_stage, "RUN_DIAGNOSTIC");
-    assert.equal(summary.profile_bound_aggregation.status, "withheld");
-    assert.equal(summary.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
+    // #559 gave a cycle of profile results no aggregate at all -- #563 owns defining one -- so what
+    // this cycle prints is that withholding, and what #561 owns is the binding it was opened with:
+    // three runs of a model nobody named, recorded, and no number anywhere.
+    assert.equal(summary.aggregate, null);
+    assert.match(summary.withheld_reason, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
+    assert.match(summary.withheld_reason, /#563/u);
+    assert.equal(summary.runs.length, 3);
+    assert.equal(Object.hasOwn(summary, "operator_score"), false);
+    assert.equal(JSON.parse(readFileSync(join(cwd, ".aos", "cycle.json"), "utf8")).model_identity.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
     assert.notEqual(report.status, 0);
     const text = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") } });
-    assert.match(text.stdout, /Operator Score withheld — MODEL_UNKNOWN/u);
-    assert.equal(/Operator Score: \d+/u.test(text.stdout), false);
-    for (const line of summary.model_identity.lines) assert.equal(text.stdout.includes(line), true, `cycle output lacks: ${line}`);
+    // #559: a cycle of profile results has no aggregate to withhold by a model's name, so what the
+    // command prints is the aggregation question and whose it is. #561's answer for this cycle --
+    // the model nobody named -- is in the binding the cycle was opened with, asserted above.
+    assert.match(text.stdout, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
+    assert.equal(text.stdout.includes("Operator Score"), false);
+    assert.equal(/\b\d+ \/ 100\b/u.test(text.stdout), false);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

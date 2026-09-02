@@ -16,6 +16,59 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const READMES = ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"];
 
+// What each README has to say about a cycle's aggregate, in its own language: that a cycle of
+// profile runs has none, that the median belongs to the legacy scorer, and never the flat promise
+// the four of them used to carry.
+// Phrases that promise what a run of the current instrument does not produce. Each is a sentence
+// one of these files carried in its setup or its output section while a later section said the
+// opposite; they are listed per language because the claim, not the wording, is what must not
+// come back.
+const PROMISES_A_RUN_DOES_NOT_KEEP = {
+  "README.md": [
+    [/To obtain an official score/u, "still tells the reader a run of this instrument issues one"],
+    [/A score out of 100, or the exact reason no score was issued/u, "still describes the output as a score out of 100"],
+    [/one image with the score, six dimensions/u, "still calls the card a picture of a score"]
+  ],
+  "README.ko.md": [
+    [/공식 점수를 받으려면/u, "still tells the reader a run of this instrument issues one"],
+    [/100점 만점 점수 또는 점수를 내지 않은 정확한 이유/u, "still describes the output as a score out of 100"],
+    [/점수, 여섯 영역, 실행 조건/u, "still calls the card a picture of a score"]
+  ],
+  "README.ja.md": [
+    [/公式スコアを得るには/u, "still tells the reader a run of this instrument issues one"],
+    [/100 点満点のスコア、またはスコアを出さなかった正確な理由/u, "still describes the output as a score out of 100"],
+    [/スコア、六つの領域、実行条件/u, "still calls the card a picture of a score"]
+  ],
+  "README.zh-CN.md": [
+    [/要获得正式分数/u, "still tells the reader a run of this instrument issues one"],
+    [/百分制分数，或未签发分数的准确原因/u, "still describes the output as a score out of 100"],
+    [/在一张图中显示分数、六个维度/u, "still calls the card a picture of a score"]
+  ]
+};
+
+const AGGREGATION = {
+  "README.md": {
+    withheld: /A cycle of profile runs has no single number/u,
+    qualified: /Cycles of legacy results still report the median of all valid runs/u,
+    unqualified: /The Operator Score is the median of all valid runs\./u
+  },
+  "README.ko.md": {
+    withheld: /프로파일 실행으로 이루어진 사이클에는 하나의 숫자가 없고/u,
+    qualified: /레거시 결과로 이루어진 사이클은 여전히 모든 유효한 실행의 \*\*중앙값\*\*/u,
+    unqualified: /최종 Operator Score는 모든 유효한 실행의 \*\*중앙값\*\*입니다/u
+  },
+  "README.ja.md": {
+    withheld: /プロファイル実行から成るサイクルに単一の数値はなく/u,
+    qualified: /レガシー結果から成るサイクルは従来どおり ?すべての有効な実行の\*\*中央値\*\*を報告し/u,
+    unqualified: /Operator Score は、すべての有効な実行の\*\*中央値\*\*です/u
+  },
+  "README.zh-CN.md": {
+    withheld: /由 profile 运行组成的周期没有单一数值/u,
+    qualified: /由旧结果组成的周期仍然报告所有有效运行的\*\*中位数\*\*/u,
+    unqualified: /Operator Score 是所有有效运行的\*\*中位数\*\*。/u
+  }
+};
+
 const aosIn = (cwd, home, args) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd, encoding: "utf8", timeout: 120000, env: { ...process.env, AOS_HOME: home, HOME: home }
@@ -80,12 +133,41 @@ test("the cycle sequence every README documents runs on a fresh clone", () => {
     assert.doesNotMatch(said, /AOS_UNREADABLE|ENOENT/, said);
     assert.match(said, /metrics observed/, said);
 
+    // The cycle's own aggregation, checked as semantics rather than as presence. Every README said
+    // the Operator Score is the median of the valid runs; the shipped path writes profile results
+    // and lib/cli.mjs withholds any aggregate over those, naming #563 as the owner of the question.
+    // A README that still promises a number documents a command that no longer exists, and reading
+    // for the word "median" alone would pass on either wording.
+    const cliSource = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
+    assert.match(cliSource, /AOS_CYCLE_AGGREGATION_UNDEFINED/u, "the cycle stopped withholding; the READMEs have to move with it");
+
     for (const file of READMES) {
       const text = readFileSync(join(root, file), "utf8");
       assert.doesNotMatch(
         text, /cycle run --plan aos-plan\.json/,
         `${file} documents a plan path that no documented step creates`
       );
+
+      // Wrapping is a layout decision and the claim is not, so the claim is read off one line.
+      const said = text.replace(/\s+/gu, " ");
+      const { withheld, qualified, unqualified } = AGGREGATION[file];
+      assert.match(said, withheld, `${file} does not say a cycle of profile runs has no aggregate`);
+      assert.match(said, /#563/u, `${file} withholds the aggregate without naming whose question it is`);
+      assert.match(said, qualified, `${file} states the median without saying it is the legacy scorer's`);
+      assert.doesNotMatch(said, unqualified, `${file} still promises a median Operator Score for every cycle`);
+      // The same drift one section up: an 18-of-20 gate, the ceilings, the bands and
+      // `provisional_raw` are the legacy scorer's rules for issuing one number, and the instrument
+      // `aos assess` runs issues none. Naming the two result schemas is what makes the section
+      // readable as being about a particular instrument rather than about the product.
+      assert.match(said, /aos-result\.v2/u, `${file} describes score gates without saying which instrument they belong to`);
+      assert.match(said, /aos-mvp-result\.v1/u, `${file} does not name the legacy result the gates and bands belong to`);
+      // The sections a reader meets first -- what to run, and what comes out of it -- were still
+      // promising one official score out of 100 and a card with a score on it, while the sections
+      // further down said the current instrument issues neither. A README whose opening contradicts
+      // its middle is read from the opening.
+      for (const [phrase, why] of PROMISES_A_RUN_DOES_NOT_KEEP[file]) {
+        assert.doesNotMatch(said, phrase, `${file} ${why}`);
+      }
     }
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
@@ -139,7 +221,10 @@ test("an unattended run says it cannot be scored before it spends anything", () 
     const run = aosIn(cwd, home, ["assess"]);
     assert.match(run.stderr, /no --checkpoints/);
     assert.match(run.stderr, /17 of 20/);
-    assert.match(run.stderr, /gate of 18/);
+    // The notice says what will be withheld and why, rather than naming provisional_raw -- a field
+    // of the legacy record that the profile result this run writes does not carry.
+    assert.match(run.stderr, /process index and the composite will be withheld/);
+    assert.equal(run.stderr.includes("provisional_raw"), false);
     // Before the run, not in the summary after it: the notice is worth nothing once the quota is gone.
     assert.ok(
       run.stderr.indexOf("no --checkpoints") < (run.stdout.indexOf("metrics observed") + run.stderr.length),
