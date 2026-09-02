@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { ENV_POLICY_SCHEMA, HARD_FORBIDDEN_CLASSES, RUN_METADATA_ENV, TRANSPORT_ENV, envPolicyDigestOf, envPolicyFor, hardForbiddenClassOf, isTransportName } from "../../lib/env-policy.mjs";
-import { buildAgentEnv, isolationRecord } from "../../lib/isolation.mjs";
+import { buildAgentEnv, isSensitiveName, isolationRecord } from "../../lib/isolation.mjs";
 import { ADAPTERS, buildProfile } from "../../lib/profile.mjs";
 import { runProcess } from "../../lib/core.mjs";
 import { addAgent, cli, initBare, makePlan, newestResult, run } from "./helpers.mjs";
@@ -807,15 +807,23 @@ test("a policy may narrow the rules it did not write, and cannot widen them", ()
   // to open a door is to declare it open.
   const clean = envPolicyFor(ADAPTERS["codex-cli.v1"], {});
 
-  // Widening: the withheld prefix removed *and* the name declared somewhere the credential-shape
-  // rule does not read. `structural_env` is that place -- it is consulted before the config branch
-  // and without the shape check -- so this is the one shape of policy where the unconditional
-  // withholding is the only thing standing between an agent and the operator's run records.
+  // Widening: the withheld prefix removed and the name declared in the one set that skips the
+  // config checks. Policy revalidation now strips that declaration before the builder reads it, so
+  // this arrives at the same answer by two rules rather than one; the union below is what covers
+  // it if either is ever loosened.
   const widened = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin", AOS_HOME: "/Users/someone/.aos" }, {
     policy: { ...clean, withheld_env_prefixes: [], structural_env: [...clean.structural_env, "AOS_HOME"] }
   });
   assert.equal(Object.hasOwn(widened.env, "AOS_HOME"), false, "a policy widened its way to the operator's run records");
   assert.equal(widened.removed.includes("AOS_HOME"), true);
+
+  // Narrowing, which is the half of that union with an observable effect: a policy that withholds
+  // more than the module does is honoured, and the extra name is recorded as withheld outright
+  // rather than as one nothing happened to name.
+  const stricter = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin", ACME_LOCAL_THING: "x" }, {
+    policy: { ...clean, withheld_env_prefixes: ["AOS_", "ACME_"] }
+  });
+  assert.deepEqual(stricter.withheld, ["ACME_LOCAL_THING"], "a policy that withheld more was recorded and not applied");
 
   // Widening the other door: a metadata name the module does not name is not added.
   const doorWidened = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, {
@@ -870,4 +878,143 @@ test("a refused policy leaves no scratch directory behind", async () => {
     else process.env.TMPDIR = restore;
     rmSync(scratch, { recursive: true, force: true });
   }
+});
+
+test("the workspace cannot supply the binary the run is scored as", async () => {
+  // The reviewer's exact input: `.` on the operator's PATH, a bare command, and an executable of
+  // that name written into the workspace. `PATH` is structural, so it was carried across unchanged,
+  // and the assessed process's working directory *is* the workspace -- so `.` resolved there and
+  // the workspace copy ran and was scored as the configured adapter.
+  //
+  // Worse than a wrong binary: the identity gate that decides whether AOS may read the runtime's
+  // credential compares the command's basename, and the basename was still the real one. So the
+  // forged binary was in line for the credential too.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-path-forge-"));
+  const restore = process.env.PATH;
+  try {
+    const forged = join(workspace, "aosprobe");
+    writeFileSync(forged, "#!/bin/sh\necho FORGED_BINARY_RAN\n", { mode: 0o755 });
+    const real = join(workspace, "real");
+    writeFileSync(real, "#!/bin/sh\necho REAL_BINARY_RAN\n", { mode: 0o755 });
+
+    process.env.PATH = `.:${workspace}/bin:${restore}`;
+    // A directory holding the real one, absolute, so the command still resolves to something.
+    const realDir = join(workspace, "bin");
+    mkdirSync(realDir);
+    writeFileSync(join(realDir, "aosprobe"), "#!/bin/sh\necho REAL_BINARY_RAN\n", { mode: 0o755 });
+
+    const result = await runProcess(
+      { command: "aosprobe", args: [] },
+      { workspace, family: "FAM-5", stage: "stage-1", prompt: "probe", session: "run-path", timeoutMs: 30000 }
+    );
+    assert.equal(result.exit_code, 0, `${result.error ?? ""} ${result.stderr_excerpt ?? ""}`);
+    assert.match(result.stdout_excerpt ?? "", /REAL_BINARY_RAN/, "the run did not reach the binary on the absolute PATH entry");
+    assert.doesNotMatch(result.stdout_excerpt ?? "", /FORGED_BINARY_RAN/, "the workspace supplied the assessed binary");
+    // Carried, not dropped: the counterfactual matters, because a run that lost PATH entirely would
+    // also have failed to reach the forged binary and this test would have proved nothing.
+    assert.equal(result.isolation.allowed_env_names.includes("PATH"), true, "the child was given no PATH at all");
+  } finally {
+    process.env.PATH = restore;
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("a relative or empty PATH entry never reaches the child", () => {
+  // The unit form of the test above, including the empty entry: in POSIX an empty element of PATH
+  // means the working directory, so `PATH=/usr/bin:` is `.` spelled differently, and a PATH of
+  // nothing but relative entries would become an empty string -- which is the same thing again.
+  const built = buildAgentEnv("STRICT", { PATH: ".:/usr/bin::relative/bin:/opt/tools:.." });
+  assert.equal(built.env.PATH, "/usr/bin:/opt/tools");
+  const nothingAbsolute = buildAgentEnv("STRICT", { PATH: ".:..:relative/bin:" });
+  assert.equal(Object.hasOwn(nothingAbsolute.env, "PATH"), false, "an empty PATH searches the working directory");
+  assert.equal(nothingAbsolute.removed.includes("PATH"), true);
+  // The rule is part of the policy, so a build that applied a different one is a different digest.
+  const policy = envPolicyFor(ADAPTERS["codex-cli.v1"], {});
+  assert.equal(policy.path_entry_rule, "absolute-entries-only");
+  assert.notEqual(envPolicyDigestOf({ ...policy, path_entry_rule: "anything-goes" }), policy.policy_digest);
+});
+
+test("a credential name is refused whatever its capitalisation, and the list knows the quiet ones", () => {
+  // The reviewer's exact inputs. `PGPASSWORD` is libpq's password variable and says nothing about
+  // itself, so the shape rule cannot see it and only a list can; `database_url` is the same name as
+  // `DATABASE_URL`, which was listed, but the list was compared case-sensitively and POSIX makes
+  // those two different variables. Both reached the built child environment.
+  for (const name of ["PGPASSWORD", "database_url", "pgpassword", "Gh_Token", "mysql_pwd", "aws_secret_access_key", "NETRC"]) {
+    assert.equal(isSensitiveName(name), true, `${name} is not recognised as credential-shaped`);
+    assert.throws(
+      () => envPolicyFor(ADAPTERS["codex-cli.v1"], { allow: [name] }),
+      /AOS_ENV_POLICY_MISMATCH/,
+      name
+    );
+    // And through the builder, which is where the reviewer observed them arrive.
+    const built = buildAgentEnv("STRICT", { PATH: "/usr/bin", [name]: "not-a-real-secret" }, {
+      policy: { ...envPolicyFor(ADAPTERS["codex-cli.v1"], {}), config_env: [name] }
+    });
+    assert.equal(Object.hasOwn(built.env, name), false, `${name} reached the child environment`);
+  }
+  // Ordinary names are not swept up by folding case: an over-broad rule would refuse the config
+  // directory a runtime needs and the failure would look like a login problem.
+  for (const name of ["PATH", "LANG", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "DEVELOPER_DIR", "JAVA_HOME", "KUBECONFIG", "PGHOST", "PGDATABASE"]) {
+    assert.equal(isSensitiveName(name), false, name);
+  }
+});
+
+test("a policy cannot forge runtime-auth or transport authority its adapter never granted", () => {
+  // The reviewer's exact reproduction. `config_env` was closed last round and its two siblings were
+  // not, which is what a fix aimed at one reproduction rather than at the shape of the defect looks
+  // like. The builder now revalidates the whole policy against the adapter named in it.
+  const policy = envPolicyFor(ADAPTERS["generic-command.v1"], {});
+  policy.runtime_auth_env.push("GH_TOKEN");
+  const auth = buildAgentEnv("STRICT", { PATH: "/usr/bin", GH_TOKEN: "secret" }, { policy });
+  assert.equal(Object.hasOwn(auth.env, "GH_TOKEN"), false, "the generic child received a credential no adapter reads");
+  assert.deepEqual(auth.unauthorised, ["GH_TOKEN"]);
+  assert.deepEqual(auth.runtime_auth, []);
+  assert.equal(JSON.stringify(auth.policy).includes("GH_TOKEN"), false, "the forged claim survived into the policy");
+
+  const proxied = envPolicyFor(ADAPTERS["generic-command.v1"], {});
+  proxied.transport_env.push("HTTPS_PROXY");
+  const transport = buildAgentEnv("STRICT", { PATH: "/usr/bin", HTTPS_PROXY: "http://127.0.0.1:9" }, { policy: proxied });
+  assert.equal(Object.hasOwn(transport.env, "HTTPS_PROXY"), false, "a proxy travelled with no adapter declaration and no approval");
+  assert.deepEqual(transport.unauthorised, ["HTTPS_PROXY"]);
+  assert.deepEqual(transport.transport, []);
+
+  // An adapter that did declare the need is unaffected, so this is a boundary and not a blanket.
+  const declared = envPolicyFor(ADAPTERS["codex-cli.v1"], { transport: ["HTTPS_PROXY"] });
+  const allowed = buildAgentEnv("STRICT", { PATH: "/usr/bin", HTTPS_PROXY: "http://127.0.0.1:9" }, { policy: declared });
+  assert.equal(allowed.env.HTTPS_PROXY, "http://127.0.0.1:9");
+  assert.deepEqual(allowed.unauthorised, []);
+
+  // The fourth array, for the same reason: left open, a forged `structural_env` was another way to
+  // name anything at all, and structural names are the one set that skips the config checks.
+  const structural = envPolicyFor(ADAPTERS["codex-cli.v1"], {});
+  const forgedStructural = buildAgentEnv("STRICT", { PATH: "/usr/bin", ACME_DEPLOY_TOKEN: "ghp-not-real" }, {
+    policy: { ...structural, structural_env: [...structural.structural_env, "ACME_DEPLOY_TOKEN"] }
+  });
+  assert.equal(Object.hasOwn(forgedStructural.env, "ACME_DEPLOY_TOKEN"), false);
+  assert.deepEqual(forgedStructural.unauthorised, ["ACME_DEPLOY_TOKEN"]);
+
+  // A policy naming an adapter this build has never heard of authorises nothing, rather than
+  // falling through to whatever it claims for itself.
+  const unknown = { ...envPolicyFor(ADAPTERS["claude-code.v1"], { runtimeAuth: ["CLAUDE_CODE_OAUTH_TOKEN"] }), adapter_id: "invented.v1" };
+  const orphan = buildAgentEnv("STRICT", { PATH: "/usr/bin", CLAUDE_CODE_OAUTH_TOKEN: "sk-not-real" }, { policy: unknown });
+  assert.equal(Object.hasOwn(orphan.env, "CLAUDE_CODE_OAUTH_TOKEN"), false, "an unknown adapter id authorised a credential");
+  assert.deepEqual(orphan.unauthorised, ["CLAUDE_CODE_OAUTH_TOKEN"]);
+});
+
+test("the record separates what was withheld outright from what was merely never named", () => {
+  // `AOS_HOME` is refused before the policy is consulted at all, and an undeclared name is refused
+  // because nothing named it. Both end up absent, and only the first is a guarantee -- so the
+  // record says which, rather than leaving a reader to infer a rule from an absence.
+  const built = buildAgentEnv("BEST_EFFORT_CLI", {
+    PATH: "/usr/bin",
+    AOS_HOME: "/Users/someone/.aos",
+    EDITOR: "vim"
+  }, { home: "/tmp/agent-home" });
+  assert.deepEqual(built.withheld, ["AOS_HOME"]);
+  assert.equal(built.removed.includes("EDITOR"), true);
+  const record = isolationRecord(built.level, { ...built, homeSource: built.home_source, home: "/tmp/agent-home" });
+  assert.deepEqual(record.withheld_env_names, ["AOS_HOME"]);
+  assert.deepEqual(record.unauthorised_env_names, []);
+  assert.equal(record.removed_env_names.includes("EDITOR"), true);
+  assert.equal(JSON.stringify(record).includes("/Users/someone/.aos"), false, "a withheld value reached the record");
 });

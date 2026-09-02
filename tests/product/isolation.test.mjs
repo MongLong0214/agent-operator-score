@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { buildAgentEnv, isSensitiveName, isolationRecord, SCORING_ISOLATION } from "../../lib/isolation.mjs";
-import { envPolicyFor } from "../../lib/env-policy.mjs";
+import { envDecision, envPolicyFor } from "../../lib/env-policy.mjs";
 import { runProcess } from "../../lib/core.mjs";
 import { run } from "./helpers.mjs";
 
@@ -113,8 +113,22 @@ test("a credential-shaped name cannot become an ordinary allowed name, by flag o
   assert.equal(Object.hasOwn(built.env, "GH_TOKEN"), false, "a hand-forged policy carried a credential");
   assert.equal(Object.hasOwn(built.env, "ACME_DEPLOY_TOKEN"), false);
   assert.equal(built.removed.includes("GH_TOKEN"), true, "it was refused without being reported");
-  // The record cannot go on quoting the digest of the object before it was tampered with.
-  assert.notEqual(built.policy.policy_digest, envPolicyFor(null, {}).policy_digest);
+  // The forged claim is taken back out of the policy before it is applied, so the digest is the
+  // clean one again -- and the record says which authority was claimed and not granted, which a
+  // digest alone could not. This assertion used to be `notEqual`, back when the builder re-hashed a
+  // forged policy and described it accurately instead of refusing it.
+  assert.deepEqual(built.unauthorised, ["ACME_DEPLOY_TOKEN", "GH_TOKEN"]);
+  assert.equal(built.policy.policy_digest, envPolicyFor(null, {}).policy_digest);
+  assert.deepEqual(built.policy.config_env, []);
+  // And the carry decision itself, asserted directly. Policy revalidation strips a forged
+  // `config_env` before the builder consults it, so this branch is no longer reachable through
+  // `buildAgentEnv` -- it is the layer underneath, for a policy that reaches a spawn by some route
+  // that does not exist yet, and it is asserted here because an unasserted layer is a layer that
+  // will be refactored away by someone who could not see what it was for.
+  assert.deepEqual(
+    envDecision({ ...envPolicyFor(null, {}), config_env: ["GH_TOKEN"] }, "GH_TOKEN"),
+    { carry: false, reason: "credential_shaped" }
+  );
 });
 
 test("HOME is replaced, never inherited", () => {

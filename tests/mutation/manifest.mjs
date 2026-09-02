@@ -16,6 +16,69 @@
 
 export const GUARDS = [
   {
+    guard: "PATH carries no relative entry",
+    reason: "a relative PATH entry resolves against the assessed agent's working directory, which is the workspace it was handed",
+    file: "lib/isolation.mjs",
+    from: "      const minimized = minimizePath(value);",
+    to: "      const minimized = value;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a relative or empty PATH entry never reaches the child"
+  },
+  {
+    guard: "the PATH rule is part of the digest",
+    reason: "a run that searched the working directory for its own binary is not the same measurement as one that did not",
+    file: "lib/env-policy.mjs",
+    from: '    ["path_entry_rule", policy.path_entry_rule ?? PATH_ENTRY_RULE]',
+    to: '    ["path_entry_rule", ""]',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a relative or empty PATH entry never reaches the child"
+  },
+  {
+    guard: "credential names are matched whatever their capitalisation",
+    reason: "a case-sensitive refusal is one an operator gets past by pressing shift, and POSIX makes database_url a different variable from DATABASE_URL",
+    file: "lib/env-policy.mjs",
+    from: "  const key = canonical(name);\n  if (DENIED_NAME_SET.has(key)) return true;",
+    to: "  const key = name;\n  if (DENIED_NAME_SET.has(key)) return true;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a credential name is refused whatever its capitalisation, and the list knows the quiet ones"
+  },
+  {
+    guard: "credential names a shape rule cannot see are listed",
+    reason: "PGPASSWORD says nothing about itself, so no name-shape rule can catch it and only a list can",
+    file: "lib/env-policy.mjs",
+    from: '  "PGPASSWORD",',
+    to: '  "PGHOST",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a credential name is refused whatever its capitalisation, and the list knows the quiet ones"
+  },
+  {
+    guard: "the whole policy is revalidated against its adapter at the point of use",
+    reason: "a policy edited after construction forged runtime-auth and transport authority that no adapter granted",
+    file: "lib/isolation.mjs",
+    from: "  const { policy: authorised, unauthorised } = authorisedPolicy(supplied);",
+    to: "  const authorised = supplied;\n  const unauthorised = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy cannot forge runtime-auth or transport authority its adapter never granted"
+  },
+  {
+    guard: "a forged structural set is revalidated like the rest",
+    reason: "structural names skip the config checks, so an open structural_env is a fourth way to name anything at all",
+    file: "lib/env-policy.mjs",
+    from: "      structural_env: keep(policy.structural_env, [...STRUCTURAL_ENV, ...declared.structural_env])",
+    to: "      structural_env: policy.structural_env ?? []",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy cannot forge runtime-auth or transport authority its adapter never granted"
+  },
+  {
+    guard: "what was withheld outright is recorded as such",
+    reason: "refused before the policy was read and never named by it are different statements, and only the first is a guarantee",
+    file: "lib/isolation.mjs",
+    from: "      withheld.push(name);",
+    to: "      removed.push(name);",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the record separates what was withheld outright from what was merely never named"
+  },
+  {
     guard: "a credential-shaped name is refused as an ordinary allowed name",
     reason: "the CLI refused --allow-env GH_TOKEN and nothing repeated it, so a hand-edited config carried the operator's token into the child",
     file: "lib/env-policy.mjs",
@@ -37,17 +100,17 @@ export const GUARDS = [
     guard: "the digest is recomputed over the policy actually applied",
     reason: "a supplied policy is mutable, so a copied digest describes the object's history rather than the child's environment",
     file: "lib/isolation.mjs",
-    from: "  const inForce = { ...supplied, policy_digest: envPolicyDigestOf(supplied) };",
-    to: "  const inForce = supplied;",
+    from: "  const inForce = { ...authorised, policy_digest: envPolicyDigestOf(authorised) };",
+    to: "  const inForce = authorised;",
     test: "tests/product/adapter-env-policy.test.mjs",
     name: "a policy may narrow the rules it did not write, and cannot widen them"
   },
   {
-    guard: "a policy cannot widen the withheld prefixes",
-    reason: "otherwise the way to reach AOS_HOME, and the run records the score is read from, is to declare the prefix no longer withheld",
+    guard: "the withheld prefixes are the module's and the policy's together",
+    reason: "a policy may withhold more than the module does and may not withhold less, and only the first half is observable now that revalidation strips a forged structural set",
     file: "lib/isolation.mjs",
     from: "  const withheldPrefixes = [...new Set([...WITHHELD_ENV_PREFIXES, ...(inForce.withheld_env_prefixes ?? [])])];",
-    to: "  const withheldPrefixes = inForce.withheld_env_prefixes ?? [];",
+    to: "  const withheldPrefixes = [...WITHHELD_ENV_PREFIXES];",
     test: "tests/product/adapter-env-policy.test.mjs",
     name: "a policy may narrow the rules it did not write, and cannot widen them"
   },
@@ -109,8 +172,8 @@ export const GUARDS = [
     guard: "hard-forbidden matching is case-insensitive",
     reason: "npm folds environment keys to lower case, so a mixed-case npm_config_node_options arrives at a lifecycle child as NODE_OPTIONS",
     file: "lib/env-policy.mjs",
-    from: "  const key = canonical(name);",
-    to: "  const key = name;",
+    from: "export function hardForbiddenClassOf(name) {\n  const key = canonical(name);",
+    to: "export function hardForbiddenClassOf(name) {\n  const key = name;",
     test: "tests/product/adapter-env-policy.test.mjs",
     name: "a hard-forbidden name is refused in every spelling a consumer might fold it into"
   },
@@ -228,8 +291,13 @@ export const GUARDS = [
     file: "lib/isolation.mjs",
     from: "    if (withheldPrefixes.some((prefix) => name.startsWith(prefix))) {",
     to: "    if (false) {",
-    test: "tests/product/isolation.test.mjs",
-    name: "an agent is never told where the operator's runs are"
+    // Re-pointed. Its old test forged AOS_HOME into a policy to isolate this rule, and every later
+    // round closed another way of doing that -- the credential-shape rule reads every AOS_ name as
+    // credential-shaped, and policy revalidation now strips a forged structural set. The rule is
+    // still load-bearing and is now observable directly: it is what puts a name in `withheld`
+    // rather than merely leaving it out of the environment.
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the record separates what was withheld outright from what was merely never named"
   },
   {
     guard: "execution plan cycle detection",
@@ -447,10 +515,11 @@ export const GUARDS = [
  */
 export const ACCOUNTED_GUARDS = [
   "AOS home withheld from the agent",
+  "PATH carries no relative entry",
   "a .NET startup hook is a pre-main hook like the rest",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
-  "a policy cannot widen the withheld prefixes",
+  "a forged structural set is revalidated like the rest",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "allowlist-only child environment",
   "central redaction",
@@ -459,6 +528,8 @@ export const ACCOUNTED_GUARDS = [
   "close-evidence verdict",
   "coverage gate",
   "credential env refusal",
+  "credential names a shape rule cannot see are listed",
+  "credential names are matched whatever their capitalisation",
   "cycle run identity",
   "doctor checks a required config name has a value",
   "env policy digest binding",
@@ -479,6 +550,7 @@ export const ACCOUNTED_GUARDS = [
   "runtime auth is bound to the adapter that reads it",
   "safety cap",
   "stale blocked status",
+  "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
@@ -486,10 +558,13 @@ export const ACCOUNTED_GUARDS = [
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the scored result carries the boundary it was produced under",
+  "the whole policy is revalidated against its adapter at the point of use",
+  "the withheld prefixes are the module's and the policy's together",
   "transport approval binding",
   "trend dedupe",
   "trusted-process import prohibition",
   "verification result check",
+  "what was withheld outright is recorded as such",
   "workspace containment",
 ];
 
