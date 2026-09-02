@@ -16,6 +16,27 @@
 
 export const GUARDS = [
   {
+    guard: "stale-branch audit preserves orphaned unmerged work",
+    reason:
+      "a branch whose only copy of real work sits nowhere else must never read as safe to delete -- that is the exact loss #578's evidence-preservation gate exists to prevent",
+    file: "fixtures/stale-branches/audit.json",
+    from: '"recommendation": "must_be_preserved"',
+    to: '"recommendation": "safe_to_delete_after_578"',
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a branch with unmerged work found nowhere else must be marked must be preserved"
+  },
+  {
+    guard: "stale-branch audit deletion recommendations carry a reason",
+    reason:
+      "a deletion recommendation with no stated reason is unreviewable -- the next reader cannot tell an evidenced call from a guess",
+    file: "fixtures/stale-branches/audit.json",
+    from:
+      '"reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of 355 checked) ever used it as a head branch, and a GitHub-wide search finds no reference to it outside issue #572\'s own candidate list. Deleting it after #578\'s evidence bundle is captured loses nothing."',
+    to: '"reason": ""',
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "no entry recommends deletion without a reason"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",

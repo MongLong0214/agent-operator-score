@@ -1,0 +1,91 @@
+{
+  "schema": "aos-stale-branch-audit.v1",
+  "repository": "MongLong0214/agent-operator-score",
+  "issue": 572,
+  "phase": "read-only-audit",
+  "generated_at": "2026-09-02T00:18:26Z",
+  "method": "Read-only: `git ls-remote --heads origin`, `git merge-base --is-ancestor` and `git rev-list` against origin/dev and origin/main, `gh pr list --state all --limit 500 --json ...`, `gh api search/issues`, and `gh api repos/.../branches/<b>/protection`. No ref was created, deleted, force-pushed, or renamed to produce this file.",
+  "excluded_refs": ["main", "dev"],
+  "ls_remote_snapshot": [
+    { "name": "dev", "sha": "499bb11b004024fc46b9e97300ad8909d86a5073" },
+    { "name": "fix/a-fixture-backed-agent-is-not-a-runtime", "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1" },
+    { "name": "main", "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846" },
+    { "name": "task/issue-570-action-pins", "sha": "7d2d1be696c4a5a80cf8c1f58bcf9178bd024c63" },
+    { "name": "task/issue-588-mark-done", "sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a" },
+    { "name": "tmp/read-claude-artifact", "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb" }
+  ],
+  "open_pr_heads_excluded": [
+    {
+      "name": "task/issue-570-action-pins",
+      "pr_number": 590,
+      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/590",
+      "pr_state": "OPEN",
+      "reason": "Head of an open PR (#590, 'feat(ci): pin every external action to a commit, and check that it stays pinned') targeting dev. ISSUE.md scopes the per-branch table to branches that are 'not main, dev, or an open PR's head' -- this is active in-flight work, not a stale ref, so it is recorded here rather than in the branches table. It is excluded from branch coverage for the same reason `main` and `dev` are."
+    }
+  ],
+  "branches": [
+    {
+      "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+      "head_sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+      "author_name": "MongLong0214",
+      "author_email": "97578200+MongLong0214@users.noreply.github.com",
+      "last_commit_date": "2026-08-28T20:37:31+09:00",
+      "age_days": 4,
+      "merged_into_dev": true,
+      "merged_into_main": true,
+      "unmerged_commit_count": 0,
+      "unmerged_summary": null,
+      "referenced_by_pr": [],
+      "referenced_elsewhere": [
+        { "type": "issue", "number": 572, "url": "https://github.com/MongLong0214/agent-operator-score/issues/572", "note": "named as a candidate in issue #572's own 'Current candidates' list" }
+      ],
+      "branch_protected": false,
+      "recommendation": "safe_to_delete_after_578",
+      "reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of 355 checked) ever used it as a head branch, and a GitHub-wide search finds no reference to it outside issue #572's own candidate list. Deleting it after #578's evidence bundle is captured loses nothing."
+    },
+    {
+      "name": "task/issue-588-mark-done",
+      "head_sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-02T08:29:26+09:00",
+      "age_days": 0,
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unmerged_commit_count": 2,
+      "unmerged_summary": "2 commits forked exactly at dev's current tip (499bb11b): bc98c45 'chore(governance): record #588 as done and refresh the issue snapshot' marks issue #588 done and refreshes the committed GitHub-state fixture; 034fcac 'fix(governance): harden the execution-plan checks against a forged pass' closes 7 named gaps an adversarial review found in the #588 governance gate (forged close-evidence records, unauthorized attesters, a self-disabling excluded-issue check, predecessor gating that only covered `ready`, an unreported destructive-phase restriction on #572 itself, an unvalidated fixture-as-snapshot, undercounted status labels) plus JSON-schema-subset and cycle-detection bugfixes, adding 8 mutation guards.",
+      "referenced_by_pr": [],
+      "referenced_elsewhere": [],
+      "branch_protected": false,
+      "recommendation": "must_be_preserved",
+      "reason": "Carries 2 commits of real, unmerged hardening work for the #588 execution-plan governance gate that exist on no other ref: `git branch -r --contains 034fcac...` and `git tag --contains 034fcac...` both return only this branch, no PR (of 355 checked, open or closed) ever pointed to it as a head or mentioned it in a body, and a GitHub-wide search for the branch name returns zero results -- it is not even on issue #572's own candidate list, so nobody is watching it. Deleting it would silently lose the fix for 7 named adversarial-review gaps plus schema and cycle-detection bugfixes and 8 mutation guards, none of which exist in dev today. Needs a human decision (rebase onto dev and open a PR under an issue, or confirm the work is superseded) before any deletion; until that decision it must survive untouched."
+    },
+    {
+      "name": "tmp/read-claude-artifact",
+      "head_sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+      "author_name": "MongLong0214",
+      "author_email": "97578200+MongLong0214@users.noreply.github.com",
+      "last_commit_date": "2026-08-29T11:33:54+09:00",
+      "age_days": 3,
+      "merged_into_dev": true,
+      "merged_into_main": true,
+      "unmerged_commit_count": 0,
+      "unmerged_summary": null,
+      "referenced_by_pr": [],
+      "referenced_elsewhere": [
+        { "type": "issue", "number": 572, "url": "https://github.com/MongLong0214/agent-operator-score/issues/572", "note": "named as a candidate in issue #572's own 'Current candidates' list" }
+      ],
+      "branch_protected": false,
+      "recommendation": "safe_to_delete_after_578",
+      "reason": "Tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique vs either) via PR #538's back-merge chain. This is a `tmp/*` branch; repository policy caps those at 7 days or task end, and this one is already 3 days old with its content long since merged elsewhere. No PR references it as a head. Deleting it after #578 loses nothing."
+    }
+  ],
+  "repository_policy_notes": {
+    "default_branch": "dev",
+    "delete_branch_on_merge": true,
+    "rulesets": [],
+    "main_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
+    "dev_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
+    "candidate_branch_protection": "none of the 4 non-main/dev branches (checked via `gh api repos/.../branches/<b>/protection`) have branch protection configured"
+  }
+}
