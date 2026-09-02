@@ -339,7 +339,13 @@ AOS は、計算できるという理由だけで公式スコアを出しませ�
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` は二つのレーンをまとめて報告します。ローカルのホールドアウト適合率と、
+`fixtures/known-incidents/` に記録した既知インシデント・フィクスチャの適合率と再現率です。下限
+（保留セッション 50 件、判定済みの重大度の高い指摘 20 件）に届かない場合、比率は出力せず保留し、
+`aos review` は EXPERIMENTAL のままです。保留とは 0 ではなく、値がないという意味です。
 
 新しい未使用セッションで再測定するまで、現在の `review` の精度が確立したとは言えません。
 holdout 台帳には、セッション本文ではなく、セッションのハッシュ、指摘 ID、判定、理由だけを

@@ -337,7 +337,13 @@ AOS는 계산이 가능하다는 이유만으로 공식 점수를 주지 않습�
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes`는 두 레인을 함께 보고합니다. 로컬 홀드아웃 정밀도와,
+`fixtures/known-incidents/`에 기록된 알려진 사고 픽스처의 정밀도·재현율입니다. 하한선(보류한
+세션 50개, 판정된 고위험 지적 20건)에 미치지 못하면 비율은 출력하지 않고 보류하며, `aos review`는
+EXPERIMENTAL로 남습니다. 보류는 0이 아니라 값 없음입니다.
 
 새로운 미사용 세션으로 다시 측정하기 전까지 현재 `review`의 정확도가 확립됐다고 주장할 수
 없습니다. holdout 기록에는 세션 원문이 아니라 세션 해시, 지적 ID, 판정과 이유만 저장됩니다.

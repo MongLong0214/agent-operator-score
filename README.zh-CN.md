@@ -318,7 +318,12 @@ AOS 不会因为能做算术就一定签发正式分数。观察不足的运行�
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` 会同时报告两条通道：本地留出集的精确率，以及 `fixtures/known-incidents/`
+中已知事件夹具的精确率与召回率。低于下限（留出会话 50 个、已判定的高严重度提示 20 条）时，比率
+不会打印而是被扣留，`aos review` 仍为 EXPERIMENTAL。扣留意味着没有该值，而不是 0。
 
 在新的、未使用过的会话上重新测量之前，不能声称当前 `review` 的准确率已经确立。holdout 台账
 只保存会话哈希、提示 ID、人工判定与理由，不保存会话正文。详见

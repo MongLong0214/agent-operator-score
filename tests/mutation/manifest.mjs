@@ -16,6 +16,105 @@
 
 export const GUARDS = [
   {
+    guard: "holdout floor",
+    reason: "a precision over one decided finding describes that finding and is published as a product claim",
+    file: "lib/holdout.mjs",
+    from: "const met = floor.sessions_met && floor.decided_met;",
+    to: "const met = true;",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "one true positive and no false positives is undecided, not perfect"
+  },
+  {
+    guard: "withheld precision is absent",
+    reason: "a rate printed below the floor is read as a measurement whatever the status beside it says",
+    file: "lib/holdout.mjs",
+    from: "precision: met ? precision.precision : null,",
+    to: "precision: precision.precision,",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "forty-nine sessions are not fifty"
+  },
+  {
+    guard: "a violation decides before the floor does",
+    reason: "incomplete evidence reported as clean is a count, and waiting for a bigger sample to say so never says it",
+    file: "lib/holdout.mjs",
+    from: 'const status = violations.length > 0 ? "FAIL"',
+    to: 'const status = false ? "FAIL"',
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "a violation below the floor fails rather than waiting for a bigger sample"
+  },
+  {
+    guard: "corpus leakage refusal",
+    reason: "a rule measured on the session it was written from is asked whether it fits what it was fitted to",
+    file: "lib/incident-corpus.mjs",
+    from: "  if (item.derived_rules.includes(rule)) throw new Error(",
+    to: "  if (false) throw new Error(",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "an item scored by the same evidence it was derived from fails"
+  },
+  {
+    guard: "undecided items are in neither denominator",
+    reason: "folding the cases nobody could label into either side gives a rate that describes the easy ones",
+    file: "lib/incident-corpus.mjs",
+    from: '  if (item.undecided_rules.includes(rule)) return "UNDECIDED";',
+    to: '  if (false) return "UNDECIDED";',
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "an undecided item counts toward neither precision nor recall and is still counted"
+  },
+  {
+    guard: "rate denominator floor",
+    reason: "three decisions is not a precision however many items the corpus holds",
+    file: "lib/incident-corpus.mjs",
+    from: "    metric.precision = corpusMet && precisionDenominator >= floor ? metric.tp / precisionDenominator : null;",
+    to: "    metric.precision = precisionDenominator > 0 ? metric.tp / precisionDenominator : null;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a denominator below the minimum withholds the rate and reports the raw count"
+  },
+  {
+    guard: "incomplete evidence never reported clean",
+    reason: "a review that could not read the transcript, reported as one that could, is a clean bill of health nobody earned",
+    file: "lib/incident-corpus.mjs",
+    from: '    if (item.evidence_status === "INCOMPLETE" && review.status === "COMPLETE") {',
+    to: "    if (false) {",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "an item whose evidence is incomplete is never reported clean"
+  },
+  {
+    guard: "declared credentials are never reprinted",
+    reason: "the tool that warns about credentials writing one back out is the worst failure it has",
+    file: "lib/incident-corpus.mjs",
+    from: "      if (printed.includes(secret)) {",
+    to: "      if (false) {",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a credential in a corpus item is never written back out"
+  },
+  {
+    guard: "a missed known incident is a regression",
+    reason: "a reviewer that reports nothing has a perfect precision and finds none of the incidents in the corpus",
+    file: "lib/incident-corpus.mjs",
+    from: "      if (item.expected_rules.includes(rule) && !fired.includes(rule)) {",
+    to: "      if (false) {",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a reviewer that reports nothing has a recall of zero, not a silence"
+  },
+  {
+    guard: "a withheld corpus does not pass",
+    reason: "nothing observed going wrong is not the same as a rate showing it goes right",
+    file: "lib/incident-corpus.mjs",
+    from: '    : withheld.length > 0 || Object.keys(metrics).length === 0 ? "UNDECIDED"',
+    to: '    : false ? "UNDECIDED"',
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a corpus below the floor withholds the rate and reports the raw counts"
+  },
+  {
+    guard: "production-quality needs both lanes",
+    reason: "an undecided lane read as a pass is how a claim outruns the evidence for it",
+    file: "lib/review-lanes.mjs",
+    from: 'const both = lane_a.status === "PASS" && lane_b.status === "PASS";',
+    to: "const both = true;",
+    test: "tests/product/no-raw-holdout-data.test.mjs",
+    name: "nothing that goes into the lane report came out of a transcript"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",

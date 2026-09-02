@@ -338,7 +338,13 @@ measurement.
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` reports both lanes: the local holdout precision, and a known-incident
+fixture precision and recall over `fixtures/known-incidents/`. Below the floor — fifty held-back
+sessions and twenty decided high-severity findings — a rate is withheld rather than printed, and
+`aos review` stays EXPERIMENTAL. Withheld means absent, not zero.
 
 Until new, unused sessions are measured, the current reviewer's accuracy is not established. The
 holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.

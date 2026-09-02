@@ -1,0 +1,124 @@
+{
+  "schema_id": "aos-known-incident.v1",
+  "runtime": "claude",
+  "evidence_status": "COMPLETE",
+  "expected_rules": [],
+  "forbidden_rules": [
+    "session-ended-on-stale-evidence",
+    "edits-outside-the-working-directory"
+  ],
+  "undecided_rules": [],
+  "derived_rules": [
+    "session-ended-on-stale-evidence",
+    "edits-outside-the-working-directory"
+  ],
+  "secret_values": [],
+  "fixture_id": "holdout-320-ci-logs-written-under-tmp",
+  "incident": "A PR body and two CI logs under /tmp were three of the five edits behind one held-back stale-evidence finding; that session had pushed and watched CI go green and was told nothing confirmed it.",
+  "source": "lib/review.mjs (output written outside the working tree) and tests/product/review.test.mjs \"output written outside the working tree is not an edit to the work\"",
+  "events": [
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:01:00.000Z",
+      "cwd": "/repo",
+      "message": {
+        "content": [
+          {
+            "type": "text",
+            "text": "open the PR once CI is green"
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "timestamp": "2026-08-20T10:01:10.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "c1",
+            "name": "Bash",
+            "input": {
+              "command": "npm test"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:01:20.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "c1",
+            "is_error": false,
+            "content": "42 passing"
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "timestamp": "2026-08-20T10:01:30.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "c2",
+            "name": "Bash",
+            "input": {
+              "command": "gh api /repos/x/actions/jobs/1/logs > /tmp/red.log"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:01:40.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "c2",
+            "is_error": false,
+            "content": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "timestamp": "2026-08-20T10:01:50.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "c3",
+            "name": "Bash",
+            "input": {
+              "command": "cat > /tmp/pr-body.md <<'EOF'\nbody\nEOF"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:02:00.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "c3",
+            "is_error": false,
+            "content": "ok"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -78,6 +78,34 @@ path; a patch body read as a command; one conjugation missing from an exclusion.
 them failed loudly. Each one invented a finding, which is the direction this product must
 not be wrong in.
 
+### The floor, and what is withheld below it
+
+That measurement is below the floor the product now applies to itself. `aos holdout --lanes`
+reports two lanes and will not publish a rate from either one until the sample can carry it.
+
+Lane A is the local holdout: fifty held-back sessions and twenty decided high-severity findings
+before a precision is reported at all. Below either figure the status is `UNDECIDED` -- not PASS,
+not FAIL -- and the precision is **withheld**, which means absent from the report rather than
+printed as zero or as an interval. The counts stay: right, wrong, and the ones the owner could
+not decide. A verdict of `unclear` is counted and shown and enters neither side of the rate,
+because a reviewer graded only on the findings somebody could label has a precision that
+describes the easy ones.
+
+Lane B is a **known-incident fixture** rate over `fixtures/known-incidents/`: sessions
+reconstructed from incidents this repository already recorded, each labelled with the rules that
+must fire and the rules that must stay silent. It has a recall, which lane A cannot have, and the
+name is the limit -- it is a rate over fixtures somebody chose, never a recall over anybody's
+sessions.
+
+Almost every item in that corpus is an incident a rule was **changed in response to**, and an item
+cannot measure the rule it wrote. Those pairs are excluded from the arithmetic by name and stay in
+the corpus as regression tests. What is left is far below the floor of ten labelled items in each
+direction per high-severity rule, so every rate in lane B is withheld too. The gate works and
+correctly reports that it has nothing to report; that is not the same as having a number.
+
+So: `aos review` is EXPERIMENTAL, its precision claim is WITHHELD, and the only measured figure
+this product has about its own reviewer is still the 0.400 above.
+
 ## What a real run looks like
 
 Measured with real Codex on one machine, six families, seeded suite:
