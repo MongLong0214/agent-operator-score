@@ -300,6 +300,312 @@ export const GUARDS = [
     name: "the record separates what was withheld outright from what was merely never named"
   },
   {
+    guard: "an issue number is a number before it is a pattern",
+    reason: "a record carrying \"issue\": \".*\" made pr_closes_issue true against any pull request body",
+    file: "lib/github-state.mjs",
+    from: "    const number = Number.isInteger(record.issue) && record.issue > 0 ? String(record.issue) : null;",
+    to: "    const number = String(record.issue);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an issue number from a comment cannot become a pattern"
+  },
+  {
+    guard: "a phase's predecessors must be in the plan",
+    reason: "a phase blocked by #999 was withheld forever and never reported stale once its real predecessor landed",
+    file: "lib/execution-plan.mjs",
+    from: "        if (!byNumber.has(predecessor)) {\n          fail(\"unknown-dependency\", `#${one.issue} phase \"${phase.id}\" is blocked by #${predecessor}, which is not in the plan`, one.issue);",
+    to: "        if (false) {\n          fail(\"unknown-dependency\", `#${one.issue} phase \"${phase.id}\" is blocked by #${predecessor}, which is not in the plan`, one.issue);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a phase blocked by a number outside the plan is refused like an issue would be"
+  },
+  {
+    guard: "a started phase cannot integrate code on a blocked issue",
+    reason: "checking only `ready` left the permission reachable by moving the phase forward",
+    file: "lib/execution-plan.mjs",
+    from: "      if (STARTED.has(phase.status) && one.status !== \"ready\" && phase.code_integration_allowed) {",
+    to: '      if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) { } if (false) {',
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
+  },
+  {
+    guard: "an issue owns a surface",
+    reason: "owning nothing means no surface is protected from a second writer",
+    file: "lib/execution-plan.mjs",
+    from: '    if (one.owner_surfaces.length === 0 && one.kind !== "epic") {',
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a non-canonical plan still reports the evidence, ownership and gate failures beside it"
+  },
+  {
+    guard: "a truncated reachability answer is not an answer",
+    reason: "returning false on an exhausted budget said `these do not depend on each other` when they do",
+    file: "lib/execution-plan.mjs",
+    from: '      if (steps > budget) return "unknown";',
+    to: "      if (steps > budget) return false;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a reachability answer that ran out of budget is reported, not returned as no"
+  },
+  {
+    guard: "offline runs do not print or report a pass",
+    reason: "ok, the exit status and the printed line all said success on a run that established nothing",
+    file: "lib/execution-plan.mjs",
+    from: "        : reports.evidence.established === true || (reports.evidence.unestablished ?? []).length === 0",
+    to: "        : true",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an offline run reports INCOMPLETE as its verdict while ok and the exit status stay true"
+  },
+  {
+    guard: "a live audit needs a live snapshot",
+    reason: "`{live: true}` over a committed file was a caller's claim that nothing checked",
+    file: "lib/execution-plan.mjs",
+    from: '  const isLive = live && snapshot.source === "live";',
+    to: "  const isLive = live;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a live audit asked for over a committed snapshot is refused, not granted"
+  },
+  {
+    guard: "the evidence contract is pinned outside the plan",
+    reason: "required_evidence_fields: [\"x\"] was non-empty and asked for nothing",
+    file: "lib/execution-plan.mjs",
+    from: "    if (JSON.stringify([...one.required_evidence_fields].sort()) !== JSON.stringify([...contract.fields].sort())) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the evidence contract lives outside the document it checks"
+  },
+  {
+    guard: "phase permissions are pinned, not only phase names",
+    reason: "flipping #572's read-only phase to integrate code passed, because the scope rule only fires on a blocked issue",
+    file: "lib/execution-plan.mjs",
+    from: "      if (phase.code_integration_allowed !== required[phase.id].code_integration_allowed) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the phase contract pins what a phase may do, not only what it is called"
+  },
+  {
+    guard: "owned paths are not only prose",
+    reason: "owned_paths: [\"README.md\"] made `changed something it owns` true of a typo fix",
+    file: "lib/execution-plan.mjs",
+    from: "    if (one.kind !== \"epic\" && one.kind !== \"audit\" && one.owned_paths.every((path) => DOCUMENTATION_ONLY.test(path))) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the evidence contract lives outside the document it checks"
+  },
+  {
+    guard: "independent checks survive a non-canonical plan",
+    reason: "an early return here suppressed six checks that need no graph, and a reader needs them in the same run",
+    file: "lib/execution-plan.mjs",
+    from: "  if (!canonicalShape) {",
+    to: "  if (!canonicalShape) { return { ok: false, failures, owners: {} }; } if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a non-canonical plan still reports the evidence, ownership and gate failures beside it"
+  },
+  {
+    guard: "evidence bound to the audited revision",
+    reason: "the shipped record quoted a manifest digest that no longer matched, and the audit printed PASS",
+    file: "lib/github-state.mjs",
+    from: "    checked.evidence_digests_match = results.every(Boolean);",
+    to: "    checked.evidence_digests_match = true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "three separately true facts are not a confirmation"
+  },
+  {
+    guard: "the closing pull request changed something the issue owns",
+    reason: "a documentation PR saying `Closes #N` produced eight true booleans having done no work",
+    file: "lib/github-state.mjs",
+    from: "      owned.length > 0 && files.some((one) => owned.some((path) => one.filename === path || one.filename.startsWith(path)));",
+    to: "      true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "three separately true facts are not a confirmation"
+  },
+  {
+    guard: "offline does not assert close evidence",
+    reason: "the confirmations live in a file the author of the change controls",
+    file: "lib/execution-plan.mjs",
+    from: "    if (!isLive) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "offline, close evidence is reported as unestablished and never as a failure"
+  },
+  {
+    guard: "evidence contract cannot be switched off",
+    reason: "`close_evidence_required: false` was one edit away from disabling the gate that reads it",
+    file: "lib/execution-plan.mjs",
+    from: "    if (!one.close_evidence_required) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the manifest edits that used to weaken a gate now fail"
+  },
+  {
+    guard: "phases are a contract",
+    reason: "emptying #572's phases removed the restriction that withholds branch deletion",
+    file: "lib/execution-plan.mjs",
+    from: "    if (JSON.stringify(declared) !== JSON.stringify(Object.keys(required).sort())) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the manifest edits that used to weaken a gate now fail"
+  },
+  {
+    guard: "cycle search inside strongly connected components",
+    reason: "a dense acyclic graph has zero cycles and exponentially many paths, and the search walked all of them",
+    file: "lib/execution-plan.mjs",
+    from: "  for (const component of stronglyConnected(byNumber)) {",
+    to: "  for (const component of [[...byNumber.keys()]]) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a dense acyclic graph finishes quickly instead of exploring every path"
+  },
+  {
+    guard: "a truncated cycle search says so",
+    reason: "a list that stopped early must not read like a complete one",
+    file: "lib/execution-plan.mjs",
+    from: '  if (cycles.truncated) fail("cycle-search-truncated", "the cycle search hit its bound, so this list is not every cycle");',
+    to: "  if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a truncated cycle search says so"
+  },
+  {
+    guard: "the capture time names a day that exists",
+    reason: "2026-02-30 parses, and Date silently rolls it over to the second of March",
+    file: "lib/execution-plan.mjs",
+    from: "  if (d > lengths[mo - 1]) return false;",
+    to: "  if (false) return false;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a date with the shape of an instant that is not one fails"
+  },
+  {
+    guard: "one snapshot entry per issue",
+    reason: "a Map keeps the last entry, so a second copy answered for the first",
+    file: "lib/execution-plan.mjs",
+    from: '    if (seen.has(one.number)) fail("snapshot-duplicate-issue", one.number, "the snapshot carries this issue more than once");',
+    to: "    if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a snapshot carrying an issue twice fails"
+  },
+  {
+    guard: "close-evidence component confirmations",
+    reason: "a one-key `verified: true` was a forgery of the whole live audit",
+    file: "lib/execution-plan.mjs",
+    from: "      const absent = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true);",
+    to: "      const absent = [];",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a one-key forgery of the whole audit does not pass"
+  },
+  {
+    guard: "pull request produced the commit",
+    reason: "three separately true facts about unrelated work are not a confirmation of this work",
+    file: "lib/github-state.mjs",
+    from: "    checked.pr_produced_the_commit = pull.merge_commit_sha === record.final_sha || pull.head?.sha === record.final_sha;",
+    to: "    checked.pr_produced_the_commit = true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "three separately true facts are not a confirmation"
+  },
+  {
+    guard: "write access asked of the repository",
+    reason: "a collaborator with the read or triage role would have attested to completed work",
+    file: "lib/github-state.mjs",
+    from: "    allowed = WRITE_PERMISSIONS.has(body.permission);",
+    to: "    allowed = true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "write access is asked of the repository, not inferred from an association"
+  },
+  {
+    guard: "snapshot source matches how it was read",
+    reason: "an offline snapshot stamped `live` reads in the evidence bundle as an audit that talked to GitHub",
+    file: "lib/execution-plan.mjs",
+    from: "  if (snapshot?.source !== expectedSource) {",
+    to: "  if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an offline snapshot cannot claim to be a live audit, or to be about another branch"
+  },
+  {
+    guard: "done issues have no withheld phase",
+    reason: "#572's withheld phase is the one that deletes branches",
+    file: "lib/execution-plan.mjs",
+    from: '      if (one.status === "done" && phase.status !== "done") {',
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an issue is not done while one of its phases is withheld"
+  },
+  {
+    guard: "excluded issues present in the snapshot",
+    reason: "absence switched the excluded-issue check off from the file it checks",
+    file: "lib/execution-plan.mjs",
+    from: '      fail("excluded-issue-not-in-snapshot", excluded, "the snapshot does not carry the excluded issue, so its state cannot be checked");',
+    to: "      continue;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an excluded issue missing from the snapshot is not a pass"
+  },
+  {
+    guard: "elementary cycle enumeration",
+    reason: "a diagnostic that omits the edge someone has to remove sends them to fix the wrong one",
+    file: "lib/execution-plan.mjs",
+    from: "        if (!inside.has(next) || next < start) continue;",
+    to: "        if (!inside.has(next)) continue;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the two-cycles a shared visited set used to drop are each reported once"
+  },
+  {
+    guard: "close-evidence repository confirmation",
+    reason: "forty hex characters and a positive integer are things a fabricated record has too",
+    file: "lib/execution-plan.mjs",
+    from: "    if (checked && checked.verified !== true) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a record the repository does not confirm is not evidence"
+  },
+  {
+    guard: "close-evidence author trust",
+    reason: "anyone can comment on a public issue; not everyone can attest that work was done",
+    file: "lib/execution-plan.mjs",
+    from: "    if (record && record.author_trusted !== true) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a record from someone without write access is not an attestation"
+  },
+  {
+    guard: "snapshot provenance",
+    reason: "a branch controlling both the plan and its comparison authority can make them agree on a fiction",
+    file: "lib/execution-plan.mjs",
+    from: "  if (snapshot?.repository !== plan.repository) {",
+    to: "  if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a snapshot that does not say what it is cannot be the comparison authority"
+  },
+  {
+    guard: "started statuses need finished predecessors",
+    reason: "constraining only `ready` let an issue be moved to in-progress and then done past its blockers",
+    file: "lib/execution-plan.mjs",
+    from: "    if (STARTED.has(one.status) && unfinished.length > 0) {",
+    to: "    if (one.status === \"ready\" && false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "in-progress and done are constrained by predecessors, not just ready"
+  },
+  {
+    guard: "excluded issues are a floor",
+    reason: "a check its own subject can switch off is not a check",
+    file: "lib/execution-plan.mjs",
+    from: "    if (!plan.excluded_issues.includes(excluded)) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the excluded-issue check cannot be switched off from inside the plan"
+  },
+  {
+    guard: "restricted readiness",
+    reason: "advertising #572 as ready is an invitation to delete branches before #578 preserved the evidence",
+    file: "lib/execution-plan.mjs",
+    from: "  const restricted = openIssues.filter((one) => one.phases.some((phase) => phase.status !== \"ready\"));",
+    to: "  const restricted = [];",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a ready issue with a blocked phase is advertised as restricted, never as ready"
+  },
+  {
+    guard: "exactly one status label",
+    reason: "status:blocked and status:ready at once shows an agent permission the manifest withholds",
+    file: "lib/execution-plan.mjs",
+    from: "    if (statuses.length !== 1 || statuses[0] !== `status:${one.status}`) {",
+    to: "    if (!labels.has(`status:${one.status}`) && false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "two contradictory status labels do not pass"
+  },
+  {
     guard: "stale-branch audit preserves orphaned unmerged work",
     reason:
       "a branch whose only copy of real work sits nowhere else must never read as safe to delete -- that is the exact loss #578's evidence-preservation gate exists to prevent",
@@ -324,8 +630,8 @@ export const GUARDS = [
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
-    from: "      if (onStack.has(next)) {",
-    to: "      if (false) {",
+    from: "        if (next === start) cycles.push([...stack, start]);",
+    to: "        if (next === -1) cycles.push([...stack, start]);",
     test: "tests/product/execution-plan.test.mjs",
     name: "a dependency cycle fails"
   },
@@ -346,15 +652,6 @@ export const GUARDS = [
     to: "      if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "two issues owning the same hot file fails"
-  },
-  {
-    guard: "phase-ready scope",
-    reason: "a phase opened while its issue is blocked must not merge the integration the block withholds",
-    file: "lib/execution-plan.mjs",
-    from: 'if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) {',
-    to: "if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
   },
   {
     guard: "close-evidence issue-specific fields",
@@ -541,42 +838,74 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a forged structural set is revalidated like the rest",
+  "a live audit needs a live snapshot",
+  "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a started phase cannot integrate code on a blocked issue",
+  "a truncated cycle search says so",
+  "a truncated reachability answer is not an answer",
   "allowlist-only child environment",
+  "an issue number is a number before it is a pattern",
+  "an issue owns a surface",
   "central redaction",
   "checkpoint evidence preserved",
+  "close-evidence author trust",
+  "close-evidence component confirmations",
   "close-evidence issue-specific fields",
+  "close-evidence repository confirmation",
   "close-evidence verdict",
   "coverage gate",
   "credential env refusal",
   "credential names a shape rule cannot see are listed",
   "credential names are matched whatever their capitalisation",
   "cycle run identity",
+  "cycle search inside strongly connected components",
   "doctor checks a required config name has a value",
+  "done issues have no withheld phase",
+  "elementary cycle enumeration",
   "env policy digest binding",
   "every transport spelling needs the transport approval",
+  "evidence bound to the audited revision",
+  "evidence contract cannot be switched off",
   "exact revision binding",
+  "exactly one status label",
+  "excluded issues are a floor",
+  "excluded issues present in the snapshot",
   "execution plan cycle detection",
   "false completion cap",
   "hard-forbidden class refusal",
   "hard-forbidden matching is case-insensitive",
   "home_source is a kind and never a path",
   "hot-file single owner",
+  "independent checks survive a non-canonical plan",
   "interpreter startup paths are a forbidden class",
   "locked cycle seed",
   "malformed-row reporting",
+  "offline does not assert close evidence",
+  "offline runs do not print or report a pass",
+  "one snapshot entry per issue",
   "operator decision window",
-  "phase-ready scope",
+  "owned paths are not only prose",
+  "phase permissions are pinned, not only phase names",
+  "phases are a contract",
+  "pull request produced the commit",
+  "restricted readiness",
   "run scratch is created inside the cleanup-protected region",
   "runtime auth is bound to the adapter that reads it",
   "safety cap",
+  "snapshot provenance",
+  "snapshot source matches how it was read",
   "stale blocked status",
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
+  "started statuses need finished predecessors",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
+  "the capture time names a day that exists",
+  "the closing pull request changed something the issue owns",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
+  "the evidence contract is pinned outside the plan",
   "the policy digest covers the forbidden rules themselves",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
@@ -589,6 +918,7 @@ export const ACCOUNTED_GUARDS = [
   "verification result check",
   "what was withheld outright is recorded as such",
   "workspace containment",
+  "write access asked of the repository",
 ];
 
 export const REQUIRED_GUARDS = [
