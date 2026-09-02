@@ -280,9 +280,10 @@ node bin/aos.mjs dashboard                                    # local read-only 
 Only three of the six task families currently vary with the seed. Three local repetitions therefore
 do not establish population-level confidence or general ability.
 
-A run counts only when it uses the locked seed, unchanged profile, suite major, and scorer major,
-and has both a committed terminal record and an issued score. Invalid runs are listed with their
-reason. A valid low score cannot be discarded or rerun on the same seed.
+Counting is the legacy cycle's rule, and it still governs those. A run counts only when it uses
+the locked seed, unchanged profile, suite major, and scorer major, and has both a committed
+terminal record and an issued score. Invalid runs are listed with their reason. A valid low score
+cannot be discarded or rerun on the same seed.
 
 If the cycle was configured incorrectly, `--force --reason "<why>"` abandons it and starts another.
 The old cycle, seeds, runs, and scores remain recorded.
