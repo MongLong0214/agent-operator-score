@@ -1599,6 +1599,29 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
     ["AOS_ISOLATION_NOT_MEASURED"],
     "an unmeasured boundary is not named as such"
   );
+  // The verdict's own two halves have to agree. `issuanceGate` publishes `claim_stage_ceiling`
+  // beside `official`, and a field that every record names and nothing reads is a declaration with
+  // no enforcement behind it -- the shape of three of this PR's defects. A ceiling can only lower
+  // the claim: stated as RUN_DIAGNOSTIC beside official:true, the verdict contradicts itself and
+  // is refused rather than read from its more permissive half.
+  const contradictory = buildResult({
+    contract,
+    evaluation: evaluate(observationsWith(), { ...unbounded, boundary: { official: true, reasons: [], claim_stage_ceiling: "RUN_DIAGNOSTIC" } }, contract)
+  });
+  assert.deepEqual(contradictory.boundary_withheld, ["AOS_ISOLATION_VERDICT_INCONSISTENT"]);
+  assert.equal(contradictory.aos_composite.issued, false);
+  assert.equal(contradictory.claim_stage, "RUN_DIAGNOSTIC");
+  // And a ceiling that agrees with an official verdict changes nothing, so the check cannot be
+  // satisfied by simply refusing every verdict that states one.
+  const agreeing = buildResult({
+    contract,
+    evaluation: evaluate(observationsWith(), { ...unbounded, boundary: { official: true, reasons: [], claim_stage_ceiling: "PROFILE_BOUND" } }, contract)
+  });
+  assert.deepEqual(agreeing.boundary_withheld, []);
+  assert.equal(agreeing.aos_composite.issued, true);
+  // The card is the surface with no room, and it clips: the condition has to survive the clip, so
+  // the codes lead the sentence rather than trailing behind prose.
+  assert.match(renderCard(contradictory), /AOS_ISOLATION_VERDICT_INCONSISTENT/u);
   assert.deepEqual(held.boundary_withheld, []);
 });
 

@@ -2857,6 +2857,15 @@ export const GUARDS = [
     name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
   },
   {
+    guard: "a verdict that contradicts itself is not a verdict",
+    reason: "the gate publishes `claim_stage_ceiling` beside `official` and nothing read it, so a record could state RUN_DIAGNOSTIC on one field and be issued PROFILE_BOUND from the other -- a declaration with no enforcement behind it",
+    file: "lib/ecd-contract.mjs",
+    from: "  const inconsistent = boundary?.official === true && ceiling !== undefined && ceiling !== \"PROFILE_BOUND\";",
+    to: "  const inconsistent = false;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"
+  },
+  {
     guard: "an absent boundary is not a passing one",
     reason: "a caller who says nothing about the boundary has established nothing about it; the version that read `context.boundary ?? null` and withheld only on a non-null value gave an omitted, null or undefined boundary a PROFILE_BOUND claim and an issued composite of 100",
     file: "lib/ecd-contract.mjs",
@@ -3649,6 +3658,7 @@ export const ACCOUNTED_GUARDS = [
   "a symlinked staging source is refused by name",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
+  "a verdict that contradicts itself is not a verdict",
   "a verifier recomputes under the boundary the result names",
   "a violation decides before the floor does",
   "a weight is a reciprocal or it is not a weight",
