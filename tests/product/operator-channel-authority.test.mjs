@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
@@ -41,6 +41,13 @@ const prepared = (cwd) => {
   addAgent(cwd, "solo");
   addAgent(cwd, "spare");
   return makePlan(cwd, { default: "solo" });
+};
+
+/** One harmless event, so an imported run exists to cancel. */
+const writeTrace = (cwd) => {
+  const file = join(cwd, "trace.ndjson");
+  writeFileSync(file, `${JSON.stringify({ event_type: "agent.ended", family: "FAM-1", payload: { stage: "s1", ok: true, exit_code: 0 } })}\n`);
+  return file;
 };
 
 const collect = (cwd) => {
@@ -176,4 +183,26 @@ test("answers arriving on a terminal are signed DIRECT_LOCAL and reach the score
   assert.deepEqual(binding.cells.map((cell) => cell.cell_id).sort(),
     ["C1.OF.01", "C2.OD.01", "C3.ER.01", "C4.IQ.01", "C5.VD.01", "C6.OG.01"]);
   assert.equal(binding.cells.find((cell) => cell.cell_id === "C3.ER.01").status, "BOUND");
+});
+
+test("session cancel typed on a pipe records the cancellation without claiming an operator turn", () => {
+  // The same class as the checkpoint prompt, on the other command. `aos session cancel` signed a
+  // trusted-local-ui / DIRECT_LOCAL / HIGH operator event on the strength of having been invoked --
+  // and anything with a shell can invoke it. The run is still cancelled and the terminal is still
+  // committed; what is not recorded is a turn by somebody this instrument cannot see.
+  const cwd = temporary();
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const imported = JSON.parse(run(cwd, ["import", "--producer", "trace", "--file", writeTrace(cwd), "--json"]).stdout);
+    const cancelled = JSON.parse(run(cwd, ["session", "cancel", imported.run_id, "--json"]).stdout);
+    assert.equal(cancelled.status, "CANCELLED");
+    const events = readEvents(join(cwd, ".aos"), imported.run_id);
+    assert.equal(events.some((event) => event.event_type === "run.cancelled"), true, "the cancellation left no record");
+    assert.equal(events.some((event) => event.event_type === "session.cancelled"), false,
+      "a cancellation typed on a pipe was recorded as an operator turn");
+    assert.deepEqual(events.filter((event) => event.operator_authority !== undefined), []);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
