@@ -520,7 +520,6 @@ export const REQUIRED_GUARDS = [
  * the release's branches have landed.
  */
 export const ACCOUNTED_GUARDS = [
-  "workspace snapshot map is null-prototype",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
@@ -568,6 +567,7 @@ export const ACCOUNTED_GUARDS = [
   "trusted-process import prohibition",
   "verification result check",
   "workspace containment",
+  "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
-  "workspace snapshot records directories"
+  "workspace snapshot records directories",
 ];
