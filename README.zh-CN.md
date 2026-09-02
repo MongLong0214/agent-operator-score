@@ -220,6 +220,12 @@ AOS 会区分：
 
 `provisional_raw` 只是排查运行问题时参考的临时计算值，不是正式分数。
 
+这条签发门槛、下面的上限与等级，以及 `provisional_raw`，都属于旧计分器：它们决定能否给出一个
+数字。现在 `aos assess` 运行的量具不给这样的数字。每个构念、每个结果域各自签发，或者带着理由
+被保留；reliance 是一份不会被加权进任何指数的独立 profile；composite 是描述性的次级指标，只要
+其中一半被保留，它也一并保留。你读到的是哪一种，结果自身写着 —— profile 是 `aos-result.v2`，
+分数是 `aos-mvp-result.v1`。
+
 ## 两个 83 分不能直接比较
 
 不同车辆、路线和天气下得到的两个 83 分，不是同一场考试。AOS 分数也是如此。
@@ -292,9 +298,11 @@ AOS 不会因为能做算术就一定签发正式分数。观察不足的运行�
 
 例如，泄露敏感信息的运行无论其他部分多好，都不能超过 39 分。严重问题不能被其他高分平均掉。
 
-只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。
-`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 只概括当次运行，
-不代表一个人的整体能力或行业排名。
+只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。在 profile
+结果里，上限只压低 system outcome 指数和 composite，不动 operator process 指数，并保留未压低
+前的值。`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 是旧计分器对
+旧运行的概括，只概括当次运行，不代表一个人的整体能力或行业排名；profile 结果没有等级 ——
+schema 直接禁止等级、百分位和排名。
 
 ## 已有实测结果与当前限制
 

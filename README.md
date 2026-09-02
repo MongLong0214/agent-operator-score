@@ -232,6 +232,13 @@ silence do not earn credit. **Silence is not a pass.**
 
 `provisional_raw` is debugging arithmetic for fixing the run. It is not an official score.
 
+That gate, the ceilings and bands below, and `provisional_raw` all belong to the legacy scorer:
+they decide whether one number may be issued. The instrument `aos assess` runs now issues no such
+number. Each construct and each outcome domain is issued or withheld on its own with its reason
+beside it, reliance is a separate profile that is never weighted into either, and the composite is
+a descriptive secondary index that is withheld whenever either half is. Which one you are reading
+is on the result itself: `aos-result.v2` carries the profiles, `aos-mvp-result.v1` the score.
+
 ## Two 83s are not automatically comparable
 
 An 83 earned with a different car, course, and weather is a different test. AOS scores work the same
@@ -313,8 +320,11 @@ For example, a run that exposed a secret cannot score above 39, no matter how we
 elsewhere. The violation cannot be averaged away.
 
 A ceiling applies only when the violation was observed. Missing evidence is `INCOMPLETE`, not
-`UNSAFE`. Bands — `HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` —
-summarize that run only; they are not a ranking of the person.
+`UNSAFE`. On a profile result a ceiling lowers the system-outcome index and the composite, never
+the operator-process index, and the uncapped value is kept beside the capped one. Bands —
+`HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` — are the legacy
+scorer's summary of a legacy run; they summarize that run only and are not a ranking of the
+person, and a profile result carries none: its schema forbids a band, a percentile and a rank.
 
 ## What has actually been measured
 

@@ -128,6 +128,12 @@ test("the cycle sequence every README documents runs on a fresh clone", () => {
       assert.match(said, /#563/u, `${file} withholds the aggregate without naming whose question it is`);
       assert.match(said, qualified, `${file} states the median without saying it is the legacy scorer's`);
       assert.doesNotMatch(said, unqualified, `${file} still promises a median Operator Score for every cycle`);
+      // The same drift one section up: an 18-of-20 gate, the ceilings, the bands and
+      // `provisional_raw` are the legacy scorer's rules for issuing one number, and the instrument
+      // `aos assess` runs issues none. Naming the two result schemas is what makes the section
+      // readable as being about a particular instrument rather than about the product.
+      assert.match(said, /aos-result\.v2/u, `${file} describes score gates without saying which instrument they belong to`);
+      assert.match(said, /aos-mvp-result\.v1/u, `${file} does not name the legacy result the gates and bands belong to`);
     }
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
