@@ -1,9 +1,11 @@
-import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { GUARDS } from "./manifest.mjs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 
 // Breaks each named guard in turn and reports whether the test that claims to hold it notices.
 //
@@ -28,6 +30,8 @@ if (dirty && process.env.AOS_MUTATION_ALLOW_DIRTY !== "1") {
 // `--test-name-pattern` is a regular expression, and a test name is prose: parentheses, dots and
 // question marks in it would otherwise match something else or nothing at all.
 const escapeForPattern = (name) => `^${name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`;
+
+const LEDGER_SCHEMA = "aos-mutation-measurement-ledger.v1";
 
 const worktree = mkdtempSync(join(tmpdir(), "aos-mutation-"));
 rmSync(worktree, { recursive: true, force: true });
@@ -101,9 +105,41 @@ try {
 
 const killed = results.filter((entry) => entry.outcome === "killed");
 console.log(`\n${killed.length}/${results.length} guards are load-bearing.`);
-if (deferred.length > 0) {
-  console.log(`${deferred.length} deferred to another platform, unmeasured here:`);
-  for (const entry of deferred) console.log(`  ${entry.guard} (${entry.platform})`);
+
+// What this lane measured, written down so the lane that cannot measure it can require it.
+//
+// A guard for behaviour only one platform has cannot be measured here, and the release gate runs
+// on one platform: deferring it there and exiting zero let a guard be deferred everywhere and
+// counted as fine, which is the "unsupported lane produces a green result" rule this project keeps
+// finding. So the lane that *can* measure a guard records the measurement -- the guard, its
+// mutation, and a digest of the file it mutates -- and the lane that cannot requires a record that
+// still describes the code in front of it. Change the guard or that file and the record goes
+// stale, and the gate fails until the platform that owns it has run again.
+const ledgerPath = fileURLToPath(new URL("./measured.json", import.meta.url));
+const fingerprint = (entry) => sha256Bytes(Buffer.from(JSON.stringify([
+  entry.guard,
+  entry.file,
+  entry.from,
+  entry.to,
+  entry.test,
+  entry.name,
+  sha256Bytes(readFileSync(join(worktree, entry.file)))
+]), "utf8"));
+const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { schema: LEDGER_SCHEMA, measured: {} };
+for (const entry of results.filter((one) => one.outcome === "killed")) {
+  ledger.measured[entry.guard] = { platform: process.platform, fingerprint: fingerprint(entry) };
+}
+const unmeasured = [];
+for (const entry of deferred) {
+  const record = ledger.measured[entry.guard] ?? null;
+  if (record === null) unmeasured.push(`${entry.guard}: never measured on ${entry.platform}`);
+  else if (record.fingerprint !== fingerprint(entry)) unmeasured.push(`${entry.guard}: the ${record.platform} measurement describes different code`);
+  else console.log(`measured  ${entry.guard}  <- on ${record.platform}, and that measurement still describes this code`);
+}
+writeFileSync(ledgerPath, `${JSON.stringify({ schema: LEDGER_SCHEMA, measured: Object.fromEntries(Object.entries(ledger.measured).sort(([a], [b]) => (a < b ? -1 : 1))) }, null, 2)}\n`);
+if (unmeasured.length > 0) {
+  console.log(`\n${unmeasured.length} guard(s) have been measured on no lane this release gates on:`);
+  for (const line of unmeasured) console.log(`  ${line}`);
 }
 
 for (const entry of results.filter((entry) => entry.outcome !== "killed")) {
@@ -115,4 +151,4 @@ for (const entry of results.filter((entry) => entry.outcome !== "killed")) {
   if (entry.noise) console.log(entry.noise.split("\n").map((line) => `    ${line}`).join("\n"));
 }
 
-process.exit(killed.length === results.length ? 0 : 1);
+process.exit(killed.length === results.length && unmeasured.length === 0 ? 0 : 1);

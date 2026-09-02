@@ -100,6 +100,11 @@
         "expected": "spawned",
         "observed": "spawned",
         "errno": null
+      },
+      "stripped_descendant": {
+        "expected": "spawned",
+        "observed": "spawned",
+        "errno": null
       }
     },
     "out_of_band": {
@@ -109,7 +114,7 @@
         "run_store": true
       },
       "descendant": {
-        "pid": 54682,
+        "pid": 507,
         "observed_by_scan": true,
         "dead_after_cleanup": true,
         "escapee_confined": true,
@@ -117,7 +122,7 @@
         "survivors": []
       },
       "orphan": {
-        "pid": 54684,
+        "pid": 513,
         "found_by_sweep": true,
         "dead_after_cleanup": true,
         "scanners": [
@@ -125,15 +130,20 @@
           "process-group",
           "open-path"
         ]
+      },
+      "stripped": {
+        "ran": true,
+        "confined": true,
+        "status": "1"
       }
     },
-    "evidence_digest": "sha256:c41089423abf73ada708235e9b87469ced8fa80d732e148543f31d20d7ae6c90",
-    "program_digest": "sha256:c9514b838895344c8675ec911134d36608a838813a38e659b04ac59bd1b0c863",
+    "evidence_digest": "sha256:1e6b0957680cb7b20a22d1524b3a5e5d3ba505ccec8343a5914c1257db8fa8aa",
+    "program_digest": "sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807",
     "policy_digest": "sha256:640abcfb0c5bcce628b70a814bc258bfa87c15730a6781eb9f12162e5880dff5",
-    "rendered_profile_digest": "sha256:0f63569ca5661356a2ea0d2b8076c8783223a9131812647c41b8fbf34f0936d3",
+    "rendered_profile_digest": "sha256:fc1eb476f7596044d3e1709bd3003956e6a303e3fdfaf2104009b849b3b86fb5",
     "scan_polls": 7,
     "group_sweep": {
-      "pgid": 54666,
+      "pgid": 500,
       "members": []
     },
     "survivor_sweep": {
@@ -148,7 +158,7 @@
       "group_enumerated": 0,
       "survivors": [],
       "found_before_signal": [
-        54684
+        513
       ]
     },
     "runtime_identity": {

@@ -531,7 +531,7 @@ measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to 
 Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
 what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
 digest
-`sha256:9bb95fdc90c751ec7715ccab0470c2f72edb4a3e071046e182bd8a3e0fc58099`. The `Official` column
+`sha256:64772f142792aa19e57e4f251b1f5978a98cb1ce24a98dcb8689e81682cd705e`. The `Official` column
 is the gate's decision over the row's committed evidence, not the row's own label: the test forges
 an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
 by digest*, and the digest is checked against the bytes before the observation is read -- a row

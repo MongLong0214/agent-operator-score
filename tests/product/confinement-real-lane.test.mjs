@@ -125,12 +125,10 @@ test("strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
       assert.equal(String(value).includes(realpathSync(store.aosHome)), false, `${name} carries the store path`);
     }
     assert.equal(probe.env.AOS_WORKSPACE, ".");
-    // argv and cwd are a weaker statement than the environment, and an honest one: the run's own
-    // workspace lives inside the store, so a child started in it can read its own directory out of
-    // `getcwd` however the environment is built. What is checked is that nothing above the
-    // workspace is named -- the store root, another run, the runs directory -- so the child knows
-    // where it is and not what else is there. Closing the last of it needs a workspace outside the
-    // store, which is a change to where runs are kept and is named in the PR as a limitation.
+    // argv and cwd name the run's own workspace, which is where the child is: that directory lives
+    // outside the store now (#556 round 4), so what the child reads out of `getcwd` says where it
+    // is working and nothing about where AOS keeps its runs. The check is that nothing under the
+    // store is named at all.
     for (const value of [...probe.argv, probe.cwd]) {
       const text = String(value);
       if (!text.includes(store.aosHome) && !text.includes(realpathSync(store.aosHome))) continue;

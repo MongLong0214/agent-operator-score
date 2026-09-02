@@ -91,7 +91,10 @@ const passingRecord = (overrides = {}) => {
       out_of_band: {
         planted_intact: { outside: true, store_root: true, run_store: true },
         descendant: { pid: 4243, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true, survivors: [] },
-        orphan: { pid: 4244, found_by_sweep: true, dead_after_cleanup: true, scanners: ["environment-marker", "open-path"] }
+        orphan: { pid: 4244, found_by_sweep: true, dead_after_cleanup: true, scanners: ["environment-marker", "open-path"] },
+        // The descendant no scan can find, and the kernel's answer about it: this is what the
+        // process axis rests on since round 6, in place of an empty enumeration.
+        stripped: { ran: true, confined: true, status: "1" }
       },
       evidence_digest: sha256Bytes(Buffer.from("{}")),
       program_digest: sha256Bytes(Buffer.from(BOUNDARY_CANARY_PROGRAM)),
@@ -546,20 +549,21 @@ const expectedOutcome = (cell) => {
   // #556 round 3: the read grant the runtime was measured to need is expected to be allowed, and
   // the host configuration tree beside it is expected to be denied.
   if (cell === "system_library_read") return "allowed";
-  if (cell === "detached_descendant" || cell === "orphaned_descendant") return "spawned";
+  if (cell === "detached_descendant" || cell === "orphaned_descendant" || cell === "stripped_descendant") return "spawned";
   return "denied";
 };
 
 const passingOutOfBand = () => ({
   planted_intact: { outside: true, store_root: true, run_store: true },
   descendant: { pid: 4242, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true },
-  orphan: { pid: 4243, found_by_sweep: true, dead_after_cleanup: true, scanners: ["environment-marker", "open-path"] }
+  orphan: { pid: 4243, found_by_sweep: true, dead_after_cleanup: true, scanners: ["environment-marker", "open-path"] },
+  stripped: { ran: true, confined: true, status: "1" }
 });
 
 const passingCells = () => Object.fromEntries(CANARY_CELLS.map((cell) => [cell, {
   outcome: expectedOutcome(cell),
   errno: expectedOutcome(cell) === "denied" ? "EPERM" : null,
-  detail: cell === "detached_descendant" ? { pid: 4242 } : cell === "orphaned_descendant" ? { parent: 4243 } : null
+  detail: cell === "detached_descendant" ? { pid: 4242 } : cell === "orphaned_descendant" ? { parent: 4243 } : cell === "stripped_descendant" ? { pid: 4244 } : null
 }]));
 
 test("the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds", () => {
@@ -579,7 +583,7 @@ test("the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds",
     assert.equal(evaluated.result, "FAIL", cell);
     assert.ok(evaluated.failed.includes(cell), cell);
   }
-  for (const [path, value] of [[["planted_intact", "outside"], false], [["planted_intact", "store_root"], false], [["planted_intact", "run_store"], false], [["descendant", "observed_by_scan"], false], [["descendant", "dead_after_cleanup"], false], [["descendant", "escapee_confined"], false], [["orphan", "found_by_sweep"], false], [["orphan", "dead_after_cleanup"], false]]) {
+  for (const [path, value] of [[["planted_intact", "outside"], false], [["planted_intact", "store_root"], false], [["planted_intact", "run_store"], false], [["descendant", "observed_by_scan"], false], [["descendant", "dead_after_cleanup"], false], [["descendant", "escapee_confined"], false], [["orphan", "found_by_sweep"], false], [["orphan", "dead_after_cleanup"], false], [["stripped", "ran"], false], [["stripped", "confined"], false]]) {
     const outOfBand = passingOutOfBand();
     outOfBand[path[0]][path[1]] = value;
     const evaluated = evaluateCanary({ cells: passingCells(), stdout, networkPolicy: "provider-required-unrestricted", outOfBand });

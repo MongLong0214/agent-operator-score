@@ -2748,6 +2748,34 @@ export const GUARDS = [
     to: "      ...[]",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
+  },
+  {
+    guard: "a credential is what it is filed under, at any length",
+    reason: "length and shape were the only tests, so an eleven-character refresh token under tokens.refresh_token was collected by nothing and printed into the public result verbatim",
+    platform: "darwin",
+    file: "lib/confinement.mjs",
+    from: "      if ((credentialed && value.length >= KEYED_SECRET_MIN) || (value.length >= STAGED_SECRET_MIN && !/\\s/u.test(value))) found.add(value);",
+    to: "      if (value.length >= STAGED_SECRET_MIN && !/\\s/u.test(value)) found.add(value);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
+  },
+  {
+    guard: "the process axis rests on the boundary, not on empty scans",
+    reason: "three scanners cannot prove a descendant is absent, and three rounds of hardening each ended with a further stripping that evaded the new one; what is asserted is the kernel's own answer about a descendant that shed every marker",
+    file: "lib/confinement.mjs",
+    from: "    && canary?.out_of_band?.stripped?.confined === true",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_scanners"
+  },
+  {
+    guard: "the canary proves the stripped descendant was confined",
+    reason: "without the cell the axis has nothing to read but empty enumerations, which is the thing this decision replaced",
+    file: "lib/confinement.mjs",
+    from: '  for (const name of ["ran", "confined"]) {\n    if (strippedOut[name] !== true) failed.push(`stripped.${name}`);\n  }',
+    to: "",
+    test: "tests/product/confinement.test.mjs",
+    name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
   }
 ];
 
@@ -2850,6 +2878,7 @@ export const ACCOUNTED_GUARDS = [
   "a cleanup failure is published by class and digest",
   "a committed observation carries no transcript",
   "a credential is staged for the runtime, not for the label",
+  "a credential is what it is filed under, at any length",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a forged structural set is revalidated like the rest",
@@ -3034,6 +3063,7 @@ export const ACCOUNTED_GUARDS = [
   "the assessment profile is built for the lane the run uses",
   "the boundary's verdict decides whether the run carries a number",
   "the canary expectation is this module's, not the record's",
+  "the canary proves the stripped descendant was confined",
   "the canary that certifies the boundary is the one that shipped",
   "the canary verdict is derived from its cells",
   "the capture time names a day that exists",
@@ -3054,6 +3084,7 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the process axis needs the sweep and the second poll",
+  "the process axis rests on the boundary, not on empty scans",
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile is rendered from the policy that is digested",

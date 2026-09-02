@@ -96,6 +96,32 @@ test("no guard's witness can skip in the environment that measures it", () => {
   }
 });
 
+test("a guard deferred on this platform has been measured on the one that owns it", () => {
+  // The runner defers a platform-specific guard and used to exit zero on the rest, so a guard could
+  // be deferred on every lane the release gates on and counted as fine -- the "unsupported lane
+  // produces a green result" rule, this time inside the runner. The lane that can measure a guard
+  // writes what it measured into `tests/mutation/measured.json`, keyed by a fingerprint of the
+  // guard and the bytes of the file it mutates; the lane that cannot requires that record to still
+  // describe the code in front of it. This test holds the ledger to the manifest so a stale or
+  // missing entry is visible in `npm test` rather than only in the mutation job.
+  const ledger = JSON.parse(readFileSync(new URL("../mutation/measured.json", import.meta.url), "utf8"));
+  assert.equal(ledger.schema, "aos-mutation-measurement-ledger.v1");
+  const platformGuards = GUARDS.filter((guard) => typeof guard.platform === "string");
+  assert.ok(platformGuards.length > 0, "no guard is platform-specific, so this rule has nothing to hold");
+  for (const guard of platformGuards) {
+    const record = ledger.measured[guard.guard] ?? null;
+    assert.notEqual(record, null, `${guard.guard}: no lane has recorded measuring it`);
+    assert.equal(record.platform, guard.platform, `${guard.guard}: measured on ${record.platform}, which is not the platform it needs`);
+    assert.match(String(record.fingerprint), /^sha256:[0-9a-f]{64}$/u);
+  }
+  // Every name in the ledger is a guard the manifest still declares: a record for a guard nobody
+  // runs any more is a measurement of nothing.
+  const declared = new Set(GUARDS.map((guard) => guard.guard));
+  for (const name of Object.keys(ledger.measured)) {
+    assert.ok(declared.has(name), `${name} is in the ledger and not in the manifest`);
+  }
+});
+
 test("every guard in the manifest is accounted for, not only the eleven the specification names", () => {
   // The floor above protects eleven guards and nothing else, so every guard added since could have
   // been deleted from GUARDS with the whole suite still green -- the manifest failing at the one

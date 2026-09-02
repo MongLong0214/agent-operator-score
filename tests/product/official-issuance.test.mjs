@@ -81,7 +81,7 @@ const measured = (overrides = {}) => {
       survivors: [],
       group_sweep: { pgid: 4242, members: [] },
       survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] },
-      residual: "named"
+      residual: "a descendant that sheds every marker is in none of the scans; the boundary is inherited and it cannot reach anything else"
     },
     cleanup_verified: true,
     scratch_not_removed: [],
@@ -280,6 +280,43 @@ test("cleanup_failures_are_recorded_by_class_and_digest_and_never_by_path", () =
   assert.match(text, /sha256:[0-9a-f]{64}/u);
   assert.match(text, /EPERM/u);
   assert.equal(record.cleanup_verified, false);
+});
+
+test("a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_scanners", async () => {
+  // The decision this lane rests on, stated as a test. A descendant that double-forks, re-sessions,
+  // clears its environment, closes every inherited descriptor and changes directory is in none of
+  // the three scans, and no enumeration can prove it is not there. What holds it is the boundary
+  // itself: the profile is inherited across fork and exec and cannot be shed with the markers. The
+  // canary proves that per run -- it sheds everything, writes inside the workspace, and the kernel
+  // refuses it outside -- and the axis reads that proof rather than an empty scan.
+  const { processAxisEnforced } = await import("../../lib/confinement.mjs");
+  const canary = measured().boundary_canary;
+  const networkPolicy = "provider-required-unrestricted";
+  const groupSweep = { pgid: 4242, members: [] };
+  const clean = { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] };
+  assert.equal(canary.out_of_band.stripped.confined, true, "the committed canary carries no proof about a stripped descendant");
+  assert.equal(canary.out_of_band.stripped.ran, true);
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: clean, networkPolicy }), true);
+
+  // Take the proof away and empty scans do not stand in for it.
+  for (const broken of [
+    { ...canary.out_of_band.stripped, confined: false },
+    { ...canary.out_of_band.stripped, ran: false },
+    undefined
+  ]) {
+    const without = { ...canary, out_of_band: { ...canary.out_of_band, stripped: broken } };
+    assert.equal(
+      processAxisEnforced({ canary: without, polls: 12, groupSweep, survivorSweep: clean, networkPolicy }),
+      false,
+      `an empty enumeration stood in for the boundary's own answer: ${JSON.stringify(broken)}`
+    );
+    assert.equal(issuanceGate(measured({ boundary_canary: without })).official, false);
+  }
+
+  // And the record says what holds it, so a reader is not left to infer it from the scans.
+  const committed = observations("strict-lane.darwin.seatbelt.canary.json").captured;
+  assert.equal(committed.out_of_band.stripped.confined, true, "the recorded lane did not demonstrate the confinement it claims");
+  assert.match(String(measured().descendants.residual), /cannot reach anything else/u);
 });
 
 test("a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group", async () => {
@@ -927,6 +964,9 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
   const base = mkdtempSync(join(tmpdir(), "aos-staged-secret-"));
   const token = "rt_opaque_refresh_credential_0123456789abcdef";
   const opaque = "Zm9vYmFyLXVucmVjb2duaXNhYmxlLWNyZWRlbnRpYWwtMDEyMzQ1Njc4OQ";
+  // Short, and with a space in it: length and shape were the only tests staging applied, so this
+  // was collected by nothing and printed into the public result verbatim.
+  const short = "brief one";
   try {
     const operatorHome = join(base, "operator");
     const workspace = join(base, "workspaces", "run-1", "FAM-1");
@@ -937,7 +977,7 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     // Two values, deliberately: one the shape rules know (`rt_…`, a vendor-prefixed token) and one
     // nothing could guess -- an opaque blob under a field name no pattern lists. The second is what
     // proves the binding, because only the exact values staging copied can remove it.
-    writeFileSync(join(operatorHome, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token }, session: { material: opaque } }));
+    writeFileSync(join(operatorHome, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token }, session: { material: opaque, brief: short } }));
     writeFileSync(join(operatorHome, ".codex", "config.toml"), 'model = "stub"\n');
     // The agent prints whatever its runtime config directory holds -- which is what a task that
     // reads its own credential looks like from outside.
@@ -964,7 +1004,22 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     // the staged copy, reads it, and prints it. What reaches the public result is the redaction.
     const runtime = join(base, "runtime", "node_modules", "@openai", "codex", "bin", "codex.js");
     mkdirSync(join(base, "runtime", "node_modules", "@openai", "codex", "bin"), { recursive: true });
-    writeFileSync(runtime, '#!/usr/bin/env node\nimport { readFileSync, readdirSync } from "node:fs";\nimport { join } from "node:path";\nconst dir = process.env.CODEX_HOME;\nfor (const name of readdirSync(dir)) process.stdout.write(readFileSync(join(dir, name), "utf8"));\n', { mode: 0o755 });
+    // It prints the *values*, not the file: a bare `shortsecret` with no key beside it is a string
+    // no shape rule can recognise, so what removes it is the exact-value scrubber built from what
+    // staging copied -- which is the binding under test. Printing the JSON would have let the
+    // credential-field rule pass this without the binding working at all.
+    writeFileSync(runtime, [
+      "#!/usr/bin/env node",
+      'import { readFileSync, readdirSync } from "node:fs";',
+      'import { join } from "node:path";',
+      "const dir = process.env.CODEX_HOME;",
+      "const leaves = (value) => (typeof value === \"string\" ? [value] : value && typeof value === \"object\" ? Object.values(value).flatMap(leaves) : []);",
+      "for (const name of readdirSync(dir)) {",
+      '  const text = readFileSync(join(dir, name), "utf8");',
+      "  try { for (const leaf of leaves(JSON.parse(text))) process.stdout.write(`${leaf}\\n`); }",
+      "  catch { process.stdout.write(text); }",
+      "}"
+    ].join("\n") + "\n", { mode: 0o755 });
     const staged = await runProcess(
       { id: "codexish", command: runtime, args: [], adapter: "codex-cli.v1" },
       {
@@ -994,7 +1049,14 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     // The one no shape knows: this is the exact-value scrubber built from what staging copied, and
     // nothing else in the product can remove it.
     assert.equal(JSON.stringify(staged).includes(opaque), false, "an unrecognisable staged credential reached the public result");
+    assert.equal(JSON.stringify(staged).includes(short), false, "a short staged credential reached the public result");
+    assert.equal(JSON.stringify(staged).includes(token), false, "the staged token reached the public result");
     assert.match(staged.stdout_excerpt, /\[redacted: runtime credential\]/u, "the staged values were not scrubbed by value");
+    // The two no shape rule knows -- an opaque blob and a short value with a space in it -- are
+    // removed by the list staging handed the scrubber, and nothing else in the product could have
+    // removed them. The vendor-prefixed one is caught by shape first, which is the belt beside the
+    // braces rather than a second chance for the others.
+    assert.ok(staged.stdout_excerpt.split("[redacted: runtime credential]").length - 1 >= 2, staged.stdout_excerpt);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
