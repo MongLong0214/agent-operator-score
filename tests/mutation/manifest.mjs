@@ -2562,6 +2562,24 @@ export const GUARDS = [
     to: "        stdout: excerpt(result.stdout),\n        stderr: excerpt(result.stderr),",
     test: "tests/product/official-issuance.test.mjs",
     name: "no_committed_observation_carries_a_runtime_transcript"
+  },
+  {
+    guard: "a /proc listing is not a list of survivors",
+    reason: "reading the listing and stopping makes every process on a linux host a holder of this run's directories -- flagged in the record, and killed a moment later",
+    file: "lib/confinement.mjs",
+    from: "      if (held) pids.add(pid);",
+    to: "      pids.add(pid);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_open_path_scan_answers_the_same_question_on_both_platforms"
+  },
+  {
+    guard: "the result publishes redacted cleanup failures",
+    reason: "the confinement record was redacted and the run result carried the same failures as raw absolute paths, which is the object assess stores and renders",
+    file: "lib/core.mjs",
+    from: "    redactedFailures.push(...cleanupFailures.map(redactCleanupFailure));",
+    to: "    redactedFailures.push(...cleanupFailures);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_cleanup_failure_is_redacted_on_every_surface_that_publishes_it"
   }
 ];
 
@@ -2660,6 +2678,7 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck ownership follows the administering form",
   "PATH carries no relative entry",
   "a .NET startup hook is a pre-main hook like the rest",
+  "a /proc listing is not a list of survivors",
   "a cleanup failure is published by class and digest",
   "a committed observation carries no transcript",
   "a credential-shaped name is refused as an ordinary allowed name",
@@ -2857,6 +2876,7 @@ export const ACCOUNTED_GUARDS = [
   "the process axis needs the sweep and the second poll",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile is rendered from the policy that is digested",
+  "the result publishes redacted cleanup failures",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",

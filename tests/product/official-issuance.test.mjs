@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -13,6 +13,7 @@ import {
   issuanceGate,
   renderSupportMatrix,
   settleConfinement,
+  survivorSweep,
   supportMatrixDecisions
 } from "../../lib/confinement.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
@@ -236,6 +237,76 @@ test("cleanup_failures_are_recorded_by_class_and_digest_and_never_by_path", () =
   assert.match(text, /sha256:[0-9a-f]{64}/u);
   assert.match(text, /EPERM/u);
   assert.equal(record.cleanup_verified, false);
+});
+
+test("the_open_path_scan_answers_the_same_question_on_both_platforms", async () => {
+  // The linux half of the sweep runs against `/proc`, which this host does not have, so it is
+  // exercised here against a `/proc` shaped by hand. The bug it closes is specific: a scan that
+  // read the listing and stopped would call every numbered directory a survivor -- every process
+  // on the host, in a record, and a moment later killed. A pid is a holder only when a *resolved*
+  // link of that process lands inside one of the run's own directories.
+  const { openPathHolders } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-proc-"));
+  try {
+    const workspace = join(base, "workspaces", "run-1", "FAM-1");
+    const elsewhere = join(base, "elsewhere");
+    const procRoot = join(base, "proc");
+    mkdirSync(workspace, { recursive: true });
+    mkdirSync(elsewhere, { recursive: true });
+    const process_ = (pid, links) => {
+      mkdirSync(join(procRoot, String(pid), "fd"), { recursive: true });
+      for (const [name, target] of Object.entries(links)) symlinkSync(target, join(procRoot, String(pid), name));
+    };
+    process_(1, { cwd: "/" });
+    process_(200, { cwd: workspace });                       // a descendant that kept the cwd
+    process_(300, { cwd: elsewhere });                       // somebody else's process
+    process_(400, { cwd: elsewhere });
+    symlinkSync(join(workspace, "note.txt"), join(procRoot, "400", "fd", "7"));  // holds a file open
+    mkdirSync(join(procRoot, "self"), { recursive: true });  // not a pid, not a candidate
+    const holders = openPathHolders([workspace], { platform: "linux", procRoot });
+    assert.equal(holders.scanned, true);
+    assert.deepEqual([...holders.pids].sort((a, b) => a - b), [200, 400], "the linux scan does not resolve links to pids");
+    // The listing is not the answer: every process here is in `/proc` and only two hold the run.
+    assert.equal(holders.pids.includes(1), false);
+    assert.equal(holders.pids.includes(300), false);
+    // And with nothing of the run's held, nothing is a survivor -- but the scan still ran.
+    const none = openPathHolders([join(base, "empty")], { platform: "linux", procRoot });
+    assert.deepEqual(none.pids, []);
+    assert.equal(none.scanned, true);
+    // A `/proc` that cannot be read is `scanned: false`, which the axis reads as not established
+    // rather than as an empty room.
+    assert.deepEqual(openPathHolders([workspace], { platform: "linux", procRoot: join(base, "absent") }), { scanned: false, pids: [] });
+
+    // The sweep over the same fake tree: scoped to the run, and never itself or an ancestor.
+    const sweep = survivorSweep({
+      marker: "s",
+      paths: [workspace],
+      platform: "linux",
+      procRoot,
+      self: 200,
+      exclude: () => [400],
+      run: () => ({ error: null, stdout: "" })
+    });
+    assert.deepEqual(sweep.survivors, [], "the sweep swept itself or its ancestor");
+    assert.ok(sweep.scanners.includes("open-path") && sweep.scanners.includes("environment-marker"));
+    // Short session ids are scanned too: the variable name is what makes the match precise.
+    assert.equal(sweep.marker_used, true);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("a_cleanup_failure_is_redacted_on_every_surface_that_publishes_it", () => {
+  // The confinement record is redacted; the run result carried the same failures as raw strings,
+  // and that is the object `assess` stores and renders. Found by CI on linux, where the cleanup
+  // this test's sibling provokes actually fails -- on darwin the sweep had already killed the
+  // writer, the list was empty, and both shapes passed.
+  const core = readFileSync(join(root, "lib", "core.mjs"), "utf8");
+  assert.match(core, /scratch_not_removed: redactedFailures/u, "the result publishes the raw failures");
+  assert.match(core, /redactedFailures\.push\(\.\.\.cleanupFailures\.map\(redactCleanupFailure\)\);/u, "the result's failures are not redacted");
+  // Filled in the `finally`, and referenced rather than snapshotted: the result object is built
+  // before the cleanup runs, so a `.map()` in the literal would always publish an empty list.
+  assert.ok(core.indexOf("scratch_not_removed: redactedFailures") < core.indexOf("redactedFailures.push("), "the redaction runs before the result is built");
 });
 
 test("a_support_row_whose_evidence_does_not_match_its_declared_digest_claims_nothing", () => {
