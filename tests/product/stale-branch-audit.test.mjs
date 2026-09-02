@@ -354,3 +354,43 @@ test("a branch recorded as MERGED while a PR is open on it is still not deletion
   const { eligible } = deletionEligibility(forged);
   assert.ok(!eligible.some((entry) => entry.name === merged.name), `${merged.name} was deletion-eligible while PR #999 was open on it`);
 });
+
+// A name is not a ref. The audit forms its verdict about one commit; if the entry and the snapshot
+// name different commits, the facts that were checked and the branch that would be deleted are two
+// different things -- which is how a branch that picked up unique work after the snapshot inherits
+// a verdict nobody formed about it.
+test("an entry audited at a commit the snapshot did not observe is refused", () => {
+  const audit = loadAudit();
+  const merged = audit.branches.find((entry) => entry.classification === "MERGED");
+  const forged = withBranch(audit, merged.name, { head_sha: audit.invariant_baseline.dev_sha });
+  const findings = auditCoverageFindings(forged);
+  assert.notDeepEqual(findings, [], "an entry whose head disagrees with the snapshot passed the coverage check");
+  assert.deepEqual(deletionEligibility(forged).eligible, [], "an audit whose entry names an unobserved commit still produced eligible branches");
+});
+
+test("every audited entry names the commit the ls-remote snapshot observed", () => {
+  const audit = loadAudit();
+  const observed = new Map(audit.ls_remote_snapshot.map((entry) => [entry.name, entry.sha]));
+  for (const entry of audit.branches) {
+    assert.equal(entry.head_sha, observed.get(entry.name), `${entry.name}: audited at ${entry.head_sha}, observed at ${observed.get(entry.name)}`);
+  }
+});
+
+// The `preserve` list is the audit's own answer to "what would be lost". A non-empty answer and a
+// deletion recommendation cannot both be right.
+test("a branch that names something worth preserving is never deletion-eligible", () => {
+  const audit = loadAudit();
+  const merged = audit.branches.find((entry) => entry.classification === "MERGED");
+  const forged = withBranch(audit, merged.name, { preserve: ["release evidence that was never migrated off this branch"] });
+  assert.notDeepEqual(classificationFindings(forged), [], "a deletion recommendation over a non-empty preserve list passed the classification check");
+  assert.ok(!deletionEligibility(forged).eligible.some((entry) => entry.name === merged.name), "a branch naming work to preserve was deletion-eligible");
+});
+
+test("an entry that records no preserve list, tag containment or reference scan is refused", () => {
+  const audit = loadAudit();
+  const merged = audit.branches.find((entry) => entry.classification === "MERGED");
+  for (const field of ["preserve", "release_tags_containing", "references"]) {
+    const forged = withBranch(audit, merged.name, { [field]: undefined });
+    assert.notDeepEqual(classificationFindings(forged), [], `an entry with no ${field} passed the classification check`);
+  }
+});

@@ -4,7 +4,7 @@
   "issue": 572,
   "phase": "read-only-audit",
   "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B (blocked on #578 and #588) must re-collect every fact in it from scratch -- git ls-remote, merge status, gh pr list, tag containment and protection -- rather than trust any SHA, count or PR number written here. The previous version of this fixture is the proof: it recorded seven heads, and three of them (task/issue-570-action-pins, task/issue-572-work, task/issue-588-mark-done) had been merged and auto-deleted before this snapshot was taken, while three that did not exist then (task/issue-556-strict-confinement, task/issue-560-operator-events, task/issue-561-model-identity) had appeared.",
-  "generated_at": "2026-09-02T22:56:22Z",
+  "generated_at": "2026-09-02T23:16:46Z",
   "method": "Read-only. Branch inventory from `git ls-remote --heads origin`, cross-checked independently against `gh api repos/MongLong0214/agent-operator-score/branches --paginate` (which bypasses the git protocol); both returned the same seven heads. Containment from `git merge-base --is-ancestor <branch> origin/dev` and `origin/main` with `git rev-list --count` in both directions. Release-tag containment from `git tag --contains <branch>`. Pull requests from `gh pr list --state all --head <branch>` per branch and `gh pr list --state open` for the whole repository. Protection from `gh api repos/.../branches/<branch>/protection` and rulesets from `gh api repos/.../rulesets`. Reference scan by `grep -rn` over the whole working tree at the snapshot dev SHA (workflows, skills, commands, scripts, schemas, contracts, docs, bin, lib, tests) plus `gh search issues` and `git log --all --grep` over the full history. Every number in this file was emitted by those commands rather than typed. No ref was created, deleted, renamed or force-pushed to produce it; see heads_created_after_this_snapshot for the one branch this work itself adds.",
   "excluded_refs": [
     "main",
@@ -29,11 +29,11 @@
     },
     {
       "name": "task/issue-560-operator-events",
-      "sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5"
+      "sha": "48bbf579294f67727448bfe192a63152555dd66c"
     },
     {
       "name": "task/issue-561-model-identity",
-      "sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695"
+      "sha": "a2d7d591b608c3080352ee02a8fb6ba2e369740d"
     },
     {
       "name": "tmp/read-claude-artifact",
@@ -47,79 +47,98 @@
     "tags": [
       {
         "name": "archive/pre-v0.1.0-governance",
-        "sha": "36b823f22217e9d8be011318e295231c62a3f813"
+        "ref_sha": "332c6ab016a9a77a9c2625b03e5a6ecd2b6c817f",
+        "commit_sha": "36b823f22217e9d8be011318e295231c62a3f813"
       },
       {
         "name": "v0.1.0",
-        "sha": "fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3"
+        "ref_sha": "0c482e24d2ad2c35955ffd7dafe9e4b66980890a",
+        "commit_sha": "fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3"
       },
       {
         "name": "v0.1.1",
-        "sha": "efe351c991797a8cde88c23b8e8933d9a90db11d"
+        "ref_sha": "1ae539d02ed89134b496cb227a6a5b764172c442",
+        "commit_sha": "efe351c991797a8cde88c23b8e8933d9a90db11d"
       },
       {
         "name": "v0.1.10",
-        "sha": "98353d24fdd6b932c717bd8b9a0971c22986f7b7"
+        "ref_sha": "c6dca1ca26683cdd53e6eeedbf1f813da4444bbf",
+        "commit_sha": "98353d24fdd6b932c717bd8b9a0971c22986f7b7"
       },
       {
         "name": "v0.1.11",
-        "sha": "4566b33143155b91981d07308bd113ad8fad9b35"
+        "ref_sha": "f9dd920c091aca85765680dc5b346ef088ac4029",
+        "commit_sha": "4566b33143155b91981d07308bd113ad8fad9b35"
       },
       {
         "name": "v0.1.12",
-        "sha": "c371ac93d49a592925b24de5013bc9b3b303dd7d"
+        "ref_sha": "19eebfea5a6b9eae1ad8da296fba156dbc6de904",
+        "commit_sha": "c371ac93d49a592925b24de5013bc9b3b303dd7d"
       },
       {
         "name": "v0.1.13",
-        "sha": "1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea"
+        "ref_sha": "d1a5602d049928de0bc356d1609f38665067ab3d",
+        "commit_sha": "1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea"
       },
       {
         "name": "v0.1.14",
-        "sha": "d89a4b22a0e8de14fff316edcae18c3e6caadf9a"
+        "ref_sha": "6ef289a2213d5f2110ed9809c9e1093013351898",
+        "commit_sha": "d89a4b22a0e8de14fff316edcae18c3e6caadf9a"
       },
       {
         "name": "v0.1.15",
-        "sha": "426c23d0f62fa2666135f978db0f5802ace7c8cc"
+        "ref_sha": "32705b97f71367a4b2dceeb47990eed091210e57",
+        "commit_sha": "426c23d0f62fa2666135f978db0f5802ace7c8cc"
       },
       {
         "name": "v0.1.16",
-        "sha": "120ce7c96feb961ee7c4599c2946f059b8d9b7c6"
+        "ref_sha": "ccdad531f3c02459a40306ec95e9a062cd215b12",
+        "commit_sha": "120ce7c96feb961ee7c4599c2946f059b8d9b7c6"
       },
       {
         "name": "v0.1.17",
-        "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+        "ref_sha": "4bdc072b9cb7f60d1b2ce87c575450100c6169ac",
+        "commit_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
       },
       {
         "name": "v0.1.2",
-        "sha": "43bae4bf460939a743c837b8e0a05d8f9e044026"
+        "ref_sha": "0cd9f8aba4f7ad9bb01144b15b6c78102e03b577",
+        "commit_sha": "43bae4bf460939a743c837b8e0a05d8f9e044026"
       },
       {
         "name": "v0.1.3",
-        "sha": "dc7f6563ec0d6e951fe984fa026eea8c5efc3aed"
+        "ref_sha": "8b33ae3cb13bb20ad0fa60e2b6e1fc5c51fad470",
+        "commit_sha": "dc7f6563ec0d6e951fe984fa026eea8c5efc3aed"
       },
       {
         "name": "v0.1.4",
-        "sha": "ae648b7dca5574c6af938dc44b6802f1bf732929"
+        "ref_sha": "1ec11902ae3edaaf63560c4e9b5804296b430de4",
+        "commit_sha": "ae648b7dca5574c6af938dc44b6802f1bf732929"
       },
       {
         "name": "v0.1.5",
-        "sha": "bbfae658e87ac2de7c6326739704a877fb118301"
+        "ref_sha": "268945956e99d24d9cf796eed2fb8dc62226042b",
+        "commit_sha": "bbfae658e87ac2de7c6326739704a877fb118301"
       },
       {
         "name": "v0.1.6",
-        "sha": "aebcbd8b7105da88ae71d0e5a80be59b99e8cc53"
+        "ref_sha": "425fa1a8b24a87e83c588fb805f5a9e529cb7676",
+        "commit_sha": "aebcbd8b7105da88ae71d0e5a80be59b99e8cc53"
       },
       {
         "name": "v0.1.7",
-        "sha": "8e84fbcb42f79d86263aab42a1291ecf09ddba7f"
+        "ref_sha": "7349872a98c83e577d8193184aa6f16cb3a97011",
+        "commit_sha": "8e84fbcb42f79d86263aab42a1291ecf09ddba7f"
       },
       {
         "name": "v0.1.8",
-        "sha": "30d30485f4ade54238cba5aa1a8bc85452df7d39"
+        "ref_sha": "64f3ad0ccf46008e40a2a446a8df2f8de43131b4",
+        "commit_sha": "30d30485f4ade54238cba5aa1a8bc85452df7d39"
       },
       {
         "name": "v0.1.9",
-        "sha": "3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0"
+        "ref_sha": "ac7fc44cafee09cc9765254ca6248efd1ddfc508",
+        "commit_sha": "3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0"
       }
     ],
     "protection": {
@@ -139,9 +158,16 @@
     "default_branch": "dev",
     "open_pr_heads": [
       {
+        "pr": 612,
+        "branch": "task/issue-572-branch-audit",
+        "sha": "1de779c66bd5f211c0b4262e571beafada058950",
+        "base": "dev",
+        "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
+      },
+      {
         "pr": 611,
         "branch": "task/issue-560-operator-events",
-        "sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5",
+        "sha": "48bbf579294f67727448bfe192a63152555dd66c",
         "base": "dev",
         "title": "feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)"
       },
@@ -155,7 +181,7 @@
       {
         "pr": 607,
         "branch": "task/issue-561-model-identity",
-        "sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695",
+        "sha": "a2d7d591b608c3080352ee02a8fb6ba2e369740d",
         "base": "dev",
         "title": "feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)"
       }
@@ -171,7 +197,7 @@
       "note": "Correction within PR #592: moved task/issue-588-mark-done into the open-PR-head table, refreshed task/issue-570-action-pins, and recorded seven branches the coordinator reported that were not yet on origin."
     },
     {
-      "generated_at": "2026-09-02T22:56:22Z",
+      "generated_at": "2026-09-02T23:16:46Z",
       "note": "Full re-collection at schema v2. The previous snapshot's seven heads are no longer the live seven: task/issue-570-action-pins, task/issue-572-work and task/issue-588-mark-done were merged (PRs #590, #592, #591) and auto-deleted, and task/issue-556-strict-confinement, task/issue-560-operator-events and task/issue-561-model-identity have appeared as open PR heads. dev moved from 499bb11b004024fc46b9e97300ad8909d86a5073 to 2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49. This version adds the issue's full field set -- the six-value classification, release-tag containment, superseding evidence, what would be lost, the reference scan and the protection status -- and an explicit named list of what could not be established, so that no branch reaches a deletion recommendation by default. It also adds the pre-deletion invariant baseline and the deletion log that Phase B has to fill in."
     }
   ],
@@ -338,16 +364,16 @@
     },
     {
       "name": "task/issue-560-operator-events",
-      "head_sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5",
+      "head_sha": "48bbf579294f67727448bfe192a63152555dd66c",
       "author_name": "MongLong0214",
       "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-03T07:52:50+09:00",
+      "last_commit_date": "2026-09-03T08:12:43+09:00",
       "age_days": 0,
       "classification": "ACTIVE",
       "merged_into_dev": false,
       "merged_into_main": false,
-      "unique_commits_vs_dev": 12,
-      "unique_commits_vs_main": 186,
+      "unique_commits_vs_dev": 14,
+      "unique_commits_vs_main": 188,
       "behind_dev": 0,
       "behind_main": 0,
       "release_tags_containing": [],
@@ -356,12 +382,12 @@
         "url": "https://github.com/MongLong0214/agent-operator-score/pull/611",
         "state": "OPEN",
         "base": "dev",
-        "head_sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5",
+        "head_sha": "48bbf579294f67727448bfe192a63152555dd66c",
         "title": "feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)"
       },
       "superseding": null,
       "preserve": [
-        "12 commits implementing #560 operator events and the D1-D3 construct binding, reachable from no other ref",
+        "14 commits implementing #560 operator events and the D1-D3 construct binding, reachable from no other ref",
         "lib/operator-events.mjs and lib/operator-plan.mjs (1039 new lines), plus the store and CLI ingest path",
         "schemas/aos-operator-event.v2.schema.json",
         "tests/product/operator-event-authority.test.mjs, operator-event-projection.test.mjs, operator-channel-authority.test.mjs, no-agent-artifact-process-credit.test.mjs, initial-before-advice.test.mjs"
@@ -390,20 +416,20 @@
       "branch_protected": false,
       "unestablished": [],
       "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #611 ('feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)') targeting dev, under active review. It carries 12 commits that reach neither dev nor main and is in no release tag."
+      "reason": "Head of open PR #611 ('feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)') targeting dev, under active review. It carries 14 commits that reach neither dev nor main and is in no release tag."
     },
     {
       "name": "task/issue-561-model-identity",
-      "head_sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695",
+      "head_sha": "a2d7d591b608c3080352ee02a8fb6ba2e369740d",
       "author_name": "MongLong0214",
       "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-03T05:53:57+09:00",
+      "last_commit_date": "2026-09-03T08:13:58+09:00",
       "age_days": 0,
       "classification": "ACTIVE",
       "merged_into_dev": false,
       "merged_into_main": false,
-      "unique_commits_vs_dev": 16,
-      "unique_commits_vs_main": 187,
+      "unique_commits_vs_dev": 17,
+      "unique_commits_vs_main": 188,
       "behind_dev": 3,
       "behind_main": 0,
       "release_tags_containing": [],
@@ -412,12 +438,12 @@
         "url": "https://github.com/MongLong0214/agent-operator-score/pull/607",
         "state": "OPEN",
         "base": "dev",
-        "head_sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695",
+        "head_sha": "a2d7d591b608c3080352ee02a8fb6ba2e369740d",
         "title": "feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)"
       },
       "superseding": null,
       "preserve": [
-        "16 commits implementing #561 model and runtime identity binding, reachable from no other ref",
+        "17 commits implementing #561 model and runtime identity binding, reachable from no other ref",
         "lib/model-identity.mjs (1064 new lines), the profile digest binding and the cycle comparability wiring",
         "schemas/aos-model-provenance.v1.json, fixtures/model-identity/runtime-canary.json, scripts/capture-model-canary.mjs",
         "tests/product/model-identity.test.mjs and model-canary.test.mjs (1877 new test lines)"
@@ -446,7 +472,7 @@
       "branch_protected": false,
       "unestablished": [],
       "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #607 ('feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)') targeting dev, under active review. It carries 16 commits that reach neither dev nor main and is in no release tag; fixtures/model-identity/runtime-canary.json exists on no other ref."
+      "reason": "Head of open PR #607 ('feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)') targeting dev, under active review. It carries 17 commits that reach neither dev nor main and is in no release tag; fixtures/model-identity/runtime-canary.json exists on no other ref."
     },
     {
       "name": "tmp/read-claude-artifact",

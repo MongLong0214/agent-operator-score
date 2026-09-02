@@ -8,10 +8,22 @@
     578,
     588
   ],
-  "generated_at": "2026-09-02T22:56:22Z",
+  "generated_at": "2026-09-02T23:16:46Z",
   "deleted": [],
   "post_delete_state": null,
-  "note": "No branch, tag or ref has been deleted, renamed or force-pushed. Phase A of #572 is read-only by construction and Phase B is blocked on #578 (final release/E2E evidence preserved) and #588 (close-evidence confirmation bound to that work). This file exists now, empty and explicit, so that the close record for #572 has a real deletion_log to point at instead of a missing one -- an absent log and a log that says nothing was deleted are different claims, and only the second one is checkable. When Phase B runs it sets status to COMPLETED, lists each deleted branch with the SHA it pointed at, and fills post_delete_state with main, dev and the tag list read back after the deletion; tests/product/branch-cleanup-invariants.test.mjs refuses a COMPLETED log that skips either.",
+  "blockers_cleared": [],
+  "note": "No branch, tag or ref has been deleted, renamed or force-pushed. Phase A of #572 is read-only by construction and Phase B is blocked on #578 (final release/E2E evidence preserved) and #588 (close-evidence confirmation bound to that work). This file exists now, empty and explicit, so that the close record for #572 has a real deletion_log to point at instead of a missing one -- an absent log and a log that says nothing was deleted are different claims, and only the second one is checkable. When Phase B runs it sets status to COMPLETED, lists each deleted branch with the exact SHA the audit judged it at, records blockers_cleared naming #578 and #588 with what cleared each, and fills post_delete_state with main, dev, the tags (both ref_sha and commit_sha), branch protection, rulesets and the open PR heads read back after the deletion. tests/product/branch-cleanup-invariants.test.mjs refuses a COMPLETED log that skips any of those.",
+  "post_delete_state_shape": {
+    "note": "The shape Phase B must fill post_delete_state with. Every field here is compared against invariant_baseline in fixtures/stale-branches/audit.json; an omitted field is a finding, not a pass.",
+    "fields": [
+      "main_sha",
+      "dev_sha",
+      "tags (name, ref_sha, commit_sha)",
+      "protection (main and dev: allow_deletions, allow_force_pushes, enforce_admins)",
+      "rulesets",
+      "open_pr_heads (pr, branch, sha)"
+    ]
+  },
   "eligible_when_unblocked": [
     {
       "name": "fix/a-fixture-backed-agent-is-not-a-runtime",

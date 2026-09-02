@@ -68,3 +68,22 @@ test("a deletion log entry for a branch the audit records as an open PR head is 
     `the refusal does not say the branch had a PR open on it, only that it was not eligible: ${findings.join(" | ")}`
   );
 });
+
+// Deleting the audited name at a different commit deletes something nobody looked at.
+test("a deletion log that names an eligible branch at a commit the audit did not judge is refused", () => {
+  const eligible = deletionEligibility(audit).eligible[0];
+  assert.ok(eligible, "nothing is eligible, so this test would check nothing");
+  const forged = { ...deletionLog, status: "COMPLETED", deleted: [{ name: eligible.name, sha: "f".repeat(40) }] };
+  const findings = openPrHeadDeletionFindings(audit, forged);
+  assert.notDeepEqual(findings, [], "deleting an audited branch at an unaudited commit passed the check");
+  assert.ok(
+    findings.some((finding) => finding.includes("this audit judged it at")),
+    `the refusal does not say the audit judged a different commit: ${findings.join(" | ")}`
+  );
+});
+
+test("a deletion log that names an eligible branch at the commit the audit judged is accepted", () => {
+  const eligible = deletionEligibility(audit).eligible[0];
+  const clean = { ...deletionLog, status: "COMPLETED", deleted: [{ name: eligible.name, sha: eligible.head_sha }] };
+  assert.deepEqual(openPrHeadDeletionFindings(audit, clean), [], "the deletion Phase B is supposed to be able to make was refused");
+});

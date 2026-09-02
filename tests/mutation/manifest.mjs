@@ -2025,6 +2025,76 @@ export const GUARDS = [
     name: "a baseline whose main SHA disagrees with the snapshot is refused"
   },
   {
+    guard: "the audited commit is the commit the snapshot observed",
+    reason:
+      "a name is not a ref -- without this a branch that advanced past the snapshot inherits a verdict formed about a commit it no longer points at",
+    file: "lib/branch-audit.mjs",
+    from: "    if (entry.head_sha !== observed.get(name)) {",
+    to: "    if (false) {",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "an entry audited at a commit the snapshot did not observe is refused"
+  },
+  {
+    guard: "naming something to preserve refuses the deletion recommendation",
+    reason:
+      "the preserve list is the audit's own answer to what would be lost; a non-empty answer beside a deletion recommendation is the exact loss #578 exists to prevent",
+    file: "lib/branch-audit.mjs",
+    from: "      findings.push(`${entry.name}: recommends deletion while naming ${entry.preserve.length} thing(s) that would be lost`);",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a branch that names something worth preserving is never deletion-eligible"
+  },
+  {
+    guard: "a deletion names the commit the audit judged",
+    reason:
+      "deleting the audited name at a different commit deletes something nobody looked at -- the route by which a branch that picked up unique work after the snapshot is removed on an old verdict's authority",
+    file: "lib/branch-audit.mjs",
+    from: "    if (deleted.sha !== entry.head_sha) {\n      findings.push(`${deleted.name} was deleted at ${deleted.sha}, but this audit judged it at ${entry.head_sha}`);\n    }",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a deletion log that names an eligible branch at a commit the audit did not judge is refused"
+  },
+  {
+    guard: "COMPLETED requires #578 and #588 to have cleared",
+    reason:
+      "without this, flipping the status is the whole cost of deleting before the evidence was preserved -- 'only after #578' has to be a checked precondition, not a sentence in a document",
+    file: "lib/branch-audit.mjs",
+    from: "      if (!entry) findings.push(`the deletion log says COMPLETED without recording that #${issue} cleared`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a COMPLETED deletion log that does not record #578 and #588 as cleared is refused"
+  },
+  {
+    guard: "a tag's ref object is part of its identity",
+    reason:
+      "comparing only the peeled commit lets a tag be replaced by a different tag object -- a different annotation, a different signature -- over the same commit, which is a tag move nothing would notice",
+    file: "lib/branch-audit.mjs",
+    from: "      if (was.ref_sha !== tag.ref_sha) findings.push(`tag ${tag.name} was replaced across the deletion: its ref pointed at ${was.ref_sha} and now points at ${tag.ref_sha}`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a tag replaced by another tag object over the same commit is refused"
+  },
+  {
+    guard: "protection is compared across the deletion, not only recorded",
+    reason:
+      "#572 lists branch protection among the invariants; a baseline nobody compares afterwards reports nothing about whether main stayed undeletable",
+    file: "lib/branch-audit.mjs",
+    from: "          if (was !== now) findings.push(`${ref} protection changed across the deletion: ${setting} was ${was} and is now ${now}`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "branch protection loosened across the deletion is refused"
+  },
+  {
+    guard: "an open PR head still exists after the deletion",
+    reason:
+      "the one thing a cleanup must not touch; checking it afterwards is the only way to find out that it did",
+    file: "lib/branch-audit.mjs",
+    from: "        if (!still.has(entry.branch)) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) is gone after the deletion`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "an open PR head that is gone or moved across the deletion is refused"
+  },
+  {
     guard: "undeclared isolation is the weakest lane",
     reason: "resolving silence to STRICT manufactures the strongest claim out of no information",
     file: "lib/verifiers/fam5.mjs",
@@ -2961,6 +3031,7 @@ export const ACCOUNTED_GUARDS = [
   "ACL replaceable rights",
   "ACL walk",
   "AOS home withheld from the agent",
+  "COMPLETED requires #578 and #588 to have cleared",
   "COMPLETED requires the post-delete state read back",
   "ECD PROFILE_BOUND names the profile it claims",
   "ECD a bound profile identity is compared",
@@ -3013,6 +3084,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
+  "a deletion names the commit the audit judged",
   "a deletion outside the audit is refused",
   "a deletion-blocking unknown blocks the deletion",
   "a facet is not normalised into a digest",
@@ -3042,6 +3114,7 @@ export const ACCOUNTED_GUARDS = [
   "a status this build does not know is refused",
   "a stored result may not elevate its own claim",
   "a surface carries the rows it says it averaged",
+  "a tag's ref object is part of its identity",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a violation decides before the floor does",
@@ -3056,6 +3129,7 @@ export const ACCOUNTED_GUARDS = [
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "an open PR head is never deletion-eligible",
+  "an open PR head still exists after the deletion",
   "an unknown's bearing is one of two values, not free text",
   "artifact top-level mode",
   "artifact type in the envelope",
@@ -3139,6 +3213,7 @@ export const ACCOUNTED_GUARDS = [
   "malformed-row reporting",
   "merge keys bring their keys with them",
   "missing-result refusal",
+  "naming something to preserve refuses the deletion recommendation",
   "no eligible evidence is said to be none",
   "observation channel size bound",
   "observation line size bound",
@@ -3180,6 +3255,7 @@ export const ACCOUNTED_GUARDS = [
   "profile results are not aggregated with legacy ones",
   "profile undeclared run fields are digested",
   "profile unknown result schema is refused",
+  "protection is compared across the deletion, not only recorded",
   "provider credential formats are recognised",
   "pull request produced the commit",
   "quoted keys are keys",
@@ -3221,6 +3297,7 @@ export const ACCOUNTED_GUARDS = [
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the assessment writes the profile result",
+  "the audited commit is the commit the snapshot observed",
   "the capture time names a day that exists",
   "the card carries every reliance metric",
   "the card carries the delegated-artifact rows",
