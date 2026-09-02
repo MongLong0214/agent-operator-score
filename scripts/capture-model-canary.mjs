@@ -28,7 +28,7 @@ import { fileURLToPath } from "node:url";
 import { sha256Bytes } from "../lib/digest.mjs";
 import { redactText } from "../lib/redact.mjs";
 import { describeExecutable } from "../lib/runtime-identity.mjs";
-import { isSensitiveName } from "../lib/env-policy.mjs";
+import { hardForbiddenClassOf, isSensitiveName } from "../lib/env-policy.mjs";
 import {
   aliasClassOf,
   canonicalModelEventLine,
@@ -114,7 +114,13 @@ const verifiedRuntime = (command) => {
 // PATH -- it is a script with a shebang -- and its own configuration directory, which is where its
 // credential lives and where it is read from rather than copied.
 const MINIMAL_ENV = (extra = {}) => {
-  const carried = Object.fromEntries(Object.entries(process.env).filter(([name]) => !isSensitiveName(name)));
+  // Credential-shaped names and the product's own hard-forbidden classes -- the loader, shell and
+  // package-manager variables that run code before the program does. Filtering only for
+  // credentials left `DYLD_INSERT_LIBRARIES` and `BASH_ENV` in the environment of a verified
+  // binary holding the operator's credential directory, which is the whole point of verifying it
+  // (#561 round 10). Both rules are the product's, not a second list invented here.
+  const carried = Object.fromEntries(Object.entries(process.env)
+    .filter(([name]) => !isSensitiveName(name) && hardForbiddenClassOf(name) === null));
   return { ...carried, HOME: homedir(), TERM: "dumb", ...extra };
 };
 

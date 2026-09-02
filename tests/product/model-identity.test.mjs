@@ -699,6 +699,38 @@ test("a cycle's runtime identity is the runs' own, not the registration it was o
   assert.equal(verified.profile_bound_aggregation.status, "issued");
 });
 
+test("a cycle is judged over the agents that ran, whether or not their runs earned a number", () => {
+  // Whether a run's composite issued is an outcome question. Which agents ran, and under which
+  // model, is a fact of the run either way -- and reading only the issued runs narrowed the cohort
+  // to nothing, so the cycle was judged over every registered agent instead, including two the
+  // plan never used. A healthy cycle of an exactly-named model then reported MODEL_UNKNOWN and
+  // the report dropped its profile-bound sentence (#561 round 10).
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const confirmed = verifyModelIdentity(provenance, [confirming(EXACT_A)], { runtime: "codex" });
+  const agent = (id, entry) => ({ [id]: entry });
+  const binding = modelIdentityRecord({
+    by_agent: {
+      ...agent("solo", { provenance, verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" }),
+      ...agent("never-ran", { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" })
+    },
+    profile_digest: "d".repeat(64)
+  });
+  const unissued = {
+    valid: false,
+    invalid_reason: "NOT_ISSUED",
+    model_identity: modelIdentityRecord({
+      by_agent: agent("solo", { provenance, verification: confirmed, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" }),
+      profile_digest: "d".repeat(64)
+    })
+  };
+  const cycle = cycleModelIdentity({ binding, runs: [unissued, unissued, unissued] });
+  assert.deepEqual(Object.keys(cycle.by_agent), ["solo"], "an agent that never ran was judged");
+  assert.equal(cycle.profile_bound_aggregation.status, "issued");
+  // A run the cycle recorded with no identity record at all still closes the cycle: absence of the
+  // record is not absence of the run.
+  assert.equal(cycleModelIdentity({ binding, runs: [unissued, { valid: false, model_identity: null }] }), null);
+});
+
 test("one contradicted run withholds the whole cycle, however many others agreed", () => {
   // The merge takes the weakest verdict, not the strongest: a cycle in which one run named another
   // model is not three runs of one model, and two agreements do not average it away.
@@ -1300,6 +1332,16 @@ test("a canonical result never issues a profile-bound claim its identity record 
   assert.equal(capped.aos_composite.issued, false);
   assert.equal(capped.aos_composite.value, null);
   assert.match(capped.aos_composite.withheld_reason, /MODEL_UNKNOWN/u);
+  // A record that contradicts itself is read by its agents, not by its summary: a forged
+  // `profile_bound_aggregation: issued` over agents that each withhold buys nothing (#561 r10).
+  const forgedSummary = {
+    ...unknown,
+    profile_bound_aggregation: { status: "issued", reason: null, detail: null },
+    claim_stage: "PROFILE_BOUND"
+  };
+  const refused = buildResult({ contract, evaluation: issuing, model_identity: forgedSummary });
+  assert.equal(refused.claim_stage, "RUN_DIAGNOSTIC");
+  assert.equal(refused.aos_composite.issued, false);
   // A record explicitly absent is in the same position: nothing established what produced it.
   const absent = buildResult({ evaluation, observations: allPassObservations(), run: runBlock(), model_identity: null });
   assert.equal(absent.claim_stage, "RUN_DIAGNOSTIC");
@@ -1481,6 +1523,11 @@ test("an observation whose agent cannot be run leaves no Run without a record", 
       assert.equal(stored.model_identity.schema_id, "aos-model-identity.v1", runId);
       assert.equal(stored.model_identity.by_agent.exact.provenance.id, EXACT_A, runId);
       assert.equal(stored.claim_stage, "RUN_DIAGNOSTIC", runId);
+      // The refusal names the file it refused, and this artefact is one an operator publishes:
+      // what it keeps is the code and the redacted remainder, never the path (#561 round 10).
+      const published = readFileSync(join(paths, "result.json"), "utf8");
+      assert.equal(/\/(Users|home|private|var)\//u.test(published), false, `${runId}: an absolute path reached a stored result`);
+      assert.match(stored.error, /AOS_RUNTIME_IDENTITY/u, runId);
     }
   } finally {
     rmSync(cwd, { recursive: true, force: true });
@@ -1823,6 +1870,13 @@ test("a cycle over an unknown model completes its runs and withholds the profile
     assert.match(text.stdout, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
     assert.equal(text.stdout.includes("Operator Score"), false);
     assert.equal(/\b\d+ \/ 100\b/u.test(text.stdout), false);
+    // And it says which model, by name, rather than printing the profile-bound sentence over a
+    // cycle nobody could name one for (#561 round 10).
+    assert.match(text.stdout, /Model \(solo\): unknown/u);
+    assert.match(text.stdout, /MODEL_UNKNOWN/u);
+    assert.equal(text.stdout.includes("PROFILE-BOUND:"), false);
+    assert.match(text.stdout, /RUN-DIAGNOSTIC:/u);
+    assert.equal(JSON.parse(report.stdout).model_identity.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

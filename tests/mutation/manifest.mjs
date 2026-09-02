@@ -2529,6 +2529,42 @@ export const GUARDS = [
     name: "an import with nothing in it creates no Run at all"
   },
   {
+    guard: "the identity aggregation is recomputed from its agents",
+    reason: "reading the summary field beside the agents let a record that contradicts itself -- every agent withheld, the summary says issued -- carry a composite through the cap that exists to stop it",
+    file: "lib/result-schema.mjs",
+    from: "  const identityAgentsWithhold = identityAgents.some((entry) => entry?.profile_bound_aggregation?.status !== \"issued\");",
+    to: "  const identityAgentsWithhold = false;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a canonical result never issues a profile-bound claim its identity record withholds"
+  },
+  {
+    guard: "a cycle whose model is unknown says so",
+    reason: "the cycle report printed the profile-bound sentence over every cycle, so a cycle of runs whose model nobody named still told the reader it described a declared profile",
+    file: "lib/cli.mjs",
+    from: "      : \"RUN-DIAGNOSTIC: the model or the executable these runs used is not established, so they describe no profile.\");",
+    to: "      : \"PROFILE-BOUND: each run describes the declared environment and task pack it ran under.\");",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle over an unknown model completes its runs and withholds the profile-bound aggregate by name"
+  },
+  {
+    guard: "a cycle is judged over the runs that ran",
+    reason: "judging only the runs whose composite issued narrowed the cohort to nothing, so a healthy cycle was judged over agents the plan never used and reported MODEL_UNKNOWN",
+    file: "lib/model-identity.mjs",
+    from: "  const ran = runs.filter((run) => run && typeof run === \"object\");",
+    to: "  const ran = runs.filter((run) => run && typeof run === \"object\" && run.valid === true);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
+  },
+  {
+    guard: "a failed observation's error is redacted",
+    reason: "the refusal message names the file it refused, and it is written into a result an operator publishes -- unredacted it carried the operator's absolute paths out with it",
+    file: "lib/cli.mjs",
+    from: "  return redactText(withoutPaths).text.slice(0, 400);",
+    to: "  return raw;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an observation whose agent cannot be run leaves no Run without a record"
+  },
+  {
     guard: "a withheld identity caps the canonical claim",
     reason: "the record was copied into the result and read by nothing, so a result whose model was unknown still came out PROFILE_BOUND with a composite -- the gate this issue exists to build, not gating the artefact everybody reads",
     file: "lib/result-schema.mjs",
@@ -3514,13 +3550,16 @@ export const ACCOUNTED_GUARDS = [
   "a credential is not a model id",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cycle is judged over the runs that ran",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
   "a cycle reads the executable its runs saw",
+  "a cycle whose model is unknown says so",
   "a date-shaped substring is not a snapshot on its own",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
   "a facet is not normalised into a digest",
+  "a failed observation's error is redacted",
   "a family with no known naming rules is not exact",
   "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
@@ -3778,6 +3817,7 @@ export const ACCOUNTED_GUARDS = [
   "the evidence digest is over the claim, not the transcript row",
   "the executable identity digest is recomputed, not read",
   "the floor follows the worst severity observed",
+  "the identity aggregation is recomputed from its agents",
   "the identity record is published field by field",
   "the identity record names the agents that ran",
   "the phrase list names the artifact rows it is supposed to check",
