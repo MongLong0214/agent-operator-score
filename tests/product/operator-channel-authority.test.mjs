@@ -206,3 +206,30 @@ test("session cancel typed on a pipe records the cancellation without claiming a
     rmSync(cwd, { recursive: true, force: true });
   }
 });
+
+test("an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it", () => {
+  // Round 2: a normal assessment captured no D1, D2 or D3 operator decision at all, and every actual
+  // invocation was handed `opportunity_id: null`, so the D3 comparison had nothing to compare. A
+  // reroute at a checkpoint is a routing decision an operator actually made, on a channel this
+  // instrument can name, and the invocations that follow it belong to it.
+  return assessOnATerminal(Array.from({ length: 12 }, () => ["", "y", "spare"]).flat()).then(({ events, record }) => {
+    const routed = events.filter((event) => event.event_type === "operator.route");
+    assert.equal(routed.length > 0, true, "rerouting recorded no routing decision");
+    for (const event of routed) {
+      assert.equal(event.operator_event.decision_type, "route.assign");
+      assert.equal(event.operator_event.construct_cell_id, "C2.OD.01");
+      assert.deepEqual(event.operator_event.declared_route, ["spare"]);
+      assert.equal(event.operator_authority.source, "interactive-tty");
+    }
+    const binding = record.operator_process_binding;
+    const rows = binding.rows.filter((row) => row.decision_type === "route.assign");
+    assert.equal(rows.length, routed.length);
+    assert.equal(rows.every((row) => row.dimension === "D3"), true);
+    const evidence = binding.route_evidence;
+    assert.equal(evidence.opportunities.length > 0, true, "no routing opportunity reached the record");
+    const attributed = evidence.opportunities.filter((row) => row.outcome.invoked.length > 0);
+    assert.equal(attributed.length > 0, true, `no invocation was attributed to a routing decision: ${JSON.stringify(evidence)}`);
+    assert.equal(attributed.every((row) => row.diverged !== null), true, "an attributed opportunity left the comparison undecided");
+    assert.equal(binding.cells.find((cell) => cell.cell_id === "C2.OD.01").status, "BOUND");
+  });
+});

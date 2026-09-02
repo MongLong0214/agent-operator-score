@@ -3005,7 +3005,7 @@ export const GUARDS = [
     guard: "the candidate source is digested, never named",
     reason: "a candidate source id is a path on the operator's own filesystem, and the projection is the copy that leaves the machine",
     file: "lib/operator-events.mjs",
-    from: '      source_digest: sha256Bytes(Buffer.from(event.candidate_source.source_id, "utf8")),',
+    from: "      source_digest: publishedDigest(event.candidate_source.source_id),",
     to: "      source_digest: event.candidate_source.source_id,",
     test: "tests/product/operator-event-projection.test.mjs",
     name: "the projection carries digests and structural values, and no text the operator typed"
@@ -3042,8 +3042,8 @@ export const GUARDS = [
     guard: "a named evidence id is published as a digest",
     reason: "an evidence id is the operator's own name for something on their machine, and this is the copy that leaves it",
     file: "lib/operator-events.mjs",
-    from: '    projected.named_evidence_digests = event.named_evidence_ids.map((id) => sha256Bytes(Buffer.from(id, "utf8")));',
-    to: "    projected.named_evidence_digests = [...event.named_evidence_ids];",
+    from: "  if (Array.isArray(event?.named_evidence_ids)) projected.named_evidence_digests = event.named_evidence_ids.map(publishedDigest);",
+    to: "  if (Array.isArray(event?.named_evidence_ids)) projected.named_evidence_digests = [...event.named_evidence_ids];",
     test: "tests/product/operator-event-projection.test.mjs",
     name: "a named evidence id reaches the projection as a digest, not as itself"
   },
@@ -3069,7 +3069,7 @@ export const GUARDS = [
     guard: "the reveal is read from the journal, not from this object",
     reason: "an ordering rule a reconstruction resets is not an ordering rule",
     file: "lib/operator-events.mjs",
-    from: '  const staged = (opportunity_id, stage) => journal.read().some((entry) => entry.opportunity_id === opportunity_id && entry.stage === stage);',
+    from: "  const staged = (opportunity_id, stage) => entries().some((entry) => entry.opportunity_id === opportunity_id && entry.stage === stage);",
     to: "  const staged = () => false;",
     test: "tests/product/initial-before-advice.test.mjs",
     name: "a second trace for the same run cannot commit an initial judgment after the first revealed the advice"
@@ -3087,10 +3087,10 @@ export const GUARDS = [
     guard: "the run key is one key for one run",
     reason: "the binding is checked against the key that minted it, and a key that changed between the two would make every record refuse or every record pass depending on which side moved",
     file: "lib/store.mjs",
-    from: '  if (!operatorKeys.has(key)) operatorKeys.set(key, randomBytes(32).toString("hex"));',
-    to: '  operatorKeys.set(key, randomBytes(32).toString("hex"));',
+    from: '  if (create && !operatorKeys.has(key)) operatorKeys.set(key, randomBytes(32).toString("hex"));',
+    to: '  if (!operatorKeys.has(key)) operatorKeys.set(key, randomBytes(32).toString("hex"));',
     test: "tests/product/no-agent-artifact-process-credit.test.mjs",
-    name: "an attested operator turn is recorded, and the store keeps the attestation with it"
+    name: "a process that did not record a run has no key for it, and says that rather than calling the evidence forged"
   },
   {
     guard: "the channel decides the source",
@@ -3154,6 +3154,97 @@ export const GUARDS = [
     to: "    if (opportunity === null) { continue; }",
     test: "tests/product/no-agent-artifact-process-credit.test.mjs",
     name: "a route the operator declared is compared with the invocations of its own opportunity, not with every invocation in the run"
+  },
+  // #560 round 3 -- the second merge-gate review.
+  {
+    guard: "the stored record is bound, not only the event on it",
+    reason: "the scorer reads the wrapper's type, family and payload, and the assessed agent works two path segments from the run's event file as the same user -- editing inspected: 0 to inspected: 99 moved M11 from 0.75 to 1.0 without forging an event or learning a key",
+    file: "lib/operator-events.mjs",
+    from: "    if (!bindingMatches(expectedRecord, event.operator_record_binding)) {",
+    to: "    if (false) {",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "editing the stored payload of an attested record makes the scorer refuse it"
+  },
+  {
+    guard: "the record binding covers the payload the scorer reads",
+    reason: "a binding over the identifiers alone would leave the fields that decide the state change outside every signature, which is the defect with the check still in place",
+    file: "lib/operator-events.mjs",
+    from: "    payload: record.payload ?? null,",
+    to: "    payload: null,",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "editing the stored payload of an attested record makes the scorer refuse it"
+  },
+  {
+    guard: "a state revision is stated, never defaulted",
+    reason: "an omitted revision became 1 and then satisfied the binding's required-reference check, which is a missing reference converted into a default",
+    file: "lib/operator-events.mjs",
+    from: "  if (!Number.isInteger(value) || value < 1) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "an operator event with no state revision is refused rather than defaulted to the first one"
+  },
+  {
+    guard: "a declared route is published as digests",
+    reason: "a character grammar that admits an agent called alpha admits AKIAIOSFODNN7EXAMPLE, and the review published exactly that through declared_route",
+    file: "lib/operator-events.mjs",
+    from: "  if (Array.isArray(event?.declared_route)) projected.declared_route_digests = event.declared_route.map(publishedDigest);",
+    to: "  if (Array.isArray(event?.declared_route)) projected.declared_route_digests = [...event.declared_route];",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection publishes no string the operator typed, whatever the character grammar allows"
+  },
+  {
+    guard: "a candidate source version is published as a digest",
+    reason: "the same class on the other field: a version string is text somebody typed on their own machine",
+    file: "lib/operator-events.mjs",
+    from: "      version_digest: event.candidate_source.version === null ? null : publishedDigest(event.candidate_source.version),",
+    to: "      version_digest: event.candidate_source.version,",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection publishes no string the operator typed, whatever the character grammar allows"
+  },
+  {
+    guard: "a relay id is published as a digest",
+    reason: "the same class on the third field, which #576 will be the one filling in",
+    file: "lib/operator-events.mjs",
+    from: "      relay_digest: publishedDigest(event.relay_attestation.relay_id),",
+    to: "      relay_digest: event.relay_attestation.relay_id,",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection publishes no string the operator typed, whatever the character grammar allows"
+  },
+  {
+    guard: "the reliance evidence survives its trace",
+    reason: "#583 reads a run that has already happened, so a rebuilt trace is the normal case, and the first version handed it an empty list",
+    file: "lib/operator-events.mjs",
+    from: "      journal.record(opportunity, \"initial-committed\", event);",
+    to: "      journal.record(opportunity, \"initial-committed\", null);",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a reconstructed trace hands #583 the evidence the first one committed, not an empty list"
+  },
+  {
+    guard: "a process with no key for a run says so",
+    reason: "minting on demand gave a second process a different key, so every genuine record it read came back as tampering -- a key epoch nobody chose, reported as a forgery",
+    file: "lib/operator-events.mjs",
+    from: "  const unauthenticable = typeof secret !== \"string\" || secret.length === 0;",
+    to: "  const unauthenticable = false;",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "a process that did not record a run has no key for it, and says that rather than calling the evidence forged"
+  },
+  {
+    guard: "a reroute is a routing decision",
+    reason: "a whole assessment captured no D3 operator decision at all, so the declared side of the D3 comparison was always empty",
+    file: "lib/cli.mjs",
+    from: '      operator_event: turn("route.assign", "C2.OD.01", 3, { stage, to: decision.route }, [decision.route])',
+    to: '      operator_event: turn("intervention.decide", "C4.IQ.01", 3, { stage, to: decision.route })',
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it"
+  },
+  {
+    guard: "what runs after a reroute belongs to the decision that caused it",
+    reason: "an invocation nobody can attribute decides nothing in D3, so leaving them all unattributed left the comparison permanently undecided",
+    file: "lib/cli.mjs",
+    from: "        routeOpportunity = decision.opportunity_id ?? null;\n      }\n      if (decision.choice === \"instruct\") instruction = decision.instruction;",
+    to: "        routeOpportunity = null;\n      }\n      if (decision.choice === \"instruct\") instruction = decision.instruction;",
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it"
   },
 ];
 
@@ -3254,9 +3345,11 @@ export const ACCOUNTED_GUARDS = [
   "a URL carrying userinfo is a credential",
   "a bound claim names the profile it is bound to",
   "a cancel typed at a shell is not an operator turn",
+  "a candidate source version is published as a digest",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
+  "a declared route is published as digests",
   "a facet is not normalised into a digest",
   "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
@@ -3270,9 +3363,12 @@ export const ACCOUNTED_GUARDS = [
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a process with no key for a run says so",
   "a raw value is hashed because it was supplied raw",
   "a refused file fails the check",
+  "a relay id is published as a digest",
   "a reliance trace is built on a journal",
+  "a reroute is a routing decision",
   "a resolved key is the key",
   "a result has to agree with itself",
   "a root is a root wherever it starts",
@@ -3284,6 +3380,7 @@ export const ACCOUNTED_GUARDS = [
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
+  "a state revision is stated, never defaulted",
   "a status this build does not know is refused",
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
@@ -3509,6 +3606,8 @@ export const ACCOUNTED_GUARDS = [
   "the printed shape is named",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",
+  "the record binding covers the payload the scorer reads",
+  "the reliance evidence survives its trace",
   "the report command serves what the result projects to",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
@@ -3521,6 +3620,7 @@ export const ACCOUNTED_GUARDS = [
   "the scored result carries the boundary it was produced under",
   "the store refuses an operator event type from another producer",
   "the store requires an attestation for an operator event",
+  "the stored record is bound, not only the event on it",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the withheld reason travels with the surface",
@@ -3538,6 +3638,7 @@ export const ACCOUNTED_GUARDS = [
   "verification result check",
   "version comment after a flow mapping",
   "version comment is a version",
+  "what runs after a reroute belongs to the decision that caused it",
   "what was withheld outright is recorded as such",
   "withheld is never a number, and issued is never a reason",
   "withheld precision is absent",

@@ -192,3 +192,18 @@ test("a value and a value digest may not both be supplied, and neither may be om
     construct_cell_id: "C1.OF.01", opportunity_id: "opp-raw", value: "a", state_revision: 1
   }, { secret: SECRET }), /challenge/u);
 });
+
+test("an operator event with no state revision is refused rather than defaulted to the first one", () => {
+  // Round 2: an omitted revision became 1, which then satisfied the binding's required-reference
+  // check -- a missing reference converted into a default, which is the one thing this issue's
+  // completion list forbids by name.
+  const base = {
+    run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
+    construct_cell_id: "C1.OF.01", opportunity_id: "opp-rev", challenge: { asked: "x" }, value: { goal: "y" }
+  };
+  assert.throws(() => mint({ ...base, state_revision: undefined }), /state_revision/u);
+  assert.throws(() => mint({ ...base, state_revision: 0 }), /state_revision/u);
+  assert.throws(() => mint({ ...base, state_revision: 1.5 }), /state_revision/u);
+  assert.throws(() => mint({ ...base, state_revision: "1" }), /state_revision/u);
+  assert.equal(mint({ ...base, state_revision: 1 }).state_revision, 1);
+});

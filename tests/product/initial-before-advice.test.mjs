@@ -11,7 +11,7 @@ const journal = () => {
   const stages = [];
   return {
     stages,
-    record: (opportunity_id, stage) => stages.push({ opportunity_id, stage }),
+    record: (opportunity_id, stage, event) => stages.push({ opportunity_id, stage, event }),
     read: () => stages.map((entry) => ({ ...entry }))
   };
 };
@@ -132,10 +132,33 @@ test("a second trace for the same run cannot commit an initial judgment after th
   first.commitInitialJudgment(judgment());
   first.revealAdvice("opp-reliance-1");
   const rebuilt = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
-  assert.throws(() => rebuilt.commitInitialJudgment(judgment()), /already revealed|already carries/u);
+  assert.throws(() => rebuilt.commitInitialJudgment(judgment()), /already revealed/u,
+    "the refusal came from the second-judgment rule rather than from the reveal, so the reveal check is not what held");
 });
 
 test("a reliance trace with no journal is refused, because a reveal nobody recorded cannot be checked later", () => {
   assert.throws(() => createRelianceTrace({ run_id: RUN, secret: SECRET }), /journal/u);
   assert.throws(() => createRelianceTrace({ run_id: RUN, secret: SECRET, journal: {} }), /journal/u);
+});
+
+test("a reconstructed trace hands #583 the evidence the first one committed, not an empty list", () => {
+  // Round 2: the journal recorded stage names and the events stayed in an in-memory map, so
+  // `opportunities()` on a rebuilt trace returned []. #583 reads a run that has already happened, so
+  // the rebuilt trace is the normal case and the one that carried nothing.
+  const shared = journal();
+  const first = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  const committed = first.commitInitialJudgment(judgment());
+  first.revealAdvice("opp-reliance-1");
+  first.recordAdviceResponse(judgment({ judgment: { answer: "adopted" } }));
+
+  const rebuilt = createRelianceTrace({ run_id: RUN, secret: SECRET, journal: shared });
+  const opportunities = rebuilt.opportunities();
+  assert.equal(opportunities.length, 1, "the rebuilt trace carries no opportunity at all");
+  const [opportunity] = opportunities;
+  assert.equal(opportunity.opportunity_id, "opp-reliance-1");
+  assert.equal(opportunity.initial_judgment.event_id, committed.event_id);
+  assert.equal(opportunity.initial_judgment.reported_confidence, 0.6);
+  assert.equal(opportunity.advice_revealed, true);
+  assert.equal(opportunity.advice_response.length, 1);
+  assert.deepEqual(rebuilt.opportunities(), first.opportunities());
 });

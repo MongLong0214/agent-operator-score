@@ -206,7 +206,7 @@ test("an operator record appended to a run's event file by hand earns nothing, b
     const attested = attestedOperatorTrace(events, { run_id: runId, secret });
     assert.equal(attested.accepted.length, 0);
     assert.equal(attested.rejected.length, 3);
-    assert.equal(attested.rejected.every((entry) => /no operator event was attached/u.test(entry.reason)), true, canonicalJson(attested.rejected));
+    assert.equal(attested.rejected.every((entry) => /no operator event was attached|does not match the binding taken when it was written/u.test(entry.reason)), true, canonicalJson(attested.rejected));
     assert.equal(interventionSummary(attested.trace).observed, false);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -243,7 +243,7 @@ const decision = (over = {}) => mintOperatorEvent({
   ...over
 }, { secret: SECRET });
 
-test("every scored Process row carries the operator event, the cell, the opportunity, the authority and the state revision", () => {
+test("every bound Process row carries the operator event, the cell, the opportunity, the authority and the state revision", () => {
   const binding = bindOperatorDecisions([
     decision(),
     decision({ decision_type: "context.include", construct_cell_id: "C2.OD.01", opportunity_id: "opp-d2-include" }),
@@ -432,7 +432,7 @@ test("counterfactual: an initial judgment bundled into one payload with the post
   const reliance = createRelianceTrace({
     run_id: RUN,
     secret: SECRET,
-    journal: { record: (opportunity_id, stage) => stages.push({ opportunity_id, stage }), read: () => [...stages] }
+    journal: { record: (opportunity_id, stage, event) => stages.push({ opportunity_id, stage, event }), read: () => [...stages] }
   });
   assert.throws(() => reliance.commitInitialJudgment({
     source: "interactive-tty",
@@ -564,4 +564,78 @@ test("a route the operator declared is compared with the invocations of its own 
   const unattributed = routeEvidence(binding, [{ agent: "gamma" }]);
   assert.deepEqual(unattributed.unattributed_invocations, ["gamma"]);
   assert.equal(unattributed.opportunities.every((row) => row.diverged === null), true);
+});
+
+test("editing the stored payload of an attested record makes the scorer refuse it", () => {
+  // Round 2: the signature covered only the nested operator event, and scoring reads the outer
+  // record's `payload`. The agent runs two path segments from `events/operator.ndjson` as the same
+  // user, so after a real checkpoint it could rewrite `{inspected: 0, route_changed: false}` to
+  // `{inspected: 99, route_changed: true}` -- forging no event and learning no key, and moving M11
+  // from 0.75 to 1.0.
+  const root = scratch();
+  try {
+    const { runId } = createRun(root, { mode: "CONTROLLED" });
+    const secret = operatorRunKey(root, runId);
+    const evidence = evidenceFixture();
+    const mint = (decision_type, cell, revision, value) => mintOperatorEvent({
+      run_id: runId, source: "interactive-tty", decision_type, construct_cell_id: cell,
+      opportunity_id: "opp-edit", challenge_digest: `sha256:${evidence.evidence_digest}`, value, state_revision: revision
+    }, { secret });
+    appendEvent(root, runId, "operator", {
+      event_type: "checkpoint.raised", family: "FAM-4", payload: evidence,
+      operator_event: mint("checkpoint.observe", "C3.ER.01", 1, { kind: evidence.kind })
+    }, { source: "interactive-tty" });
+    appendEvent(root, runId, "operator", {
+      event_type: "operator.decision", family: "FAM-4",
+      payload: { stage: "s1", choice: "retry", route_changed: false, inspected: 0, evidence_digest: evidence.evidence_digest },
+      operator_event: mint("intervention.decide", "C4.IQ.01", 2, { stage: "s1", choice: "retry", route_changed: false, inspected: 0 })
+    }, { source: "interactive-tty" });
+
+    const honest = attestedOperatorTrace(readEvents(root, runId), { run_id: runId, secret });
+    assert.equal(honest.accepted.length, 2, "the honest trace was not accepted");
+    assert.equal(interventionSummary(honest.trace).observations[0].inspected, 0);
+
+    // Now the edit: the wrapper only, both attestations left exactly as they were.
+    const file = join(runPaths(root, runId).events, "operator.ndjson");
+    const records = readFileSync(file, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    const decision = records.find((record) => record.event_type === "operator.decision");
+    decision.payload = { ...decision.payload, inspected: 99, route_changed: true };
+    writeFileSync(file, `${records.map((record) => JSON.stringify(record)).join("\n")}\n`);
+
+    const tampered = attestedOperatorTrace(readEvents(root, runId), { run_id: runId, secret });
+    assert.equal(tampered.accepted.length, 1, "the edited record was accepted");
+    assert.equal(tampered.rejected.some((entry) => /payload|record/u.test(entry.reason)), true, JSON.stringify(tampered.rejected));
+    assert.equal(interventionSummary(tampered.trace).observed, false,
+      "an edited wrapper still produced an observed intervention");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a process that did not record a run has no key for it, and says that rather than calling the evidence forged", () => {
+  // Round 2: `operatorRunKey` minted on demand, so a second process asking for the same run got a
+  // different key and every genuine record read as tampering. The secret is deliberately not on
+  // disk -- there is nowhere on a single-user machine to put it that the assessed process cannot
+  // read -- so a later process cannot re-authenticate this evidence. What it must not do is report
+  // that as a forgery.
+  const root = scratch();
+  try {
+    const { runId } = createRun(root, { mode: "CONTROLLED" });
+    const secret = operatorRunKey(root, runId);
+    assert.equal(typeof secret, "string");
+    assert.equal(operatorRunKey(root, runId), secret, "the same process got two keys for one run");
+    // A run this process never created is a run it holds no key for.
+    assert.equal(operatorRunKey(root, "run-recorded-elsewhere"), null);
+    const events = [{
+      event_type: "operator.decision", event_id: "e-1", run_id: "run-recorded-elsewhere",
+      producer_id: "operator", family: "FAM-4", payload: { choice: "instruct" }
+    }];
+    const read = attestedOperatorTrace(events, { run_id: "run-recorded-elsewhere", secret: operatorRunKey(root, "run-recorded-elsewhere") });
+    assert.deepEqual(read.accepted, []);
+    assert.equal(read.rejected.length, 1);
+    assert.match(read.rejected[0].reason, /authenticated by the process that recorded it/u);
+    assert.equal(interventionSummary(read.trace).observed, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
