@@ -89,8 +89,10 @@
         "uniqueItems": true,
         "items": {
           "type": "integer"
-        }
-      }
+        },
+        "maxItems": 64
+      },
+      "maxProperties": 16
     },
     "issues": {
       "type": "array",
@@ -273,7 +275,8 @@
           "items": {
             "type": "integer"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "maxItems": 64
         },
         "allowed_outputs": {
           "type": "array",
@@ -282,7 +285,8 @@
           "items": {
             "type": "string",
             "minLength": 1
-          }
+          },
+          "maxItems": 32
         },
         "code_integration_allowed": {
           "type": "boolean"

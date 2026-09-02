@@ -326,7 +326,7 @@ test("only a fenced record that names the schema counts, and a later trusted one
   assert.equal(parseCompletionRecord(["body", first]).verdict, "HOLD");
 });
 
-test("the audit summary carries no issue title, path or token when it is reporting failures", () => {
+test("the audit summary carries no issue title, and no absolute path or token in the forms this repository produces", () => {
   // What the command prints is what goes into the release evidence bundle, and the bundle is
   // published. Built here with real failures in it, because a version of this test that asserted an
   // empty failure list was empty would have stayed green while a title was added to the output.
@@ -410,7 +410,7 @@ test("an issue cannot both wait on a peer and claim to run beside it", () => {
   assert.ok(failures(checkPlan(doc)).includes("parallel-with-dependency"));
 });
 
-test("every release-critical issue is behind a gate, and gate names are fixed", () => {
+test("every release-critical issue except the epic is behind a gate, and the nine gate names are fixed", () => {
   const doc = plan();
   doc.gates.S = doc.gates.S.filter((number) => number !== 553);
   assert.ok(failures(checkPlan(doc)).includes("release-critical-not-gated"));
@@ -979,16 +979,21 @@ test("a plan far larger than the release is refused by the schema, quickly", () 
   assert.ok(failures(report).includes("schema-invalid"));
 });
 
-test("a canonical-sized plan cannot carry unbounded edges", () => {
+test("a canonical-sized plan cannot carry unbounded edges, at the issue or the phase", () => {
   // Thirty-two entries and a hundred thousand references. The count check looks at entries, so this
   // stayed canonical-sized while forcing unbounded work below it -- and it made the reachability
   // search exhaust its budget before reaching the real edge.
   const doc = plan();
   entry(doc, 553).blocked_by = [...Array.from({ length: 100_001 }, (_, index) => 900_000 + index), 554];
   const started = Date.now();
-  const report = checkPlan(doc);
+  assert.ok(failures(checkPlan(doc)).includes("schema-invalid"));
   assert.ok(Date.now() - started < 10_000);
-  assert.ok(failures(report).includes("schema-invalid"));
+
+  // The same hole one level down: a phase's own blocked_by was unbounded while the issue's was not.
+  const phased = plan();
+  const phase = entry(phased, 556).phases.find((one) => one.id === "final-integration");
+  phase.blocked_by = Array.from({ length: 100_001 }, (_, index) => 900_000 + index);
+  assert.ok(failures(checkPlan(phased)).includes("schema-invalid"));
 });
 
 test("a reachability answer that ran out of budget is reported, not returned as no", () => {
@@ -1009,7 +1014,7 @@ test("a reachability answer that ran out of budget is reported, not returned as 
   assert.equal(names.includes("parallel-with-dependency"), false);
 });
 
-test("a non-canonical plan still reports everything that does not need the graph", () => {
+test("a non-canonical plan still reports the evidence, ownership and gate failures beside it", () => {
   // The early return suppressed the evidence, ownership, phase, status, batch and gate checks --
   // all answerable without the graph, and all needed in the same run. A verifier that reports one
   // problem when there are six sends someone back five times.
@@ -1024,6 +1029,8 @@ test("a non-canonical plan still reports everything that does not need the graph
   assert.ok(names.includes("graph-checks-skipped"));
   assert.ok(names.includes("release-critical-needs-close-evidence"), "the evidence check was skipped");
   assert.ok(names.includes("gate-missing"), "the gate check was skipped");
+  // Owning no surface is its own defect: nothing then protects that surface from a second writer.
+  assert.ok(names.includes("owner-surfaces-empty"), "the ownership check was skipped");
 });
 
 test("a ring the size of the real plan is reported as exactly one cycle", () => {
@@ -1042,20 +1049,19 @@ test("a ring the size of the real plan is reported as exactly one cycle", () => 
   assert.equal(reported[0].detail.split(" -> ").length, numbers.length + 1);
 });
 
-test("the calendar and the clock accept what RFC 3339 accepts, and nothing else", () => {
+test("the calendar is real, and the clock is a deliberately narrower profile than RFC 3339", () => {
   // Year 0000 is a leap year in the proleptic Gregorian calendar, and `Date.UTC(0, …)` maps years
   // 0-99 to 1900-1999, so February 0000 was told it had twenty-eight days.
   assert.equal(isRealInstant("0000-02-29T00:00:00Z"), true);
   assert.equal(isRealInstant("1900-02-29T00:00:00Z"), false);
   assert.equal(isRealInstant("2000-02-29T00:00:00Z"), true);
-  // A leap second is a valid instant that Date.parse refuses -- but only where one can occur.
-  assert.equal(isRealInstant("1990-12-31T23:59:60Z"), true);
-  assert.equal(isRealInstant("2026-06-30T23:59:60Z"), true);
-  // Accepting second 60 unconditionally made this an instant, which it never is.
+  // Second 60 is refused, and that is narrower than RFC 3339 on purpose: a leap second is legal
+  // there only at the end of a month in which one was actually inserted, and honouring that needs a
+  // table of announced leap seconds that would go stale in this file. Two weaker rules were tried
+  // and both accepted instants that do not exist.
+  assert.equal(isRealInstant("1990-12-31T23:59:60Z"), false);
+  assert.equal(isRealInstant("2026-01-01T23:59:60Z"), false);
   assert.equal(isRealInstant("2026-01-01T12:34:60Z"), false);
-  // The offset has to be undone before the test: 08:59:60+09:00 is 23:59:60 UTC.
-  assert.equal(isRealInstant("2026-07-01T08:59:60+09:00"), true);
-  assert.equal(isRealInstant("2026-07-01T09:00:60+09:00"), false);
   assert.equal(isRealInstant("1990-12-31T23:59:61Z"), false);
   assert.equal(isRealInstant("2026-02-30T00:00:00Z"), false);
   // Lowercase t and z are valid RFC 3339 and were being rejected.
@@ -1096,4 +1102,20 @@ test("every canonical issue has a pinned evidence contract", () => {
       `#${one.issue}`
     );
   }
+});
+
+test("a phase that has begun on a blocked issue cannot integrate code either", () => {
+  const doc = plan();
+  // The scope rule only looked at `ready` phases, so moving one to `in-progress` or `done` while
+  // the issue stayed blocked carried the permission the block exists to withhold.
+  for (const status of ["ready", "in-progress", "done"]) {
+    const one = plan();
+    const phase = entry(one, 556).phases.find((each) => each.id === "final-integration");
+    phase.status = status;
+    assert.ok(
+      failures(checkPlan(one)).includes("phase-scope-exceeded"),
+      `#556 was allowed a ${status} integrating phase while blocked`
+    );
+  }
+  assert.equal(checkPlan(doc).ok, true);
 });

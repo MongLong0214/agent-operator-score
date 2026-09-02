@@ -16,6 +16,24 @@
 
 export const GUARDS = [
   {
+    guard: "a started phase cannot integrate code on a blocked issue",
+    reason: "checking only `ready` left the permission reachable by moving the phase forward",
+    file: "lib/execution-plan.mjs",
+    from: "      if (STARTED.has(phase.status) && one.status !== \"ready\" && phase.code_integration_allowed) {",
+    to: '      if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) { } if (false) {',
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
+  },
+  {
+    guard: "an issue owns a surface",
+    reason: "owning nothing means no surface is protected from a second writer",
+    file: "lib/execution-plan.mjs",
+    from: '    if (one.owner_surfaces.length === 0 && one.kind !== "epic") {',
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a non-canonical plan still reports the evidence, ownership and gate failures beside it"
+  },
+  {
     guard: "a truncated reachability answer is not an answer",
     reason: "returning false on an exhausted budget said `these do not depend on each other` when they do",
     file: "lib/execution-plan.mjs",
@@ -23,15 +41,6 @@ export const GUARDS = [
     to: "      if (steps > budget) return false;",
     test: "tests/product/execution-plan.test.mjs",
     name: "a reachability answer that ran out of budget is reported, not returned as no"
-  },
-  {
-    guard: "a leap second only where one can occur",
-    reason: "accepting second 60 unconditionally made 12:34:60 an instant, which it never is",
-    file: "lib/execution-plan.mjs",
-    from: "    return utcMinutes === 23 * 60 + 59;",
-    to: "    return true;",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "the calendar and the clock accept what RFC 3339 accepts, and nothing else"
   },
   {
     guard: "offline runs do not print or report a pass",
@@ -85,7 +94,7 @@ export const GUARDS = [
     from: "  if (!canonicalShape) {",
     to: "  if (!canonicalShape) { return { ok: false, failures, owners: {} }; } if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "a non-canonical plan still reports everything that does not need the graph"
+    name: "a non-canonical plan still reports the evidence, ownership and gate failures beside it"
   },
   {
     guard: "evidence bound to the audited revision",
@@ -320,15 +329,6 @@ export const GUARDS = [
     to: "      if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "two issues owning the same hot file fails"
-  },
-  {
-    guard: "phase-ready scope",
-    reason: "a phase opened while its issue is blocked must not merge the integration the block withholds",
-    file: "lib/execution-plan.mjs",
-    from: 'if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) {',
-    to: "if (false) {",
-    test: "tests/product/execution-plan.test.mjs",
-    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
   },
   {
     guard: "close-evidence issue-specific fields",
