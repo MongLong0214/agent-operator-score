@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "undeclared isolation is the weakest lane",
+    reason: "resolving silence to STRICT manufactures the strongest claim out of no information",
+    file: "lib/verifiers/fam5.mjs",
+    from: 'const OBSERVATION_TRUST = DECLARED_ISOLATION === "STRICT"',
+    to: 'const OBSERVATION_TRUST = DECLARED_ISOLATION !== "STRICT"',
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the verdict records the isolation lane it was observed under"
+  },
+  {
     guard: "cleanup claim not overstated",
     reason: "a scan blind to setsid reporting nothing must not be stored as nothing having leaked",
     file: "lib/verifier-run.mjs",
@@ -91,8 +100,8 @@ export const GUARDS = [
     guard: "trusted-file integrity re-check",
     reason: "a verifier that cannot vouch for its own code has nothing to say about anybody else's",
     file: "lib/verifiers/fam5.mjs",
-    from: "    if (modifiedTrustedFiles().length > 0) {",
-    to: "    if (false) {",
+    from: "  if (modifiedTrustedFiles().length > 0) {",
+    to: "  if (false) {",
     test: "tests/product/verifier-authority.test.mjs",
     name: "a write into the AOS installation refuses the verdict even when the probes would pass"
   },
@@ -118,8 +127,8 @@ export const GUARDS = [
     guard: "probe process independence",
     reason: "probes sharing one observation share whatever the first probe's module body broke",
     file: "lib/verifiers/fam5.mjs",
-    from: "    results.set(probe.id, await runProbe(probe, target.path, deadline));",
-    to: "    results.set(probe.id, results.get(PROBES[0].id) ?? await runProbe(probe, target.path, deadline));",
+    from: "  const settled = await Promise.all(PROBES.map((probe) => runProbe(probe, target.path, deadline)));",
+    to: "  const first = await runProbe(PROBES[0], target.path, deadline); const settled = PROBES.map(() => first);",
     test: "tests/product/verifier-authority.test.mjs",
     name: "each probe runs in its own short-lived subject process"
   },
@@ -336,4 +345,49 @@ export const REQUIRED_GUARDS = [
   "malformed-row reporting",
   "workspace containment",
   "locked cycle seed"
+];
+
+// Every guard name in GUARDS, sorted. #567 owns the constant and the test that asserts equality
+// with GUARDS in both directions; this branch carries the names so the two resolve as a union at
+// merge rather than as a choice between them.
+//
+// Equality rather than a floor is the point. REQUIRED_GUARDS listed the original eleven, so every
+// guard added since could have been deleted from GUARDS with the suite still green -- a list that
+// is stale and passing at the same time, which is the failure mode the manifest exists to catch.
+// Under equality an unlisted guard fails and a departed one fails.
+export const ACCOUNTED_GUARDS = [
+  "central redaction",
+  "checkpoint evidence preserved",
+  "cleanup claim not overstated",
+  "close-evidence issue-specific fields",
+  "close-evidence verdict",
+  "coverage gate",
+  "credential env refusal",
+  "cycle run identity",
+  "exact revision binding",
+  "execution plan cycle detection",
+  "false completion cap",
+  "hot-file single owner",
+  "locked cycle seed",
+  "malformed-row reporting",
+  "missing-result refusal",
+  "observation channel size bound",
+  "observation line size bound",
+  "observation schema",
+  "operator decision window",
+  "phase-ready scope",
+  "pristine error classification",
+  "probe process independence",
+  "probe result authentication",
+  "safety cap",
+  "single observation per probe",
+  "stale blocked status",
+  "subject nonce non-disclosure",
+  "subject runner executed from memory",
+  "trend dedupe",
+  "trusted-file integrity re-check",
+  "trusted-process import prohibition",
+  "undeclared isolation is the weakest lane",
+  "verification result check",
+  "workspace containment"
 ];

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 import { FAM5_CONTROLLER, FAM5_SUBJECT, gradeScenario, prepareScenario } from "../../lib/suite.mjs";
 import { processGroupMembers } from "../../lib/core.mjs";
-import { DESCENDANT_SCAN_ESTABLISHES_CLEANUP } from "../../lib/verifier-run.mjs";
+import { DESCENDANT_SCAN_ESTABLISHES_CLEANUP, runVerifier } from "../../lib/verifier-run.mjs";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PROBES, SUBCHECKS } from "../../lib/verifiers/fam5-probes.mjs";
@@ -16,6 +16,34 @@ import { MAX_CHANNEL_BYTES, MAX_RESULT_BYTES, formatObservation, parseObservatio
 // relative path; the attack it stands for is a module that reaches it at all.
 const FAM5_PROBES_URL = new URL("../../lib/verifiers/fam5-probes.mjs", import.meta.url).href;
 const FAM5_PROBES_PATH = fileURLToPath(FAM5_PROBES_URL);
+const VERIFIER_FILES = ["fam5.mjs", "fam5-subject.mjs", "fam5-probes.mjs", "fam5-result.mjs"];
+
+// A copy of the verifier, for the tests that have to watch it be tampered with.
+//
+// Rewriting the real lib/verifiers/ is not something a test may do here: node --test runs files in
+// parallel, the installation is shared with every one of them, and the window is wide enough to be
+// hit. It was. A suite digest computed while fam5-subject.mjs held the attacker's bytes did not
+// match one computed after it was put back, which failed `verify --run` in a different file; and a
+// FAM-5 run that landed inside the window was graded by the attacker's runner, which never imports
+// calculator.mjs, so the leak test saw no spawned process and failed too. Two unrelated tests,
+// neither of them wrong.
+//
+// The verifier is self-contained -- fam5.mjs imports node builtins and its two siblings, nothing
+// else -- so a directory holding the four files runs exactly as the installed one does.
+const stagedVerifier = () => {
+  const dir = mkdtempSync(join(tmpdir(), "aos-staged-verifier-"));
+  for (const name of VERIFIER_FILES) copyFileSync(join(dirname(FAM5_CONTROLLER), name), join(dir, name));
+  return dir;
+};
+
+// A prepared FAM-5 workspace holding `source`, for tests that drive the verifier directly rather
+// than through gradeScenario.
+const stagedWorkspace = (source) => {
+  const root = mkdtempSync(join(tmpdir(), "aos-staged-work-"));
+  prepareScenario("FAM-5", root);
+  writeFileSync(join(root, "calculator.mjs"), source, "utf8");
+  return root;
+};
 
 // The whole of this file is one question: can code the agent wrote decide what the verdict says?
 //
@@ -41,7 +69,13 @@ const withAssessed = async (source, { reads = [] } = {}) => {
   try {
     const prepared = prepareScenario("FAM-5", root);
     writeFileSync(join(root, "calculator.mjs"), source, "utf8");
-    const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, invocationCount: 1 });
+    // The lane the CLI declares for a real run, so what these fixtures observe about
+    // `observation_trust` is what an operator would see. The undeclared case has its own test.
+    const graded = await gradeScenario("FAM-5", root, {
+      baseline: prepared.baseline,
+      invocationCount: 1,
+      isolation: "BEST_EFFORT_CLI"
+    });
     const files = {};
     for (const name of reads) {
       files[name] = existsSync(join(root, name)) ? readFileSync(join(root, name), "utf8") : null;
@@ -220,21 +254,20 @@ ${CORRECT}`,
 test("assessed code cannot replace the subject runner between probes", async () => {
   // The P0. The subject runner lives in the AOS installation, the workspace scope check walks the
   // workspace, and the assessed module runs with AOS's own filesystem permissions -- so a module
-  // that overwrote lib/verifiers/fam5-subject.mjs from inside the first probe had every later probe
-  // executed by its own replacement, which read the result token from stdin, never loaded
-  // calculator.mjs, and wrote whichever observation the manifest expected. Six perfect probes for a
-  // ratio() that is wrong for five of them.
+  // that overwrote fam5-subject.mjs from inside the first probe had every later probe executed by
+  // its own replacement, which read the result token from stdin, never loaded calculator.mjs, and
+  // wrote whichever observation the manifest expected. Six perfect probes for a ratio() that is
+  // wrong for five of them, verified against the tree before this was fixed.
   //
   // Two things close it. The controller executes the runner from bytes it read before it spawned
   // anything, so nothing this run executes is read from disk after the module has had a turn; and
-  // it re-checks the installation after every probe, so the write is refused rather than merely
-  // wasted. The file is restored here whatever happens -- a test that leaves the runner rewritten
-  // corrupts every test after it.
-  const original = readFileSync(FAM5_SUBJECT);
-  try {
-    const { graded } = await withAssessed(
-      `import { writeFileSync } from "node:fs";
-writeFileSync(${JSON.stringify(FAM5_SUBJECT)}, \`
+  // it re-checks the installation after the probes, so the write is refused rather than merely
+  // wasted.
+  const dir = stagedVerifier();
+  const target = join(dir, "fam5-subject.mjs");
+  const root = stagedWorkspace(
+    `import { writeFileSync } from "node:fs";
+writeFileSync(${JSON.stringify(target)}, \`
 import { readFileSync, writeSync } from "node:fs";
 const token = readFileSync(0, "utf8").trim();
 const id = process.argv[2];
@@ -250,35 +283,40 @@ writeSync(3, "AOS_OBS " + token + " " + id + " " + expected + "\\n");
 \`);
 export function ratio(a, b) { return a === 9 && b === 3 ? 3 : 0; }
 `
-    );
-    assert.equal(graded.metrics.M15, 0, "a rewritten subject runner graded the run");
-    assert.equal(graded.details.hidden, false);
+  );
+  try {
+    const run = await runVerifier(join(dir, "fam5.mjs"), [root], { isolation: "BEST_EFFORT_CLI" });
+    assert.equal(run.verdict?.hidden, false, "a rewritten subject runner graded the run");
     // Not merely failed: refused, and named. `verifier-code-immutable` in lib/observe.mjs reads
-    // `refused === null`, so this is what finally makes that subcheck check what it is called.
-    assert.equal(graded.details.verifier.refused, "verifier-code-modified");
-    assert.deepEqual(graded.details.verifier.subchecks, {});
+    // `refused === null`, so this is what makes that subcheck check what it is called.
+    assert.equal(run.verdict?.refused, "verifier-code-modified");
+    assert.deepEqual(run.verdict?.subchecks, {});
+    // And the replacement really was in place -- otherwise this test would pass on a typo.
+    assert.match(readFileSync(target, "utf8"), /AOS_OBS/);
   } finally {
-    writeFileSync(FAM5_SUBJECT, original);
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
 test("a write into the AOS installation refuses the verdict even when the probes would pass", async () => {
-  // The counterfactual to the test above: a correct module that also touches a trusted file. The
-  // probes would all pass, and the run is still refused, because a verifier that cannot vouch for
-  // its own code has nothing to say about anybody else's. Denying the write is #556's job; noticing
-  // it is this file's.
-  const target = FAM5_PROBES_PATH;
-  const original = readFileSync(target);
-  try {
-    const { graded } = await withAssessed(
-      `import { appendFileSync } from "node:fs";
-appendFileSync(${JSON.stringify(target)}, "\\n// touched\\n");
+  // The counterfactual: a correct module that also touches a trusted file. The probes would all
+  // pass, and the run is still refused, because a verifier that cannot vouch for its own code has
+  // nothing to say about anybody else's. Denying the write is #556's job; noticing it is this
+  // file's.
+  const dir = stagedVerifier();
+  const root = stagedWorkspace(
+    `import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(join(dir, "fam5-probes.mjs"))}, "\\n// touched\\n");
 ${CORRECT}`
-    );
-    assert.equal(graded.details.verifier.refused, "verifier-code-modified");
-    assert.equal(graded.metrics.M15, 0, "a correct answer excused a rewritten verifier");
+  );
+  try {
+    const run = await runVerifier(join(dir, "fam5.mjs"), [root], { isolation: "BEST_EFFORT_CLI" });
+    assert.equal(run.verdict?.refused, "verifier-code-modified", "a correct answer excused a rewritten verifier");
+    assert.equal(run.verdict?.hidden, false);
   } finally {
-    writeFileSync(target, original);
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
@@ -310,7 +348,7 @@ snapshot.on("end", () => process.stdout.write(seen ? "recoverable" : "hidden"));
     "string",
     "the verdict presents probe outcomes without saying what they are worth"
   );
-  assert.match(graded.details.verifier.observation_trust, /#556/);
+  assert.match(graded.details.verifier.observation_trust, /in-process observation forgery reachable/);
 });
 
 test("a module that introspects its own process can still forge its probe outcome", async () => {
@@ -364,8 +402,11 @@ export function ratio(a, b) {
     1,
     "in-process observation forgery no longer succeeds; #556 landed, update this expectation"
   );
-  // And the verdict says what that pass is worth, which is the only thing this file can do about it.
-  assert.match(graded.details.verifier.observation_trust, /#556/);
+  // And the verdict says what that pass is worth, naming the lane it was observed under. Under a
+  // lane without the isolation boundary this outcome is diagnostic by the release contract, not by
+  // this file's opinion, and the field is what carries that to a reader.
+  assert.match(graded.details.verifier.observation_trust, /^BEST_EFFORT_CLI; in-process observation forgery reachable/);
+  assert.match(graded.details.verifier.observation_trust, /diagnostic rather than official/);
 });
 
 test("a subject reports through references the assessed module cannot replace", async () => {
@@ -432,6 +473,39 @@ const reap = (pids) => {
 };
 
 const settle = (ms) => new Promise((done) => setTimeout(done, ms));
+
+test("the verdict records the isolation lane it was observed under", async () => {
+  // The bound this architecture leaves open is closed by isolation, not by process separation, so
+  // what a probe outcome is worth depends on the lane. The field has to distinguish them or it
+  // records that trust is limited without recording what limited it.
+  //
+  // This process cannot enforce a lane or check one. It records what the run declared -- which is
+  // why an absent or unrecognised declaration has to read as the weakest lane. A verifier that
+  // resolved silence to STRICT would be manufacturing the strongest claim out of no information.
+  const root = mkdtempSync(join(tmpdir(), "aos-lane-"));
+  try {
+    prepareScenario("FAM-5", root);
+    writeFileSync(join(root, "calculator.mjs"), CORRECT, "utf8");
+    const trustFor = async (isolation) => {
+      const run = await runVerifier(FAM5_CONTROLLER, [root], { isolation });
+      assert.equal(run.verdict?.hidden, true, `${isolation}: the honest module stopped verifying`);
+      return run.verdict.observation_trust;
+    };
+
+    assert.match(await trustFor("STRICT"), /^STRICT; in-process observation forgery is the isolation boundary/);
+    assert.match(await trustFor("BEST_EFFORT_CLI"), /^BEST_EFFORT_CLI; in-process observation forgery reachable/);
+    assert.match(await trustFor("NONE"), /^NONE; in-process observation forgery reachable/);
+    for (const undeclared of [null, "", "STRICTISH", "strict"]) {
+      assert.match(
+        await trustFor(undeclared),
+        /^UNDECLARED; in-process observation forgery reachable/,
+        `${JSON.stringify(undeclared)} was resolved to a stronger lane than it declared`
+      );
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("a descendant that calls setsid is invisible to the process-group scan", async () => {
   // Not a property this repository wants -- a reproduction of one it has. `spawn({ detached: true })`
