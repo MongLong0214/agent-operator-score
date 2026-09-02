@@ -28,7 +28,7 @@
   },
   "parse_error": null,
   "captured": {
-    "duration_ms": 51,
+    "duration_ms": 102,
     "staging": {
       "dir": "@AGENT_TEMP_HOME@/.codex",
       "staged": [

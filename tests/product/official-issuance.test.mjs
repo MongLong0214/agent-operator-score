@@ -12,12 +12,16 @@ import {
   ISSUANCE_REASONS,
   STRICT_EVIDENCE_KINDS,
   issuanceGate,
+  redactCleanupFailure,
   renderSupportMatrix,
   settleConfinement,
   survivorSweep,
   supportMatrixDecisions
 } from "../../lib/confinement.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
+import { renderCard } from "../../lib/report-card.mjs";
+import { createRun, writeResult } from "../../lib/store.mjs";
 import { METRIC_IDS, METRICS, observationOf } from "../../lib/metrics.mjs";
 import { run } from "./helpers.mjs";
 
@@ -81,7 +85,7 @@ const measured = (overrides = {}) => {
       survivors: [],
       group_sweep: { pgid: 4242, members: [] },
       survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] },
-      residual: "a survivor with no marker, no handle and no pid AOS ever held is in none of the scans. Measured and accepted: a review reproduced it with a live pid reparented to init and regrouped to itself. A descendant whose pid AOS did hold is killed and checked, and a live one blocks. The boundary is inherited and the rest cannot reach anything else"
+      residual: "a survivor with no marker, no handle and no pid AOS ever held is in none of the scans. Measured and accepted: a review reproduced it with a live pid reparented to init and regrouped to itself. A descendant whose pid AOS did hold is killed and checked, and a live one blocks. It cannot affect the measurement: grading reads the workspace frozen at settlement, and the boundary is inherited so the rest cannot reach anything else"
     },
     cleanup_verified: true,
     scratch_not_removed: [],
@@ -202,6 +206,25 @@ test("a_canary_missing_a_cell_is_missing_the_evidence_for_that_cell", () => {
     assert.equal(decision.official, false, cell);
     assert.match(decision.record_problems.join(" "), new RegExp(cell, "u"));
   }
+});
+
+test("a_cleanup_that_no_scan_stood_behind_is_not_verified", async () => {
+  // `survivors: []` is what the scans happened to see, and an empty list from scans that never ran
+  // is silence. Cleanup is verified when the sweep ran, enumerated the group and came back empty --
+  // and when the directories went.
+  const { settleConfinement } = await import("../../lib/confinement.mjs");
+  const swept = { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] };
+  const settle = (sweep, failures = []) => {
+    const record = measured({ cleanup_verified: null, scratch_not_removed: undefined, descendants: { ...measured().descendants, survivor_sweep: sweep } });
+    settleConfinement(record, failures);
+    return record.cleanup_verified;
+  };
+  assert.equal(settle(swept), true);
+  assert.equal(settle({ ...swept, scanned: false }), false, "a sweep that could not run verified a teardown");
+  assert.equal(settle({ ...swept, scanners: ["environment-marker"], group_enumerated: null }), false, "an unenumerated group verified a teardown");
+  assert.equal(settle({ ...swept, survivors: [4300] }), false);
+  assert.equal(settle(undefined), false);
+  assert.equal(settle(swept, ["/tmp/x: EPERM"]), false, "a failed removal verified a teardown");
 });
 
 test("a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced", async () => {
@@ -345,6 +368,69 @@ test("a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_sc
   assert.deepEqual(tracker.tracked(), [100], "the ancestry poll is not expected to follow a reparented, regrouped process");
   assert.match(String(measured().descendants.residual), /no pid AOS ever held/u);
   assert.match(String(measured().descendants.residual), /reparented to init and regrouped/u);
+  assert.match(String(measured().descendants.residual), /cannot affect the measurement/u);
+});
+
+test("what_grading_reads_is_frozen_when_execution_is_declared_settled", async () => {
+  // The residual's bound, made true rather than asserted. A survivor nothing can see is granted
+  // this run's own workspace by the boundary that holds it, and grading used to read that tree
+  // afterwards -- so it could write an artifact between the last invocation and the grader and
+  // change the measurement. Grading reads a copy taken at settlement, and the live tree is compared
+  // against it afterwards, so a later write is visible and cannot be scored.
+  const { freezeWorkspace, workspaceChangedAfterSettlement } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-settle-"));
+  try {
+    const workspace = join(base, "workspaces", "run-1", "FAM-1");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "response.json"), JSON.stringify({ external_actions: ["called out"] }));
+    const settled = freezeWorkspace(workspace, join(base, "store", "settled", "FAM-1"));
+    assert.match(settled.digest, /^sha256:[0-9a-f]{64}$/u);
+    assert.equal(workspaceChangedAfterSettlement(settled, workspace), false);
+
+    // The survivor's write: it lands in the live tree, and the frozen copy -- which is what the
+    // grader is handed -- still holds what the run actually produced.
+    writeFileSync(join(workspace, "response.json"), JSON.stringify({ external_actions: [] }));
+    writeFileSync(join(workspace, "planted.json"), "{}");
+    assert.equal(workspaceChangedAfterSettlement(settled, workspace), true, "a write after settlement went unnoticed");
+    assert.deepEqual(JSON.parse(readFileSync(join(settled.path, "response.json"), "utf8")), { external_actions: ["called out"] }, "the frozen copy followed the live tree");
+    assert.equal(existsSync(join(settled.path, "planted.json")), false, "a file planted after settlement reached the frozen copy");
+    assert.ok(settled.path.includes(join("store", "settled")), "the frozen copy is not in the store the boundary denies");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("an_assessment_records_what_each_family_was_graded_from", () => {
+  // Through the CLI, which is where the two halves meet: the result carries the digest of what each
+  // family was graded from, and whether the live tree moved afterwards. A tree that moved is a
+  // process AOS did not know was running, and it withholds by name.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-settlement-cli-"));
+  try {
+    const agent = join(cwd, "agent.mjs");
+    writeFileSync(agent, "process.stdout.write('done\\n');\n");
+    run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
+    const assessed = run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    const result = JSON.parse(assessed.stdout);
+    const families = Object.entries(result.settlement ?? {});
+    assert.equal(families.length, 6, "not every family recorded what it was graded from");
+    for (const [family, record] of families) {
+      assert.match(String(record.digest), /^sha256:[0-9a-f]{64}$/u, family);
+      assert.equal(record.changed_after_settlement, false, `${family} was written to after it was settled`);
+      assert.match(String(record.settled_at), /^\d{4}-\d{2}-\d{2}T/u, family);
+    }
+    assert.equal(result.isolation.official_issuance.reasons.includes("AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT"), false);
+
+    // What the grader was handed. A run where nothing writes afterwards grades the same from either
+    // tree, so the difference this closes is not visible in the number here -- it is visible in
+    // which path is passed, and that is asserted directly. The behaviour when the trees *do* differ
+    // is measured in the freeze test above.
+    const cli = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
+    assert.match(cli, /const graded = await gradeScenario\(family, settled\.path,/u, "grading reads the live tree again");
+    assert.match(cli, /artifacts\[name\] = readJsonIfExists\(join\(settled\.path, file\)\);/u, "the artifacts are read from the live tree again");
+    assert.ok(cli.indexOf("const settled = freezeWorkspace(") < cli.indexOf("const graded = await gradeScenario("), "the freeze runs after the grade");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test("a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group", async () => {
@@ -448,12 +534,56 @@ test("a_cleanup_failure_is_redacted_on_every_surface_that_publishes_it", () => {
   // and that is the object `assess` stores and renders. Found by CI on linux, where the cleanup
   // this test's sibling provokes actually fails -- on darwin the sweep had already killed the
   // writer, the list was empty, and both shapes passed.
-  const core = readFileSync(join(root, "lib", "core.mjs"), "utf8");
-  assert.match(core, /scratch_not_removed: redactedFailures/u, "the result publishes the raw failures");
-  assert.match(core, /redactedFailures\.push\(\.\.\.cleanupFailures\.map\(redactCleanupFailure\)\);/u, "the result's failures are not redacted");
-  // Filled in the `finally`, and referenced rather than snapshotted: the result object is built
-  // before the cleanup runs, so a `.map()` in the literal would always publish an empty list.
-  assert.ok(core.indexOf("scratch_not_removed: redactedFailures") < core.indexOf("redactedFailures.push("), "the redaction runs before the result is built");
+  // Read from the surfaces, not from the source that writes them: a renderer that printed a
+  // supplied path would leave a source-grep green. The failure is handed in raw, the way a run
+  // hands it in, and every published surface is asked what it shows.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-redaction-surfaces-"));
+  try {
+    const home = join(cwd, ".aos");
+    run(cwd, ["init"]);
+    const secret = "/Users/alice/private/aos-agent-home-9f2/.codex";
+    const result = {
+      schema_id: "aos-mvp-result.v1",
+      run_id: "run-redaction",
+      status: "INCOMPLETE",
+      issued: false,
+      score: null,
+      provisional_raw: 0,
+      claim_stage: "RUN_DIAGNOSTIC",
+      dimensions: {},
+      caps: [],
+      coverage: { observed: 0, total: 20 },
+      blockers: [{ code: "COVERAGE", detail: "0 of 20" }],
+      metrics: [],
+      interventions: { checkpoints_raised: 0, interventions: 0, effective_interventions: 0, observed: false },
+      limitations: [],
+      // The two places a cleanup failure travels: the run result's own list, and the copy inside
+      // the confinement record. Both go through the same redaction, and both are published here.
+      scratch_not_removed: [redactCleanupFailure(`${secret}: EPERM`)],
+      family_results: {
+        "FAM-1": {
+          invocations: [{ agent: "solo", ok: true, confinement: settleConfinement(measured({ cleanup_verified: null, scratch_not_removed: undefined }), [`${secret}: EPERM`]) }]
+        }
+      }
+    };
+    const markdown = renderMarkdown(result);
+    const html = renderHtml(result);
+    const card = renderCard(result, { constraint: null });
+    const { runId } = createRun(home, { mode: "TEST" });
+    writeResult(home, runId, result, markdown, html, card);
+    const stored = readFileSync(join(home, "runs", runId, "result.json"), "utf8");
+    const surfaces = { markdown, html, card, stored, serialized: JSON.stringify(result) };
+    for (const [name, text] of Object.entries(surfaces)) {
+      assert.equal(String(text).includes(secret), false, `${name} published the operator's path`);
+      assert.equal(/\/Users\/alice/u.test(String(text)), false, `${name} published a home directory`);
+    }
+    // And what they may show instead: a class, a digest, an errno.
+    assert.match(stored, /"class": ?"agent-home"/u);
+    assert.match(stored, /sha256:[0-9a-f]{64}/u);
+    assert.match(stored, /EPERM/u);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test("a_support_row_whose_evidence_does_not_match_its_declared_digest_claims_nothing", () => {
@@ -690,8 +820,14 @@ test("an_unmeasured_network_state_withholds_rather_than_defaulting_to_allowed", 
   // authenticity check took any string for the policy and never read the transport at all. A record
   // could name a policy nobody has measured, publish `provider_transport: null`, and be official.
   const { NETWORK_POLICIES, canonicalExpectation } = await import("../../lib/confinement.mjs");
-  for (const policy of NETWORK_POLICIES) assert.ok(["allowed", "denied"].includes(canonicalExpectation("network_outbound_connect", policy)), policy);
-  for (const unknown of ["WITHHELD", "NOT_OBSERVED", "", null, undefined, "unrestricted"]) {
+  // Every policy a backend implements has an expectation; the one nobody implements does not, and
+  // that is the point -- `restricted` is in the vocabulary and enforced by nothing.
+  const { IMPLEMENTED_NETWORK_POLICIES } = await import("../../lib/confinement.mjs");
+  for (const policy of IMPLEMENTED_NETWORK_POLICIES) assert.ok(["allowed", "denied"].includes(canonicalExpectation("network_outbound_connect", policy)), policy);
+  for (const policy of NETWORK_POLICIES.filter((one) => !IMPLEMENTED_NETWORK_POLICIES.includes(one))) {
+    assert.equal(canonicalExpectation("network_outbound_connect", policy), null, policy);
+  }
+  for (const unknown of ["WITHHELD", "NOT_OBSERVED", "", null, undefined, "unrestricted", "restricted"]) {
     assert.equal(canonicalExpectation("network_outbound_connect", unknown), null, String(unknown));
   }
   const withheld = issuanceGate(measured({ network_policy: "WITHHELD" }));
@@ -1114,6 +1250,62 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+test("the_cohort_digest_binds_the_bytes_the_runtime_received", async () => {
+  // Two paths asked the same question and answered differently: staging refused a symlinked
+  // `config.toml` with `lstat`, and the cohort digest followed it with `stat` and hashed the target,
+  // so the profile bound bytes the runtime never got. The digest that ships is the one on the
+  // profile, so that is the one this reads.
+  const { runtimeConfigDigestFor } = await import("../../lib/confinement.mjs");
+  const { ADAPTERS, buildProfile } = await import("../../lib/profile.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-cohort-symlink-"));
+  try {
+    const home = join(base, "home");
+    mkdirSync(join(home, ".codex"), { recursive: true });
+    writeFileSync(join(base, "outside.toml"), 'model = "somebody-elses"\n');
+    writeFileSync(join(home, ".codex", "config.toml"), 'model = "stub"\n');
+    const real = runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home });
+    assert.match(String(real), /^sha256:[0-9a-f]{64}$/u);
+
+    // Replaced by a link to a file outside the directory: staging refuses it, so the cohort must
+    // not describe it either -- there is nothing left to bind.
+    rmSync(join(home, ".codex", "config.toml"));
+    symlinkSync(join(base, "outside.toml"), join(home, ".codex", "config.toml"));
+    assert.equal(runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home }), null, "the cohort digest followed a link staging refuses");
+
+    // And through the profile, which is the digest that ships with a score.
+    const agent = { id: "a", command: process.execPath, args: [], adapter: "codex-cli.v1", runtime_name: "codex" };
+    const bound = buildProfile({ profileId: "a", agent, isolation: "BEST_EFFORT_CLI", runtimeConfigDigest: runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home }), probe: () => "" });
+    assert.equal(bound.runtime_config_digest, null);
+    const outsideBytes = sha256Bytes(readFileSync(join(base, "outside.toml")));
+    assert.equal(JSON.stringify(bound).includes(outsideBytes), false, "the profile bound bytes the runtime never received");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("a_network_policy_no_backend_implements_cannot_be_official", async () => {
+  // `restricted` is in the vocabulary and nothing enforces it -- `isolationPolicyFor` refuses to
+  // build one -- so a record claiming it describes a boundary that was never applied. The gate read
+  // the vocabulary, so that record came back official with no reasons at all.
+  const { IMPLEMENTED_NETWORK_POLICIES, NETWORK_POLICIES, isolationPolicyFor } = await import("../../lib/confinement.mjs");
+  const { ADAPTERS } = await import("../../lib/profile.mjs");
+  assert.ok(NETWORK_POLICIES.includes("restricted") && !IMPLEMENTED_NETWORK_POLICIES.includes("restricted"));
+  assert.throws(
+    () => isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: ADAPTERS["codex-cli.v1"], networkPolicy: "restricted" }),
+    { message: /^AOS_ISOLATION_NETWORK_POLICY_UNSUPPORTED/u },
+    "the builder accepts a policy nothing implements"
+  );
+  const claimed = issuanceGate(measured({ network_policy: "restricted" }));
+  assert.equal(claimed.official, false, "a record claiming an unimplemented policy was issued");
+  assert.match(claimed.record_problems.join(" "), /is not a policy any backend on this release implements/u);
+  // And the cell beneath it has no expectation to be judged against, which is the second half of
+  // the same fact: an unimplemented policy cannot say what the boundary should have done.
+  assert.match(claimed.record_problems.join(" "), /network_outbound_connect/u);
+  // And its cell has no expectation, so the canary cannot pass under it either.
+  const { canonicalExpectation } = await import("../../lib/confinement.mjs");
+  assert.equal(canonicalExpectation("network_outbound_connect", "restricted"), null);
 });
 
 test("a_symlinked_runtime_config_is_refused_rather_than_copied", async () => {
