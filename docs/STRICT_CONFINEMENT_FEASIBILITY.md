@@ -54,7 +54,13 @@ The machine-readable form is `fixtures/confinement/probe.json`, digest
   cleanup observation, independent of this issue. #553 has already acted on it: unable to close the
   escape, it made `cleanup_established` false by construction, with
   `DESCENDANT_SCAN_ESTABLISHES_CLEANUP` as the constant Phase B flips once an enumeration exists
-  that does not depend on the process group.
+  that does not depend on the process group. **Historical, as of Phase B:** the enumeration that
+  constant was waiting for exists -- the ancestry poll, the process-group sweep and the survivor
+  sweep over environment markers and open paths, all three described above -- and #556's own gate no
+  longer consults `cleanup_established`. It reads `cleanup_verified`, which this issue computes from
+  those scans and refuses when no scan could answer. The constant is still `false` in
+  `lib/verifier-run.mjs` because flipping it is #553's call about #553's surface, not this issue's;
+  nothing in the isolation gate depends on it.
 - **A leak under Seatbelt is a process that outlives the run without gaining reach.** The orphan,
   reparented to pid 1, wrote `ORPHAN_STILL_CONFINED`; the unconfined control wrote
   `ORPHAN_READ_OK`. It still blocks `cleanup_verified`, and it should.

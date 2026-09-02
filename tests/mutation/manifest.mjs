@@ -2279,6 +2279,15 @@ export const GUARDS = [
     name: "denies_aos_home_from_generated_profile"
   },
   {
+    guard: "a runtime tree inside the store is refused",
+    reason: "a tree under AOS_HOME is granted read by a rule that follows the store deny, and the verified path travels into the child's argv -- the AOS_HOME-in-argv the issue forbids; only the inverse direction was checked, so `<store>/runtime/node_modules` was accepted and rendered",
+    file: "lib/confinement.mjs",
+    from: "    if (value === \"/\" || within(value, bound[\"@AOS_HOME@\"]) || within(bound[\"@AOS_HOME@\"], value)) {",
+    to: "    if (value === \"/\" || within(value, bound[\"@AOS_HOME@\"])) {",
+    test: "tests/product/confinement.test.mjs",
+    name: "denies_aos_home_from_generated_profile"
+  },
+  {
     guard: "a workspace that contains the store is refused",
     reason: "the workspace allow follows the AOS_HOME deny, so a workspace above the store would grant the store; refusing that layout before rendering is what keeps the ordering argument true",
     file: "lib/confinement.mjs",
@@ -2881,7 +2890,7 @@ export const GUARDS = [
     from: "  const inconsistent = boundary?.official === true && ceiling !== undefined && ceiling !== \"PROFILE_BOUND\";",
     to: "  const inconsistent = false;",
     test: "tests/product/official-issuance.test.mjs",
-    name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
   },
   {
     guard: "an absent boundary is not a passing one",
@@ -2890,14 +2899,23 @@ export const GUARDS = [
     from: "  const boundaryWithheld = boundary === null\n    ? [UNUSABLE_BOUNDARY_REASONS.NOT_MEASURED]",
     to: "  const boundaryWithheld = boundary === null\n    ? []",
     test: "tests/product/official-issuance.test.mjs",
-    name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
   },
   {
-    guard: "a verifier recomputes under the boundary the result names",
-    reason: "the boundary is an input to the evaluation, so a recomputation without it rebuilt every withheld result as an issued one -- the untampered artifact failed its own verification and the check meant to catch a forged number produced the number a forger would want",
+    guard: "a recomputation runs under the run's own boundary",
+    reason: "the boundary is an input to the evaluation, so a recomputation without it rebuilds every withheld result as an issued one -- the untampered artifact fails its own verification and the check meant to catch a forged number produces the number a forger wants",
     file: "lib/cli.mjs",
     from: "profile_digest: result.profile_digest, forms_completed: forms, boundary }, contract);",
     to: "profile_digest: result.profile_digest, forms_completed: forms }, contract);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "a verifier reads the boundary off the record, not off the result",
+    reason: "asking the artifact whether its own boundary held is asking the suspect for an alibi: a withheld result edited to a consistent set of official surfaces recomputed to exactly the forged version and verified",
+    file: "lib/cli.mjs",
+    from: "  const verdict = record?.isolation?.official_issuance;",
+    to: "  const verdict = record?.isolation?.official_issuance ?? { official: true, reasons: [] };",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_withheld_result_verifies_as_the_result_it_is"
   },
@@ -2929,13 +2947,31 @@ export const GUARDS = [
     name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
   },
   {
+    guard: "the published result carries the boundary it ran under",
+    reason: "the result named an isolation level and nothing else, so the network axis's NOT_OBSERVED -- the limitation this issue requires be shown -- reached no reader on any page",
+    file: "lib/ecd-contract.mjs",
+    from: "  const boundaryState = boundaryFactsOf(boundary);",
+    to: "  const boundaryState = boundaryFactsOf(null);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_would_be"
+  },
+  {
+    guard: "the boundary withholds every index, not only the composite",
+    reason: "both index labels begin with PROFILE-BOUND, so both are claims about an enforced environment; withholding only the composite left a run with no measured boundary publishing two issued hundreds one line up the page",
+    file: "lib/result-schema.mjs",
+    from: "  const boundaryHeld = boundaryWithheld.length === 0;",
+    to: "  const boundaryHeld = true;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
+  },
+  {
     guard: "the boundary withholds the number, not only the claim stage",
     reason: "with the boundary term gone the composite issues its number on a lane the confinement gate refused, and a surface labelled PROFILE-BOUND publishes a figure for a profile nothing enforced -- one claim stage lower, and read as a number anyway",
     file: "lib/result-schema.mjs",
     from: "  const compositeIssued = compositeThroughOutcome.issued && boundaryWithheld.length === 0;",
     to: "  const compositeIssued = compositeThroughOutcome.issued;",
     test: "tests/product/official-issuance.test.mjs",
-    name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
   },
   {
     guard: "the claim stage reads the boundary",
@@ -2944,7 +2980,7 @@ export const GUARDS = [
     from: "&& boundaryWithheld.length === 0 ? \"PROFILE_BOUND\" : \"RUN_DIAGNOSTIC\";",
     to: "? \"PROFILE_BOUND\" : \"RUN_DIAGNOSTIC\";",
     test: "tests/product/official-issuance.test.mjs",
-    name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
   },
   {
     guard: "profile index withholds on a missing row",
@@ -3655,6 +3691,7 @@ export const ACCOUNTED_GUARDS = [
   "a phase's predecessors must be in the plan",
   "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a recomputation runs under the run's own boundary",
   "a record is authenticated before it is judged",
   "a refused file fails the check",
   "a required metric with an unanswered subcheck is not present",
@@ -3665,6 +3702,7 @@ export const ACCOUNTED_GUARDS = [
   "a row is read as a whole",
   "a run is official only when every invocation is",
   "a run workspace is never inside the store",
+  "a runtime tree inside the store is refused",
   "a sanitised value is one this module boxed",
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
@@ -3677,7 +3715,7 @@ export const ACCOUNTED_GUARDS = [
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a verdict that contradicts itself is not a verdict",
-  "a verifier recomputes under the boundary the result names",
+  "a verifier reads the boundary off the record, not off the result",
   "a violation decides before the floor does",
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
@@ -3877,6 +3915,7 @@ export const ACCOUNTED_GUARDS = [
   "the assessment is scored under the gate it reports",
   "the assessment profile is built for the lane the run uses",
   "the assessment writes the profile result",
+  "the boundary withholds every index, not only the composite",
   "the boundary withholds the number, not only the claim stage",
   "the boundary's verdict decides whether the run carries a number",
   "the canary expectation is this module's, not the record's",
@@ -3919,6 +3958,7 @@ export const ACCOUNTED_GUARDS = [
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile is rendered from the policy that is digested",
+  "the published result carries the boundary it ran under",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",
   "the renderer refuses a workspace inside the store",

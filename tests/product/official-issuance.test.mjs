@@ -24,8 +24,9 @@ import { renderCard } from "../../lib/report-card.mjs";
 import { createRun, writeResult } from "../../lib/store.mjs";
 import { METRIC_IDS, METRICS, observationOf } from "../../lib/metrics.mjs";
 import { newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
-import { UNUSABLE_BOUNDARY_REASONS, evaluate } from "../../lib/ecd-contract.mjs";
+import { UNUSABLE_BOUNDARY_REASONS, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
+import { canonicalJson } from "../../lib/core.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -1584,6 +1585,29 @@ test("an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_wo
     const record = newestRecord(cwd);
     assert.equal(record.isolation.official_issuance.official, false);
     assert.ok(record.isolation.official_issuance.reasons.some((one) => one.startsWith("AOS_ISOLATION_")), JSON.stringify(record.isolation.official_issuance));
+    // What the boundary was, on the artifact and on every page rendered from it. A published result
+    // that named an isolation level and nothing else told a reader the mechanism that was asked for
+    // and never which parts of it answered -- and the network's `NOT_OBSERVED`, which this issue
+    // requires be shown, reached nobody at all.
+    assert.equal(result.isolation.level, "BEST_EFFORT_CLI");
+    assert.equal(result.isolation.filesystem_enforced, false);
+    assert.equal(result.isolation.process_enforced, false);
+    assert.equal(result.isolation.network.task_external, "NOT_OBSERVED");
+    // The stub agent is a generic command with no declared provider, so its policy is `disabled`;
+    // what matters here is that the policy on the page is the one the run was under, whichever it is.
+    assert.match(String(result.isolation.network.policy), /^(?:disabled|provider-required-unrestricted)$/u);
+    assert.match(String(result.isolation.support_status), /^[A-Z_]+$/u);
+    assert.match(String(result.isolation.policy_digest), /^sha256:[0-9a-f]{64}$/u);
+    const assessedRun = newestRunId(cwd);
+    for (const [name, rendered] of Object.entries({
+      markdown: readFileSync(join(cwd, ".aos", "runs", assessedRun, "report.md"), "utf8"),
+      html: readFileSync(join(cwd, ".aos", "runs", assessedRun, "report.html"), "utf8")
+    })) {
+      assert.match(rendered, /NOT_OBSERVED/u, `${name} does not show the network limitation`);
+      assert.match(rendered, /BEST_EFFORT_CLI/u, `${name} does not show the isolation level`);
+      assert.match(rendered, /not enforced/u, `${name} does not say which axes held`);
+    }
+
     const printed = run(cwd, ["assess", "--timeout-ms", "30000"], 3);
     assert.match(printed.stdout, /not an official profile-bound result/u);
     assert.match(printed.stdout, /AOS_ISOLATION_/u);
@@ -1593,7 +1617,7 @@ test("an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_wo
   }
 });
 
-test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold", () => {
+test("a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold", () => {
   // The end-to-end case above runs a stub agent, so both indices withhold on their own and the
   // gate's effect on the published number cannot be seen there. This is the case the gate exists
   // for: every construct and every domain issued, so the composite would carry a number, and the
@@ -1608,6 +1632,8 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
   const held = buildResult({ contract, evaluation: evaluate(observationsWith(), identified, contract) });
   assert.equal(held.aos_composite.issued, true);
   assert.equal(typeof held.aos_composite.value, "number");
+  assert.equal(held.operator_process_profile.issued, true);
+  assert.equal(held.system_outcome_profile.issued, true);
   assert.equal(held.claim_stage, "PROFILE_BOUND");
 
   // Refused, and not-measured. The three absent shapes are the ones that matter: a caller who says
@@ -1635,10 +1661,23 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
     // number, and an unmeasured boundary is named as unmeasured rather than left blank.
     assert.ok(withheld.boundary_withheld.length > 0, label);
     for (const code of withheld.boundary_withheld) assert.match(code, /^AOS_ISOLATION_[A-Z_]+$/u, label);
-    // The two indices are what this run measured and they are not withheld by the boundary: what
-    // happened in the run happened. It is the claim about the profile that is not supported.
-    assert.equal(withheld.operator_process_profile.issued, true, label);
-    assert.equal(withheld.system_outcome_profile.issued, true, label);
+    // And the two indices with it. Both labels begin with PROFILE-BOUND, so both are claims about
+    // an environment, and an index published under an unenforced profile is the same overclaim the
+    // composite would have made. What was measured is not lost: every construct and every domain row
+    // still carries the estimate it was issued, and the outcome surface keeps its raw index too.
+    for (const surface of ["operator_process_profile", "system_outcome_profile"]) {
+      assert.equal(withheld[surface].issued, false, `${label}: ${surface}`);
+      assert.equal(withheld[surface].index, null, `${label}: ${surface}`);
+      assert.match(withheld[surface].withheld_reason, /AOS_ISOLATION_/u, `${label}: ${surface}`);
+    }
+    assert.equal(withheld.system_outcome_profile.raw_index, 100, `${label}: the outcome lost the arithmetic it measured`);
+    assert.equal(withheld.aos_composite.raw_value, 100, `${label}: the composite lost the arithmetic it measured`);
+    for (const row of Object.values(withheld.operator_process_profile.constructs)) {
+      assert.equal(row.status, "ISSUED", `${label}: a construct row was withheld by the boundary`);
+    }
+    for (const row of Object.values(withheld.system_outcome_profile.domains)) {
+      assert.equal(row.status, "ISSUED", `${label}: a domain row was withheld by the boundary`);
+    }
   }
   assert.deepEqual(
     buildResult({ contract, evaluation: evaluate(observationsWith(), { ...unbounded }, contract) }).boundary_withheld,
@@ -1665,6 +1704,7 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
   });
   assert.deepEqual(agreeing.boundary_withheld, []);
   assert.equal(agreeing.aos_composite.issued, true);
+  assert.equal(agreeing.operator_process_profile.issued, true);
   // The card is the surface with no room, and it clips: the condition has to survive the clip, so
   // the codes lead the sentence rather than trailing behind prose.
   assert.match(renderCard(contradictory), new RegExp(UNUSABLE_BOUNDARY_REASONS.VERDICT_INCONSISTENT, "u"));
@@ -1689,6 +1729,40 @@ test("a_withheld_result_verifies_as_the_result_it_is", () => {
     const runId = newestRunId(cwd);
     const verified = run(cwd, ["verify", "--run", runId]);
     assert.match(verified.stdout, /PASS\trecompute/u, verified.stdout);
+    assert.match(verified.stdout, /PASS\tconfinement-record/u, verified.stdout);
+
+    // And the forgery the recomputation exists to catch. The same observation bytes, rebuilt under
+    // a boundary that says it held: an internally consistent official artifact -- empty
+    // `boundary_withheld`, two issued indices, a composite. Every surface agrees with every other,
+    // so nothing inside the result contradicts it. What contradicts it is the run's own confinement
+    // record, which is where verify reads the verdict from. Taking the result's word here made this
+    // exact edit verify.
+    const contract = shippedEcdContract();
+    const { contract_digest: _contract, profile_digest: _profile, ...facets } = stored.facet_identity;
+    const forged = buildResult({
+      evaluation: evaluate(stored.observations, {
+        facets,
+        profile_digest: stored.profile_digest,
+        forms_completed: stored.run.forms_completed,
+        boundary: { official: true, reasons: [] }
+      }, contract),
+      contract,
+      observations: stored.observations,
+      run: stored.run,
+      caps: stored.system_outcome_profile.caps,
+      uncertainty: stored.uncertainty,
+      generalizability_status: stored.generalizability_status
+    });
+    assert.deepEqual(forged.boundary_withheld, [], "the forgery is not the artifact this test means to build");
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(forged)}\n`);
+    const caught = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(caught.stdout, /FAIL\trecompute/u, caught.stdout);
+
+    // And with no record at all there is nothing behind the claim: the run says so rather than
+    // falling back on what the result says about itself.
+    rmSync(join(cwd, ".aos", "runs", runId, "record.json"), { force: true });
+    const unwitnessed = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(unwitnessed.stdout, /FAIL\tconfinement-record/u, unwitnessed.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

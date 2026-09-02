@@ -373,10 +373,6 @@
       "platform": "darwin",
       "fingerprint": "sha256:e6958a098d5af1e0202fe5511b14720646351f98644549f2e4a978a37d399ec8"
     },
-    "a verifier recomputes under the boundary the result names": {
-      "platform": "darwin",
-      "fingerprint": "sha256:3f65a7d15c0e9ec921e4532341257439d58808191dbce208f9979e285329c6a1"
-    },
     "a violation decides before the floor does": {
       "platform": "darwin",
       "fingerprint": "sha256:6480ee84e9de501c96df96955b57f91d1bfa19d7a45d5b802ac914fd20ef6a9e"

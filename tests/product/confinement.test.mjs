@@ -338,6 +338,34 @@ test("denies_aos_home_from_generated_profile", () => {
     () => renderSeatbeltProfile(policy, { ...BINDINGS, "@AGENT_HOME@": "/private/var/aos/runs/run-1/home" }),
     /AOS_ISOLATION_SCRATCH_INSIDE_AOS_HOME/u
   );
+  // Both directions, for the trees the run brings with it as well as for the workspace. A runtime
+  // or node tree *inside* AOS_HOME is granted read by a rule that follows the store deny, so it
+  // re-opens part of the store -- and the verified path goes into the child's argv, which is the
+  // AOS_HOME-in-argv the issue forbids. The check that existed refused only the inverse (a tree
+  // that contains the store), so `/private/var/aos/runtime/node_modules` was accepted and rendered.
+  for (const name of ["@NODE_TREE@", "@RUNTIME_CLI_TREE@"]) {
+    assert.throws(
+      () => renderSeatbeltProfile(policy, { ...BINDINGS, [name]: `${BINDINGS["@AOS_HOME@"]}/runtime/node_modules` }),
+      /AOS_ISOLATION_UNSAFE_TREE/u,
+      `${name} inside AOS_HOME was accepted`
+    );
+    assert.throws(
+      () => renderSeatbeltProfile(policy, { ...BINDINGS, [name]: BINDINGS["@AOS_HOME@"] }),
+      /AOS_ISOLATION_UNSAFE_TREE/u,
+      `${name} equal to AOS_HOME was accepted`
+    );
+    // And the same refusal on the other renderer, since a policy is one mapping and a binding
+    // refused for Seatbelt cannot be acceptable to bubblewrap.
+    assert.throws(
+      () => bubblewrapArgs(
+        isolationPolicyFor({ level: "STRICT", platform: "linux", backend: "linux-bubblewrap", adapter: codex }),
+        { ...BINDINGS, [name]: `${BINDINGS["@AOS_HOME@"]}/runtime/node_modules` },
+        ["/bin/true"]
+      ),
+      /AOS_ISOLATION_UNSAFE_TREE/u,
+      `${name} inside AOS_HOME was accepted by bubblewrap`
+    );
+  }
   // No placeholder survives rendering and no path can break out of its string literal.
   assert.doesNotMatch(profile, /@[A-Z_]+@/u);
   assert.throws(() => renderSeatbeltProfile(policy, { ...BINDINGS, "@WORKSPACE@": '/private/var/aos/runs/x/workspaces/a"))(allow default)(deny (literal "' }), /AOS_ISOLATION_UNSAFE_PATH/u);
