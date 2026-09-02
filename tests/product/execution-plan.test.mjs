@@ -128,17 +128,34 @@ test("a release-critical issue without a close-evidence contract fails", () => {
 
 // --- phase-ready is not READY --------------------------------------------------------------
 
+// #556 was the shipped example of a blocked issue with one ready phase until its predecessors
+// (#554, #555, #588) were all done, at which point the plan had to say it was ready. The rules these
+// tests exercise are about the blocked state, so they put #556 back into it rather than depend on
+// which day the plan is read.
+const withFeasibilityBlocked = (doc) => {
+  const feasibility = entry(doc, 556);
+  feasibility.status = "blocked";
+  feasibility.phases.find((one) => one.id === "final-integration").status = "blocked";
+  return doc;
+};
+
 test("phase-ready is separate from issue ready", () => {
   const doc = plan();
   const feasibility = entry(doc, 556);
-  assert.equal(feasibility.status, "blocked");
-  const phase = feasibility.phases.find((one) => one.id === "feasibility-proof");
-  assert.equal(phase.status, "ready");
-  assert.equal(phase.code_integration_allowed, false);
+  const proof = feasibility.phases.find((one) => one.id === "feasibility-proof");
+  const integration = feasibility.phases.find((one) => one.id === "final-integration");
+  // The proof phase is open in either state and never integrates code; the integrating phase
+  // opens only with the issue itself.
+  assert.equal(proof.status, "ready");
+  assert.equal(proof.code_integration_allowed, false);
+  const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
+  const unblocked = feasibility.blocked_by.every((number) => done.has(number));
+  assert.equal(feasibility.status, unblocked ? "ready" : "blocked");
+  assert.equal(integration.status, unblocked ? "ready" : "blocked");
 });
 
 test("a phase-ready phase that claims final integration exceeds its scope and fails", () => {
-  const doc = plan();
+  const doc = withFeasibilityBlocked(plan());
   entry(doc, 556).phases.find((one) => one.id === "feasibility-proof").code_integration_allowed = true;
   assert.ok(failures(checkPlan(doc)).includes("phase-scope-exceeded"));
 });
@@ -1135,7 +1152,7 @@ test("a phase that has begun on a blocked issue cannot integrate code either", (
   // The scope rule only looked at `ready` phases, so moving one to `in-progress` or `done` while
   // the issue stayed blocked carried the permission the block exists to withhold.
   for (const status of ["ready", "in-progress", "done"]) {
-    const one = plan();
+    const one = withFeasibilityBlocked(plan());
     const phase = entry(one, 556).phases.find((each) => each.id === "final-integration");
     phase.status = status;
     assert.ok(
