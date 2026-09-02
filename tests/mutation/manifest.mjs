@@ -1438,9 +1438,12 @@ export const GUARDS = [
   },
   {
     guard: "raw filename bytes",
-    // Linux only, and named as such. APFS refuses a filename that is not valid UTF-8, so the case
-    // cannot be constructed on macOS and the test returns early there; the mutation job runs on
-    // ubuntu, which is where this one is decided.
+    // Linux only, and now declared as such. APFS refuses a filename that is not valid UTF-8, so the
+    // case cannot be constructed on macOS and the witness returns early there -- which left this
+    // mutation surviving on darwin for a week while every report called it an acceptable
+    // pre-existing failure. A comment saying "linux only" is not a platform tag: the runner reads
+    // the field, and the ledger records the lane that measured it.
+    platform: "linux",
     reason: "readdir decoded as UTF-8 gives two files whose names differ by one byte a single unreadable-entry row",
     file: "lib/digest.mjs",
     from: '      return readdirSync(directory, { encoding: "buffer" }).sort(Buffer.compare);',

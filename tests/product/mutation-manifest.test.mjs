@@ -83,14 +83,20 @@ test("no guard's witness can skip in the environment that measures it", () => {
     const next = source.indexOf("\ntest(", at + 10);
     const body = source.slice(at, next === -1 ? source.length : next);
     assert.equal(/\bt\.skip\(/.test(body), false, `${guard.guard}: its witness decides to skip from inside its body, so the guard cannot fire`);
+    // An early `return` is `t.skip` in a different spelling, and it is the one that hid a broken
+    // guard for a week: the `raw filename bytes` witness catches EILSEQ on APFS and returns before
+    // any assertion, so the mutation survived on darwin while the manifest said "linux only" in a
+    // comment and the runner had no field to read. A witness that can decide not to assert has to
+    // be confined to the platform where it does, or say why it always does.
+    const earlyReturn = /^\s*(?:\}\s*)?return(?:\s+null)?;\s*$/mu.test(body) || /\breturn;\s*\n/u.test(body);
     const declaration = body.split("\n").slice(0, 3).join("\n");
-    if (/\{\s*skip:/.test(declaration)) {
+    if (/\{\s*skip:/.test(declaration) || earlyReturn) {
       // Either the guard is confined to the platform where the option is false, or it says in one
       // line why the option is never true where this suite runs. What is refused is a guard whose
       // witness may quietly skip and nobody has said so.
       assert.ok(
         typeof guard.platform === "string" || typeof guard.witness_skip === "string",
-        `${guard.guard}: its witness may skip and the guard neither names the platform that runs it nor says why the skip never fires`
+        `${guard.guard}: its witness may decline to assert -- a skip option or an early return -- and the guard neither names the platform that runs it nor says why that never happens here`
       );
     }
   }

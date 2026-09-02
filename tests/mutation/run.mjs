@@ -44,7 +44,12 @@ if (added.status !== 0) {
 const results = [];
 const deferred = [];
 try {
+  // One guard at a time when asked, so a lane that exists only to measure a platform-specific
+  // guard -- a Linux container run from a macOS machine, say -- can measure exactly that one and
+  // leave the rest of the ledger alone.
+  const only = process.env.AOS_MUTATION_ONLY ?? null;
   for (const entry of GUARDS) {
+    if (only !== null && entry.guard !== only) continue;
     // A guard for behaviour only one platform has. The ACL walk is macOS-only, and running its
     // mutant on Ubuntu would report SURVIVED for a guard that is load-bearing everywhere it
     // applies -- so the honest answer is that this lane did not ask, and a lane that runs there
@@ -132,7 +137,7 @@ for (const entry of results.filter((one) => one.outcome === "killed")) {
   ledger.measured[entry.guard] = { platform: process.platform, fingerprint: fingerprint(entry) };
 }
 const unmeasured = [];
-for (const entry of deferred) {
+for (const entry of only === null ? deferred : []) {
   const record = ledger.measured[entry.guard] ?? null;
   if (record === null) unmeasured.push(`${entry.guard}: never measured on ${entry.platform}`);
   else if (record.fingerprint !== fingerprint(entry)) unmeasured.push(`${entry.guard}: the ${record.platform} measurement describes different code`);
