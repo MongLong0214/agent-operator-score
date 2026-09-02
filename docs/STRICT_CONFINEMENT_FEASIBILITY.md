@@ -1,9 +1,11 @@
 # STRICT workspace confinement: what this machine can actually enforce
 
-This is Phase 0 feasibility evidence for issue #556 and nothing else. No production code was
-changed, no isolation backend was implemented, and `lib/isolation.mjs` and the spawn path in
-`lib/core.mjs` were not touched. The issue's `feasibility-proof` phase declares
-`code_integration_allowed: false`, and #556 remains blocked on #554, #555 and #588.
+The sections up to "Phase B" are the Phase 0 feasibility evidence for issue #556, kept as they were
+measured: at that point no production code had been changed, no isolation backend had been
+implemented, and `lib/isolation.mjs` and the spawn path in `lib/core.mjs` had not been touched.
+"Phase B" below is the integration that followed once #554, #555 and #588 landed: the backend in
+`lib/confinement.mjs`, the boundary canary, the issuance gate, and the one lane on which official
+issuance was proven with the real runtime.
 
 The question is narrow and answerable: on this machine, and on Linux, can AOS enforce a workspace
 boundary on a child agent process, and does a real agent CLI's authentication survive inside it?
@@ -195,6 +197,194 @@ Commands are written with placeholders rather than the probing machine's paths.
 | `@RUNTIME_FILES@` | fixtures/confinement/probes, mounted or allowed read-only |
 | `@AGENT_TEMP_HOME@` | the temporary HOME a BEST_EFFORT_CLI run creates |
 | `@HOSTNAME@` | the probing machine's network name, removed from recorded output |
+
+## Phase B: the boundary in the spawn path, and what may be called official
+
+Everything above this heading is Phase 0 evidence and is left as it was measured. This section is
+the integration that evidence was collected for: `lib/confinement.mjs` now sits between
+`buildAgentEnv` (#555) and the `spawn` in `lib/core.mjs`, and every result carries a confinement
+record that the issuance gate reads. The support matrix at the end of this section is rendered
+from `fixtures/confinement/support-matrix.json`, whose rows point at observations under
+`fixtures/confinement/observations/strict-lane.*` that were produced by running
+`fixtures/confinement/probes/strict-lane.mjs` on this machine. `tests/product/confinement.test.mjs`
+holds the fixture, the observations and this document together the way the Phase 0 test holds
+the probe record: the table printed here must be the one the fixture renders to, the fixture's
+digest must describe its own content, and every official row must name a canary observation that
+says `PASS` and a runtime observation that exited 0.
+
+### The adapter
+
+`prepareConfinement` is the one seam. It takes the level `buildAgentEnv` already decided, the
+adapter, the workspace, `AOS_HOME`, the agent's private HOME and the run's scratch directory, and
+returns a handle whose `spawnSpec` wraps the command, whose `track` starts the descendant scan,
+whose `record` writes the confinement record and whose `cleanup` tears the profile down. Under
+`BEST_EFFORT_CLI` and `NONE` the handle is a passthrough: the command is spawned as before, no
+boundary is claimed, and the record says `filesystem_enforced: false`, `process_enforced: false`,
+`boundary_canary.result: NOT_RUN`. Under `STRICT` on darwin the handle renders a Seatbelt profile
+from the isolation policy and spawns through `/usr/bin/sandbox-exec -f <profile>`; on linux it
+builds a `bwrap` argument vector, and where `bwrap` is not on the machine `prepareConfinement`
+refuses with `AOS_ISOLATION_BACKEND_ABSENT` rather than running the agent unconfined under a
+STRICT label. The backend's presence is probed on every run, not remembered.
+
+The filesystem policy is the Phase 0 profile with the holes closed:
+
+- the workspace is the only read-write subpath;
+- `AOS_HOME` is denied by name, and the rule comes *after* the workspace allow so that a
+  workspace which contains the store is still refused -- `prepareConfinement` also rejects that
+  layout outright with `AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME` before rendering anything;
+- the agent's private HOME is read-write and is where TMPDIR points, so a runtime that must write
+  somewhere writes there and the directory goes with the run;
+- the run's scratch directory (the prompt file), the node tree and the runtime CLI tree are
+  read-only;
+- the operator's home directory is never named. The Phase 0 profile allowed `~/.codex`
+  read-only as a hole so that Codex could authenticate; under Phase B the operator's
+  configuration directory does not appear in the profile at all. `stageRuntimeConfig` copies the
+  adapter's declared files -- for `codex-cli.v1`, `auth.json` and `config.toml` -- into
+  `<agent HOME>/.codex` (mode 0700, files 0600) before the spawn and points `CODEX_HOME` at the
+  copy. A read-only hole was tried first and Codex 0.148.0 exits 1 under it (`failed to
+  initialize in-process app-server client: Operation not permitted`: it writes its state database,
+  `installation_id` and `tmp/arg0` into `CODEX_HOME` on start). A read-write hole would have let
+  the agent rewrite the operator's `config.toml`, which is where `notify` hooks and MCP servers
+  are declared, and that is persistence outside the boundary. The copy is neither: what Codex
+  writes -- session logs, its state database, a refreshed token -- lands in the copy and is
+  removed with the agent's HOME. The record lists the hole as
+  `{ env: "CODEX_HOME", access: "staged-copy", staged: ["auth.json", "config.toml"] }`.
+
+The policy is a value, and `isolationPolicyDigestOf(policy)` is its digest over the canonical
+bytes; #561 folds it into the profile digest, and the canary observation and the confinement
+record both carry it so a result can be tied to the exact boundary it ran under. The Phase 0
+profiles printed below are unchanged and still digest to the values the probe record holds; the
+Phase B profile is generated per run and is not printed here because its paths are the run's.
+
+### The process axis
+
+Phase 0 item 1 is bought. `descendantTracker` polls `ps -axo pid=,ppid=,pgid=,lstart=` (on
+linux, `/proc`) every 200 ms while the agent runs, and a process is adopted when its parent chain
+reaches the agent or its group is the agent's; identity is pid plus start time so a recycled pid
+is not mistaken for a survivor. A descendant that `setsid`s out of the group is still adopted
+through its parent, and if it double-forks it is adopted through the reparented `ppid` chain
+provided it is alive at a poll. After the agent exits, `runProcess` kills the group as before and
+then terminates everything the tracker still holds, and the record's `descendants` block carries
+`leaked` (alive after the agent exited), `survivors` (alive after teardown), `tracked` and
+`polls`. A process that double-forks *between* two polls and dies before the next is not seen;
+it is still inside the kernel boundary, and this is listed as a constraint on the lane rather
+than hidden. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
+directory were removed and `survivors` is empty; it is set in `settleConfinement`, after the
+`finally` in `runProcess` has done the removal, so a cleanup failure it cannot see is not one it
+can vouch for.
+
+### The boundary canary
+
+Before the agent is spawned under `STRICT`, `runBoundaryCanary` runs a node program under the
+same profile the agent will get. The program is embedded in `lib/confinement.mjs` (the package
+does not ship `fixtures/`), its digest is `BOUNDARY_CANARY_PROGRAM_DIGEST`, and it exercises
+eleven cells in the Phase 0 vocabulary: read and write inside the workspace (expected `allowed`),
+read, write and delete outside it, read the store root, read another run's directory, follow a
+symlink out, list the operator's home (all expected `denied`), connect outbound (expected
+`allowed` for a provider-required policy -- an `ECONNREFUSED` against a closed local port is a
+connection the kernel let through), and spawn a detached descendant (expected `spawned`, then
+observed by the scan and dead after cleanup). `evaluateCanary` compares every observed cell to
+its expectation and the result is `PASS` only when all eleven agree and the planted files outside
+the boundary are intact afterwards; anything else is `FAIL`, with the failed cells named. The
+observation file's digest -- over its bytes, `sha256Bytes` -- is the `evidence_digest` on the
+record, and the raw observation is kept beside the run.
+
+The canary is what separates "the profile did not apply" from "the profile applied". Phase 0
+item 4 asked for a setup-failure channel other than the exit code; this is it. A profile that
+`sandbox-exec` rejects (exit 65) or a binary it cannot exec (exit 71) fails the canary before the
+agent runs, `setup_verified` stays false, and nothing is issued.
+
+### The network axis, stated rather than implied
+
+The profile allows outbound network wholesale, because the provider transport needs it and this
+layer cannot tell a request to the provider from a request the task made. The record therefore
+says `network.provider_transport: allowed` and `network.task_external: NOT_OBSERVED`, the policy
+name is `provider-required-unrestricted`, and the gate never reads `denied` into it. A future
+`restricted` or `disabled` policy would have to be measured by a canary cell before the record
+could say anything else.
+
+### The gate
+
+`issuanceGate(record)` returns `{ official, isolation_level, backend, boundary_canary,
+reasons[], claim_stage_ceiling, platform_lane, network, policy_digest }` and #559 and #563
+consume it. `official` is true only when every one of these holds at once, and every one that
+fails is named in `reasons`:
+
+| Condition | Reason when it fails |
+| --- | --- |
+| level is `STRICT` | `AOS_ISOLATION_LEVEL_NOT_STRICT` |
+| a real backend ran (`macos-seatbelt`, `linux-bubblewrap`, `linux-container`) | `AOS_ISOLATION_BACKEND_ABSENT` |
+| filesystem and process axes enforced | `AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED`, `AOS_ISOLATION_PROCESS_NOT_ENFORCED` |
+| the profile applied (canary ran under it) | `AOS_ISOLATION_SETUP_UNVERIFIED` |
+| canary `PASS` with an evidence digest | `AOS_ISOLATION_CANARY_NOT_PASS` |
+| no leaked descendant, no survivor | `AOS_ISOLATION_LEAKED_DESCENDANT` |
+| profile, HOME and scratch removed | `AOS_ISOLATION_CLEANUP_UNVERIFIED` |
+| policy digest present | `AOS_ISOLATION_POLICY_DIGEST_MISSING` |
+| the lane's support status is releasable | `AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE` |
+| the (platform, backend, adapter, level) lane has committed evidence | `AOS_ISOLATION_LANE_NOT_PROVEN` |
+
+`claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise; #559
+applies it where the claim stage is decided. `issuanceGateForRun(records)` folds a run's
+invocations into one decision that is official only when every invocation is, on the same lane
+and policy, and a run with no invocations is not official. `BEST_EFFORT_CLI` and `NONE` cannot
+reach `official` by any path: the level check alone refuses them, and
+`tests/product/confinement.test.mjs` walks every lane in the support matrix and every level to
+show zero official cases outside `STRICT`.
+
+### The lane that was proven
+
+The real-lane recorder ran on this machine (`strict-lane.darwin.host.json`: Darwin 25.3.0
+arm64, macOS 26.3, node v22.23.2, codex-cli 0.148.0, `/usr/bin/sandbox-exec` present). Under
+the generated profile:
+
+- the canary passed all eleven cells, the planted files were intact, and the detached descendant
+  was seen by the scan and dead after cleanup (`strict-lane.darwin.seatbelt.canary.json`);
+- `codex login status` exited 0 with `Logged in using ChatGPT` against the staged copy
+  (`strict-lane.darwin.seatbelt.codex-auth.json`);
+- `codex exec --skip-git-repo-check -C @WORKSPACE@ -o @WORKSPACE@/last-message.txt -` with the
+  prompt on stdin exited 0 and answered `OK` in about five seconds
+  (`strict-lane.darwin.seatbelt.codex-exec.json`).
+
+`tests/product/confinement-real-lane.test.mjs` (`npm run verify:real-runtime-strict`) repeats
+this through `runProcess` rather than the recorder: a node agent that tries to leave the boundary
+and leaves a detached `sleep` behind gets `EPERM` on every outside cell, sees no `AOS_HOME` in its
+environment, is reported with `leaked_descendants: true` and the descendant's pid, and the
+descendant is dead after teardown; the installed Codex runtime, run through the same path, exits
+0, answers `OK`, and its record is `official: true` with an empty reason list. On a machine
+without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
+reason and does not pass on nothing.
+
+That lane -- `darwin/macos-seatbelt/codex-cli.v1` at `STRICT` -- is the one row in the matrix
+that is official, and it is `SUPPORTED_WITH_CONSTRAINTS` rather than `SUPPORTED` for the four
+reasons the fixture lists: `sandbox-exec` is deprecated by Apple and still enforcing, so the
+adapter re-checks it on every run; `CODEX_HOME` is a staged copy; task-initiated external
+network is `NOT_OBSERVED`; and a descendant that double-forks between two polls is not tracked.
+The darwin `claude-code.v1` and `generic-command.v1` rows share the boundary measurement but no
+real runtime authenticated under it on those lanes, so they are `NOT_OBSERVED` and withheld. The
+linux rows are `NOT_OBSERVED` because this machine cannot run `bwrap` and the Phase 0 container
+could not run the darwin-only runtime; the argument vector is tested, the boundary is not
+measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to add.
+
+### Support matrix
+
+Rendered by `renderSupportMatrix` from `fixtures/confinement/support-matrix.json`, digest
+`sha256:0bf6b1c2b0449d6005c2d5120770874bbba3928c2956f2ee03e15456b5c439b5`. The `Official` column
+is the gate's decision over the row's committed evidence, not the row's own label: the test
+forges an official Linux row and shows the gate refuses it.
+
+| Platform | Backend | Adapter | Level | Support | Official | Reason / evidence |
+|---|---|---|---|---|---|---|
+| darwin | macos-seatbelt | codex-cli.v1 | STRICT | SUPPORTED_WITH_CONSTRAINTS | OFFICIAL | canary `strict-lane.darwin.seatbelt.canary.json` PASS; runtime `strict-lane.darwin.seatbelt.codex-auth.json` exit 0 |
+| darwin | macos-seatbelt | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
+| darwin | macos-seatbelt | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
+| darwin | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
+| darwin | none | * | NONE | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
+| linux | linux-bubblewrap | codex-cli.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-bubblewrap | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-bubblewrap | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-container | * | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- Phase 0 measured the boundary in a container and could not run the darwin-only runtime inside it; no adapter targets it |
+| linux | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
+| linux | none | * | NONE | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
 
 ## Matrix
 
@@ -1012,6 +1202,14 @@ temporary directory to test a `CODEX_HOME` redirect; that copy stored the value,
 and the question was re-answered with an empty directory. Recorded output is scrubbed of the
 operator's home, temp directory and hostname before it is written.
 
+Phase B makes a copy of that kind deliberately, and the difference is its scope. `stageRuntimeConfig`
+copies `auth.json` and `config.toml` into the agent's private HOME (0700, files 0600) for the
+duration of one run and removes the directory with the run; the bytes are never read into this
+process as anything but a buffer handed straight to `writeFileSync`, nothing about their content
+is recorded, and the observation files record the staged file *names* and the source
+(`default_dir` or `operator_env`) only. The real-lane recorder and the tests were checked for the
+operator's account name, home path and hostname before the observations were committed.
+
 ## What was not measured
 
 - **No Linux host was probed.** The Linux kernel reachable from this machine is a VM, and a result
@@ -1028,6 +1226,10 @@ operator's home, temp directory and hostname before it is written.
   Any claim that rests on that distinction has to be recorded NOT_OBSERVED.
 
 ## What Phase B has to buy
+
+This list was written at the end of Phase 0. Items 1, 4 and 5 are bought by the Phase B section
+above; item 2 is still open (the darwin `claude-code.v1` row is `NOT_OBSERVED`); item 3 is the
+coordinator's.
 
 1. **A descendant enumeration that does not depend on the process group.** The cheapest correct
    item, and it fixes a defect that exists today: `processGroupMembers` did not report the detached
