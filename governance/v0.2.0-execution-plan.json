@@ -699,8 +699,8 @@
         "raw-byte-evidence"
       ],
       "owned_paths": [
-        "lib/raw-bytes.mjs",
-        "lib/file-effects.mjs"
+        "lib/digest.mjs",
+        "docs/BYTE_DIGEST.md"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [
