@@ -20,6 +20,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { canonicalJson, htmlEscape } from "../../lib/core.mjs";
+import { runValidity } from "../../lib/cycle.mjs";
+import { comparability, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { isolationPolicyDigestOf } from "../../lib/isolation.mjs";
 import {
@@ -34,9 +36,9 @@ import {
   runtimeConfigModel,
   verifyModelIdentity
 } from "../../lib/model-identity.mjs";
-import { ADAPTERS, buildProfile, comparabilityOf, profileDigestOf, sameCohort } from "../../lib/profile.mjs";
-import { renderMarkdown } from "../../lib/report.mjs";
-import { boundRuntimeIdentity, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
+import { ADAPTERS, buildProfile, profileDigestOf } from "../../lib/profile.mjs";
+import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
+import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
 import { addAgent, makePlan, newestResult, run } from "./helpers.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -45,12 +47,30 @@ const cli = join(root, "bin", "aos.mjs");
 const EXACT_A = "openai/gpt-4o-2024-08-06";
 const EXACT_B = "openai/gpt-4o-2024-11-20";
 
-const identity = (over = {}) => ({
-  schema_id: IDENTITY_SCHEMA,
-  identity_status: "VERIFIED",
-  identity_digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-  ...over
-});
+// An identity record the #554 contract would produce: every field the digest is taken over, and
+// the digest taken over them. Written this way because binding recomputes it -- a fixture with a
+// digit-repeat digest is exactly the forged record the binding now refuses.
+const identity = (over = {}) => {
+  const base = {
+    schema_id: IDENTITY_SCHEMA,
+    command_input: "codex",
+    resolved_realpath: "/usr/bin/codex",
+    realpath_digest: `sha256:${"a".repeat(64)}`,
+    file_fingerprint: { size: 1024, mtime_ms: 1, inode: 2, device: 3 },
+    interpreter_digest: null,
+    interpreter_chain: [],
+    owner_uid: 501,
+    mode: "0755",
+    parent_security: { world_writable: false, group_writable_untrusted: false, foreign_owner: false, acl_writable: false },
+    platform_identity: { macos_codesign_team: null, macos_requirement_digest: null },
+    adapter_id: "codex-cli.v1",
+    identity_status: "VERIFIED",
+    untrusted_reasons: [],
+    verified_at: "2026-09-02T00:00:00.000Z",
+    ...over
+  };
+  return { ...base, identity_digest: over.identity_digest ?? identityDigestOf(base) };
+};
 
 const agent = (over = {}) => ({
   id: "main",
@@ -188,7 +208,11 @@ test("an unknown model may run, but profile-bound aggregation is withheld by nam
 });
 
 test("an exact model issues profile-bound aggregation and still leaves generalizability and cross-model comparison withheld", () => {
-  const policy = issuancePolicyFor({ provenance: resolveModelProvenance({ declared: declared(EXACT_A) }) });
+  // Both halves of the profile: the model that was named, and the program #554 verified.
+  const policy = issuancePolicyFor({
+    provenance: resolveModelProvenance({ declared: declared(EXACT_A) }),
+    runtimeIdentity: boundRuntimeIdentity(identity())
+  });
   assert.equal(policy.claim_stage, "PROFILE_BOUND");
   assert.equal(policy.profile_bound_aggregation.status, "issued");
   assert.equal(policy.profile_bound_aggregation.reason, null);
@@ -218,7 +242,7 @@ test("the model named on the runtime's own command line is runtime config, read 
   assert.equal(profile.model_id, EXACT_A);
 });
 
-test("a structured runtime event in the run's own transcript is the model, digested from the row's bytes", () => {
+test("a fixture replay of Codex and Claude transcript rows yields the model, digested from the row's bytes", () => {
   const home = mkdtempSync(join(tmpdir(), "aos-model-events-"));
   try {
     const workspace = "/tmp/aos-runs/run-1/workspaces/FAM-1";
@@ -285,6 +309,63 @@ test("a runtime event confirms a bound identity, contradicts it by name, or was 
   assert.equal(issuancePolicyFor({ provenance: bound, verification: verifyModelIdentity(bound, [same, other]) }).profile_bound_aggregation.reason, "MODEL_EVENT_AMBIGUOUS");
 });
 
+test("a transcript value that is not a plausible model name leaves as a digest, never as text", () => {
+  // The transcript is written by the child process, so its `model` field is attacker-controlled
+  // text that this product then prints in JSON, the CLI, Markdown and HTML. A credential written
+  // there was reprinted verbatim, bypassing the stdout redactor entirely.
+  const home = mkdtempSync(join(tmpdir(), "aos-model-credential-"));
+  try {
+    const workspace = "/tmp/aos-runs/run-2/workspaces/FAM-1";
+    const dir = join(home, ".claude", "projects", "-tmp-aos-runs-run-2-workspaces-FAM-1");
+    mkdirSync(dir, { recursive: true });
+    const secret = "sk-supersecretcredential1234567890";
+    const rows = [
+      JSON.stringify({ type: "assistant", cwd: workspace, message: { model: secret } }),
+      JSON.stringify({ type: "assistant", cwd: workspace, message: { model: "x".repeat(300) } })
+    ];
+    writeFileSync(join(dir, "s1.jsonl"), `${rows.join("\n")}\n`);
+    const events = observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000 });
+    assert.equal(events.length, 2);
+    for (const event of events) {
+      assert.equal(event.model, null);
+      assert.match(event.value_digest, /^sha256:[0-9a-f]{64}$/u);
+    }
+    assert.equal(events[0].value_digest, sha256Bytes(Buffer.from(secret, "utf8")));
+
+    const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+    const verification = verifyModelIdentity(provenance, events);
+    assert.equal(verification.status, "UNNAMEABLE");
+    assert.equal(verification.code, "AOS_MODEL_EVENT_UNNAMEABLE");
+    const record = modelIdentityRecord({
+      by_agent: { main: { provenance, verification, runtime_identity_digest: null, runtime_identity_status: "VERIFIED" } },
+      profile_digest: "d".repeat(64)
+    });
+    assert.equal(record.profile_bound_aggregation.reason, "MODEL_EVENT_UNNAMEABLE");
+    const surfaces = [canonicalJson(record), record.lines.join("\n"), renderMarkdown({
+      run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
+      metrics: [], dimensions: {}, limitations: [], model_identity: record
+    })];
+    for (const surface of surfaces) {
+      assert.equal(surface.includes(secret), false);
+      assert.equal(surface.includes("supersecret"), false);
+    }
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a run whose transcript said nothing names that blocker rather than reporting silence", () => {
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const verification = verifyModelIdentity(provenance, []);
+  assert.equal(verification.status, "NOT_OBSERVED");
+  assert.equal(verification.code, "AOS_MODEL_EVENT_NOT_OBSERVED");
+  // Naming the blocker does not withhold the aggregate: the declaration is still the binding the
+  // digest was locked on, and a runtime that writes no transcript is not a contradiction.
+  assert.equal(issuancePolicyFor({
+    provenance, verification, runtimeIdentity: boundRuntimeIdentity(identity())
+  }).profile_bound_aggregation.status, "issued");
+});
+
 // ---------------------------------------------------------------------------------------------
 // The profile digest
 
@@ -337,20 +418,70 @@ test("the profile binds the executable through the #554 identity contract and re
   assert.deepEqual(boundRuntimeIdentity({ identity_digest: "sha256:" + "a".repeat(64) }), { identity_digest: null, identity_status: "MIGRATION_REQUIRED" });
 });
 
+test("a runtime identity whose digest does not recompute is not bound, however well-formed it looks", () => {
+  // The shape of #554's record with a digest nobody computed from it: three fields spelled right
+  // was the whole test, so a hand-made object bound as VERIFIED and carried a cohort key.
+  const forged = { schema_id: IDENTITY_SCHEMA, identity_digest: `sha256:${"a".repeat(64)}`, identity_status: "VERIFIED" };
+  assert.deepEqual(boundRuntimeIdentity(forged), { identity_digest: null, identity_status: "UNVERIFIABLE" });
+  const tampered = identity();
+  assert.deepEqual(
+    boundRuntimeIdentity({ ...tampered, resolved_realpath: "/tmp/somebody-elses-codex" }),
+    { identity_digest: null, identity_status: "UNVERIFIABLE" }
+  );
+  assert.equal(build({ agent: agent({ runtime_identity: forged }) }).runtime_identity_status, "UNVERIFIABLE");
+  // An identity the contract itself marked UNTRUSTED binds under that name, and is never VERIFIED.
+  const untrusted = identity({ identity_status: "UNTRUSTED", untrusted_reasons: ["world_writable /usr/bin"] });
+  assert.equal(boundRuntimeIdentity(untrusted).identity_status, "UNTRUSTED");
+});
+
+test("a missing, untrusted or unverifiable executable identity withholds the aggregate by its own name", () => {
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const cases = [
+    ["MIGRATION_REQUIRED", null],
+    ["UNTRUSTED", identity({ identity_status: "UNTRUSTED", untrusted_reasons: ["world_writable /usr/bin"] })],
+    ["UNVERIFIABLE", { schema_id: IDENTITY_SCHEMA, identity_digest: `sha256:${"a".repeat(64)}`, identity_status: "VERIFIED" }]
+  ];
+  for (const [status, record] of cases) {
+    const bound = boundRuntimeIdentity(record);
+    assert.equal(bound.identity_status, status, status);
+    const policy = issuancePolicyFor({ provenance, runtimeIdentity: bound });
+    assert.equal(policy.profile_bound_aggregation.status, "withheld", status);
+    assert.equal(policy.profile_bound_aggregation.reason, "RUNTIME_IDENTITY_UNVERIFIED", status);
+    assert.equal(policy.profile_bound_aggregation.detail.includes(status), true, status);
+    assert.equal(policy.claim_stage, "RUN_DIAGNOSTIC", status);
+  }
+  // The exact model with a verified executable is the only combination that issues.
+  const verified = issuancePolicyFor({ provenance, runtimeIdentity: boundRuntimeIdentity(identity()) });
+  assert.equal(verified.profile_bound_aggregation.status, "issued");
+  // And the record built for a projection carries the status it was bound under.
+  const record = modelIdentityRecord({
+    by_agent: { main: { provenance, verification: null, runtime_identity_digest: null, runtime_identity_status: "MIGRATION_REQUIRED" } },
+    profile_digest: "d".repeat(64)
+  });
+  assert.equal(record.profile_bound_aggregation.reason, "RUNTIME_IDENTITY_UNVERIFIED");
+  assert.equal(record.lines.includes("Runtime executable identity (main): unverified (MIGRATION_REQUIRED)"), true);
+});
+
 // ---------------------------------------------------------------------------------------------
 // Comparability
 
 test("same exact model with a different executable identity is not one cohort", () => {
   const left = build();
-  const right = build({ agent: agent({ runtime_identity: identity({ identity_digest: "sha256:" + "9".repeat(64) }) }) });
+  const right = build({ agent: agent({ runtime_identity: identity({ file_fingerprint: { size: 2048, mtime_ms: 9, inode: 9, device: 9 } }) }) });
   assert.equal(left.model_id, right.model_id);
+  assert.notEqual(left.runtime_identity_digest, right.runtime_identity_digest);
   assert.notEqual(left.profile_digest, right.profile_digest);
-  assert.equal(sameCohort(left, right), false);
-  assert.equal(comparabilityOf(left, right).reason, "PROFILE_DIGEST_DIFFERS");
+  // The live guard, not a second formula: a cycle opened under one profile refuses a run made
+  // under the other, and says which field of the cycle it failed.
+  const cycle = { seeds: [1], profile_digest: left.profile_digest, suite_major: 0, scorer_major: 0 };
+  const run = { seed: 1, profile_digest: right.profile_digest, suite_major: 0, scorer_major: 0, terminal_committed: true, issued: true };
+  assert.deepEqual(runValidity(cycle, run), { valid: false, reason: "PROFILE_CHANGED" });
+  assert.deepEqual(runValidity(cycle, { ...run, profile_digest: left.profile_digest }), { valid: true, reason: null });
 });
 
 test("same model id with a different adapter, environment policy or isolation is not one cohort", () => {
   const base = build();
+  const cycle = { seeds: [1], profile_digest: base.profile_digest, suite_major: 0, scorer_major: 0 };
   const variants = [
     ["adapter", build({ agent: agent({ adapter: "claude-code.v1", runtime_name: "claude-code" }) })],
     ["environment policy", build({ agent: agent({ allowed_env_names: ["ACME_TOOLCHAIN_DIR"] }) })],
@@ -358,37 +489,66 @@ test("same model id with a different adapter, environment policy or isolation is
   ];
   for (const [label, other] of variants) {
     assert.equal(other.model_id, base.model_id, label);
-    assert.equal(sameCohort(base, other), false, label);
+    assert.notEqual(other.profile_digest, base.profile_digest, label);
+    const run = { seed: 1, profile_digest: other.profile_digest, suite_major: 0, scorer_major: 0, terminal_committed: true, issued: true };
+    assert.equal(runValidity(cycle, run).reason, "PROFILE_CHANGED", label);
   }
 });
 
-test("provider default drift cannot form a cohort: two identical unknown-model profiles are not comparable", () => {
+test("provider default drift cannot form a cohort: two identical unknown-model profiles withhold the aggregate", () => {
   const left = build({ agent: agent({ model_id: undefined }) });
   const right = build({ agent: agent({ model_id: undefined }) });
+  // Same digest -- which is exactly why the digest alone may not decide. What refuses is the
+  // issuance policy, by name, and it refuses both of them.
   assert.equal(left.profile_digest, right.profile_digest);
-  assert.equal(sameCohort(left, right), false);
-  assert.equal(comparabilityOf(left, right).reason, "MODEL_NOT_EXACT");
+  for (const profile of [left, right]) {
+    const policy = issuancePolicyFor({
+      provenance: profile.model_provenance,
+      runtimeIdentity: { identity_digest: profile.runtime_identity_digest, identity_status: profile.runtime_identity_status }
+    });
+    assert.equal(policy.profile_bound_aggregation.status, "withheld");
+    assert.equal(policy.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
+  }
   const alias = build({ agent: agent({ model_id: "latest" }) });
-  assert.equal(sameCohort(alias, build({ agent: agent({ model_id: "latest" }) })), false);
-  assert.equal(comparabilityOf(alias, alias).reason, "MODEL_NOT_EXACT");
+  assert.equal(issuancePolicyFor({
+    provenance: alias.model_provenance,
+    runtimeIdentity: { identity_digest: alias.runtime_identity_digest, identity_status: alias.runtime_identity_status }
+  }).profile_bound_aggregation.reason, "MODEL_MUTABLE_ALIAS");
 });
 
-test("same exact profile passes the comparability condition", () => {
+test("same exact profile with a verified executable is the only combination that issues", () => {
   const left = build();
   const right = build();
   assert.equal(left.profile_digest, right.profile_digest);
-  assert.equal(sameCohort(left, right), true);
-  assert.deepEqual(comparabilityOf(left, right), { comparable: true, reason: null });
-  assert.equal(comparabilityOf(left, null).comparable, false);
+  const policy = issuancePolicyFor({
+    provenance: left.model_provenance,
+    runtimeIdentity: { identity_digest: left.runtime_identity_digest, identity_status: left.runtime_identity_status }
+  });
+  assert.equal(policy.profile_bound_aggregation.status, "issued");
+  assert.equal(policy.claim_stage, "PROFILE_BOUND");
 });
 
-test("a cross-model result is withheld from direct comparison before invariance evidence", () => {
-  const left = build({ agent: agent({ model_id: EXACT_A }) });
-  const right = build({ agent: agent({ model_id: EXACT_B }) });
-  const verdict = comparabilityOf(left, right);
-  assert.equal(verdict.comparable, false);
-  assert.equal(verdict.reason, "CROSS_MODEL_WITHHELD");
-  assert.equal(verdict.until, "INVARIANCE_UNESTABLISHED");
+test("cross-model comparison is the shipped contract's rule, and this issue ships no second formula beside it", async () => {
+  // The first draft of #561 wrote its own comparability function in lib/profile.mjs. Nothing in
+  // the product called it, and it accepted any object shaped like a profile, so it was a parallel
+  // contract with its own answer. The authority is the ECD artifact, which takes only results it
+  // emitted and applies every rule the contract declares.
+  const profileModule = await import("../../lib/profile.mjs");
+  assert.equal(Object.hasOwn(profileModule, "comparabilityOf"), false);
+  assert.equal(Object.hasOwn(profileModule, "sameCohort"), false);
+  assert.throws(() => comparability({}, {}), /AOS_UNEMITTED_RESULT/u);
+  const rule = shippedEcdContract().interpretation_use.comparability_rules.find((entry) => entry.rule_id === "invariance-required");
+  assert.equal(rule.status, "UNESTABLISHED");
+  assert.equal(rule.refusal_reason, "INVARIANCE_UNESTABLISHED");
+  assert.equal(rule.facets.includes("model"), true);
+  // And what this issue does emit says the same thing rather than deciding it here.
+  const record = modelIdentityRecord({
+    by_agent: { main: { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: null, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  assert.equal(record.cross_model_comparison, "WITHHELD");
+  assert.equal(record.comparison_until, "INVARIANCE_UNESTABLISHED");
+  assert.equal(record.model_change_improvement_claim, "WITHHELD");
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -397,30 +557,78 @@ test("a cross-model result is withheld from direct comparison before invariance 
 test("the model identity lines are the same strings for JSON, CLI and Markdown", () => {
   const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
   const record = modelIdentityRecord({
-    by_agent: { main: { provenance, verification: verifyModelIdentity(provenance, []), runtime_identity_digest: identity().identity_digest } },
+    by_agent: { main: { provenance, verification: verifyModelIdentity(provenance, []), runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
     profile_digest: "d".repeat(64)
   });
   const lines = modelIdentityLines(record);
   assert.deepEqual(lines, [
     `Model (main): declared ${EXACT_A} (exact-snapshot)`,
-    "Runtime executable identity (main): 111111111111",
+    `Runtime executable identity (main): ${identity().identity_digest.slice("sha256:".length, "sha256:".length + 12)}`,
     `Profile digest: ${"d".repeat(64)}`,
     "Profile-bound aggregation: issued"
   ]);
-  // JSON carries the lines verbatim; Markdown quotes them verbatim.
+  // JSON carries the lines verbatim; Markdown and HTML quote them verbatim.
   assert.deepEqual(record.lines, lines);
-  const markdown = renderMarkdown({
+  const result = {
     run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
     metrics: [], dimensions: {}, limitations: [], model_identity: record
-  });
+  };
+  const markdown = renderMarkdown(result);
   for (const line of lines) assert.equal(markdown.includes(`- ${line}`), true, line);
+  for (const line of lines) assert.equal(renderHtml(result).includes(`<li>${htmlEscape(line)}</li>`), true, line);
+});
+
+test("Markdown and HTML quote the stored identity lines instead of deriving them again", () => {
+  // Deriving the expectation from the same function the renderer calls is not a test of the
+  // contract: replacing the stored lines left JSON carrying one thing and Markdown another, and
+  // the assertion above still passed. So the stored lines are made to disagree on purpose.
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const record = modelIdentityRecord({
+    by_agent: { main: { provenance, verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const stored = { ...record, lines: ["SENTINEL_FROM_THE_STORED_RECORD"] };
+  const result = {
+    run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
+    metrics: [], dimensions: {}, limitations: [], model_identity: stored
+  };
+  const markdown = renderMarkdown(result);
+  assert.equal(markdown.includes("- SENTINEL_FROM_THE_STORED_RECORD"), true);
+  assert.equal(markdown.includes(`Model (main): declared ${EXACT_A}`), false);
+  const html = renderHtml(result);
+  assert.equal(html.includes("<li>SENTINEL_FROM_THE_STORED_RECORD</li>"), true);
+  assert.equal(html.includes(`Model (main): declared ${EXACT_A}`), false);
+});
+
+test("a report whose aggregate is withheld does not also print the profile-bound claim", () => {
+  const unknown = modelIdentityRecord({
+    by_agent: { main: { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: null, runtime_identity_status: "MIGRATION_REQUIRED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const base = {
+    run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 0, total: 20 },
+    metrics: [], dimensions: {}, limitations: []
+  };
+  const withheld = renderMarkdown({ ...base, model_identity: unknown });
+  assert.equal(withheld.includes("PROFILE-BOUND —"), false);
+  assert.equal(withheld.includes("RUN-DIAGNOSTIC —"), true);
+  assert.equal(withheld.includes("Profile-bound aggregation: withheld"), true);
+  const issued = modelIdentityRecord({
+    by_agent: { main: { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
+    profile_digest: "d".repeat(64)
+  });
+  const bound = renderMarkdown({ ...base, model_identity: issued });
+  assert.equal(bound.includes("PROFILE-BOUND —"), true);
+  assert.equal(bound.includes("RUN-DIAGNOSTIC —"), false);
+  // A historical result carries no record at all, and claims the weaker of the two.
+  assert.equal(renderMarkdown({ ...base, model_identity: null }).includes("RUN-DIAGNOSTIC —"), true);
 });
 
 test("a mutable, unknown or mismatched model is said in the Model line and in the withheld reason", () => {
   const mutable = resolveModelProvenance({ runtimeConfig: { model: "gpt-5.6-terra", provider: "openai" } });
   const mutableLines = modelIdentityLines(modelIdentityRecord({ by_agent: { main: { provenance: mutable, verification: null, runtime_identity_digest: null } }, profile_digest: "d".repeat(64) }));
   assert.equal(mutableLines[0], "Model (main): detected openai/gpt-5.6-terra (provider-managed-alias, mutable)");
-  assert.equal(mutableLines[1], "Runtime executable identity (main): unverified");
+  assert.equal(mutableLines[1], "Runtime executable identity (main): unverified (MIGRATION_REQUIRED)");
   assert.equal(mutableLines[3], "Profile-bound aggregation: withheld — MODEL_MUTABLE_ALIAS: openai/gpt-5.6-terra is a provider-managed alias without snapshot proof");
 
   const unknown = resolveModelProvenance({});

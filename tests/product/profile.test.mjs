@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ADAPTERS, adapterFor, buildProfile, probeCommand, profileDigestOf, profileLabel, sameCohort } from "../../lib/profile.mjs";
+import { ADAPTERS, adapterFor, buildProfile, probeCommand, profileDigestOf, profileLabel } from "../../lib/profile.mjs";
+import { issuancePolicyFor } from "../../lib/model-identity.mjs";
 
 const agent = (over = {}) => ({
   id: "main",
@@ -90,15 +91,22 @@ test("a node patch release is not a new cohort", () => {
   assert.notEqual(build({ nodeVersion: "22.18.0" }).profile_digest, build({ nodeVersion: "24.0.0" }).profile_digest);
 });
 
-test("same digest is necessary for comparability, and an unknown model is never sufficient", () => {
-  // Two profiles that could not name their model share a digest and still are not one cohort:
-  // the provider may have moved the default between them (#561). With an exact model named, the
-  // digest is the remaining test.
-  assert.equal(sameCohort(build(), build()), false);
+test("same digest is necessary for a cohort, and an unknown model is never sufficient", () => {
+  // Two profiles that could not name their model share a digest and still may not be aggregated:
+  // the provider may have moved the default between them (#561). The digest is the cohort key and
+  // the issuance policy is what refuses to issue over a key whose model half cannot hold still.
+  const policyOf = (profile) => issuancePolicyFor({
+    provenance: profile.model_provenance,
+    runtimeIdentity: { identity_digest: profile.runtime_identity_digest, identity_status: profile.runtime_identity_status }
+  }).profile_bound_aggregation;
+  assert.equal(build().profile_digest, build().profile_digest);
+  assert.equal(policyOf(build()).reason, "MODEL_UNKNOWN");
   const exact = (over = {}) => build({ agent: agent({ model_id: "gpt-4o-2024-08-06" }), ...over });
-  assert.equal(sameCohort(exact(), exact()), true);
-  assert.equal(sameCohort(exact(), exact({ isolation: "STRICT" })), false);
-  assert.equal(sameCohort(exact(), null), false);
+  assert.equal(exact().profile_digest, exact().profile_digest);
+  assert.notEqual(exact().profile_digest, exact({ isolation: "STRICT" }).profile_digest);
+  // The model is exact, and the executable identity of this fixture is not one #554 verified, so
+  // what a profile with no verified program may claim is a run diagnostic.
+  assert.equal(policyOf(exact()).reason, "RUNTIME_IDENTITY_UNVERIFIED");
 });
 
 test("a runtime nobody wrote an adapter for is accepted", () => {

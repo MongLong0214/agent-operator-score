@@ -153,7 +153,9 @@ test("a run's report is served, and one that has no result is not invented", asy
     const found = await get(port, `/run/${runId}?t=${token}`);
     assert.equal(found.status, 200);
     const body = await found.text();
-    assert.match(body, /PROFILE-BOUND/);
+    // The report's claim line. This fixture run names no model, so what it is entitled to say is
+    // RUN-DIAGNOSTIC; the page used to print the profile-bound sentence for every run (#561).
+    assert.match(body, /RUN-DIAGNOSTIC —/);
     // "Dimensions" reads as jargon to someone opening this once; the section is "The six areas"
     // now. What the dashboard has to serve is the real report, so this checks a section of it.
     assert.match(body, /The six areas/);
