@@ -26,6 +26,7 @@
     "governance/",
     "schemas/",
     "scripts/",
+    "fixtures/execution-plan/",
     "README.md",
     "README.ko.md",
     "README.ja.md",

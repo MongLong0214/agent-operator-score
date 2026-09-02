@@ -53,7 +53,7 @@
     {
       "file": "lib/safe-fs.mjs",
       "match": "const files = {};",
-      "note": "the live __proto__ defect \u2014 fixed on task/issue-567-work; this entry dies with that merge"
+      "note": "the live __proto__ defect — fixed on task/issue-567-work; this entry dies with that merge"
     },
     {
       "file": "lib/scorer-v1.mjs",
@@ -85,47 +85,47 @@
     {
       "file": "lib/core.mjs",
       "match": "try { version = readFileSync(\"/proc/version\", \"utf8\"); } catch {}",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "lib/core.mjs",
       "match": "text = readFileSync(file, \"utf8\");",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "lib/core.mjs",
       "match": "const stat = readFileSync(`/proc/${name}/stat`, \"utf8\");",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "lib/core.mjs",
       "match": "return sha256Text(readFileSync(file, \"utf8\").replace(/\\r\\n/g, \"\\n\"));",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "lib/execution-plan.mjs",
       "match": "export const loadPlan = (url = PLAN_URL) => JSON.parse(readFileSync(url, \"utf8\"));",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "lib/execution-plan.mjs",
       "match": "export const loadSchema = (url = SCHEMA_URL) => JSON.parse(readFileSync(url, \"utf8\"));",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "scripts/check-defect-classes.mjs",
       "match": "const allowlist = JSON.parse(readFileSync(ALLOWLIST_PATH, \"utf8\"));",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "scripts/check-defect-classes.mjs",
       "match": "const text = readFileSync(path, \"utf8\");",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "scripts/check-defect-classes.mjs",
       "match": "// A digest over decoded text is not an identity. `readFileSync(p, \"utf8\")` folds encoding",
-      "note": "a decoded read in a file that also hashes \u2014 audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
       "file": "tests/product/defect-classes.test.mjs",
@@ -139,11 +139,6 @@
     }
   ],
   "regex-no-unicode": [
-    {
-      "file": "lib/execution-plan.mjs",
-      "match": "if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(value)) fail(`does no",
-      "note": "pre-existing when the rule landed"
-    },
     {
       "file": "lib/review.mjs",
       "match": "for (const value of text.match(new RegExp(pattern.source, `${pattern.flags.replace(\"g\", \"\"",
@@ -266,7 +261,7 @@
     },
     {
       "file": "tests/product/report.test.mjs",
-      "match": "assert.match(svg, new RegExp(`${REQUIRED_METRICS[0]}\u2013${REQUIRED_METRICS.at(-1)}`));",
+      "match": "assert.match(svg, new RegExp(`${REQUIRED_METRICS[0]}–${REQUIRED_METRICS.at(-1)}`));",
       "note": "pre-existing when the rule landed"
     },
     {
@@ -310,68 +305,17 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "export const when = (value) => Date.parse(value);",
       "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "lib/execution-plan.mjs",
+      "match": "return Number.isFinite(Date.parse(value));",
+      "note": "the last line of a validator that has already checked every calendar field by hand; Date.parse here only refuses what the regex and range checks let through, never accepts"
+    },
+    {
+      "file": "lib/execution-plan.mjs",
+      "match": "const capturedAt = Date.parse(snapshot?.captured_at ?? \"\");",
+      "note": "reads an instant for the age report after checkGithubState has refused any captured_at that is not a real calendar instant; not a validator"
     }
   ],
-  "unbounded-schema-array": [
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"excluded_issues\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"phase_output_vocabulary\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"gates.additionalProperties\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issues\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issue.blocked_by\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issue.blocks\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issue.owner_surfaces\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issue.allowed_parallel_with\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issue.phases\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"issue.required_evidence_fields\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"phase.blocked_by\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    },
-    {
-      "file": "schemas/aos-execution-plan.v1.schema.json",
-      "match": "\"phase.allowed_outputs\"",
-      "note": "bounded on task/issue-588-mark-done; these entries die with that merge"
-    }
-  ]
+  "unbounded-schema-array": []
 }
