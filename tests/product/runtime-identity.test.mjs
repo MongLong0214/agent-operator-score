@@ -14,8 +14,9 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,8 +30,11 @@ import {
 } from "../../lib/runtime-auth.mjs";
 import {
   IDENTITY_SCHEMA,
+  REPLACEABLE_RIGHTS,
   TRUSTED_DIRECTORY_GIDS,
+  aclFindingsFrom,
   describeExecutable,
+  envProgramOf,
   identityDrift,
   resolveExecutable
 } from "../../lib/runtime-identity.mjs";
@@ -382,16 +386,18 @@ test("an operator's own token does not reach a binary whose identity failed, and
   const directory = scratch();
   try {
     const marker = join(directory, "the-child-ran");
+    const stolen = join(directory, "stolen");
     const file = executable(directory, "claude", "exit 0");
     const registered = describeExecutable(file, { adapterId: "claude-code.v1" });
-    executable(directory, "claude", `touch ${marker}`);
+    // The impostor writes down what it was given, so the two halves of this test's name are two
+    // separate pieces of evidence rather than one.
+    executable(directory, "claude", `touch ${marker}\nprintf %s "$CLAUDE_CODE_OAUTH_TOKEN" > ${stolen}`);
 
     const spec = agentAt(file, registered);
-    const previous = process.env.CLAUDE_CODE_OAUTH_TOKEN;
-    process.env.CLAUDE_CODE_OAUTH_TOKEN = OPERATOR_TOKEN;
-    try {
-      await assert.rejects(
-        runProcess(spec, {
+    let thrown = null;
+    await withOperatorToken(OPERATOR_TOKEN, async () => {
+      try {
+        await runProcess(spec, {
           workspace: directory,
           family: "FAM-1",
           stage: "s",
@@ -399,17 +405,21 @@ test("an operator's own token does not reach a binary whose identity failed, and
           session: "sess",
           isolation: "BEST_EFFORT_CLI",
           timeoutMs: 5000
-        }),
-        /AOS_RUNTIME_IDENTITY_DRIFT/
-      );
-    } finally {
-      if (previous === undefined) delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
-      else process.env.CLAUDE_CODE_OAUTH_TOKEN = previous;
-    }
+        });
+      } catch (error) {
+        thrown = error;
+      }
+    });
+    // Asserted before the refusal, deliberately. Run the other way round, a change that lets the
+    // child start is reported as "expected a rejection" -- the shape of the failure, not the fact
+    // that a swapped binary was handed the operator's token and started.
+    //
     // `existsSync`, not `resolveExecutable`. The child creates this marker with `touch`, so it is
     // not executable and `resolveExecutable` answers null whether the child ran or not -- an
     // assertion that could not fail is not an assertion.
     assert.equal(existsSync(marker), false, "the child was spawned after the identity was refused");
+    assert.equal(existsSync(stolen), false, "the operator's own token reached a binary whose identity failed");
+    assert.match(thrown?.message ?? "", /AOS_RUNTIME_IDENTITY_DRIFT/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -737,6 +747,10 @@ test("an explicitly approved credential on an agent with no recorded identity sa
     assert.equal(verdict.auto, false);
     assert.equal(verdict.identity_status, "MIGRATION_REQUIRED");
     assert.match(verdict.detail, /explicit approval/);
+    // A status nobody is told how to leave is a status the operator lives in. The name of this test
+    // says the message tells them what to do, so the message has to.
+    assert.match(verdict.detail, /aos agent add cc --command/);
+    assert.match(verdict.detail, /keeps working either way/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -855,5 +869,192 @@ test("a stored assessment carries the executable identity each invocation was bo
     assert.equal(Object.hasOwn(stored.family_results["FAM-1"].invocations[0], "runtime_identity"), true);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// Round three. Each test below answers a finding from the second adversarial review: a claim that
+// was not true, a parse that was wrong, or a guard whose evidence did not match its name.
+
+test("an env shebang that hides its program behind options is read, not guessed", () => {
+  // `env -u FOO node` unsets FOO and runs node. The first version of this scan skipped every
+  // leading dash and took the next word, which is `FOO` -- the name of a variable, verified as if
+  // it were the interpreter. A patch that claims to describe the shebang dispatch has to read it.
+  assert.equal(envProgramOf(["node"]), "node");
+  assert.equal(envProgramOf(["-u", "FOO", "node"]), "node");
+  assert.equal(envProgramOf(["-uFOO", "node"]), "node");
+  assert.equal(envProgramOf(["-iu", "FOO", "node"]), "node");
+  assert.equal(envProgramOf(["--unset=FOO", "node"]), "node");
+  assert.equal(envProgramOf(["--unset", "FOO", "node"]), "node");
+  assert.equal(envProgramOf(["-C", "/tmp", "node"]), "node");
+  assert.equal(envProgramOf(["-i", "PATH=/bin", "node", "--flag"]), "node");
+  // `-S` exists because Linux hands `env` the whole rest of the shebang line as one argument, so
+  // the options can be nested one level down and the program with them.
+  assert.equal(envProgramOf(["-S", "node --flag"]), "node");
+  assert.equal(envProgramOf(["-S", "-u", "FOO", "node"]), "node");
+  assert.equal(envProgramOf(["--split-string=-u FOO node"]), "node");
+  assert.equal(envProgramOf(["--", "-oddly-named"]), "-oddly-named");
+  // And what it cannot read, it does not name. A guess here verifies some other file and passes.
+  assert.equal(envProgramOf([]), null);
+  assert.equal(envProgramOf(["-Z", "node"]), null);
+  assert.equal(envProgramOf(["--frobnicate", "node"]), null);
+  assert.equal(envProgramOf(["-u"]), null);
+});
+
+test("an env shebang with options still names the interpreter it will run", () => {
+  const directory = scratch();
+  try {
+    const bin = join(directory, "bin");
+    mkdirSync(bin, { mode: 0o755 });
+    executable(bin, "aos-test-interpreter", "exit 0");
+    const script = join(directory, "claude");
+    writeFileSync(script, "#!/usr/bin/env -u AOS_TEST_UNSET aos-test-interpreter\nexit 0\n");
+    chmodSync(script, 0o755);
+
+    const identity = describeExecutable(script, { env: { PATH: bin }, adapterId: "claude-code.v1" });
+    assert.deepEqual(identity.interpreter_chain.map((entry) => entry.command), ["/usr/bin/env", "aos-test-interpreter"]);
+    assert.equal(identity.identity_status, "VERIFIED", identity.untrusted_reasons.join(", "));
+
+    // The consequence, not only the name. Put that interpreter somewhere anyone can write and the
+    // script has to become untrusted for that reason. A scan that took `AOS_TEST_UNSET` -- the
+    // variable being unset -- would report an unresolved interpreter here and never look at the
+    // directory the program it will actually run is sitting in.
+    const wide = join(directory, "wide");
+    mkdirSync(wide, { mode: 0o755 });
+    chmodSync(wide, 0o777);
+    executable(wide, "aos-test-interpreter", "exit 0");
+    const exposed = describeExecutable(script, { env: { PATH: [wide, bin].join(delimiter) }, adapterId: "claude-code.v1" });
+    assert.equal(exposed.identity_status, "UNTRUSTED");
+    assert.ok(
+      exposed.untrusted_reasons.some((reason) => reason === `interpreter world_writable ${wide}`),
+      `the interpreter env would run was never audited: ${exposed.untrusted_reasons.join(", ")}`
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("an env shebang this cannot parse is an interpreter it cannot vouch for", () => {
+  const directory = scratch();
+  try {
+    const script = join(directory, "claude");
+    writeFileSync(script, "#!/usr/bin/env -Z aos-test-interpreter\nexit 0\n");
+    chmodSync(script, 0o755);
+    const identity = describeExecutable(script, { env: { PATH: directory }, adapterId: "claude-code.v1" });
+    assert.equal(identity.identity_status, "UNTRUSTED");
+    assert.ok(identity.untrusted_reasons.some((reason) => reason.startsWith("interpreter_unresolved arguments to env")));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+// One captured `ls -lde` listing, in the shape the tool actually prints it. `/bin` and `/usr/bin`
+// are here on purpose: one operand is a suffix of the other, and the shorter one used to steal the
+// longer one's entries.
+const ACL_LISTING = [
+  "drwxr-xr-x+ 39 isaac  staff  1248 Sep  2 07:39 /usr/bin",
+  " 0: group:everyone deny delete",
+  " 1: user:mallory allow add_file,delete_child",
+  " 2: user:isaac inherited allow read,write",
+  " 3: group:staff allow read,list",
+  "drwxr-xr-x  2 root   wheel    64 Sep  2 07:39 /bin",
+  "drwxr-xr-x  7 isaac  staff   224 Aug 19 04:28 /opt/quiet"
+].join("\n");
+
+test("an ACL listing is read for the rights that let somebody replace a file", () => {
+  const findings = aclFindingsFrom(ACL_LISTING, ["/usr/bin", "/bin", "/opt/quiet"]);
+  const busy = findings.get("/usr/bin");
+  assert.equal(busy.unreadable, false);
+  // The deny entry is not a grant, and `read,list` cannot put a different file anywhere. What is
+  // left is the two that can, with `inherited` dropped from the principal it decorates.
+  assert.equal(busy.detail, "user:mallory allow add_file,delete_child; user:isaac allow read,write");
+  assert.equal(REPLACEABLE_RIGHTS.has("add_file"), true);
+  assert.equal(REPLACEABLE_RIGHTS.has("read"), false);
+  // The suffix pair: `/bin` was mentioned, carries nothing, and did not collect `/usr/bin`'s rows.
+  assert.deepEqual(findings.get("/bin"), { unreadable: false, detail: null });
+  assert.deepEqual(findings.get("/opt/quiet"), { unreadable: false, detail: null });
+});
+
+test("a path the ACL listing never mentions is not read as clean", () => {
+  // The failure half, and the one that decides what happens when the tool is missing, times out, or
+  // is refused. Reading silence as "no ACL here" makes the check pass hardest exactly when it has
+  // stopped working.
+  const findings = aclFindingsFrom(ACL_LISTING, ["/usr/bin", "/never/mentioned"]);
+  assert.equal(findings.get("/never/mentioned").unreadable, true);
+  assert.equal(findings.get("/usr/bin").unreadable, false);
+  // And a call that did not happen at all says so for every path it was asked about.
+  const nothing = aclFindingsFrom("", ["/usr/bin", "/bin"], { answered: false });
+  assert.deepEqual([...nothing.values()].map((entry) => entry.unreadable), [true, true]);
+});
+
+test("the identity is read from the descriptor, not by reopening the name", () => {
+  // The single-descriptor claim, made deterministic. The seam replaces the pathname atomically
+  // while the handle is held and puts it back before the same-inode check, so what is measured is
+  // where each field came from -- not whether a race happened to be won.
+  const directory = scratch();
+  try {
+    const command = join(directory, "claude");
+    const keep = join(directory, "keep");
+    const impostor = join(directory, "impostor");
+    writeFileSync(command, "#!/bin/sh\nexit 0\n");
+    chmodSync(command, 0o755);
+    // A different inode, different bytes, different mode and a different shebang.
+    writeFileSync(impostor, "#!/usr/bin/env aos-test-interpreter-not-installed\nexit 1\n");
+    chmodSync(impostor, 0o700);
+    const expected = `sha256:${createHash("sha256").update(readFileSync(command)).digest("hex")}`;
+
+    const identity = describeExecutable(command, {
+      adapterId: "claude-code.v1",
+      probe: (stage) => {
+        if (stage === "opened") {
+          renameSync(command, keep);
+          renameSync(impostor, command);
+        }
+        if (stage === "read") {
+          renameSync(command, impostor);
+          renameSync(keep, command);
+        }
+      }
+    });
+
+    assert.notEqual(identity, null, "the description was abandoned rather than answered");
+    assert.equal(identity.file_fingerprint, expected, "the bytes came from reopening the name");
+    assert.equal(identity.mode, "0755", "the metadata came from re-stating the name");
+    assert.equal(identity.owner_uid, process.getuid());
+    assert.deepEqual(identity.interpreter_chain.map((entry) => entry.command), ["/bin/sh"]);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a native runtime keeps the argv0 the operator configured", async () => {
+  // What `argv0` does, and what it does not. For a native executable the child sees the configured
+  // command in `argv[0]` and the verified file in `execPath`, which is the whole intent. For a
+  // `#!` script the kernel rebuilds the argument vector when it dispatches the interpreter and
+  // `argv0` is discarded -- which is why the script test above finds the resolved path in `$0`.
+  // The documentation promised the first for both, and for a script that was not true.
+  const directory = scratch();
+  try {
+    const command = join(directory, "claude");
+    symlinkSync(process.execPath, command);
+    const identity = describeExecutable(command, { adapterId: "claude-code.v1" });
+    assert.equal(identity.resolved_realpath, realpathSync(process.execPath));
+
+    const spec = agentAt(command, identity, {
+      auto_runtime_auth: false,
+      runtime_auth_env_names: ["CLAUDE_CODE_OAUTH_TOKEN"],
+      args: ["-e", "console.log('argv0=' + process.argv0); console.log('exe=' + process.execPath)"]
+    });
+    const result = await runOnce(spec, directory);
+    assert.equal(result.exit_code, 0, result.stderr_excerpt);
+    assert.ok(
+      result.stdout_excerpt.includes(`argv0=${command}`),
+      `argv0 was not the configured command: ${result.stdout_excerpt}`
+    );
+    assert.ok(
+      result.stdout_excerpt.includes(`exe=${realpathSync(process.execPath)}`),
+      `the executed file was not the verified one: ${result.stdout_excerpt}`
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });

@@ -25,11 +25,17 @@ for anything it registers. Nothing here reads a credential, so nothing here can 
 | `adapter_id` | Which adapter's resolver this identity belongs to |
 | `identity_status` | `VERIFIED` or `UNTRUSTED` |
 
-Every field is read through a single open descriptor: `open` once, `fstat` that handle, hash through
-that handle. Resolving the name a second time to stat it and a third time to read it is a race with
-itself — the fingerprint of one file recorded against the permissions of another — and the only two
-tools here that cannot take a descriptor, `codesign` and `ls -lde`, are followed by a check that the
-name still reaches the same inode.
+Everything **about the file itself** is read through a single open descriptor: `open` once, `fstat`
+that handle for owner and mode, hash through that handle, read the shebang through that handle.
+Resolving the name a second time to stat it and a third time to read it is a race with itself — the
+fingerprint of one file recorded against the permissions of another.
+
+The rest is unavoidably about *names*, and uses pathname operations: resolving the command, walking
+the symlink chain, and the parent-security walk over every directory above it — plus `codesign` and
+`ls -lde`, which take no descriptor. Those are followed by a check that the name still reaches the
+same inode (device, inode, size, modification time), so a swap during that work produces no identity
+at all rather than a mixed one. It is a narrower claim than "one descriptor for everything", and it
+is the one that is true.
 
 ## What is checked, and when
 
@@ -38,8 +44,17 @@ resolver has answered has already let AOS read the operator's credential store o
 program nobody identified, and refusing afterwards does not put the credential back. If the check
 fails, the lookup and the child process are both abandoned.
 
-The child is then spawned by the verified *path*, with `argv0` set to the command the operator
-configured. Spawning the name would resolve it a second time, later, in the kernel.
+The child is then spawned by the verified *path*. Spawning the name would put the PATH search and
+the symlink chain back into the kernel's hands at a later moment; `execve` still resolves the
+absolute pathname it is given, which is why atomic replacement of that pathname stays open below.
+
+`argv0` is set to the command the operator configured, and it does what that is worth for a **native
+executable**: the child reads the configured command in `argv[0]` and the verified file in its own
+`execPath`. For a `#!` **script** the kernel discards it — it rebuilds the argument vector as
+`[interpreter, script]` when it dispatches — so the script sees the *resolved* path in `$0`, not the
+configured one. A script that dispatches on its invocation name, or locates resources relative to
+`$0`, will see the realpath where it previously saw the symlink it was called through. Both are
+pinned by tests, and neither is what the first version of this paragraph promised.
 
 The gate is about a credential, not about which programs may run. An agent with no resolver on its
 adapter and no declared credential variable has nothing at stake and is not verified at all.
@@ -54,7 +69,8 @@ adapter and no declared credential variable has nothing at stake and is not veri
   target are both beyond reproach
 - the registered binary replaced byte for byte at the same path
 - a `#!` interpreter that has changed, or that cannot be resolved, or that is itself reached through
-  a directory somebody else can write
+  a directory somebody else can write — including one hidden behind `env` options (`env -u FOO node`
+  runs `node`, and `FOO` is a variable being unset), and including `env` arguments this cannot parse
 - the path turned into a symlink pointing somewhere else
 - owner or mode changed since registration
 - the name now resolving to a wrapper earlier on `PATH`
@@ -83,6 +99,12 @@ An ACL is read the same way. Only `allow` entries count — a `deny` entry takes
 `group:everyone deny delete` sits on half the directories in a home folder — but every allow entry
 that could put a different file there is a finding, including one naming the operator's own account.
 This module does not get to decide which ACL somebody added on purpose is the harmless kind.
+
+A listing that does not come back, or that never mentions a path it was asked about, is
+`acl_unreadable` and refuses. Silence is not absence: the alternative is a check that passes hardest
+exactly when it has stopped working. Symlinks are not asked about — `ls` prints a link as
+`name -> target`, and macOS does not consult a link's own ACL anyway; what decides who can repoint a
+link is the directory holding it, which is on the list.
 
 ## What credential material a run keeps
 
@@ -115,3 +137,6 @@ a credential can write it to disk, and no filter on AOS's side of the pipe chang
   refused outright rather than measured.
 - A same-UID attacker is out of scope and always was. Anything running as the operator can rewrite
   the agent config, so no check this file makes constrains it.
+- Which rights count in an ACL and what an unreadable listing means are pure functions of captured
+  text and are mutation-tested everywhere. The walk that calls `ls` is macOS-only and is deferred by
+  the mutation runner on other platforms rather than reported as unbroken.
