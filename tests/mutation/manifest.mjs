@@ -2606,7 +2606,7 @@ export const GUARDS = [
     from: "  if (RUNTIME_CONFIG_STAGING.has(record.adapter) && record.runtime_identity?.matches_adapter !== true) {",
     to: "  if (false) {",
     test: "tests/product/official-issuance.test.mjs",
-    name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
+    name: "a_lane_whose_adapter_stages_a_credential_is_official_only_for_that_runtime"
   },
   {
     guard: "the canary expectation is this module's, not the record's",

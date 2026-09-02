@@ -153,6 +153,27 @@ test("a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary", 
   assert.deepEqual(issuanceGate(measured({ boundary_canary: withoutResult })).reasons, []);
 });
 
+test("a_lane_whose_adapter_stages_a_credential_is_official_only_for_that_runtime", () => {
+  // The gate's half of the rule, over a record alone, so it holds on every platform: the staging
+  // refusal is measured where a boundary exists, and this is what the decision does with the
+  // result. An adapter that copies the operator's credential is the lane of the runtime whose
+  // credential it is; a record that ran something else is not that lane, whatever it is labelled.
+  for (const identity of [
+    null,
+    { status: "VERIFIED", digest: `sha256:${"9".repeat(64)}`, matches_adapter: false, reason: "the verified executable is not codex-cli.v1" },
+    { status: "UNTRUSTED", digest: null, matches_adapter: false, reason: "runtime identity is UNTRUSTED" }
+  ]) {
+    const decision = issuanceGate(measured({ runtime_identity: identity }));
+    assert.equal(decision.official, false, JSON.stringify(identity));
+    assert.ok(decision.reasons.includes(ISSUANCE_REASONS.RUNTIME_IDENTITY_UNVERIFIED), decision.reasons.join(", "));
+  }
+  // An adapter that stages nothing has no credential to bind, and is judged on the rest.
+  const generic = measured({ adapter: "generic-command.v1", platform_lane: "darwin/macos-seatbelt/generic-command.v1", runtime_identity: null });
+  assert.equal(issuanceGate(generic).reasons.includes(ISSUANCE_REASONS.RUNTIME_IDENTITY_UNVERIFIED), false);
+  // And the measured record, which carries the identity its staging was made for, is official.
+  assert.deepEqual(issuanceGate(measured()).reasons, []);
+});
+
 test("a_missing_network_observation_is_an_invalid_record_and_not_a_quiet_not_observed", () => {
   // The old gate projected an absent `network` object as `task_external: NOT_OBSERVED`, which is
   // the honest answer for a run that measured and could not tell -- and a fabrication for a record
