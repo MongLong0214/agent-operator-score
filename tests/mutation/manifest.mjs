@@ -25,13 +25,70 @@ export const GUARDS = [
     name: "discovery finds workflows by shape, and skips only .git"
   },
   {
-    guard: "every yaml spelling of uses",
-    reason: "a quoted key, a continued value and a flow mapping are all real uses keys GitHub honours",
+    guard: "quoted and escaped uses keys",
+    reason: "a quoted key and an escaped one are both real uses keys GitHub honours, and a scanner matching the bare spelling saw neither",
     file: "lib/action-pins.mjs",
-    from: "    const key = /^\\s*(?:-\\s*)?(?:(uses)|\"(uses)\"|'(uses)')\\s*:\\s*(.*)$/.exec(line);",
-    to: "    const key = /^\\s*(?:-\\s*)?(uses)()()\\s*:\\s*(.+)$/.exec(line);",
+    // The key as written, rather than the key YAML reads. This one regex decides every key on
+    // every line, so narrowing it to the bare spelling is what the scanner did before: a quoted
+    // or escaped `uses` becomes invisible and a quoted or escaped `run` stops hiding its block.
+    from: "const KEY_LINE = /^(\\s*(?:-\\s+)?)(\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^']|'')*'|[^\\s#\"'{}[\\],][^:{}[\\]#]*?)\\s*:(\\s.*|)$/;",
+    to: "const KEY_LINE = /^(\\s*(?:-\\s+)?)(uses)\\s*:(\\s.*|)$/;",
     test: "tests/product/action-pins.test.mjs",
-    name: "every YAML spelling of a uses key is seen, and inert text is not"
+    name: "the uses spellings GitHub honours are seen, escapes included, and inert text is not"
+  },
+  {
+    guard: "flow-mapping uses",
+    reason: "`- { uses: attacker/evil@main }` is a step GitHub runs, and the ordinary key match never sees it",
+    file: "lib/action-pins.mjs",
+    from: "    const flows = [...masked.matchAll(/\\{[^}]*\\}/g)];",
+    to: "    const flows = [];",
+    test: "tests/product/action-pins.test.mjs",
+    name: "the uses spellings GitHub honours are seen, escapes included, and inert text is not"
+  },
+  {
+    guard: "escaped key resolved before it is a key",
+    reason: "YAML unescapes `\"r\\u0075n\"` to `run` before it is a key, so matching the characters on the line matches something YAML has stopped calling that key",
+    file: "lib/action-pins.mjs",
+    from: "    if (code.length > 1) return String.fromCodePoint(Number.parseInt(code.slice(1), 16));",
+    to: "    if (false) return \"\";",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a uses key spelled with an escape is seen, and an escaped run key stays inert"
+  },
+  {
+    guard: "version comment after a flow mapping",
+    reason: "the comment sits outside the braces, so losing it turns a correctly pinned reference into a pin with no readable version",
+    file: "lib/action-pins.mjs",
+    from: "          const after = entries.length === 1 ? line.slice(entry.end) : \"\";",
+    to: "          const after = \"\";",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a version comment after a flow mapping is kept"
+  },
+  {
+    guard: "carriage returns stripped",
+    reason: "a workflow written on Windows leaves a carriage return on every value, and an ordinary pinned reference came back unreadable",
+    file: "lib/action-pins.mjs",
+    from: "  const lines = text.split(/\\r?\\n/);",
+    to: "  const lines = text.split(\"\\n\");",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a workflow with CRLF line endings reads the same as one without"
+  },
+  {
+    guard: "uses under with: or env: is an input",
+    reason: "an input that happens to be called uses is not an action reference, and reporting it was a false positive on valid YAML",
+    file: "lib/action-pins.mjs",
+    from: "    const isInput = scope.includes(\"with\") || scope.includes(\"env\");",
+    to: "    const isInput = false;",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a uses under with: or env: is an input, not an action reference"
+  },
+  {
+    guard: "supply-chain digest covers the verifier",
+    reason: "the verifier combines the two results and sets the exit status, so `ok: true` there turns failure into success with every hashed byte unchanged",
+    file: "lib/action-pins.mjs",
+    from: "  const runnerBytes = createHash(\"sha256\").update(readFileSync(new URL(\"../scripts/verify-action-pins.mjs\", import.meta.url))).digest(\"hex\");",
+    to: "  const runnerBytes = \"\";",
+    test: "tests/product/action-pins.test.mjs",
+    name: "the supply-chain digest covers the verifier and the npm script that run the check"
   },
   {
     guard: "local reference redirection",

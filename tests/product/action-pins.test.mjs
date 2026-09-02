@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   ACTION_REF,
@@ -73,6 +74,13 @@ test("a mutable tag fails and a pinned SHA passes, wherever the workflow lives",
     assert.ok(mutable.some((one) => one.includes("ci.yml") && one.endsWith("v5")));
     assert.ok(mutable.some((one) => one.includes("admin.yaml") && one.endsWith("main")));
     assert.ok(mutable.some((one) => one.includes("action.yml") && one.endsWith("v5")));
+    // The other half of the name. Three failures and nothing about the pinned one would be equally
+    // true of a scanner that failed everything, which is not what this claims.
+    const passed = report.pinned_actions.filter((one) => one.file === ".github/workflows/release.yml");
+    assert.equal(passed.length, 1, "the pinned reference did not pass");
+    assert.equal(passed[0].sha, sha);
+    assert.equal(passed[0].version, "v5.1.0");
+    assert.equal(mutable.some((one) => one.includes("release.yml")), false);
     assert.equal(report.ok, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -225,7 +233,7 @@ jobs:
   assert.equal(parsed.jobs.build.steps.length, 2);
 });
 
-test("uses: is found however it is written, and a comment is separated from the ref", () => {
+test("each uses: spelling the scanner resolves keeps its ref and its comment apart", () => {
   const found = usesInText([
     "      - uses: actions/checkout@abc # v1.2.3",
     '      - uses: "actions/setup-node@def"',
@@ -328,11 +336,13 @@ jobs:
 
 // --- what the final review broke, and what stops it now ---------------------------------------
 
-test("every YAML spelling of a uses key is seen, and inert text is not", () => {
-  // All four of these are real `uses` keys GitHub honours, and a scanner that matched one spelling
-  // saw none of them.
+test("the uses spellings GitHub honours are seen, escapes included, and inert text is not", () => {
+  // Every one of these is a real `uses` key GitHub honours, and a scanner that matched one
+  // spelling saw none of the others. Not a claim about every spelling YAML permits: that claim
+  // was made before and an escaped key disproved it, so what is named here is what is checked.
   const found = usesInText([
     '      - "uses": attacker/evil@main',
+    '      - "\\u0075ses": attacker/escaped@main',
     "      - uses:",
     "          attacker/continued@main",
     "      - { uses: attacker/flow@main }",
@@ -347,7 +357,7 @@ test("every YAML spelling of a uses key is seen, and inert text is not", () => {
   ].join("\n"));
 
   const refs = found.map((one) => one.raw);
-  for (const seen of ["attacker/evil@main", "attacker/continued@main", "attacker/flow@main", "attacker/anchored@main"]) {
+  for (const seen of ["attacker/evil@main", "attacker/escaped@main", "attacker/continued@main", "attacker/flow@main", "attacker/anchored@main"]) {
     assert.ok(refs.includes(seen), `${seen} was invisible to the scanner`);
   }
   // An alias and an expression cannot be resolved here, so they are refusals rather than passes.
@@ -479,13 +489,303 @@ test("the supply-chain digest covers the policy that decides what passes", () =>
   assert.notEqual(before.supply_chain_digest, after.supply_chain_digest);
 });
 
-test("the check runs before every other job, so a bad reference in one never executes", () => {
-  const ci = readFileSync(join(root, ".github", "workflows", "ci.yml"), "utf8");
-  const document = parseYamlSubset(ci);
-  const jobs = Object.keys(document.jobs);
-  assert.ok(jobs.includes("action-pins"));
-  for (const id of jobs) {
-    if (id === "action-pins") continue;
-    assert.equal(document.jobs[id].needs, "action-pins", `job ${id} runs without waiting for the pin check`);
+test("every other job in this workflow waits for the pin check, and none overrides it", () => {
+  // `needs` alone does not mean "never executes". GitHub documents `always()` as overriding the
+  // skip a failed dependency would otherwise cause, so a job can name the gate and still run after
+  // it goes red -- and a job in a *separate* workflow cannot name it at all. What is checkable here
+  // is a property of this file: every job waits, and none of them opts out of waiting.
+  const OVERRIDE = /always\s*\(|failure\s*\(|cancelled\s*\(/;
+  const bypassing = (document, gate) =>
+    Object.entries(document.jobs)
+      .filter(([id]) => id !== gate)
+      .filter(([, job]) => {
+        const needs = Array.isArray(job.needs) ? job.needs : [job.needs];
+        return !needs.includes(gate) || OVERRIDE.test(String(job.if ?? ""));
+      })
+      .map(([id]) => id);
+
+  const ci = parseYamlSubset(readFileSync(join(root, ".github", "workflows", "ci.yml"), "utf8"));
+  assert.ok(Object.keys(ci.jobs).includes("action-pins"));
+  assert.ok(Object.keys(ci.jobs).length > 1);
+  assert.deepEqual(bypassing(ci, "action-pins"), [], "a job does not wait for the pin check, or opts out of waiting");
+
+  // The counterfactual: without it, the assertion above would pass on a workflow written to slip
+  // past exactly this check, and the earlier version of this test did.
+  const evasion = parseYamlSubset(`name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  action-pins:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm run verify:action-pins
+  debug:
+    needs: action-pins
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+`);
+  assert.deepEqual(bypassing(evasion, "action-pins"), ["debug"]);
+});
+
+// --- what the second review broke, and what stops it now ---------------------------------------
+
+test("a uses key spelled with an escape is seen, and an escaped run key stays inert", () => {
+  // YAML resolves a double-quoted key's escapes before it is a key, so both of these are the key
+  // they spell rather than the characters on the line. One hid a live reference from the scanner;
+  // the other disguised a `run:` block scalar, which made the scanner report the inert text inside
+  // it and miss nothing quietly at the same time.
+  const found = usesInText([
+    '      - "\\u0075ses": attacker/escaped@main',
+    '      - "r\\u0075n": |',
+    "          uses: attacker/inert@main",
+    '      - "uses": attacker/quoted@main'
+  ].join("\n"));
+
+  const refs = found.map((one) => one.raw);
+  assert.ok(refs.includes("attacker/escaped@main"), "an escaped uses key hid a live reference");
+  assert.ok(refs.includes("attacker/quoted@main"));
+  assert.equal(refs.includes("attacker/inert@main"), false, "an escaped run key was not read as a block scalar");
+  assert.equal(found.length, 2, JSON.stringify(found));
+
+  // End to end, because this was the bypass: a workflow actionlint reads as a live reference has to
+  // reach the report as one.
+  const dir = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - "\\u0075ses": attacker/evil@main
+`
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.equal(report.mutable_refs.length, 1, JSON.stringify(report, null, 2));
+    assert.equal(report.mutable_refs[0].ref, "main");
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a workflow with CRLF line endings reads the same as one without", () => {
+  const sha = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
+  // A carriage return left on the end of the value made an ordinary pinned reference unreadable,
+  // and a check that fails on a file Windows wrote is a check people turn off.
+  const dir = sandbox({ ".github/workflows/ci.yml": workflow(`actions/checkout@${sha} # v5.1.0`).replace(/\n/g, "\r\n") });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.deepEqual(report.unparsable, [], JSON.stringify(report.unparsable));
+    assert.deepEqual(report.mutable_refs, []);
+    assert.equal(report.pinned_actions.length, 1);
+    assert.equal(report.pinned_actions[0].sha, sha);
+    assert.equal(report.pinned_actions[0].version, "v5.1.0");
+    assert.equal(report.ok, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a uses under with: or env: is an input, not an action reference", () => {
+  const found = usesInText([
+    "jobs:",
+    "  one:",
+    "    env:",
+    "      uses: harmless-env",
+    "    steps:",
+    "      - uses: actions/checkout@abc # v1.0.0",
+    "        with:",
+    "          uses: harmless-input",
+    "      - name: flow",
+    "        env: { uses: harmless-flow }",
+    "      - uses: actions/setup-node@def # v2.0.0"
+  ].join("\n"));
+  assert.deepEqual(found.map((one) => one.raw), ["actions/checkout@abc", "actions/setup-node@def"], JSON.stringify(found));
+
+  const sha = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
+  const dir = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@${sha} # v5.1.0
+        with:
+          uses: harmless-input
+        env: { uses: harmless-flow }
+`
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.deepEqual(report.mutable_refs, [], JSON.stringify(report.mutable_refs));
+    assert.deepEqual(report.unparsable, []);
+    assert.equal(report.external_uses, 1);
+    assert.equal(report.ok, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // The safety net is not relaxed by the context: a spelling the scanner does not know still fails
+  // wherever it appears.
+  const strange = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - [uses: attacker/evil@main]
+`
+  });
+  try {
+    assert.equal(scanActionPins(strange, loadPolicy()).unparsable.length, 1);
+  } finally {
+    rmSync(strange, { recursive: true, force: true });
+  }
+});
+
+test("a version comment after a flow mapping is kept", () => {
+  const sha = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
+  // The comment sits outside the braces, so the flow match cannot contain it. Losing it turned a
+  // correctly pinned reference into a pin with no readable version.
+  const found = usesInText(`      - { uses: actions/checkout@${sha} } # v5.1.0`);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].raw, `actions/checkout@${sha}`);
+  assert.equal(found[0].comment, "v5.1.0");
+
+  const dir = sandbox({
+    ".github/workflows/ci.yml": `name: t
+on: [push]
+permissions:
+  contents: read
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - { uses: actions/checkout@${sha} } # v5.1.0
+`
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.deepEqual(report.uncommented, [], JSON.stringify(report.uncommented));
+    assert.equal(report.pinned_actions.length, 1);
+    assert.equal(report.pinned_actions[0].version, "v5.1.0");
+    assert.equal(report.ok, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the same-repository $/path syntax is a local reference, not an unreadable one", () => {
+  // GitHub's other spelling for an action in this repository, resolved against the repository root.
+  // Refusing it as unparsable was fail-closed but wrong: it is valid, documented syntax, and a
+  // check that fails on valid syntax is one people route around.
+  const dir = sandbox({
+    ".github/workflows/ci.yml": workflow("$/.github/actions/setup"),
+    ".github/actions/setup/action.yml": "name: setup\nruns:\n  using: composite\n  steps:\n    - run: true\n"
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.deepEqual(report.unparsable, [], JSON.stringify(report.unparsable));
+    assert.deepEqual(report.local_action_unresolved, []);
+    assert.equal(report.external_uses, 0);
+    assert.equal(report.ok, true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // It is a redirection like `./path`, held to the same rule: the file it names has to be one this
+  // scan read.
+  const missing = sandbox({ ".github/workflows/ci.yml": workflow("$/not-here") });
+  try {
+    const report = scanActionPins(missing, loadPolicy());
+    assert.deepEqual(report.unparsable, []);
+    assert.equal(report.local_action_unresolved.length, 1);
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(missing, { recursive: true, force: true });
+  }
+});
+
+test("a symlinked directory or action file is skipped, and a reference to one fails closed", () => {
+  const dir = sandbox({
+    ".github/workflows/ci.yml": workflow("./linked"),
+    "real/action.yml": "name: real\nruns:\n  using: composite\n  steps:\n    - run: true\n"
+  });
+  try {
+    symlinkSync(join(dir, "real"), join(dir, "linked"), "dir");
+    mkdirSync(join(dir, "aliased"));
+    symlinkSync(join(dir, "real", "action.yml"), join(dir, "aliased", "action.yml"));
+
+    // Skipped, and documented as skipped: the walk enters directories and reads files, and a
+    // symlink is neither.
+    const found = discoverWorkflowFiles(dir).map((one) => one.replace(`${dir}/`, "")).sort();
+    assert.deepEqual(found, [".github/workflows/ci.yml", "real/action.yml"]);
+
+    // Which is safe because skipping fails closed rather than open: `./linked` resolves to a file
+    // that is not in the scanned set, so the reference is unresolved and the report is not ok.
+    const report = scanActionPins(dir, loadPolicy());
+    assert.deepEqual(report.mutable_refs, []);
+    assert.equal(report.local_action_unresolved.length, 1);
+    assert.equal(report.local_action_unresolved[0].reason, "the action it runs was not scanned");
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the supply-chain digest covers the verifier and the npm script that run the check", async () => {
+  const sha = "fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09";
+  // The scanner is not the whole check. `scripts/verify-action-pins.mjs` combines the pin scan with
+  // the permission audit and sets the exit status, and `package.json` decides which file the npm
+  // script runs -- so a digest over the workflows, the policy and the scanner leaves the two places
+  // that turn failure into success outside what provenance quotes.
+  const distribution = (edit) => {
+    const dir = mkdtempSync(join(tmpdir(), "aos-action-pins-dist-"));
+    for (const part of ["lib", "scripts", "governance", ".github/workflows"]) mkdirSync(join(dir, part), { recursive: true });
+    copyFileSync(join(root, "lib", "action-pins.mjs"), join(dir, "lib", "action-pins.mjs"));
+    copyFileSync(join(root, "governance", "action-pin-policy.json"), join(dir, "governance", "action-pin-policy.json"));
+    for (const [from, to] of [["scripts/verify-action-pins.mjs", "scripts/verify-action-pins.mjs"], ["package.json", "package.json"]]) {
+      writeFileSync(join(dir, to), edit(to, readFileSync(join(root, from), "utf8")));
+    }
+    writeFileSync(join(dir, ".github/workflows/ci.yml"), workflow(`actions/checkout@${sha} # v5.1.0`));
+    return dir;
+  };
+  const digests = async (dir) => {
+    const module = await import(pathToFileURL(join(dir, "lib", "action-pins.mjs")).href);
+    const report = module.scanActionPins(dir, module.loadPolicy());
+    return { workflow: report.workflow_digest, supply: report.supply_chain_digest };
+  };
+
+  const unchanged = distribution((path, body) => body);
+  // The one-line edit the review found: the verifier stops combining the two results and always
+  // reports success, while every file the digest covered stays byte-identical.
+  const forged = distribution((path, body) =>
+    path.endsWith("verify-action-pins.mjs") ? body.replace("ok: pins.ok && permissions.ok", "ok: true") : body);
+  // And the other one: the npm script runs something else entirely.
+  const rerouted = distribution((path, body) =>
+    path.endsWith("package.json") ? body.replace('"verify:action-pins": "node scripts/verify-action-pins.mjs"', '"verify:action-pins": "true"') : body);
+
+  try {
+    const before = await digests(unchanged);
+    const after = await digests(forged);
+    const elsewhere = await digests(rerouted);
+    assert.equal(before.workflow, after.workflow);
+    assert.equal(before.workflow, elsewhere.workflow);
+    assert.notEqual(before.supply, after.supply, "changing the verifier left the supply-chain digest identical");
+    assert.notEqual(before.supply, elsewhere.supply, "changing the npm script left the supply-chain digest identical");
+  } finally {
+    for (const dir of [unchanged, forged, rerouted]) rmSync(dir, { recursive: true, force: true });
   }
 });

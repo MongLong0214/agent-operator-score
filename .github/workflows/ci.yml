@@ -13,8 +13,10 @@ jobs:
   # First, and everything else waits for it. A check that runs beside the jobs it is checking has
   # already let them run: a pull request adding `uses: attacker/thing@main` to the test job would
   # execute that action while this job was still going red. Ordering does not make the check an
-  # execution-prevention control -- anyone who can push a branch can edit this file too -- but it
-  # does mean an unpinned reference in any *other* job never runs.
+  # execution-prevention control -- anyone who can push a branch can edit this file too, `always()`
+  # on a job would override the wait, and a separate workflow cannot depend on this one at all --
+  # but it does mean an unpinned reference in any *other* job here never runs. A test asserts that
+  # every job waits and that none of them opts out of waiting.
   action-pins:
     name: action-pins
     runs-on: ubuntu-latest
