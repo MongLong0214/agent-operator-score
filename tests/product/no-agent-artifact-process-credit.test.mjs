@@ -7,7 +7,7 @@ import test from "node:test";
 import { checkpointEvidence, interventionSummary } from "../../lib/checkpoint.mjs";
 import { canonicalJson, runProcess } from "../../lib/core.mjs";
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
-import { DECISION_TYPES, attestedOperatorTrace, isOperatorAuthorityType, mintOperatorEvent } from "../../lib/operator-events.mjs";
+import { DECISION_TYPES, attestedOperatorTrace, isOperatorAuthorityType, mintOperatorEvent, recordBindingOf } from "../../lib/operator-events.mjs";
 import { bindOperatorDecisions, boundDecisionTypes, constructForDecision, contextDecisions, dimensionForDecision, isShippedPlan, operatorPlanTemplate, parseProcessEvidenceId, processEvidence, processEvidenceId, routeEvidence, validateOperatorPlan } from "../../lib/operator-plan.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { appendEvent, createRun, operatorRunKey, readEvents, runPaths } from "../../lib/store.mjs";
@@ -206,6 +206,15 @@ test("an operator record appended to a run's event file by hand earns nothing, b
     const attested = attestedOperatorTrace(events, { run_id: runId, secret });
     assert.equal(attested.accepted.length, 0);
     assert.equal(attested.rejected.length, 3);
+    // And with the record binding computed correctly -- which anyone holding the key could do -- the
+    // event itself is still what has to be attested. Without this the record binding alone would be
+    // the whole check, and a record with no operator event on it would walk through.
+    const bound = handWritten.map((record) => ({ ...record, operator_record_binding: recordBindingOf(record, secret) }));
+    writeFileSync(file, `${bound.map((record) => JSON.stringify(record)).join("\n")}\n`);
+    const withBindings = attestedOperatorTrace(readEvents(root, runId), { run_id: runId, secret });
+    assert.deepEqual(withBindings.accepted, [], "a record whose wrapper was bound but whose event was not is an attested operator turn");
+    assert.equal(withBindings.rejected.every((entry) => /no operator event was attached/u.test(entry.reason)), true, canonicalJson(withBindings.rejected));
+    assert.equal(interventionSummary(withBindings.trace).observed, false);
     assert.equal(attested.rejected.every((entry) => /no operator event was attached|does not match the binding taken when it was written/u.test(entry.reason)), true, canonicalJson(attested.rejected));
     assert.equal(interventionSummary(attested.trace).observed, false);
   } finally {
