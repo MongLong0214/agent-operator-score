@@ -141,6 +141,16 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "const original = readFileSync(path, \"utf8\");",
       "note": "reads the allowlist for restore; nothing here is hashed"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "sessionDigestOf(Buffer.from(readFileSync(sessionPath, \"utf8\"), \"utf8\"))",
+      "note": "a mutation `to` string quoting the decoded-read digest #567 removed; the manifest never runs it, and the `createHash(` that makes this file eligible sits in another guard's `from` string"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "sha256Bytes(Buffer.from(readFileSync(full, \"utf8\").replace(",
+      "note": "a mutation `to` string quoting the CRLF-folding digest #567 removed; the manifest never runs it"
     }
   ],
   "regex-no-unicode": [
