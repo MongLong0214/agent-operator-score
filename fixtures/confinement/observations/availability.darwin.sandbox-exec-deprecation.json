@@ -1,0 +1,11 @@
+{
+  "backend_run": "availability.darwin.sandbox-exec-deprecation",
+  "command": "man -P cat sandbox-exec 2>/dev/null | sed -n '1,14p'",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "SANDBOX-EXEC(1)             General Commands Manual            SANDBOX-EXEC(1)\n\nN\bNA\bAM\bME\bE\n     s\bsa\ban\bnd\bdb\bbo\box\bx-\b-e\bex\bxe\bec\bc – execute within a sandbox (DEPRECATED)\n\nS\bSY\bYN\bNO\bOP\bPS\bSI\bIS\bS\n     s\bsa\ban\bnd\bdb\bbo\box\bx-\b-e\bex\bxe\bec\bc [-\b-f\bf _\bp_\br_\bo_\bf_\bi_\bl_\be_\b-_\bf_\bi_\bl_\be] [-\b-n\bn _\bp_\br_\bo_\bf_\bi_\bl_\be_\b-_\bn_\ba_\bm_\be] [-\b-p\bp _\bp_\br_\bo_\bf_\bi_\bl_\be_\b-_\bs_\bt_\br_\bi_\bn_\bg]\n                  [-\b-D\bD _\bk_\be_\by=_\bv_\ba_\bl_\bu_\be _\b._\b._\b.] _\bc_\bo_\bm_\bm_\ba_\bn_\bd [_\ba_\br_\bg_\bu_\bm_\be_\bn_\bt_\bs _\b._\b._\b.]\n\nD\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN\n     The s\bsa\ban\bnd\bdb\bbo\box\bx-\b-e\bex\bxe\bec\bc command is D\bDE\bEP\bPR\bRE\bEC\bCA\bAT\bTE\bED\bD.  Developers who wish to sandbox\n     an app should instead adopt the App Sandbox feature described in the App\n     Sandbox Design Guide.  The s\bsa\ban\bnd\bdb\bbo\box\bx-\b-e\bex\bxe\bec\bc command enters a sandbox using a\n     profile specified by the -\b-f\bf, -\b-n\bn, or -\b-p\bp option and executes _\bc_\bo_\bm_\bm_\ba_\bn_\bd with\n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

@@ -1,9 +1,11 @@
 {
-  "schema": "aos-confinement-probe.v1",
+  "schema": "aos-confinement-probe.v2",
   "issue": 556,
   "phase": "feasibility-proof",
   "code_integration_allowed": false,
   "document": "docs/STRICT_CONFINEMENT_FEASIBILITY.md",
+  "probe_programs": "fixtures/confinement/probes/",
+  "raw_observations": "fixtures/confinement/observations/",
   "recorded_at": "2026-09-02",
   "host": {
     "platform": "darwin",
@@ -13,7 +15,11 @@
     "os_build": "25D125",
     "kernel": "Darwin 25.3.0 xnu-12377.81.4~5 RELEASE_ARM64_T6041",
     "node": "v22.23.2",
-    "linux_kernel_reached": "7.0.11-orbstack-00360-gc9bc4d96ac70 via Docker server 29.4.0 (linux/arm64)"
+    "linux_kernel_reached": "7.0.11-orbstack-00360-gc9bc4d96ac70 via Docker server 29.4.0 (linux/arm64)",
+    "evidence": {
+      "file": "observations/availability.darwin.host.json",
+      "key": "stdout_excerpt"
+    }
   },
   "outcome_vocabulary": [
     "allowed",
@@ -26,6 +32,7 @@
     "namespace",
     "path_absent",
     "runtime_absent",
+    "unknown",
     "none"
   ],
   "support_vocabulary": [
@@ -40,11 +47,13 @@
   ],
   "path_placeholders": {
     "@WORKSPACE@": "the scenario workspace the probe treats as the only writable directory",
-    "@BASE@": "the workspace's parent, holding the read and write canaries outside the boundary",
+    "@BASE@": "the workspace's parent, holding the read, write and delete canaries outside the boundary",
     "@OPERATOR_HOME@": "the operator's real home directory",
-    "@NODE_TREE@": "the install prefix of the node binary that runs the probe",
-    "@RUNTIME_CLI_TREE@": "the install prefix of the agent CLI",
-    "@RUNTIME_FILES@": "a read-only directory holding the probe scripts, standing in for the runtime's own files"
+    "@NODE_TREE@": "the install prefix of the node binary that runs the probes",
+    "@RUNTIME_CLI_TREE@": "the install prefix of the agent CLIs",
+    "@RUNTIME_FILES@": "fixtures/confinement/probes, mounted or allowed read-only",
+    "@AGENT_TEMP_HOME@": "the temporary HOME a BEST_EFFORT_CLI run creates",
+    "@HOSTNAME@": "the probing machine's network name, removed from recorded output"
   },
   "properties": [
     {
@@ -69,7 +78,7 @@
     },
     {
       "id": "delete_outside_workspace",
-      "question": "Can the agent delete a file outside the workspace?",
+      "question": "Can the agent delete a file outside the workspace that already existed?",
       "strict_requirement": "denied"
     },
     {
@@ -78,8 +87,8 @@
       "strict_requirement": "denied"
     },
     {
-      "id": "read_operator_ssh_private_key",
-      "question": "Can the agent read bytes of a private key under the operator's ~/.ssh?",
+      "id": "read_operator_ssh_private_key_absolute",
+      "question": "Can the agent read bytes of a private key under the operator's ~/.ssh by absolute path?",
       "strict_requirement": "denied"
     },
     {
@@ -113,38 +122,35 @@
       "strict_requirement": "denied"
     },
     {
+      "id": "act_outside_boundary_after_orphaning",
+      "question": "Can such a survivor still read outside the boundary once it has been orphaned?",
+      "strict_requirement": "denied"
+    },
+    {
       "id": "open_outbound_network_socket",
       "question": "Can the agent open an outbound TCP connection?",
       "strict_requirement": "either"
     },
     {
-      "id": "read_operator_keychain_item",
-      "question": "Can the agent retrieve the operator's real Keychain credential item?",
+      "id": "read_operator_keychain_secret",
+      "question": "Can the agent retrieve the value of an item in the operator's login keychain?",
       "strict_requirement": "either"
-    },
-    {
-      "id": "authenticate_as_the_operator",
-      "question": "Does a real agent CLI report itself logged in inside this backend?",
-      "strict_requirement": "allowed"
     }
   ],
   "backends": [
     {
       "id": "none",
-      "role": "control",
-      "platform": "darwin",
-      "mechanism": "No confinement -- the operator's own shell environment and cwd",
-      "available": true,
-      "deprecated": false,
-      "policy_digest": null,
       "observations": [
         {
           "property": "read_inside_workspace",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "read_inside_workspace"
+          },
           "note": null
         },
         {
@@ -152,8 +158,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "write_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "write_inside_workspace"
+          },
           "note": null
         },
         {
@@ -161,8 +170,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_workspace_parent",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "read_workspace_parent"
+          },
           "note": null
         },
         {
@@ -170,8 +182,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "write_outside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "write_outside_workspace"
+          },
           "note": null
         },
         {
@@ -179,8 +194,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "delete_outside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "delete_outside_workspace"
+          },
           "note": null
         },
         {
@@ -188,17 +206,23 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_operator_home_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "read_operator_home_absolute"
+          },
           "note": null
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_ssh_private_key_bytes",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "read_operator_ssh_private_key_absolute"
+          },
           "note": null
         },
         {
@@ -206,8 +230,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_agent_config_codex_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "read_operator_agent_config_absolute"
+          },
           "note": null
         },
         {
@@ -215,8 +242,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_aos_home_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "read_aos_home_absolute"
+          },
           "note": null
         },
         {
@@ -224,8 +254,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "symlink_escape",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "escape_via_symlink"
+          },
           "note": null
         },
         {
@@ -233,8 +266,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "spawn_child_process",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "spawn_child_process"
+          },
           "note": null
         },
         {
@@ -242,8 +278,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe-descendant.mjs",
-          "probe": "child_read_outside",
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ PROBE_RUNTIME=@RUNTIME_FILES@ node fixtures/confinement/probes/descendant-probe.mjs",
+          "evidence": {
+            "file": "observations/none.descendant.json",
+            "key": "act_outside_boundary_from_descendant"
+          },
           "note": null
         },
         {
@@ -251,38 +290,56 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "node pg-check.mjs   # spawn detached, kill(-pgid), re-check with lib/core.mjs processGroupMembers",
-          "probe": "detached_descendant",
-          "note": "The detached descendant took its own process group and was invisible to lib/core.mjs processGroupMembers; it was still alive after kill(-pgid, SIGKILL)."
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/none.leak-observed.json",
+            "key": "survive_cleanup_as_detached_descendant"
+          },
+          "note": "The detached descendant took its own process group, was reparented to pid 1, and was still alive after kill(-pgid, SIGKILL)."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/none.leak-observed.json",
+            "key": "act_outside_boundary_after_orphaning"
+          },
+          "note": null
         },
         {
           "property": "open_outbound_network_socket",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "network_tcp_connect",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/none.filesystem.json",
+            "key": "open_outbound_network_socket"
+          },
           "note": null
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && node auth-probe.mjs   # security find-generic-password, stdio discarded, exit status only",
-          "probe": "keychain_real_item_reachable",
-          "note": "security exited 0."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "allowed",
-          "enforcement": "none",
-          "errno": null,
-          "command": "cd @WORKSPACE@ && codex login status",
-          "probe": "codex login status",
-          "note": "Reported: Logged in using ChatGPT."
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/auth-probe.mjs",
+          "evidence": {
+            "file": "observations/none.credentials.json",
+            "key": "keychain_secret_retrievable"
+          },
+          "note": null
         }
       ],
+      "role": "control",
+      "platform": "darwin",
+      "mechanism": "No confinement -- the operator's own shell environment and cwd",
+      "available": true,
+      "deprecated": false,
+      "policy_digest": null,
       "strict_gate": {
         "filesystem_enforced": false,
         "process_enforced": false,
@@ -300,25 +357,22 @@
         "cleanup_verified"
       ],
       "limitations": [
-        "Nothing is enforced. Present as the control row: every other backend is only meaningful against it."
+        "Nothing is enforced. Present as the control row: every other backend is only meaningful read against it."
       ]
     },
     {
       "id": "best-effort-cli",
-      "role": "the backend AOS ships today",
-      "platform": "darwin",
-      "mechanism": "Replaced HOME and TMPDIR, a temp cwd, and a detached process group killed on timeout (lib/core.mjs runProcess, lib/isolation.mjs buildAgentEnv)",
-      "available": true,
-      "deprecated": false,
-      "policy_digest": null,
       "observations": [
         {
           "property": "read_inside_workspace",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_inside_workspace",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "read_inside_workspace"
+          },
           "note": null
         },
         {
@@ -326,8 +380,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "write_inside_workspace",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "write_inside_workspace"
+          },
           "note": null
         },
         {
@@ -335,8 +392,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_workspace_parent",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "read_workspace_parent"
+          },
           "note": null
         },
         {
@@ -344,8 +404,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "write_outside_workspace",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "write_outside_workspace"
+          },
           "note": null
         },
         {
@@ -353,8 +416,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "delete_outside_workspace",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "delete_outside_workspace"
+          },
           "note": null
         },
         {
@@ -362,17 +428,23 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_operator_home_absolute",
-          "note": "Reading through $HOME returned ENOENT, which reads like a boundary and is not one: the same directory read by absolute path succeeded."
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "read_operator_home_absolute"
+          },
+          "note": "The same directory read through $HOME reported one entry, the temp home's own. Read by absolute path it is fully readable: the replacement moves where a tilde expands to, not the operator's files."
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_operator_ssh_absolute",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "read_operator_ssh_private_key_absolute"
+          },
           "note": null
         },
         {
@@ -380,8 +452,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_agent_config_codex_absolute",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "read_operator_agent_config_absolute"
+          },
           "note": null
         },
         {
@@ -389,17 +464,23 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "read_aos_home_absolute",
-          "note": "AOS_HOME is removed from the child environment, so the name is gone. The directory is not."
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "read_aos_home_absolute"
+          },
+          "note": "AOS_HOME is stripped from the child environment, so the name is gone. The directory is not."
         },
         {
           "property": "escape_via_symlink",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "symlink_escape",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "escape_via_symlink"
+          },
           "note": null
         },
         {
@@ -407,8 +488,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "spawn_child_process",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "spawn_child_process"
+          },
           "note": null
         },
         {
@@ -416,8 +500,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... HOME=$(mktemp -d) PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe-descendant.mjs",
-          "probe": "child_read_outside",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/descendant-probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.descendant.json",
+            "key": "act_outside_boundary_from_descendant"
+          },
           "note": null
         },
         {
@@ -425,38 +512,56 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "node pg-check.mjs   # spawn detached, kill(-pgid), re-check with lib/core.mjs processGroupMembers",
-          "probe": "detached_descendant",
-          "note": "processGroupMembers reported only the in-group child; the detached one led its own group, was not listed, and survived kill(-pgid, SIGKILL)."
+          "command": "cd @WORKSPACE@ && <env from buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/best-effort-cli.leak-observed.json",
+            "key": "survive_cleanup_as_detached_descendant"
+          },
+          "note": null
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && <env from buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/best-effort-cli.leak-observed.json",
+            "key": "act_outside_boundary_after_orphaning"
+          },
+          "note": null
         },
         {
           "property": "open_outbound_network_socket",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... LANG=en_US.UTF-8 HOME=$(mktemp -d) TMPDIR=$HOME PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node probe.mjs",
-          "probe": "network_tcp_connect",
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.filesystem.json",
+            "key": "open_outbound_network_socket"
+          },
           "note": null
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "denied",
           "enforcement": "path_absent",
           "errno": null,
-          "command": "cd @WORKSPACE@ && env -i HOME=$(mktemp -d) node auth-probe.mjs",
-          "probe": "keychain_real_item_reachable",
-          "note": "security exited 44 rather than 0. The login keychain lives under the replaced HOME, so this denial is a moved path, not an enforced boundary."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "denied",
-          "enforcement": "path_absent",
-          "errno": null,
-          "command": "cd @WORKSPACE@ && env -i PATH=... HOME=$(mktemp -d) TMPDIR=$HOME codex login status",
-          "probe": "codex login status",
-          "note": "Reported: Not logged in. The same command with the operator's real HOME reports Logged in using ChatGPT."
+          "command": "cd @WORKSPACE@ && <env built by lib/isolation.mjs buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/auth-probe.mjs",
+          "evidence": {
+            "file": "observations/best-effort-cli.credentials.json",
+            "key": "keychain_secret_retrievable"
+          },
+          "note": "Recorded as a denial and it is one, but the enforcement is a moved path, not a refusal: the login keychain is resolved from HOME, and HOME was replaced. The absent-item control returned 44 in every run, so a 44 here does not distinguish the two on its own -- what does is that the unconfined control returned 0 for the same item."
         }
       ],
+      "role": "the backend AOS ships today",
+      "platform": "darwin",
+      "mechanism": "Replaced HOME and TMPDIR, a temp cwd, and a detached process group killed on timeout (lib/isolation.mjs buildAgentEnv, lib/core.mjs runProcess)",
+      "available": true,
+      "deprecated": false,
+      "policy_digest": null,
       "strict_gate": {
         "filesystem_enforced": false,
         "process_enforced": false,
@@ -475,26 +580,24 @@
         "authenticated_runtime"
       ],
       "limitations": [
-        "Every filesystem denial observed here is a path that moved, not a permission that was refused. Absolute paths into the operator's home, ~/.ssh and AOS_HOME all succeeded.",
-        "The two things it does stop are the runtime's own credential lookups, so it costs authentication and buys no confinement."
+        "Every filesystem row here is `allowed`. Reading through $HOME finds an empty temp directory, which reads like a boundary; the same paths read absolutely are fully reachable.",
+        "The environment was built by the product's own buildAgentEnv rather than by an approximation, so these rows describe the shipped behaviour and not a harness.",
+        "The authentication rows are about a missing config directory, not about confinement. See the authentication cells: carrying CODEX_HOME restores the Codex login with HOME still replaced."
       ]
     },
     {
       "id": "macos-seatbelt-deny-default",
-      "role": "candidate",
-      "platform": "darwin",
-      "mechanism": "sandbox-exec(1) with a (deny default) Seatbelt profile allowing only the system tree, the runtime's own files read-only, and the workspace",
-      "available": true,
-      "deprecated": true,
-      "policy_digest": "sha256:5f06552ed608d555d937e5115a595a927fcbaf23faeb23c2f2616e65b29948cd",
       "observations": [
         {
           "property": "read_inside_workspace",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "read_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "read_inside_workspace"
+          },
           "note": null
         },
         {
@@ -502,8 +605,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "write_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "write_inside_workspace"
+          },
           "note": null
         },
         {
@@ -511,8 +617,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "read_workspace_parent",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "read_workspace_parent"
+          },
           "note": null
         },
         {
@@ -520,8 +629,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "write_outside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "write_outside_workspace"
+          },
           "note": null
         },
         {
@@ -529,8 +641,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "delete_outside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "delete_outside_workspace"
+          },
           "note": null
         },
         {
@@ -538,17 +653,23 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "read_operator_home_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "read_operator_home_absolute"
+          },
           "note": null
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "read_operator_ssh_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "read_operator_ssh_private_key_absolute"
+          },
           "note": null
         },
         {
@@ -556,8 +677,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "read_agent_config_codex_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "read_operator_agent_config_absolute"
+          },
           "note": null
         },
         {
@@ -565,8 +689,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "read_aos_home_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "read_aos_home_absolute"
+          },
           "note": null
         },
         {
@@ -574,8 +701,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "symlink_escape",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "escape_via_symlink"
+          },
           "note": "The kernel resolves the link before it checks the policy, so a link planted inside the workspace does not carry the workspace's permissions to its target."
         },
         {
@@ -583,8 +713,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "spawn_child_process",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "spawn_child_process"
+          },
           "note": null
         },
         {
@@ -592,47 +725,68 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe-descendant.mjs",
-          "probe": "child_read_outside",
-          "note": "The profile is inherited across exec. The same probe unconfined reached the path."
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ PROBE_RUNTIME=@RUNTIME_FILES@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/descendant-probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.descendant.json",
+            "key": "act_outside_boundary_from_descendant"
+          },
+          "note": "The profile is inherited across exec. The same probe unconfined read the directory."
         },
         {
           "property": "survive_cleanup_as_detached_descendant",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb node leaker.mjs; ps -o pid=,pgid=,ppid= -p <descendant>",
-          "probe": "detached_descendant",
-          "note": "Seatbelt confines what a process may touch, not how long it lives. The descendant took its own session and outlived the run."
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.leak-observed.json",
+            "key": "survive_cleanup_as_detached_descendant"
+          },
+          "note": "Seatbelt confines what a process may touch, not how long it lives."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "denied",
+          "enforcement": "kernel",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.leak-observed.json",
+            "key": "act_outside_boundary_after_orphaning"
+          },
+          "note": "The survivor wrote ORPHAN_STILL_CONFINED after being reparented to pid 1. The unconfined control wrote ORPHAN_READ_OK. A leak here is a process that outlives the run without gaining any reach."
         },
         {
           "property": "open_outbound_network_socket",
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node probe.mjs",
-          "probe": "network_tcp_connect",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.filesystem.json",
+            "key": "open_outbound_network_socket"
+          },
           "note": null
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "denied",
           "enforcement": "kernel",
           "errno": null,
-          "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb node auth-probe.mjs",
-          "probe": "keychain_real_item_reachable",
-          "note": "security exited 44 rather than 0: the item was not retrievable."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "denied",
-          "enforcement": "kernel",
-          "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb node auth-probe.mjs",
-          "probe": "codex_auth_file_readable",
-          "note": "codex could not read its own config: Error loading configuration ... Operation not permitted."
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f deny-default.sb node fixtures/confinement/probes/auth-probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-deny-default.credentials.json",
+            "key": "keychain_secret_retrievable"
+          },
+          "note": "Measured with `security -w`, which retrieves the secret rather than only locating the item. The absent-item control returned 44 in the same run, and the unconfined control returned 0 for this item, so the 44 here is a refusal and not an empty keychain."
         }
       ],
+      "role": "candidate",
+      "platform": "darwin",
+      "mechanism": "sandbox-exec(1) with a (deny default) Seatbelt profile allowing only the system tree, the probe files read-only, and the workspace",
+      "available": true,
+      "deprecated": true,
+      "policy_digest": "sha256:a3c454c5217e75d3affccff387978afbbb98b39b9f30d48a39199f61ec7d3f66",
       "strict_gate": {
         "filesystem_enforced": true,
         "process_enforced": false,
@@ -650,27 +804,25 @@
         "authenticated_runtime"
       ],
       "limitations": [
-        "sandbox-exec(1) is documented DEPRECATED in its own man page on macOS 26.3 and still enforces. Apple can withdraw it in a point release with no deprecation period left to spend.",
-        "No agent CLI can authenticate under it, so it confines a runtime that cannot do the work.",
-        "sandbox-exec's own failure codes 65 (profile) and 71 (exec) collide with ordinary runtime exit codes, so a setup failure cannot be told from a run that exited 71."
+        "sandbox-exec(1) is documented DEPRECATED in its own man page on macOS 26.3 and still enforces. Apple can withdraw it with no deprecation period left to spend.",
+        "The profile names no runtime install tree, so no agent CLI can be exec'd under it. Its authentication cells measure exec and say nothing about credentials.",
+        "sandbox-exec's own failure codes -- 65 for a missing or invalid profile, 71 when it cannot exec -- collide with ordinary runtime exit codes, which was measured directly.",
+        "/bin/ps cannot be exec'd inside any profile on this machine, including (allow default), because it is setgid. Anything inside the boundary that needs to enumerate processes has to do it another way."
       ]
     },
     {
       "id": "macos-seatbelt-provider-lane",
-      "role": "candidate",
-      "platform": "darwin",
-      "mechanism": "The deny-default profile plus named read-only holes for the runtime's credential material and install tree, and outbound network for the provider transport",
-      "available": true,
-      "deprecated": true,
-      "policy_digest": "sha256:3ccff75053a842e25ee2de641853f9e9602f97dfc50fdedb52e336cd1e17aa01",
       "observations": [
         {
           "property": "read_inside_workspace",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "read_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "read_inside_workspace"
+          },
           "note": null
         },
         {
@@ -678,8 +830,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "write_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "write_inside_workspace"
+          },
           "note": null
         },
         {
@@ -687,8 +842,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "read_workspace_parent",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "read_workspace_parent"
+          },
           "note": null
         },
         {
@@ -696,8 +854,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "write_outside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "write_outside_workspace"
+          },
           "note": null
         },
         {
@@ -705,8 +866,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "delete_outside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "delete_outside_workspace"
+          },
           "note": null
         },
         {
@@ -714,17 +878,23 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "read_operator_home_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "read_operator_home_absolute"
+          },
           "note": null
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "read_operator_ssh_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "read_operator_ssh_private_key_absolute"
+          },
           "note": null
         },
         {
@@ -732,17 +902,23 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "read_agent_config_codex_absolute",
-          "note": "Allowed on purpose and by name. ~/.claude.json, which the profile does not name, stayed EPERM in the same run -- the hole is the named path and nothing more."
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "read_operator_agent_config_absolute"
+          },
+          "note": "Allowed on purpose and by name. ~/.claude.json, which the profile does not name, stayed EPERM in the same run: the hole is the named path and nothing more."
         },
         {
           "property": "read_aos_home_absolute",
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "read_aos_home_absolute",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "read_aos_home_absolute"
+          },
           "note": null
         },
         {
@@ -750,8 +926,11 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "symlink_escape",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "escape_via_symlink"
+          },
           "note": null
         },
         {
@@ -759,8 +938,11 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "spawn_child_process",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "spawn_child_process"
+          },
           "note": null
         },
         {
@@ -768,47 +950,68 @@
           "observed": "denied",
           "enforcement": "kernel",
           "errno": "EPERM",
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node leak-and-test.mjs",
-          "probe": "orphan confinement",
-          "note": "Checked after the parent exited and the orphan was reparented to pid 1: it wrote ORPHAN_STILL_CONFINED. The same probe unconfined wrote ORPHAN_READ_OK."
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ PROBE_RUNTIME=@RUNTIME_FILES@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/descendant-probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.descendant.json",
+            "key": "act_outside_boundary_from_descendant"
+          },
+          "note": null
         },
         {
           "property": "survive_cleanup_as_detached_descendant",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && sandbox-exec -f provider-lane.sb node leak-and-test.mjs; ps -o pid=,pgid=,ppid= -p <descendant>",
-          "probe": "detached_descendant",
-          "note": "It survives, and it stays inside the boundary while it does. Denying SYS_setsid by name and by number both compiled and neither stopped the child from leading its own session."
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.leak-observed.json",
+            "key": "survive_cleanup_as_detached_descendant"
+          },
+          "note": "Unchanged from the deny-default profile. Nothing in the provider lane touches the process axis."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "denied",
+          "enforcement": "kernel",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.leak-observed.json",
+            "key": "act_outside_boundary_after_orphaning"
+          },
+          "note": null
         },
         {
           "property": "open_outbound_network_socket",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node probe.mjs",
-          "probe": "network_tcp_connect",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.filesystem.json",
+            "key": "open_outbound_network_socket"
+          },
           "note": "Allowed on purpose. The same probe under the deny-default profile was EPERM, so the network axis is separately controllable."
         },
         {
-          "property": "read_operator_keychain_item",
-          "observed": "allowed",
-          "enforcement": "none",
+          "property": "read_operator_keychain_secret",
+          "observed": "denied",
+          "enforcement": "kernel",
           "errno": null,
-          "command": "cd @WORKSPACE@ && sandbox-exec -f provider-lane.sb node auth-probe.mjs",
-          "probe": "keychain_real_item_reachable",
-          "note": "security exited 0. This is the hole that lets Claude Code authenticate and it also reaches every other item in the login keychain."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "allowed",
-          "enforcement": "none",
-          "errno": null,
-          "command": "cd @WORKSPACE@ && sandbox-exec -f provider-lane.sb codex login status",
-          "probe": "codex login status",
-          "note": "Reported: Logged in using ChatGPT, with the operator's real HOME and the filesystem confined by the kernel."
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/auth-probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-provider-lane.credentials.json",
+            "key": "keychain_secret_retrievable"
+          },
+          "note": "Denied, and this profile is the reason: it deliberately does not name the keychain. AOS resolves the Claude Code credential in the parent and injects it into the child environment (lib/runtime-auth.mjs), so a confined child does not need keychain access to authenticate."
         }
       ],
+      "role": "candidate",
+      "platform": "darwin",
+      "mechanism": "The deny-default profile plus named read-only holes for the runtime's credential directory and install tree, and outbound network for the provider transport. The login keychain is deliberately not named",
+      "available": true,
+      "deprecated": true,
+      "policy_digest": "sha256:3a84eed074d292f4951767f08ced0c0fcad4b50eed0c503d9f87cb1fc27a71dc",
       "strict_gate": {
         "filesystem_enforced": true,
         "process_enforced": false,
@@ -825,28 +1028,25 @@
         "cleanup_verified"
       ],
       "limitations": [
-        "The process axis is open and cannot be closed by this backend: a detached descendant takes its own session, escapes the process group AOS signals, and is not listed by lib/core.mjs processGroupMembers.",
-        "Granting the Keychain grants the whole login keychain, not one item. A file-scoped credential such as ~/.codex/auth.json can be granted narrowly; a Keychain-backed one cannot.",
-        "Deprecated interface, see the deny-default row.",
-        "Network is allowed wholesale. Provider transport and task-initiated external calls are not distinguishable at this layer, so a claim that rests on that distinction has to be recorded NOT_OBSERVED."
+        "The process axis is open. A detached descendant takes its own session, escapes the process group AOS signals, and is not listed by lib/core.mjs processGroupMembers -- measured against that function directly.",
+        "`authenticated_runtime` is true on the strength of the Codex cell. The Claude Code cell under this profile is not logged in, because nothing here supplies its credential; AOS's own resolver would, and that path was not exercised.",
+        "Deprecated interface, as the deny-default row.",
+        "Network is allowed wholesale. Provider transport and task-initiated external calls are not distinguishable at this layer, so a claim resting on that distinction has to be recorded NOT_OBSERVED."
       ]
     },
     {
-      "id": "linux-container-vm",
-      "role": "candidate",
-      "platform": "linux",
-      "mechanism": "OCI container on a Linux VM reachable from this darwin host (Docker 29.4.0 server, OrbStack kernel 7.0.11), workspace bind-mounted, --network none",
-      "available": true,
-      "deprecated": false,
-      "policy_digest": null,
+      "id": "macos-seatbelt-keychain-lane",
       "observations": [
         {
           "property": "read_inside_workspace",
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "read_inside_workspace"
+          },
           "note": null
         },
         {
@@ -854,80 +1054,107 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "write_inside_workspace",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "write_inside_workspace"
+          },
           "note": null
         },
         {
           "property": "read_workspace_parent",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_workspace_parent",
-          "note": "ENOENT rather than EPERM: the host path is not in the mount namespace at all."
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "read_workspace_parent"
+          },
+          "note": null
         },
         {
           "property": "write_outside_workspace",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "write_outside_workspace",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "write_outside_workspace"
+          },
           "note": null
         },
         {
           "property": "delete_outside_workspace",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "delete_outside_workspace",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "delete_outside_workspace"
+          },
           "note": null
         },
         {
           "property": "read_operator_home_absolute",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_operator_home_absolute",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "read_operator_home_absolute"
+          },
           "note": null
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_operator_ssh_absolute",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "read_operator_ssh_private_key_absolute"
+          },
           "note": null
         },
         {
           "property": "read_operator_agent_config_absolute",
-          "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_agent_config_codex_absolute",
-          "note": "Denied by default. A read-only bind mount does deliver it: mounted at /root/.codex it parsed, and a write to the same mount returned EROFS."
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "read_operator_agent_config_absolute"
+          },
+          "note": "Inherited from the provider lane this profile extends."
         },
         {
           "property": "read_aos_home_absolute",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_aos_home_absolute",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "read_aos_home_absolute"
+          },
           "note": null
         },
         {
           "property": "escape_via_symlink",
           "observed": "denied",
-          "enforcement": "namespace",
-          "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "symlink_escape",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "escape_via_symlink"
+          },
           "note": null
         },
         {
@@ -935,8 +1162,234 @@
           "observed": "allowed",
           "enforcement": "none",
           "errno": null,
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "spawn_child_process",
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "spawn_child_process"
+          },
+          "note": null
+        },
+        {
+          "property": "act_outside_boundary_from_descendant",
+          "observed": "denied",
+          "enforcement": "kernel",
+          "errno": "EPERM",
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ PROBE_RUNTIME=@RUNTIME_FILES@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/descendant-probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.descendant.json",
+            "key": "act_outside_boundary_from_descendant"
+          },
+          "note": null
+        },
+        {
+          "property": "survive_cleanup_as_detached_descendant",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.leak-observed.json",
+            "key": "survive_cleanup_as_detached_descendant"
+          },
+          "note": null
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "denied",
+          "enforcement": "kernel",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.leak-observed.json",
+            "key": "act_outside_boundary_after_orphaning"
+          },
+          "note": null
+        },
+        {
+          "property": "open_outbound_network_socket",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.filesystem.json",
+            "key": "open_outbound_network_socket"
+          },
+          "note": null
+        },
+        {
+          "property": "read_operator_keychain_secret",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f keychain-lane.sb node fixtures/confinement/probes/auth-probe.mjs",
+          "evidence": {
+            "file": "observations/macos-seatbelt-keychain-lane.credentials.json",
+            "key": "keychain_secret_retrievable"
+          },
+          "note": "Retrieved with `security -w`, exit 0. What this establishes is that granting the keychain files makes this item's secret readable inside the boundary. Only this one item was queried; the grant is on the keychain database rather than on an item, so it is not narrowable, but no claim is made here about what else it reaches."
+        }
+      ],
+      "role": "measurement only",
+      "platform": "darwin",
+      "mechanism": "The provider lane with the login keychain additionally granted, run to measure what such a grant buys rather than to propose it",
+      "available": true,
+      "deprecated": true,
+      "policy_digest": "sha256:95df612c5e969b006fcda96c39f4a65ad162769ffd4c258f81283fabfd76394f",
+      "strict_gate": {
+        "filesystem_enforced": true,
+        "process_enforced": false,
+        "setup_verified": true,
+        "authenticated_runtime": true,
+        "boundary_canary": "FAIL",
+        "cleanup_verified": false,
+        "network_policy": "provider-required-unrestricted"
+      },
+      "support_status": "BLOCKED",
+      "blocking_gate_fields": [
+        "process_enforced",
+        "boundary_canary",
+        "cleanup_verified"
+      ],
+      "limitations": [
+        "Not a proposed profile. It exists so that the cost of a keychain grant is a measurement rather than an assumption, and because the provider lane's Claude Code cell needed something to be read against.",
+        "The grant is on the keychain files, not on an item. One item was queried and its secret was retrievable; nothing was measured about any other item, and nothing here should be read as a claim about the rest of the keychain.",
+        "Shares every process-axis limitation of the provider lane."
+      ]
+    },
+    {
+      "id": "linux-container-vm",
+      "observations": [
+        {
+          "property": "read_inside_workspace",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "read_inside_workspace"
+          },
+          "note": null
+        },
+        {
+          "property": "write_inside_workspace",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "write_inside_workspace"
+          },
+          "note": null
+        },
+        {
+          "property": "read_workspace_parent",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "read_workspace_parent"
+          },
+          "note": "ENOENT rather than EPERM: the host path is not in the mount namespace at all."
+        },
+        {
+          "property": "write_outside_workspace",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "write_outside_workspace"
+          },
+          "note": null
+        },
+        {
+          "property": "delete_outside_workspace",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOTARGET",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "delete_outside_workspace"
+          },
+          "note": "The target the harness created outside the workspace is not in the namespace, so what is established is that it was unreachable, not that an unlink was refused."
+        },
+        {
+          "property": "read_operator_home_absolute",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "read_operator_home_absolute"
+          },
+          "note": null
+        },
+        {
+          "property": "read_operator_ssh_private_key_absolute",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "read_operator_ssh_private_key_absolute"
+          },
+          "note": null
+        },
+        {
+          "property": "read_operator_agent_config_absolute",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "read_operator_agent_config_absolute"
+          },
+          "note": "Denied by default. A read-only bind mount does deliver it, and a write to that mount returned EROFS."
+        },
+        {
+          "property": "read_aos_home_absolute",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "read_aos_home_absolute"
+          },
+          "note": null
+        },
+        {
+          "property": "escape_via_symlink",
+          "observed": "denied",
+          "enforcement": "namespace",
+          "errno": "ENOENT",
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "escape_via_symlink"
+          },
+          "note": null
+        },
+        {
+          "property": "spawn_child_process",
+          "observed": "allowed",
+          "enforcement": "none",
+          "errno": null,
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "spawn_child_process"
+          },
           "note": null
         },
         {
@@ -944,47 +1397,65 @@
           "observed": "denied",
           "enforcement": "namespace",
           "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "read_operator_home_absolute",
-          "note": "The mount namespace is the boundary and every process in it shares the namespace."
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/descendant-probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.descendant.json",
+            "key": "act_outside_boundary_from_descendant"
+          },
+          "note": null
         },
         {
           "property": "survive_cleanup_as_detached_descendant",
           "observed": "denied",
           "enforcement": "namespace",
           "errno": null,
-          "command": "CID=$(docker run -d --rm --network none node:22.23.2-bookworm node -e '<spawn detached>'); docker stop -t 1 $CID; docker ps -a --filter id=$CID",
-          "probe": "detached_descendant",
-          "note": "The descendant led its own process group inside the container and was gone with it: teardown reaps the PID namespace, not a process group."
+          "command": "CID=$(docker run -d --rm --platform linux/arm64 --network none node:22-bookworm node -e '<spawn a detached sh -c \"sleep 300\", print its pid, then idle>') && docker logs $CID && docker exec $CID ps -eo pid,ppid,pgid,comm && docker stop -t 1 $CID && docker ps -a --filter id=$CID",
+          "evidence": {
+            "file": "observations/linux-container-vm.cleanup.json",
+            "key": "survive_cleanup_as_detached_descendant"
+          },
+          "note": "The descendant led its own process group inside the container and went with it: teardown reaps a pid namespace, not a process group."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "not_observed",
+          "enforcement": null,
+          "errno": null,
+          "command": null,
+          "evidence": null,
+          "reason": "The descendant did not outlive the run in this backend, so there was no orphan to test. Nothing is claimed about a survivor that did not occur."
         },
         {
           "property": "open_outbound_network_socket",
           "observed": "denied",
           "enforcement": "namespace",
           "errno": "ENETUNREACH",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "network_tcp_connect",
-          "note": "Under --network none. The flag is the policy, so provider access is a per-run decision rather than a property of the backend."
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.filesystem.json",
+            "key": "open_outbound_network_socket"
+          },
+          "note": null
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "denied",
           "enforcement": "namespace",
           "errno": "ENOENT",
-          "command": "docker run --rm --network none -v @WORKSPACE@:@WORKSPACE@ -v @RUNTIME_FILES@:@RUNTIME_FILES@:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node:22.23.2-bookworm node probe.mjs",
-          "probe": "keychain_query",
-          "note": "There is no macOS Keychain and no /usr/bin/security inside a Linux namespace."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "denied",
-          "enforcement": "runtime_absent",
-          "errno": null,
-          "command": "docker run --rm --platform linux/arm64 --network none -v @OPERATOR_HOME@/.local/lib/node_modules/@openai/codex:/codex:ro node:22-bookworm node /codex/bin/codex.js login status",
-          "probe": "codex login status",
-          "note": "The operator's installed codex is darwin-arm64 and refused to start: Missing optional dependency @openai/codex-linux-arm64."
+          "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/auth-probe.mjs",
+          "evidence": {
+            "file": "observations/linux-container-vm.credentials.json",
+            "key": "keychain_secret_retrievable"
+          },
+          "note": "There is no macOS keychain and no /usr/bin/security inside a Linux namespace, so this is a denial by absence of the whole mechanism."
         }
       ],
+      "role": "candidate",
+      "platform": "linux",
+      "mechanism": "OCI container on the Linux VM reachable from this darwin host (Docker 29.4.0 server, OrbStack kernel 7.0.11, linux/arm64), workspace bind-mounted, --network none",
+      "available": true,
+      "deprecated": false,
+      "policy_digest": null,
       "strict_gate": {
         "filesystem_enforced": true,
         "process_enforced": true,
@@ -999,10 +1470,11 @@
         "authenticated_runtime"
       ],
       "limitations": [
-        "The boundary holds on every axis. What fails is the runtime: the operator's agent CLI is a darwin binary and does not execute here, so the container would have to carry its own Linux install of the CLI and its own copy of the credential.",
-        "Delivering the credential means placing live auth material inside the namespace the assessed agent writes to. That is a worse posture than a kernel-denied read of a path outside it, and it is the price of this lane.",
-        "The Linux kernel reached from this host is a VM. A result produced here describes the VM, not the operator's macOS machine, and a profile-bound score should say so.",
-        "A macOS Keychain credential cannot be delivered into a Linux namespace at all, so Claude Code has no path into this lane on this host."
+        "Every measured boundary row holds and the teardown reaps the descendant. What fails is the runtime: the operator's installed codex carries only @openai/codex-darwin-arm64 and refused to start, which was measured rather than inferred.",
+        "`boundary_canary: PASS` covers the fifteen properties that were observed here. The orphan row is not_observed, because no orphan survived to test.",
+        "Running an agent here means the container carries its own Linux install of the CLI and its own copy of the credential -- live credential material inside the namespace the assessed agent writes to.",
+        "The Linux kernel reached from this host is a VM. A result produced here describes the VM, not the operator's macOS machine.",
+        "A macOS keychain credential cannot be delivered into a Linux namespace at all."
       ]
     },
     {
@@ -1013,6 +1485,10 @@
       "available": false,
       "deprecated": false,
       "policy_digest": null,
+      "availability_evidence": {
+        "file": "observations/availability.linux.tooling.json",
+        "claim": "bwrap reported MISSING in the Linux image reached from this host, and MISSING on the darwin host itself in observations/availability.darwin.tooling.json"
+      },
       "observations": [
         {
           "property": "read_inside_workspace",
@@ -1020,8 +1496,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "write_inside_workspace",
@@ -1029,8 +1505,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "read_workspace_parent",
@@ -1038,8 +1514,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "write_outside_workspace",
@@ -1047,8 +1523,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "delete_outside_workspace",
@@ -1056,8 +1532,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "read_operator_home_absolute",
@@ -1065,17 +1541,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "not_observed",
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "read_operator_agent_config_absolute",
@@ -1083,8 +1559,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "read_aos_home_absolute",
@@ -1092,8 +1568,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "escape_via_symlink",
@@ -1101,8 +1577,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "spawn_child_process",
@@ -1110,8 +1586,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "act_outside_boundary_from_descendant",
@@ -1119,8 +1595,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "survive_cleanup_as_detached_descendant",
@@ -1128,8 +1604,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "not_observed",
+          "enforcement": null,
+          "errno": null,
+          "command": null,
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
           "property": "open_outbound_network_socket",
@@ -1137,26 +1622,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "not_observed",
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "not_observed",
-          "enforcement": null,
-          "errno": null,
-          "command": null,
-          "probe": null,
-          "reason": "bwrap is not installed on this darwin host and is not present in the Linux image reached from it. Establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
+          "evidence": null,
+          "reason": "Not probed. bwrap is absent from this darwin host and from the Linux image reached from it, and establishing this lane needs a Linux runner with bubblewrap installed, which this machine cannot provide."
         }
       ],
       "strict_gate": {
@@ -1171,7 +1647,7 @@
       "support_status": "NOT_OBSERVED",
       "blocking_gate_fields": [],
       "limitations": [
-        "No row here is a claim. The backend was not reachable from the probing machine and nothing about it was measured."
+        "No confinement row here is a claim. Its absence was measured; its behaviour was not."
       ]
     },
     {
@@ -1182,6 +1658,10 @@
       "available": true,
       "deprecated": false,
       "policy_digest": null,
+      "availability_evidence": {
+        "file": "observations/availability.linux.tooling.json",
+        "claim": "unshare, nsenter and setpriv resolved, the kernel exposed cgroup, ipc, mnt, net, pid, time, user and uts namespaces, and Seccomp: 2 with one filter was already active"
+      },
       "observations": [
         {
           "property": "read_inside_workspace",
@@ -1189,8 +1669,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "write_inside_workspace",
@@ -1198,8 +1678,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "read_workspace_parent",
@@ -1207,8 +1687,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "write_outside_workspace",
@@ -1216,8 +1696,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "delete_outside_workspace",
@@ -1225,8 +1705,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "read_operator_home_absolute",
@@ -1234,17 +1714,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "not_observed",
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "read_operator_agent_config_absolute",
@@ -1252,8 +1732,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "read_aos_home_absolute",
@@ -1261,8 +1741,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "escape_via_symlink",
@@ -1270,8 +1750,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "spawn_child_process",
@@ -1279,8 +1759,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "act_outside_boundary_from_descendant",
@@ -1288,8 +1768,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "survive_cleanup_as_detached_descendant",
@@ -1297,8 +1777,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "not_observed",
+          "enforcement": null,
+          "errno": null,
+          "command": null,
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
           "property": "open_outbound_network_socket",
@@ -1306,26 +1795,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "not_observed",
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "not_observed",
-          "enforcement": null,
-          "errno": null,
-          "command": null,
-          "probe": null,
-          "reason": "The facilities exist -- unshare, nsenter and setpriv are present and the kernel reached from this host exposes cgroup, ipc, mnt, net, pid, time, user and uts namespaces with a seccomp filter already active -- but AOS's host here is darwin, so no confinement probe was run against a Linux host AOS would actually assess on. Availability is not enforcement and is not recorded as one."
+          "evidence": null,
+          "reason": "Not probed. The tools and namespaces exist -- see the availability evidence -- but AOS's host here is darwin, so no confinement was measured against a Linux host AOS would assess on. Availability is not enforcement and is not recorded as one."
         }
       ],
       "strict_gate": {
@@ -1340,17 +1820,21 @@
       "support_status": "NOT_OBSERVED",
       "blocking_gate_fields": [],
       "limitations": [
-        "Availability was observed; confinement was not. The two are recorded separately on purpose -- a support table that promotes the first into the second is how an unsupported lane ends up marked OFFICIAL."
+        "Availability was measured; confinement was not. The two are kept apart on purpose -- promoting the first into the second is how an untested lane ends up marked OFFICIAL."
       ]
     },
     {
       "id": "linux-landlock",
       "role": "candidate",
       "platform": "linux",
-      "mechanism": "Landlock LSM path-based filesystem restriction applied by the process to itself",
-      "available": false,
+      "mechanism": "Landlock LSM path-based filesystem restriction applied by a process to itself",
+      "available": null,
       "deprecated": false,
       "policy_digest": null,
+      "availability_evidence": {
+        "file": "observations/availability.linux.tooling.json",
+        "claim": "/sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so not even the ABI's presence was established"
+      },
       "observations": [
         {
           "property": "read_inside_workspace",
@@ -1358,8 +1842,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "write_inside_workspace",
@@ -1367,8 +1851,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "read_workspace_parent",
@@ -1376,8 +1860,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "write_outside_workspace",
@@ -1385,8 +1869,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "delete_outside_workspace",
@@ -1394,8 +1878,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "read_operator_home_absolute",
@@ -1403,17 +1887,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
-          "property": "read_operator_ssh_private_key",
+          "property": "read_operator_ssh_private_key_absolute",
           "observed": "not_observed",
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "read_operator_agent_config_absolute",
@@ -1421,8 +1905,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "read_aos_home_absolute",
@@ -1430,8 +1914,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "escape_via_symlink",
@@ -1439,8 +1923,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "spawn_child_process",
@@ -1448,8 +1932,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "act_outside_boundary_from_descendant",
@@ -1457,8 +1941,8 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "survive_cleanup_as_detached_descendant",
@@ -1466,8 +1950,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
+        },
+        {
+          "property": "act_outside_boundary_after_orphaning",
+          "observed": "not_observed",
+          "enforcement": null,
+          "errno": null,
+          "command": null,
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
           "property": "open_outbound_network_socket",
@@ -1475,26 +1968,17 @@
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         },
         {
-          "property": "read_operator_keychain_item",
+          "property": "read_operator_keychain_secret",
           "observed": "not_observed",
           "enforcement": null,
           "errno": null,
           "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
-        },
-        {
-          "property": "authenticate_as_the_operator",
-          "observed": "not_observed",
-          "enforcement": null,
-          "errno": null,
-          "command": null,
-          "probe": null,
-          "reason": "Not probed. /sys/kernel/security/lsm was unreadable in the Linux kernel reached from this host, so even the ABI's presence is unknown, and Landlock needs a compiled helper that this phase is not permitted to add to the product."
+          "evidence": null,
+          "reason": "Not probed, and not even its availability established: /sys/kernel/security/lsm was unreadable in the kernel reached from this host. Applying Landlock also needs a helper this phase is not permitted to add."
         }
       ],
       "strict_gate": {
@@ -1509,9 +1993,252 @@
       "support_status": "NOT_OBSERVED",
       "blocking_gate_fields": [],
       "limitations": [
-        "Landlock also has no process-lifetime containment, so on its own it would land where Seatbelt did. It is listed because the issue names it, not because it was measured."
+        "Listed because the issue names it. Nothing about it was measured, including whether it is present."
       ]
     }
   ],
-  "evidence_digest": "sha256:b6d183c0aa2926552a2809dc1aa11520fd8e0f1d12a3d50c0cb20f5a4bafd982"
+  "authentication_cells": [
+    {
+      "id": "none",
+      "runtime": "codex",
+      "description": "The operator's own environment, unconfined.",
+      "observed": "allowed",
+      "exit_status": 0,
+      "command": "cd @WORKSPACE@ && codex login status",
+      "evidence": {
+        "file": "observations/none.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "The control every other cell is read against."
+    },
+    {
+      "id": "none",
+      "runtime": "claude-code",
+      "description": "The operator's own environment, unconfined.",
+      "observed": "allowed",
+      "exit_status": 0,
+      "command": "cd @WORKSPACE@ && claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+      "evidence": {
+        "file": "observations/none.claude-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "Reduced to loggedIn and authMethod before recording; the command also prints the operator's account."
+    },
+    {
+      "id": "best-effort-cli",
+      "runtime": "codex",
+      "description": "The environment AOS builds today: buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> }).",
+      "observed": "denied",
+      "exit_status": 1,
+      "command": "cd @WORKSPACE@ && <env from buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> codex login status",
+      "evidence": {
+        "file": "observations/best-effort-cli.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "CODEX_HOME is in the adapter's allow list (lib/profile.mjs config_env, carried by the discovered agent at lib/cli.mjs) but was not set in the operator's environment on this machine, so nothing was there to carry and ~/.codex moved with HOME."
+    },
+    {
+      "id": "best-effort-cli",
+      "runtime": "claude-code",
+      "description": "The same environment.",
+      "observed": "denied",
+      "exit_status": 1,
+      "command": "cd @WORKSPACE@ && <env from buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+      "evidence": {
+        "file": "observations/best-effort-cli.claude-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "The login keychain is resolved from HOME. This cell does not exercise AOS's own resolver, which reads the keychain in the parent and injects CLAUDE_CODE_OAUTH_TOKEN."
+    },
+    {
+      "id": "best-effort-cli-config-env",
+      "runtime": "codex",
+      "description": "The same environment, with CODEX_HOME carried and pointed at the real config directory.",
+      "observed": "allowed",
+      "exit_status": 0,
+      "command": "cd @WORKSPACE@ && CODEX_HOME=@OPERATOR_HOME@/.codex CLAUDE_CONFIG_DIR=@OPERATOR_HOME@/.claude <env from buildAgentEnv with allow:[CODEX_HOME,CLAUDE_CONFIG_DIR]> codex login status",
+      "evidence": {
+        "file": "observations/best-effort-cli-config-env.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "This is the cell that isolates the cause. HOME replacement alone loses the credential; HOME replacement with the adapter's config directory carried keeps it. #555 measured the same thing independently and has since made config_env part of the allow list."
+    },
+    {
+      "id": "best-effort-cli-config-env",
+      "runtime": "claude-code",
+      "description": "The same, with CLAUDE_CONFIG_DIR carried and pointed at ~/.claude.",
+      "observed": "denied",
+      "exit_status": 1,
+      "command": "cd @WORKSPACE@ && CODEX_HOME=@OPERATOR_HOME@/.codex CLAUDE_CONFIG_DIR=@OPERATOR_HOME@/.claude <env from buildAgentEnv with allow:[CODEX_HOME,CLAUDE_CONFIG_DIR]> claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+      "evidence": {
+        "file": "observations/best-effort-cli-config-env.claude-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "A config directory does not carry this runtime's credential on macOS -- the adapter says so itself -- so carrying it changes nothing. What would restore this cell is AOS's keychain resolver, which was not exercised here."
+    },
+    {
+      "id": "macos-seatbelt-deny-default",
+      "runtime": "codex",
+      "description": "Confined with nothing named.",
+      "observed": "inconclusive",
+      "exit_status": 71,
+      "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb codex login status",
+      "evidence": {
+        "file": "observations/macos-seatbelt-deny-default.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "This cell measures exec, not authentication: the profile does not name the runtime's install tree, so sandbox-exec refused to exec the binary at all. It is recorded because an earlier draft read this exit as an authentication failure."
+    },
+    {
+      "id": "macos-seatbelt-deny-default",
+      "runtime": "claude-code",
+      "description": "Confined with nothing named.",
+      "observed": "inconclusive",
+      "exit_status": 71,
+      "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+      "evidence": {
+        "file": "observations/macos-seatbelt-deny-default.claude-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "Same exec refusal as the codex cell above."
+    },
+    {
+      "id": "macos-seatbelt-provider-lane",
+      "runtime": "codex",
+      "description": "Confined, with the credential directory, the install tree and outbound network named.",
+      "observed": "allowed",
+      "exit_status": 0,
+      "command": "cd @WORKSPACE@ && sandbox-exec -f provider-lane.sb codex login status",
+      "evidence": {
+        "file": "observations/macos-seatbelt-provider-lane.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "The result that matters: real confinement and a real login at the same time, with the operator's own HOME and the filesystem refused by the kernel."
+    },
+    {
+      "id": "macos-seatbelt-provider-lane",
+      "runtime": "claude-code",
+      "description": "The same profile, which does not name the keychain.",
+      "observed": "denied",
+      "exit_status": 1,
+      "command": "cd @WORKSPACE@ && sandbox-exec -f provider-lane.sb claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+      "evidence": {
+        "file": "observations/macos-seatbelt-provider-lane.claude-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "Expected, and not a verdict on the runtime: nothing in this profile or this cell supplies the credential. AOS's resolver would inject it from the parent, and that path was not exercised."
+    },
+    {
+      "id": "macos-seatbelt-keychain-lane",
+      "runtime": "codex",
+      "description": "The provider lane with the login keychain additionally granted.",
+      "observed": "allowed",
+      "exit_status": 0,
+      "command": "cd @WORKSPACE@ && sandbox-exec -f keychain-lane.sb codex login status",
+      "evidence": {
+        "file": "observations/macos-seatbelt-keychain-lane.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "Unchanged from the provider lane."
+    },
+    {
+      "id": "macos-seatbelt-keychain-lane",
+      "runtime": "claude-code",
+      "description": "The provider lane with the login keychain additionally granted.",
+      "observed": "allowed",
+      "exit_status": 0,
+      "command": "cd @WORKSPACE@ && sandbox-exec -f keychain-lane.sb claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+      "evidence": {
+        "file": "observations/macos-seatbelt-keychain-lane.claude-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "The keychain grant is what this runtime's authentication needed inside the boundary. It is measured to show what the grant buys, not to propose it: the same result should be reachable from the parent's resolver without opening the keychain to the child at all."
+    },
+    {
+      "id": "linux-container-vm",
+      "runtime": "codex",
+      "description": "The operator's installed CLI, bind-mounted into a Linux container.",
+      "observed": "inconclusive",
+      "exit_status": 1,
+      "command": "docker run --rm --platform linux/arm64 --network none -v @OPERATOR_HOME@/.local/lib/node_modules/@openai/codex:/codex:ro node:22-bookworm node /codex/bin/codex.js login status",
+      "evidence": {
+        "file": "observations/linux-container-vm.codex-auth.json",
+        "key": "stdout_excerpt"
+      },
+      "note": "This cell measures execution, not authentication. The install carries only the darwin-arm64 binary."
+    }
+  ],
+  "process_axis": {
+    "question": "Can any profile here stop a child from leaving the process group AOS signals?",
+    "setsid_probes": [
+      {
+        "id": "setsid.none",
+        "command": "cd @WORKSPACE@ && node fixtures/confinement/probes/setsid-probe.mjs",
+        "exit_status": 0,
+        "child_leads_own_process_group": true,
+        "signal_probe_errno": null,
+        "ps_in_child_available": true,
+        "evidence": {
+          "file": "observations/setsid.none.json",
+          "key": "child_leads_own_process_group"
+        }
+      },
+      {
+        "id": "setsid.seatbelt-deny-default",
+        "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb node fixtures/confinement/probes/setsid-probe.mjs",
+        "exit_status": 0,
+        "child_leads_own_process_group": "not_answerable",
+        "signal_probe_errno": "EPERM",
+        "ps_in_child_available": false,
+        "evidence": {
+          "file": "observations/setsid.seatbelt-deny-default.json",
+          "key": "child_leads_own_process_group"
+        }
+      },
+      {
+        "id": "setsid.deny-syscall-by-name",
+        "command": "cd @WORKSPACE@ && sandbox-exec -p '(version 1)(allow default)(deny syscall-unix (syscall-number SYS_setsid))' node fixtures/confinement/probes/setsid-probe.mjs",
+        "exit_status": 0,
+        "child_leads_own_process_group": true,
+        "signal_probe_errno": null,
+        "ps_in_child_available": false,
+        "evidence": {
+          "file": "observations/setsid.deny-syscall-by-name.json",
+          "key": "child_leads_own_process_group"
+        }
+      },
+      {
+        "id": "setsid.deny-syscall-by-number",
+        "command": "cd @WORKSPACE@ && sandbox-exec -p '(version 1)(allow default)(deny syscall-unix (syscall-number 147))' node fixtures/confinement/probes/setsid-probe.mjs",
+        "exit_status": 0,
+        "child_leads_own_process_group": true,
+        "signal_probe_errno": null,
+        "ps_in_child_available": false,
+        "evidence": {
+          "file": "observations/setsid.deny-syscall-by-number.json",
+          "key": "child_leads_own_process_group"
+        }
+      }
+    ],
+    "aos_cleanup_enumeration": {
+      "command": "node fixtures/confinement/probes/pg-check.mjs   # imports processGroupMembers from lib/core.mjs",
+      "exit_status": 0,
+      "detached_descendant_reported_by_processGroupMembers": false,
+      "in_group_child_reported_by_processGroupMembers": true,
+      "detached_descendant_alive_after_group_kill": true,
+      "in_group_child_alive_after_group_kill": false,
+      "evidence": {
+        "file": "observations/process-group.aos-enumeration.json",
+        "key": "after_cleanup"
+      }
+    },
+    "ps_unavailable_inside_seatbelt": {
+      "claim": "/bin/ps cannot be exec'd inside any Seatbelt profile on this machine, including (allow default), because it is setgid",
+      "evidence": {
+        "file": "observations/setsid.seatbelt-deny-default.json",
+        "key": "ps_in_child_raw"
+      }
+    }
+  },
+  "evidence_digest": "sha256:63dcf902eb1eaac47429b1def2da5c06ed5b7d382e8f7d3a0c20f92d3c39f813"
 }

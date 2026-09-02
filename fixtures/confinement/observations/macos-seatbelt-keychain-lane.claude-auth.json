@@ -1,0 +1,11 @@
+{
+  "backend_run": "macos-seatbelt-keychain-lane.claude-auth",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f keychain-lane.sb claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"loggedIn\": true,\n  \"authMethod\": \"claude.ai\"\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

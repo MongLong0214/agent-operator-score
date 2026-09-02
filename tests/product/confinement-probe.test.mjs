@@ -1,35 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// The Phase-0 evidence for #556 is two files that have to agree: a document a person reads and a
-// record a machine reads. Neither one is checked by anything else in the suite, and both of them
-// are the kind of artefact that decays quietly -- a backend gets added to the prose, a row gets an
-// optimistic verdict typed into it, a probe that was never run keeps the shape of one that was.
+// The Phase-0 evidence for #556 is a document a person reads, a record a machine reads, and the raw
+// output of every probe run that produced them. All three have to agree, and none of them is
+// checked by anything else in the suite.
 //
 // The failure this file exists to prevent is specific. A support matrix earns the word OFFICIAL by
 // naming a boundary that was measured. A row that says `denied` because nobody looked reads exactly
 // like a row that says `denied` because the kernel refused, and the first one is how a lane nobody
-// tested ends up carrying a released score. So the rule enforced below is that silence is never
-// coverage: an unrun probe is recorded as `not_observed`, it has to say why, and it can never sit
-// under a backend the record calls supported.
+// tested ends up carrying a released score.
+//
+// A first version of this file only required an observed row to carry non-empty command and probe
+// strings. A reviewer defeated it in one edit: they changed an unobserved bubblewrap row to
+// `denied`, typed plausible strings into it, recomputed the self-digest, and the validator returned
+// nothing. The rule that closes that is below and it is the load-bearing one -- an observed row
+// names the artefact it came from, and the outcome recorded in the row has to be the outcome
+// sitting in that artefact. Inventing a row now means inventing a consistent raw run to go with it.
+//
+// Silence is still never coverage: an unrun probe is `not_observed`, it says why, and it can never
+// sit under a backend the record calls supported.
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
-const RECORD_PATH = join(root, "fixtures", "confinement", "probe.json");
+const CONFINEMENT = join(root, "fixtures", "confinement");
+const RECORD_PATH = join(CONFINEMENT, "probe.json");
 const DOC_PATH = join(root, "docs", "STRICT_CONFINEMENT_FEASIBILITY.md");
 
 const record = JSON.parse(readFileSync(RECORD_PATH, "utf8"));
 const doc = readFileSync(DOC_PATH, "utf8");
 
 const sha = (text) => "sha256:" + createHash("sha256").update(text, "utf8").digest("hex");
+const artefactPath = (relative) => join(CONFINEMENT, relative);
+const readArtefact = (relative) => JSON.parse(readFileSync(artefactPath(relative), "utf8"));
 
-// The gate fields the issue's issuance rule is written in. `boundary_canary` is a verdict rather
-// than a boolean, so it is checked separately; the rest are three-valued -- true, false, or null
-// for a backend where nothing was measured.
 const BOOLEAN_GATE_FIELDS = [
   "filesystem_enforced",
   "process_enforced",
@@ -41,18 +48,44 @@ const BOOLEAN_GATE_FIELDS = [
 /**
  * Every rule the record has to satisfy, returned as a list of complaints rather than thrown one at
  * a time. Written as a function over a parsed record so the negative tests below can feed it a
- * deliberately broken copy: a validator that has only ever seen valid input is not evidence that it
+ * deliberately broken copy: a validator that has only ever seen valid input is no evidence that it
  * would reject invalid input.
+ *
+ * `resolve` reads a raw artefact. The negative tests override it to stage an artefact that does not
+ * back its row without writing anything to disk.
  */
-const violations = (candidate) => {
+const violations = (candidate, resolve = readArtefact) => {
   const problems = [];
   const complain = (message) => problems.push(message);
 
-  if (candidate.schema !== "aos-confinement-probe.v1") complain(`unknown schema ${candidate.schema}`);
+  if (candidate.schema !== "aos-confinement-probe.v2") complain(`unknown schema ${candidate.schema}`);
   if (candidate.code_integration_allowed !== false) complain("the feasibility phase forbids code integration");
 
   const propertyIds = candidate.properties.map((one) => one.id);
   if (new Set(propertyIds).size !== propertyIds.length) complain("duplicate property id");
+
+  // An observed row has to be readable back out of a committed run. This is the check that makes a
+  // fabricated row expensive rather than free.
+  const checkEvidence = (where, row, expected) => {
+    if (!row.evidence) { complain(`${where}: ${row.observed} with no evidence`); return; }
+    let artefact;
+    try { artefact = resolve(row.evidence.file); }
+    catch { complain(`${where}: evidence ${row.evidence.file} cannot be read`); return; }
+    const captured = artefact.captured?.[row.evidence.key];
+    if (captured === undefined || captured === null) {
+      complain(`${where}: evidence ${row.evidence.file} has no ${row.evidence.key}`);
+      return;
+    }
+    if (captured.outcome !== expected) {
+      complain(`${where}: recorded ${expected} but ${row.evidence.file} says ${captured.outcome}`);
+    }
+    if (row.command !== artefact.command) {
+      complain(`${where}: command does not match the one recorded in ${row.evidence.file}`);
+    }
+    if (row.errno !== (captured.errno ?? null)) {
+      complain(`${where}: errno ${row.errno} does not match ${captured.errno ?? null} in ${row.evidence.file}`);
+    }
+  };
 
   for (const backend of candidate.backends) {
     const where = `backend ${backend.id}`;
@@ -69,25 +102,31 @@ const violations = (candidate) => {
       if (!propertyIds.includes(id)) complain(`${where}: observes ${id}, which is not a declared property`);
     }
 
+    const anyObserved = backend.observations.some((one) => one.observed !== "not_observed");
+    if (anyObserved && backend.available !== true) {
+      // A backend the record says is absent, or whose presence was never established, cannot also
+      // have measurements. One of the two statements is wrong and the record must not carry both.
+      complain(`${where}: available=${backend.available} but carries observed rows`);
+    }
+
     for (const observation of backend.observations) {
       const row = `${where}, ${observation.property}`;
       if (!candidate.outcome_vocabulary.includes(observation.observed)) {
         complain(`${row}: ${observation.observed} is outside the outcome vocabulary`);
       }
       if (observation.observed === "not_observed") {
-        // The whole point of the vocabulary. A row nobody ran must carry no command and no
-        // enforcement, and must say why -- otherwise it is indistinguishable from a measured pass.
         if (observation.command !== null) complain(`${row}: not_observed but names a command`);
         if (observation.enforcement !== null) complain(`${row}: not_observed but claims enforcement`);
+        if (observation.evidence) complain(`${row}: not_observed but names evidence`);
         if (!observation.reason) complain(`${row}: not_observed without a reason`);
       } else {
         if (!observation.command) complain(`${row}: ${observation.observed} without the command that produced it`);
-        if (!observation.probe) complain(`${row}: ${observation.observed} without the probe that produced it`);
         if (!candidate.enforcement_vocabulary.includes(observation.enforcement)) {
           complain(`${row}: enforcement ${observation.enforcement} is outside the vocabulary`);
         }
+        checkEvidence(row, observation, observation.observed);
       }
-      if (observation.observed === "denied" && observation.enforcement === "none") {
+      if (observation.observed === "denied" && (observation.enforcement === "none" || observation.enforcement === "unknown")) {
         // Something refused it, and the record has to say what. "Denied by nothing" is the shape a
         // moved path takes when it is written up as a boundary.
         complain(`${row}: denied but nothing is named as enforcing it`);
@@ -124,28 +163,123 @@ const violations = (candidate) => {
     }
   }
 
+  // The authentication cells are the part an earlier draft got wrong, so they carry the same rule:
+  // a verdict is read back out of the run that produced it.
+  for (const cell of candidate.authentication_cells) {
+    const where = `auth cell ${cell.id}/${cell.runtime}`;
+    if (!candidate.outcome_vocabulary.includes(cell.observed)) {
+      complain(`${where}: ${cell.observed} is outside the outcome vocabulary`);
+    }
+    if (cell.observed === "not_observed") { complain(`${where}: an auth cell with no run should not be listed`); continue; }
+    let artefact;
+    try { artefact = resolve(cell.evidence.file); }
+    catch { complain(`${where}: evidence ${cell.evidence.file} cannot be read`); continue; }
+    if (artefact.exit_status !== cell.exit_status) {
+      complain(`${where}: exit ${cell.exit_status} but ${cell.evidence.file} recorded ${artefact.exit_status}`);
+    }
+    if (artefact.command !== cell.command) complain(`${where}: command does not match ${cell.evidence.file}`);
+    // Re-derived from the recorded output rather than trusted. `allowed` has to be visible in what
+    // the runtime actually printed.
+    const text = `${artefact.stdout_excerpt ?? ""}${artefact.stderr_excerpt ?? ""}`;
+    const looksLoggedIn = /Logged in using/.test(text) || /"loggedIn":\s*true/.test(text);
+    if (cell.observed === "allowed" && !looksLoggedIn) {
+      complain(`${where}: recorded allowed but ${cell.evidence.file} does not show a logged-in runtime`);
+    }
+    if (cell.observed === "denied" && looksLoggedIn) {
+      complain(`${where}: recorded denied but ${cell.evidence.file} shows a logged-in runtime`);
+    }
+  }
+
   const stated = candidate.evidence_digest;
   const recomputed = sha(JSON.stringify({
     host: candidate.host,
     properties: candidate.properties,
-    backends: candidate.backends
+    backends: candidate.backends,
+    authentication_cells: candidate.authentication_cells,
+    process_axis: candidate.process_axis
   }));
   if (stated !== recomputed) complain(`evidence_digest ${stated} does not describe this record`);
 
   return problems;
 };
 
-// A structured clone, so a negative test can break one field without the mutation leaking into the
-// tests that run after it.
 const copy = () => JSON.parse(JSON.stringify(record));
+
+// The document's matrix, parsed back into the same shape as the record, so the two can be compared
+// row by row rather than by heading.
+const documentedMatrix = () => {
+  const matrix = doc.slice(doc.indexOf("\n## Matrix"));
+  const sections = matrix.split(/^### /m).slice(1);
+  const parsed = new Map();
+  for (const section of sections) {
+    const id = section.slice(0, section.indexOf("\n")).trim();
+    const rows = [...section.matchAll(/^\| `([a-z_]+)` \| (\w+) \| ([\w-]+|--) \| (\S+) \|/gm)];
+    parsed.set(id, rows.map((match) => ({
+      property: match[1],
+      observed: match[2],
+      enforcement: match[3] === "--" ? null : match[3],
+      errno: match[4] === "--" ? null : match[4]
+    })));
+  }
+  return parsed;
+};
 
 test("the confinement probe record parses and satisfies every rule it declares", () => {
   assert.deepEqual(violations(record), []);
 });
 
+test("every observed row is backed by a committed raw run that says the same thing", () => {
+  // The positive form of the rule the negative tests below exercise. Stated separately because it
+  // is the difference between a matrix and a list of assertions.
+  let checked = 0;
+  for (const backend of record.backends) {
+    for (const observation of backend.observations) {
+      if (observation.observed === "not_observed") continue;
+      assert.ok(existsSync(artefactPath(observation.evidence.file)),
+        `${backend.id}/${observation.property}: ${observation.evidence.file} is missing`);
+      const captured = readArtefact(observation.evidence.file).captured[observation.evidence.key];
+      assert.equal(captured.outcome, observation.observed,
+        `${backend.id}/${observation.property} disagrees with its raw run`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 60, `expected the matrix to be mostly measured, only ${checked} rows were`);
+});
+
+test("each raw run is internally consistent with its own recorded output", () => {
+  // Forging a row now means forging the run behind it. This raises that price again: an artefact's
+  // parsed result has to be what its recorded stdout actually parses to, so a fabricated run cannot
+  // just assert a captured outcome next to unrelated output.
+  const files = new Set();
+  for (const backend of record.backends) {
+    for (const observation of backend.observations) {
+      if (observation.evidence) files.add(observation.evidence.file);
+    }
+  }
+  assert.ok(files.size > 0);
+  for (const file of files) {
+    const artefact = readArtefact(file);
+    if (artefact.parse_error !== null || artefact.captured === null) continue;
+    let reparsed;
+    try { reparsed = JSON.parse(artefact.stdout_excerpt); }
+    catch { continue; }
+    assert.deepEqual(artefact.captured, reparsed,
+      `${file}: the parsed result is not what its recorded stdout parses to`);
+  }
+});
+
+test("the probe programs printed in the document are the committed ones", () => {
+  const printed = [...doc.matchAll(/```javascript\n([\s\S]*?)```/g)].map((match) => match[1].trimEnd());
+  assert.ok(printed.length >= 7, `expected every probe to be printed, found ${printed.length}`);
+  const names = ["probe.mjs", "auth-probe.mjs", "descendant-probe.mjs", "child-probe.mjs", "leak-probe.mjs", "setsid-probe.mjs", "pg-check.mjs"];
+  for (const name of names) {
+    const source = readFileSync(join(CONFINEMENT, "probes", name), "utf8").trimEnd();
+    assert.ok(printed.includes(source), `${name} is not printed in the document, or is printed differently from the committed file`);
+  }
+});
+
 test("the record covers every backend the feasibility document claims, and no others", () => {
-  const matrix = doc.slice(doc.indexOf("\n## Matrix"));
-  const documented = [...matrix.matchAll(/^### (\S+)$/gm)].map((match) => match[1]);
+  const documented = [...documentedMatrix().keys()];
   assert.ok(documented.length > 0, "the document has no backend sections");
   assert.deepEqual(
     documented.slice().sort(),
@@ -154,48 +288,105 @@ test("the record covers every backend the feasibility document claims, and no ot
   );
 });
 
+test("every matrix row in the document matches the record row it renders", () => {
+  // The earlier version of this test compared headings only, which let the two disagree about every
+  // result they contained while still passing.
+  const documented = documentedMatrix();
+  for (const backend of record.backends) {
+    const rows = documented.get(backend.id);
+    assert.ok(rows, `${backend.id} has no table in the document`);
+    assert.equal(rows.length, backend.observations.length, `${backend.id}: the document renders a different number of rows`);
+    for (const [index, row] of rows.entries()) {
+      const source = backend.observations[index];
+      assert.deepEqual(
+        { property: row.property, observed: row.observed, enforcement: row.enforcement, errno: row.errno },
+        { property: source.property, observed: source.observed, enforcement: source.enforcement, errno: source.errno },
+        `${backend.id}/${source.property}: the document and the record disagree`
+      );
+    }
+  }
+});
+
 test("the document states the digest of the record it describes", () => {
-  assert.ok(
-    doc.includes(record.evidence_digest),
-    "the document does not carry the record's evidence digest, so the two can drift apart unnoticed"
-  );
+  assert.ok(doc.includes(record.evidence_digest),
+    "the document does not carry the record's evidence digest, so the two can drift apart unnoticed");
 });
 
 test("the sandbox profiles printed in the document are the ones the record digested", () => {
   const printed = [...doc.matchAll(/```scheme\n([\s\S]*?)```/g)].map((match) => sha(match[1].trimEnd() + "\n"));
-  assert.equal(printed.length, 2, "expected the two macOS profiles to be printed in full");
-  const digested = record.backends
-    .filter((one) => one.policy_digest !== null)
-    .map((one) => one.policy_digest);
-  assert.equal(digested.length, 2);
+  assert.equal(printed.length, 3, "expected the three macOS profiles to be printed in full");
+  const digested = record.backends.filter((one) => one.policy_digest !== null).map((one) => one.policy_digest);
+  assert.equal(digested.length, 3);
   for (const digest of digested) {
-    assert.ok(
-      printed.includes(digest),
-      `policy_digest ${digest} matches no profile printed in the document`
-    );
+    assert.ok(printed.includes(digest), `policy_digest ${digest} matches no profile printed in the document`);
   }
 });
 
 test("no backend is called supported on this stack", () => {
-  // Not a style rule. The issue's completion condition needs one real runtime lane, and Phase 0
-  // found none; if a later edit promotes a backend here without new observations behind it, this is
-  // the line that says so.
+  // Not a style rule. The issue's completion condition needs one real runtime lane and Phase 0 found
+  // none; if a later edit promotes a backend without new observations behind it, this says so.
   const supported = record.backends.filter((one) => record.supported_release_set.includes(one.support_status));
   assert.deepEqual(supported.map((one) => one.id), []);
 });
 
-test("an unrun probe recorded as a pass is rejected", () => {
+test("a fabricated row is rejected because no raw run backs it", () => {
+  // The edit that defeated the first version of this file: an unobserved backend's row promoted to
+  // a measured denial, with plausible strings typed in and the digest recomputed.
   const broken = copy();
   const backend = broken.backends.find((one) => one.id === "linux-bubblewrap");
+  backend.available = true;
+  const row = backend.observations.find((one) => one.property === "read_workspace_parent");
+  delete row.reason;
+  Object.assign(row, {
+    observed: "denied",
+    enforcement: "kernel",
+    errno: "EPERM",
+    command: "cd @WORKSPACE@ && bwrap --ro-bind / / node fixtures/confinement/probes/probe.mjs",
+    evidence: { file: "observations/linux-bubblewrap.filesystem.json", key: "read_workspace_parent" },
+    note: null
+  });
+  broken.evidence_digest = sha(JSON.stringify({
+    host: broken.host, properties: broken.properties, backends: broken.backends,
+    authentication_cells: broken.authentication_cells, process_axis: broken.process_axis
+  }));
+  const problems = violations(broken);
+  assert.ok(problems.some((one) => one.includes("cannot be read")),
+    `expected the missing raw run to be caught, got ${JSON.stringify(problems)}`);
+});
+
+test("a row whose raw run recorded a different outcome is rejected", () => {
+  const broken = copy();
+  const backend = broken.backends.find((one) => one.id === "macos-seatbelt-provider-lane");
+  const row = backend.observations.find((one) => one.property === "survive_cleanup_as_detached_descendant");
+  row.observed = "denied";
+  row.enforcement = "kernel";
+  broken.evidence_digest = sha(JSON.stringify({
+    host: broken.host, properties: broken.properties, backends: broken.backends,
+    authentication_cells: broken.authentication_cells, process_axis: broken.process_axis
+  }));
+  assert.ok(violations(broken).some((one) => one.includes("but observations/") && one.includes("says allowed")));
+});
+
+test("an authentication cell that contradicts its recorded output is rejected", () => {
+  const broken = copy();
+  const cell = broken.authentication_cells.find((one) => one.id === "best-effort-cli" && one.runtime === "codex");
+  cell.observed = "allowed";
+  broken.evidence_digest = sha(JSON.stringify({
+    host: broken.host, properties: broken.properties, backends: broken.backends,
+    authentication_cells: broken.authentication_cells, process_axis: broken.process_axis
+  }));
+  assert.ok(violations(broken).some((one) => one.includes("does not show a logged-in runtime")));
+});
+
+test("an unrun probe recorded as a pass is rejected", () => {
+  const broken = copy();
+  const backend = broken.backends.find((one) => one.id === "linux-landlock");
   const row = backend.observations.find((one) => one.property === "read_workspace_parent");
   row.observed = "denied";
-  row.reason = undefined;
   delete row.reason;
   const problems = violations(broken);
-  assert.ok(
-    problems.some((one) => one.includes("without the command that produced it")),
-    `expected a missing-command complaint, got ${JSON.stringify(problems)}`
-  );
+  assert.ok(problems.some((one) => one.includes("without the command that produced it")),
+    `expected a missing-command complaint, got ${JSON.stringify(problems)}`);
 });
 
 test("a denial with nothing named as enforcing it is rejected", () => {
@@ -210,6 +401,13 @@ test("a backend that drops a property is rejected rather than silently under-cov
   const backend = broken.backends.find((one) => one.id === "macos-seatbelt-provider-lane");
   backend.observations = backend.observations.filter((one) => one.property !== "escape_via_symlink");
   assert.ok(violations(broken).some((one) => one.includes("escape_via_symlink has no observation")));
+});
+
+test("measurements under a backend the record says is absent are rejected", () => {
+  const broken = copy();
+  const backend = broken.backends.find((one) => one.id === "linux-container-vm");
+  backend.available = false;
+  assert.ok(violations(broken).some((one) => one.includes("available=false but carries observed rows")));
 });
 
 test("a supported verdict over an unobserved backend is rejected", () => {
@@ -236,9 +434,23 @@ test("an edited record whose digest was not recomputed is rejected", () => {
   assert.ok(violations(broken).some((one) => one.includes("does not describe this record")));
 });
 
+test("the process-axis evidence is present and says what the document says it says", () => {
+  const axis = record.process_axis;
+  const unconfined = axis.setsid_probes.find((one) => one.id === "setsid.none");
+  assert.equal(unconfined.child_leads_own_process_group, true);
+  for (const attempt of ["setsid.deny-syscall-by-name", "setsid.deny-syscall-by-number"]) {
+    const probe = axis.setsid_probes.find((one) => one.id === attempt);
+    assert.equal(probe.child_leads_own_process_group, true, `${attempt} was expected to fail to stop the escape`);
+    assert.ok(existsSync(artefactPath(probe.evidence.file)), `${attempt} has no raw run`);
+  }
+  const enumeration = axis.aos_cleanup_enumeration;
+  assert.equal(enumeration.detached_descendant_reported_by_processGroupMembers, false);
+  assert.equal(enumeration.detached_descendant_alive_after_group_kill, true);
+  assert.equal(enumeration.in_group_child_alive_after_group_kill, false);
+  assert.ok(existsSync(artefactPath(enumeration.evidence.file)));
+});
+
 test("the record still says the feasibility phase forbade code integration", () => {
-  // The phase this evidence was produced under. If a later change flips it, the artefact is being
-  // reused to stand for work it did not cover.
   assert.equal(record.issue, 556);
   assert.equal(record.phase, "feasibility-proof");
   assert.equal(record.code_integration_allowed, false);

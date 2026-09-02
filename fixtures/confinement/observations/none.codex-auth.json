@@ -1,0 +1,11 @@
+{
+  "backend_run": "none.codex-auth",
+  "command": "cd @WORKSPACE@ && codex login status",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "",
+  "stderr_excerpt": "Logged in using ChatGPT\n",
+  "parse_error": null,
+  "captured": null
+}
