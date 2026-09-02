@@ -77,7 +77,7 @@
     {
       "issue": 553,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [

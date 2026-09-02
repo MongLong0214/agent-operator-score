@@ -34,8 +34,19 @@ if (added.status !== 0) {
 }
 
 const results = [];
+const deferred = [];
 try {
   for (const entry of GUARDS) {
+    // A guard for behaviour only one platform has. The ACL walk is macOS-only, and running its
+    // mutant on Ubuntu would report SURVIVED for a guard that is load-bearing everywhere it
+    // applies -- so the honest answer is that this lane did not ask, and a lane that runs there
+    // has to. Reported by name at the end rather than dropped, because a silently skipped guard is
+    // the thing this whole file exists to notice.
+    if (entry.platform && entry.platform !== process.platform) {
+      deferred.push(entry);
+      console.log(`deferred  ${entry.guard}  <- needs ${entry.platform}, this is ${process.platform}`);
+      continue;
+    }
     const path = join(worktree, entry.file);
     const original = readFileSync(path, "utf8");
     if (!original.includes(entry.from)) {
@@ -77,6 +88,10 @@ try {
 
 const killed = results.filter((entry) => entry.outcome === "killed");
 console.log(`\n${killed.length}/${results.length} guards are load-bearing.`);
+if (deferred.length > 0) {
+  console.log(`${deferred.length} deferred to another platform, unmeasured here:`);
+  for (const entry of deferred) console.log(`  ${entry.guard} (${entry.platform})`);
+}
 
 for (const entry of results.filter((entry) => entry.outcome !== "killed")) {
   console.log(`\n${entry.outcome}: ${entry.guard}`);
