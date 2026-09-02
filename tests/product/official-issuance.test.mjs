@@ -734,7 +734,7 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
       // The identity is what earns the staging: the adapter is claimed here by node, which is not
       // Codex, so nothing is staged and the child has no CODEX_HOME at all.
       { id: "impostor", command: process.execPath, args: ["agent.mjs"], adapter: "codex-cli.v1" },
-      { workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"), session: "staged-secret-run", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome } }
+      { workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"), session: "staged-secret-run", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome }, operatorHome }
     );
     const published = JSON.stringify(result);
     assert.equal(published.includes(token), false, "the staged credential reached the public result");
@@ -757,6 +757,10 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
       {
         workspace, family: "FAM-1", stage: "probe", prompt: "p", promptFile: join(workspace, "task.md"),
         session: "staged-secret-run-2", timeoutMs: 60000, isolation: "STRICT", aosHome, env: { HOME: operatorHome },
+        // The account whose credential is copied. Production reads it from the AOS process; naming
+        // it here is what makes this test about the token it wrote rather than about whichever
+        // ~/.codex the machine running the suite happens to have.
+        operatorHome,
         // The identity this run is about, supplied rather than read: whether a file under a CI
         // runner's home is VERIFIED depends on that machine's directory permissions, and this test
         // is about what happens to a credential once staging has been earned. The refusal above
