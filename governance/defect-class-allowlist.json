@@ -136,6 +136,16 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "const original = readFileSync(path, \"utf8\");",
       "note": "reads the allowlist for restore; nothing here is hashed"
+    },
+    {
+      "file": "tests/product/confinement-probe.test.mjs",
+      "match": "const record = JSON.parse(readFileSync(RECORD_PATH, \"utf8\"));",
+      "note": "parsed as JSON, not hashed; the digests this test recomputes are over JSON serialisations of records, the design of the evidence record, not of file bytes"
+    },
+    {
+      "file": "tests/product/confinement-probe.test.mjs",
+      "match": "const doc = readFileSync(DOC_PATH, \"utf8\");",
+      "note": "the document text is searched for its printed profiles, which are hashed as the text the document prints; no file-identity claim rests on it"
     }
   ],
   "regex-no-unicode": [
