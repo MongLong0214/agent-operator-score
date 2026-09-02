@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T00:31:49.846Z",
+  "captured_at": "2026-09-02T05:36:17.371Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -26,7 +26,10 @@
         "#574",
         "#575",
         "#576",
-        "#578"
+        "#578",
+        "#595",
+        "#556",
+        "#586"
       ]
     },
     {
@@ -95,7 +98,13 @@
         "#556",
         "#574",
         "#575",
-        "#578"
+        "#578",
+        "#593",
+        "#553",
+        "#555",
+        "#554",
+        "#588",
+        "#595"
       ]
     },
     {
@@ -369,18 +378,45 @@
     {
       "number": 567,
       "title": "[P0][evidence] artifact·handoff·tree identity를 raw-byte digests로 전환한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 567,
+        "final_sha": "280eb25f5f3e8826c6aa94d78d6a3a334f8e9ecd",
+        "pr": 597,
+        "ci_run_ids": [
+          33594498969
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "raw_byte_digest_api": "lib/digest.mjs at 280eb25f: sha256Bytes, fileByteDigest, treeByteDigest/canonicalTreeManifest (aos-file-evidence.v3, aos-tree-manifest.v1, aos-artifact.v3), artifactByteDigest, isByteDigest, handoffDigestsMatch — every digest over Buffer bytes from an undecoded read; lib/core.mjs sha256Text-over-decoded-text removed; docs/BYTE_DIGEST.md is the contract; tests/product/byte-digest.test.mjs proves CRLF, BOM, invalid-UTF-8 and encoding-folded pairs get distinct digests",
+          "mutation": "85/85 guards are load-bearing (CI mutation job on 280eb25f, run 33594002406 lineage); the raw-filename-bytes guard is proven on Linux and skips only EILSEQ on APFS"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#567",
         "#575",
@@ -489,7 +525,22 @@
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 572,
+        "final_sha": "99aa473dac07b4692dced7de54608691ab885af2",
+        "pr": 592,
+        "ci_run_ids": [
+          33581208358
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "audit_report_digest": "sha256:c816bb22fd95f4b2f28311093a5b8e54e1181550c6f0c5b1e98b8148b132649b",
+          "deletion_log": "none — read-only-audit phase only; final-deletion remains blocked on #578, and this record covers Phase A alone. The issue stays open."
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
       "close_evidence_checked": null,
       "closing_references": [
         "#572",

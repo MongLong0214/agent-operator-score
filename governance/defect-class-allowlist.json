@@ -81,6 +81,21 @@
       "note": "keyed by workflow file name relative to .github/workflows, a path with a dot and an extension that no prototype key can spell"
     },
     {
+      "file": "lib/verifiers/fam5.mjs",
+      "match": "const subchecks = {};",
+      "note": "keyed by SUBCHECKS, a constant list of names the verifier itself declares; nothing the assessed module chose reaches the key"
+    },
+    {
+      "file": "lib/verifiers/fam5.mjs",
+      "match": "const probes = {};",
+      "note": "keyed by PROBES[].id, constants declared in this file; the assessed module's output is the value, never the key"
+    },
+    {
+      "file": "tests/product/verifier-authority.test.mjs",
+      "match": "const files = {};",
+      "note": "keyed by the test's own fixed list of file names to read back"
+    },
+    {
       "file": "tests/mutation/manifest.mjs",
       "match": "const files = {};",
       "note": "a mutation `to` string quoting the plain-object shape safe-fs used to have; the manifest never runs it"
