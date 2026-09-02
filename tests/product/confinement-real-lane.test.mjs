@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -83,7 +83,7 @@ attempt("workspace_write", () => writeFileSync("./written.txt", "ok\\n"));
 const child = spawn("/bin/sh", ["-c", "sleep 30"], { detached: true, stdio: "ignore" });
 child.unref();
 Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 700);
-writeFileSync("./probe-result.json", JSON.stringify({ cells, descendant: child.pid, aos_home_env: process.env.AOS_HOME ?? null, home: process.env.HOME ?? null }));
+writeFileSync("./probe-result.json", JSON.stringify({ cells, descendant: child.pid, aos_home_env: process.env.AOS_HOME ?? null, home: process.env.HOME ?? null, cwd: process.cwd(), env: process.env, argv: process.argv }));
 `;
 
 const nodeAgent = { id: "probe", command: "node", args: ["agent.mjs"], adapter: "generic-command.v1" };
@@ -112,6 +112,28 @@ test("strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
     // workspace, including the store root and the other run beside it, and allowed the workspace.
     assert.deepEqual(probe.cells, { outside_read: "EPERM", other_run_read: "EPERM", store_list: "EPERM", operator_home_list: "EPERM", workspace_write: "allowed" });
     assert.equal(probe.aos_home_env, null, "AOS_HOME reached the child environment");
+    // On the values, not on the name. `AOS_WORKSPACE` used to carry
+    // `<store>/runs/<run>/workspaces/FAM-1`, which discloses the store to an agent that was never
+    // handed the variable that names it -- a rule checked by looking for the wrong thing.
+    for (const [name, value] of Object.entries(probe.env)) {
+      assert.equal(String(value).includes(store.aosHome), false, `${name} carries the store path`);
+      assert.equal(String(value).includes(realpathSync(store.aosHome)), false, `${name} carries the store path`);
+    }
+    assert.equal(probe.env.AOS_WORKSPACE, ".");
+    // argv and cwd are a weaker statement than the environment, and an honest one: the run's own
+    // workspace lives inside the store, so a child started in it can read its own directory out of
+    // `getcwd` however the environment is built. What is checked is that nothing above the
+    // workspace is named -- the store root, another run, the runs directory -- so the child knows
+    // where it is and not what else is there. Closing the last of it needs a workspace outside the
+    // store, which is a change to where runs are kept and is named in the PR as a limitation.
+    for (const value of [...probe.argv, probe.cwd]) {
+      const text = String(value);
+      if (!text.includes(store.aosHome) && !text.includes(realpathSync(store.aosHome))) continue;
+      assert.ok(
+        text.startsWith(store.workspace) || text.startsWith(realpathSync(store.workspace)),
+        `${text} names the store above this run's own workspace`
+      );
+    }
     assert.notEqual(probe.home, process.env.HOME, "the child ran with the operator's HOME");
     assert.equal(existsSync(join(store.workspace, "written.txt")), true);
     // The process axis: the detached sleep was seen by the scan while the agent lived, reported as
@@ -217,7 +239,17 @@ test("strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane
     assert.equal(record.platform_lane, "darwin/macos-seatbelt/codex-cli.v1");
     assert.equal(record.support_status, "SUPPORTED_WITH_CONSTRAINTS");
     // The runtime's config is a staged copy in the agent HOME, and the record says which files.
-    assert.deepEqual(record.holes, [{ env: "CODEX_HOME", access: "staged-copy", staged: ["auth.json", "config.toml"], source: process.env.CODEX_HOME ? "operator_env" : "default_dir" }]);
+    assert.equal(record.holes.length, 1);
+    const [hole] = record.holes;
+    assert.equal(hole.env, "CODEX_HOME");
+    assert.equal(hole.access, "staged-copy");
+    assert.deepEqual(hole.staged, ["auth.json", "config.toml"]);
+    assert.equal(hole.source, process.env.CODEX_HOME ? "operator_env" : "default_dir");
+    // The bytes of the configuration the runtime was given, so two runs cannot differ in their MCP
+    // servers and still claim one cohort. The credential file is deliberately not digested here:
+    // this record is published, and a token that refreshes is not a change of environment.
+    assert.match(String(hole.staged_digests["config.toml"]), /^sha256:[0-9a-f]{64}$/u);
+    assert.equal(Object.hasOwn(hole.staged_digests, "auth.json"), false, "the credential file was digested into a published record");
     assert.equal(record.cleanup_verified, true);
     const decision = issuanceGate(record);
     assert.deepEqual(decision.reasons, []);

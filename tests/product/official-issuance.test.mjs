@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -182,6 +183,110 @@ test("a_support_row_whose_evidence_does_not_match_its_declared_digest_claims_not
   }
 });
 
+test("the_recorder_removes_the_staged_credential_even_when_the_lane_fails", () => {
+  // The probe stages a copy of the operator's Codex credential to measure the lane. Its cleanup
+  // lived after a rethrow, so a run whose canary failed -- the interesting case, the one somebody
+  // runs while changing the profile -- left `agentHome/.codex/auth.json`, the base store and the
+  // run scratch on disk. Read from the source, because the failing path cannot be provoked on a
+  // host where the lane works.
+  const probe = readFileSync(join(fixtureDir, "probes", "strict-lane.mjs"), "utf8");
+  const finallyAt = probe.indexOf("} finally {");
+  const rethrowAt = probe.indexOf("throw error;");
+  assert.ok(finallyAt > 0 && rethrowAt > 0, "the probe no longer has the shape this checks");
+  assert.ok(rethrowAt < finallyAt, "the rethrow is no longer inside the block the cleanup guards");
+  for (const removal of ["if (handle !== null) handle.cleanup();", "for (const path of [base, agentHome, runScratch]) rmSync(path, { recursive: true, force: true });"]) {
+    const at = probe.indexOf(removal);
+    assert.ok(at > finallyAt, `cleanup step is outside the finally: ${removal}`);
+  }
+  // And the committed evidence says it worked, which is what the matrix reads cleanup from.
+  const cleanup = observations("strict-lane.darwin.seatbelt.cleanup.json");
+  assert.deepEqual(cleanup.captured.removed, { staged_runtime_config: true, agent_home: true, run_scratch: true, base_store: true });
+  assert.deepEqual(cleanup.captured.outcomes, { canary: 0, auth: 0, exec: 0 });
+});
+
+test("a_row_whose_cited_runtime_did_not_run_is_not_official", () => {
+  // `exec` was cited by the official row and never consumed: only the login observation's exit
+  // code was read. A committed observation of `codex exec` exiting 71 -- the runtime failing to
+  // start under the profile -- left the lane official, which is the lane claiming a runtime ran
+  // under it on the evidence of a file saying it did not.
+  const copy = mkdtempSync(join(tmpdir(), "aos-matrix-exec-"));
+  try {
+    cpSync(fixtureDir, copy, { recursive: true });
+    const fixture = JSON.parse(readFileSync(join(copy, "support-matrix.json"), "utf8"));
+    const official = fixture.lanes.find((row) => row.official === true);
+    assert.ok(official.evidence.exec, "the official row does not cite an exec observation");
+    for (const kind of ["exec", "runtime", "canary", "cleanup", "host"]) {
+      const reference = official.evidence[kind];
+      if (!reference) continue;
+      const file = join(copy, reference.file);
+      const observation = JSON.parse(readFileSync(file, "utf8"));
+      observation.exit_status = 71;
+      const bytes = Buffer.from(JSON.stringify(observation), "utf8");
+      writeFileSync(file, bytes);
+      const restated = JSON.parse(JSON.stringify(fixture));
+      restated.lanes.find((row) => row.official === true).evidence[kind].digest = sha256Bytes(bytes);
+      const row = supportMatrixDecisions(restated, copy).find((one) => one.official === true);
+      assert.equal(row.decision.official, false, `${kind}: a row citing a run that exited 71 was issued`);
+      assert.ok(row.decision.reasons.includes(ISSUANCE_REASONS.EVIDENCE_EXECUTION_FAILED), `${kind}: ${row.decision.reasons.join(", ")}`);
+      assert.match(row.evidence_execution_failed.join(" "), new RegExp(`${kind}: exit 71`, "u"));
+      // The committed bytes back, so the next citation is tested against a matrix whose other
+      // rows still match what they declare.
+      cpSync(join(fixtureDir, reference.file), file);
+    }
+    // And the teardown the probe recorded: a row whose cleanup observation says something stayed
+    // behind cannot claim the lane was clean, however the row labels itself.
+    const cleanupReference = official.evidence.cleanup;
+    const cleanupFile = join(copy, cleanupReference.file);
+    const cleanup = JSON.parse(readFileSync(cleanupFile, "utf8"));
+    cleanup.captured.removed.staged_runtime_config = false;
+    const cleanupBytes = Buffer.from(JSON.stringify(cleanup), "utf8");
+    writeFileSync(cleanupFile, cleanupBytes);
+    const restatedCleanup = JSON.parse(JSON.stringify(fixture));
+    restatedCleanup.lanes.find((row) => row.official === true).evidence.cleanup.digest = sha256Bytes(cleanupBytes);
+    const left = supportMatrixDecisions(restatedCleanup, copy).find((one) => one.official === true);
+    assert.equal(left.decision.official, false, "a row whose probe left the staged credential behind was issued");
+    assert.ok(left.decision.reasons.includes(ISSUANCE_REASONS.CLEANUP_UNVERIFIED), left.decision.reasons.join(", "));
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+});
+
+test("the_matrix_decides_the_process_axis_with_the_helper_a_run_uses", async () => {
+  // Two formulas for one decision is one formula too many. The row used to take
+  // `row.gate.process_enforced` on trust and hand the gate a `{ pgid: 0 }` sweep the canonical
+  // helper rejects, so the table said official while the helper said the axis was not enforced.
+  const { processAxisEnforced } = await import("../../lib/confinement.mjs");
+  const captured = observations("strict-lane.darwin.seatbelt.canary.json").captured;
+  assert.ok(Number.isInteger(captured.group_sweep?.pgid) && captured.group_sweep.pgid > 0, "the committed observation carries no real sweep");
+  const row = supportMatrixDecisions(matrix).find((one) => one.official === true);
+  assert.equal(row.decision.official, true);
+  assert.equal(
+    processAxisEnforced({ canary: { result: captured.result, out_of_band: captured.out_of_band }, polls: captured.scan_polls, groupSweep: captured.group_sweep }),
+    true,
+    "the table is official where the helper is not"
+  );
+
+  // Take the sweep out of the observation the row cites and the row goes with it.
+  const copy = mkdtempSync(join(tmpdir(), "aos-matrix-sweep-"));
+  try {
+    cpSync(fixtureDir, copy, { recursive: true });
+    const fixture = JSON.parse(readFileSync(join(copy, "support-matrix.json"), "utf8"));
+    const reference = fixture.lanes.find((one) => one.official === true).evidence.canary;
+    const file = join(copy, reference.file);
+    const observation = JSON.parse(readFileSync(file, "utf8"));
+    delete observation.captured.group_sweep;
+    const bytes = Buffer.from(JSON.stringify(observation), "utf8");
+    writeFileSync(file, bytes);
+    fixture.lanes.find((one) => one.official === true).evidence.canary.digest = sha256Bytes(bytes);
+    const withheld = supportMatrixDecisions(fixture, copy).find((one) => one.official === true);
+    assert.equal(withheld.decision.official, false);
+    assert.ok(withheld.decision.reasons.includes(ISSUANCE_REASONS.PROCESS_NOT_ENFORCED), withheld.decision.reasons.join(", "));
+    assert.match(withheld.decision.record_problems.join(" "), /group_sweep/u);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+});
+
 test("the_rendered_matrix_shows_the_decisions_it_was_handed", () => {
   // The renderer used to recompute the decision from the fixture, so the table could disagree with
   // the gate that was actually run over the same rows.
@@ -216,6 +321,130 @@ test("the_real_runtime_strict_script_cannot_report_a_skip_as_a_pass", async () =
   assert.equal(realStrictLaneStatus({ env: required, platform: "darwin", backendAvailable: true }).available, true);
 });
 
+test("the_profile_a_number_is_bound_to_names_the_lane_it_actually_ran_under", async () => {
+  // Both CLI paths built the cohort with a literal BEST_EFFORT_CLI, so `AOS_ISOLATION=STRICT`
+  // changed the boundary and left the profile digest identical: a cycle could not tell that its
+  // second run had a boundary its first did not, and the two would have been averaged together.
+  const { buildProfile } = await import("../../lib/profile.mjs");
+  const { isolationPolicyDigestOf, isolationPolicyFor, runtimeConfigDigestFor } = await import("../../lib/confinement.mjs");
+  const { ADAPTERS } = await import("../../lib/profile.mjs");
+  const agent = { id: "a", command: process.execPath, args: [], adapter: "codex-cli.v1", runtime_name: "codex" };
+  const digestFor = (lane, backend) => buildProfile({
+    profileId: "a",
+    agent,
+    isolation: lane,
+    isolationPolicyDigest: isolationPolicyDigestOf(isolationPolicyFor({ level: lane, platform: "darwin", backend, adapter: ADAPTERS["codex-cli.v1"] })),
+    probe: () => ""
+  }).profile_digest;
+  const strictPolicy = isolationPolicyDigestOf(isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: ADAPTERS["codex-cli.v1"] }));
+  // The level is a word; the policy digest is what the word means on this platform, and it has to
+  // be on the profile or the cohort is named rather than described.
+  assert.equal(
+    buildProfile({ profileId: "a", agent, isolation: "STRICT", isolationPolicyDigest: strictPolicy, probe: () => "" }).isolation_policy_digest,
+    strictPolicy
+  );
+  const strict = digestFor("STRICT", "macos-seatbelt");
+  const best = digestFor("BEST_EFFORT_CLI", "none");
+  assert.notEqual(strict, best, "two lanes produced one cohort");
+  // And STRICT on a host with no backend is not quietly the same profile: there is no policy to
+  // digest, so the profile cannot be built and the refusal is named.
+  assert.throws(() => digestFor("STRICT", "none"), { message: /^AOS_ISOLATION_BACKEND_INVALID/u });
+
+  // The staged runtime configuration is bound by its bytes, so an MCP server appearing between two
+  // runs splits the cohort instead of hiding inside it.
+  const home = mkdtempSync(join(tmpdir(), "aos-config-digest-"));
+  try {
+    mkdirSync(join(home, ".codex"));
+    writeFileSync(join(home, ".codex", "config.toml"), 'model = "gpt-5"\n');
+    const before = runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home });
+    assert.match(String(before), /^sha256:[0-9a-f]{64}$/u);
+    writeFileSync(join(home, ".codex", "config.toml"), 'model = "gpt-5"\n[mcp_servers.thing]\ncommand = "x"\n');
+    assert.notEqual(runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home }), before);
+    // The credential is deliberately not part of it: a refreshed token is not a new cohort.
+    writeFileSync(join(home, ".codex", "auth.json"), '{"tokens":{"refresh_token":"rt_aaaaaaaaaaaaaaaaaaaa"}}');
+    const withAuth = runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home });
+    writeFileSync(join(home, ".codex", "auth.json"), '{"tokens":{"refresh_token":"rt_bbbbbbbbbbbbbbbbbbbb"}}');
+    assert.equal(runtimeConfigDigestFor(ADAPTERS["codex-cli.v1"], { HOME: home }), withAuth);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("no_environment_variable_may_carry_the_store_path", async () => {
+  // The rule is that the agent is not told where AOS keeps its runs. It was checked by looking for
+  // the variable called AOS_HOME, and the path travelled in AOS_WORKSPACE instead. This checks the
+  // values of the whole environment, which is the thing the rule is about.
+  const { assertNoStorePathInEnv } = await import("../../lib/confinement.mjs");
+  const store = "/operator/private/.aos";
+  assert.throws(
+    () => assertNoStorePathInEnv({ PATH: "/usr/bin", AOS_WORKSPACE: `${store}/runs/run-1/workspaces/FAM-1` }, store),
+    { message: /^AOS_ISOLATION_STORE_PATH_IN_ENV AOS_WORKSPACE/u }
+  );
+  assert.throws(
+    () => assertNoStorePathInEnv({ SOMETHING_ELSE: `--data-dir=${store}` }, store),
+    { message: /^AOS_ISOLATION_STORE_PATH_IN_ENV SOMETHING_ELSE/u }
+  );
+  // And an environment that says nothing about it passes, including the relative form a run uses.
+  const clean = { PATH: "/usr/bin", HOME: "/tmp/aos-agent-home-x", AOS_WORKSPACE: ".", AOS_TASK_FILE: "/tmp/aos-prompt-x/prompt.txt" };
+  assert.deepEqual(assertNoStorePathInEnv(clean, store), clean);
+  assert.deepEqual(assertNoStorePathInEnv(clean, null), clean);
+});
+
+test("an_assessment_records_the_lane_it_ran_under_in_the_profile_it_is_bound_to", () => {
+  // Through the CLI, because the defect was in the CLI: the run is confined by the lane the
+  // operator named and the cohort was recorded under a different one.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-lane-profile-"));
+  try {
+    const agent = join(cwd, "agent.mjs");
+    writeFileSync(agent, "process.stdout.write('done\\n');\n");
+    run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
+    const assessed = run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    const result = JSON.parse(assessed.stdout);
+    assert.equal(result.isolation.level, "BEST_EFFORT_CLI");
+    for (const entry of result.opportunity_profile) {
+      assert.equal(entry.isolation_level, "BEST_EFFORT_CLI", "the profile names a lane the run did not use");
+      assert.match(String(entry.isolation_policy_digest), /^sha256:[0-9a-f]{64}$/u);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a_staged_credential_never_reaches_a_public_surface", async () => {
+  // Staging puts a copy of the runtime's credential where the assessed process can read it. The
+  // exact-value scrubber was built from the environment alone, so a task that opened its staged
+  // `auth.json` and printed what it found published it verbatim in `stdout_excerpt`.
+  const { credentialValuesIn, stageRuntimeConfig } = await import("../../lib/confinement.mjs");
+  const { redactText } = await import("../../lib/redact.mjs");
+  const { ADAPTERS } = await import("../../lib/profile.mjs");
+  const operator = mkdtempSync(join(tmpdir(), "aos-operator-home-"));
+  const agentHome = mkdtempSync(join(tmpdir(), "aos-agent-home-"));
+  const token = "rt_opaque_refresh_credential_0123456789abcdef";
+  try {
+    mkdirSync(join(operator, ".codex"));
+    writeFileSync(join(operator, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: token, account_id: "acct" } }));
+    writeFileSync(join(operator, ".codex", "config.toml"), 'model = "gpt-5"\n');
+    const staged = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], {}, agentHome, operator);
+    assert.deepEqual(staged.staged, ["auth.json", "config.toml"]);
+    assert.ok(staged.secrets.includes(token), "the staged credential was not handed to the caller for scrubbing");
+    assert.match(String(staged.digests["config.toml"]), /^sha256:[0-9a-f]{64}$/u);
+    // What a run does with them: the exact values are removed from anything the child printed.
+    const scrub = (text) => staged.secrets.reduce((carried, secret) => carried.split(secret).join("[redacted: runtime credential]"), text);
+    assert.equal(scrub(`here is ${token} for you`).includes(token), false);
+
+    // And the shapes, for a credential this run did not stage but a task printed anyway.
+    assert.equal(redactText(`token is ${token}`).text.includes(token), false);
+    const body = JSON.stringify({ refresh_token: "abcd1234efgh5678", account: "me" });
+    const redacted = redactText(body);
+    assert.equal(redacted.text.includes("abcd1234efgh5678"), false);
+    assert.equal(JSON.parse(redacted.text).account, "me", "redaction broke the surrounding JSON");
+    // Prose about credentials is not credential material.
+    assert.equal(redactText("do not commit your private key").text, "do not commit your private key");
+  } finally {
+    for (const dir of [operator, agentHome]) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("a_run_that_the_boundary_did_not_make_official_carries_no_score", () => {
   const observed = METRIC_IDS.map((id) => observationOf({
     metric_id: id,
@@ -240,9 +469,20 @@ test("a_run_that_the_boundary_did_not_make_official_carries_no_score", () => {
   assert.equal(official.issued, true);
   assert.equal(official.claim_stage, "PROFILE_BOUND");
 
-  // A caller that supplies no verdict has measured no boundary, so the result it gets is a
-  // diagnostic one: PROFILE_BOUND is claimed only where the boundary was gated.
-  assert.equal(scoreRun(observed).claim_stage, "RUN_DIAGNOSTIC");
+  // A caller that supplies no verdict has measured no boundary. Absent evidence withholds exactly
+  // like a negative verdict -- the review found this failing open, with a perfect observation set
+  // returning issued:true and 100/100 while the claim stage said RUN_DIAGNOSTIC, which is a result
+  // contradicting itself in two adjacent fields.
+  for (const context of [undefined, {}, { safetyState: "S0" }, { officialIssuance: null }, { officialIssuance: undefined }]) {
+    const unbounded = context === undefined ? scoreRun(observed) : scoreRun(observed, context);
+    assert.equal(unbounded.issued, false, JSON.stringify(context));
+    assert.equal(unbounded.score, null, JSON.stringify(context));
+    assert.equal(unbounded.status, "INCOMPLETE", JSON.stringify(context));
+    assert.equal(unbounded.claim_stage, "RUN_DIAGNOSTIC");
+    const missing = unbounded.blockers.find((one) => one.code === "ISOLATION_NOT_OFFICIAL");
+    assert.ok(missing, unbounded.blockers.map((one) => one.code).join(", "));
+    assert.match(missing.detail, /no confinement verdict was supplied/u);
+  }
 });
 
 test("an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_would_be", () => {

@@ -2300,8 +2300,8 @@ export const GUARDS = [
     guard: "the staged credential copy is private",
     reason: "auth.json is a credential; a copy readable by other accounts on the machine would be a wider exposure than the file it was copied from",
     file: "lib/confinement.mjs",
-    from: "    writeFileSync(join(dir, name), readFileSync(from), { mode: 0o600, flag: \"wx\" });",
-    to: "    writeFileSync(join(dir, name), readFileSync(from), { mode: 0o644, flag: \"wx\" });",
+    from: "    writeFileSync(join(dir, name), bytes, { mode: 0o600, flag: \"wx\" });",
+    to: "    writeFileSync(join(dir, name), bytes, { mode: 0o644, flag: \"wx\" });",
     test: "tests/product/confinement.test.mjs",
     name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
   },
@@ -2337,10 +2337,10 @@ export const GUARDS = [
   },
   {
     guard: "the boundary's verdict decides whether the run carries a number",
-    reason: "with the gate recorded beside the score instead of in front of it, a run on a lane that cannot be official still printed 100/100 and exited 0, which is the official result the gate had just refused",
+    reason: "with the gate recorded beside the score instead of in front of it, a run on a lane that cannot be official still printed 100/100 and exited 0; and reading only an explicitly negative verdict is the same defect from the other side -- a caller with no verdict measured no boundary, and a default of null that meant carry on let a perfect observation set issue 100 with no blockers",
     file: "lib/scorer-v1.mjs",
-    from: "  if (officialIssuance !== null && officialIssuance.official !== true) {",
-    to: "  if (false) {",
+    from: "  if (officialIssuance?.official !== true) {",
+    to: "  if (officialIssuance !== null && officialIssuance !== undefined && officialIssuance.official !== true) {",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
   },
@@ -2443,6 +2443,79 @@ export const GUARDS = [
     to: "      groupSweep: { pgid: 0, members: [] }",
     test: "tests/product/confinement-real-lane.test.mjs",
     name: "strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane"
+  },
+  {
+    guard: "the workspace is named relatively so the store is not",
+    reason: "the absolute workspace path names the store, the run and the family in one string, so an agent never given AOS_HOME was handed it inside another variable's value",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: '        AOS_WORKSPACE: ".",',
+    to: "        AOS_WORKSPACE: context.workspace,",
+    test: "tests/product/confinement-real-lane.test.mjs",
+    name: "strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
+  },
+  {
+    guard: "no variable may carry the store path",
+    reason: "checking the one variable that was known to carry it is how the rule was passed while another variable carried it; the check belongs on the values of the environment the child is actually spawned with",
+    file: "lib/confinement.mjs",
+    from: '      if (value.includes(root)) throw fail("AOS_ISOLATION_STORE_PATH_IN_ENV", `${name} carries the store path`);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "no_environment_variable_may_carry_the_store_path"
+  },
+  {
+    guard: "the matrix decides the process axis with the run's own helper",
+    reason: "a second, weaker formula for one decision: the row took its declared process_enforced on trust and handed the gate a synthesized sweep the canonical helper rejects",
+    file: "lib/confinement.mjs",
+    from: "    const processEnforced = strict && canaryPassed && processAxisEnforced({",
+    to: "    const processEnforced = strict && canaryPassed && Boolean({",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_matrix_decides_the_process_axis_with_the_helper_a_run_uses"
+  },
+  {
+    guard: "every observation a row cites must record a run that succeeded",
+    reason: "exec was cited and never consumed, so a committed observation of the runtime failing to start under the boundary rode along inside an official row",
+    file: "lib/confinement.mjs",
+    from: "      .filter(([, , read]) => !read.mismatch && read.observation !== null && read.observation.exit_status !== 0)",
+    to: "      .filter(() => false)",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_row_whose_cited_runtime_did_not_run_is_not_official"
+  },
+  {
+    guard: "cleanup is read from the teardown that happened",
+    reason: "a row declaring its own cleanup_verified is the fixture vouching for itself; the probe's teardown observation is the only thing that watched the staged credential copy go",
+    file: "lib/confinement.mjs",
+    from: "      cleanup_verified: strict && canaryPassed && cleanupRemoved,",
+    to: "      cleanup_verified: strict && canaryPassed,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_row_whose_cited_runtime_did_not_run_is_not_official"
+  },
+  {
+    guard: "the staged credential is scrubbed by value",
+    reason: "staging puts a credential where the assessed process can read it and never in the environment, so a scrubber built from the environment alone let a task print it into stdout_excerpt",
+    file: "lib/confinement.mjs",
+    from: "    for (const value of credentialValuesIn(bytes)) secrets.add(value);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_never_reaches_a_public_surface"
+  },
+  {
+    guard: "the lane is bound into the cohort",
+    reason: "both CLI paths built the profile with a literal BEST_EFFORT_CLI, so AOS_ISOLATION=STRICT changed the boundary and left the digest identical and a cycle averaged two lanes as one",
+    file: "lib/profile.mjs",
+    from: "    isolation_policy_digest: isolationPolicyDigest,",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_profile_a_number_is_bound_to_names_the_lane_it_actually_ran_under"
+  },
+  {
+    guard: "the assessment profile is built for the lane the run uses",
+    reason: "binding the profile to a hardcoded lane records the cohort of a boundary the run did not have",
+    file: "lib/cli.mjs",
+    from: "  const built = profileFor(agent, isolationLane());",
+    to: '  const built = profileFor(agent, "STRICT");',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_records_the_lane_it_ran_under_in_the_profile_it_is_bound_to"
   }
 ];
 
@@ -2586,6 +2659,7 @@ export const ACCOUNTED_GUARDS = [
   "child output credential scrub",
   "cited evidence is read only if it is the evidence cited",
   "cleanup claim not overstated",
+  "cleanup is read from the teardown that happened",
   "close-evidence author trust",
   "close-evidence component confirmations",
   "close-evidence issue-specific fields",
@@ -2616,6 +2690,7 @@ export const ACCOUNTED_GUARDS = [
   "env policy digest binding",
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
+  "every observation a row cites must record a run that succeeded",
   "every transport spelling needs the transport approval",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
@@ -2653,6 +2728,7 @@ export const ACCOUNTED_GUARDS = [
   "merge keys bring their keys with them",
   "missing-result refusal",
   "no eligible evidence is said to be none",
+  "no variable may carry the store path",
   "observation channel size bound",
   "observation line size bound",
   "observation schema",
@@ -2713,6 +2789,7 @@ export const ACCOUNTED_GUARDS = [
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the assessment is scored under the gate it reports",
+  "the assessment profile is built for the lane the run uses",
   "the boundary's verdict decides whether the run carries a number",
   "the canary that certifies the boundary is the one that shipped",
   "the capture time names a day that exists",
@@ -2724,6 +2801,8 @@ export const ACCOUNTED_GUARDS = [
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
   "the group sweep is recorded from the group",
+  "the lane is bound into the cohort",
+  "the matrix decides the process axis with the run's own helper",
   "the matrix reads the canary from its observation",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
@@ -2733,8 +2812,10 @@ export const ACCOUNTED_GUARDS = [
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
   "the staged credential copy is private",
+  "the staged credential is scrubbed by value",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
+  "the workspace is named relatively so the store is not",
   "top-level artifact open does not follow",
   "tracked descendants are terminated at teardown",
   "transport approval binding",

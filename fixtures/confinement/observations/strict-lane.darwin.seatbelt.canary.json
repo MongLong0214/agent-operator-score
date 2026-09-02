@@ -74,7 +74,7 @@
         "run_store": true
       },
       "descendant": {
-        "pid": 86738,
+        "pid": 69352,
         "observed_by_scan": true,
         "dead_after_cleanup": true,
         "escapee_confined": true,
@@ -82,11 +82,15 @@
         "survivors": []
       }
     },
-    "evidence_digest": "sha256:2c8b90ef4ab349036b904b78ed7253d72f8a43c09588ded8240fa07043781871",
+    "evidence_digest": "sha256:282fb36e2f3f24e0a8f03a7bcd3244469b56e7a2429fb2c72b218d297c09ec7e",
     "program_digest": "sha256:dfc96327ebaded5bfdf42ef37c94874481e217cd5c317e301b722e922a27448e",
     "policy_digest": "sha256:6721a6304c99c0516cc6434a37455d2f482c52f9199ba8b2c2f63fe96982e8e4",
-    "rendered_profile_digest": "sha256:2aa3b6f1da6f767b3e2a237ae545b7ed6ef532f48325eb0f770f020c05af4c89",
+    "rendered_profile_digest": "sha256:48dcd16526d775a51a842b20403f1a1d1bef3046ec854e5d0938c8cecf7acea6",
     "scan_polls": 7,
+    "group_sweep": {
+      "pgid": 69324,
+      "members": []
+    },
     "network_policy": "provider-required-unrestricted",
     "bindings": {
       "@WORKSPACE@": "@WORKSPACE@",

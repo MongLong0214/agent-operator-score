@@ -2,18 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DIMENSIONS, METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
-import {
-  BANDS,
-  CAPS,
-  MINIMUM_OBSERVED,
-  REQUIRED_METRICS,
-  bandOf,
-  capsFor,
-  ceilingOf,
-  issuanceCheck,
-  rawScore,
-  scoreRun
-} from "../../lib/scorer-v1.mjs";
+import { BANDS, CAPS, MINIMUM_OBSERVED, REQUIRED_METRICS, bandOf, capsFor, ceilingOf, issuanceCheck as issuanceCheckUnbounded, rawScore, scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
+
+// #556: `scoreRun` and `issuanceCheck` withhold issuance unless the confinement gate says the run
+// was official, and absent evidence withholds like a negative verdict. These tests are about the
+// arithmetic and the metric gates, so the boundary is stated once here rather than at every call:
+// what they assert is what the scorer does with observations, not what this machine's isolation
+// backend can do.
+const UNDER_AN_OFFICIAL_BOUNDARY = { officialIssuance: { official: true, reasons: [] } };
+const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+const issuanceCheck = (observations, context = {}) => issuanceCheckUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+
 
 const at = (id, passing) =>
   observationOf({

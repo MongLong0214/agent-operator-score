@@ -490,10 +490,22 @@ test("the_support_matrix_marks_official_only_where_committed_canary_evidence_pas
       assert.ok(existsSync(file), `${kind}: ${reference.file} is not committed`);
       assert.equal(sha256Bytes(readFileSync(file)), reference.digest, `${kind}: ${reference.file} changed since the table was written`);
       const observation = JSON.parse(readFileSync(file, "utf8"));
-      if (kind === "canary") assert.equal(observation.captured?.result, "PASS", `${reference.file} does not record a passing canary`);
+      // Every citation, not only the two that used to be read: an observation the row cites is a
+      // run that has to have succeeded. `exec` was cited and unchecked, so a recorded `codex exec`
+      // exiting 71 -- the runtime refusing to start under the profile -- rode along in an official
+      // row.
+      assert.equal(observation.exit_status, 0, `${kind}: ${reference.file} records a run that exited ${observation.exit_status}`);
+      if (kind === "canary") {
+        assert.equal(observation.captured?.result, "PASS", `${reference.file} does not record a passing canary`);
+        assert.ok(Number.isInteger(observation.captured?.group_sweep?.pgid) && observation.captured.group_sweep.pgid > 0, `${reference.file}: no process group was swept`);
+      }
       if (kind === "runtime") {
-        assert.equal(observation.exit_status, 0, `${reference.file}: the runtime did not exit 0 inside the boundary`);
         assert.match(observation.stderr_excerpt + observation.stdout_excerpt, /Logged in/u, `${reference.file}: the runtime did not authenticate`);
+      }
+      if (kind === "exec") assert.match(observation.stdout_excerpt + (observation.captured?.last_message ?? ""), /OK/u, `${reference.file}: the runtime did not answer inside the boundary`);
+      if (kind === "cleanup") {
+        const removed = Object.values(observation.captured?.removed ?? {});
+        assert.ok(removed.length >= 3 && removed.every((gone) => gone === true), `${reference.file}: the probe left something behind`);
       }
     }
     assert.equal(laneOf(row)?.support_status, row.support_status, "the table and the shipped lane declaration disagree");

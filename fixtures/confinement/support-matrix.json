@@ -14,26 +14,24 @@
       "evidence": {
         "canary": {
           "file": "observations/strict-lane.darwin.seatbelt.canary.json",
-          "digest": "sha256:3278fdd7b8faf244675217887bce72a5cc4938224e338ceb8bb917f3ac8a92c2"
+          "digest": "sha256:219f896a4c9f9defa6dcfe6f434836b2ac83cbc957721eb74d3094dab5323fd5"
         },
         "runtime": {
           "file": "observations/strict-lane.darwin.seatbelt.codex-auth.json",
-          "digest": "sha256:6532f6c9cbc30dba777cd32bc010b686cf06231128af3f82aee5a8cee5f11539"
+          "digest": "sha256:9f42a4c6f59ed6bcdad8c6cd8a8cbf0eb9be83d0022c4a890937d8a896227114"
         },
         "exec": {
           "file": "observations/strict-lane.darwin.seatbelt.codex-exec.json",
-          "digest": "sha256:5a9bc8119625a3ca498fd7b86d96c3c4858fa23df0a505accff04be6ebc2d4bf"
+          "digest": "sha256:b6fa291df6bad89b589a01a1183fe954318312f69e53bde2b6d4ee46698b2638"
+        },
+        "cleanup": {
+          "file": "observations/strict-lane.darwin.seatbelt.cleanup.json",
+          "digest": "sha256:f9740c37522b3cb6b66eb168097f2d38abc6e49d0dcfa094629c411182d41971"
         },
         "host": {
           "file": "observations/strict-lane.darwin.host.json",
           "digest": "sha256:ab211479570143aaa41ed92a9bdccf8e279eee964811ff530775ce6e4b32a2b5"
         }
-      },
-      "gate": {
-        "filesystem_enforced": true,
-        "process_enforced": true,
-        "setup_verified": true,
-        "cleanup_verified": true
       },
       "constraints": [
         "sandbox-exec is deprecated by Apple and still enforcing on darwin 25.3 (macOS 26.3); the probe re-checks it on every run",
@@ -153,5 +151,5 @@
       "reason": "no OS boundary: a replaced HOME and a filtered environment are not a sandbox"
     }
   ],
-  "evidence_digest": "sha256:d2cd731050245d6f3e8a9ad346d896b3104a84c9297736750ef131d14d118e86"
+  "evidence_digest": "sha256:cf11dbdfe0b04cb82f226f08a93a3167ad66b3450fe011121b2af5b0caf34d65"
 }

@@ -1,0 +1,23 @@
+{
+  "backend_run": "strict-lane.darwin.seatbelt.cleanup",
+  "command": "handle.cleanup(); rm -rf @BASE@ @AGENT_TEMP_HOME@ @RUN_SCRATCH@   # the probe's own teardown",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "removed": {
+      "staged_runtime_config": true,
+      "agent_home": true,
+      "run_scratch": true,
+      "base_store": true
+    },
+    "outcomes": {
+      "canary": 0,
+      "auth": 0,
+      "exec": 0
+    }
+  }
+}

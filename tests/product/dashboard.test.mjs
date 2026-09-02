@@ -7,10 +7,17 @@ import { join } from "node:path";
 
 import { LOOPBACK, hostAllowed, mintToken, startDashboard, tokenMatches } from "../../lib/dashboard.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
-import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
 import { writeJson } from "../../lib/core.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
+
+// #556: `scoreRun` withholds issuance unless the confinement gate says the run was official, and
+// absent evidence withholds like a negative verdict. These tests are about the arithmetic and the
+// metric gates, so the boundary is stated once here rather than at every call.
+const UNDER_AN_OFFICIAL_BOUNDARY = { officialIssuance: { official: true, reasons: [] } };
+const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+
 
 const homeWithRun = () => {
   const home = mkdtempSync(join(tmpdir(), "aos-dash-"));

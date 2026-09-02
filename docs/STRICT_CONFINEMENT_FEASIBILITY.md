@@ -287,8 +287,9 @@ can vouch for.
 ### The boundary canary
 
 Before the agent is spawned under `STRICT`, `runBoundaryCanary` runs a node program under the
-same profile the agent will get. The program is embedded in `lib/confinement.mjs` (the package
-does not ship `fixtures/`), its digest is `BOUNDARY_CANARY_PROGRAM_DIGEST`, and it exercises
+same profile the agent will get. The program is embedded in `lib/confinement.mjs` rather than kept
+in `fixtures/`, so it is present wherever the module is and its bytes are the bytes that ran; its
+digest is `BOUNDARY_CANARY_PROGRAM_DIGEST`, and it exercises
 eleven cells in the Phase 0 vocabulary: read and write inside the workspace (expected `allowed`),
 read, write and delete outside it, read the store root, read another run's directory, follow a
 symlink out, list the operator's home (all expected `denied`), connect outbound (expected
@@ -301,8 +302,10 @@ problem; one that outlives it *outside* the boundary is an access problem, and t
 kernel's own answer to which of the two happened. `evaluateCanary` compares every observed cell to
 its expectation and the result is `PASS` only when all eleven agree and the planted files outside
 the boundary are intact afterwards; anything else is `FAIL`, with the failed cells named. The
-observation file's digest -- over its bytes, `sha256Bytes` -- is the `evidence_digest` on the
-record, and the raw observation is kept beside the run.
+`evidence_digest` on the record is the digest of the canary's own report -- the bytes the program
+wrote to stdout -- and the raw observation is kept beside the run. The digest of the *file* an
+observation is committed as is a different value, and it is what the support matrix cites a row's
+evidence by; the two are never the same number and the table names which is which.
 
 The canary is what separates "the profile did not apply" from "the profile applied". Phase 0
 item 4 asked for a setup-failure channel other than the exit code; this is it. A profile that
@@ -382,6 +385,15 @@ the generated profile:
   prompt on stdin exited 0 and answered `OK` in about five seconds
   (`strict-lane.darwin.seatbelt.codex-exec.json`).
 
+The probe stamps the lane official only if all three of its subprocesses succeeded -- the canary,
+`codex login status` and `codex exec` -- and it records its own teardown as an observation
+(`strict-lane.darwin.seatbelt.cleanup.json`: the staged credential copy, the agent HOME, the run
+scratch and the base store, each gone or not). Its cleanup is unconditional, so a failing canary no
+longer leaves the staged copy of the operator's credential on disk. The matrix reads
+`cleanup_verified` from that observation and the process axis from the canary's recorded group
+sweep through `processAxisEnforced` -- the same helper a run uses -- so the table has one formula
+rather than two, and every observation a row cites must record an exit status of 0.
+
 `npm run verify:real-runtime-strict` sets `AOS_REAL_STRICT_REQUIRED=1`, and under that variable a
 skip is a failure: on a host without the backend, or without an authenticated Codex, the script
 exits non-zero naming `AOS_REAL_STRICT_NOT_RUN` rather than reporting a suite that skipped
@@ -395,6 +407,23 @@ descendant is dead after teardown; the installed Codex runtime, run through the 
 0, answers `OK`, and its record is `official: true` with an empty reason list. On a machine
 without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
 reason and does not pass on nothing.
+
+The staged copy is also what the run scrubs by value: `stageRuntimeConfig` hands the caller the
+credential-shaped strings it copied, and `runProcess` rebuilds its exact-value scrubber from them
+before the agent starts. The scrubber used to be built from the environment alone, so a task that
+opened its own staged `auth.json` and printed an unfamiliar token shape published it; the shape
+rules in `lib/redact.mjs` now also cover a JSON `refresh_token`-style field and vendor-prefixed
+opaque tokens. The bytes of the staged `config.toml` are bound into the profile as
+`runtime_config_digest` (the credential is deliberately excluded: a refreshed token is not a new
+cohort), and the lane the CLI runs under is bound as `isolation_level` plus
+`isolation_policy_digest`, so a run under `AOS_ISOLATION=STRICT` is a different cohort from one
+under the default lane instead of an identical digest with a different boundary.
+
+Nothing in the child's environment carries the store path: `AOS_WORKSPACE` is `.` against a cwd of
+the workspace, and `assertNoStorePathInEnv` refuses the spawn if any variable -- from any layer --
+contains it. The workspace still lives inside the store, so the child's cwd and its own argv name
+that one directory; nothing above it is disclosed. Moving run workspaces outside `AOS_HOME` is what
+would close the rest, and it is a change to where runs are kept rather than to this boundary.
 
 A cleanup failure is recorded by class and by digest of the path, never by the path: this record
 is copied whole into the result the operator publishes, and the directories in it are absolute
@@ -426,7 +455,7 @@ measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to 
 Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
 what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
 digest
-`sha256:d2cd731050245d6f3e8a9ad346d896b3104a84c9297736750ef131d14d118e86`. The `Official` column
+`sha256:cf11dbdfe0b04cb82f226f08a93a3167ad66b3450fe011121b2af5b0caf34d65`. The `Official` column
 is the gate's decision over the row's committed evidence, not the row's own label: the test forges
 an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
 by digest*, and the digest is checked against the bytes before the observation is read -- a row
