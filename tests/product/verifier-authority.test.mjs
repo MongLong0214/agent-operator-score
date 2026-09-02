@@ -5,6 +5,9 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 import { FAM5_CONTROLLER, FAM5_SUBJECT, gradeScenario, prepareScenario } from "../../lib/suite.mjs";
+import { processGroupMembers } from "../../lib/core.mjs";
+import { DESCENDANT_SCAN_ESTABLISHES_CLEANUP } from "../../lib/verifier-run.mjs";
+import { spawn } from "node:child_process";
 import { PROBES, SUBCHECKS } from "../../lib/verifiers/fam5-probes.mjs";
 import { MAX_CHANNEL_BYTES, formatObservation, parseObservation } from "../../lib/verifiers/fam5-result.mjs";
 
@@ -221,6 +224,101 @@ test("a subject that exits zero without reporting is refused", async () => {
   assert.equal(graded.metrics.M15, 0, "silence was read as a pass");
   assert.equal(graded.details.hidden, false);
   for (const name of SUBCHECKS) assert.equal(graded.details.verifier.subchecks[name], false, name);
+});
+
+const alive = (pid) => {
+  try {
+    process.kill(Number(pid), 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const reap = (pids) => {
+  for (const pid of pids) {
+    try {
+      process.kill(Number(pid), "SIGKILL");
+    } catch {}
+  }
+};
+
+const settle = (ms) => new Promise((done) => setTimeout(done, ms));
+
+test("a descendant that calls setsid is invisible to the process-group scan", async () => {
+  // Not a property this repository wants -- a reproduction of one it has. `spawn({ detached: true })`
+  // calls setsid: the child takes its own session, leaves the group, reparents to pid 1, and is
+  // neither enumerated by processGroupMembers nor reached by kill(-pgid). The escape belongs to
+  // #556, which owns OS-level confinement; what belongs here is that the verifier must not report a
+  // clean cleanup on the strength of a scan that cannot see it.
+  //
+  // If this test ever fails, the enumeration learned to follow the escape, and
+  // DESCENDANT_SCAN_ESTABLISHES_CLEANUP in lib/verifier-run.mjs should be revisited with it.
+  const leader = spawn(
+    process.execPath,
+    ["--input-type=module", "-e", `import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
+const inside = spawn("sleep", ["6"], { stdio: "ignore" });
+const outside = spawn("sleep", ["6"], { stdio: "ignore", detached: true });
+inside.unref(); outside.unref();
+writeFileSync(process.argv[1], inside.pid + " " + outside.pid, "utf8");
+await new Promise((done) => setTimeout(done, 400));`, join(tmpdir(), `aos-setsid-${process.pid}.txt`)],
+    { detached: true, stdio: "ignore" }
+  );
+  const record = join(tmpdir(), `aos-setsid-${process.pid}.txt`);
+  try {
+    await settle(1200);
+    const [inside, outside] = readFileSync(record, "utf8").split(" ");
+    const members = processGroupMembers(leader.pid);
+    assert.equal(alive(inside), true, "the in-group child was not running");
+    assert.equal(alive(outside), true, "the detached child was not running");
+    assert.equal(members.includes(Number(inside)), true, "the scan missed a child that stayed in the group");
+    assert.equal(members.includes(Number(outside)), false, "the scan has learned to see past setsid");
+    try {
+      process.kill(-leader.pid, "SIGKILL");
+    } catch {}
+    await settle(300);
+    assert.equal(alive(outside), true, "kill(-pgid) has learned to reach past setsid");
+  } finally {
+    reap([leader.pid]);
+    try {
+      const [inside, outside] = readFileSync(record, "utf8").split(" ");
+      reap([inside, outside]);
+    } catch {}
+    rmSync(record, { force: true });
+  }
+});
+
+test("the verifier never claims a cleanup its scan cannot establish", async () => {
+  // The under-report, end to end. Six detached processes outlive the run and the group scan reports
+  // none of them, because none of them is in the group any more. What the evidence must not do is
+  // present that silence as a clean exit, so `cleanup_established` is what a reader has to consult
+  // and it is never true while the scan is blind to setsid.
+  assert.equal(DESCENDANT_SCAN_ESTABLISHES_CLEANUP, false, "the scan claims to establish cleanup");
+  const { graded, files } = await withAssessed(
+    `import { spawn } from "node:child_process";
+import { appendFileSync } from "node:fs";
+const child = spawn("sleep", ["6"], { stdio: "ignore", detached: true });
+child.unref();
+appendFileSync(new URL("./escapees.txt", import.meta.url), child.pid + "\\n", "utf8");
+${CORRECT}`,
+    { reads: ["escapees.txt"] }
+  );
+  const escapees = (files["escapees.txt"] ?? "").split("\n").filter((line) => line.length > 0);
+  try {
+    assert.equal(escapees.length, PROBES.length, "the detaching module did not run once per probe");
+    assert.equal(escapees.every(alive), true, "nothing escaped, so there is nothing to under-report");
+    assert.equal(graded.details.verifier.leaked_descendants, false, "the scan can now see the escape");
+    assert.equal(graded.details.verifier.survivors, false);
+    assert.equal(graded.details.verifier.descendant_scan, "process-group");
+    assert.equal(
+      graded.details.verifier.cleanup_established,
+      false,
+      "the verifier claimed a clean cleanup on a scan that cannot see a detached descendant"
+    );
+  } finally {
+    reap(escapees);
+  }
 });
 
 test("a subject cannot hold the controller hostage through the result channel", async () => {

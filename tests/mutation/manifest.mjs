@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "cleanup claim not overstated",
+    reason: "a scan blind to setsid reporting nothing must not be stored as nothing having leaked",
+    file: "lib/verifier-run.mjs",
+    from: "export const DESCENDANT_SCAN_ESTABLISHES_CLEANUP = false;",
+    to: "export const DESCENDANT_SCAN_ESTABLISHES_CLEANUP = true;",
+    test: "tests/product/verifier-authority.test.mjs",
+    name: "the verifier never claims a cleanup its scan cannot establish"
+  },
+  {
     guard: "subject nonce non-disclosure",
     reason: "a subject process holding the nonce can write the verdict line itself",
     file: "lib/verifiers/fam5.mjs",
