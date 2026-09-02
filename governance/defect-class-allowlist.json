@@ -79,6 +79,11 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "const plain = {};",
       "note": "the demonstration object the corpus test poisons on purpose"
+    },
+    {
+      "file": "lib/action-pins.mjs",
+      "match": "const observed = {};",
+      "note": "keyed by workflow file name relative to .github/workflows, a path with a dot and an extension that no prototype key can spell"
     }
   ],
   "text-digest": [
@@ -136,6 +141,16 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "const original = readFileSync(path, \"utf8\");",
       "note": "reads the allowlist for restore; nothing here is hashed"
+    },
+    {
+      "file": "lib/action-pins.mjs",
+      "match": "export const loadPolicy = (url = POLICY_URL) => JSON.parse(readFileSync(url, \"utf8\"));",
+      "note": "the decoded text is parsed as JSON, not hashed; the file's own digests take Buffers from a separate raw read"
+    },
+    {
+      "file": "lib/action-pins.mjs",
+      "match": "document = parseYamlSubset(readFileSync(file, \"utf8\"));",
+      "note": "the workflow text is parsed for its uses: lines; the pin digest at line 846 hashes the raw bytes read separately"
     }
   ],
   "regex-no-unicode": [
@@ -273,6 +288,11 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "export const pattern = (p) => new RegExp(p);",
       "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "lib/action-pins.mjs",
+      "match": "const versionComment = new RegExp(policy.version_comment_pattern ?? DEFAULT_VERSION_COMMENT);",
+      "note": "matches an ASCII version comment (# vX.Y.Z) trailing a uses: line; the policy owns the pattern and a unicode flag would change what a policy author's pattern means"
     }
   ],
   "date-parse-validator": [

@@ -6,7 +6,9 @@
   "workflow_permissions": {
     ".github/workflows/ci.yml": {
       "workflow": { "contents": "read" },
-      "jobs": {}
+      "jobs": {
+        "execution-plan-live": { "contents": "read", "issues": "read", "actions": "read", "pull-requests": "read" }
+      }
     }
   }
 }
