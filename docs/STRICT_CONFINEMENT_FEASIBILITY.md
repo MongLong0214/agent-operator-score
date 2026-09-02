@@ -460,14 +460,18 @@ enumerated rather than typed: an unknown policy has no expectation for the netwo
 or publishing a null transport, is refused rather than read as permission.
 
 `claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise, and the
-CLI applies it: the verdict is a scoring input, so `aos assess` on a lane that cannot be official
-withholds the number (`issued: false`, `score: null`, `claim_stage: "RUN_DIAGNOSTIC"`, blocker
-`ISOLATION_NOT_OFFICIAL` carrying the `AOS_ISOLATION_*` reasons) and exits non-zero, printing the
-stage and the reasons where the score would have been. The arithmetic is still reported as
-`provisional_raw`, because an operator fixing the gate needs to see what the run was worth. This
-is what the level table above means in practice -- `BEST_EFFORT_CLI` is diagnostic only (SSOT §24)
--- and it is a behaviour change for every host that cannot run the proven lane: `aos cycle` has no
-median to take there, and says so per run rather than printing a number that reads as official. `issuanceGateForRun(records)` folds a run's
+CLI applies it against the result surface #559 introduced. The verdict travels into `evaluate` as
+the run's `boundary`, and two things follow from it. The claim stage falls to `RUN_DIAGNOSTIC` on
+every surface, with the `AOS_ISOLATION_*` codes carried beside it in `boundary_withheld`. And the
+composite -- the surface labelled *PROFILE-BOUND OPERATOR-AGENT SYSTEM PERFORMANCE* -- is withheld:
+`issued: false`, `value: null`, and a `withheld_reason` naming the isolation conditions, so `aos
+assess` exits non-zero and prints the reasons where the number would have been. The two indices are
+not withheld by the gate: what happened in the run happened, and the indices say so. It is the
+claim about the profile that the boundary decides, and a headline number whose own label says
+"profile-bound" is that claim. This is what the level table above means in practice --
+`BEST_EFFORT_CLI` is diagnostic only (SSOT §24) -- and it is a behaviour change for every host
+that cannot run the proven lane: `aos cycle` has no aggregate to take there, and says so per run
+rather than printing a number that reads as official. `issuanceGateForRun(records)` folds a run's
 invocations into one decision that is official only when every invocation is, on the same lane
 and policy, and a run with no invocations is not official. `BEST_EFFORT_CLI` and `NONE` cannot
 reach `official` by any path: the level check alone refuses them, and

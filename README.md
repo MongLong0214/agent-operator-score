@@ -61,9 +61,10 @@ model, so it uses no model quota. `/aos-assess` runs agents again and therefore 
 The plugin removes repository cloning, manual agent registration, and hand-written plan setup.
 It still requires Node `>=22.18 <25`, plus an installed and signed-in Claude Code or Codex CLI.
 
-`/aos-assess` cannot make checkpoint decisions for you. To obtain an official score, follow its
-instructions and answer the checkpoint questions in your own terminal. An agent answering on your
-behalf would measure that agent's policy, not yours.
+`/aos-assess` cannot make checkpoint decisions for you. The operator-process profile is issued
+from checkpoint turns and is withheld without them, so to have your own operation measured at all,
+follow its instructions and answer the checkpoint questions in your own terminal. An agent
+answering on your behalf would measure that agent's policy, not yours.
 
 To run directly from the repository:
 
@@ -100,7 +101,7 @@ unsafe action, and verified the arrival.
 | What it does | Finds potentially risky patterns in real sessions and presents them for human review | Runs six controlled tasks and summarizes the observed operation and outcome as a conditional score |
 | Input | Local Codex, Claude Code, and Grok CLI transcripts | Registered agent CLIs such as Codex and Claude Code |
 | Model quota | None; it only reads existing records | Yes; it runs the registered agents |
-| Output | The suspicious step and supporting evidence | A score out of 100, or the exact reason no score was issued |
+| Output | The suspicious step and supporting evidence | Three profiles — how the operator ran the work, how the system turned out, how reliance was calibrated — each issued or withheld with its reason |
 
 Start with `review`. It lets you inspect how AOS reasons about work you actually did, without
 spending model quota.
@@ -151,7 +152,7 @@ the operator does at a blocker.
 node bin/aos.mjs init                   # find Claude Code and Codex on PATH
 node bin/aos.mjs doctor                 # check commands and known credential paths
 
-node bin/aos.mjs assess                 # unattended diagnostic: no official score
+node bin/aos.mjs assess                 # unattended diagnostic: the process profile is withheld
 node bin/aos.mjs assess --checkpoints   # attended run that can issue a score
 ```
 
@@ -163,7 +164,7 @@ is not a scoring input.
 never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
 a broken setup into a low operator score.
 
-## The six things on the scorecard
+## The six things measured
 
 AOS asks six practical questions.
 
@@ -232,6 +233,13 @@ silence do not earn credit. **Silence is not a pass.**
 
 `provisional_raw` is debugging arithmetic for fixing the run. It is not an official score.
 
+That gate, the ceilings and bands below, and `provisional_raw` all belong to the legacy scorer:
+they decide whether one number may be issued. The instrument `aos assess` runs now issues no such
+number. Each construct and each outcome domain is issued or withheld on its own with its reason
+beside it, reliance is a separate profile that is never weighted into either, and the composite is
+a descriptive secondary index that is withheld whenever either half is. Which one you are reading
+is on the result itself: `aos-result.v2` carries the profiles, `aos-mvp-result.v1` the score.
+
 ## Two 83s are not automatically comparable
 
 An 83 earned with a different car, course, and weather is a different test. AOS scores work the same
@@ -273,23 +281,28 @@ three runs made under the same profile into one cycle.
 ```bash
 node bin/aos.mjs cycle start                                  # lock three seeds
 node bin/aos.mjs cycle run --checkpoints                      # run them in order
-node bin/aos.mjs cycle                                        # median of valid runs
+node bin/aos.mjs cycle                                        # what the cycle holds
 node bin/aos.mjs dashboard                                    # local read-only dashboard
 ```
 
 Only three of the six task families currently vary with the seed. Three local repetitions therefore
 do not establish population-level confidence or general ability.
 
-A run counts only when it uses the locked seed, unchanged profile, suite major, and scorer major,
-and has both a committed terminal record and an issued score. Invalid runs are listed with their
-reason. A valid low score cannot be discarded or rerun on the same seed.
+Counting is the legacy cycle's rule, and it still governs those. A run counts only when it uses
+the locked seed, unchanged profile, suite major, and scorer major, and has both a committed
+terminal record and an issued score. Invalid runs are listed with their reason. A valid low score
+cannot be discarded or rerun on the same seed.
 
 If the cycle was configured incorrectly, `--force --reason "<why>"` abandons it and starts another.
 The old cycle, seeds, runs, and scores remain recorded.
 
-The Operator Score is the median of all valid runs. Spread, median absolute deviation, and
-**local repeat evidence** describe repetition on this one machine; AOS does not call that
-statistical confidence.
+A cycle of profile runs has no single number, and `cycle` says so instead of producing one. The
+median is the legacy scorer's aggregation of the legacy scorer's numbers; a profile result carries
+none, and what a cycle of profiles means is a question the cycle owner (#563) has yet to answer. So
+the command lists the runs, withholds the aggregate, and names whose question it is. Each run's
+profiles are in its own report. Cycles of legacy results still report the median of all valid runs,
+where spread, median absolute deviation, and **local repeat evidence** describe repetition on this
+one machine; AOS does not call that statistical confidence.
 
 ## When there is no score — and when a ceiling applies
 
@@ -308,8 +321,11 @@ For example, a run that exposed a secret cannot score above 39, no matter how we
 elsewhere. The violation cannot be averaged away.
 
 A ceiling applies only when the violation was observed. Missing evidence is `INCOMPLETE`, not
-`UNSAFE`. Bands — `HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` —
-summarize that run only; they are not a ranking of the person.
+`UNSAFE`. On a profile result a ceiling lowers the system-outcome index and the composite, never
+the operator-process index, and the uncapped value is kept beside the capped one. Bands —
+`HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` — are the legacy
+scorer's summary of a legacy run; they summarize that run only and are not a ranking of the
+person, and a profile result carries none: its schema forbids a band, a percentile and a rank.
 
 ## What has actually been measured
 
@@ -360,15 +376,16 @@ See [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
 An assessment produces:
 
-- **`card.svg`** — one image with the score, six dimensions, conditions, and the first thing to fix
+- **`card.svg`** — one image with the three profiles, what each rests on, the conditions, and the first thing to fix
 - **Markdown and HTML reports** — metric-level evidence, failures, unobserved items, blockers, and ceilings
 - **JSON** — the machine-readable result
 
-A card for a run without an issued score says **NO SCORE** and gives the reason. It never presents
-`provisional_raw` as a shareable score.
+A card shows a withheld profile as withheld, with its reason. A legacy run without an issued
+score says **NO SCORE** and gives the reason; it never presents `provisional_raw` as a shareable
+score.
 
 The report can be regenerated with
-`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and scorecard
+`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and the card
 currently render in Korean for a Korean locale and in English for every other locale. Japanese and
 Chinese report UI are not yet localized.
 

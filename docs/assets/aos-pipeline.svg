@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="392" viewBox="0 0 960 392" role="img"
-     aria-label="AOS assessment pipeline: a declared profile and a locked seed produce a controlled run; the run stops at an operator checkpoint and a hidden verifier grades what the agents produced; twenty metrics feed a deterministic scorer, an issuance gate decides whether a score may be carried, and three locked seeds produce one operator score.">
+     aria-label="AOS assessment pipeline: a declared profile and a locked seed produce a controlled run; the run stops at an operator checkpoint and a hidden verifier grades what the agents produced; twenty metrics feed the contract's evaluation, an issuance gate decides which constructs and domains may be issued, and a cycle of profile runs reports its runs rather than one operator score.">
   <title>AOS assessment pipeline</title>
   <style>
     :root { color-scheme: light dark; }
@@ -105,8 +105,8 @@
   <!-- 7. Deterministic scorer -->
   <g transform="translate(526 198)">
     <rect class="card" x="0.5" y="0.5" width="196" height="86" rx="12"/>
-    <text class="ink h" x="16" y="28">Deterministic scorer</text>
-    <text class="muted s" x="16" y="50">weights · ceilings · bands</text>
+    <text class="ink h" x="16" y="28">Contract evaluation</text>
+    <text class="muted s" x="16" y="50">constructs · domains · reliance</text>
     <text class="muted s" x="16" y="68">same observations, same bytes</text>
   </g>
 
@@ -114,8 +114,8 @@
   <g transform="translate(764 198)">
     <rect class="built" x="0.5" y="0.5" width="162" height="86" rx="12"/>
     <text class="ink h" x="16" y="28">Issuance gate</text>
-    <text class="muted s" x="16" y="50">18 of 20 · required metrics</text>
-    <text class="ok s" x="16" y="68">or the score is withheld</text>
+    <text class="muted s" x="16" y="50">per construct, per domain</text>
+    <text class="ok s" x="16" y="68">issued, or withheld by name</text>
   </g>
 
   <path class="flow" d="M246 241 H286" fill="none" stroke-width="1.6" marker-end="url(#a)"/>
@@ -125,6 +125,6 @@
   <!-- 9. Cycle -->
   <rect class="lane" x="16.5" y="304.5" width="927" height="70" rx="14"/>
   <text class="muted t" x="34" y="328">THREE LOCKED SEEDS — EVERY VALID RUN COUNTS</text>
-  <text class="ink h" x="34" y="352">Operator Score = the median of the valid runs</text>
-  <text class="muted s" x="470" y="352">excluded runs are named with their reason · repetition is reported as local repeat evidence, never as confidence</text>
+  <text class="ink h" x="34" y="352">A cycle of profile runs reports the runs; the aggregate is withheld</text>
+  <text class="muted s" x="560" y="352">no aggregation over profiles is defined yet · excluded runs are named with their reason, never as confidence</text>
 </svg>

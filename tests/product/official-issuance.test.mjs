@@ -23,7 +23,10 @@ import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { createRun, writeResult } from "../../lib/store.mjs";
 import { METRIC_IDS, METRICS, observationOf } from "../../lib/metrics.mjs";
-import { run } from "./helpers.mjs";
+import { newestRecord, newestResult, run } from "./helpers.mjs";
+import { evaluate } from "../../lib/ecd-contract.mjs";
+import { buildResult } from "../../lib/result-schema.mjs";
+import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
@@ -409,16 +412,18 @@ test("an_assessment_records_what_each_family_was_graded_from", () => {
     const agent = join(cwd, "agent.mjs");
     writeFileSync(agent, "process.stdout.write('done\\n');\n");
     run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
-    const assessed = run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
-    const result = JSON.parse(assessed.stdout);
-    const families = Object.entries(result.settlement ?? {});
+    run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    // On the working record rather than the result: since #559 the result is the artifact an
+    // operator publishes and what the run did lives beside it. What is recorded is unchanged.
+    const record = newestRecord(cwd);
+    const families = Object.entries(record.settlement ?? {});
     assert.equal(families.length, 6, "not every family recorded what it was graded from");
-    for (const [family, record] of families) {
-      assert.match(String(record.digest), /^sha256:[0-9a-f]{64}$/u, family);
-      assert.equal(record.changed_after_settlement, false, `${family} was written to after it was settled`);
-      assert.match(String(record.settled_at), /^\d{4}-\d{2}-\d{2}T/u, family);
+    for (const [family, settled] of families) {
+      assert.match(String(settled.digest), /^sha256:[0-9a-f]{64}$/u, family);
+      assert.equal(settled.changed_after_settlement, false, `${family} was written to after it was settled`);
+      assert.match(String(settled.settled_at), /^\d{4}-\d{2}-\d{2}T/u, family);
     }
-    assert.equal(result.isolation.official_issuance.reasons.includes("AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT"), false);
+    assert.equal(record.isolation.official_issuance.reasons.includes("AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT"), false);
 
     // What the grader was handed. A run where nothing writes afterwards grades the same from either
     // tree, so the difference this closes is not visible in the number here -- it is visible in
@@ -1042,10 +1047,10 @@ test("an_assessment_records_the_lane_it_ran_under_in_the_profile_it_is_bound_to"
     const agent = join(cwd, "agent.mjs");
     writeFileSync(agent, "process.stdout.write('done\\n');\n");
     run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
-    const assessed = run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
-    const result = JSON.parse(assessed.stdout);
-    assert.equal(result.isolation.level, "BEST_EFFORT_CLI");
-    for (const entry of result.opportunity_profile) {
+    run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    const record = newestRecord(cwd);
+    assert.equal(record.isolation.level, "BEST_EFFORT_CLI");
+    for (const entry of record.opportunity_profile) {
       assert.equal(entry.isolation_level, "BEST_EFFORT_CLI", "the profile names a lane the run did not use");
       assert.match(String(entry.isolation_policy_digest), /^sha256:[0-9a-f]{64}$/u);
     }
@@ -1502,16 +1507,60 @@ test("an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_wo
     writeFileSync(agent, "process.stdout.write('done\\n');\n");
     run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
     const assessed = run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    // The published artifact: since #559 the headline is the composite, and it is what a reader of
+    // the result alone would take away. It is withheld, it says the profile was not enforced, and
+    // the claim stage on every surface is the diagnostic one.
     const result = JSON.parse(assessed.stdout);
-    assert.equal(result.issued, false);
-    assert.equal(result.score, null);
+    assert.equal(result.aos_composite.issued, false);
+    assert.equal(result.aos_composite.value, null);
+    // The stub agent leaves both indices withheld on their own, so the reason here is theirs and
+    // the gate's effect on a number that would otherwise print is measured directly, below.
     assert.equal(result.claim_stage, "RUN_DIAGNOSTIC");
-    assert.equal(result.isolation.official_issuance.official, false);
-    assert.ok(result.blockers.some((one) => one.code === "ISOLATION_NOT_OFFICIAL"), JSON.stringify(result.blockers));
+    for (const surface of ["operator_process_profile", "reliance_calibration_profile", "system_outcome_profile", "aos_composite"]) {
+      assert.equal(result[surface].claim_stage, "RUN_DIAGNOSTIC", surface);
+    }
+    // The working record beside it: the gate's own verdict, with every failed condition named.
+    const record = newestRecord(cwd);
+    assert.equal(record.isolation.official_issuance.official, false);
+    assert.ok(record.isolation.official_issuance.reasons.some((one) => one.startsWith("AOS_ISOLATION_")), JSON.stringify(record.isolation.official_issuance));
     const printed = run(cwd, ["assess", "--timeout-ms", "30000"], 3);
-    assert.match(printed.stdout, /Score withheld/u);
+    assert.match(printed.stdout, /not an official profile-bound result/u);
     assert.match(printed.stdout, /AOS_ISOLATION_/u);
+    assert.equal(/^Operator Score/mu.test(printed.stdout), false);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold", () => {
+  // The end-to-end case above runs a stub agent, so both indices withhold on their own and the
+  // gate's effect on the published number cannot be seen there. This is the case the gate exists
+  // for: every construct and every domain issued, so the composite would carry a number, and the
+  // boundary that the number's own label calls PROFILE-BOUND did not hold. What the reader gets is
+  // no number and the isolation condition that withheld it, on the surface the number would have
+  // been on -- not a number one claim stage lower.
+  const contract = contractWithAPopulatedIndex();
+  const held = buildResult({
+    contract,
+    evaluation: evaluate(observationsWith(), { ...identified, boundary: { official: true, reasons: [] } }, contract)
+  });
+  assert.equal(held.aos_composite.issued, true);
+  assert.equal(typeof held.aos_composite.value, "number");
+  assert.equal(held.claim_stage, "PROFILE_BOUND");
+
+  for (const boundary of [
+    { official: false, reasons: ["AOS_ISOLATION_LEVEL_NOT_STRICT"] },
+    { official: false, reasons: ["AOS_ISOLATION_CANARY_NOT_PASS", "AOS_ISOLATION_LEAKED_DESCENDANT"] },
+    { official: false, reasons: [] }
+  ]) {
+    const withheld = buildResult({ contract, evaluation: evaluate(observationsWith(), { ...identified, boundary }, contract) });
+    assert.equal(withheld.aos_composite.issued, false, JSON.stringify(boundary));
+    assert.equal(withheld.aos_composite.value, null);
+    assert.match(withheld.aos_composite.withheld_reason, /AOS_ISOLATION_/u);
+    assert.equal(withheld.claim_stage, "RUN_DIAGNOSTIC");
+    // The two indices are what this run measured and they are not withheld by the boundary: what
+    // happened in the run happened. It is the claim about the profile that is not supported.
+    assert.equal(withheld.operator_process_profile.issued, true);
+    assert.equal(withheld.system_outcome_profile.issued, true);
   }
 });
