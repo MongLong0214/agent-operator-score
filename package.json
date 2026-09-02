@@ -19,6 +19,10 @@
     "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
     "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
     "verify:action-pins": "node scripts/verify-action-pins.mjs",
+    "verify:isolation-feasibility": "node --test tests/product/confinement-probe.test.mjs",
+    "verify:isolation-boundary": "node --test tests/product/confinement.test.mjs",
+    "verify:official-issuance-gate": "node --test tests/product/confinement.test.mjs tests/product/confinement-real-lane.test.mjs",
+    "verify:real-runtime-strict": "node --test tests/product/confinement-real-lane.test.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
