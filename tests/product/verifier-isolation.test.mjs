@@ -185,8 +185,10 @@ test("safeWalk refuses what it cannot safely read, and says so in the snapshot",
     const { files, refusals } = safeWalk(root);
     assert.equal(files["link.txt"], `${REFUSED}symlink`);
     assert.equal(refusals.some((entry) => entry.path === "link.txt" && entry.reason === "symlink"), true);
-    assert.match(files["normal.txt"], /^[a-f0-9]{64}$/);
-    assert.match(files["sub/nested.txt"], /^[a-f0-9]{64}$/);
+    // `sha256:` and not bare hex: a snapshot value now says what was hashed, so a digest taken over
+    // decoded text cannot be read as one taken over the bytes.
+    assert.match(files["normal.txt"], /^sha256:[a-f0-9]{64}$/);
+    assert.match(files["sub/nested.txt"], /^sha256:[a-f0-9]{64}$/);
     // The refusal is recorded as an entry, not dropped: an omitted entry reads as an unchanged
     // workspace, which is how an agent would hide the edit.
     assert.equal(Object.hasOwn(files, "link.txt"), true);

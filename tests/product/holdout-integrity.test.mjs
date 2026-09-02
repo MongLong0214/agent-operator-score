@@ -11,7 +11,9 @@ import { redactText } from "../../lib/redact.mjs";
 
 const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "bin", "aos.mjs");
 
-const DIGEST = "a".repeat(64);
+// A byte digest, which is what `sessionDigestOf` produces and what `recordSession` now requires.
+// Bare 64-character hex was the legacy normalised-text identity.
+const DIGEST = `sha256:${"a".repeat(64)}`;
 const empty = () => ({ schema_id: "aos-holdout.v1", version: 1, sessions: [], judgements: [] });
 const withVerdict = (use = "holdout") => {
   let ledger = recordSession(empty(), { digest: DIGEST, use, reported_status: "COMPLETE", actual_evidence: "COMPLETE" });

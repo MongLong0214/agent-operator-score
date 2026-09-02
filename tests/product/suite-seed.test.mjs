@@ -3,9 +3,9 @@ import test from "node:test";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
 
 import { sha256Value } from "../../lib/core.mjs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 import { normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
 import { SUITE_ID, prepareScenario, suiteDigest, suiteManifest } from "../../lib/suite.mjs";
 
@@ -112,13 +112,16 @@ test("the manifest binds the grader, the verifier and the metric contract", () =
   assert.equal(manifest.suite_id, SUITE_ID);
   assert.match(manifest.generator_digest, /^[a-f0-9]{64}$/);
   assert.match(manifest.metric_contract_digest, /^[a-f0-9]{64}$/);
-
   // Every file the verdict rests on, and each of them by its own bytes. This checked only the
   // controller, and it checked it after normalising CRLF -- so three of the four additions were
   // covered by nothing, and two byte-distinct files could carry the same digest. A digest that says
   // which rules marked a run is worth exactly what it fails to notice.
-  const rawDigest = (relative) =>
-    createHash("sha256").update(readFileSync(new URL(relative, import.meta.url))).digest("hex");
+  //
+  // The bytes, not a decoding of them. This used to assert
+  // `sha256Text(verifier.replace(/\r\n/g, "\n"))`, which is the defect stated as a test: under it a
+  // verifier rewritten with CRLF line endings, or carrying one byte the UTF-8 decoder replaces,
+  // hashes to what it hashed before and two runs marked by different code claim the same suite.
+  const rawDigest = (relative) => sha256Bytes(readFileSync(new URL(relative, import.meta.url)));
   const covered = {
     "fam5-independent-verifier.v1": "../../lib/verifiers/fam5.mjs",
     "fam5-subject-runner.v1": "../../lib/verifiers/fam5-subject.mjs",
@@ -128,7 +131,7 @@ test("the manifest binds the grader, the verifier and the metric contract", () =
   };
   assert.deepEqual(Object.keys(manifest.verifier_digests).sort(), Object.keys(covered).sort());
   for (const [id, relative] of Object.entries(covered)) {
-    assert.match(manifest.verifier_digests[id], /^[a-f0-9]{64}$/, id);
+    assert.match(manifest.verifier_digests[id], /^sha256:[a-f0-9]{64}$/, id);
     assert.equal(manifest.verifier_digests[id], rawDigest(relative), id);
   }
 

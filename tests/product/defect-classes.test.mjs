@@ -47,6 +47,27 @@ test("each planted defect class is caught, and removing the plant restores clean
   assert.equal(run().status, 0);
 });
 
+test("a comment that quotes a bad shape to explain its absence is not a finding", () => {
+  const planted = join(root, "lib", "zz-planted-comment-by-test.mjs");
+  writeFileSync(
+    planted,
+    [
+      'import { createHash } from "node:crypto";',
+      // Split so the scanner does not read this file's own plant as the finding it plants.
+      "// The old way was `createHash(\"sha256\").update(readFile" + "Sync(p, \"utf8\"))`; Date." + "parse(value)",
+      "// and `new Reg" + "Exp(p)` were the other two classes named here.",
+      "export const digest = (bytes) => createHash(\"sha256\").update(bytes).digest(\"hex\");",
+      ""
+    ].join("\n")
+  );
+  try {
+    const result = run();
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    rmSync(planted);
+  }
+});
+
 test("an allowlist entry that matches nothing fails as stale, so a hole cannot outlive its code", () => {
   const path = join(root, "governance", "defect-class-allowlist.json");
   const original = readFileSync(path, "utf8");

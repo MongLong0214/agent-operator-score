@@ -43,6 +43,10 @@ for (const path of sources) {
 
   lines.forEach((line, index) => {
     const where = index + 1;
+    // A comment that quotes the bad shape to explain why the code below avoids it is the
+    // opposite of the defect. lib/digest.mjs opens by naming the decoded-text digest it replaced
+    // and was flagged for saying so.
+    if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
 
     // A digest over decoded text is not an identity. `readFileSync(p, "utf8")` folds encodings,
     // replaces invalid bytes and can normalise line endings before the hash ever runs -- two
