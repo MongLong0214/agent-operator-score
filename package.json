@@ -23,6 +23,9 @@
     "verify:process-outcome-counterfactual": "node --test tests/product/process-outcome-counterfactual.test.mjs",
     "verify:projection-consistency": "node --test tests/product/projection-consistency.test.mjs",
     "verify:no-operator-score-hero": "node --test tests/product/no-operator-score-hero.test.mjs",
+    "verify:branch-audit": "node --test tests/product/stale-branch-audit.test.mjs",
+    "verify:branch-cleanup-invariants": "node --test tests/product/branch-cleanup-invariants.test.mjs",
+    "verify:no-open-pr-head-deletion": "node --test tests/product/no-open-pr-head-deletion.test.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
