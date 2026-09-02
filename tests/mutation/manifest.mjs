@@ -16,6 +16,69 @@
 
 export const GUARDS = [
   {
+    guard: "directory skip list",
+    reason: "skipping node_modules and dist by name is skipping the place someone would put it",
+    file: "lib/action-pins.mjs",
+    from: 'const SKIP_DIRECTORIES = new Set([".git"]);',
+    to: 'const SKIP_DIRECTORIES = new Set([".git", "dist", "node_modules"]);',
+    test: "tests/product/action-pins.test.mjs",
+    name: "discovery finds workflows by shape, and skips only .git"
+  },
+  {
+    guard: "every yaml spelling of uses",
+    reason: "a quoted key, a continued value and a flow mapping are all real uses keys GitHub honours",
+    file: "lib/action-pins.mjs",
+    from: "    const key = /^\\s*(?:-\\s*)?(?:(uses)|\"(uses)\"|'(uses)')\\s*:\\s*(.*)$/.exec(line);",
+    to: "    const key = /^\\s*(?:-\\s*)?(uses)()()\\s*:\\s*(.+)$/.exec(line);",
+    test: "tests/product/action-pins.test.mjs",
+    name: "every YAML spelling of a uses key is seen, and inert text is not"
+  },
+  {
+    guard: "local reference redirection",
+    reason: "a local composite action is a bridge to whatever external action it names",
+    file: "lib/action-pins.mjs",
+    from: "        if (!target) localMissing.push({ ...where, reason: \"no action.yml at that path\" });",
+    to: "        if (!target) { /* skipped */ }",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a local reference pointing at nothing fails"
+  },
+  {
+    guard: "container image digest",
+    reason: "docker://image:latest is attacker-controlled external code on a runner with our credentials",
+    file: "lib/action-pins.mjs",
+    from: '        if (!IMAGE_DIGEST.test(reference.digest ?? "")) {',
+    to: "        if (false) {",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a container action is external code and needs a digest too"
+  },
+  {
+    guard: "version comment is a version",
+    reason: '"definitely v99, trust me" is a comment, not something a reviewer can check',
+    file: "lib/action-pins.mjs",
+    from: "      if (!use.comment || !versionComment.test(use.comment)) {",
+    to: "      if (!use.comment && false) {",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a comment that is not a version is not a version"
+  },
+  {
+    guard: "unreadable directory reported",
+    reason: "a directory the scan cannot read has unknown contents, and unknown is not a pass",
+    file: "lib/action-pins.mjs",
+    from: '      unreadable.push({ directory: relative(root, directory).split(sep).join("/") || ".", reason: error.code ?? "unreadable" });',
+    to: "      return;",
+    test: "tests/product/action-pins.test.mjs",
+    name: "a directory the scan cannot read is reported, not skipped"
+  },
+  {
+    guard: "supply-chain digest covers the policy",
+    reason: "reviewed_actions could change what passes while the digest stayed identical",
+    file: "lib/action-pins.mjs",
+    from: "  const policyBytes = createHash(\"sha256\").update(JSON.stringify(policy)).digest(\"hex\");",
+    to: '  const policyBytes = "";',
+    test: "tests/product/action-pins.test.mjs",
+    name: "the supply-chain digest covers the policy that decides what passes"
+  },
+  {
     guard: "full-SHA action reference",
     reason: "a tag is a name whose owner decides which commit it means, at any time and retroactively",
     file: "lib/action-pins.mjs",
@@ -25,13 +88,13 @@ export const GUARDS = [
     name: "a full lowercase forty-character SHA is the only external reference that passes"
   },
   {
-    guard: "repository-wide workflow discovery",
-    reason: "naming the files is how the release workflow added next month ends up outside the check",
+    guard: "composite action discovery",
+    reason: "a workflow saying `uses: ./dist` runs dist/action.yml, which can name any external action",
     file: "lib/action-pins.mjs",
     from: "      const isAction = /^action\\.ya?ml$/.test(entry.name);",
     to: '      const isAction = entry.name === "never-matches.yml";',
     test: "tests/product/action-pins.test.mjs",
-    name: "a mutable tag fails and a pinned SHA passes, wherever the workflow lives"
+    name: "a local action is a redirection, not a free pass"
   },
   {
     guard: "unreadable uses: fails closed",
@@ -43,22 +106,13 @@ export const GUARDS = [
     name: "a uses: line the scanner cannot parse fails rather than being skipped"
   },
   {
-    guard: "reviewed action owner allowlist",
-    reason: "a pinned commit from an owner nobody looked at is still code nobody looked at",
+    guard: "reviewed action allowlist",
+    reason: "a pinned commit from an action nobody looked at is still code nobody looked at",
     file: "lib/action-pins.mjs",
-    from: "      if (!policy.reviewed_owners.includes(reference.owner)) {",
+    from: "      if (!reviewed.has(action)) {",
     to: "      if (false) {",
     test: "tests/product/action-pins.test.mjs",
-    name: "a pinned action from an owner nobody reviewed fails"
-  },
-  {
-    guard: "readable pin version comment",
-    reason: "forty hex characters do not tell a reviewer whether the refresh moved to v5.1.0 or elsewhere",
-    file: "lib/action-pins.mjs",
-    from: "      if (!use.comment) {",
-    to: "      if (false) {",
-    test: "tests/product/action-pins.test.mjs",
-    name: "a pin with no human-readable version comment fails"
+    name: "the allowlist is per action, not per owner"
   },
   {
     guard: "workflow permission drift",
@@ -67,7 +121,7 @@ export const GUARDS = [
     from: 'if (before !== after) fail("permission-drift", name, `recorded ${before}, found ${after}`);',
     to: "if (false) fail();",
     test: "tests/product/action-pins.test.mjs",
-    name: "a workflow's permissions must match the recorded baseline exactly"
+    name: "a job that quietly gains write access fails"
   },
   {
     guard: "execution plan cycle detection",

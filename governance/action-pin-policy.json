@@ -1,6 +1,7 @@
 {
   "schema": "aos-action-pin-policy.v1",
-  "reviewed_owners": ["actions"],
+  "reviewed_actions": ["actions/checkout", "actions/setup-node"],
+  "version_comment_pattern": "^v\\d+(\\.\\d+){0,2}([-+][0-9A-Za-z.-]+)?$",
   "update_automation": "dependabot",
   "workflow_permissions": {
     ".github/workflows/ci.yml": {

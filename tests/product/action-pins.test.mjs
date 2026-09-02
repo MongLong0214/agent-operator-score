@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -80,10 +80,14 @@ test("a mutable tag fails and a pinned SHA passes, wherever the workflow lives",
 });
 
 test("a local action needs no pin and is not counted as external", () => {
-  const dir = sandbox({ ".github/workflows/ci.yml": workflow("./.github/actions/setup") });
+  const dir = sandbox({
+    ".github/workflows/ci.yml": workflow("./.github/actions/setup"),
+    ".github/actions/setup/action.yml": "name: setup\nruns:\n  using: composite\n  steps:\n    - run: true\n"
+  });
   try {
     const report = scanActionPins(dir, loadPolicy());
     assert.deepEqual(report.mutable_refs, []);
+    assert.deepEqual(report.local_action_unresolved, []);
     assert.equal(report.external_uses, 0);
     assert.equal(report.ok, true);
   } finally {
@@ -98,7 +102,7 @@ test("a pinned action from an owner nobody reviewed fails", () => {
     const report = scanActionPins(dir, loadPolicy());
     assert.deepEqual(report.mutable_refs, []);
     assert.equal(report.unreviewed_owners.length, 1);
-    assert.equal(report.unreviewed_owners[0].owner, "some-stranger");
+    assert.equal(report.unreviewed_owners[0].owner, "some-stranger/do-things");
     assert.equal(report.ok, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -142,18 +146,27 @@ test("this repository has no mutable action reference anywhere", () => {
   assert.equal(report.ok, true);
 });
 
-test("discovery finds workflows by shape, not by a list of names", () => {
+test("discovery finds workflows by shape, and skips only .git", () => {
   const dir = sandbox({
     ".github/workflows/a.yml": workflow("./x"),
     ".github/workflows/nested/b.yaml": workflow("./x"),
     "sub/action.yaml": "runs:\n  using: composite\n",
-    "node_modules/pkg/.github/workflows/c.yml": workflow("./x"),
+    // Not excluded. A workflow saying `uses: ./dist` runs dist/action.yml, and skipping a directory
+    // by name is skipping the place someone would put it.
+    "dist/action.yml": "runs:\n  using: composite\n",
+    "node_modules/pkg/action.yml": "runs:\n  using: composite\n",
+    ".git/hooks/action.yml": "runs:\n  using: composite\n",
     ".github/workflows/notes.md": "# not a workflow"
   });
   try {
     const found = discoverWorkflowFiles(dir).map((one) => one.replace(`${dir}/`, "")).sort();
-    // node_modules is excluded; everything else that has the shape is in.
-    assert.deepEqual(found, [".github/workflows/a.yml", ".github/workflows/nested/b.yaml", "sub/action.yaml"]);
+    assert.deepEqual(found, [
+      ".github/workflows/a.yml",
+      ".github/workflows/nested/b.yaml",
+      "dist/action.yml",
+      "node_modules/pkg/action.yml",
+      "sub/action.yaml"
+    ]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -310,5 +323,169 @@ jobs:
     assert.deepEqual(report.observed[".github/workflows/ci.yml"].jobs, { release: { contents: "write" } });
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- what the final review broke, and what stops it now ---------------------------------------
+
+test("every YAML spelling of a uses key is seen, and inert text is not", () => {
+  // All four of these are real `uses` keys GitHub honours, and a scanner that matched one spelling
+  // saw none of them.
+  const found = usesInText([
+    '      - "uses": attacker/evil@main',
+    "      - uses:",
+    "          attacker/continued@main",
+    "      - { uses: attacker/flow@main }",
+    "      - &anchored { uses: attacker/anchored@main }",
+    "      - uses: *anchored",
+    "      - uses: ${{ matrix.action }}",
+    "      - run: |",
+    "          cat <<EOF",
+    "          uses: attacker/inert@main",
+    "          EOF",
+    '      - run: echo "uses: attacker/inline@main"'
+  ].join("\n"));
+
+  const refs = found.map((one) => one.raw);
+  for (const seen of ["attacker/evil@main", "attacker/continued@main", "attacker/flow@main", "attacker/anchored@main"]) {
+    assert.ok(refs.includes(seen), `${seen} was invisible to the scanner`);
+  }
+  // An alias and an expression cannot be resolved here, so they are refusals rather than passes.
+  assert.equal(found.filter((one) => one.form === "anchor").length, 1);
+  assert.equal(found.filter((one) => one.form === "expression").length, 1);
+  // Neither of the two inert ones is an action anyone runs, and reporting them would teach people
+  // to ignore this check.
+  assert.equal(refs.includes("attacker/inert@main"), false);
+  assert.equal(refs.includes("attacker/inline@main"), false);
+});
+
+test("an expression or an alias in a uses: fails rather than passing", () => {
+  for (const value of ["${{ matrix.action }}", "*anchored"]) {
+    const dir = sandbox({ ".github/workflows/ci.yml": workflow(value) });
+    try {
+      assert.equal(scanActionPins(dir, loadPolicy()).unparsable.length, 1, `${value} was not refused`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test("a local action is a redirection, not a free pass", () => {
+  const dir = sandbox({
+    ".github/workflows/ci.yml": workflow("./dist"),
+    // The bridge: a workflow points at a local composite action, and that action names an external
+    // one at a mutable tag. Skipping `dist` by name would leave this entirely unchecked.
+    "dist/action.yml": "name: build\nruns:\n  using: composite\n  steps:\n    - uses: attacker/evil@main\n"
+  });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.deepEqual(report.local_action_unresolved, []);
+    assert.equal(report.mutable_refs.length, 1, "the action the local reference runs was not scanned");
+    assert.equal(report.mutable_refs[0].file, "dist/action.yml");
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a local reference pointing at nothing fails", () => {
+  const dir = sandbox({ ".github/workflows/ci.yml": workflow("./not-here") });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.equal(report.local_action_unresolved.length, 1);
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a container action is external code and needs a digest too", () => {
+  const dir = sandbox({ ".github/workflows/ci.yml": workflow("docker://ghcr.io/someone/thing:latest") });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.equal(report.external_uses, 1, "a container action was not counted as external");
+    assert.equal(report.mutable_refs.length, 1);
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // Digest-pinned, but from an image nobody reviewed.
+  const digest = `docker://ghcr.io/someone/thing@sha256:${"a".repeat(64)}`;
+  const reviewedDir = sandbox({ ".github/workflows/ci.yml": workflow(digest) });
+  try {
+    const report = scanActionPins(reviewedDir, loadPolicy());
+    assert.deepEqual(report.mutable_refs, []);
+    assert.equal(report.unreviewed_owners.length, 1);
+  } finally {
+    rmSync(reviewedDir, { recursive: true, force: true });
+  }
+});
+
+test("the allowlist is per action, not per owner", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  // `actions` being reviewed says nothing about a repository under that owner nobody has looked at.
+  const dir = sandbox({ ".github/workflows/ci.yml": workflow(`actions/nobody-reviewed-this@${sha} # v1.0.0`) });
+  try {
+    const report = scanActionPins(dir, loadPolicy());
+    assert.equal(report.unreviewed_owners.length, 1);
+    assert.equal(report.unreviewed_owners[0].owner, "actions/nobody-reviewed-this");
+    assert.equal(report.ok, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a comment that is not a version is not a version", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  for (const comment of ["definitely v99, trust me", "latest", "see the PR", "updated"]) {
+    const dir = sandbox({ ".github/workflows/ci.yml": workflow(`actions/checkout@${sha} # ${comment}`) });
+    try {
+      assert.equal(scanActionPins(dir, loadPolicy()).uncommented.length, 1, `"${comment}" was accepted as a version`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  const dir = sandbox({ ".github/workflows/ci.yml": workflow(`actions/checkout@${sha} # v5.1.0`) });
+  try {
+    assert.deepEqual(scanActionPins(dir, loadPolicy()).uncommented, []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a directory the scan cannot read is reported, not skipped", () => {
+  const dir = sandbox({ ".github/workflows/ci.yml": workflow("./x"), "locked/keep": "" });
+  try {
+    chmodSync(join(dir, "locked"), 0o000);
+    const report = scanActionPins(dir, loadPolicy());
+    // "Unknown contents" has to reach the report rather than being swallowed by a bare catch.
+    assert.equal(report.unreadable_directories.length, 1);
+    assert.equal(report.ok, false);
+  } finally {
+    chmodSync(join(dir, "locked"), 0o755);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the supply-chain digest covers the policy that decides what passes", () => {
+  const policy = loadPolicy();
+  const before = scanActionPins(root, policy);
+  const widened = { ...policy, reviewed_actions: [...policy.reviewed_actions, "someone/else"] };
+  const after = scanActionPins(root, widened);
+  // Hashing only the workflows left reviewed_actions and the permission baseline free to change
+  // while the digest stayed identical.
+  assert.equal(before.workflow_digest, after.workflow_digest);
+  assert.notEqual(before.supply_chain_digest, after.supply_chain_digest);
+});
+
+test("the check runs before every other job, so a bad reference in one never executes", () => {
+  const ci = readFileSync(join(root, ".github", "workflows", "ci.yml"), "utf8");
+  const document = parseYamlSubset(ci);
+  const jobs = Object.keys(document.jobs);
+  assert.ok(jobs.includes("action-pins"));
+  for (const id of jobs) {
+    if (id === "action-pins") continue;
+    assert.equal(document.jobs[id].needs, "action-pins", `job ${id} runs without waiting for the pin check`);
   }
 });

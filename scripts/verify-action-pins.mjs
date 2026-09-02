@@ -19,7 +19,10 @@ const report = {
   uncommented: pins.uncommented,
   unparsable: pins.unparsable,
   pinned_actions: pins.pinned_actions,
+  local_action_unresolved: pins.local_action_unresolved,
+  unreadable_directories: pins.unreadable_directories,
   workflow_digest: pins.workflow_digest,
+  supply_chain_digest: pins.supply_chain_digest,
   update_automation: policy.update_automation,
   permission_failures: permissions.failures,
   permissions: permissions.observed,
@@ -29,7 +32,8 @@ const report = {
 if (process.argv.includes("--json")) process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 else {
   const line = (text) => process.stdout.write(`${text}\n`);
-  line(`action pins  ${report.workflow_digest}`);
+  line(`action pins  ${report.supply_chain_digest}`);
+  line(`workflows only ${report.workflow_digest}`);
   line(`${report.files_scanned} file${report.files_scanned === 1 ? "" : "s"} scanned, ${report.external_uses} external reference${report.external_uses === 1 ? "" : "s"}, updates by ${report.update_automation}`);
   line("");
   for (const one of report.pinned_actions) line(`  ${one.action.padEnd(24)} ${one.sha}  ${one.version}  ${one.file}:${one.line}`);
@@ -38,6 +42,8 @@ else {
   for (const one of report.unreviewed_owners) line(`FAIL  unreviewed owner "${one.owner}" at ${one.file}:${one.line}`);
   for (const one of report.uncommented) line(`FAIL  pin without a readable version comment at ${one.file}:${one.line}`);
   for (const one of report.unparsable) line(`FAIL  unreadable uses: "${one.uses}" at ${one.file}:${one.line}`);
+  for (const one of report.local_action_unresolved) line(`FAIL  local action ${one.uses} at ${one.file}:${one.line}: ${one.reason}`);
+  for (const one of report.unreadable_directories) line(`FAIL  could not read ${one.directory} (${one.reason}), so its contents are unknown`);
   for (const one of report.permission_failures) line(`FAIL  ${one.check} ${one.file}: ${one.detail}`);
   line(report.ok ? "PASS  every external action is pinned, reviewed and readable" : "FAIL  see above");
 }
