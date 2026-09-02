@@ -34,26 +34,50 @@ sha256Bytes(bytes)                    -> "sha256:<hex>"     throws AOS_DIGEST_NO
 fileByteDigest(path)                  -> "sha256:<hex>"     throws AOS_DIGEST_UNREADABLE if absent
 optionalFileTextDigest(path)          -> "sha256:<hex>" | null
 canonicalTreeManifest(root, policy)   -> { schema_id, entries, refusals, totals }
+                                         root may be a string or a Buffer
 canonicalTreeDigest(manifest)         -> "sha256:<hex>"     throws AOS_TREE_MANIFEST_SCHEMA
                                                             throws AOS_TREE_MANIFEST_ENTRY
+                                                            throws AOS_TREE_MANIFEST_ORDER
 treeByteDigest(root, policy)          -> "sha256:<hex>"     the two above in one call
 artifactByteDigest(path, relative)    -> "sha256:<hex>"     a file or a directory, under a name
+                                         relative may be a string or a Buffer
+                                                            throws AOS_SYMLINK_ARTIFACT
+                                                            throws AOS_UNSUPPORTED_ARTIFACT
+                                                            throws AOS_ARTIFACT_INCOMPLETE
+                                                            throws AOS_ARTIFACT_MOVED
 isByteDigest(value)                   -> boolean
 handoffDigestsMatch(produced, received) -> boolean          exact, ordered, byte digests only
 handoffDigestsSameMultiset(a, b)      -> boolean            for naming the refusal, never for accepting
 contains(base, target)                -> boolean
 ```
 
-Constants: `DIGEST_ALGORITHM`, `FILE_EVIDENCE_SCHEMA` (`aos-file-evidence.v2`),
+Constants: `DIGEST_ALGORITHM`, `FILE_EVIDENCE_SCHEMA` (`aos-file-evidence.v3`),
 `TREE_MANIFEST_SCHEMA` (`aos-tree-manifest.v1`), `ARTIFACT_SCHEMA` (`aos-artifact.v3`),
 `TREE_LIMITS`, `TREE_SKIP_DIRECTORIES`.
 
 `policy` accepts `maxFileBytes`, `maxTotalBytes`, `maxEntries`, `maxDepth` and `skipDirectories`, and
 defaults to `TREE_LIMITS` with `.git` skipped.
 
+**`artifactByteDigest` throws where the old version returned a value.** A directory artifact holding
+anything the walk refused — a `.git/`, a file over the limit, a link out of the tree, a special file
+— is `AOS_ARTIFACT_INCOMPLETE` rather than a digest, because the digest it used to return did not
+identify what was inside the refusal. Every throw, and what to call instead of each, is in
+**Migration contract** below. Read that before wiring this into a consumer.
+
+**A name given as a string has already been decoded.** `relative` takes a `Buffer` and that is what
+a caller enumerating a directory should hand over: two artifacts whose names differ only in a byte
+that is not valid UTF-8 arrive as the same `U+FFFD` string, and the name is the only thing
+separating two artifacts of identical content. The same applies to `root`.
+
+The limit of that, at the one place in this repository that copies artifacts rather than digesting
+them: `cpSync` accepts no `Buffer` path, so `lib/cli.mjs` copies candidate artifacts under decoded
+names while digesting them under raw ones. An artifact whose name is not valid UTF-8 is identified
+exactly and copied under a lossy name. Anything else that both digests and copies inherits this and
+has to decide the same thing deliberately.
+
 ### File evidence
 
-Each entry of a manifest is one `aos-file-evidence.v2` record:
+Each entry of a manifest is one `aos-file-evidence.v3` record:
 
 ```json
 {
@@ -332,37 +356,51 @@ marked so they cannot be.
 
 ### Every way these calls now fail
 
-| error | raised by | means |
-| --- | --- | --- |
-| `AOS_DIGEST_NOT_BYTES` | `sha256Bytes`, `sessionDigestOf` | a string was passed where bytes were required |
-| `AOS_DIGEST_UNREADABLE <path>` | `fileByteDigest`, `optionalFileTextDigest`, tree root | the file or root could not be read |
-| `AOS_TREE_MANIFEST_SCHEMA` | `canonicalTreeDigest` | not an `aos-tree-manifest.v1` object, or no entries array |
-| `AOS_TREE_MANIFEST_ENTRY <path>` | `canonicalTreeDigest` | an entry's fields are outside their alphabet or disagree with its type |
-| `AOS_TREE_MANIFEST_ORDER <path>` | `canonicalTreeDigest` | a duplicate path, or entries not in canonical order |
-| `AOS_SYMLINK_ARTIFACT <name>` | `artifactByteDigest` | the artifact is a symlink (now `ELOOP` from the open itself) |
-| `AOS_UNSUPPORTED_ARTIFACT <name>` | `artifactByteDigest` | not a regular file or directory, or it could not be opened |
-| `AOS_ARTIFACT_INCOMPLETE <name>: <reasons>` | `artifactByteDigest` | a descendant was refused, so the tree is an evidence manifest and not an identity |
-| `AOS_ARTIFACT_MOVED <name>` | `artifactByteDigest` | the directory artifact's root stopped being the inode that was opened |
-| `AOS_HOLDOUT_BAD_DIGEST` | `recordSession` | a bare-hex session digest |
-| `AOS_INVALID_ARTIFACT_DIGEST` | `aos handoff create|consume` | a bare-hex artifact digest |
-| `AOS_HANDOFF_DIGEST_MISMATCH` | `aos handoff consume` | not exactly and in order what the create recorded |
+Each of these is a call that used to return a value and now may not, so each says what to do
+instead. "Do not catch and continue" appears where continuing means recording something that is not
+the fact it claims to be.
 
-`AOS_ARTIFACT_INCOMPLETE` is the one that will surprise a consumer: an artifact directory that was
-previously digested with a `.git/`, an oversized file or an escaping link inside it now raises
-instead of returning a value. That is the intended behaviour and the reason is that the value it
-used to return was not an identity. Use `treeByteDigest` where an incomplete evidence manifest is
-what is wanted.
+| error | raised by | means | what the caller does instead |
+| --- | --- | --- | --- |
+| `AOS_DIGEST_NOT_BYTES` | `sha256Bytes`, `sessionDigestOf` | a string was passed where bytes were required | read the file without an encoding — `readFileSync(path)`, not `readFileSync(path, "utf8")`. Never `Buffer.from(text)` to satisfy it: that digests the decode, which is the defect |
+| `AOS_DIGEST_UNREADABLE <path>` | `fileByteDigest`, `optionalFileTextDigest`, tree root | the file or root could not be read | record the absence as an absence. An empty digest here would make "deleted" and "truncated" the same evidence |
+| `AOS_TREE_MANIFEST_SCHEMA` | `canonicalTreeDigest` | not an `aos-tree-manifest.v1` object, or no entries array | pass what `canonicalTreeManifest` returned, unmodified |
+| `AOS_TREE_MANIFEST_ENTRY <path>` | `canonicalTreeDigest` | an entry's fields are outside their alphabet, or disagree with its type | a hand-built manifest written against the v2 example: add `path_bytes`, use `aos-file-evidence.v3`, write `mode` as four octal digits, and make the entry's fields agree with its `type` (table under **Tree canonicalization**). Prefer building it with `canonicalTreeManifest` |
+| `AOS_TREE_MANIFEST_ORDER <path>` | `canonicalTreeDigest` | a duplicate path, or entries not in canonical order | sort segment-wise with a parent before its children, and de-duplicate. Filtering a walk's manifest keeps the order; concatenating two does not |
+| `AOS_SYMLINK_ARTIFACT <name>` | `artifactByteDigest` | the artifact is a symlink (`ELOOP` from the open itself) | refuse the handoff. A link names something outside itself and a receiver is expected to read the artifact, not resolve it. Digest the target explicitly if that is what was meant |
+| `AOS_UNSUPPORTED_ARTIFACT <name>` | `artifactByteDigest` | not a regular file or directory, or it could not be opened | refuse the handoff and report the name. A FIFO or a device is not evidence about the task |
+| `AOS_ARTIFACT_INCOMPLETE <name>: <reasons>` | `artifactByteDigest` | a descendant was refused, so nothing inside that refusal is identified | decide which question is being asked. For **exact identity** — a handoff, a scope binding — remove or resolve what was refused and digest again; the reasons in the message name each one. For an **evidence manifest** where a refusal is an acceptable answer, call `treeByteDigest` and record it as a tree digest, never under a field that means artifact identity. Do not catch and continue with the tree digest under the artifact's name |
+| `AOS_ARTIFACT_MOVED <name>` | `artifactByteDigest` | the directory artifact's root stopped being the inode that was opened | digest again on a quiescent tree. If it recurs, the workspace is being written while it is being measured and no digest of it is evidence. Do not retry in a loop and take the value that eventually returns |
+| `AOS_HOLDOUT_BAD_DIGEST` | `recordSession` | a bare-hex session digest | compute it with `sessionDigestOf(readFileSync(path))`. A pre-existing row cannot be converted — record the session again |
+| `AOS_INVALID_ARTIFACT_DIGEST` | `aos handoff create` / `consume` | a bare-hex artifact digest | recompute with `artifactByteDigest`. Never prefix an old value with `sha256:` — it was taken over different bytes |
+| `AOS_HANDOFF_DIGEST_MISMATCH` | `aos handoff consume` | not exactly and in order what the create recorded | hand on the digests the `handoff.created` event recorded, in that order. Where the message says the order alone differs, the artifacts were right and the sequence was not |
+
+`AOS_ARTIFACT_INCOMPLETE` is the one that will surprise a consumer, and it is the one to read the
+row for: an artifact directory that was previously digested with a `.git/`, an oversized file or an
+escaping link inside it now raises instead of returning a value. That is intended. The value it used
+to return was not an identity, and a consumer that catches this and falls back to `treeByteDigest`
+under the same field has reproduced the defect with an extra step.
 
 ### Legacy records already on disk
 
-- **`aos-event.v1` records keep their schema id**, and the digests inside them do not mean what they
-  used to: `artifact_digests` on a `handoff.created`, and `stdout_digest` / `stderr_digest` on an
-  invocation, were computed under the old contract in old records and under this one in new records.
-  The `sha256:` prefix is what separates them — an old artifact digest is bare hex and is refused by
-  `handoff create` and `consume`, so an old and a new record cannot be compared as though they were
-  the same fact. **A consumer that aggregates across events must not mix a prefixed digest with a
-  bare one.** Bumping the event schema is a `lib/store.mjs` change and that file is not this issue's
-  to make; it is called out here so the coordinator can decide whether #562 or #564 should.
+- **`aos-event.v1` records keep their schema id while the digest semantics inside them changed.**
+  `artifact_digests` on a `handoff.created`, and `stdout_digest` / `stderr_digest` on an invocation,
+  were computed under the old contract in old records and under this one in new records, and the
+  schema id says nothing about which.
+
+  Two things already narrow it. The `sha256:` prefix separates an old value from a new one by
+  inspection, and `aos handoff create` and `consume` refuse a bare-hex artifact digest outright, so
+  an old record cannot re-enter the handoff path as though it were current.
+
+  **The hazard that remains is a consumer that aggregates across events and mixes a prefixed digest
+  with a bare one** — counting them as one population, comparing one against the other, or treating
+  a change from bare to prefixed as a change in the thing digested. Two records that disagree only
+  because they were written under different contracts are not evidence of a difference in what they
+  describe.
+
+  Bumping the event schema is a `lib/store.mjs` change, which is neither this issue's surface nor
+  something to fold into an issue blocked on this one. It is stated here in the terms the storage
+  issue can quote.
 - **Holdout ledger rows** written before this contract are counted as `legacy_sessions` and excluded
   from every figure. See **The session ledger**.
 - **`fileDigest` in `lib/core.mjs`** is unchanged and remains a historical normalised text digest.
@@ -389,7 +427,8 @@ what is wanted.
   in place is caught by the inode comparison.
 - The candidate-copy path in `lib/cli.mjs` still works in decoded names, because `cpSync` takes no
   `Buffer` path. The digest of each artifact is byte-accurate; the copy of one whose name is not
-  valid UTF-8 would be written under a lossy name.
+  valid UTF-8 would be written under a lossy name. Stated again under **The API**, where a caller
+  handing over a name meets it.
 - The `outside-tree` refusal for a directory whose `realpath` lands outside the root cannot be
   constructed portably in a test — reaching it needs a mid-walk race or a filesystem that links
   directories — so it is defence in depth without a named test of its own.
