@@ -130,3 +130,21 @@ jobs:
       - run: npm run verify:execution-plan:live
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+  # The review rounds, kept. Ten pull requests went through an adversarial gate and the blocking
+  # findings clustered into input and idiom classes -- a digest over decoded text, a plain-object
+  # map fed an attacker-chosen key, a regex without unicode mode, Date.parse as a validator, an
+  # unbounded schema array. Each class cost a full review round the first time a human thought of
+  # it; this job is those rounds run in seconds, so the review that follows has only design left
+  # to argue about.
+  defect-classes:
+    name: defect-classes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-defect-classes.mjs
