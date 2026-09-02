@@ -5,6 +5,7 @@ on:
     branches: [dev, main]
   pull_request:
     branches: [dev, main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -101,3 +102,49 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify:execution-plan
+
+  # The half the offline check cannot do. A committed snapshot is edited in the same pull request as
+  # the plan, by whoever wrote the change, so the static run reports close evidence as unestablished
+  # rather than passing it. This is where it gets established: against GitHub, with the repository
+  # asked whether each record's commit, pull request, workflow runs, changed files and artifact
+  # digests are the same piece of work.
+  #
+  # Not on pull requests -- a fork's token cannot read what this needs, and a required check that is
+  # skipped for forks is worse than one that runs where it can. On `main` and on demand.
+  execution-plan-live:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    name: execution-plan-live
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:execution-plan:live
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # The review rounds, kept. Ten pull requests went through an adversarial gate and the blocking
+  # findings clustered into input and idiom classes -- a digest over decoded text, a plain-object
+  # map fed an attacker-chosen key, a regex without unicode mode, Date.parse as a validator, an
+  # unbounded schema array. Each class cost a full review round the first time a human thought of
+  # it; this job is those rounds run in seconds, so the review that follows has only design left
+  # to argue about.
+  defect-classes:
+    name: defect-classes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-defect-classes.mjs
