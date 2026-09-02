@@ -195,6 +195,29 @@ test("a stored result whose numbers disagree with its own rows is refused by nam
       assert.throws(call, /AOS_RESULT_INCONSISTENT/, what);
     }
   }
+
+  // And the oldest form of the same defect: a withheld surface with a number written over it. The
+  // three fields are one state, so a zero where there is no number, a number where there is a
+  // reason, or a reason removed from a withheld surface are each a result that says two things.
+  const withheld = JSON.parse(canonicalJson(buildResult({ contract: populated, evaluation: evaluate(observationsWith({ M12: null }), identified, populated) })));
+  assert.equal(withheld.operator_process_profile.index, null);
+  const issuanceForgeries = [
+    ["a zero written over a withheld index", (r) => { r.operator_process_profile.index = 0; }],
+    ["the reason removed from a withheld surface", (r) => { r.operator_process_profile.withheld_reason = null; }],
+    ["a withheld row given a number", (r) => { r.operator_process_profile.constructs.C4.value = 0; }],
+    ["an issued surface stripped of its number", (r) => { r.system_outcome_profile.index = null; }]
+  ];
+  for (const [what, forge] of issuanceForgeries) {
+    const damaged = JSON.parse(JSON.stringify(withheld));
+    forge(damaged);
+    for (const call of [() => projectResult(damaged), () => renderMarkdown(damaged), () => renderHtml(damaged), () => renderCard(damaged)]) {
+      assert.throws(call, /AOS_ISSUANCE_STATE|AOS_RESULT_INCONSISTENT/, what);
+    }
+    // And the schema says it too, for the consumer that is not this repository: issued with a
+    // number and no reason, or withheld with a reason and no number, and nothing in between.
+    assert.equal(validateAgainstSchema(damaged, loadSchema(RESULT_SCHEMA_URL)).ok, false, what);
+  }
+  assert.equal(validateAgainstSchema(withheld, loadSchema(RESULT_SCHEMA_URL)).ok, true);
 });
 
 test("a renderer quotes the number it was given and works out none of its own", () => {

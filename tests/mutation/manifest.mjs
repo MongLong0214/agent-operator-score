@@ -2400,7 +2400,7 @@ export const GUARDS = [
     from: "  if (issued !== (value !== null) || issued !== (reason === null)) {",
     to: "  if (false) {",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "a renderer quotes the number it was given and works out none of its own"
+    name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
   },
   {
     guard: "the reader checks the state it was handed",
@@ -2409,7 +2409,7 @@ export const GUARDS = [
     from: "  assertIssuanceState(\"the stored operator process profile\", { issued: process.issued, value: process.index, withheld_reason: process.withheld_reason ?? null });",
     to: "",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "a renderer quotes the number it was given and works out none of its own"
+    name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
   },
   {
     guard: "the withheld reason travels with the surface",
@@ -2445,7 +2445,7 @@ export const GUARDS = [
     from: "      if (matched.length !== 1) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     to: "      if (false) fail(`must match exactly one of the ${schema.oneOf.length} alternatives here, and matched ${matched.length}`);",
     test: "tests/product/projection-consistency.test.mjs",
-    name: "a renderer quotes the number it was given and works out none of its own"
+    name: "a stored result whose numbers disagree with its own rows is refused by name, in every renderer"
   },
   {
     guard: "everything published passes the one gate",
