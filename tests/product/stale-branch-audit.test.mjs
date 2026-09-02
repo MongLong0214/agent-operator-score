@@ -312,11 +312,14 @@ test("an unestablished fact dismissed as not bearing on deletion, with no argume
   assert.notDeepEqual(unestablishedFindings(forged), [], "an unargued dismissal passed the check");
 });
 
+// The dismissal argument here is deliberately substantial, so the only rule that can refuse this
+// entry is the one that checks the bearing value itself. A short argument would be caught by the
+// argument-length rule instead and this test would pass without measuring anything.
 test("an unestablished fact whose bearing is neither none nor blocks_deletion is refused", () => {
   const audit = loadAudit();
   const merged = audit.branches.find((entry) => entry.classification === "MERGED");
   const forged = withBranch(audit, merged.name, {
-    unestablished: [{ fact: "what this branch was for", bearing_on_deletion: "probably fine", why_it_does_not_bear: "it looks old" }]
+    unestablished: [{ fact: "what this branch was for", bearing_on_deletion: "probably fine", why_it_does_not_bear: "nothing in the repository refers to this branch any more, so it looks abandoned" }]
   });
   assert.notDeepEqual(unestablishedFindings(forged), [], "an invented bearing value passed the check");
 });
