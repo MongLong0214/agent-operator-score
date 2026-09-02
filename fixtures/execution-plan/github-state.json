@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T07:13:45.141Z",
+  "captured_at": "2026-09-02T20:03:47.545Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -246,18 +246,90 @@
     {
       "number": 559,
       "title": "[P0][product] Process·Reliance·Outcome Profile과 secondary descriptive indices를 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 559,
+        "final_sha": "efccf562cc7f9c36b5f3b3e3a10001f2060d777b",
+        "pr": 608,
+        "ci_run_ids": [
+          33675020862
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "result_schema_digest": "sha256:cae524cabddd7ba70d0f1c1473873d5075bfca6fc7414f111e1ef4d81d34d58f",
+          "aggregation_vectors": "fixtures/scoring/profile-aggregation-vectors.v1.json sha256:d1ebf60400d95e26e4c0792e32d08c873f47d6337a2fa2067c3f809ffdef52a5",
+          "mutation": "303/304 load-bearing at 858ed6a2; 66 guards for this issue, all killed by their named tests"
+        },
+        "known_residue": [
+          {
+            "id": "stored-row-vs-cell-consistency",
+            "source": "gpt-5.6-sol round 10",
+            "detail": "projectResult checks construct values against the index but not against canonical cells or observations; an internally consistent edit of a row + index + composite (leaving cells and observations behind) is accepted and rendered. lib/result-schema.mjs:1117,1169; report/dashboard render without observation recomputation or terminal-digest verification (lib/cli.mjs:1890, lib/dashboard.mjs:131). Requires write access to the stored result.",
+            "severity": "defect"
+          },
+          {
+            "id": "sanitizer-boundary-classes",
+            "source": "gpt-5.6-sol round 10",
+            "detail": "publication gate misses root path \"/\", non-ASCII absolute paths, and spaced credentials with values under four characters. lib/result-schema.mjs:202,228",
+            "severity": "defect"
+          },
+          {
+            "id": "card-truncates-long-facets",
+            "source": "gpt-5.6-sol round 10",
+            "detail": "card truncates facet values at 92 characters while facet_identity permits unrestricted length, so a long facet differs between card and markdown. lib/profile-report.mjs:267",
+            "severity": "defect"
+          },
+          {
+            "id": "provenance-not-serialized",
+            "source": "implementer",
+            "detail": "sanitized-value provenance is a String subclass that does not survive serialization, so verify --run's rebuild reads a digest off its spelling; that path compares and discards, writing and rendering nothing. A typed wrapper in the JSON changes the schema shape everywhere and belongs in its own issue.",
+            "severity": "limitation"
+          },
+          {
+            "id": "declared-digest-fields-published-as-given",
+            "source": "implementer",
+            "detail": "run.suite_digest is published as the caller supplied it because the field's declared shape is a digest and it must stay comparable with the suite manifest.",
+            "severity": "limitation"
+          },
+          {
+            "id": "artifact-bytes-null-for-in-memory-contracts",
+            "source": "implementer",
+            "detail": "contract.artifact_bytes is published only for results built under shipped contract files; verify --run falls back to the canonical digest otherwise.",
+            "severity": "limitation"
+          },
+          {
+            "id": "ecd-contract-export-added",
+            "source": "implementer",
+            "detail": "lib/ecd-contract.mjs (#582, already on dev) gained one export, contractFileDigests, reading files that module already reads and computing no estimate.",
+            "severity": "note"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#559",
         "#575",
@@ -282,7 +354,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",

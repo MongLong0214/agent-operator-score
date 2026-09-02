@@ -352,7 +352,7 @@
     {
       "issue": 559,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 1,
       "blocked_by": [
         582,
@@ -399,7 +399,7 @@
     {
       "issue": 560,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 2,
       "blocked_by": [
         559,
