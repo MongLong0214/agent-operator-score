@@ -179,6 +179,36 @@
     "domain": {
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "WITHHELD"
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
       "required": [
         "domain_id",
         "title",
@@ -189,7 +219,7 @@
         "required_cells",
         "cells",
         "withheld_for",
-        "contract_binding"
+        "withheld_reason"
       ],
       "properties": {
         "domain_id": {
@@ -203,9 +233,6 @@
         },
         "axis": {
           "const": "system_outcome"
-        },
-        "contract_binding": {
-          "$ref": "#/$defs/digest"
         },
         "estimate": {
           "$ref": "#/$defs/estimate"
@@ -255,6 +282,14 @@
         },
         "withheld_for": {
           "$ref": "#/$defs/withheld_list"
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
         }
       }
     },
@@ -640,6 +675,36 @@
     "operator_process_construct": {
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "WITHHELD"
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
       "required": [
         "construct_id",
         "title",
@@ -649,7 +714,8 @@
         "status",
         "required_cells",
         "optional_cells",
-        "withheld_for"
+        "withheld_for",
+        "withheld_reason"
       ],
       "properties": {
         "construct_id": {
@@ -689,12 +755,50 @@
         },
         "withheld_for": {
           "$ref": "#/$defs/withheld_list"
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
         }
       }
     },
     "delegated_artifact_construct": {
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "status": {
+              "const": "ISSUED"
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "const": "WITHHELD"
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
       "required": [
         "construct_id",
         "title",
@@ -704,7 +808,8 @@
         "status",
         "required_cells",
         "optional_cells",
-        "withheld_for"
+        "withheld_for",
+        "withheld_reason"
       ],
       "properties": {
         "construct_id": {
@@ -744,6 +849,14 @@
         },
         "withheld_for": {
           "$ref": "#/$defs/withheld_list"
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
         }
       }
     }
@@ -1034,6 +1147,36 @@
     "operator_process_profile": {
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "issued": {
+              "const": true
+            },
+            "index": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "issued": {
+              "const": false
+            },
+            "index": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
       "required": [
         "label",
         "axis",
@@ -1041,6 +1184,7 @@
         "issued",
         "index",
         "withheld_for",
+        "withheld_reason",
         "weights",
         "constructs",
         "required_cells",
@@ -1077,6 +1221,14 @@
           },
           "maxItems": 32,
           "uniqueItems": true
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
         },
         "weights": {
           "$ref": "#/$defs/weights"
@@ -1371,6 +1523,36 @@
     "system_outcome_profile": {
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "issued": {
+              "const": true
+            },
+            "index": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "issued": {
+              "const": false
+            },
+            "index": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
       "required": [
         "label",
         "axis",
@@ -1381,6 +1563,7 @@
         "cap_applied",
         "caps",
         "withheld_for",
+        "withheld_reason",
         "weights",
         "domains",
         "required_cells",
@@ -1433,6 +1616,14 @@
           },
           "maxItems": 32,
           "uniqueItems": true
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
         },
         "weights": {
           "$ref": "#/$defs/weights"
@@ -1517,6 +1708,36 @@
     "aos_composite": {
       "type": "object",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "issued": {
+              "const": true
+            },
+            "value": {
+              "type": "number"
+            },
+            "withheld_reason": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "issued": {
+              "const": false
+            },
+            "value": {
+              "type": "null"
+            },
+            "withheld_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        }
+      ],
       "required": [
         "label",
         "formula",
@@ -1528,6 +1749,7 @@
         "raw_value",
         "cap_applied",
         "withheld_for",
+        "withheld_reason",
         "delegated_artifact",
         "claim_stage",
         "generalizability_status",
@@ -1600,6 +1822,14 @@
           },
           "maxItems": 2,
           "uniqueItems": true
+        },
+        "withheld_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
         },
         "delegated_artifact": {
           "type": "object",
