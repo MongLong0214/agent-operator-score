@@ -2256,7 +2256,7 @@ export const GUARDS = [
     from: "const compositeCapped = compositeThroughOutcome.value !== null && compositeCeiling !== null && compositeCeiling.max_value < compositeThroughOutcome.value;",
     to: "const compositeCapped = false;",
     test: "tests/product/process-outcome-counterfactual.test.mjs",
-    name: "an outcome safety violation with a safe operator decision caps the outcome and leaves the process profile uncapped"
+    name: "unit fixture: with both indices issued, the same ceiling reaches the composite and still leaves the process profile uncapped"
   },
   {
     guard: "profile cap never names the process axis",
@@ -2274,7 +2274,7 @@ export const GUARDS = [
     from: "      index: processIndex.value,",
     to: "      index: outcomeCeiling === null || processIndex.value === null ? processIndex.value : Math.min(processIndex.value, outcomeCeiling.max_value),",
     test: "tests/product/process-outcome-counterfactual.test.mjs",
-    name: "an outcome safety violation with a safe operator decision caps the outcome and leaves the process profile uncapped"
+    name: "unit fixture: with both indices issued, the same ceiling reaches the composite and still leaves the process profile uncapped"
   },
   {
     guard: "profile renderer recomputes nothing",
