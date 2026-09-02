@@ -16,7 +16,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ADAPTERS } from "../../../lib/profile.mjs";
 import { sha256Bytes } from "../../../lib/digest.mjs";
-import { SUPPORT_LANES, SUPPORT_MATRIX_SCHEMA, prepareConfinement } from "../../../lib/confinement.mjs";
+import { SUPPORT_LANES, SUPPORT_MATRIX_SCHEMA, prepareConfinement, redactCleanupFailure } from "../../../lib/confinement.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const observations = resolve(here, "..", "observations");
@@ -117,11 +117,16 @@ const resolvedOr = (path) => {
   // Every result the matrix row depends on, so the row is stamped from what happened rather than
   // from the script having reached the end.
   const outcomes = { canary: null, auth: null, exec: null };
+  // One resolution, used to prepare the boundary, to identify the executable and to launch it. The
+  // probe used to prepare for the PATH-resolved `codex` and launch `$HOME/.local/bin/codex`: the
+  // identity recorded beside the evidence then described a binary that need not be the one that
+  // produced it.
+  const runtimeBinary = realpathSync(join(process.env.HOME, ".local", "bin", "codex"));
   let handle = null;
   let stagedAuth = null;
   try {
   try {
-    handle = await prepareConfinement({ level: "STRICT", adapter: ADAPTERS["codex-cli.v1"], workspace, aosHome, agentHome, runScratch, command: "codex", env });
+    handle = await prepareConfinement({ level: "STRICT", adapter: ADAPTERS["codex-cli.v1"], workspace, aosHome, agentHome, runScratch, command: runtimeBinary, env });
     stagedAuth = handle.staging?.dir === null || handle.staging?.dir === undefined ? null : join(handle.staging.dir, "auth.json");
     outcomes.canary = handle.canary_run?.result === "PASS" ? 0 : 1;
   } catch (error) {
@@ -183,7 +188,7 @@ const resolvedOr = (path) => {
     const childEnv = { PATH: process.env.PATH, HOME: agentHome, TMPDIR: agentHome, ...handle.env };
     const staging = { dir: scrubber(handle.staging.dir), staged: handle.staging.staged, source: handle.staging.source };
     const runCodex = (args, name, input, extra = {}) => {
-      const launch = handle.spawnSpec(realpathSync(join(process.env.HOME, ".local", "bin", "codex")), args);
+      const launch = handle.spawnSpec(runtimeBinary, args);
       const started = Date.now();
       const result = spawnSync(launch.command, launch.args, { cwd: workspace, env: childEnv, input: Buffer.from(input), timeout: 180000, maxBuffer: 16 * 1024 * 1024 });
       record(name, {
@@ -201,7 +206,17 @@ const resolvedOr = (path) => {
         parse_error: null,
         // A function when the record depends on what the run left behind: arguments are evaluated
         // before the call, so an object built there would describe the state before the runtime ran.
-        captured: { duration_ms: Date.now() - started, staging, ...(typeof extra === "function" ? extra(result) : extra) }
+        captured: {
+          duration_ms: Date.now() - started,
+          staging,
+          // Which executable produced this evidence, verified as this adapter's runtime. The matrix
+          // reads the lane's identity from here rather than from the canary beside it: the canary
+          // is a node program, and what the lane claims is that *this runtime* ran under the
+          // boundary.
+          runtime_identity: handle.staging.identity,
+          runtime_command_digest: sha256Bytes(readFileSync(runtimeBinary)),
+          ...(typeof extra === "function" ? extra(result) : extra)
+        }
       });
       return result;
     };
@@ -240,20 +255,28 @@ const resolvedOr = (path) => {
     // Unconditional. A probe that stages a credential copy and then fails its canary used to
     // rethrow before this ran, leaving `agentHome/.codex/auth.json`, the base store and the run
     // scratch on the operator's disk -- exactly the failure mode the staged copy exists to avoid.
-    if (handle !== null) handle.cleanup();
-    for (const path of [base, agentHome, runScratch]) rmSync(path, { recursive: true, force: true });
+    // What cleanup could not remove, read rather than discarded. The return value was dropped and
+    // the observation always written as a success, so a profile the kernel refused to delete was
+    // recorded as a clean teardown and the row stayed eligible.
+    const cleanupFailures = handle === null ? [] : handle.cleanup();
+    for (const path of [base, agentHome, runScratch]) {
+      try { rmSync(path, { recursive: true, force: true }); } catch (error) { cleanupFailures.push(`${path}: ${error.code ?? error.message}`); }
+    }
     // And the evidence that it went: the matrix reads `cleanup_verified` from this rather than
     // from a row declaring it.
     record("strict-lane.darwin.seatbelt.cleanup", {
       command: "handle.cleanup(); rm -rf @BASE@ @AGENT_TEMP_HOME@ @RUN_SCRATCH@   # the probe's own teardown",
-      exit_status: 0,
+      exit_status: cleanupFailures.length === 0 ? 0 : 1,
       signal: null,
       spawn_error: null,
       stdout: streamSummary(Buffer.alloc(0)),
       stderr: streamSummary(Buffer.alloc(0)),
       parse_error: null,
       captured: {
+        // By class and errno, never by path: this file ships with the package.
+        not_removed: cleanupFailures.map(redactCleanupFailure),
         removed: {
+          profile_and_confinement_scratch: cleanupFailures.length === 0,
           staged_runtime_config: stagedAuth === null || !existsSync(stagedAuth),
           agent_home: !existsSync(agentHome),
           run_scratch: !existsSync(runScratch),

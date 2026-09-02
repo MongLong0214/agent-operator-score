@@ -28,7 +28,7 @@
   },
   "parse_error": null,
   "captured": {
-    "duration_ms": 51,
+    "duration_ms": 49,
     "staging": {
       "dir": "@AGENT_TEMP_HOME@/.codex",
       "staged": [
@@ -36,6 +36,13 @@
         "config.toml"
       ],
       "source": "default_dir"
-    }
+    },
+    "runtime_identity": {
+      "status": "VERIFIED",
+      "digest": "sha256:1436bfbd0f443198d529ea9a342c600a48397e104cd048aba5910331076318c1",
+      "matches_adapter": true,
+      "reason": null
+    },
+    "runtime_command_digest": "sha256:134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477"
   }
 }

@@ -14,19 +14,19 @@
       "evidence": {
         "canary": {
           "file": "observations/strict-lane.darwin.seatbelt.canary.json",
-          "digest": "sha256:b7c335bfeac61694f3873444a67b580c1fdfe947cb6d1e2cc1bfbd6b84d81455"
+          "digest": "sha256:fd6d6bc090ab9b6f71aebbfb3baa87ef49c3e4bf1882cfe8c24985b1409bab5c"
         },
         "runtime": {
           "file": "observations/strict-lane.darwin.seatbelt.codex-auth.json",
-          "digest": "sha256:6c1241694573f787945d3df49c9e48e34e4fbcdaa977c57b48c31c647574edec"
+          "digest": "sha256:5b5736b5206b57220e8482e23c3423d96a0a288a55cb0ecfc24e8710e12d876c"
         },
         "exec": {
           "file": "observations/strict-lane.darwin.seatbelt.codex-exec.json",
-          "digest": "sha256:8a50591718f4bf62fbe13ab3636ae43cddc2f0b22860fb7c58b0532be6141b29"
+          "digest": "sha256:8e3a1c29c221c05ccaef1a9da803a71afe97145b93fb43db166733002ae0eb4e"
         },
         "cleanup": {
           "file": "observations/strict-lane.darwin.seatbelt.cleanup.json",
-          "digest": "sha256:6440ccbcda6cd9dda3c5025559d6f6f31fddb79dc7b3b443f66eb2f2f5c42dfb"
+          "digest": "sha256:18885367fb129f8f6b81505df7b5e30ae0a0f4a97595657fc2964359044e414d"
         },
         "host": {
           "file": "observations/strict-lane.darwin.host.json",
@@ -151,5 +151,5 @@
       "reason": "no OS boundary: a replaced HOME and a filtered environment are not a sandbox"
     }
   ],
-  "evidence_digest": "sha256:63fc275de466eaec8c6c1cd25aafb2f45f75830c20c46dfbd10378c155c55f7a"
+  "evidence_digest": "sha256:9bb95fdc90c751ec7715ccab0470c2f72edb4a3e071046e182bd8a3e0fc58099"
 }

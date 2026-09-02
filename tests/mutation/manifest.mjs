@@ -1141,6 +1141,9 @@ export const GUARDS = [
   },
   {
     guard: "effective execute permission",
+    // Its witness skips only when the suite runs as root, which no CI lane and no development
+    // machine here does; the mutation is measured on every ordinary run.
+    witness_skip: "skips only under uid 0, which is not an environment this suite runs in",
     reason: "an execute bit that does not apply to this process is a file execvp skips, so reading the mode describes a program the child would never run",
     file: "lib/runtime-identity.mjs",
     from: "accessSync(candidate, constants.X_OK);",
@@ -1274,6 +1277,9 @@ export const GUARDS = [
   },
   {
     guard: "ACL walk",
+    // Its witness skips only when the suite runs as root, which no CI lane and no development
+    // machine here does; the mutation is measured on every ordinary run.
+    witness_skip: "skips only under uid 0, which is not an environment this suite runs in",
     // macOS only, and deliberately so: Node has no interface to an ACL and `ls -lde` is the only
     // thing that will say. The mutation runner defers it rather than reporting SURVIVED for a guard
     // that holds everywhere it applies -- so a macOS lane has to run this one, and the two guards
@@ -2424,7 +2430,7 @@ export const GUARDS = [
     from: "      groupSweep: pgid ? { pgid, members: processGroupMembers(pgid).filter((pid) => pid !== pgid) } : null",
     to: "      groupSweep: { pgid: 0, members: [] }",
     test: "tests/product/confinement-real-lane.test.mjs",
-    name: "strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane"
+    name: "strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
   },
   {
     guard: "the workspace is named relatively so the store is not",
@@ -2549,7 +2555,7 @@ export const GUARDS = [
     reason: "the layout is decided three files away from the spawn; without this assertion a caller could hand runProcess a workspace under the store and the child would read the store's path out of its own cwd",
     platform: "darwin",
     file: "lib/core.mjs",
-    from: "          throw new Error(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE ${context.workspace}`);",
+    from: "            throw new Error(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE ${candidate}`);",
     to: "",
     test: "tests/product/confinement-real-lane.test.mjs",
     name: "strict_run_refuses_a_workspace_that_contains_the_store_and_leaves_no_scratch"
@@ -2607,6 +2613,105 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_lane_whose_adapter_stages_a_credential_is_official_only_for_that_runtime"
+  },
+  {
+    guard: "bubblewrap mounts what the policy declares",
+    reason: "the linux renderer kept a list of its own -- all of /etc and all of /sbin against a policy declaring /etc/ssl and /etc/resolv.conf -- so the digest described one boundary and the argument vector applied another, with /etc/hostname and /etc/machine-id inside it",
+    file: "lib/confinement.mjs",
+    from: "  for (const tree of [...fs.system_readable, ...fs.system_readable_files]) args.push(\"--ro-bind-try\", tree, tree);",
+    to: '  for (const tree of ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/etc"]) args.push("--ro-bind-try", tree, tree);',
+    test: "tests/product/confinement.test.mjs",
+    name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
+  },
+  {
+    guard: "the table shows the decision and not the label",
+    reason: "reading the fixture's own `official` beside the decision keeps a second vote on the one question the table exists to answer: a row the gate had issued rendered withheld whenever the label disagreed",
+    file: "lib/confinement.mjs",
+    from: "    const official = row.decision.official ? \"OFFICIAL\" : \"withheld\";",
+    to: '    const official = row.official && row.decision.official ? "OFFICIAL" : "withheld";',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_rendered_matrix_shows_the_decisions_it_was_handed"
+  },
+  {
+    guard: "the teardown observation reports what cleanup returned",
+    reason: "the recorder discarded handle.cleanup()'s return value and always wrote exit_status 0, so a profile the kernel refused to delete was recorded as a clean teardown and the row stayed eligible",
+    file: "fixtures/confinement/probes/strict-lane.mjs",
+    from: "      exit_status: cleanupFailures.length === 0 ? 0 : 1,",
+    to: "      exit_status: 0,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_recorder_removes_the_staged_credential_even_when_the_lane_fails"
+  },
+  {
+    guard: "the matrix reads what the teardown could not remove",
+    reason: "four booleans about other paths said the lane was clean while the profile removal had failed; the list of what stayed is the answer to the question the row asks",
+    file: "lib/confinement.mjs",
+    from: "      && (cleanup.captured.not_removed ?? []).length === 0",
+    to: "      && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "a workspace that resolves into the store is refused",
+    reason: "a symlinked workspaces root is outside the store to a string comparison and inside it to the kernel, which is the reader that decides what the child's cwd discloses",
+    file: "lib/store.mjs",
+    from: "  if (chosen === root || chosen.startsWith(`${root}/`) || root.startsWith(`${chosen}/`)) {",
+    to: "  if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
+  },
+  {
+    guard: "the renderer refuses a workspace inside the store",
+    reason: "the bindings check refused only a workspace containing the store, so a workspace inside it was rendered a profile whose workspace allow reopens the denied tree",
+    file: "lib/confinement.mjs",
+    from: '  if (within(bound["@AOS_HOME@"], bound["@WORKSPACE@"])) throw fail("AOS_ISOLATION_WORKSPACE_INSIDE_STORE", bound["@WORKSPACE@"]);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
+  },
+  {
+    guard: "every kind of evidence is required by name",
+    reason: "iterating the citations that happen to exist made each kind optional: deleting runtime and exec left one surviving citation and the lane stayed official with nothing saying the runtime authenticated or ran",
+    file: "lib/confinement.mjs",
+    from: "    const missingEvidence = strictEvidenceKinds(row).filter((kind) => !byKind.has(kind) || byKind.get(kind) === null);",
+    to: "    const missingEvidence = [];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "an observation's markers are read, not only its exit code",
+    reason: "a login that reported no login and an execution that did not answer both exit zero; the markers are what say the runtime did the thing the lane claims",
+    file: "lib/confinement.mjs",
+    from: "    const unmetMarkers = [",
+    to: "    const unmetMarkers = [].concat([",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "the lane's identity comes from the runtime that authenticated",
+    reason: "copied from the canary, the identity described a node program rather than the runtime whose evidence the row cites",
+    file: "lib/confinement.mjs",
+    from: '      runtime_identity: byKind.get("runtime")?.captured?.runtime_identity ?? null,',
+    to: "      runtime_identity: captured?.runtime_identity ?? null,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "an unmeasured network policy has no expectation",
+    reason: "everything that was not the word disabled expected the connect to succeed, so a policy nobody has measured was judged against the most permissive expectation there is",
+    file: "lib/confinement.mjs",
+    from: '  if (networkPolicy === "provider-required-unrestricted" || networkPolicy === "restricted") return "allowed";\n  return null;',
+    to: '  return "allowed";',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_unmeasured_network_state_withholds_rather_than_defaulting_to_allowed"
+  },
+  {
+    guard: "the network axis is enumerated, not typed",
+    reason: "a string was enough for the policy and the enforcement and the transport was never read, so a record could name a policy nobody measured and publish provider_transport null beside it",
+    file: "lib/confinement.mjs",
+    from: '    if (!NETWORK_POLICIES.includes(record.network_policy)) problems.push(`network_policy: ${JSON.stringify(record.network_policy ?? null)} is not a policy this release measures`);',
+    to: '    if (typeof record.network_policy !== "string") problems.push("network_policy: not stated");',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_unmeasured_network_state_withholds_rather_than_defaulting_to_allowed"
   },
   {
     guard: "the canary expectation is this module's, not the record's",
@@ -2768,19 +2873,23 @@ export const ACCOUNTED_GUARDS = [
   "a violation decides before the floor does",
   "a withheld corpus does not pass",
   "a workspace that contains the store is refused",
+  "a workspace that resolves into the store is refused",
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
   "an alias is the node it names",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an observation's markers are read, not only its exit code",
   "an unidentified runtime cannot carry the lane",
   "an unknown isolation lane is refused, not defaulted",
   "an unmeasured network axis is not NOT_OBSERVED",
+  "an unmeasured network policy has no expectation",
   "an unproven lane blocks issuance",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
   "block scalar measured from its key",
+  "bubblewrap mounts what the policy declares",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
@@ -2823,6 +2932,7 @@ export const ACCOUNTED_GUARDS = [
   "env policy digest binding",
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
+  "every kind of evidence is required by name",
   "every observation a row cites must record a run that succeeded",
   "every transport spelling needs the transport approval",
   "evidence bound to the audited revision",
@@ -2938,13 +3048,17 @@ export const ACCOUNTED_GUARDS = [
   "the floor follows the worst severity observed",
   "the group sweep is recorded from the group",
   "the lane is bound into the cohort",
+  "the lane's identity comes from the runtime that authenticated",
   "the matrix decides the process axis with the run's own helper",
+  "the matrix reads what the teardown could not remove",
+  "the network axis is enumerated, not typed",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the process axis needs the sweep and the second poll",
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile is rendered from the policy that is digested",
+  "the renderer refuses a workspace inside the store",
   "the result publishes redacted cleanup failures",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
@@ -2954,6 +3068,8 @@ export const ACCOUNTED_GUARDS = [
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
   "the staged secrets reach the scrubber",
+  "the table shows the decision and not the label",
+  "the teardown observation reports what cleanup returned",
   "the verified executable must be the adapter's runtime",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",

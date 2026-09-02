@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -10,6 +10,7 @@ import {
   BOUNDARY_CANARY_PROGRAM_DIGEST,
   CANARY_CELLS,
   ISSUANCE_REASONS,
+  STRICT_EVIDENCE_KINDS,
   issuanceGate,
   renderSupportMatrix,
   settleConfinement,
@@ -210,17 +211,25 @@ test("a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced", async 
   const { processAxisEnforced } = await import("../../lib/confinement.mjs");
   const canary = measured().boundary_canary;
   const sweep = { pgid: 4242, members: [] };
+  // The policy the cells are judged against. A policy this release does not measure has no
+  // expectation for the network cell, so the axis is not enforced without one -- pinned below.
+  const networkPolicy = "provider-required-unrestricted";
   const clean = { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 1, survivors: [] };
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: clean }), true);
-  assert.equal(processAxisEnforced({ canary, polls: 1, groupSweep: sweep, survivorSweep: clean }), false, "one poll watched nothing");
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: null, survivorSweep: clean }), false, "the group was never swept");
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: { pgid: 0, members: [] }, survivorSweep: clean }), false, "pgid 0 is not a group");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: clean, networkPolicy }), true);
+  assert.equal(processAxisEnforced({ canary, polls: 1, groupSweep: sweep, survivorSweep: clean, networkPolicy }), false, "one poll watched nothing");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: null, survivorSweep: clean, networkPolicy }), false, "the group was never swept");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: { pgid: 0, members: [] }, survivorSweep: clean, networkPolicy }), false, "pgid 0 is not a group");
   const unconfined = { ...canary, out_of_band: { ...canary.out_of_band, descendant: { ...canary.out_of_band.descendant, escapee_confined: false } } };
-  assert.equal(processAxisEnforced({ canary: unconfined, polls: 12, groupSweep: sweep, survivorSweep: clean }), false, "the escapee was not proved confined");
+  assert.equal(processAxisEnforced({ canary: unconfined, polls: 12, groupSweep: sweep, survivorSweep: clean, networkPolicy }), false, "the escapee was not proved confined");
   // The canary's own cells decide, not the word on top of them: a record that says PASS over a
   // cell that observed what it expected to be denied is a failed boundary.
+  // And a policy nobody has measured leaves the network cell with no expectation at all, so the
+  // canary cannot pass and the axis is not enforced -- rather than defaulting to the most
+  // permissive expectation there is.
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: clean, networkPolicy: "WITHHELD" }), false);
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: clean }), false, "no policy is not a permissive policy");
   const contradicted = { ...canary, cells: { ...canary.cells, outside_read: { expected: "denied", observed: "allowed", errno: null } } };
-  assert.equal(processAxisEnforced({ canary: contradicted, polls: 12, groupSweep: sweep, survivorSweep: clean }), false);
+  assert.equal(processAxisEnforced({ canary: contradicted, polls: 12, groupSweep: sweep, survivorSweep: clean, networkPolicy }), false);
 
   // The double-fork blind spot: the record used to call the process axis enforced on a passing
   // canary and one poll. What is required now is what was measured -- the group sweep beside the
@@ -251,7 +260,7 @@ test("a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced", async 
   const sweepFound = { scanned: true, scanners: ["environment-marker", "open-path", "process-group"], marker_used: true, paths: 3, group_enumerated: 2, survivors: [200] };
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: sweepFound }), false, "a swept survivor left the axis enforced");
   assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: { scanned: false, scanners: [], survivors: [] } }), false, "a sweep that could not run left the axis enforced");
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: null }), false, "no sweep left the axis enforced");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: null, networkPolicy }), false, "no sweep left the axis enforced");
   const escaped = measured({ descendants: { ...measured().descendants, survivor_sweep: sweepFound } });
   const escapedDecision = issuanceGate(escaped);
   assert.equal(escapedDecision.official, false, "a run with a swept survivor was issued");
@@ -299,16 +308,17 @@ test("a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group", asyn
   assert.equal(stripped.group_enumerated, 2, "the group was not walked");
   assert.deepEqual(stripped.survivors, [4300], "a descendant that stripped its marks was not enumerated");
   const canary = measured().boundary_canary;
+  const networkPolicy = "provider-required-unrestricted";
   const groupSweep = { pgid: 4242, members: [4300] };
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: stripped }), false);
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: stripped, networkPolicy }), false);
 
   // And the rule this is really about: an empty answer from scanners that never enumerated the
   // group is not proof of an empty room.
   const silent = { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, group_enumerated: null, survivors: [] };
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: silent }), false, "an unenumerated group passed as enforced");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: silent, networkPolicy }), false, "an unenumerated group passed as enforced");
   assert.match(issuanceGate(measured({ descendants: { ...measured().descendants, survivor_sweep: silent } })).record_problems.join(" "), /never enumerated/u);
   const enumerated = { ...silent, scanners: [...silent.scanners, "process-group"], group_enumerated: 1 };
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: enumerated }), true);
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep, survivorSweep: enumerated, networkPolicy }), true);
 });
 
 test("the_open_path_scan_answers_the_same_question_on_both_platforms", async () => {
@@ -412,13 +422,20 @@ test("the_recorder_removes_the_staged_credential_even_when_the_lane_fails", () =
   const rethrowAt = probe.indexOf("throw error;");
   assert.ok(finallyAt > 0 && rethrowAt > 0, "the probe no longer has the shape this checks");
   assert.ok(rethrowAt < finallyAt, "the rethrow is no longer inside the block the cleanup guards");
-  for (const removal of ["if (handle !== null) handle.cleanup();", "for (const path of [base, agentHome, runScratch]) rmSync(path, { recursive: true, force: true });"]) {
+  for (const removal of ["const cleanupFailures = handle === null ? [] : handle.cleanup();", "for (const path of [base, agentHome, runScratch]) {"]) {
     const at = probe.indexOf(removal);
     assert.ok(at > finallyAt, `cleanup step is outside the finally: ${removal}`);
   }
+  // And what cleanup returned is read rather than discarded: the observation used to be written as
+  // a success whatever `handle.cleanup()` said, so a profile the kernel refused to delete was a
+  // clean teardown and the row stayed eligible.
+  assert.match(probe, /exit_status: cleanupFailures\.length === 0 \? 0 : 1/u, "the teardown observation ignores what cleanup returned");
+  assert.match(probe, /not_removed: cleanupFailures\.map\(redactCleanupFailure\)/u, "what could not be removed is not recorded");
   // And the committed evidence says it worked, which is what the matrix reads cleanup from.
   const cleanup = observations("strict-lane.darwin.seatbelt.cleanup.json");
-  assert.deepEqual(cleanup.captured.removed, { staged_runtime_config: true, agent_home: true, run_scratch: true, base_store: true });
+  assert.equal(cleanup.exit_status, 0);
+  assert.deepEqual(cleanup.captured.not_removed, []);
+  assert.deepEqual(cleanup.captured.removed, { profile_and_confinement_scratch: true, staged_runtime_config: true, agent_home: true, run_scratch: true, base_store: true });
   assert.deepEqual(cleanup.captured.outcomes, { canary: 0, auth: 0, exec: 0 });
 });
 
@@ -483,7 +500,8 @@ test("the_matrix_decides_the_process_axis_with_the_helper_a_run_uses", async () 
       canary: { result: captured.result, cells: captured.cells, out_of_band: captured.out_of_band },
       polls: captured.scan_polls,
       groupSweep: captured.group_sweep,
-      survivorSweep: captured.survivor_sweep
+      survivorSweep: captured.survivor_sweep,
+      networkPolicy: captured.network_policy
     }),
     true,
     "the table is official where the helper is not"
@@ -516,6 +534,167 @@ test("the_matrix_decides_the_process_axis_with_the_helper_a_run_uses", async () 
   }
 });
 
+test("an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked", () => {
+  // The gate iterated whatever the row happened to cite, so every kind was optional: deleting
+  // `runtime` and `exec` from the official row left one surviving citation, `everyCitedRan` was
+  // satisfied by it, and the lane stayed official with nothing saying the runtime ever
+  // authenticated or ran. And an observation that exited zero is not the same as one that did the
+  // thing: a login that reported no login, an execution that did not answer.
+  const copy = mkdtempSync(join(tmpdir(), "aos-matrix-kinds-"));
+  try {
+    cpSync(fixtureDir, copy, { recursive: true });
+    const fixture = JSON.parse(readFileSync(join(copy, "support-matrix.json"), "utf8"));
+    const official = fixture.lanes.find((row) => row.official === true);
+    assert.deepEqual(Object.keys(official.evidence).sort(), [...STRICT_EVIDENCE_KINDS].sort(), "the official row does not cite every kind");
+    for (const kind of STRICT_EVIDENCE_KINDS) {
+      const without = JSON.parse(JSON.stringify(fixture));
+      delete without.lanes.find((row) => row.official === true).evidence[kind];
+      const row = supportMatrixDecisions(without, copy).find((one) => one.official === true);
+      assert.equal(row.decision.official, false, `${kind}: a row that cites no ${kind} was issued`);
+      assert.ok(row.decision.reasons.includes(ISSUANCE_REASONS.EVIDENCE_MISSING), `${kind}: ${row.decision.reasons.join(", ")}`);
+      assert.deepEqual(row.evidence_missing, [kind]);
+    }
+
+    // The markers, not only the exit code.
+    for (const [kind, mutate] of [
+      ["runtime", (observation) => { observation.stderr.markers.logged_in = false; observation.stdout.markers.logged_in = false; }],
+      ["exec", (observation) => { observation.captured.answered_expected_word = false; }]
+    ]) {
+      const reference = official.evidence[kind];
+      const file = join(copy, reference.file);
+      const observation = JSON.parse(readFileSync(file, "utf8"));
+      mutate(observation);
+      const bytes = Buffer.from(JSON.stringify(observation), "utf8");
+      writeFileSync(file, bytes);
+      const restated = JSON.parse(JSON.stringify(fixture));
+      restated.lanes.find((row) => row.official === true).evidence[kind].digest = sha256Bytes(bytes);
+      const row = supportMatrixDecisions(restated, copy).find((one) => one.official === true);
+      assert.equal(row.decision.official, false, `${kind}: an observation whose markers say it did not work was issued`);
+      assert.ok(row.decision.reasons.includes(ISSUANCE_REASONS.EVIDENCE_EXECUTION_FAILED), row.decision.reasons.join(", "));
+      assert.match(row.evidence_markers_unmet.join(" "), new RegExp(kind, "u"));
+      cpSync(join(fixtureDir, reference.file), file);
+    }
+
+    // And the identity the lane claims comes from the observation of the runtime that
+    // authenticated, not from the canary beside it -- the canary is a node program.
+    const rows = supportMatrixDecisions(fixture, copy);
+    const row = rows.find((one) => one.official === true);
+    assert.equal(row.decision.official, true);
+    const auth = observations("strict-lane.darwin.seatbelt.codex-auth.json");
+    assert.equal(auth.captured.runtime_identity.matches_adapter, true);
+    assert.match(String(auth.captured.runtime_command_digest), /^sha256:[0-9a-f]{64}$/u);
+    // Take the identity out of the runtime's own observation and the lane goes with it, whatever
+    // the canary beside it says about the node program that measured the boundary.
+    {
+      const reference = official.evidence.runtime;
+      const file = join(copy, reference.file);
+      const observation = JSON.parse(readFileSync(file, "utf8"));
+      delete observation.captured.runtime_identity;
+      const bytes = Buffer.from(JSON.stringify(observation), "utf8");
+      writeFileSync(file, bytes);
+      const restated = JSON.parse(JSON.stringify(fixture));
+      restated.lanes.find((one) => one.official === true).evidence.runtime.digest = sha256Bytes(bytes);
+      const withoutIdentity = supportMatrixDecisions(restated, copy).find((one) => one.official === true);
+      assert.equal(withoutIdentity.decision.official, false, "the lane was issued on an identity the runtime's own evidence does not carry");
+      assert.ok(withoutIdentity.decision.reasons.includes(ISSUANCE_REASONS.RUNTIME_IDENTITY_UNVERIFIED), withoutIdentity.decision.reasons.join(", "));
+      cpSync(join(fixtureDir, reference.file), file);
+    }
+    // And a teardown that says something stayed behind is not a clean one, whatever the four
+    // booleans beside it say.
+    {
+      const reference = official.evidence.cleanup;
+      const file = join(copy, reference.file);
+      const observation = JSON.parse(readFileSync(file, "utf8"));
+      observation.captured.not_removed = [{ class: "confinement-scratch", path_digest: `sha256:${"7".repeat(64)}`, code: "EPERM" }];
+      const bytes = Buffer.from(JSON.stringify(observation), "utf8");
+      writeFileSync(file, bytes);
+      const restated = JSON.parse(JSON.stringify(fixture));
+      restated.lanes.find((one) => one.official === true).evidence.cleanup.digest = sha256Bytes(bytes);
+      const left = supportMatrixDecisions(restated, copy).find((one) => one.official === true);
+      assert.equal(left.decision.official, false, "a teardown that left the profile behind was issued");
+      assert.ok(left.decision.reasons.includes(ISSUANCE_REASONS.CLEANUP_UNVERIFIED), left.decision.reasons.join(", "));
+      cpSync(join(fixtureDir, reference.file), file);
+    }
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+});
+
+test("an_unmeasured_network_state_withholds_rather_than_defaulting_to_allowed", async () => {
+  // Everything that was not the word "disabled" expected the connect to succeed, and the
+  // authenticity check took any string for the policy and never read the transport at all. A record
+  // could name a policy nobody has measured, publish `provider_transport: null`, and be official.
+  const { NETWORK_POLICIES, canonicalExpectation } = await import("../../lib/confinement.mjs");
+  for (const policy of NETWORK_POLICIES) assert.ok(["allowed", "denied"].includes(canonicalExpectation("network_outbound_connect", policy)), policy);
+  for (const unknown of ["WITHHELD", "NOT_OBSERVED", "", null, undefined, "unrestricted"]) {
+    assert.equal(canonicalExpectation("network_outbound_connect", unknown), null, String(unknown));
+  }
+  const withheld = issuanceGate(measured({ network_policy: "WITHHELD" }));
+  assert.equal(withheld.official, false);
+  assert.match(withheld.record_problems.join(" "), /network_policy/u);
+  const noTransport = issuanceGate(measured({ network: { task_external: "NOT_OBSERVED", enforcement: "kernel" } }));
+  assert.equal(noTransport.official, false);
+  assert.match(noTransport.record_problems.join(" "), /provider_transport/u);
+  assert.equal(noTransport.network.provider_transport, null, "an unstated transport was published as a value");
+  const madeUpEnforcement = issuanceGate(measured({ network: { provider_transport: "allowed", task_external: "NOT_OBSERVED", enforcement: "hopefully" } }));
+  assert.equal(madeUpEnforcement.official, false);
+  assert.match(madeUpEnforcement.record_problems.join(" "), /enforcement/u);
+  // A disabled policy whose transport is allowed describes two boundaries at once.
+  const contradictory = issuanceGate(measured({ network_policy: "disabled", network: { provider_transport: "allowed", task_external: "NOT_OBSERVED", enforcement: "kernel" } }));
+  assert.equal(contradictory.official, false);
+  assert.match(contradictory.record_problems.join(" "), /provider_transport/u);
+});
+
+test("a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled", async () => {
+  // `AOS_WORKSPACES=/tmp/ws` where `/tmp/ws -> <store>/workspaces` is outside the store to a string
+  // comparison and inside it to the kernel, which is the only reader that matters: the child's cwd
+  // is the resolved path. Checked in all three places the containment question is asked.
+  const { workspacesRoot } = await import("../../lib/store.mjs");
+  const { renderSeatbeltProfile, isolationPolicyFor } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-symlink-ws-"));
+  const previous = process.env.AOS_WORKSPACES;
+  try {
+    const store = join(base, "store");
+    mkdirSync(join(store, "workspaces"), { recursive: true });
+    const link = join(base, "ws");
+    symlinkSync(join(store, "workspaces"), link);
+
+    process.env.AOS_WORKSPACES = link;
+    assert.throws(() => workspacesRoot(store), { message: /^AOS_WORKSPACES_INSIDE_STORE/u });
+    process.env.AOS_WORKSPACES = join(base, "outside");
+    assert.equal(workspacesRoot(store), realpathSync(base) === base ? join(base, "outside") : join(realpathSync(base), "outside"));
+
+    // The renderer refuses the same layout, in both directions.
+    const policy = isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: (await import("../../lib/profile.mjs")).ADAPTERS["codex-cli.v1"] });
+    const bindings = {
+      "@WORKSPACE@": "/private/var/aos/runs/run-1/workspaces/FAM-1",
+      "@AOS_HOME@": "/private/var/aos",
+      "@AGENT_HOME@": "/private/tmp/aos-agent-home-a",
+      "@RUN_SCRATCH@": "/private/tmp/aos-prompt-a",
+      "@NODE_TREE@": "/opt/node",
+      "@RUNTIME_CLI_TREE@": "/opt/runtime"
+    };
+    assert.throws(() => renderSeatbeltProfile(policy, bindings), { message: /^AOS_ISOLATION_WORKSPACE_INSIDE_STORE/u });
+    assert.throws(() => renderSeatbeltProfile(policy, { ...bindings, "@WORKSPACE@": "/private/var" }), { message: /^AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME/u });
+
+    // And the spawn, which is the last place to say no: the workspace it is handed is a link into
+    // the store, and the run is refused rather than started in it.
+    const { runProcess } = await import("../../lib/core.mjs");
+    const aosHome = join(base, "store2");
+    mkdirSync(join(aosHome, "workspaces", "run-1"), { recursive: true });
+    const sneaky = join(base, "sneaky");
+    symlinkSync(join(aosHome, "workspaces", "run-1"), sneaky);
+    await assert.rejects(
+      runProcess({ id: "x", command: process.execPath, args: ["-e", "0"] }, { workspace: sneaky, family: "FAM-1", stage: "s", prompt: "p", promptFile: join(sneaky, "task.md"), session: "symlink-run", timeoutMs: 30000, aosHome }),
+      /AOS_ISOLATION_WORKSPACE_INSIDE_STORE/u
+    );
+  } finally {
+    if (previous === undefined) delete process.env.AOS_WORKSPACES;
+    else process.env.AOS_WORKSPACES = previous;
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test("the_rendered_matrix_shows_the_decisions_it_was_handed", () => {
   // The renderer used to recompute the decision from the fixture, so the table could disagree with
   // the gate that was actually run over the same rows.
@@ -524,6 +703,15 @@ test("the_rendered_matrix_shows_the_decisions_it_was_handed", () => {
   assert.match(rendered, /\| darwin \| macos-seatbelt \| codex-cli\.v1 \| STRICT \|.*\| OFFICIAL \|/u);
   const withheld = rows.map((row) => ({ ...row, decision: { ...row.decision, official: false, reasons: [ISSUANCE_REASONS.RECORD_INVALID] } }));
   assert.equal(renderSupportMatrix(withheld).includes("OFFICIAL"), false);
+  // And the other direction, which is the one that hid a second formula: a row the gate made
+  // official renders official even where the fixture's own label disagrees. The label declares
+  // which rows must carry evidence; whether they do is the decision's to say, and the table shows
+  // the decision it was handed.
+  const disagreeing = rows.map((row) => ({ ...row, official: false, decision: { ...row.decision, official: true, reasons: [] } }));
+  const rendered_ = renderSupportMatrix(disagreeing);
+  assert.equal(rendered_.split("OFFICIAL").length - 1, rows.length, "a row the gate made official rendered as withheld");
+  const denied = rows.map((row) => ({ ...row, official: true, decision: { ...row.decision, official: false, reasons: [ISSUANCE_REASONS.LANE_NOT_PROVEN] } }));
+  assert.equal(renderSupportMatrix(denied).includes("OFFICIAL"), false, "a row the gate withheld rendered as official");
 });
 
 test("the_packaged_release_ships_the_evidence_its_support_matrix_cites", () => {

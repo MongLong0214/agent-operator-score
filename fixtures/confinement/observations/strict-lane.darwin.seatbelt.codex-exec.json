@@ -18,7 +18,7 @@
   "stderr": {
     "bytes": 426,
     "lines": 18,
-    "digest": "sha256:95cbf7039bd16b289cf96831a3fe4a377327c1ef6801c361671d33003477a8ed",
+    "digest": "sha256:338e78ef635b7d80790224d205cc7816353c423a7961ef32370b0e18843800ee",
     "markers": {
       "logged_in": false,
       "answered_ok": true,
@@ -28,7 +28,7 @@
   },
   "parse_error": null,
   "captured": {
-    "duration_ms": 4911,
+    "duration_ms": 5180,
     "staging": {
       "dir": "@AGENT_TEMP_HOME@/.codex",
       "staged": [
@@ -37,6 +37,13 @@
       ],
       "source": "default_dir"
     },
+    "runtime_identity": {
+      "status": "VERIFIED",
+      "digest": "sha256:1436bfbd0f443198d529ea9a342c600a48397e104cd048aba5910331076318c1",
+      "matches_adapter": true,
+      "reason": null
+    },
+    "runtime_command_digest": "sha256:134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
     "prompt": "Reply with exactly the single word OK and nothing else.",
     "answer": {
       "bytes": 2,

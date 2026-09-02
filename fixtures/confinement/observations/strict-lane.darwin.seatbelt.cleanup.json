@@ -28,7 +28,9 @@
   },
   "parse_error": null,
   "captured": {
+    "not_removed": [],
     "removed": {
+      "profile_and_confinement_scratch": true,
       "staged_runtime_config": true,
       "agent_home": true,
       "run_scratch": true,

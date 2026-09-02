@@ -69,6 +69,33 @@ test("the manifest covers the named guards and invents none", () => {
   for (const entry of GUARDS) assert.equal(entry.reason.length > 20, true, `${entry.guard} has no stated reason`);
 });
 
+test("no guard's witness can skip in the environment that measures it", () => {
+  // A guard whose named test skips is not load-bearing there: the mutation is applied, the test
+  // reports `ok ... # SKIP`, and the runner reads a pass. Round 5 found one -- a guard witnessed by
+  // the installed-Codex lane, which skips on every machine without an authenticated Codex, which is
+  // every CI runner. Two shapes are refused: a test that decides to skip from inside its body, and
+  // a test declared with a skip option that the guard does not confine to a platform where the
+  // option is false.
+  for (const guard of GUARDS) {
+    const source = readFileSync(new URL(`../../${guard.test}`, import.meta.url), "utf8");
+    const at = source.indexOf(`test("${guard.name}"`);
+    assert.notEqual(at, -1, `${guard.guard}: no test named ${guard.name}`);
+    const next = source.indexOf("\ntest(", at + 10);
+    const body = source.slice(at, next === -1 ? source.length : next);
+    assert.equal(/\bt\.skip\(/.test(body), false, `${guard.guard}: its witness decides to skip from inside its body, so the guard cannot fire`);
+    const declaration = body.split("\n").slice(0, 3).join("\n");
+    if (/\{\s*skip:/.test(declaration)) {
+      // Either the guard is confined to the platform where the option is false, or it says in one
+      // line why the option is never true where this suite runs. What is refused is a guard whose
+      // witness may quietly skip and nobody has said so.
+      assert.ok(
+        typeof guard.platform === "string" || typeof guard.witness_skip === "string",
+        `${guard.guard}: its witness may skip and the guard neither names the platform that runs it nor says why the skip never fires`
+      );
+    }
+  }
+});
+
 test("every guard in the manifest is accounted for, not only the eleven the specification names", () => {
   // The floor above protects eleven guards and nothing else, so every guard added since could have
   // been deleted from GUARDS with the whole suite still green -- the manifest failing at the one

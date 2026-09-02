@@ -44,7 +44,10 @@ const generic = ADAPTERS["generic-command.v1"];
 const BINDINGS = Object.freeze({
   "@OPERATOR_HOME@": "/Users/someone",
   "@WORKSPACE_PARENT@": "/private/var/aos-workspaces/run-1",
-  "@WORKSPACE@": "/private/var/aos/runs/run-1/workspaces/FAM-1",
+  // Outside the store, which is where #556 round 4 moved run workspaces and what round 5 made a
+  // refusal rather than a convention: a workspace inside AOS_HOME is the cwd disclosure the issue
+  // forbids, and `checkBindings` now refuses it in both directions.
+  "@WORKSPACE@": "/private/var/aos-workspaces/run-1/FAM-1",
   "@AOS_HOME@": "/private/var/aos",
   "@AGENT_HOME@": "/private/tmp/aos-agent-home-abc",
   "@RUN_SCRATCH@": "/private/tmp/aos-prompt-abc",
@@ -471,6 +474,28 @@ test("bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees", ()
   assert.ok(!text.includes(`--bind ${bindings["@AOS_HOME@"]} `) && !text.includes(`--ro-bind ${bindings["@AOS_HOME@"]} `), "the store was mounted");
   assert.ok(!args.includes("--unshare-net"), "a provider-required runtime lost its network");
   assert.deepEqual(args.slice(-3), ["--", "/usr/local/node/bin/node", "agent.mjs"]);
+  // Mounted from the policy, the way the Seatbelt profile is rendered from it. This renderer kept a
+  // list of its own -- all of `/etc` and all of `/sbin` where the policy declares `/etc/ssl` and
+  // `/etc/resolv.conf` -- so the digest described one boundary and the argument vector applied
+  // another, and `/etc/hostname` and `/etc/machine-id` were inside it.
+  const declared = new Set([
+    ...policy.filesystem.system_readable,
+    ...policy.filesystem.system_readable_files,
+    ...policy.filesystem.readable.map((name) => bindings[name]),
+    ...policy.filesystem.writable.map((name) => bindings[name])
+  ]);
+  for (let at = 0; at < args.length; at += 1) {
+    if (!["--ro-bind", "--ro-bind-try", "--bind"].includes(args[at])) continue;
+    assert.ok(declared.has(args[at + 1]), `${args[at + 1]} is mounted and the policy does not declare it`);
+    assert.equal(args[at + 1], args[at + 2], "a tree is mounted at a different path inside");
+  }
+  for (const gone of ["/etc", "/sbin", "/opt", "/var"]) {
+    assert.equal(text.includes(`--ro-bind-try ${gone} ${gone}`), false, `${gone} is still mounted whole`);
+  }
+  assert.ok(text.includes("--ro-bind-try /etc/ssl /etc/ssl") && text.includes("--ro-bind-try /etc/resolv.conf /etc/resolv.conf"), "the declared TLS paths are not mounted");
+  // And the policy governs the vector: emptying the declared system trees changes what is mounted.
+  const narrowed = { ...policy, filesystem: { ...policy.filesystem, system_readable: [] } };
+  assert.notEqual(bubblewrapArgs(narrowed, bindings, ["/bin/true"]).join(" "), bubblewrapArgs(policy, bindings, ["/bin/true"]).join(" "), "the policy does not govern the mounts");
   const offline = bubblewrapArgs(isolationPolicyFor({ level: "STRICT", platform: "linux", backend: "linux-bubblewrap", adapter: generic }), bindings, ["/bin/true"]);
   assert.ok(offline.includes("--unshare-net"), "an unknown-provider runtime kept its network");
   assert.throws(() => bubblewrapArgs(policy, { ...bindings, "@WORKSPACE@": "/private/var" }, ["/bin/true"]), /AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME/u);

@@ -151,6 +151,14 @@ test("strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
     // The tracker is what reached it. The survivor sweep is the backstop for what the tracker
     // cannot see, and a run where the sweep had to kill a descendant the tracker was holding is a
     // run whose teardown did not do its job -- `found_before_signal` is absent when it did.
+    // The sweep the record carries, measured at this run's teardown: a real group id with the
+    // process table behind it, and the survivor sweep having enumerated that group. A guard whose
+    // only witness needed an installed Codex could not fire on a machine without one, so what the
+    // record says about its own teardown is asserted here, in the test every darwin host runs.
+    assert.ok(Number.isInteger(record.descendants.group_sweep?.pgid) && record.descendants.group_sweep.pgid > 0, "no process group was swept at teardown");
+    assert.ok(Array.isArray(record.descendants.group_sweep.members));
+    assert.ok(record.descendants.survivor_sweep.scanners.includes("process-group"), record.descendants.survivor_sweep.scanners.join(", "));
+    assert.ok(Number.isInteger(record.descendants.survivor_sweep.group_enumerated), "the group was not enumerated");
     assert.equal(Object.hasOwn(record.descendants.survivor_sweep, "found_before_signal"), false, "the sweep had to kill what the tracker tracked");
     assert.deepEqual(record.descendants.survivor_sweep.survivors, []);
     assert.equal(record.level, "STRICT");

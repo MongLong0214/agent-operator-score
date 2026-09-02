@@ -233,6 +233,12 @@ nothing of its own. It used to keep a second list, which made the policy digest 
 review set the declared readable set to empty and the rendered rules did not move. One mapping
 means the digest governs the bytes, which is what `isolation_policy_digest` on the profile is for.
 
+The Linux vector is rendered from the same declaration: `bubblewrapArgs` mounts the policy's own
+trees and nothing of its own. It used to bind all of `/etc` and all of `/sbin` against a policy
+declaring `/etc/ssl` and `/etc/resolv.conf`, which is the Seatbelt defect on the other side -- the
+digest describing one boundary while the argument vector applied another, with `/etc/hostname` and
+`/etc/machine-id` inside it.
+
 The system grants are the narrowest set the runtime was measured to need on this machine:
 `/usr/lib`, `/System/Library` and `/private/var/db/dyld` as trees, plus the individual symlinks a
 path resolves through (`/tmp`, `/var`, `/etc`, `/Users`, `/usr`, `/bin`). `/Library`, `/usr/share`,
@@ -400,6 +406,17 @@ in `reasons`:
 | the record carries the evidence the run produced | `AOS_ISOLATION_RECORD_INVALID` |
 | a matrix row's cited observation matches the digest it declares | `AOS_ISOLATION_EVIDENCE_DIGEST_MISMATCH` |
 
+A STRICT row must cite every kind of evidence by name -- canary, runtime, exec, cleanup, host --
+and each cited observation must record a run that succeeded *and* say it did the thing: a login
+whose markers report no login and an execution that did not answer the prompt are refused with
+`AOS_ISOLATION_EVIDENCE_EXECUTION_FAILED`, and a missing kind with
+`AOS_ISOLATION_EVIDENCE_MISSING`. The identity a row claims comes from the observation of the
+runtime that authenticated, not from the canary beside it, and the recorder resolves the binary
+once so the identity describes the executable that produced the evidence. The network axis is
+enumerated rather than typed: an unknown policy has no expectation for the network cell at all, and
+`provider_transport` must be `allowed` or `denied` -- a record naming a policy nobody has measured,
+or publishing a null transport, is refused rather than read as permission.
+
 `claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise, and the
 CLI applies it: the verdict is a scoring input, so `aos assess` on a lane that cannot be official
 withholds the number (`issued: false`, `score: null`, `claim_stage: "RUN_DIAGNOSTIC"`, blocker
@@ -475,7 +492,12 @@ workspace and `assertNoStorePathInEnv` refuses the spawn if any variable -- from
 carries the store path; and the workspaces no longer live inside the store at all. `runPaths` puts
 them under their own root beside it (`<store>-workspaces/<run>/<family>`, or `AOS_WORKSPACES`), so
 the working directory an agent reads out of `getcwd` names its own workspace and nothing above it.
-`runProcess` refuses a workspace under `AOS_HOME` outright
+Every containment question is asked of canonical paths, in both directions: `workspacesRoot`
+refuses an `AOS_WORKSPACES` that resolves inside the store, `checkBindings` refuses a workspace that
+contains the store *or* sits inside it, and the spawn compares the resolved workspace as well as the
+one it was handed. A symlinked workspaces root is outside the store to a string comparison and
+inside it to the kernel, which is the only reader whose answer becomes the child's working
+directory. `runProcess` refuses a workspace under `AOS_HOME` outright
 (`AOS_ISOLATION_WORKSPACE_INSIDE_STORE`), because the layout is decided three files away from the
 spawn. The store keeps AOS's own records: manifests, events, results, reports.
 
@@ -509,7 +531,7 @@ measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to 
 Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
 what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
 digest
-`sha256:63fc275de466eaec8c6c1cd25aafb2f45f75830c20c46dfbd10378c155c55f7a`. The `Official` column
+`sha256:9bb95fdc90c751ec7715ccab0470c2f72edb4a3e071046e182bd8a3e0fc58099`. The `Official` column
 is the gate's decision over the row's committed evidence, not the row's own label: the test forges
 an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
 by digest*, and the digest is checked against the bytes before the observation is read -- a row
@@ -519,7 +541,7 @@ whose citation does not match what is on disk claims nothing
 
 | Platform | Backend | Adapter | Level | Support | Official | Reason / evidence |
 |---|---|---|---|---|---|---|
-| darwin | macos-seatbelt | codex-cli.v1 | STRICT | SUPPORTED_WITH_CONSTRAINTS | OFFICIAL | canary `strict-lane.darwin.seatbelt.canary.json` PASS; runtime `strict-lane.darwin.seatbelt.codex-auth.json` exit 0 |
+| darwin | macos-seatbelt | codex-cli.v1 | STRICT | SUPPORTED_WITH_CONSTRAINTS | OFFICIAL | canary `strict-lane.darwin.seatbelt.canary.json`; runtime `strict-lane.darwin.seatbelt.codex-auth.json`; exec `strict-lane.darwin.seatbelt.codex-exec.json`; cleanup `strict-lane.darwin.seatbelt.cleanup.json`; host `strict-lane.darwin.host.json` |
 | darwin | macos-seatbelt | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
 | darwin | macos-seatbelt | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
 | darwin | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
