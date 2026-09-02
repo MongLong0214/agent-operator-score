@@ -169,5 +169,7 @@ test("renderers print the stored composite and indices even when they disagree w
 
 test("a legacy result is not projected", () => {
   assert.throws(() => projectResult({ schema_id: "aos-mvp-result.v1", score: { final: 88 } }), /AOS_LEGACY_RESULT_NOT_PROJECTED/);
-  assert.throws(() => projectResult({ status: "SCORED" }), /AOS_LEGACY_RESULT_NOT_PROJECTED/);
+  // And a record of neither instrument is refused as unknown rather than read as either.
+  assert.throws(() => projectResult({ status: "SCORED" }), /AOS_UNKNOWN_RESULT_SCHEMA/);
+  assert.throws(() => projectResult({ schema_id: "attacker-result.v99", score: { final: 100 } }), /AOS_UNKNOWN_RESULT_SCHEMA/);
 });

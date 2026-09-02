@@ -90,14 +90,16 @@ test("each run takes the next locked seed, and a seed that produced a result is 
   }
 });
 
-test("three attended runs produce an operator score, and it is the median of all of them", () => {
-  // The whole point of the locked cycle: every valid run counts, including a low one.
+test("three attended runs produce a legacy ledger median, and it is the median of all of them", () => {
+  // The whole point of the locked cycle: every valid run counts, including a low one. The number
+  // aggregated is the legacy scorer's, named as such since #559 -- the profiles themselves are not
+  // aggregated, and #563 owns saying what a cycle of profiles is.
   const { cwd, plan, home } = opened();
   try {
     const printedScores = [];
     for (let index = 0; index < 3; index += 1) {
       const output = cycleRun(cwd, plan).stdout;
-      const score = /^Score: (\d+) \//m.exec(output);
+      const score = /^recorded: (\d+)$/m.exec(output);
       if (score) printedScores.push(Number(score[1]));
     }
     const report = spawnSync(process.execPath, [cli, "cycle", "--json"], {
@@ -136,7 +138,7 @@ test("an unattended run is not a run in this cycle, and says why", () => {
 
     const report = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home } });
     assert.match(report.stdout, /not counted: 0000000000000011 — NOT_ISSUED/);
-    assert.match(report.stdout, /Operator Score withheld/);
+    assert.match(report.stdout, /legacy ledger median withheld/);
     assert.notEqual(report.status, 0);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

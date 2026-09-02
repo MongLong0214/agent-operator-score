@@ -10,10 +10,11 @@ import { evaluate } from "../../lib/ecd-contract.mjs";
 import { BAND_NAMES } from "../../lib/report-i18n.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
-import { LABELS, buildResult, projectResult } from "../../lib/result-schema.mjs";
+import { LABELS, RESULT_SCHEMA_ID, RESULT_SCHEMA_VERSION, buildResult, projectResult } from "../../lib/result-schema.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
+import { addAgent, makePlan, newestResult, newestRunId, run as runCli } from "./helpers.mjs";
 
 // verify:no-operator-score-hero
 //
@@ -140,4 +141,59 @@ test("a legacy result is still rendered by the legacy renderer, as the legacy re
   assert.match(renderMarkdown(legacy), /Score: \*\*100 \/ 100\*\* \(HIGH RELIABILITY\)/u);
   assert.equal(renderMarkdown(legacy).includes(LABELS.operator_process), false);
   assert.equal(renderCard(legacy).includes(LABELS.operator_process), false);
+});
+
+test("the assessment the product actually runs stores a profile result and prints no Operator Score", () => {
+  // The schema is only real if the product writes it. While `aos assess` wrote the legacy record,
+  // v2 was reachable by direct construction alone and the thing an operator sees after a run was
+  // still a single Agent Operator Score with a band under it.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-assess-v2-"));
+  try {
+    runCli(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+    const assessed = runCli(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+    const result = newestResult(cwd);
+    assert.equal(result.schema_id, RESULT_SCHEMA_ID);
+    assert.equal(result.schema_version, RESULT_SCHEMA_VERSION);
+    assert.equal(Object.hasOwn(result, "score"), false);
+    assert.equal(result.band, null);
+    assert.equal(result.rank, null);
+    for (const key of ["operator_process_profile", "reliance_calibration_profile", "system_outcome_profile", "aos_composite"]) {
+      assert.ok(Object.hasOwn(result, key), key);
+    }
+    // The run is on the record: what it was, what it observed, and under which contract.
+    assert.equal(result.run.run_id, newestRunId(cwd));
+    assert.equal(result.observations.length, 20);
+    assert.equal(result.contract.id, "aos-ecd-contract.v1");
+    for (const pattern of forbidden) assert.equal(pattern.test(assessed.stdout), false, `stdout matches ${pattern}`);
+    assert.match(assessed.stdout, /Operator process/u);
+    assert.match(assessed.stdout, /System outcome/u);
+    assert.match(assessed.stdout, /claim stage/iu);
+    // And the stored report is the profile rendering, not the legacy one.
+    const report = runCli(cwd, ["report", "--run", newestRunId(cwd)]).stdout;
+    assert.ok(report.includes(LABELS.operator_process), report.slice(0, 400));
+    for (const pattern of forbidden) assert.equal(pattern.test(report), false, `report matches ${pattern}`);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("the dashboard puts a profile row under profile headings, never under a Score column", () => {
+  const home = mkdtempSync(join(tmpdir(), "aos-no-hero-headers-"));
+  initHome(home);
+  const profile = build();
+  const { runId } = createRun(home, { mode: "TEST", run_id: "run-profile" });
+  writeResult(home, runId, profile, renderMarkdown(profile), renderHtml(profile), renderCard(profile));
+  return startDashboard({ home }).then(async (dashboard) => {
+    try {
+      const index = await (await fetch(`http://${LOOPBACK}:${dashboard.port}/?t=${dashboard.token}`)).text();
+      const table = /<table[^>]*>[\s\S]*?<\/table>/u.exec(index)[0];
+      assert.equal(/<th>Score<\/th>/u.test(table), false, "a profile result sits under a Score heading");
+      assert.match(table, /<th>Claim<\/th>/u);
+      assert.match(table, /<th>Profiles<\/th>/u);
+      assert.match(table, /<th>Coverage<\/th>/u);
+    } finally {
+      await dashboard.close();
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
 });

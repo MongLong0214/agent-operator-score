@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { addAgent, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
+import { addAgent, makePlan, newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 import { MAX_CHECKPOINTS_PER_STAGE, QUESTIONS, parseDecision, renderCheckpoint, resolveCheckpoint } from "../../lib/checkpoint-runtime.mjs";
 import { checkpointEvidence, detectCheckpoints, interventionSummary } from "../../lib/checkpoint.mjs";
 import { readEvents } from "../../lib/store.mjs";
@@ -71,13 +71,16 @@ test("changing the instruction is what unblocks the run, and it is recorded as a
   );
 });
 
-test("an operator who was there is scored on the dimension nobody else can fill", () => {
-  // An unattended run leaves D4 unobserved by design. This is the run that fills it, and it is the
-  // only way this product ever produces a number about the operator rather than about the agent.
+test("an operator who was there is observed on the metrics nobody else can fill", () => {
+  // An unattended run leaves the monitoring metrics unobserved by design. This is the run that
+  // fills them, and they are the only evidence this product has about the operator rather than
+  // about the agent -- so a run with nobody at the keyboard can never speak to that part.
   const { scored } = assessAnswering(Array.from({ length: 12 }, () => ["", "", "", "y", "AOS-TEST-UNBLOCK proceed"]).flat());
   assert.notEqual(scored, null, "the run produced no result at all");
-  assert.equal(scored.coverage.unobserved_dimensions.includes("D4"), false, JSON.stringify(scored.coverage));
-  assert.equal(scored.dimensions.D4 !== null, true, "D4 was still empty");
+  const monitoring = ["M11", "M12", "M13"].map((id) => scored.observations.find((entry) => entry.metric_id === id));
+  assert.equal(monitoring.every((entry) => entry !== undefined), true);
+  assert.equal(monitoring.some((entry) => entry.value !== null), true, "no monitoring metric was observed at all");
+  assert.equal(scored.missing.not_observed.length < scored.cells.length, true);
 });
 
 test("retrying unchanged is not an intervention, whatever it is called", () => {

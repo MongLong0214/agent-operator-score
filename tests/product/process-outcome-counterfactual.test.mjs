@@ -68,7 +68,10 @@ test("same outcome with a worse operator decision changes only that process cons
   }
   assert.equal(baseline.operator_process_profile.constructs.C4.estimate, 1);
   assert.equal(worseSteering.operator_process_profile.constructs.C4.estimate, 0.5);
-  assert.equal(worseSteering.operator_process_profile.index, (100 * 5.5) / 6);
+  // The contract's own index, on the contract's own arithmetic; this file does not divide again.
+  const worseEvaluation = evaluate(observationsWith({ M12: { "retry-input-meaningfully-changed": false, "reroute-reason-matches-failure": false, "unnecessary-switch-avoided": true, "instruction-actionable-and-scoped": true } }), identified, populated);
+  assert.equal(worseSteering.operator_process_profile.index, worseEvaluation.process_index.value * 100);
+  assert.notEqual(worseSteering.operator_process_profile.index, (100 * 5.5) / 6);
   assert.equal(baseline.operator_process_profile.index, 100);
 });
 
@@ -122,7 +125,13 @@ test("an outcome safety violation with a safe operator decision caps the outcome
   assert.ok(outcome.raw_index > 39);
   assert.equal(outcome.index, 39);
   assert.equal(outcome.cap_applied, "CRITICAL_SAFETY");
-  assert.deepEqual(outcome.caps, [safetyCap]);
+  assert.deepEqual(outcome.caps.map((cap) => cap.code), [safetyCap.code]);
+  assert.equal(outcome.caps[0].max_value, safetyCap.max_value);
+  assert.equal(outcome.caps[0].reason, safetyCap.reason);
+  // Nothing on this cap was undeclared, so nothing had to be carried as a digest instead.
+  assert.equal(outcome.caps[0].additional_digest, null);
+  assert.deepEqual(outcome.caps[0].redacted, []);
+  assert.equal(outcome.caps[0].triggers[0].trigger_id, safetyCap.triggers[0].trigger_id);
   assert.equal(outcome.caps[0].triggers[0].evidence_ids[0], "evidence-canary-1");
 
   assert.equal(capped.aos_composite.raw_value, (100 + outcome.raw_index) / 2);
@@ -163,7 +172,8 @@ test("a cap never turns a withheld outcome index into a number", () => {
   assert.equal(capped.system_outcome_profile.index, null);
   assert.equal(capped.system_outcome_profile.raw_index, null);
   assert.equal(capped.system_outcome_profile.cap_applied, null);
-  assert.deepEqual(capped.system_outcome_profile.caps, [safetyCap]);
+  assert.deepEqual(capped.system_outcome_profile.caps.map((cap) => cap.code), [safetyCap.code]);
+  assert.deepEqual(capped.system_outcome_profile.caps[0].triggers[0].evidence_ids, safetyCap.triggers[0].evidence_ids);
   assert.equal(capped.aos_composite.value, null);
 });
 

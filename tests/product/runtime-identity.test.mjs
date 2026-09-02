@@ -38,7 +38,7 @@ import {
   identityDrift,
   resolveExecutable
 } from "../../lib/runtime-identity.mjs";
-import { addAgent, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
+import { addAgent, makePlan, newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 
 const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "bin", "aos.mjs");
 const CLAUDE = ADAPTERS["claude-code.v1"];
@@ -854,8 +854,8 @@ test("a stored assessment carries the executable identity each invocation was bo
     addAgent(cwd, "solo");
     const plan = makePlan(cwd, { default: "solo" });
     run(cwd, ["assess", "--plan", plan, "--json"], 3);
-    const result = newestResult(cwd);
-    const invocation = result.family_results["FAM-1"].invocations[0];
+    const record = newestRecord(cwd);
+    const invocation = record.family_results["FAM-1"].invocations[0];
     assert.equal(Object.hasOwn(invocation, "runtime_identity"), true, "the stored assessment dropped the identity provenance");
     const provenance = invocation.runtime_identity;
     for (const field of ["identity_status", "identity_digest", "credential_env_name", "credential_source", "explicit_env_names"]) {
@@ -864,8 +864,9 @@ test("a stored assessment carries the executable identity each invocation was bo
     // A fixture agent has no credential at stake, and the record says so rather than saying nothing.
     assert.equal(provenance.credential_env_name, null);
     assert.equal(provenance.credential_source, null);
-    // And the file it is stored in is the one an operator reads.
-    const stored = JSON.parse(readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "result.json"), "utf8"));
+    // And the file it is stored in is the one an operator reads: the run's own record, beside the
+    // result, which is where everything about how the run went now lives.
+    const stored = JSON.parse(readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "record.json"), "utf8"));
     assert.equal(Object.hasOwn(stored.family_results["FAM-1"].invocations[0], "runtime_identity"), true);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

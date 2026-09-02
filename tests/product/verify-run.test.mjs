@@ -30,26 +30,26 @@ test("a stored result is recomputed from its own record", () => {
 });
 
 test("a number that does not follow from the observations is caught", () => {
-  // The point of recomputing: an edited score no longer matches the metrics beside it.
+  // The point of recomputing: an edited index no longer matches the observations beside it.
   const { cwd, runId, resultPath } = assessed();
   try {
     const result = JSON.parse(readFileSync(resultPath, "utf8"));
-    result.provisional_raw = 99;
+    result.system_outcome_profile.index = 99;
     writeFileSync(resultPath, JSON.stringify(result, null, 2));
     const verified = run(cwd, ["verify", "--run", runId], 5);
     assert.match(verified.stdout, /FAIL\trecompute/);
-    assert.match(verified.stdout, /does not follow from the stored observations/);
+    assert.match(verified.stdout, /do(?:es)? not follow from the stored observations/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
 });
 
-test("a result that did not record what it was scored under says so", () => {
+test("a result that did not record what it was evaluated under says so", () => {
   // Deriving the inputs from the conclusions would let any file verify itself.
   const { cwd, runId, resultPath } = assessed();
   try {
     const result = JSON.parse(readFileSync(resultPath, "utf8"));
-    delete result.scoring_context;
+    delete result.run.forms_completed;
     writeFileSync(resultPath, JSON.stringify(result, null, 2));
     const verified = run(cwd, ["verify", "--run", runId], 5);
     assert.match(verified.stdout, /FAIL\trecompute/);
@@ -59,16 +59,16 @@ test("a result that did not record what it was scored under says so", () => {
   }
 });
 
-test("a result from another scorer or suite is not comparable, which is not the same as wrong", () => {
+test("a result from another contract or schema is not comparable, which is not the same as wrong", () => {
   const { cwd, runId, resultPath } = assessed();
   try {
     const result = JSON.parse(readFileSync(resultPath, "utf8"));
-    result.suite_digest = "0".repeat(64);
+    result.contract.digests.combined = `sha256:${"0".repeat(64)}`;
     writeFileSync(resultPath, JSON.stringify(result, null, 2));
     const verified = run(cwd, ["verify", "--run", runId], 5);
-    assert.match(verified.stdout, /FAIL\tsuite-digest/);
+    assert.match(verified.stdout, /FAIL\tcontract-digest/);
     assert.match(verified.stdout, /not comparable/);
-    assert.equal(verified.stdout.includes("does not follow"), false, "a different suite is not a wrong number");
+    assert.equal(verified.stdout.includes("does not follow"), false, "a different contract is not a wrong number");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -92,6 +92,18 @@ test("a run id that is not one is refused, and a missing result is said so", () 
     run(cwd, ["init"]);
     assert.match(run(cwd, ["verify", "--run", "../../etc/passwd"], 2).stderr, /AOS_INVALID_RUN_ID/);
     assert.match(run(cwd, ["verify", "--run", "run-does-not-exist"], 2).stderr, /no result for/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a stored result of an instrument this build does not recognise is refused, not verified", () => {
+  const { cwd, runId, resultPath } = assessed();
+  try {
+    const result = JSON.parse(readFileSync(resultPath, "utf8"));
+    writeFileSync(resultPath, JSON.stringify({ ...result, schema_id: "attacker-result.v99" }, null, 2));
+    const verified = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(verified.stderr, /AOS_UNKNOWN_RESULT_SCHEMA/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

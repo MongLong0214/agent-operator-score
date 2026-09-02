@@ -2166,7 +2166,7 @@ export const GUARDS = [
     from: 'const runId = listRuns(home).find((id) => !before.has(id)) ?? null;',
     to: "const runId = listRuns(home)[0];",
     test: "tests/product/cycle-command.test.mjs",
-    name: "three attended runs produce an operator score, and it is the median of all of them"
+    name: "three attended runs produce a legacy ledger median, and it is the median of all of them"
   },
   {
     guard: "operator decision window",
@@ -2329,6 +2329,78 @@ export const GUARDS = [
     to: "if (/^AOS_CONTRACT_MISMATCH/u.test(error.message)) return;",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "buildResult takes only a result evaluate emitted under the contract it is given"
+  },
+  {
+    guard: "profile process index is the contract's own",
+    reason: "re-averaging the six construct rows here is a second implementation of the contract's index, and the two disagree in the last bit on any run where the mean does not divide exactly",
+    file: "lib/result-schema.mjs",
+    from: "    value: evaluation.process_index.status === \"ISSUED\" ? evaluation.process_index.value * 100 : null,",
+    to: "    value: equalWeightIndex(processIds.map((id) => ({ id, estimate: constructs[id].estimate, status: constructs[id].status }))).value,",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "the process index is exactly the index the contract issued, never a second average of the same rows"
+  },
+  {
+    guard: "profile outcome domain membership is bound",
+    reason: "without the binding the partition check sees only the flattened set, so swapping two cells between two domains changes what is averaged together and nothing notices",
+    file: "lib/result-schema.mjs",
+    from: "    if (binding !== domain.contract_binding) {",
+    to: "    if (false) {",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "outcome domain membership is bound to what the contract says about each cell, so a swap between domains is refused"
+  },
+  {
+    guard: "profile unknown result schema is refused",
+    reason: "fail-open dispatch reads any unrecognised schema as the legacy record and renders a file of unknown provenance as an Agent Operator Score with a band under it",
+    file: "lib/result-schema.mjs",
+    from: "  throw new Error(`AOS_UNKNOWN_RESULT_SCHEMA ${JSON.stringify(isPlainObject(result) ? result.schema_id ?? null : null)} is not ${RESULT_SCHEMA_ID} and is not the legacy record; a result of an unrecognised instrument is not rendered`);",
+    to: "  return LEGACY_RESULT_SCHEMA_ID;",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a result whose schema is neither the profile schema nor the legacy one is refused by name, not rendered as legacy"
+  },
+  {
+    guard: "profile projection refuses a result that lost a surface",
+    reason: "a renderer that defaults a missing coverage to zero prints a full index over a coverage nobody has, which is the one reading a stored result must never produce",
+    file: "lib/result-schema.mjs",
+    from: "    if (!isPlainObject(value)) throw new Error(`AOS_RESULT_INCOMPLETE ${key} is missing from this result and cannot be shown`);",
+    to: "    if (!isPlainObject(value)) return { coverage: { required: 0, issued: 0 } };",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a profile result missing its coverage is refused rather than shown as zero of zero"
+  },
+  {
+    guard: "profile undeclared run fields are digested",
+    reason: "an undeclared field on the run is whatever the caller had in hand -- a token, a path under somebody's home directory -- and the result is the artifact they publish",
+    file: "lib/result-schema.mjs",
+    from: "    if (kind === undefined) {\n      extra.set(key, value);\n      redacted.push(key);\n      continue;\n    }",
+    to: "    if (kind === undefined) {\n      kept.set(key, value);\n      continue;\n    }",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a credential-shaped value and a private absolute path never reach the canonical result or any rendering"
+  },
+  {
+    guard: "profile facet values are published safely",
+    reason: "the facets are the operator's own declaration of the run, which is exactly where a workspace path arrives, and they are printed by every renderer",
+    file: "lib/result-schema.mjs",
+    from: "  const facetIdentity = Object.fromEntries(Object.entries(evaluation.facet_coverage.declared)\n    .map(([facet, value]) => [facet, publishedText(value)]));",
+    to: "  const facetIdentity = { ...evaluation.facet_coverage.declared };",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a credential-shaped value and a private absolute path never reach the canonical result or any rendering"
+  },
+  {
+    guard: "profile reliance carries its own coverage",
+    reason: "a profile that names no cells and no coverage cannot be read as withheld rather than empty, and reliance being a separate surface is the claim that needs the reading",
+    file: "lib/result-schema.mjs",
+    from: "      ...coverageOf(evaluation, relianceCells, relianceOptional),",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "every profile carries its coverage and issuance fields"
+  },
+  {
+    guard: "the assessment writes the profile result",
+    reason: "the schema is only real if the product writes it; while assess wrote the legacy record the operator still saw one Agent Operator Score and v2 was reachable only by direct construction",
+    file: "lib/cli.mjs",
+    from: "    const result = buildResult({\n      evaluation,\n      contract: ecdContract,",
+    to: "    const result = buildResult({\n      evaluation: (() => { throw new Error(\"AOS_MUTANT\"); })(),\n      contract: ecdContract,",
+    test: "tests/product/no-operator-score-hero.test.mjs",
+    name: "the assessment the product actually runs stores a profile result and prints no Operator Score"
   }
 ];
 
@@ -2549,14 +2621,21 @@ export const ACCOUNTED_GUARDS = [
   "profile composite withheld with the outcome index",
   "profile composite withheld with the process index",
   "profile evaluation is emitted under the given contract",
+  "profile facet values are published safely",
   "profile index weights every row the same",
   "profile index withholds on a missing row",
   "profile legacy result is not migrated",
+  "profile outcome domain membership is bound",
   "profile outcome domains match the contract",
   "profile process index is never capped",
+  "profile process index is the contract's own",
+  "profile projection refuses a result that lost a surface",
+  "profile reliance carries its own coverage",
   "profile reliance floor",
   "profile renderer recomputes nothing",
   "profile results are not aggregated with legacy ones",
+  "profile undeclared run fields are digested",
+  "profile unknown result schema is refused",
   "pull request produced the commit",
   "quoted keys are keys",
   "rate denominator floor",
@@ -2596,6 +2675,7 @@ export const ACCOUNTED_GUARDS = [
   "symlink escape refusal",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
+  "the assessment writes the profile result",
   "the capture time names a day that exists",
   "the closing pull request changed something the issue owns",
   "the command prints the floored result",

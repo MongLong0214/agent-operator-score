@@ -9,6 +9,8 @@ import { LOOPBACK, startDashboard } from "../../lib/dashboard.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { loadSchema, validateAgainstSchema } from "../../lib/execution-plan.mjs";
+import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
+import { renderCard } from "../../lib/report-card.mjs";
 import {
   AGGREGATION_VECTORS_URL,
   COMPOSITE_FORMULA,
@@ -25,6 +27,7 @@ import {
   equalWeightIndex,
   isLegacyResult,
   outcomeDomains,
+  projectResult,
   resultSchemaDigest,
   resultSchemaOf
 } from "../../lib/result-schema.mjs";
@@ -75,23 +78,35 @@ test("the three labels are exactly the issue's text, en dash included", () => {
   });
 });
 
-test("the process index is the equal-weight mean of the six construct estimates the contract issued", () => {
+test("the process index is exactly the index the contract issued, never a second average of the same rows", () => {
   // M12 carries C4's operator-process cell; two of its four subchecks failing gives C4 exactly 0.5,
-  // and with the other five constructs at 1 the index is (5 + 0.5) / 6.
-  const result = buildResult({
-    contract: populated,
-    evaluation: evaluate(observationsWith({
-      M12: { "retry-input-meaningfully-changed": false, "reroute-reason-matches-failure": false, "unnecessary-switch-avoided": true, "instruction-actionable-and-scoped": true }
-    }), identified, populated)
-  });
+  // and with the other five constructs at 1 the mean is five and a half sixths. This is the case
+  // where a second implementation shows: the contract divides the sum by six and scales, and
+  // scaling before the division gives 91.66666666666667 for the same six rows. Two numbers for one
+  // measurement is one too many, whichever is prettier.
+  const evaluation = evaluate(observationsWith({
+    M12: { "retry-input-meaningfully-changed": false, "reroute-reason-matches-failure": false, "unnecessary-switch-avoided": true, "instruction-actionable-and-scoped": true }
+  }), identified, populated);
+  const result = buildResult({ contract: populated, evaluation });
   const profile = result.operator_process_profile;
   assert.equal(profile.issued, true);
   assert.deepEqual(Object.keys(profile.constructs), ["C1", "C2", "C3", "C4", "C5", "C6"]);
   assert.equal(constructRow(result, "C4").estimate, 0.5);
   assert.equal(constructRow(result, "C4").value, 50);
-  assert.equal(profile.index, (100 * (5 + 0.5)) / 6);
+  assert.equal(profile.index, evaluation.process_index.value * 100);
+  assert.notEqual(evaluation.process_index.value * 100, (100 * (5 + 0.5)) / 6);
+  assert.deepEqual(profile.withheld_for, [...evaluation.process_index.withheld_for]);
   assert.equal(profile.weights.C4, 1 / 6);
   assert.equal(new Set(Object.values(profile.weights)).size, 1);
+});
+
+test("a withheld construct withholds the index the contract withheld, with the contract's own reason", () => {
+  const evaluation = evaluate(observationsWith({ M12: null }), identified, populated);
+  const result = buildResult({ contract: populated, evaluation });
+  assert.equal(evaluation.process_index.status, "WITHHELD");
+  assert.equal(result.operator_process_profile.index, null);
+  assert.equal(result.operator_process_profile.issued, false);
+  assert.deepEqual(result.operator_process_profile.withheld_for, [...evaluation.process_index.withheld_for]);
 });
 
 test("a construct estimate is used verbatim from the contract, never recomputed from opportunity counts", () => {
@@ -258,9 +273,13 @@ test("the aggregation vector fixture is reproduced by the aggregation functions"
 
 test("every profile carries its coverage and issuance fields", () => {
   const result = buildResult({ contract: populated, evaluation: evaluate(observationsWith({ M16: null }), identified, populated) });
-  for (const key of ["operator_process_profile", "system_outcome_profile"]) {
+  for (const key of ["operator_process_profile", "reliance_calibration_profile", "system_outcome_profile"]) {
     const profile = result[key];
-    for (const field of ["issued", "index", "required_cells", "issued_cells", "optional_cells", "opportunity_count", "coverage", "missing", "facet_identity", "uncertainty", "claim_stage", "generalizability_status"]) {
+    // Reliance has no index of its own -- that is the point of it being a separate surface -- but
+    // it says what it was asked and what it saw, like the other two. A profile that names no cells
+    // and no coverage cannot be read as withheld rather than empty.
+    const fields = ["required_cells", "issued_cells", "optional_cells", "coverage", "missing", "facet_identity", "uncertainty", "claim_stage", "generalizability_status"];
+    for (const field of key === "reliance_calibration_profile" ? fields : [...fields, "issued", "index", "opportunity_count"]) {
       assert.ok(Object.hasOwn(profile, field), `${key}.${field}`);
     }
     assert.equal(profile.claim_stage, result.claim_stage);
@@ -327,6 +346,94 @@ test("the composite is unchanged by anything on the reliance surface", () => {
   assert.deepEqual(withReliance.system_outcome_profile, without.system_outcome_profile);
 });
 
+test("outcome domain membership is bound to what the contract says about each cell, so a swap between domains is refused", () => {
+  // The partition check sees only the flattened set, and swapping two cells between two domains
+  // leaves that set identical while changing which cells are averaged together -- the equal-weight
+  // domain mean moves and no named test noticed. Each domain therefore carries a digest over what
+  // the contract says about the cells it claims, so a swap is a mismatch on both domains.
+  const swapped = OUTCOME_DOMAINS.map((domain) => ({
+    ...domain,
+    cell_ids: domain.cell_ids.map((id) => (id === "C5.FO.01" ? "C6.SL.01" : id === "C6.SL.01" ? "C5.FO.01" : id))
+  }));
+  assert.deepEqual([...swapped.flatMap((domain) => domain.cell_ids)].sort(), [...OUTCOME_DOMAINS.flatMap((domain) => domain.cell_ids)].sort());
+  assert.throws(() => outcomeDomains(populated, swapped), /AOS_OUTCOME_DOMAIN_MEMBERSHIP/);
+  const renamed = OUTCOME_DOMAINS.map((domain) => (domain.domain_id === "O1" ? { ...domain, contract_binding: "sha256:" + "0".repeat(64) } : domain));
+  assert.throws(() => outcomeDomains(populated, renamed), /AOS_OUTCOME_DOMAIN_MEMBERSHIP/);
+  assert.equal(outcomeDomains(populated).length, 4);
+  for (const domain of outcomeDomains(populated)) assert.match(domain.contract_binding, /^sha256:[0-9a-f]{64}$/u);
+});
+
+test("a result whose schema is neither the profile schema nor the legacy one is refused by name, not rendered as legacy", () => {
+  // Fail-open dispatch reads "anything that is not v2 is v1", and a file claiming any other schema
+  // was rendered as an Agent Operator Score with a band under it. An unrecognised instrument is
+  // refused; only the legacy id, or a record that predates the id and carries the legacy scorer's
+  // own fields, is the legacy record.
+  const legacyBody = { ...scoreRun(observationsWith()), run_id: "run-legacy" };
+  const forged = { schema_id: "attacker-result.v99", ...legacyBody };
+  for (const call of [() => isLegacyResult(forged), () => resultSchemaOf(forged), () => renderMarkdown(forged), () => renderHtml(forged), () => renderCard(forged)]) {
+    assert.throws(call, /AOS_UNKNOWN_RESULT_SCHEMA/);
+  }
+  assert.equal(isLegacyResult({ schema_id: LEGACY_RESULT_SCHEMA_ID, ...legacyBody }), true);
+  assert.equal(isLegacyResult(legacyBody), true);
+  assert.throws(() => isLegacyResult({ schema_id: null, hello: "world" }), /AOS_UNKNOWN_RESULT_SCHEMA/);
+  assert.throws(() => isLegacyResult("not a result"), /AOS_UNKNOWN_RESULT_SCHEMA/);
+  assert.equal(isLegacyResult(buildResult({ contract: populated, evaluation: fullRun() })), false);
+});
+
+test("a profile result missing its coverage is refused rather than shown as zero of zero", () => {
+  const stored = JSON.parse(canonicalJson(buildResult({ contract: populated, evaluation: fullRun() })));
+  assert.equal(projectResult(stored).process.coverage, `${stored.operator_process_profile.coverage.issued} of ${stored.operator_process_profile.coverage.required} required cells issued`);
+  for (const key of ["operator_process_profile", "system_outcome_profile", "reliance_calibration_profile"]) {
+    const damaged = JSON.parse(canonicalJson(stored));
+    delete damaged[key].coverage;
+    assert.throws(() => projectResult(damaged), /AOS_RESULT_INCOMPLETE/, key);
+    assert.throws(() => renderMarkdown(damaged), /AOS_RESULT_INCOMPLETE/, key);
+    assert.throws(() => renderHtml(damaged), /AOS_RESULT_INCOMPLETE/, key);
+    assert.throws(() => renderCard(damaged), /AOS_RESULT_INCOMPLETE/, key);
+  }
+  const noComposite = JSON.parse(canonicalJson(stored));
+  delete noComposite.aos_composite;
+  assert.throws(() => projectResult(noComposite), /AOS_RESULT_INCOMPLETE/);
+});
+
+test("a credential-shaped value and a private absolute path never reach the canonical result or any rendering", () => {
+  // The result is the artifact an operator publishes. Everything the caller hands it that is not a
+  // declared field with a declared shape is carried as a digest of itself: accountable, and not a
+  // token somebody can use.
+  const canary = "sk-live-DO-NOT-PUBLISH-4d5f6a7b8c9d";
+  const secretPath = "/Users/alice/private/customer.txt";
+  const evaluation = evaluate(observationsWith(), { ...identified, facets: { ...identified.facets, workspace: secretPath } }, populated);
+  const result = buildResult({
+    contract: populated,
+    evaluation,
+    run: {
+      run_id: "run-1", suite: "aos-suite-v1", invocation_count: 3, operator_plan_authored: true,
+      api_token: canary, workspace: secretPath
+    },
+    caps: [{
+      code: "CRITICAL_SAFETY", max_value: 39, scope: ["system_outcome"], reason: `seeded canary at ${secretPath}`,
+      triggers: [{ trigger_id: "t1", construct_or_domain_id: "O3", cell_id: "C6.SL.01", evidence_ids: ["evidence-1"], observed: true, note: canary }]
+    }]
+  });
+  const rendered = [canonicalJson(result), renderMarkdown(result), renderHtml(result), renderCard(result), canonicalJson(projectResult(result))].join("\n");
+  assert.equal(rendered.includes(canary), false, "the credential survived");
+  assert.equal(rendered.includes(secretPath), false, "the absolute path survived");
+  assert.equal(rendered.includes("/Users/"), false);
+  // What is declared and safe is kept verbatim, so redaction is not a way of losing the record.
+  assert.equal(result.run.run_id, "run-1");
+  assert.equal(result.run.suite, "aos-suite-v1");
+  assert.equal(result.run.invocation_count, 3);
+  assert.equal(result.run.operator_plan_authored, true);
+  assert.match(result.run.additional_digest, /^sha256:[0-9a-f]{64}$/u);
+  assert.deepEqual(result.run.redacted, ["api_token", "workspace"]);
+  assert.match(result.facet_identity.workspace, /^sha256:[0-9a-f]{64}$/u);
+  assert.match(result.system_outcome_profile.caps[0].reason, /^sha256:[0-9a-f]{64}$/u);
+  assert.match(result.system_outcome_profile.caps[0].triggers[0].additional_digest, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(result.system_outcome_profile.caps[0].triggers[0].cell_id, "C6.SL.01");
+  // Idempotent: a digest is already safe, so a result built from a redacted one is unchanged.
+  assert.equal(canonicalJson(buildResult({ contract: populated, evaluation, run: result.run })), canonicalJson(buildResult({ contract: populated, evaluation, run: JSON.parse(canonicalJson(result.run)) })));
+});
+
 test("a generalizability status above UNESTABLISHED is refused unless the evaluation supports it", () => {
   const evaluation = fullRun();
   assert.equal(evaluation.claim_stage, "PROFILE_BOUND");
@@ -383,10 +490,13 @@ test("a legacy record is recognised by its old schema and is never migrated into
   const legacy = { schema_id: LEGACY_RESULT_SCHEMA_ID, ...scoreRun(observationsWith()), run_id: "run-legacy" };
   assert.equal(isLegacyResult(legacy), true);
   assert.equal(resultSchemaOf(legacy), LEGACY_RESULT_SCHEMA_ID);
-  // A result written before the field existed is a legacy result too; only a record that says it
-  // is the new schema is the new schema.
-  assert.equal(isLegacyResult({ status: "SCORED", score: { final: 88 } }), true);
-  assert.equal(resultSchemaOf({ status: "SCORED" }), LEGACY_RESULT_SCHEMA_ID);
+  // A result written before the field existed is a legacy result too -- but it has to be one: the
+  // legacy scorer's own fields, not merely the absence of the new schema's. A stub that says
+  // neither is an instrument nobody recognises.
+  const { schema_id: _id, ...beforeTheField } = legacy;
+  assert.equal(isLegacyResult(beforeTheField), true);
+  assert.equal(resultSchemaOf(beforeTheField), LEGACY_RESULT_SCHEMA_ID);
+  assert.throws(() => isLegacyResult({ status: "SCORED", score: { final: 88 } }), /AOS_UNKNOWN_RESULT_SCHEMA/);
   const current = buildResult({ contract: populated, evaluation: fullRun() });
   assert.equal(isLegacyResult(current), false);
   assert.equal(resultSchemaOf(current), RESULT_SCHEMA_ID);
@@ -418,15 +528,19 @@ const cycleWith = (runs) => ({
 const legacyRecord = (seed, finalScore) => ({ seed, valid: true, invalid_reason: null, result_schema: LEGACY_RESULT_SCHEMA_ID, final_score: finalScore, dimensions: { D1: 80 } });
 const profileRecord = (seed) => ({ seed, valid: true, invalid_reason: null, result_schema: RESULT_SCHEMA_ID, final_score: null, dimensions: {} });
 
-test("the cycle command and the dashboard refuse the legacy median over profile results and over a mixed cycle", async () => {
+test("a cycle of profile results aggregates only the legacy ledger, says so, and a mixed cycle is refused outright", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-cycle-schema-"));
   const home = join(cwd, ".aos");
   initHome(home);
   try {
     writeJson(join(home, "cycle.json"), cycleWith([profileRecord("0000000000000001"), profileRecord("0000000000000002"), profileRecord("0000000000000003")]));
-    const profiles = runCli(cwd, ["cycle"], 2);
-    assert.match(profiles.stderr, /AOS_CYCLE_SCHEMA_UNAGGREGATED/u);
+    // The profiles are not aggregated: #563 owns saying what a cycle of profiles is. What the
+    // ledger still carries is the legacy scorer's own number, named as the legacy number it is, so
+    // nothing on this page reads as an operator score over the new instrument.
+    const profiles = runCli(cwd, ["cycle"], 0);
     assert.equal(profiles.stdout.includes("Operator Score"), false);
+    assert.match(profiles.stdout, /legacy ledger median/u);
+    assert.match(profiles.stdout, /the profiles themselves are not aggregated/u);
     writeJson(join(home, "cycle.json"), cycleWith([legacyRecord("0000000000000001", 71), legacyRecord("0000000000000002", 74), profileRecord("0000000000000003")]));
     const mixed = runCli(cwd, ["cycle"], 2);
     assert.match(mixed.stderr, /AOS_MIXED_RESULT_SCHEMAS/u);
