@@ -1001,6 +1001,7 @@
         "id",
         "version",
         "maximum_claim_stage",
+        "declared",
         "digests"
       ],
       "properties": {
@@ -1017,6 +1018,41 @@
             "PROFILE_BOUND",
             "GENERALIZABILITY_SUPPORTED"
           ]
+        },
+        "declared": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "process_constructs",
+            "outcome_domains",
+            "delegated_artifact_constructs"
+          ],
+          "properties": {
+            "process_constructs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "outcome_domains": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "delegated_artifact_constructs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/id"
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            }
+          }
         },
         "digests": {
           "type": "object",
