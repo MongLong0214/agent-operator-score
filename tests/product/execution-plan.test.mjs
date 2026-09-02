@@ -807,7 +807,11 @@ test("offline, close evidence is reported as unestablished and never as a failur
   // every boolean to true, so an offline run must not say it established anything.
   const offline = auditCloseEvidence(doc, snapshot);
   assert.equal(offline.established, false);
-  assert.deepEqual(offline.unestablished, [{ issue: 588, reason: "close evidence is only established by a live audit" }]);
+  // Every issue the plan marks done, not a fixed list: the set grows by one each time an issue
+  // lands, and a test pinned to #588 alone would fail on the first honest refresh.
+  const closed = doc.issues.filter((one) => one.status === "done").map((one) => one.issue).sort((x, y) => x - y);
+  assert.ok(closed.includes(588));
+  assert.deepEqual(offline.unestablished, closed.map((issue) => ({ issue, reason: "close evidence is only established by a live audit" })));
   assert.deepEqual(offline.failures, []);
 
   const forged = state();
@@ -945,7 +949,9 @@ test("an offline run reports INCOMPLETE as its verdict while ok and the exit sta
   // the printed line must not begin with the word a reader scans for.
   assert.equal(summary.verdict, "INCOMPLETE");
   assert.equal(summary.close_evidence_established, false);
-  assert.deepEqual(summary.close_evidence_unestablished, [588]);
+  const closed = plan().issues.filter((one) => one.status === "done").map((one) => one.issue).sort((x, y) => x - y);
+  assert.ok(closed.includes(588));
+  assert.deepEqual(summary.close_evidence_unestablished, closed);
   assert.equal(summary.ok, true);
   assert.equal(result.status, 0);
 
