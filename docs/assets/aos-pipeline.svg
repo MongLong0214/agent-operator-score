@@ -125,6 +125,6 @@
   <!-- 9. Cycle -->
   <rect class="lane" x="16.5" y="304.5" width="927" height="70" rx="14"/>
   <text class="muted t" x="34" y="328">THREE LOCKED SEEDS — EVERY VALID RUN COUNTS</text>
-  <text class="ink h" x="34" y="352">Operator Score = the median of the valid runs</text>
-  <text class="muted s" x="470" y="352">excluded runs are named with their reason · repetition is reported as local repeat evidence, never as confidence</text>
+  <text class="ink h" x="34" y="352">A cycle of profile runs reports the runs; the aggregate is withheld</text>
+  <text class="muted s" x="560" y="352">no aggregation over profiles is defined yet · excluded runs are named with their reason, never as confidence</text>
 </svg>

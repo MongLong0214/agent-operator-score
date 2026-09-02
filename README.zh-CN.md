@@ -259,7 +259,7 @@ AOS 会把这些条件与结果一起记录。这就是 `PROFILE-BOUND`：不同
 ```bash
 node bin/aos.mjs cycle start                                  # 锁定三个种子
 node bin/aos.mjs cycle run --checkpoints                      # 按顺序运行
-node bin/aos.mjs cycle                                        # 有效运行的中位数
+node bin/aos.mjs cycle                                        # 这个周期里有什么
 node bin/aos.mjs dashboard                                    # 本机只读面板
 ```
 
@@ -272,9 +272,12 @@ node bin/aos.mjs dashboard                                    # 本机只读面�
 如果周期配置错误，可以用 `--force --reason "<原因>"` 终止并重新开始。旧周期、种子、运行和
 分数不会删除。
 
-Operator Score 是所有有效运行的**中位数**。极差、中位绝对偏差（MAD）和
-**local repeat evidence** 只描述这台机器上的重复波动；AOS 不把它称为统计
-`confidence`。
+由 profile 运行组成的周期没有单一数值，`cycle` 会直接说明这一点，而不是硬凑一个。中位数是
+旧计分器汇总旧计分器数字的方式，而 profile 结果并不带这些数字；一个 profile 周期意味着什么，
+仍是周期负责人（#563）尚未回答的问题。因此该命令列出各次运行、保留聚合，并指明这个问题归谁。
+每次运行的 profile 都在它自己的报告里。由旧结果组成的周期仍然报告所有有效运行的**中位数**，
+其中极差、中位绝对偏差（MAD）和 **local repeat evidence** 只描述这台机器上的重复波动；
+AOS 不把它称为统计 `confidence`。
 
 ## 没有分数与分数上限
 

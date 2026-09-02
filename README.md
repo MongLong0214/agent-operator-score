@@ -273,7 +273,7 @@ three runs made under the same profile into one cycle.
 ```bash
 node bin/aos.mjs cycle start                                  # lock three seeds
 node bin/aos.mjs cycle run --checkpoints                      # run them in order
-node bin/aos.mjs cycle                                        # median of valid runs
+node bin/aos.mjs cycle                                        # what the cycle holds
 node bin/aos.mjs dashboard                                    # local read-only dashboard
 ```
 
@@ -287,9 +287,13 @@ reason. A valid low score cannot be discarded or rerun on the same seed.
 If the cycle was configured incorrectly, `--force --reason "<why>"` abandons it and starts another.
 The old cycle, seeds, runs, and scores remain recorded.
 
-The Operator Score is the median of all valid runs. Spread, median absolute deviation, and
-**local repeat evidence** describe repetition on this one machine; AOS does not call that
-statistical confidence.
+A cycle of profile runs has no single number, and `cycle` says so instead of producing one. The
+median is the legacy scorer's aggregation of the legacy scorer's numbers; a profile result carries
+none, and what a cycle of profiles means is a question the cycle owner (#563) has yet to answer. So
+the command lists the runs, withholds the aggregate, and names whose question it is. Each run's
+profiles are in its own report. Cycles of legacy results still report the median of all valid runs,
+where spread, median absolute deviation, and **local repeat evidence** describe repetition on this
+one machine; AOS does not call that statistical confidence.
 
 ## When there is no score — and when a ceiling applies
 

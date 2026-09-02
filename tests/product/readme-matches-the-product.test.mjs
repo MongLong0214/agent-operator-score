@@ -16,6 +16,32 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const READMES = ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"];
 
+// What each README has to say about a cycle's aggregate, in its own language: that a cycle of
+// profile runs has none, that the median belongs to the legacy scorer, and never the flat promise
+// the four of them used to carry.
+const AGGREGATION = {
+  "README.md": {
+    withheld: /A cycle of profile runs has no single number/u,
+    qualified: /Cycles of legacy results still report the median of all valid runs/u,
+    unqualified: /The Operator Score is the median of all valid runs\./u
+  },
+  "README.ko.md": {
+    withheld: /프로파일 실행으로 이루어진 사이클에는 하나의 숫자가 없고/u,
+    qualified: /레거시 결과로 이루어진 사이클은 여전히 모든 유효한 실행의 \*\*중앙값\*\*/u,
+    unqualified: /최종 Operator Score는 모든 유효한 실행의 \*\*중앙값\*\*입니다/u
+  },
+  "README.ja.md": {
+    withheld: /プロファイル実行から成るサイクルに単一の数値はなく/u,
+    qualified: /レガシー結果から成るサイクルは従来どおり ?すべての有効な実行の\*\*中央値\*\*を報告し/u,
+    unqualified: /Operator Score は、すべての有効な実行の\*\*中央値\*\*です/u
+  },
+  "README.zh-CN.md": {
+    withheld: /由 profile 运行组成的周期没有单一数值/u,
+    qualified: /由旧结果组成的周期仍然报告所有有效运行的\*\*中位数\*\*/u,
+    unqualified: /Operator Score 是所有有效运行的\*\*中位数\*\*。/u
+  }
+};
+
 const aosIn = (cwd, home, args) =>
   spawnSync(process.execPath, [cli, ...args], {
     cwd, encoding: "utf8", timeout: 120000, env: { ...process.env, AOS_HOME: home, HOME: home }
@@ -80,12 +106,28 @@ test("the cycle sequence every README documents runs on a fresh clone", () => {
     assert.doesNotMatch(said, /AOS_UNREADABLE|ENOENT/, said);
     assert.match(said, /metrics observed/, said);
 
+    // The cycle's own aggregation, checked as semantics rather than as presence. Every README said
+    // the Operator Score is the median of the valid runs; the shipped path writes profile results
+    // and lib/cli.mjs withholds any aggregate over those, naming #563 as the owner of the question.
+    // A README that still promises a number documents a command that no longer exists, and reading
+    // for the word "median" alone would pass on either wording.
+    const cliSource = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
+    assert.match(cliSource, /AOS_CYCLE_AGGREGATION_UNDEFINED/u, "the cycle stopped withholding; the READMEs have to move with it");
+
     for (const file of READMES) {
       const text = readFileSync(join(root, file), "utf8");
       assert.doesNotMatch(
         text, /cycle run --plan aos-plan\.json/,
         `${file} documents a plan path that no documented step creates`
       );
+
+      // Wrapping is a layout decision and the claim is not, so the claim is read off one line.
+      const said = text.replace(/\s+/gu, " ");
+      const { withheld, qualified, unqualified } = AGGREGATION[file];
+      assert.match(said, withheld, `${file} does not say a cycle of profile runs has no aggregate`);
+      assert.match(said, /#563/u, `${file} withholds the aggregate without naming whose question it is`);
+      assert.match(said, qualified, `${file} states the median without saying it is the legacy scorer's`);
+      assert.doesNotMatch(said, unqualified, `${file} still promises a median Operator Score for every cycle`);
     }
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
