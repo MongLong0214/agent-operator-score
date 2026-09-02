@@ -25,7 +25,7 @@ import { laneReport } from "../../lib/review-lanes.mjs";
 // when almost nothing was. These tests are about the second case, which is the one that ships.
 
 const ledgerWith = ({ sessions = 0, verdicts = [], over = {}, into = null } = {}) => {
-  const digests = Array.from({ length: sessions }, (unused, index) => sessionDigestOf(`session ${index}`));
+  const digests = Array.from({ length: sessions }, (unused, index) => sessionDigestOf(Buffer.from(`session ${index}`, "utf8")));
   let ledger = emptyLedger();
   for (const digest of digests) {
     ledger = recordSession(ledger, {
@@ -211,7 +211,7 @@ test("a session that changed side is out of the count and still on the record", 
   const judged = ledgerWith({ sessions: MVP_HOLDOUT_SESSIONS, verdicts: repeat("true-positive", MVP_DECIDED_HIGH) });
   assert.equal(laneA(judged).status, "PASS");
 
-  const digest = sessionDigestOf("session 0");
+  const digest = sessionDigestOf(Buffer.from("session 0", "utf8"));
   const flipped = recordSession(judged, {
     digest, use: "tuning", reported_status: "COMPLETE", actual_evidence: "COMPLETE"
   });
@@ -228,7 +228,7 @@ test("the number is bound to the data it was computed from", () => {
   const digest = laneA(ledger).dataset_digest;
   assert.match(digest, /^sha256:[0-9a-f]{64}$/);
   const more = judge(ledger, {
-    session_digest: sessionDigestOf("session 0"),
+    session_digest: sessionDigestOf(Buffer.from("session 0", "utf8")),
     finding_id: "extra",
     rule: "destructive-command-executed",
     severity: "high",
