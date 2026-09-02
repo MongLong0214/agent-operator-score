@@ -5,6 +5,7 @@
   "epic": 573,
   "milestone": 14,
   "milestone_title": "v0.2.0 — SSOT v3 Execution-Governed Measurement Integrity & Zero-config UX",
+  "integration_branch": "dev",
   "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
   "epic_body_marker": "FINAL_EXECUTION_SSOT_2026-09-01_V3",
   "release_label": "release:v0.2.0",
@@ -92,6 +93,11 @@
       "owner_surfaces": [
         "trusted-verifier-boundary"
       ],
+      "owned_paths": [
+        "lib/verifier-run.mjs",
+        "lib/verifiers/"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         554,
         555,
@@ -131,6 +137,10 @@
       "owner_surfaces": [
         "executable-bound-credential"
       ],
+      "owned_paths": [
+        "lib/runtime-auth.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         553,
         555,
@@ -168,6 +178,10 @@
       "owner_surfaces": [
         "adapter-env-allowlist"
       ],
+      "owned_paths": [
+        "lib/isolation.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         553,
         554,
@@ -209,6 +223,12 @@
       "owner_surfaces": [
         "strict-workspace-confinement"
       ],
+      "owned_paths": [
+        "docs/STRICT_CONFINEMENT_FEASIBILITY.md",
+        "fixtures/confinement/",
+        "lib/confinement.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         559,
         561
@@ -271,6 +291,11 @@
       "owner_surfaces": [
         "actual-effect-safety"
       ],
+      "owned_paths": [
+        "lib/observe.mjs",
+        "lib/file-effects.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         560,
         574
@@ -307,6 +332,11 @@
       "owner_surfaces": [
         "routing-oracle"
       ],
+      "owned_paths": [
+        "lib/routing-oracle.mjs",
+        "lib/metrics.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         566
       ],
@@ -347,6 +377,12 @@
         "result-schema",
         "profile-aggregation"
       ],
+      "owned_paths": [
+        "lib/result-schema.mjs",
+        "lib/report-card.mjs",
+        "schemas/aos-result"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         556,
         561
@@ -384,6 +420,11 @@
       "owner_surfaces": [
         "operator-events"
       ],
+      "owned_paths": [
+        "lib/operator-events.mjs",
+        "lib/operator-plan.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         557,
         574
@@ -418,6 +459,11 @@
       "owner_surfaces": [
         "runtime-model-identity"
       ],
+      "owned_paths": [
+        "lib/runtime-identity.mjs",
+        "lib/profile.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         556,
         559
@@ -469,6 +515,10 @@
       "owner_surfaces": [
         "contract-freeze"
       ],
+      "owned_paths": [
+        "lib/contract-freeze.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -497,6 +547,10 @@
       "owner_surfaces": [
         "cycle-completion-gate"
       ],
+      "owned_paths": [
+        "lib/cycle.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -533,6 +587,11 @@
       "owner_surfaces": [
         "suite-forms"
       ],
+      "owned_paths": [
+        "lib/suite.mjs",
+        "lib/suite-seed.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -559,6 +618,11 @@
       "owner_surfaces": [
         "review-holdout"
       ],
+      "owned_paths": [
+        "lib/holdout.mjs",
+        "lib/review.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         553,
         554,
@@ -599,6 +663,10 @@
       "owner_surfaces": [
         "hard-cap-binding"
       ],
+      "owned_paths": [
+        "lib/scorer-v1.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         558,
         576,
@@ -630,6 +698,11 @@
       "owner_surfaces": [
         "raw-byte-evidence"
       ],
+      "owned_paths": [
+        "lib/raw-bytes.mjs",
+        "lib/file-effects.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         553,
         554,
@@ -670,6 +743,11 @@
       "owner_surfaces": [
         "score-band-removal"
       ],
+      "owned_paths": [
+        "lib/report.mjs",
+        "lib/dashboard.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         585
       ],
@@ -724,6 +802,11 @@
       "owner_surfaces": [
         "release-channel"
       ],
+      "owned_paths": [
+        "docs/RELEASE.md",
+        ".github/workflows/"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -750,6 +833,14 @@
       "owner_surfaces": [
         "action-pinning"
       ],
+      "owned_paths": [
+        "lib/action-pins.mjs",
+        "governance/action-pin-policy.json",
+        ".github/workflows/"
+      ],
+      "evidence_bindings": {
+        "pinned_action_shas": "governance/action-pin-policy.json"
+      },
       "allowed_parallel_with": [
         553,
         554,
@@ -788,6 +879,11 @@
       "owner_surfaces": [
         "release-artifact-manifest"
       ],
+      "owned_paths": [
+        "scripts/build-release.mjs",
+        "docs/SUPPLY_CHAIN.md"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -811,6 +907,11 @@
       "owner_surfaces": [
         "stale-branch-audit"
       ],
+      "owned_paths": [
+        "docs/STALE_BRANCH_AUDIT.md",
+        "fixtures/stale-branches/"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         553,
         554,
@@ -861,6 +962,10 @@
       "area": "measurement",
       "release_critical": true,
       "owner_surfaces": [],
+      "owned_paths": [
+        "docs/"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -892,6 +997,10 @@
       "owner_surfaces": [
         "runtime-discovery"
       ],
+      "owned_paths": [
+        "lib/discovery.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         557,
         560
@@ -927,6 +1036,10 @@
       "owner_surfaces": [
         "quickstart-orchestration"
       ],
+      "owned_paths": [
+        "lib/orchestration.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -959,6 +1072,11 @@
       "owner_surfaces": [
         "agent-relay-protocol"
       ],
+      "owned_paths": [
+        "lib/relay.mjs",
+        "lib/checkpoint.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         566
       ],
@@ -991,6 +1109,11 @@
       "owner_surfaces": [
         "installer-consumer"
       ],
+      "owned_paths": [
+        "scripts/install.mjs",
+        "bin/"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -1043,6 +1166,11 @@
       "owner_surfaces": [
         "acceptance-e2e"
       ],
+      "owned_paths": [
+        "docs/ACCEPTANCE.md",
+        "fixtures/acceptance/"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -1082,6 +1210,13 @@
         "interpretation-use-argument",
         "observable-cell"
       ],
+      "owned_paths": [
+        "lib/ecd.mjs",
+        "schemas/aos-construct-map",
+        "schemas/aos-evidence-model",
+        "governance/aos-construct-map"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         553,
         554,
@@ -1130,6 +1265,10 @@
       "owner_surfaces": [
         "reliance-events"
       ],
+      "owned_paths": [
+        "lib/reliance.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         566
       ],
@@ -1168,6 +1307,10 @@
       "owner_surfaces": [
         "facet-uncertainty"
       ],
+      "owned_paths": [
+        "lib/facets.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -1201,6 +1344,10 @@
       "owner_surfaces": [
         "form-class-exposure"
       ],
+      "owned_paths": [
+        "lib/form-class.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [
         568
       ],
@@ -1237,6 +1384,10 @@
       "owner_surfaces": [
         "claim-governance"
       ],
+      "owned_paths": [
+        "lib/claim-governance.mjs"
+      ],
+      "evidence_bindings": {},
       "allowed_parallel_with": [],
       "phases": [],
       "close_evidence_required": true,
@@ -1250,7 +1401,7 @@
     {
       "issue": 588,
       "kind": "governance",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -1283,6 +1434,17 @@
       "owner_surfaces": [
         "execution-governance"
       ],
+      "owned_paths": [
+        "governance/v0.2.0-execution-plan.json",
+        "schemas/aos-execution-plan.v1.schema.json",
+        "lib/execution-plan.mjs",
+        "lib/github-state.mjs",
+        "scripts/verify-v020-execution-plan.mjs"
+      ],
+      "evidence_bindings": {
+        "manifest_digest": "governance/v0.2.0-execution-plan.json",
+        "schema_digest": "schemas/aos-execution-plan.v1.schema.json"
+      },
       "allowed_parallel_with": [
         553,
         554,
