@@ -2914,8 +2914,8 @@ export const GUARDS = [
     guard: "a verifier reads the boundary off the record, not off the result",
     reason: "asking the artifact whether its own boundary held is asking the suspect for an alibi: a withheld result edited to a consistent set of official surfaces recomputed to exactly the forged version and verified",
     file: "lib/cli.mjs",
-    from: "  const verdict = record?.isolation?.official_issuance;",
-    to: "  const verdict = record?.isolation?.official_issuance ?? { official: true, reasons: [] };",
+    from: "    const boundary = boundaryFor(record);",
+    to: "    const boundary = Array.isArray(result.boundary_withheld) ? { official: result.boundary_withheld.length === 0, reasons: [...result.boundary_withheld] } : null;",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_withheld_result_verifies_as_the_result_it_is"
   },
