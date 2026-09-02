@@ -1,25 +1,54 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T05:36:17.371Z",
+  "captured_at": "2026-09-02T06:14:51.553Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
     {
       "number": 553,
       "title": "[P0][security] assessed code와 trusted verdict authority process를 완전히 분리한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 553,
+        "final_sha": "10cbba687ab3414e051200c552b7f87b99951014",
+        "pr": 595,
+        "ci_run_ids": [
+          33596233717
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "controller_subject_probe_digests": "suiteManifest.verifier_digests at 10cbba68 — fam5-independent-verifier.v1 sha256:cb83a915058f946fdb0180dc23473107d93261cfeeb6c75b90d3886f0e41655c (lib/verifiers/fam5.mjs, controller); fam5-subject-runner.v1 sha256:4083113403f5cc54545d636ca40424032488bfe7992efe97b01325f17954055c (fam5-subject.mjs); fam5-probe-manifest.v1 sha256:e00b1fe05e8355a04f3c441bb66228d22bc6ca12cf778329e9cc943c8735c372 (fam5-probes.mjs); fam5-result-schema.v1 sha256:4e41145fa3346bc3817dd4c9a4cf95dc88bd1f6b22002cc4f5d85809c39e6d38 (fam5-result.mjs); fam5-verifier-runner.v1 sha256:ad6a64846e6a64d1befc3035a7236fbbb64beec9e3eb28fc475f43cd4d0077e6 (lib/verifier-run.mjs) — all raw byte digests via fileByteDigest",
+          "attack_matrix": "tests/product/verifier-authority.test.mjs at 10cbba68, 23 attacks each refused: prototype monkey-patch (Array.prototype.every), global error-class replacement, verdict-line rewrite, assessed module in controller process, controller import scan, subject runner read-once before spawn, verdict nonce withheld from subject, one subject process per probe, runner replacement between probes, write into AOS installation, result-token forgery via process introspection, subject references unreplaceable, observation on result channel refused, exit-zero-without-report refused, isolation lane recorded, setsid descendant, unestablished cleanup never claimed, controller hostage via result channel, duplicate observation, unauthenticated observation, oversized/malformed observation, every probe maps to a reported subcheck",
+          "process_cleanup_matrix": "tests/product/verifier-isolation.test.mjs at 10cbba68, 10 cases: assessed module never in AOS process; operator environment not inherited; verdict forgery refused; nonce-matched verdict line only; process.exit is a verifier failure not a pass; never-returning code hits timeout; spawned child does not survive the verifier; symlinked calculator.mjs refused; safeWalk refuses unreadable and records it; safeWalk bounds size and never reads a special file — plus verifier-authority 'a descendant that calls setsid is invisible to the process-group scan' and 'the verifier never claims a cleanup its scan cannot establish' (cleanup limits stated, not papered over)",
+          "mutation": "98/98 guards are load-bearing (CI mutation job on 10cbba68, run 33596233717); the raw-filename-bytes guard is proven on Linux and skips only EILSEQ on APFS"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#553",
         "#573",
@@ -35,18 +64,46 @@
     {
       "number": 554,
       "title": "[P0][security] automatic runtime credential을 verified executable identity에 결박한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 554,
+        "final_sha": "c0e5b3ee734767b6a4f13ac4c74858f41e584cd3",
+        "pr": 596,
+        "ci_run_ids": [
+          33597114897
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "executable_identity_binding": "lib/runtime-identity.mjs at c0e5b3ee — aos-runtime-identity.v1: resolveExecutable (absolute PATH entries only, execute bit checked for this process), describeExecutable (identity read from the opened descriptor, never by reopening the name: resolved_realpath, realpath_digest, file_fingerprint, interpreter_digest via shebang/env parsing, owner_uid, mode, parent_security incl. world/untrusted-group-writable parents and symlink hops, macOS codesign team + requirement digest, adapter_id), identityDigestOf, identityDrift compared field by field before any credential resolver runs; lib/runtime-auth.mjs resolveRuntimeAuthForAgent gates the credential on that comparison and lib/core.mjs spawns the verified file; profile digest moves with identity (test l.463); stored assessments carry the identity each invocation was bound to (l.847); docs/RUNTIME_EXECUTABLE_IDENTITY.md is the contract",
+          "credential_canary": "tests/product/runtime-identity.test.mjs at c0e5b3ee: 'an operator's own token does not reach a binary whose identity failed, and the child never starts' (l.382) plants the operator token, swaps the binary, and asserts the exfiltration file is never written; 'a credential the child quotes back does not survive into anything the run keeps' (l.821); 'no credential value is ever written into an identity record' (l.428); 'the identity check runs before the credential resolver, not after' (l.335); 36 identity tests in total covering replaced binary, symlink retarget, PATH shadowing wrapper, owner/mode drift, writable parents, ACL replace rights, shebang interpreter identity, unresolvable interpreter, legacy agent refused not promoted",
+          "mutation": "119/119 guards are load-bearing (CI mutation job on c0e5b3ee, run 33597114897)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#554",
         "#573",
@@ -222,7 +279,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
