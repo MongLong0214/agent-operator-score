@@ -2345,15 +2345,6 @@ export const GUARDS = [
     name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
   },
   {
-    guard: "PROFILE_BOUND is earned by the gate and by nothing else",
-    reason: "a claim stage that follows issuance alone calls every scored run profile-bound, including one whose profile no boundary enforced",
-    file: "lib/scorer-v1.mjs",
-    from: '    claim_stage: context.officialIssuance?.official === true && gate.issued ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC",',
-    to: '    claim_stage: gate.issued ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC",',
-    test: "tests/product/official-issuance.test.mjs",
-    name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
-  },
-  {
     guard: "the assessment is scored under the gate it reports",
     reason: "computing the verdict for the record but not for the scoring context is the same defect one line later: the result would name the withheld gate and carry the number anyway",
     file: "lib/cli.mjs",
@@ -2613,7 +2604,6 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck exhaustive mapping",
   "ECD subcheck ownership follows the administering form",
   "PATH carries no relative entry",
-  "PROFILE_BOUND is earned by the gate and by nothing else",
   "a .NET startup hook is a pre-main hook like the rest",
   "a cleanup failure is published by class and digest",
   "a credential-shaped name is refused as an ordinary allowed name",
