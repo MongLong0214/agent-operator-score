@@ -20,8 +20,21 @@ export function run(cwd, args, expected = 0, env = {}) {
   return result;
 }
 
+/**
+ * The fixture agent, registered the way a real runtime is.
+ *
+ * The two `FAKE_AGENT_*` names are declared rather than inherited. A child no longer receives the
+ * parent's environment, so a fixture that reads its profile out of the ambient shell would see
+ * `competent` in every test and every scripted profile would silently score the same run. Declaring
+ * them is what a real adapter does with `CODEX_HOME`, and it keeps the fixture on the same footing
+ * as the runtimes it stands in for.
+ */
 export function addAgent(cwd, id, script = fakeAgent) {
-  run(cwd, ["agent", "add", id, "--command", process.execPath, "--arg", script]);
+  run(cwd, [
+    "agent", "add", id, "--command", process.execPath, "--arg", script,
+    "--allow-env", "FAKE_AGENT_PROFILE",
+    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE"
+  ]);
 }
 
 export function newestRunId(cwd) {

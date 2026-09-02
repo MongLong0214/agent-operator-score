@@ -250,6 +250,500 @@ export const GUARDS = [
     name: "a job that quietly gains write access fails"
   },
   {
+    guard: "PATH carries no relative entry",
+    reason: "a relative PATH entry resolves against the assessed agent's working directory, which is the workspace it was handed",
+    file: "lib/isolation.mjs",
+    from: "      const minimized = minimizePath(value);",
+    to: "      const minimized = value;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a relative or empty PATH entry never reaches the child"
+  },
+  {
+    guard: "the PATH rule is part of the digest",
+    reason: "a run that searched the working directory for its own binary is not the same measurement as one that did not",
+    file: "lib/env-policy.mjs",
+    from: '    ["path_entry_rule", policy.path_entry_rule ?? PATH_ENTRY_RULE]',
+    to: '    ["path_entry_rule", ""]',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a relative or empty PATH entry never reaches the child"
+  },
+  {
+    guard: "credential names are matched whatever their capitalisation",
+    reason: "a case-sensitive refusal is one an operator gets past by pressing shift, and POSIX makes database_url a different variable from DATABASE_URL",
+    file: "lib/env-policy.mjs",
+    from: "  const key = canonical(name);\n  if (DENIED_NAME_SET.has(key)) return true;",
+    to: "  const key = name;\n  if (DENIED_NAME_SET.has(key)) return true;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a credential name is refused whatever its capitalisation, and the list knows the quiet ones"
+  },
+  {
+    guard: "credential names a shape rule cannot see are listed",
+    reason: "PGPASSWORD says nothing about itself, so no name-shape rule can catch it and only a list can",
+    file: "lib/env-policy.mjs",
+    from: '  "PGPASSWORD",',
+    to: '  "PGHOST",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a credential name is refused whatever its capitalisation, and the list knows the quiet ones"
+  },
+  {
+    guard: "the whole policy is revalidated against its adapter at the point of use",
+    reason: "a policy edited after construction forged runtime-auth and transport authority that no adapter granted",
+    file: "lib/isolation.mjs",
+    from: "  const { policy: authorised, unauthorised } = authorisedPolicy(supplied);",
+    to: "  const authorised = supplied;\n  const unauthorised = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy cannot forge runtime-auth or transport authority its adapter never granted"
+  },
+  {
+    guard: "a forged structural set is revalidated like the rest",
+    reason: "structural names skip the config checks, so an open structural_env is a fourth way to name anything at all",
+    file: "lib/env-policy.mjs",
+    from: "      structural_env: keep(policy.structural_env, [...STRUCTURAL_ENV, ...declared.structural_env])",
+    to: "      structural_env: policy.structural_env ?? []",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy cannot forge runtime-auth or transport authority its adapter never granted"
+  },
+  {
+    guard: "what was withheld outright is recorded as such",
+    reason: "refused before the policy was read and never named by it are different statements, and only the first is a guarantee",
+    file: "lib/isolation.mjs",
+    from: "      withheld.push(name);",
+    to: "      removed.push(name);",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the record separates what was withheld outright from what was merely never named"
+  },
+  {
+    guard: "a credential-shaped name is refused as an ordinary allowed name",
+    reason: "the CLI refused --allow-env GH_TOKEN and nothing repeated it, so a hand-edited config carried the operator's token into the child",
+    file: "lib/env-policy.mjs",
+    from: "  const credentialShaped = allow.filter((name) => isSensitiveName(name));",
+    to: "  const credentialShaped = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a stored configuration cannot hand a credential to a child by any declaration"
+  },
+  {
+    guard: "a credential-shaped name is refused at the carry as well",
+    reason: "policy construction is not the only way a policy reaches a spawn, and a forged config_env is the way past it",
+    file: "lib/env-policy.mjs",
+    from: '      ? { carry: false, reason: "credential_shaped" }',
+    to: '      ? { carry: true, reason: "config" }',
+    test: "tests/product/isolation.test.mjs",
+    name: "a credential-shaped name cannot become an ordinary allowed name, by flag or by file"
+  },
+  {
+    guard: "the digest is recomputed over the policy actually applied",
+    reason: "a supplied policy is mutable, so a copied digest describes the object's history rather than the child's environment",
+    file: "lib/isolation.mjs",
+    from: "  const inForce = { ...authorised, policy_digest: envPolicyDigestOf(authorised) };",
+    to: "  const inForce = authorised;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "the withheld prefixes are the module's and the policy's together",
+    reason: "a policy may withhold more than the module does and may not withhold less, and only the first half is observable now that revalidation strips a forged structural set",
+    file: "lib/isolation.mjs",
+    from: "  const withheldPrefixes = [...new Set([...WITHHELD_ENV_PREFIXES, ...(inForce.withheld_env_prefixes ?? [])])];",
+    to: "  const withheldPrefixes = [...WITHHELD_ENV_PREFIXES];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "a policy that narrows the run-metadata door is applied, not merely recorded",
+    reason: "a rule the digest describes and the builder ignores is a record of something that did not happen",
+    file: "lib/isolation.mjs",
+    from: "  const runMetadata = (inForce.run_metadata_env ?? RUN_METADATA_ENV).filter((name) => RUN_METADATA_ENV.includes(name));",
+    to: "  const runMetadata = [...RUN_METADATA_ENV];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "the run-metadata door cannot be widened in the running process",
+    reason: "one line pushing AOS_HOME onto it hands an agent the runs, results and holdout ledger its own score is read from",
+    file: "lib/env-policy.mjs",
+    from: 'export const RUN_METADATA_ENV = Object.freeze(["AOS_FAMILY", "AOS_SESSION_ID", "AOS_TASK_FILE", "AOS_WORKSPACE"]);',
+    to: 'export const RUN_METADATA_ENV = ["AOS_FAMILY", "AOS_SESSION_ID", "AOS_TASK_FILE", "AOS_WORKSPACE"];',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the run-metadata list cannot be widened in the running process"
+  },
+  {
+    guard: "the digest covers the rules applied outside the allowlist",
+    reason: "the AOS_ withholding and the run-metadata door decide what the child receives and were not digest inputs",
+    file: "lib/env-policy.mjs",
+    from: '    ["run_metadata_env", unique(policy.run_metadata_env ?? RUN_METADATA_ENV)],',
+    to: '    ["run_metadata_env", []],',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the digest describes every rule the builder applied, not only the allowlist"
+  },
+  {
+    guard: "a .NET startup hook is a pre-main hook like the rest",
+    reason: "the host runs each assembly named in DOTNET_STARTUP_HOOKS before the application's Main",
+    file: "lib/env-policy.mjs",
+    from: '      "DOTNET_STARTUP_HOOKS",',
+    to: '      "DOTNET_ROOT",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a .NET startup hook is a hard-forbidden class like every other pre-main hook"
+  },
+  {
+    guard: "doctor checks a required config name has a value",
+    reason: "a declaration with nothing in it carries nothing, and the run then fails as though the runtime were not logged in",
+    file: "lib/cli.mjs",
+    from: "  const missingRequired = (policy.required_env ?? []).filter((name) => !valued(name));",
+    to: "  const missingRequired = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "doctor names what a run will carry, what it will drop, and what is declared but not there"
+  },
+  {
+    guard: "run scratch is created inside the cleanup-protected region",
+    reason: "a policy refused between the first mkdtemp and the try left both temporary directories behind on every refused run",
+    file: "lib/core.mjs",
+    from: "  let internalDir = null;",
+    to: '  let internalDir = mkdtempSync(join(tmpdir(), "aos-prompt-"));',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a refused policy leaves no scratch directory behind"
+  },
+  {
+    guard: "hard-forbidden matching is case-insensitive",
+    reason: "npm folds environment keys to lower case, so a mixed-case npm_config_node_options arrives at a lifecycle child as NODE_OPTIONS",
+    file: "lib/env-policy.mjs",
+    from: "export function hardForbiddenClassOf(name) {\n  const key = canonical(name);",
+    to: "export function hardForbiddenClassOf(name) {\n  const key = name;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name is refused in every spelling a consumer might fold it into"
+  },
+  {
+    guard: "interpreter startup paths are a forbidden class",
+    reason: "a .pth file under a pointed-at PYTHONUSERBASE runs an import line before the assessed script's first statement",
+    file: "lib/env-policy.mjs",
+    from: '      "PYTHONUSERBASE",',
+    to: '      "PYTHONNOUSERSITE",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a variable that starts an interpreter's own code is in a hard-forbidden class"
+  },
+  {
+    guard: "every transport spelling needs the transport approval",
+    reason: "CARGO_HTTP_PROXY redirects what HTTPS_PROXY redirects, so leaving it unclassified makes the separate approval a spelling test",
+    file: "lib/env-policy.mjs",
+    from: '  "CARGO_HTTP_PROXY", "CARGO_HTTP_CAINFO", "CURL_HOME", "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",',
+    to: '  "NO_PROXY",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a name that redirects or unverifies the run's traffic needs the transport approval"
+  },
+  {
+    guard: "runtime auth is bound to the adapter that reads it",
+    reason: "without it a hand-edited config gives any credential to any command, and the CLI's check is not reachable from a spawn",
+    file: "lib/env-policy.mjs",
+    from: "  if (undeclaredAuth.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a stored configuration cannot hand a credential to an adapter that does not read it"
+  },
+  {
+    guard: "the adapter's own config directory is declared, not typed twice",
+    reason: "a hand-registered runtime that cannot see its own config directory fails as though it were not logged in",
+    file: "lib/env-policy.mjs",
+    from: "  const declaredConfig = [...(declared.config_env ?? []), ...(adapter?.config_env ? [adapter.config_env] : [])];",
+    to: "  const declaredConfig = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "an adapter's declared config directory travels and nothing else does"
+  },
+  {
+    guard: "the policy digest covers the forbidden rules themselves",
+    reason: "a digest over class names alone does not move when a rule change flips an existing policy from carrying a name to refusing it",
+    file: "lib/env-policy.mjs",
+    from: '    ["hard_forbidden_rules", hardForbiddenRules()]',
+    to: '    ["hard_forbidden_rules", []]',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the policy digest moves when a forbidden rule's contents move, not only its class names"
+  },
+  {
+    guard: "the run-metadata door carries only run metadata",
+    reason: "the injected merge happens after the policy has decided, so an unchecked one is a way past the allowlist",
+    file: "lib/isolation.mjs",
+    from: "  const smuggled = Object.keys(injected).filter((name) => !RUN_METADATA_ENV.includes(name));",
+    to: "  const smuggled = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name cannot be declared into the allowlist by any route"
+  },
+  {
+    guard: "home_source is a kind and never a path",
+    reason: "an arbitrary string in that field puts a directory on the operator's machine into a record whose whole claim is that it is quotable",
+    file: "lib/isolation.mjs",
+    from: "  if (!HOME_SOURCES.has(homeSource)) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the HOME regime is recorded as a kind, and a path cannot be written into that field"
+  },
+  {
+    guard: "the scored result carries the boundary it was produced under",
+    reason: "a result that cannot say which policy produced it cannot be compared with another, which is what the digest beside the score claims",
+    file: "lib/cli.mjs",
+    from: "        if (entry.isolation && !environmentByAgent.has(entry.agent)) environmentByAgent.set(entry.agent, entry.isolation);",
+    to: "        if (false) environmentByAgent.set(entry.agent, entry.isolation);",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a scored result carries the boundary it was produced under, by name and never by value"
+  },
+  {
+    guard: "allowlist-only child environment",
+    reason: "a child built from the operator's environment carries every injection variable nobody has listed yet",
+    file: "lib/isolation.mjs",
+    from: "    const decision = envDecision(inForce, name);",
+    to: "    const decision = { carry: true, reason: \"ordinary\" };",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "no process-injection variable in the operator's shell reaches the spawned child"
+  },
+  {
+    guard: "hard-forbidden class refusal",
+    reason: "a loader or preload variable changes what the assessed process is before its first line, so no flag may carry one",
+    file: "lib/env-policy.mjs",
+    from: "  if (forbidden.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name cannot be declared into the allowlist by any route"
+  },
+  {
+    guard: "transport approval binding",
+    reason: "a proxy carried without an adapter declaration and an operator approval redirects every call the run makes",
+    file: "lib/env-policy.mjs",
+    from: "  if (unverified.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a generic command gets no transport env even when the operator asks for one"
+  },
+  {
+    guard: "env policy digest binding",
+    reason: "an evidence bundle that quotes a digest which does not move cannot say which allowlist was in force",
+    file: "lib/env-policy.mjs",
+    from: "  return { ...policy, policy_digest: envPolicyDigestOf(policy) };",
+    to: '  return { ...policy, policy_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000" };',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the policy digest moves when the allowlist or an approval moves"
+  },
+  {
+    guard: "AOS home withheld from the agent",
+    reason: "an assessed agent handed AOS_HOME can rewrite the run records, the results and the holdout ledger the score is read from",
+    file: "lib/isolation.mjs",
+    from: "    if (withheldPrefixes.some((prefix) => name.startsWith(prefix))) {",
+    to: "    if (false) {",
+    // Re-pointed. Its old test forged AOS_HOME into a policy to isolate this rule, and every later
+    // round closed another way of doing that -- the credential-shape rule reads every AOS_ name as
+    // credential-shaped, and policy revalidation now strips a forged structural set. The rule is
+    // still load-bearing and is now observable directly: it is what puts a name in `withheld`
+    // rather than merely leaving it out of the environment.
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the record separates what was withheld outright from what was merely never named"
+  },
+  {
+    guard: "realpath compare",
+    reason: "a registered path that now resolves somewhere else is a different program under the same name",
+    file: "lib/runtime-identity.mjs",
+    from: "if (registered[field] !== current[field]) drifted.push(field);",
+    to: "if (false) drifted.push(field);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a path that has become a symlink to somewhere else is refused"
+  },
+  {
+    guard: "fingerprint compare",
+    reason: "a binary rewritten in place keeps its path, its name, its owner and its mode; only the bytes say so",
+    file: "lib/runtime-identity.mjs",
+    from: "const fingerprint = fingerprintOf(descriptor, stat);",
+    to: 'const fingerprint = "sha256:unchanged";',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a binary replaced after registration is refused before the credential is read"
+  },
+  {
+    guard: "symlink chain audit",
+    reason: "a hop in the middle of a symlink chain has its own holder, and whoever can write that directory repoints the run while both ends stay exactly as verified",
+    file: "lib/runtime-identity.mjs",
+    from: "const chain = executableChain(resolved.path, resolved.realpath);",
+    to: "const chain = [resolved.realpath];",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a symlink hop through a writable directory is refused, not only the two ends of the chain"
+  },
+  {
+    guard: "interpreter is part of the identity",
+    reason: "a shebang hands the credential to a second program; a byte-identical script whose interpreter changed is a different runtime",
+    file: "lib/runtime-identity.mjs",
+    from: "interpreter_digest: interpreterChain.length === 0 ? null : `sha256:${sha256Value(interpreterChain)}`,",
+    to: "interpreter_digest: null,",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the interpreter a shebang selects is part of the identity"
+  },
+  {
+    guard: "interpreter inherits its own findings",
+    reason: "an interpreter reached through a directory somebody else can write is as replaceable as the script, and the script's status must say so",
+    file: "lib/runtime-identity.mjs",
+    from: "for (const reason of interpreter.untrusted_reasons) reasons.push(`interpreter ${reason}`);",
+    to: "for (const reason of []) reasons.push(reason);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an interpreter reached through a world-writable directory makes the script untrusted"
+  },
+  {
+    guard: "effective execute permission",
+    reason: "an execute bit that does not apply to this process is a file execvp skips, so reading the mode describes a program the child would never run",
+    file: "lib/runtime-identity.mjs",
+    from: "accessSync(candidate, constants.X_OK);",
+    to: "accessSync(candidate, constants.F_OK);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an execute bit that does not apply to this process is not an executable"
+  },
+  {
+    guard: "parent writable refusal",
+    reason: "anyone who can write the directory can replace the verified program between the check and the spawn",
+    file: "lib/runtime-auth.mjs",
+    from: 'if (autoRequested && current.identity_status !== "VERIFIED") {',
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a world-writable parent directory is refused however verified the file looks"
+  },
+  {
+    guard: "identity-before-resolver ordering",
+    reason: "a check that runs after the resolver has already read the operator's keychain for an unidentified program",
+    // Suppressing the throw was the obvious mutation and it proved nothing: a failed verdict also
+    // carries auto:false, so the resolver stayed uncalled and the test died on its `assert.throws`
+    // rather than on the ordering. This one puts the lookup first and leaves the refusal intact,
+    // which is the defect by name, and the test dies on the call count that measures it.
+    file: "lib/runtime-auth.mjs",
+    from: "const verdict = authorizeRuntimeAuth(agent, adapter, { env, platform });",
+    to: "const asked = resolve(adapter, { platform, env, command: agent?.command }); const verdict = authorizeRuntimeAuth(agent, adapter, { env, platform });",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity check runs before the credential resolver, not after"
+  },
+  {
+    guard: "operator-env credential gate",
+    reason: "a token already in the operator's shell must not travel to a binary whose identity failed, and the child must not start",
+    file: "lib/core.mjs",
+    // `resolved: null` was not enough: isolation then stripped the token on its own and only the
+    // "child never starts" half of the name was exercised. This mutant carries the operator's own
+    // variable through, which is what the refusal is actually preventing.
+    from: "const { resolved: resolvedAuth, verdict: identityVerdict } = resolveRuntimeAuthForAgent(spec, adapter, {});",
+    to: 'const { resolved: resolvedAuth, verdict: identityVerdict } = { resolved: { name: "CLAUDE_CODE_OAUTH_TOKEN", value: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? "", source: "environment" }, verdict: { ok: true, identity: null } };',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an operator's own token does not reach a binary whose identity failed, and the child never starts"
+  },
+  {
+    guard: "spawn the verified file",
+    reason: "the file handed to execve is the recorded realpath, not the configured name resolved a second time in the kernel; this is what removes the PATH search and the symlink chain from the spawn, and it does not close the check-to-execve window, which nothing short of executing a held descriptor would",
+    file: "lib/core.mjs",
+    from: "child = spawn(verifiedPath ?? spec.command, args, {",
+    to: "child = spawn(spec.command, args, {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the file whose identity was verified is the file that is spawned"
+  },
+  {
+    guard: "resolver ownership",
+    reason: "an identity recorded for one adapter with another adapter's resolver asking is refused by name; adapter_id is in the drift comparison too, so what this guard holds is which refusal the operator is shown, not whether the credential is refused",
+    file: "lib/runtime-auth.mjs",
+    from: "if ((registered.adapter_id ?? null) !== (adapter?.id ?? null)) {",
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the adapter that owns the credential resolver is not the adapter being spawned"
+  },
+  {
+    guard: "legacy migration guard",
+    reason: "an agent registered before identities existed must be migrated, not promoted by treating whatever is on disk now as what was registered then",
+    file: "lib/runtime-auth.mjs",
+    from: "const registered = agent?.runtime_identity ?? null;",
+    to: "const registered = agent?.runtime_identity ?? current;",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a legacy agent with no identity record is refused, not promoted"
+  },
+  {
+    guard: "secret-value scan",
+    reason: "provenance names the credential variable and its source; a record that carried the value would publish it",
+    file: "lib/runtime-auth.mjs",
+    from: "credential_env_name: resolved?.name ?? null,",
+    to: "credential_env_name: resolved?.value ?? null,",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "no credential value is ever written into an identity record"
+  },
+  {
+    guard: "child output credential scrub",
+    reason: "the child is handed the credential on purpose and may print it; the raw AOS_EVENT objects are kept verbatim in the result, past the projection the event store applies",
+    file: "lib/core.mjs",
+    from: 'const parsed = JSON.parse(scrub(line.slice("AOS_EVENT\\t".length)));',
+    to: 'const parsed = JSON.parse(line.slice("AOS_EVENT\\t".length));',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a credential the child quotes back does not survive into anything the run keeps"
+  },
+  {
+    guard: "descriptor-bound fingerprint",
+    reason: "reopening the verified name to hash it is a second resolution of that name, and the bytes it returns can belong to a file whose permissions were never the ones recorded",
+    file: "lib/runtime-identity.mjs",
+    from: "const fingerprint = fingerprintOf(descriptor, stat);",
+    to: 'const fingerprint = fingerprintOf(openSync(resolved.realpath, "r"), stat);',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity is read from the descriptor, not by reopening the name"
+  },
+  {
+    guard: "descriptor-bound metadata",
+    reason: "the mode and owner recorded have to describe the inode that was hashed, and re-stating the name is how they come to describe a different one",
+    file: "lib/runtime-identity.mjs",
+    from: "const stat = fstatSync(descriptor);",
+    to: "const stat = statSync(resolved.realpath);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity is read from the descriptor, not by reopening the name"
+  },
+  {
+    guard: "env option scan",
+    reason: "the name env looks up is a second program nobody verified; a scan that skips dashes and takes the next word verifies the argument of -u instead, and passes",
+    file: "lib/runtime-identity.mjs",
+    from: "commands.push(envProgramOf(shebang.args));",
+    to: 'commands.push(shebang.args.find((argument) => !argument.startsWith("-") && !argument.includes("=")) ?? null);',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an env shebang with options still names the interpreter it will run"
+  },
+  {
+    guard: "ACL replaceable rights",
+    reason: "an allow entry granting add_file or delete_child is somebody else's file one mv away; read and list are not, and a deny entry is not a grant at all",
+    file: "lib/runtime-identity.mjs",
+    from: "if (!rights.some((right) => REPLACEABLE_RIGHTS.has(right))) continue;",
+    to: "if (rights.length > 0) continue;",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an ACL listing is read for the rights that let somebody replace a file"
+  },
+  {
+    guard: "unread ACL is not a clean ACL",
+    reason: "a listing that did not run, or that never mentions a path, has said nothing -- and reading silence as absence makes the check pass hardest exactly when it has stopped working",
+    file: "lib/runtime-identity.mjs",
+    from: "const unreadable = !answered || !seen.listed;",
+    to: "const unreadable = false;",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a path the ACL listing never mentions is not read as clean"
+  },
+  {
+    guard: "ACL walk",
+    // macOS only, and deliberately so: Node has no interface to an ACL and `ls -lde` is the only
+    // thing that will say. The mutation runner defers it rather than reporting SURVIVED for a guard
+    // that holds everywhere it applies -- so a macOS lane has to run this one, and the two guards
+    // above cover the rights and the failure behaviour as pure text on every platform.
+    platform: "darwin",
+    reason: "a directory at 0755 owned by the operator can still carry an ACL that lets another account replace what is in it, and the mode-bit walk reads it as clean",
+    file: "lib/runtime-identity.mjs",
+    from: "for (const risk of aclRisksOf([...new Set([...audited.map((entry) => entry.path), resolved.realpath])], platform)) record(risk);",
+    to: "for (const risk of []) record(risk);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a macOS ACL that lets somebody else replace the file is refused"
+  },
+  {
+    guard: "configured argv0",
+    reason: "spawning the resolved path is what makes the run verifiable, and argv0 is what keeps it compatible: a native runtime still reads the command the operator configured in argv[0] rather than a path it was never told about",
+    file: "lib/core.mjs",
+    from: "      argv0: spec.command",
+    to: "      argv0: undefined",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a native runtime keeps the argv0 the operator configured"
+  },
+  {
+    guard: "invocation identity provenance",
+    reason: "the assessment is where anybody reads which program produced a score, and this mapping is the only place the run's identity record reaches it",
+    file: "lib/cli.mjs",
+    from: "runtime_identity: entry.runtime_identity ?? null",
+    to: "runtime_identity_dropped: null",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a stored assessment carries the executable identity each invocation was bound to"
+  },
+  {
     guard: "workspace snapshot map is null-prototype",
     reason: "an agent creating a file named __proto__ wrote through to Object.prototype and vanished from the diff",
     file: "lib/safe-fs.mjs",
@@ -1189,14 +1683,24 @@ export const REQUIRED_GUARDS = [
  * the release's branches have landed.
  */
 export const ACCOUNTED_GUARDS = [
+  "ACL replaceable rights",
+  "ACL walk",
+  "AOS home withheld from the agent",
+  "PATH carries no relative entry",
+  "a .NET startup hook is a pre-main hook like the rest",
+  "a credential-shaped name is refused as an ordinary allowed name",
+  "a credential-shaped name is refused at the carry as well",
+  "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
   "a phase's predecessors must be in the plan",
+  "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a refused file fails the check",
   "a resolved key is the key",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
+  "allowlist-only child environment",
   "an alias is the node it names",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
@@ -1212,6 +1716,7 @@ export const ACCOUNTED_GUARDS = [
   "carriage returns stripped",
   "central redaction",
   "checkpoint evidence preserved",
+  "child output credential scrub",
   "cleanup claim not overstated",
   "close-evidence author trust",
   "close-evidence component confirmations",
@@ -1219,17 +1724,27 @@ export const ACCOUNTED_GUARDS = [
   "close-evidence repository confirmation",
   "close-evidence verdict",
   "composite action discovery",
+  "configured argv0",
   "container image digest",
   "coverage gate",
   "credential env refusal",
+  "credential names a shape rule cannot see are listed",
+  "credential names are matched whatever their capitalisation",
   "cycle run identity",
   "cycle search inside strongly connected components",
+  "descriptor-bound fingerprint",
+  "descriptor-bound metadata",
   "directory skip list",
+  "doctor checks a required config name has a value",
   "done issues have no withheld phase",
+  "effective execute permission",
   "elementary cycle enumeration",
   "entry state coherence",
+  "env option scan",
+  "env policy digest binding",
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
+  "every transport spelling needs the transport approval",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
   "exact revision binding",
@@ -1239,13 +1754,23 @@ export const ACCOUNTED_GUARDS = [
   "execution plan cycle detection",
   "explicit keys are keys",
   "false completion cap",
+  "fingerprint compare",
   "flow-mapping uses",
   "full-SHA action reference",
   "handoff exact compare",
+  "hard-forbidden class refusal",
+  "hard-forbidden matching is case-insensitive",
+  "home_source is a kind and never a path",
   "hot-file single owner",
+  "identity-before-resolver ordering",
   "independent checks survive a non-canonical plan",
+  "interpreter inherits its own findings",
+  "interpreter is part of the identity",
+  "interpreter startup paths are a forbidden class",
+  "invocation identity provenance",
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
+  "legacy migration guard",
   "local reference redirection",
   "locked cycle seed",
   "malformed-row reporting",
@@ -1258,7 +1783,9 @@ export const ACCOUNTED_GUARDS = [
   "offline runs do not print or report a pass",
   "one snapshot entry per issue",
   "operator decision window",
+  "operator-env credential gate",
   "owned paths are not only prose",
+  "parent writable refusal",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
   "pristine error classification",
@@ -1270,17 +1797,23 @@ export const ACCOUNTED_GUARDS = [
   "raw artifact name bytes",
   "raw filename bytes",
   "raw link target bytes",
+  "realpath compare",
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
+  "resolver ownership",
   "restricted readiness",
   "reviewed action allowlist",
+  "run scratch is created inside the cleanup-protected region",
+  "runtime auth is bound to the adapter that reads it",
   "safety cap",
+  "secret-value scan",
   "session ledger byte identity",
   "single observation per probe",
   "skipped directory is still an entry",
   "snapshot provenance",
   "snapshot source matches how it was read",
+  "spawn the verified file",
   "stale blocked status",
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
@@ -1290,23 +1823,37 @@ export const ACCOUNTED_GUARDS = [
   "supply-chain digest covers the .npmrc",
   "supply-chain digest covers the policy",
   "supply-chain digest covers the verifier",
+  "symlink chain audit",
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
+  "the PATH rule is part of the digest",
+  "the adapter's own config directory is declared, not typed twice",
   "the capture time names a day that exists",
   "the closing pull request changed something the issue owns",
+  "the digest covers the rules applied outside the allowlist",
+  "the digest is recomputed over the policy actually applied",
   "the evidence contract is pinned outside the plan",
+  "the policy digest covers the forbidden rules themselves",
+  "the run-metadata door cannot be widened in the running process",
+  "the run-metadata door carries only run metadata",
+  "the scored result carries the boundary it was produced under",
+  "the whole policy is revalidated against its adapter at the point of use",
+  "the withheld prefixes are the module's and the policy's together",
   "top-level artifact open does not follow",
+  "transport approval binding",
   "trend dedupe",
   "trusted-file integrity re-check",
   "trusted-process import prohibition",
   "undeclared isolation is the weakest lane",
+  "unread ACL is not a clean ACL",
   "unreadable directory reported",
   "unreadable uses: fails closed",
   "uses under with: or env: is an input",
   "verification result check",
   "version comment after a flow mapping",
   "version comment is a version",
+  "what was withheld outright is recorded as such",
   "workflow permission drift",
   "workspace containment",
   "workspace snapshot map is null-prototype",

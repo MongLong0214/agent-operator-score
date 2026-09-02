@@ -59,7 +59,10 @@ test("the digest changes with anything that changes what the number means", () =
     ["a different isolation level", { isolation: "STRICT" }],
     ["a different suite major", { suiteMajor: 2 }],
     ["a different tool policy", { toolPolicy: "workspace-read" }],
-    ["a carried credential name", { allowedEnvNames: ["ANTHROPIC_API_KEY"] }],
+    // Not a credential name any more: a credential-shaped name cannot be an ordinary allowed one,
+    // so a profile built from it no longer exists to have a digest. A config directory is the case
+    // this row was always testing -- that what a run may carry is part of what its number means.
+    ["a carried config name", { allowedEnvNames: ["ACME_TOOLCHAIN_DIR"] }],
     ["a different agent configuration", { agent: agent({ config_digest: "sha256:def" }) }],
     ["a different runtime", { agent: agent({ runtime_name: "claude-code", adapter: "claude-code.v1" }) }]
   ];
