@@ -134,7 +134,7 @@ test("a run whose answers arrive on a pipe observes no operator process at all",
   assert.equal(scored.operator_process_profile.issued, false);
 });
 
-test("nothing is signed before an answer arrives, so a terminal that answers nothing mints no operator event", async () => {
+test("nothing is signed before an answer arrives, so a stream that answers nothing mints no operator event", async () => {
   // Round 1 signed `checkpoint.observe` at the moment the question was printed, so closing the
   // stream was enough to make AOS mint an operator event describing an operator who was never there.
   const { events } = await assessOnATerminal([]);
@@ -145,7 +145,7 @@ test("nothing is signed before an answer arrives, so a terminal that answers not
   assert.equal(refused.every((event) => event.payload.source === "unanswered"), true, JSON.stringify(refused.map((e) => e.payload.source)));
 });
 
-test("answers arriving on a terminal are signed DIRECT_LOCAL and reach the scored process rows", async () => {
+test("answers on a stdin that reports itself a terminal are signed DIRECT_LOCAL and reach the scored process rows", async () => {
   const { events, scored, record, result } = await assessOnATerminal(ANSWERS);
   assert.equal(typeof result.status, "number");
   const signed = events.filter((event) => event.operator_authority !== undefined);

@@ -3108,7 +3108,7 @@ export const GUARDS = [
     from: "  if (decision.unanswered === true) {",
     to: "  if (false) {",
     test: "tests/product/operator-channel-authority.test.mjs",
-    name: "nothing is signed before an answer arrives, so a terminal that answers nothing mints no operator event"
+    name: "nothing is signed before an answer arrives, so a stream that answers nothing mints no operator event"
   },
   {
     guard: "the binding is in the assessment path",
@@ -3117,7 +3117,7 @@ export const GUARDS = [
     from: "    const processBound = processEvidence(operatorBinding, interventionSummary(attested.trace));",
     to: "    const processBound = { interventions: interventionSummary(attested.trace), evidence_ids: [], withheld_for: [] };",
     test: "tests/product/operator-channel-authority.test.mjs",
-    name: "answers arriving on a terminal are signed DIRECT_LOCAL and reach the scored process rows"
+    name: "answers on a stdin that reports itself a terminal are signed DIRECT_LOCAL and reach the scored process rows"
   },
   {
     guard: "the observations carry the operator events they rest on",
@@ -3126,7 +3126,7 @@ export const GUARDS = [
     from: '      evidence: ["run-events", "FAM-4", ...(Array.isArray(interventions?.evidence_ids) ? interventions.evidence_ids : [])]',
     to: '      evidence: ["run-events", "FAM-4"]',
     test: "tests/product/operator-channel-authority.test.mjs",
-    name: "answers arriving on a terminal are signed DIRECT_LOCAL and reach the scored process rows"
+    name: "answers on a stdin that reports itself a terminal are signed DIRECT_LOCAL and reach the scored process rows"
   },
   {
     guard: "a scorable cell with no bound decision withholds",
