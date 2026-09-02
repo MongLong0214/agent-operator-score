@@ -1,0 +1,537 @@
+{
+  "fixture_id": "aos-profile-aggregation-vectors.v1",
+  "description": "Exact-float vectors for lib/result-schema.mjs equalWeightIndex and compositeOf. Every expected value is reachable without rounding: the equal-weight mean is (100 * sum) / count and the composite is (process + outcome) / 2.",
+  "formula": "aos-composite.v1",
+  "vectors": [
+    {
+      "vector_id": "all-issued-full",
+      "why": "Every construct and domain at one: both indices at one hundred, composite at one hundred.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": 100,
+        "outcome_index": 100,
+        "composite": 100,
+        "process_withheld_for": [],
+        "outcome_withheld_for": []
+      }
+    },
+    {
+      "vector_id": "three-quarters",
+      "why": "Three constructs at one half and two domains at one half: each index is an equal-weight mean, so both land on seventy-five.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": 75,
+        "outcome_index": 75,
+        "composite": 75,
+        "process_withheld_for": [],
+        "outcome_withheld_for": []
+      }
+    },
+    {
+      "vector_id": "outcome-lower",
+      "why": "Process at one hundred, domains at a quarter, a half, three quarters and one: outcome is sixty-two and a half and the composite is the 50:50 mean, eighty-one and a quarter.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 0.25,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": 0.75,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": 100,
+        "outcome_index": 62.5,
+        "composite": 81.25,
+        "process_withheld_for": [],
+        "outcome_withheld_for": []
+      }
+    },
+    {
+      "vector_id": "one-construct-withheld",
+      "why": "C4 withheld: the process index is withheld for C4 rather than averaged over the five issued constructs, the outcome index issues, the composite is withheld.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": null,
+          "status": "WITHHELD"
+        },
+        {
+          "id": "C5",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": null,
+        "outcome_index": 100,
+        "composite": null,
+        "process_withheld_for": [
+          "C4"
+        ],
+        "outcome_withheld_for": []
+      }
+    },
+    {
+      "vector_id": "one-domain-withheld",
+      "why": "O3 withheld: the outcome index is withheld for O3, the process index issues, the composite is withheld.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": null,
+          "status": "WITHHELD"
+        },
+        {
+          "id": "O4",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": 100,
+        "outcome_index": null,
+        "composite": null,
+        "process_withheld_for": [],
+        "outcome_withheld_for": [
+          "O3"
+        ]
+      }
+    },
+    {
+      "vector_id": "both-withheld",
+      "why": "C1 and O2 withheld: both indices and the composite are withheld, each naming what it was withheld for.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": null,
+          "status": "WITHHELD"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": null,
+          "status": "WITHHELD"
+        },
+        {
+          "id": "O3",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 1,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": null,
+        "outcome_index": null,
+        "composite": null,
+        "process_withheld_for": [
+          "C1"
+        ],
+        "outcome_withheld_for": [
+          "O2"
+        ]
+      }
+    },
+    {
+      "vector_id": "issued-zero-counts",
+      "why": "An issued zero is a number: two constructs at zero pull the process index to fifty and four domains at zero make an outcome index of zero, a composite of twenty-five.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C4",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 0,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": 50,
+        "outcome_index": 0,
+        "composite": 25,
+        "process_withheld_for": [],
+        "outcome_withheld_for": []
+      }
+    },
+    {
+      "vector_id": "withheld-not-zero",
+      "why": "The same rows with C3 withheld instead of at zero: the process index is withheld, not fifty and not sixty -- a gap is never a zero and never dropped from the denominator.",
+      "constructs": [
+        {
+          "id": "C1",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C2",
+          "estimate": 1,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C3",
+          "estimate": null,
+          "status": "WITHHELD"
+        },
+        {
+          "id": "C4",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C5",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        },
+        {
+          "id": "C6",
+          "estimate": 0.5,
+          "status": "ISSUED"
+        }
+      ],
+      "domains": [
+        {
+          "id": "O1",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O2",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O3",
+          "estimate": 0,
+          "status": "ISSUED"
+        },
+        {
+          "id": "O4",
+          "estimate": 0,
+          "status": "ISSUED"
+        }
+      ],
+      "expected": {
+        "process_index": null,
+        "outcome_index": 0,
+        "composite": null,
+        "process_withheld_for": [
+          "C3"
+        ],
+        "outcome_withheld_for": []
+      }
+    }
+  ]
+}
