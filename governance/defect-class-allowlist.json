@@ -146,6 +146,16 @@
       "file": "lib/action-pins.mjs",
       "match": "document = parseYamlSubset(readFileSync(file, \"utf8\"));",
       "note": "the workflow text is parsed for its uses: lines; the pin digest at line 846 hashes the raw bytes read separately"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "sessionDigestOf(Buffer.from(readFileSync(sessionPath, \"utf8\"), \"utf8\"))",
+      "note": "a mutation `to` string quoting the decoded-read digest #567 removed; the manifest never runs it, and the `createHash(` that makes this file eligible sits in another guard's `from` string"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "sha256Bytes(Buffer.from(readFileSync(full, \"utf8\").replace(",
+      "note": "a mutation `to` string quoting the CRLF-folding digest #567 removed; the manifest never runs it"
     }
   ],
   "regex-no-unicode": [
