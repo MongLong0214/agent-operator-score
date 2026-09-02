@@ -13,13 +13,13 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { canonicalJson, htmlEscape } from "../../lib/core.mjs";
+import { canonicalJson, htmlEscape, sha256Value } from "../../lib/core.mjs";
 import { runValidity } from "../../lib/cycle.mjs";
 import { comparability, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
@@ -42,7 +42,7 @@ import {
 import { ADAPTERS, appliedProfile, buildProfile, profileDigestOf } from "../../lib/profile.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
-import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
+import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA, LEGACY_IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
 import { addAgent, makePlan, newestResult, run, verifiedRunner } from "./helpers.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -74,6 +74,29 @@ const identity = (over = {}) => {
     ...over
   };
   return { ...base, identity_digest: over.identity_digest ?? identityDigestOf(base) };
+};
+
+// The identity shape a previous release wrote: the same fields, its own schema id, and a digest
+// taken over everything except the status -- which is exactly why the status was not evidence.
+const legacyDigestOf = (record) => `sha256:${sha256Value({
+  schema_id: record.schema_id,
+  resolved_realpath: record.resolved_realpath,
+  realpath_digest: record.realpath_digest,
+  file_fingerprint: record.file_fingerprint,
+  interpreter_digest: record.interpreter_digest,
+  owner_uid: record.owner_uid,
+  mode: record.mode,
+  parent_security: record.parent_security,
+  platform_identity: {
+    macos_codesign_team: record.platform_identity.macos_codesign_team,
+    macos_requirement_digest: record.platform_identity.macos_requirement_digest
+  },
+  adapter_id: record.adapter_id
+})}`;
+
+const legacyIdentity = (over = {}) => {
+  const base = { ...identity(), schema_id: LEGACY_IDENTITY_SCHEMA, ...over };
+  return { ...base, identity_digest: legacyDigestOf(base) };
 };
 
 const agent = (over = {}) => ({
@@ -382,6 +405,15 @@ test("the transcript scan is bounded, and exhausting the budget is a named answe
     const generous = observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex" });
     assert.equal(generous.events.length, 1, "the answer is still found when the budget allows it");
     assert.equal(generous.exhausted, false);
+
+    // Entries examined, not files accepted: a directory of files this reader never opens is still
+    // a directory this reader walked, and a child can make hundreds of thousands of them.
+    const noise = join(home, ".codex", "sessions", "2026", "09", "04");
+    mkdirSync(noise, { recursive: true });
+    for (let index = 0; index < 200; index += 1) writeFileSync(join(noise, `pad-${index}.txt`), "x");
+    const walked = observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex", budget: { entries: 20 } });
+    assert.equal(walked.exhausted, true, "entries nothing reads still cost nothing");
+    assert.equal(walked.reason, "AOS_MODEL_SCAN_BUDGET");
 
     const starved = observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex", budget: { bytes: 4096, files: 2 } });
     assert.equal(starved.exhausted, true);
@@ -736,6 +768,65 @@ test("a runtime identity whose digest does not recompute is not bound, however w
   // An identity the contract itself marked UNTRUSTED binds under that name, and is never VERIFIED.
   const untrusted = identity({ identity_status: "UNTRUSTED", untrusted_reasons: ["world_writable /usr/bin"] });
   assert.equal(boundRuntimeIdentity(untrusted).identity_status, "UNTRUSTED");
+});
+
+test("an identity a previous release wrote still binds, by a name that says what it is", () => {
+  // Binding the status into the digest changed what the digest covers, and the record kept its old
+  // schema id -- so every identity `dev` had already written failed to recompute and bound as
+  // UNVERIFIABLE with a null digest. A cycle then locked a null executable and excluded every run
+  // as PROFILE_CHANGED: agents registered before this release could not contribute a run at all,
+  // silently. The new shape has its own id, and the old one is read as what it is.
+  const current = identity();
+  assert.equal(current.schema_id, IDENTITY_SCHEMA);
+  assert.equal(boundRuntimeIdentity(current).identity_status, "VERIFIED");
+
+  const legacy = legacyIdentity();
+  assert.equal(legacy.schema_id, LEGACY_IDENTITY_SCHEMA);
+  const bound = boundRuntimeIdentity(legacy);
+  assert.equal(bound.identity_digest, legacy.identity_digest, "a record this product wrote was refused outright");
+  assert.equal(bound.identity_status, "UNVERIFIED_LEGACY_SCHEMA");
+  // Named, not silent: it does not issue, and the reason says what to do about it.
+  const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+  const policy = issuancePolicyFor({ provenance, verification: null, runtimeIdentity: bound });
+  assert.equal(policy.profile_bound_aggregation.reason, "RUNTIME_IDENTITY_UNVERIFIED");
+  assert.match(policy.profile_bound_aggregation.detail, /re-register/u);
+  // A legacy record whose own digest does not recompute is still refused.
+  assert.equal(boundRuntimeIdentity({ ...legacy, owner_uid: 999 }).identity_status, "UNVERIFIABLE");
+});
+
+test("a cycle and its runs bind the executable as it is now, not as it was registered", () => {
+  // The other half of the same fallout. A cycle opened from a registration written by a previous
+  // release locked that record's digest, while every run described the executable at spawn and
+  // reported a current one -- two different digests for one program, and PROFILE_CHANGED on every
+  // run. Both sides describe the executable now, so a stale registration cannot exclude a run; the
+  // drift between the two is reported instead.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-model-legacy-"));
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo", undefined, ["--model-id", EXACT_A, "--adapter", "codex-cli.v1"], verifiedRunner(cwd));
+    // Rewrite the stored identity the way a previous release would have left it.
+    const store = join(cwd, ".aos", "agents.json");
+    const config = JSON.parse(readFileSync(store, "utf8"));
+    const stored = config.agents.solo.runtime_identity;
+    config.agents.solo.runtime_identity = {
+      ...stored,
+      schema_id: LEGACY_IDENTITY_SCHEMA,
+      identity_digest: legacyDigestOf({ ...stored, schema_id: LEGACY_IDENTITY_SCHEMA })
+    };
+    writeFileSync(store, `${JSON.stringify(config, null, 2)}\n`);
+
+    const plan = makePlan(cwd, { default: "solo" });
+    run(cwd, ["cycle", "start", "--seed", SEEDS[0], "--seed", SEEDS[1], "--seed", SEEDS[2]]);
+    const cycle = JSON.parse(readFileSync(join(cwd, ".aos", "cycle.json"), "utf8"));
+    spawnSync(process.execPath, [cli, "assess", "--plan", plan, "--checkpoints", "--seed", SEEDS[0]], {
+      cwd, encoding: "utf8", input: UNBLOCK, timeout: 300000,
+      env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: "needs-instruction", FAKE_AGENT_MODEL: EXACT_A }
+    });
+    const result = newestResult(cwd);
+    assert.equal(result.profile_digest, cycle.profile_digest, "a registration from a previous release excluded the run");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test("an untrusted identity cannot be relabelled VERIFIED without the digest saying so", () => {
@@ -1367,6 +1458,26 @@ test("a configured agent that never ran does not move the cohort out from under 
   }
 });
 
+test("an import with nothing in it creates no Run at all", () => {
+  // The Run was created before the input was read, so an empty pipe left a manifest with no
+  // provenance record and no result -- the one shape "every Run carries a record" cannot survive.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-model-empty-import-"));
+  try {
+    run(cwd, ["init"]);
+    const empty = join(cwd, "empty.jsonl");
+    writeFileSync(empty, "");
+    const refused = spawnSync(process.execPath, [cli, "import", "--producer", "other-tool", "--file", empty], {
+      cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+    assert.notEqual(refused.status, 0);
+    assert.match(refused.stderr, /AOS_EVENT_SOURCE_EMPTY/u);
+    const runs = join(cwd, ".aos", "runs");
+    assert.deepEqual(existsSync(runs) ? readdirSync(runs) : [], [], "a Run was created for an import that never happened");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 test("an imported run is a Run, so it carries a provenance record and a result on disk", () => {
   // `aos import` and `aos bridge` create a Run and used to leave it with a manifest, some events
   // and nothing else: no provenance, no runtime identity, no result written at all. "Every Run"
@@ -1422,6 +1533,14 @@ test("a run that failed still says which model and which executable it was going
     assert.equal(result.model_identity.by_agent.exact.provenance.id, EXACT_A);
     assert.match(result.model_identity.by_agent.exact.runtime_identity_digest, /^sha256:[0-9a-f]{64}$/u);
     assert.equal(result.model_identity.claim_stage, "RUN_DIAGNOSTIC");
+    // And the terminal names the result that was written. It carried a null digest beside a
+    // persisted result, so recovery read this Run as invalid -- the provenance it does carry was
+    // unreadable through the front door (#561 round 7).
+    const recovered = spawnSync(process.execPath, [cli, "session", "recover", result.run_id, "--json"], {
+      cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+    assert.equal(`${recovered.stdout}${recovered.stderr}`.includes("terminal/result digest mismatch"), false, recovered.stdout);
+    assert.notEqual(JSON.parse(recovered.stdout).action, "INVALID");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

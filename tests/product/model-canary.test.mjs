@@ -64,10 +64,13 @@ test("the canary says what it is: a real capture replayed, and what it cannot pr
   }
 });
 
-test("every observation came from an invocation of the runtime, not from whatever was lying around", () => {
-  // The capture used to scan pre-existing session directories, so the fixture recorded rows some
-  // other session had written and the word "canary" was doing work the evidence did not (#561
-  // round 6). Each observation now names the invocation it came from.
+test("every observation records the invocation it claims to have come from, in the shape the capture writes", () => {
+  // What this can check is the record's shape and internal agreement: a command that names a
+  // runtime this product reads, an exit code, a duration, a version string, a workspace digest.
+  // What it cannot check is that the invocation happened -- a fabricated observation with those
+  // fields passes, and no test reading a committed file can tell the difference. The capture is
+  // asserted by `unverifiable_from_repository`, and this test is named for the half it verifies
+  // (#561 round 7: a test's name may not claim more than its body can distinguish).
   for (const observation of canary.observations) {
     assert.match(observation.invocation.command, /^(codex|claude)\b/u, observation.runtime);
     assert.equal(observation.invocation.exit_code, 0, observation.runtime);
