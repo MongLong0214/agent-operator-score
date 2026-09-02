@@ -7,8 +7,8 @@ import test from "node:test";
 import { checkpointEvidence, interventionSummary } from "../../lib/checkpoint.mjs";
 import { canonicalJson, runProcess } from "../../lib/core.mjs";
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
-import { attestedOperatorTrace, isOperatorAuthorityType, mintOperatorEvent } from "../../lib/operator-events.mjs";
-import { bindOperatorDecisions, contextDecisions, isShippedPlan, operatorPlanTemplate, routeEvidence, validateOperatorPlan } from "../../lib/operator-plan.mjs";
+import { DECISION_TYPES, attestedOperatorTrace, isOperatorAuthorityType, mintOperatorEvent } from "../../lib/operator-events.mjs";
+import { bindOperatorDecisions, boundDecisionTypes, constructForDecision, contextDecisions, dimensionForDecision, isShippedPlan, operatorPlanTemplate, routeEvidence, validateOperatorPlan } from "../../lib/operator-plan.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { appendEvent, createRun, operatorRunKey, readEvents, runPaths } from "../../lib/store.mjs";
 import { identified, observationsWith } from "./ecd-fixtures.mjs";
@@ -280,6 +280,16 @@ test("a decision bound to a cell on another axis, another construct, or no cell 
   const noCell = bindOperatorDecisions([decision({ construct_cell_id: "C9.ZZ.99" })], { contract: shipped });
   assert.match(noCell.rejected[0].reason, /is not a cell in this contract/u);
   for (const binding of [wrongAxis, wrongConstruct, noCell]) assert.equal(binding.rows.length, 0);
+});
+
+test("every decision type the schema admits has a construct and a dimension, so none can be minted and then produce no row", () => {
+  const declared = [...DECISION_TYPES].sort();
+  assert.deepEqual(boundDecisionTypes(), declared);
+  for (const decisionType of declared) {
+    assert.ok(constructForDecision(decisionType) !== null, `${decisionType} has no construct`);
+    assert.ok(dimensionForDecision(decisionType) !== null, `${decisionType} has no dimension`);
+  }
+  assert.equal(constructForDecision("something.else"), null);
 });
 
 test("the cells this binding reports are the operator_process cells the contract declares, with the contract's own subcheck mapping", () => {
