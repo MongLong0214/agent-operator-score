@@ -85,12 +85,14 @@ else {
     for (const one of detailed) line(`FAIL  [${one.lane}] ${one.check}${one.issue ? ` #${one.issue}` : ""}: ${one.detail}`);
     line("");
     line(`FAIL  ${detailed.length} problem${detailed.length === 1 ? "" : "s"}`);
-  } else if (reports.evidence.established) {
+  } else if (summary.verdict === "PASS") {
     line("PASS  plan, GitHub state and close evidence agree");
   } else {
-    // Deliberately not "PASS, everything agrees". Offline, the confirmations live in a file the
-    // author of the change controls, so this run has not established them and must not say it has.
-    line("PASS  plan and GitHub state agree — close evidence is not established offline");
+    // Not "PASS" in any form. Offline, the confirmations live in a file the author of the change
+    // controls, so this run has not established them and must not begin its verdict with the word
+    // a reader scans for.
+    line(`INCOMPLETE  plan and GitHub state agree; close evidence for ${summary.close_evidence_unestablished.map((n) => `#${n}`).join(", ")} is not established offline`);
+    line("            run `npm run verify:execution-plan:live` to establish it");
   }
 }
 

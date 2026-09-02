@@ -16,6 +16,60 @@
 
 export const GUARDS = [
   {
+    guard: "offline runs do not print or report a pass",
+    reason: "ok, the exit status and the printed line all said success on a run that established nothing",
+    file: "lib/execution-plan.mjs",
+    from: "        : reports.evidence.established === true || (reports.evidence.unestablished ?? []).length === 0",
+    to: "        : true",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an offline run does not signal success through its verdict, and a live one does"
+  },
+  {
+    guard: "a live audit needs a live snapshot",
+    reason: "`{live: true}` over a committed file was a caller's claim that nothing checked",
+    file: "lib/execution-plan.mjs",
+    from: '  const isLive = live && snapshot.source === "live";',
+    to: "  const isLive = live;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a live audit asked for over a committed snapshot is refused, not granted"
+  },
+  {
+    guard: "the evidence contract is pinned outside the plan",
+    reason: "required_evidence_fields: [\"x\"] was non-empty and asked for nothing",
+    file: "lib/execution-plan.mjs",
+    from: "    if (JSON.stringify([...one.required_evidence_fields].sort()) !== JSON.stringify([...contract.fields].sort())) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the evidence contract lives outside the document it checks"
+  },
+  {
+    guard: "phase permissions are pinned, not only phase names",
+    reason: "flipping #572's read-only phase to integrate code passed, because the scope rule only fires on a blocked issue",
+    file: "lib/execution-plan.mjs",
+    from: "      if (phase.code_integration_allowed !== required[phase.id].code_integration_allowed) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the phase contract pins what a phase may do, not only what it is called"
+  },
+  {
+    guard: "owned paths are not only prose",
+    reason: "owned_paths: [\"README.md\"] made `changed something it owns` true of a typo fix",
+    file: "lib/execution-plan.mjs",
+    from: "    if (one.kind !== \"epic\" && one.kind !== \"audit\" && one.owned_paths.every((path) => DOCUMENTATION_ONLY.test(path))) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the evidence contract lives outside the document it checks"
+  },
+  {
+    guard: "graph analysis only on a canonical plan",
+    reason: "a twelve-thousand-node ring is schema-valid, already rejected, and took ninety seconds to analyse",
+    file: "lib/execution-plan.mjs",
+    from: "  if (missing.length > 0 || unknown.length > 0 || byNumber.size !== CANONICAL_ISSUE_COUNT) {",
+    to: "  if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a long ring is reported, not a stack overflow"
+  },
+  {
     guard: "evidence bound to the audited revision",
     reason: "the shipped record quoted a manifest digest that no longer matched, and the audit printed PASS",
     file: "lib/github-state.mjs",
@@ -40,7 +94,7 @@ export const GUARDS = [
     from: "    if (!isLive) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "offline, close evidence is reported as unestablished rather than passed"
+    name: "offline, close evidence is unestablished in the report and in every signal the command emits"
   },
   {
     guard: "evidence contract cannot be switched off",
@@ -49,16 +103,16 @@ export const GUARDS = [
     from: "    if (!one.close_evidence_required) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "the manifest cannot switch off its own evidence contract"
+    name: "no single edit to the manifest weakens the evidence, phase or ownership contract"
   },
   {
     guard: "phases are a contract",
     reason: "emptying #572's phases removed the restriction that withholds branch deletion",
     file: "lib/execution-plan.mjs",
-    from: '      fail("phases-do-not-match-contract", `#${number} must declare the phases ${required.join(", ")}, found ${declared.join(", ") || "none"}`, Number(number));',
-    to: "      continue;",
+    from: "    if (JSON.stringify(declared) !== JSON.stringify(Object.keys(required).sort())) {",
+    to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "the manifest cannot switch off its own evidence contract"
+    name: "no single edit to the manifest weakens the evidence, phase or ownership contract"
   },
   {
     guard: "cycle search inside strongly connected components",
@@ -82,7 +136,7 @@ export const GUARDS = [
     guard: "the capture time names a day that exists",
     reason: "2026-02-30 parses, and Date silently rolls it over to the second of March",
     file: "lib/execution-plan.mjs",
-    from: "  if (d > daysInMonth) return false;",
+    from: "  if (d > lengths[mo - 1]) return false;",
     to: "  if (false) return false;",
     test: "tests/product/execution-plan.test.mjs",
     name: "a date with the shape of an instant that is not one fails"
@@ -154,10 +208,10 @@ export const GUARDS = [
     guard: "elementary cycle enumeration",
     reason: "a diagnostic that omits the edge someone has to remove sends them to fix the wrong one",
     file: "lib/execution-plan.mjs",
-    from: "          if (!inside.has(next) || next < start) continue;",
-    to: "          if (!inside.has(next)) continue;",
+    from: "        if (!inside.has(next) || next < start) continue;",
+    to: "        if (!inside.has(next)) continue;",
     test: "tests/product/execution-plan.test.mjs",
-    name: "within its bound, every elementary cycle is reported, once each"
+    name: "within its bound, each reported cycle is real, distinct, and named from its smallest member"
   },
   {
     guard: "close-evidence repository confirmation",
@@ -227,7 +281,7 @@ export const GUARDS = [
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
     from: "        if (next === start) cycles.push([...stack, start]);",
-    to: "        if (false) cycles.push([...stack, start]);",
+    to: "        if (next === -1) cycles.push([...stack, start]);",
     test: "tests/product/execution-plan.test.mjs",
     name: "a dependency cycle fails"
   },

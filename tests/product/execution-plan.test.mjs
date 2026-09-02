@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 import {
   CANONICAL_ISSUE_COUNT,
+  EVIDENCE_CONTRACT,
   EXCLUDED_ISSUES,
+  isRealInstant,
   auditCloseEvidence,
   auditSummary,
   checkGithubState,
@@ -22,6 +25,10 @@ const plan = () => loadPlan();
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const entry = (doc, issue) => doc.issues.find((one) => one.issue === issue);
 const failures = (report) => report.failures.map((one) => one.check);
+
+// A snapshot the live path will accept. `{live: true}` alone is a caller's claim; the file has to
+// agree, which is the point of the check being tested here.
+const asLive = (snapshot) => ({ ...snapshot, source: "live" });
 
 const verified = () => ({ ...Object.fromEntries(REQUIRED_CONFIRMATIONS.map((key) => [key, true])), verified: true });
 
@@ -183,7 +190,7 @@ test("#582 closed on a documentation PR with no implementation evidence fails", 
   issue.state = "closed";
   issue.close_evidence = null;
   issue.closing_references = ["#544 docs: measurement foundations"];
-  const report = auditCloseEvidence(plan(), snapshot, { live: true });
+  const report = auditCloseEvidence(plan(), asLive(snapshot), { live: true });
   assert.ok(report.failures.some((one) => one.check === "close-evidence-missing" && one.issue === 582));
   assert.equal(report.ok, false);
 });
@@ -202,7 +209,7 @@ test("close evidence without CI run ids or a PASS verdict is not evidence", () =
     verdict: "PASS",
     evidence: {}
   };
-  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-incomplete"));
+  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-incomplete"));
 
   const held = state();
   const other = held.issues.find((one) => one.number === 567);
@@ -217,7 +224,7 @@ test("close evidence without CI run ids or a PASS verdict is not evidence", () =
     verdict: "HOLD",
     evidence: { raw_byte_digest_api: "sha256:" + "0".repeat(64), mutation: "load-bearing" }
   };
-  assert.ok(auditCloseEvidence(plan(), held, { live: true }).failures.some((one) => one.check === "close-evidence-not-pass"));
+  assert.ok(auditCloseEvidence(plan(), asLive(held), { live: true }).failures.some((one) => one.check === "close-evidence-not-pass"));
 });
 
 test("close evidence missing an issue-specific required field fails", () => {
@@ -235,11 +242,11 @@ test("close evidence missing an issue-specific required field fails", () => {
     evidence: { mutation: "load-bearing" }
   };
   issue.close_evidence_checked = verified();
-  const report = auditCloseEvidence(plan(), snapshot, { live: true });
+  const report = auditCloseEvidence(plan(), asLive(snapshot), { live: true });
   assert.ok(report.failures.some((one) => one.check === "close-evidence-field-missing"));
 });
 
-test("a complete completion record closes the issue", () => {
+test("a completion record with every part present and confirmed raises no audit failure", () => {
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 567);
   issue.state = "closed";
@@ -258,7 +265,7 @@ test("a complete completion record closes the issue", () => {
     }
   };
   issue.close_evidence_checked = verified();
-  assert.deepEqual(auditCloseEvidence(plan(), snapshot, { live: true }).failures, []);
+  assert.deepEqual(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures, []);
 });
 
 // --- the manifest is the thing a lower-tier agent reads -------------------------------------
@@ -292,7 +299,7 @@ test("a done issue is closed on GitHub and a not-done issue is open", () => {
     assert.equal(live.state, one.status === "done" ? "closed" : "open", `#${one.issue}`);
   }
   // Every issue already closed carries the record that closed it, checked rather than assumed.
-  assert.deepEqual(auditCloseEvidence(doc, snapshot, { live: true }).failures, []);
+  assert.deepEqual(auditCloseEvidence(doc, asLive(snapshot), { live: true }).failures, []);
 });
 
 test("the digest is stable and changes when the plan changes", () => {
@@ -306,7 +313,7 @@ test("the digest is stable and changes when the plan changes", () => {
 
 // --- the completion record is read exactly, not interpreted ---------------------------------
 
-test("only a fenced record that names the schema counts as evidence, and the last one wins", async () => {
+test("only a fenced record that names the schema counts, and a later trusted one supersedes an earlier", async () => {
   const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
 
   assert.equal(parseCompletionRecord(["Closes #582. Merged in #544."]), null);
@@ -319,7 +326,7 @@ test("only a fenced record that names the schema counts as evidence, and the las
   assert.equal(parseCompletionRecord(["body", first]).verdict, "HOLD");
 });
 
-test("the audit summary carries no title, body or path, even when everything is failing", () => {
+test("the audit summary carries no title, body or path when it is reporting failures", () => {
   // What the command prints is what goes into the release evidence bundle, and the bundle is
   // published. Built here with real failures in it, because a version of this test that asserted an
   // empty failure list was empty would have stayed green while a title was added to the output.
@@ -333,7 +340,7 @@ test("the audit summary carries no title, body or path, even when everything is 
   const summary = auditSummary(doc, snapshot, {
     plan: checkPlan(doc),
     state: checkGithubState(doc, snapshot),
-    evidence: auditCloseEvidence(doc, snapshot, { live: true })
+    evidence: auditCloseEvidence(doc, asLive(snapshot), { live: true })
   });
 
   assert.equal(summary.ok, false);
@@ -478,14 +485,14 @@ test("a record the repository does not confirm is not evidence", () => {
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 588);
   issue.close_evidence_checked = { commit_exists: true, commit_on_integration_branch: false, pr_merged: true, pr_closes_issue: true, ci_runs_succeeded: true, verified: false };
-  const report = auditCloseEvidence(plan(), snapshot, { live: true });
+  const report = auditCloseEvidence(plan(), asLive(snapshot), { live: true });
   assert.ok(report.failures.some((one) => one.check === "close-evidence-unverified" && one.issue === 588));
 });
 
 test("a record nobody ever checked is not evidence either", () => {
   const snapshot = state();
   snapshot.issues.find((one) => one.number === 588).close_evidence_checked = null;
-  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-unchecked"));
+  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-unchecked"));
 });
 
 test("the shipped snapshot records a live confirmation of every component, not a summary", () => {
@@ -510,7 +517,7 @@ test("a record from someone without write access is not an attestation", async (
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 588);
   issue.close_evidence = { ...issue.close_evidence, author_trusted: false, author: "drive-by" };
-  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
+  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
 });
 
 test("an outsider cannot overwrite a maintainer's record, and the attempt is recorded", async () => {
@@ -534,7 +541,7 @@ test("an outsider cannot overwrite a maintainer's record, and the attempt is rec
 
 // --- the cycle diagnostic names every edge someone would have to remove ---------------------
 
-test("within its bound, every elementary cycle is reported, once each", () => {
+test("within its bound, each reported cycle is real, distinct, and named from its smallest member", () => {
   const doc = plan();
   // Three issues that all wait on each other. A depth-first search with one shared visited set
   // finds only some of these, and the one it drops is the edge the reader has to remove.
@@ -547,7 +554,8 @@ test("within its bound, every elementary cycle is reported, once each", () => {
     .failures.filter((one) => one.check === "dependency-cycle")
     .map((one) => one.detail);
 
-  // Six elementary cycles: three of length two, two of length three, and each named once.
+  // Five elementary cycles: three of length two and two of length three. The three two-cycles are
+  // named explicitly because those are the ones a single shared visited set used to drop.
   const canonical = (detail) => detail.replace(/#/g, "");
   assert.equal(reported.length, 5, reported.join(" | "));
   for (const expected of ["553 -> 554 -> 553", "553 -> 555 -> 553", "554 -> 555 -> 554"]) {
@@ -623,18 +631,18 @@ test("three separately true facts are not a confirmation", async () => {
 test("a one-key forgery of the whole audit does not pass", () => {
   const snapshot = state();
   snapshot.issues.find((one) => one.number === 588).close_evidence_checked = { verified: true };
-  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
+  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
 
   const partial = state();
   partial.issues.find((one) => one.number === 588).close_evidence_checked = { ...verified(), pr_produced_the_commit: false };
-  assert.ok(auditCloseEvidence(plan(), partial, { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
+  assert.ok(auditCloseEvidence(plan(), asLive(partial), { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
 });
 
 test("an omitted author_trusted is not a trusted author", () => {
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 588);
   delete issue.close_evidence.author_trusted;
-  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
+  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
 });
 
 test("an empty array is not a digest and false is not a count", () => {
@@ -647,7 +655,7 @@ test("an empty array is not a digest and false is not a count", () => {
     const issue = snapshot.issues.find((one) => one.number === 588);
     issue.close_evidence = { ...issue.close_evidence, evidence: { ...issue.close_evidence.evidence, [field]: value } };
     assert.ok(
-      auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-field-missing"),
+      auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-field-missing"),
       `${field}=${JSON.stringify(value)} was accepted as evidence`
     );
   }
@@ -771,7 +779,7 @@ test("the published summary keeps the key names its schema version promised", ()
   const summary = auditSummary(doc, snapshot, {
     plan: checkPlan(doc),
     state: checkGithubState(doc, snapshot),
-    evidence: auditCloseEvidence(doc, snapshot, { live: true })
+    evidence: auditCloseEvidence(doc, asLive(snapshot), { live: true })
   });
   assert.equal(summary.schema, "aos-execution-audit.v1");
   assert.deepEqual(Object.keys(summary.counts).sort(), ["blocked", "done", "in_progress", "ready", "tracking"]);
@@ -780,7 +788,7 @@ test("the published summary keeps the key names its schema version promised", ()
 
 // --- round three: the offline audit does not get to assert a pass ---------------------------
 
-test("offline, close evidence is reported as unestablished rather than passed", () => {
+test("offline, close evidence is unestablished in the report and in every signal the command emits", () => {
   const doc = plan();
   const snapshot = state();
   // The confirmations live in a file the author of the change controls. A contributor who cannot
@@ -797,14 +805,14 @@ test("offline, close evidence is reported as unestablished rather than passed", 
   issue.close_evidence_checked = { verified: true };
   // Offline says nothing about it either way; live is where it fails.
   assert.deepEqual(auditCloseEvidence(doc, forged).failures, []);
-  assert.equal(auditCloseEvidence(doc, forged, { live: true }).ok, false);
+  assert.equal(auditCloseEvidence(doc, asLive(forged), { live: true }).ok, false);
 
-  const established = auditCloseEvidence(doc, snapshot, { live: true });
+  const established = auditCloseEvidence(doc, asLive(snapshot), { live: true });
   assert.equal(established.established, true);
   assert.deepEqual(established.unestablished, []);
 });
 
-test("the manifest cannot switch off its own evidence contract", () => {
+test("no single edit to the manifest weakens the evidence, phase or ownership contract", () => {
   // The whole bypass in one edit: mark it done, drop the phases, drop the evidence requirement.
   const doc = plan();
   const one = entry(doc, 572);
@@ -900,7 +908,7 @@ test("a snapshot with no issues is reported by both readers rather than throwing
   const doc = plan();
   for (const broken of [{ ...state(), issues: null }, { ...state(), issues: undefined }]) {
     assert.equal(checkGithubState(doc, broken).ok, false);
-    const audit = auditCloseEvidence(doc, broken, { live: true });
+    const audit = auditCloseEvidence(doc, asLive(broken), { live: true });
     assert.equal(audit.ok, false);
     assert.ok(audit.failures.some((one) => one.check === "snapshot-empty"));
   }
@@ -912,4 +920,127 @@ test("a pattern that is not a valid unicode regular expression is a schema error
   const report = validateAgainstSchema("8", { type: "string", pattern: "\\8" });
   assert.equal(report.ok, false);
   assert.match(report.errors[0].message, /not a valid unicode regular expression/);
+});
+
+// --- round four: the command's own signals must agree with its verdict -----------------------
+
+test("an offline run does not signal success through its verdict, and a live one does", () => {
+  const script = new URL("../../scripts/verify-v020-execution-plan.mjs", import.meta.url).pathname;
+  const result = spawnSync(process.execPath, [script, "--json"], { encoding: "utf8", timeout: 120000 });
+  const summary = JSON.parse(result.stdout);
+
+  // `ok` and the exit status both mean "nothing this run could check was wrong", and both stay
+  // true offline so CI can use them. The verdict is the field that answers the other question, and
+  // the printed line must not begin with the word a reader scans for.
+  assert.equal(summary.verdict, "INCOMPLETE");
+  assert.equal(summary.close_evidence_established, false);
+  assert.deepEqual(summary.close_evidence_unestablished, [588]);
+  assert.equal(summary.ok, true);
+  assert.equal(result.status, 0);
+
+  const printed = spawnSync(process.execPath, [script], { encoding: "utf8", timeout: 120000 });
+  assert.match(printed.stdout, /^INCOMPLETE /m);
+  assert.equal(/^PASS /m.test(printed.stdout), false, "an offline run printed a PASS line");
+  assert.match(printed.stdout, /verify:execution-plan:live/);
+});
+
+test("a live audit asked for over a committed snapshot is refused, not granted", () => {
+  // `{live: true}` was a caller-supplied assertion that nothing checked -- the same shape as the
+  // record it exists to distrust.
+  const report = auditCloseEvidence(plan(), state(), { live: true });
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.some((one) => one.check === "close-evidence-not-live"));
+  assert.equal(auditCloseEvidence(plan(), asLive(state()), { live: true }).ok, true);
+});
+
+test("the live audit is a job in CI, not only a command in the documentation", () => {
+  const ci = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.match(ci, /execution-plan-live:/);
+  assert.match(ci, /npm run verify:execution-plan:live/);
+});
+
+test("a long ring is reported, not a stack overflow", () => {
+  // Twelve thousand nodes in a directed ring: schema-valid, deeply recursive, and the previous
+  // implementation raised RangeError before any bound could report anything. A crash is not a
+  // finding -- it reads as the tool being broken rather than the plan being wrong. It is also not
+  // the canonical set, so the graph is not analysed at all: answering a question about a plan that
+  // is already rejected is work nobody asked for and nobody bounded.
+  const doc = plan();
+  const size = 12_000;
+  doc.issues = Array.from({ length: size }, (_, index) => ({
+    ...clone(doc.issues[0]),
+    issue: index + 1,
+    blocked_by: [((index + 1) % size) + 1],
+    blocks: [((index - 1 + size) % size) + 1]
+  }));
+  const started = Date.now();
+  const report = checkPlan(doc);
+  assert.ok(Date.now() - started < 20_000, "the check did not finish on a long ring");
+  assert.equal(report.ok, false);
+  assert.ok(failures(report).includes("canonical-issue-count"));
+  assert.ok(failures(report).includes("graph-checks-skipped"));
+});
+
+test("a ring the size of the real plan is reported as a cycle, iteratively", () => {
+  // The same shape at canonical size, where the graph *is* analysed. This is what proves the walk
+  // no longer recurses: thirty-two frames is nothing, but the ring is what the old code walked
+  // depth-first to its full length.
+  const doc = plan();
+  const numbers = doc.issues.map((one) => one.issue);
+  doc.issues.forEach((one, index) => {
+    one.blocked_by = [numbers[(index + 1) % numbers.length]];
+    one.blocks = [numbers[(index - 1 + numbers.length) % numbers.length]];
+  });
+  const report = checkPlan(doc);
+  const reported = report.failures.filter((one) => one.check === "dependency-cycle");
+  assert.equal(reported.length, 1, "a ring is exactly one elementary cycle");
+  assert.equal(reported[0].detail.split(" -> ").length, numbers.length + 1);
+});
+
+test("the calendar accepts what RFC 3339 accepts", () => {
+  // Year 0000 is a leap year in the proleptic Gregorian calendar, and `Date.UTC(0, …)` maps years
+  // 0-99 to 1900-1999, so February 0000 was told it had twenty-eight days.
+  assert.equal(isRealInstant("0000-02-29T00:00:00Z"), true);
+  assert.equal(isRealInstant("1900-02-29T00:00:00Z"), false);
+  assert.equal(isRealInstant("2000-02-29T00:00:00Z"), true);
+  // A leap second is a valid instant that Date.parse refuses.
+  assert.equal(isRealInstant("1990-12-31T23:59:60Z"), true);
+  assert.equal(isRealInstant("1990-12-31T23:59:61Z"), false);
+  assert.equal(isRealInstant("2026-02-30T00:00:00Z"), false);
+});
+
+test("the phase contract pins what a phase may do, not only what it is called", () => {
+  const doc = plan();
+  // #572's read-only phase is open while the issue is ready, so the scope rule -- which fires only
+  // for a blocked issue -- never looked at it. Flipping this flag was a one-line edit that granted
+  // the branch-deleting phase permission to integrate code.
+  entry(doc, 572).phases.find((one) => one.id === "read-only-audit").code_integration_allowed = true;
+  assert.ok(failures(checkPlan(doc)).includes("phases-do-not-match-contract"));
+});
+
+test("the evidence contract lives outside the document it checks", () => {
+  for (const edit of [
+    (d) => { entry(d, 588).evidence_bindings = {}; },
+    (d) => { entry(d, 588).evidence_bindings = { manifest_digest: "README.md", schema_digest: "README.md" }; },
+    (d) => { entry(d, 553).required_evidence_fields = ["x"]; },
+    (d) => { const e = entry(d, 567); e.required_evidence_fields = e.required_evidence_fields.filter((f) => f !== "raw_byte_digest_api"); },
+    (d) => { entry(d, 553).owned_paths = ["README.md"]; },
+    (d) => { entry(d, 553).owned_paths = ["docs/whatever.md"]; }
+  ]) {
+    const doc = plan();
+    edit(doc);
+    assert.equal(checkPlan(doc).ok, false, "a one-line edit weakened the contract and passed");
+  }
+});
+
+test("every canonical issue has a pinned evidence contract", () => {
+  const doc = plan();
+  for (const one of doc.issues) {
+    assert.ok(EVIDENCE_CONTRACT[one.issue], `#${one.issue} has no pinned evidence contract`);
+    assert.deepEqual(
+      [...one.required_evidence_fields].sort(),
+      [...EVIDENCE_CONTRACT[one.issue].fields].sort(),
+      `#${one.issue}`
+    );
+  }
 });
