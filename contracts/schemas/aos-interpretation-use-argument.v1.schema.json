@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-interpretation-use-argument.v1.schema.json",
+  "title": "AOS interpretation and use argument",
+  "description": "The four inferences a number has to survive before it may be read as anything, each with its assumptions, its evidence, the rebuttals against it, and the stage it stops at.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "contract_version", "claim_stages", "default_claim_stage", "maximum_claim_stage",
+    "generalizability_status", "standard_setting", "categories", "cut_scores", "legacy_band_surface",
+    "intended_uses", "forbidden_uses", "comparability_rules", "counterfactual_tests",
+    "inferences", "validation_registry", "release_note"
+  ],
+  "properties": {
+    "schema": { "const": "aos-interpretation-use-argument.v1" },
+    "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "claim_stages": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/stage" } },
+    "default_claim_stage": { "enum": ["RUN_DIAGNOSTIC", "PROFILE_BOUND", "GENERALIZABILITY_SUPPORTED"] },
+    "maximum_claim_stage": { "enum": ["RUN_DIAGNOSTIC", "PROFILE_BOUND", "GENERALIZABILITY_SUPPORTED"] },
+    "generalizability_status": { "enum": ["UNESTABLISHED", "SUPPORTED"] },
+    "standard_setting": { "type": "null" },
+    "categories": { "type": "null" },
+    "cut_scores": { "type": "null" },
+    "legacy_band_surface": {
+      "description": "The ability category the rest of the product still emits, and which modules carry it. This contract issues none; asserting that as a property of the product rather than of the contract was false, so the artifact discloses the surface instead.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "modules", "excluded_modules", "exclusion_statement", "owner_issue", "statement"],
+      "properties": {
+        "status": { "enum": ["PRESENT", "REMOVED"] },
+        "modules": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
+        "excluded_modules": {
+          "description": "Modules that name an ability category in order to refuse it. Listed by name so that the direction the test could not check -- every module that carries a band is declared -- has no pattern-shaped hole in it.",
+          "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 3 }
+        },
+        "exclusion_statement": { "type": "string", "minLength": 20 },
+        "owner_issue": { "type": "integer", "minimum": 1 },
+        "statement": { "type": "string", "minLength": 20 }
+      }
+    },
+    "intended_uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 5 } },
+    "forbidden_uses": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 5 } },
+    "comparability_rules": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/comparability" } },
+    "counterfactual_tests": {
+      "description": "How many counterfactual tests this contract claims and where they are, so the claim is counted against the file rather than written in prose.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "file", "name_prefix"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "file": { "type": "string", "minLength": 5 },
+        "name_prefix": { "type": "string", "minLength": 3 }
+      }
+    },
+    "inferences": { "type": "array", "minItems": 4, "items": { "$ref": "#/$defs/inference" } },
+    "validation_registry": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/registry_entry" } },
+    "release_note": { "type": "string", "minLength": 20 }
+  },
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_id", "definition", "permits", "forbids"],
+      "properties": {
+        "stage_id": { "enum": ["RUN_DIAGNOSTIC", "PROFILE_BOUND", "GENERALIZABILITY_SUPPORTED"] },
+        "definition": { "type": "string", "minLength": 20 },
+        "permits": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
+        "forbids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } }
+      }
+    },
+    "comparability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "facets", "statement", "status", "refusal_reason"],
+      "properties": {
+        "rule_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "facets": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
+        "statement": { "type": "string", "minLength": 20 },
+        "status": { "enum": ["UNESTABLISHED", "ENFORCED"] },
+        "refusal_reason": {
+          "description": "What comparability() reports when this rule's facets differ. Named in the artifact so the implementation is driven by the declared rules rather than by a status the code happens to recognise -- an ENFORCED rule the code did not look at is a rule that enforced nothing.",
+          "enum": ["CONTRACT_IDENTITY_DIFFERS", "PROFILE_IDENTITY_DIFFERS", "INVARIANCE_UNESTABLISHED"]
+        }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inference_id", "order", "claim", "assumptions", "evidence", "rebuttals", "status", "maximum_claim_stage_if_supported"],
+      "properties": {
+        "inference_id": { "enum": ["scoring", "within_cycle_generalization", "extrapolation", "use"] },
+        "order": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "claim": { "type": "string", "minLength": 20 },
+        "assumptions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 10 } },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "rebuttals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/rebuttal" } },
+        "status": { "enum": ["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "SUPPORTED_FOR_LOCAL_SELF_DIAGNOSIS_ONLY"] },
+        "maximum_claim_stage_if_supported": { "enum": ["RUN_DIAGNOSTIC", "PROFILE_BOUND", "GENERALIZABILITY_SUPPORTED"] }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "status", "detail"],
+      "properties": {
+        "evidence_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "status": { "enum": ["PASS", "FAIL", "UNESTABLISHED"] },
+        "detail": { "type": "string", "minLength": 20 }
+      }
+    },
+    "rebuttal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rebuttal_id", "status", "detail"],
+      "properties": {
+        "rebuttal_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "status": { "enum": ["OPEN", "PARTIALLY_MITIGATED", "MITIGATED"] },
+        "detail": { "type": "string", "minLength": 10 }
+      }
+    },
+    "registry_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "status", "detail"],
+      "properties": {
+        "category": { "enum": ["content", "response_process", "internal_structure", "relations_to_other_variables", "generalizability", "fairness_invariance", "consequences"] },
+        "status": { "enum": ["PASS", "FAIL", "UNESTABLISHED"] },
+        "detail": { "type": "string", "minLength": 10 }
+      }
+    }
+  }
+}
