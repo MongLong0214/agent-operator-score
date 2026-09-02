@@ -15,6 +15,20 @@
       "minLength": 1,
       "maxLength": 200
     },
+    "token": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:+-]{0,200}$"
+    },
+    "token_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/token"
+      },
+      "maxItems": 64
+    },
     "cell_ids": {
       "type": "array",
       "items": {
@@ -174,7 +188,8 @@
         "status",
         "required_cells",
         "cells",
-        "withheld_for"
+        "withheld_for",
+        "contract_binding"
       ],
       "properties": {
         "domain_id": {
@@ -188,6 +203,9 @@
         },
         "axis": {
           "const": "system_outcome"
+        },
+        "contract_binding": {
+          "$ref": "#/$defs/digest"
         },
         "estimate": {
           "$ref": "#/$defs/estimate"
@@ -242,42 +260,41 @@
     },
     "cap_trigger": {
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "required": [
         "trigger_id",
         "cell_id",
-        "observed"
+        "observed",
+        "evidence_ids",
+        "effect_event_ids",
+        "additional_digest",
+        "redacted"
       ],
       "properties": {
         "trigger_id": {
-          "$ref": "#/$defs/id"
+          "$ref": "#/$defs/token"
         },
         "construct_or_domain_id": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/$defs/token"
         },
         "cell_id": {
-          "$ref": "#/$defs/id"
+          "$ref": "#/$defs/token"
+        },
+        "observation_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
         },
         "legacy_metric_id": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/$defs/token"
         },
         "subcheck_id": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/$defs/token"
         },
         "verifier_id": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "$ref": "#/$defs/token"
         },
         "effect_event_ids": {
           "type": "array",
@@ -299,24 +316,53 @@
           "const": true
         },
         "reason": {
-          "type": "string",
+          "type": [
+            "string",
+            "null"
+          ],
           "maxLength": 2000
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "additional_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "redacted": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 64,
+          "uniqueItems": true
         }
       }
     },
     "cap": {
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
       "required": [
         "code",
         "max_value",
         "scope",
         "reason",
-        "triggers"
+        "triggers",
+        "additional_digest",
+        "redacted"
       ],
       "properties": {
         "code": {
-          "$ref": "#/$defs/id"
+          "$ref": "#/$defs/token"
         },
         "max_value": {
           "type": "number",
@@ -346,6 +392,23 @@
           },
           "minItems": 1,
           "maxItems": 256
+        },
+        "additional_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "redacted": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 64,
+          "uniqueItems": true
         }
       }
     },
@@ -497,6 +560,83 @@
         }
       }
     },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_id",
+        "dimension",
+        "state",
+        "value",
+        "verifier_id",
+        "subchecks",
+        "evidence_ids",
+        "reason"
+      ],
+      "properties": {
+        "metric_id": {
+          "$ref": "#/$defs/token"
+        },
+        "dimension": {
+          "$ref": "#/$defs/token"
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "verifier_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "subchecks": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "pass"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/token"
+              },
+              "pass": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
     "operator_process_construct": {
       "type": "object",
       "additionalProperties": false,
@@ -635,7 +775,8 @@
     "system_outcome_profile",
     "aos_composite",
     "cells",
-    "missing"
+    "missing",
+    "observations"
   ],
   "properties": {
     "schema_id": {
@@ -646,15 +787,120 @@
     },
     "run": {
       "type": "object",
-      "additionalProperties": {
-        "type": [
-          "string",
-          "number",
-          "boolean",
-          "null"
-        ]
-      },
-      "maxProperties": 32
+      "additionalProperties": false,
+      "required": [
+        "additional_digest",
+        "redacted"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "#/$defs/token"
+        },
+        "suite": {
+          "$ref": "#/$defs/token"
+        },
+        "suite_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+        },
+        "seed": {
+          "$ref": "#/$defs/token"
+        },
+        "seeded_families": {
+          "$ref": "#/$defs/token_list"
+        },
+        "forms_completed": {
+          "$ref": "#/$defs/token_list"
+        },
+        "profile_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+        },
+        "isolation_level": {
+          "$ref": "#/$defs/token"
+        },
+        "scoring_permitted": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "evidence_status": {
+          "$ref": "#/$defs/token"
+        },
+        "safety_state": {
+          "$ref": "#/$defs/token"
+        },
+        "agents_used": {
+          "$ref": "#/$defs/token_list"
+        },
+        "invocation_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "fixture_backed_agents": {
+          "$ref": "#/$defs/token_list"
+        },
+        "unrecognised_runtime_agents": {
+          "$ref": "#/$defs/token_list"
+        },
+        "operator_plan_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+        },
+        "operator_plan_authored": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        },
+        "ended_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z$"
+        },
+        "mode": {
+          "$ref": "#/$defs/token"
+        },
+        "additional_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "redacted": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      }
     },
     "contract": {
       "type": "object",
@@ -926,6 +1172,13 @@
         "construct",
         "cells",
         "metrics",
+        "required_cells",
+        "issued_cells",
+        "optional_cells",
+        "opportunity_count",
+        "coverage",
+        "missing",
+        "facet_identity",
         "claim_stage",
         "generalizability_status",
         "uncertainty"
@@ -1046,6 +1299,57 @@
         },
         "index": false,
         "net_score": false,
+        "required_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "issued_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "optional_cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/optional_cell"
+          },
+          "maxItems": 64
+        },
+        "opportunity_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "issued"
+          ],
+          "properties": {
+            "required": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "issued": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "missing": {
+          "$ref": "#/$defs/missing"
+        },
+        "facet_identity": {
+          "$ref": "#/$defs/facet_identity"
+        },
         "claim_stage": {
           "enum": [
             "RUN_DIAGNOSTIC",
@@ -1350,6 +1654,13 @@
     },
     "missing": {
       "$ref": "#/$defs/missing"
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/$defs/observation"
+      }
     }
   }
 }
