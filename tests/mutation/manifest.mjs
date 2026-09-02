@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "workspace snapshot map is null-prototype",
+    reason: "an agent creating a file named __proto__ wrote through to Object.prototype and vanished from the diff",
+    file: "lib/safe-fs.mjs",
+    from: "  const files = Object.create(null);",
+    to: "  const files = {};",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a file or directory named __proto__ is a change like any other"
+  },
+  {
     guard: "refused tree is not artifact identity",
     reason: "a tree carrying a refusal identifies no descendant inside it, so two artifacts differing only there are one digest",
     file: "lib/digest.mjs",
@@ -511,6 +520,7 @@ export const REQUIRED_GUARDS = [
  * the release's branches have landed.
  */
 export const ACCOUNTED_GUARDS = [
+  "workspace snapshot map is null-prototype",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",

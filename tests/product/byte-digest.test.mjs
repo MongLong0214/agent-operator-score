@@ -1177,3 +1177,37 @@ test("the reordering diagnostic is not a second way to compare digests", () => {
   assert.equal(handoffDigestsSameMultiset([undefined], [null]), false);
   assert.equal(handoffDigestsSameMultiset(["a".repeat(64)], ["a".repeat(64)]), false, "a legacy bare-hex digest is not a digest here");
 });
+
+// --- a workspace path is attacker-chosen, so the map that holds it must not be ----------------
+
+test("a file or directory named __proto__ is a change like any other", () => {
+  // A plain object inherits the `__proto__` setter. Assigning to it writes through to
+  // Object.prototype instead of adding an own property, so `Object.keys` omitted the path, the
+  // snapshot diff computed no change, and the scope gate stayed green over a workspace the agent
+  // had modified. That is exactly the case a scope check exists to catch.
+  for (const kind of ["file", "directory"]) {
+    const root = mkdtempSync(join(tmpdir(), "aos-proto-"));
+    try {
+      const before = safeWalk(root);
+      assert.deepEqual(Object.keys(before.files), []);
+
+      if (kind === "file") writeFileSync(join(root, "__proto__"), "payload");
+      else mkdirSync(join(root, "__proto__"));
+
+      const after = safeWalk(root);
+      assert.deepEqual(Object.keys(after.files), ["__proto__"], `an added ${kind} was invisible`);
+
+      // The diff the scope gate actually computes.
+      const changed = new Set(
+        [...Object.keys(before.files), ...Object.keys(after.files)].filter((key) => before.files[key] !== after.files[key])
+      );
+      assert.deepEqual([...changed], ["__proto__"], `an added ${kind} produced no change`);
+
+      // And nothing leaked onto the prototype.
+      assert.equal({}.__proto__, Object.prototype);
+      assert.equal(Object.getPrototypeOf(after.files), null);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
