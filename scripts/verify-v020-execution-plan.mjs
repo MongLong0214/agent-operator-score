@@ -51,7 +51,7 @@ const reports = {
   // The run says how it got the file; the file has to agree. A hand-written offline snapshot
   // stamped `live` would otherwise read, in the evidence bundle, as an audit that talked to GitHub.
   state: checkGithubState(plan, snapshot, { expectedSource: live ? "live" : "snapshot" }),
-  evidence: auditCloseEvidence(plan, snapshot)
+  evidence: auditCloseEvidence(plan, snapshot, { live })
 };
 
 const summary = auditSummary(plan, snapshot, reports, {
@@ -80,11 +80,17 @@ else {
     line(`phase ready: #${phase.issue} ${phase.phase} (code integration ${phase.code_integration_allowed ? "allowed" : "not allowed"})`);
   }
   line("");
-  if (detailed.length === 0) line("PASS  plan, GitHub state and close evidence agree");
-  else {
+  for (const one of reports.evidence.unestablished) line(`NOTE  #${one.issue}: ${one.reason}`);
+  if (detailed.length > 0) {
     for (const one of detailed) line(`FAIL  [${one.lane}] ${one.check}${one.issue ? ` #${one.issue}` : ""}: ${one.detail}`);
     line("");
     line(`FAIL  ${detailed.length} problem${detailed.length === 1 ? "" : "s"}`);
+  } else if (reports.evidence.established) {
+    line("PASS  plan, GitHub state and close evidence agree");
+  } else {
+    // Deliberately not "PASS, everything agrees". Offline, the confirmations live in a file the
+    // author of the change controls, so this run has not established them and must not say it has.
+    line("PASS  plan and GitHub state agree — close evidence is not established offline");
   }
 }
 

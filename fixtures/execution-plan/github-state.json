@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-01T23:45:51.074Z",
+  "captured_at": "2026-09-02T00:31:49.846Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -812,16 +812,18 @@
         ],
         "verdict": "PASS",
         "evidence": {
-          "manifest_digest": "sha256:8f0a3c65546ac9d582feb4b85ac209d7b16ce1aa4f99a76275d5e54d70ebe25e",
+          "manifest_digest": "sha256:fea1d19da2e12ab182b501522fef5d0107c695a438f9dc1c9d9ce9ccb7cdc8a7",
           "schema_digest": "sha256:1f09bc3e72dea75b866e370c24c41071c8fd1164b81ab13ae29f28a88c11415e",
           "canonical_issue_count": 32,
-          "live_audit": "PASS — plan, GitHub state and close evidence agree; source live",
-          "mutation": "21/21 guards load-bearing, 6 of them new to this issue"
+          "live_audit": "PASS — plan, GitHub state and close evidence agree; source live. Supersedes the earlier record on this issue, whose manifest_digest was a canonical-JSON digest of the parsed plan rather than the file digest the audit now binds to and check.",
+          "mutation": "35/35 guards load-bearing"
         },
         "author": "MongLong0214",
         "author_trusted": true
       },
       "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
         "commit_exists": true,
         "commit_on_integration_branch": true,
         "pr_merged": true,

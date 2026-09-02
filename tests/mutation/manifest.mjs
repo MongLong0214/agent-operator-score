@@ -16,6 +16,87 @@
 
 export const GUARDS = [
   {
+    guard: "evidence bound to the audited revision",
+    reason: "the shipped record quoted a manifest digest that no longer matched, and the audit printed PASS",
+    file: "lib/github-state.mjs",
+    from: "    checked.evidence_digests_match = results.every(Boolean);",
+    to: "    checked.evidence_digests_match = true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "three separately true facts are not a confirmation"
+  },
+  {
+    guard: "the closing pull request changed something the issue owns",
+    reason: "a documentation PR saying `Closes #N` produced eight true booleans having done no work",
+    file: "lib/github-state.mjs",
+    from: "      owned.length > 0 && files.some((one) => owned.some((path) => one.filename === path || one.filename.startsWith(path)));",
+    to: "      true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "three separately true facts are not a confirmation"
+  },
+  {
+    guard: "offline does not assert close evidence",
+    reason: "the confirmations live in a file the author of the change controls",
+    file: "lib/execution-plan.mjs",
+    from: "    if (!isLive) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "offline, close evidence is reported as unestablished rather than passed"
+  },
+  {
+    guard: "evidence contract cannot be switched off",
+    reason: "`close_evidence_required: false` was one edit away from disabling the gate that reads it",
+    file: "lib/execution-plan.mjs",
+    from: "    if (!one.close_evidence_required) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the manifest cannot switch off its own evidence contract"
+  },
+  {
+    guard: "phases are a contract",
+    reason: "emptying #572's phases removed the restriction that withholds branch deletion",
+    file: "lib/execution-plan.mjs",
+    from: '      fail("phases-do-not-match-contract", `#${number} must declare the phases ${required.join(", ")}, found ${declared.join(", ") || "none"}`, Number(number));',
+    to: "      continue;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the manifest cannot switch off its own evidence contract"
+  },
+  {
+    guard: "cycle search inside strongly connected components",
+    reason: "a dense acyclic graph has zero cycles and exponentially many paths, and the search walked all of them",
+    file: "lib/execution-plan.mjs",
+    from: "    if (component.length < 2) continue;",
+    to: "    if (false) continue;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a dense acyclic graph finishes quickly instead of exploring every path"
+  },
+  {
+    guard: "a truncated cycle search says so",
+    reason: "a list that stopped early must not read like a complete one",
+    file: "lib/execution-plan.mjs",
+    from: '  if (cycles.truncated) fail("cycle-search-truncated", "the cycle search hit its bound, so this list is not every cycle");',
+    to: "  if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a truncated cycle search says so"
+  },
+  {
+    guard: "the capture time names a day that exists",
+    reason: "2026-02-30 parses, and Date silently rolls it over to the second of March",
+    file: "lib/execution-plan.mjs",
+    from: "  if (d > daysInMonth) return false;",
+    to: "  if (false) return false;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a date with the shape of an instant that is not one fails"
+  },
+  {
+    guard: "one snapshot entry per issue",
+    reason: "a Map keeps the last entry, so a second copy answered for the first",
+    file: "lib/execution-plan.mjs",
+    from: '    if (seen.has(one.number)) fail("snapshot-duplicate-issue", one.number, "the snapshot carries this issue more than once");',
+    to: "    if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a snapshot carrying an issue twice fails"
+  },
+  {
     guard: "close-evidence component confirmations",
     reason: "a one-key `verified: true` was a forgery of the whole live audit",
     file: "lib/execution-plan.mjs",
@@ -73,10 +154,10 @@ export const GUARDS = [
     guard: "elementary cycle enumeration",
     reason: "a diagnostic that omits the edge someone has to remove sends them to fix the wrong one",
     file: "lib/execution-plan.mjs",
-    from: "        if (!byNumber.has(next) || next < start) continue;",
-    to: "        if (!byNumber.has(next)) continue;",
+    from: "          if (!inside.has(next) || next < start) continue;",
+    to: "          if (!inside.has(next)) continue;",
     test: "tests/product/execution-plan.test.mjs",
-    name: "every elementary cycle is reported, once each"
+    name: "within its bound, every elementary cycle is reported, once each"
   },
   {
     guard: "close-evidence repository confirmation",

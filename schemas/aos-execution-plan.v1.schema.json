@@ -113,6 +113,8 @@
         "area",
         "release_critical",
         "owner_surfaces",
+        "owned_paths",
+        "evidence_bindings",
         "allowed_parallel_with",
         "phases",
         "close_evidence_required",
@@ -189,6 +191,22 @@
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9-]+$"
+          }
+        },
+        "owned_paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence_bindings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "allowed_parallel_with": {

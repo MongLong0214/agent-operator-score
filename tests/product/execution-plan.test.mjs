@@ -183,7 +183,7 @@ test("#582 closed on a documentation PR with no implementation evidence fails", 
   issue.state = "closed";
   issue.close_evidence = null;
   issue.closing_references = ["#544 docs: measurement foundations"];
-  const report = auditCloseEvidence(plan(), snapshot);
+  const report = auditCloseEvidence(plan(), snapshot, { live: true });
   assert.ok(report.failures.some((one) => one.check === "close-evidence-missing" && one.issue === 582));
   assert.equal(report.ok, false);
 });
@@ -202,7 +202,7 @@ test("close evidence without CI run ids or a PASS verdict is not evidence", () =
     verdict: "PASS",
     evidence: {}
   };
-  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-incomplete"));
+  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-incomplete"));
 
   const held = state();
   const other = held.issues.find((one) => one.number === 567);
@@ -217,7 +217,7 @@ test("close evidence without CI run ids or a PASS verdict is not evidence", () =
     verdict: "HOLD",
     evidence: { raw_byte_digest_api: "sha256:" + "0".repeat(64), mutation: "load-bearing" }
   };
-  assert.ok(auditCloseEvidence(plan(), held).failures.some((one) => one.check === "close-evidence-not-pass"));
+  assert.ok(auditCloseEvidence(plan(), held, { live: true }).failures.some((one) => one.check === "close-evidence-not-pass"));
 });
 
 test("close evidence missing an issue-specific required field fails", () => {
@@ -235,7 +235,7 @@ test("close evidence missing an issue-specific required field fails", () => {
     evidence: { mutation: "load-bearing" }
   };
   issue.close_evidence_checked = verified();
-  const report = auditCloseEvidence(plan(), snapshot);
+  const report = auditCloseEvidence(plan(), snapshot, { live: true });
   assert.ok(report.failures.some((one) => one.check === "close-evidence-field-missing"));
 });
 
@@ -258,7 +258,7 @@ test("a complete completion record closes the issue", () => {
     }
   };
   issue.close_evidence_checked = verified();
-  assert.deepEqual(auditCloseEvidence(plan(), snapshot).failures, []);
+  assert.deepEqual(auditCloseEvidence(plan(), snapshot, { live: true }).failures, []);
 });
 
 // --- the manifest is the thing a lower-tier agent reads -------------------------------------
@@ -292,7 +292,7 @@ test("a done issue is closed on GitHub and a not-done issue is open", () => {
     assert.equal(live.state, one.status === "done" ? "closed" : "open", `#${one.issue}`);
   }
   // Every issue already closed carries the record that closed it, checked rather than assumed.
-  assert.deepEqual(auditCloseEvidence(doc, snapshot).failures, []);
+  assert.deepEqual(auditCloseEvidence(doc, snapshot, { live: true }).failures, []);
 });
 
 test("the digest is stable and changes when the plan changes", () => {
@@ -333,7 +333,7 @@ test("the audit summary carries no title, body or path, even when everything is 
   const summary = auditSummary(doc, snapshot, {
     plan: checkPlan(doc),
     state: checkGithubState(doc, snapshot),
-    evidence: auditCloseEvidence(doc, snapshot)
+    evidence: auditCloseEvidence(doc, snapshot, { live: true })
   });
 
   assert.equal(summary.ok, false);
@@ -478,22 +478,26 @@ test("a record the repository does not confirm is not evidence", () => {
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 588);
   issue.close_evidence_checked = { commit_exists: true, commit_on_integration_branch: false, pr_merged: true, pr_closes_issue: true, ci_runs_succeeded: true, verified: false };
-  const report = auditCloseEvidence(plan(), snapshot);
+  const report = auditCloseEvidence(plan(), snapshot, { live: true });
   assert.ok(report.failures.some((one) => one.check === "close-evidence-unverified" && one.issue === 588));
 });
 
 test("a record nobody ever checked is not evidence either", () => {
   const snapshot = state();
   snapshot.issues.find((one) => one.number === 588).close_evidence_checked = null;
-  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-unchecked"));
+  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-unchecked"));
 });
 
-test("the shipped snapshot's own record was checked against the repository and holds", () => {
+test("the shipped snapshot records a live confirmation of every component, not a summary", () => {
+  // This asserts what the fixture *contains*, which is all a committed file can be asked. What it
+  // does not do -- and its earlier name implied it did -- is re-establish those booleans; only a
+  // live run does that, which is why the offline audit refuses to assert them at all.
   const issue = state().issues.find((one) => one.number === 588);
   assert.equal(issue.state, "closed");
   assert.equal(issue.close_evidence.verdict, "PASS");
   assert.equal(issue.close_evidence.author_trusted, true);
   assert.deepEqual(issue.close_evidence_checked, verified());
+  assert.deepEqual(Object.keys(issue.close_evidence_checked).filter((key) => key !== "verified").sort(), [...REQUIRED_CONFIRMATIONS].sort());
 });
 
 test("a record from someone without write access is not an attestation", async () => {
@@ -506,7 +510,7 @@ test("a record from someone without write access is not an attestation", async (
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 588);
   issue.close_evidence = { ...issue.close_evidence, author_trusted: false, author: "drive-by" };
-  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-untrusted-author"));
+  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
 });
 
 test("an outsider cannot overwrite a maintainer's record, and the attempt is recorded", async () => {
@@ -530,7 +534,7 @@ test("an outsider cannot overwrite a maintainer's record, and the attempt is rec
 
 // --- the cycle diagnostic names every edge someone would have to remove ---------------------
 
-test("every elementary cycle is reported, once each", () => {
+test("within its bound, every elementary cycle is reported, once each", () => {
   const doc = plan();
   // Three issues that all wait on each other. A depth-first search with one shared visited set
   // finds only some of these, and the one it drops is the edge the reader has to remove.
@@ -556,12 +560,14 @@ test("every elementary cycle is reported, once each", () => {
 
 test("three separately true facts are not a confirmation", async () => {
   const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
-  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1] };
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { d: "sha256:" + "0".repeat(64) } };
+  const owner = { issue: 588, owned_paths: ["lib/"], evidence_bindings: {} };
 
   // Everything the old version asked for, all of it real, none of it about the same work: an old
   // commit that happens to be on dev, a merged PR that happens to close the issue, a successful
   // run that happens to exist.
   const unrelated = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
     if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
     if (path.includes("/compare/")) return { body: { status: "ahead" } };
     if (path.includes("/pulls/")) {
@@ -569,14 +575,18 @@ test("three separately true facts are not a confirmation", async () => {
     }
     return { body: { conclusion: "success", head_sha: "d".repeat(40) } };
   };
-  const loose = await verifyCompletionRecord("o/r", record, { get: unrelated });
+  const loose = await verifyCompletionRecord("o/r", record, { get: unrelated, issue: owner });
   assert.equal(loose.verified, false);
   assert.equal(loose.pr_produced_the_commit, false);
   assert.equal(loose.ci_runs_ran_on_this_work, false);
-  assert.equal(loose.commit_on_integration_branch, true, "the parts really are individually true");
+  // The parts really are individually true -- that is the whole point of the case.
+  for (const part of ["commit_exists", "commit_on_integration_branch", "pr_merged", "pr_targets_integration_branch", "pr_closes_issue", "ci_runs_succeeded"]) {
+    assert.equal(loose[part], true, `${part} should be independently true in this fixture`);
+  }
 
   // The same shape, actually bound together.
   const bound = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
     if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
     if (path.includes("/compare/")) return { body: { status: "ahead" } };
     if (path.includes("/pulls/")) {
@@ -584,41 +594,61 @@ test("three separately true facts are not a confirmation", async () => {
     }
     return { body: { conclusion: "success", head_sha: "b".repeat(40) } };
   };
-  assert.equal((await verifyCompletionRecord("o/r", record, { get: bound })).verified, true);
+  assert.equal((await verifyCompletionRecord("o/r", record, { get: bound, issue: owner })).verified, true);
 
   // And a pull request aimed somewhere other than the branch that ships is not it either.
   const elsewhere = async (path) =>
     path.includes("/pulls/")
       ? { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "someone-elses-branch" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } }
       : bound(path);
-  assert.equal((await verifyCompletionRecord("o/r", record, { get: elsewhere })).verified, false);
+  assert.equal((await verifyCompletionRecord("o/r", record, { get: elsewhere, issue: owner })).verified, false);
+
+  // And a pull request that changed nothing this issue owns did not implement it, however green
+  // everything else is. This is the documentation-PR close, reproduced at the source.
+  const docsOnly = async (path) =>
+    path.includes("/files") ? { body: [{ filename: "README.md" }], link: null } : bound(path);
+  const noWork = await verifyCompletionRecord("o/r", record, { get: docsOnly, issue: owner });
+  assert.equal(noWork.pr_changed_owned_files, false);
+  assert.equal(noWork.verified, false);
+
+  // And evidence that quotes a digest of something else is not evidence about this revision.
+  const withBinding = { ...owner, evidence_bindings: { d: "governance/thing.json" } };
+  const wrongDigest = async (path) =>
+    path.includes("/contents/") ? { body: { content: Buffer.from("different bytes").toString("base64"), encoding: "base64" } } : bound(path);
+  const stale = await verifyCompletionRecord("o/r", record, { get: wrongDigest, issue: withBinding });
+  assert.equal(stale.evidence_digests_match, false);
+  assert.equal(stale.verified, false);
 });
 
 test("a one-key forgery of the whole audit does not pass", () => {
   const snapshot = state();
   snapshot.issues.find((one) => one.number === 588).close_evidence_checked = { verified: true };
-  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-unverified"));
+  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
 
   const partial = state();
   partial.issues.find((one) => one.number === 588).close_evidence_checked = { ...verified(), pr_produced_the_commit: false };
-  assert.ok(auditCloseEvidence(plan(), partial).failures.some((one) => one.check === "close-evidence-unverified"));
+  assert.ok(auditCloseEvidence(plan(), partial, { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
 });
 
 test("an omitted author_trusted is not a trusted author", () => {
   const snapshot = state();
   const issue = snapshot.issues.find((one) => one.number === 588);
   delete issue.close_evidence.author_trusted;
-  assert.ok(auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-untrusted-author"));
+  assert.ok(auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
 });
 
 test("an empty array is not a digest and false is not a count", () => {
-  for (const value of [[], {}, false, 0, "", "   ", null]) {
+  for (const [field, value] of [
+    ["manifest_digest", []], ["manifest_digest", {}], ["manifest_digest", false], ["manifest_digest", ""],
+    ["manifest_digest", "   "], ["manifest_digest", null],
+    ["canonical_issue_count", false], ["canonical_issue_count", 0], ["canonical_issue_count", []]
+  ]) {
     const snapshot = state();
     const issue = snapshot.issues.find((one) => one.number === 588);
-    issue.close_evidence = { ...issue.close_evidence, evidence: { ...issue.close_evidence.evidence, manifest_digest: value } };
+    issue.close_evidence = { ...issue.close_evidence, evidence: { ...issue.close_evidence.evidence, [field]: value } };
     assert.ok(
-      auditCloseEvidence(plan(), snapshot).failures.some((one) => one.check === "close-evidence-field-missing"),
-      `${JSON.stringify(value)} was accepted as evidence`
+      auditCloseEvidence(plan(), snapshot, { live: true }).failures.some((one) => one.check === "close-evidence-field-missing"),
+      `${field}=${JSON.stringify(value)} was accepted as evidence`
     );
   }
 });
@@ -637,7 +667,7 @@ test("write access is asked of the repository, not inferred from an association"
   assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
 });
 
-test("comments are read until GitHub says there is no next page", async () => {
+test("comments are read until GitHub says there is no next page, and a runaway is refused", async () => {
   const { requestAll } = await import("../../lib/github-state.mjs");
   const pages = { 1: [1, 2], 2: [3, 4], 3: [5] };
   let asked = 0;
@@ -652,6 +682,11 @@ test("comments are read until GitHub says there is no next page", async () => {
   // Three pages, not a fixed bound: a correction posted after the bound would never be read.
   assert.deepEqual(await requestAll("/x", null, get), [1, 2, 3, 4, 5]);
   assert.equal(asked, 3);
+
+  // A source that never stops is a failure, not a truncation: returning what fitted would be the
+  // fixed-bound behaviour this replaced.
+  const endless = async () => ({ body: [1], link: '<https://api.github.com/x?page=2>; rel="next"' });
+  await assert.rejects(() => requestAll("/x", null, endless), /more pages than this audit will read/);
 });
 
 // --- round two: the snapshot's provenance, not just its shape --------------------------------
@@ -736,9 +771,145 @@ test("the published summary keeps the key names its schema version promised", ()
   const summary = auditSummary(doc, snapshot, {
     plan: checkPlan(doc),
     state: checkGithubState(doc, snapshot),
-    evidence: auditCloseEvidence(doc, snapshot)
+    evidence: auditCloseEvidence(doc, snapshot, { live: true })
   });
   assert.equal(summary.schema, "aos-execution-audit.v1");
   assert.deepEqual(Object.keys(summary.counts).sort(), ["blocked", "done", "in_progress", "ready", "tracking"]);
   assert.equal(summary.counts.in_progress, 0);
+});
+
+// --- round three: the offline audit does not get to assert a pass ---------------------------
+
+test("offline, close evidence is reported as unestablished rather than passed", () => {
+  const doc = plan();
+  const snapshot = state();
+  // The confirmations live in a file the author of the change controls. A contributor who cannot
+  // pass the live write-access check can still edit the fixture in their own pull request and set
+  // every boolean to true, so an offline run must not say it established anything.
+  const offline = auditCloseEvidence(doc, snapshot);
+  assert.equal(offline.established, false);
+  assert.deepEqual(offline.unestablished, [{ issue: 588, reason: "close evidence is only established by a live audit" }]);
+  assert.deepEqual(offline.failures, []);
+
+  const forged = state();
+  const issue = forged.issues.find((one) => one.number === 588);
+  issue.close_evidence = { ...issue.close_evidence, verdict: "HOLD" };
+  issue.close_evidence_checked = { verified: true };
+  // Offline says nothing about it either way; live is where it fails.
+  assert.deepEqual(auditCloseEvidence(doc, forged).failures, []);
+  assert.equal(auditCloseEvidence(doc, forged, { live: true }).ok, false);
+
+  const established = auditCloseEvidence(doc, snapshot, { live: true });
+  assert.equal(established.established, true);
+  assert.deepEqual(established.unestablished, []);
+});
+
+test("the manifest cannot switch off its own evidence contract", () => {
+  // The whole bypass in one edit: mark it done, drop the phases, drop the evidence requirement.
+  const doc = plan();
+  const one = entry(doc, 572);
+  one.status = "done";
+  one.phases = [];
+  one.close_evidence_required = false;
+  one.required_evidence_fields = [];
+  const names = failures(checkPlan(doc));
+  assert.ok(names.includes("release-critical-needs-close-evidence"));
+  assert.ok(names.includes("close-evidence-fields-empty"));
+  assert.ok(names.includes("phases-do-not-match-contract"));
+
+  // Each half fails on its own, so no single edit gets through either.
+  for (const edit of [
+    (d) => { entry(d, 553).close_evidence_required = false; },
+    (d) => { entry(d, 553).required_evidence_fields = []; },
+    (d) => { entry(d, 553).owned_paths = []; },
+    (d) => { entry(d, 556).phases = []; }
+  ]) {
+    const doc2 = plan();
+    edit(doc2);
+    assert.equal(checkPlan(doc2).ok, false);
+  }
+});
+
+test("an evidence binding must name a field the issue actually requires", () => {
+  const doc = plan();
+  entry(doc, 553).evidence_bindings = { not_a_field: "lib/verifier-run.mjs" };
+  assert.ok(failures(checkPlan(doc)).includes("evidence-binding-unknown-field"));
+});
+
+test("the excluded list is exactly the contract's three, in both directions", () => {
+  const dropped = plan();
+  dropped.excluded_issues = [579, 580];
+  assert.ok(failures(checkPlan(dropped)).includes("excluded-issue-dropped"));
+
+  // An invented exclusion was a number nobody ever checked: the plan named it and the state check
+  // looked only at the constants.
+  const invented = plan();
+  invented.excluded_issues = [...invented.excluded_issues, 999999];
+  assert.ok(failures(checkPlan(invented)).includes("excluded-issue-invented"));
+});
+
+// --- round three: the search terminates on inputs it exists to reject ------------------------
+
+test("a dense acyclic graph finishes quickly instead of exploring every path", () => {
+  const doc = plan();
+  // Zero cycles, exponentially many simple paths. The previous bound counted cycles, so it never
+  // triggered here and the check hung on a graph whose answer is "nothing wrong".
+  const numbers = doc.issues.map((one) => one.issue);
+  for (const one of doc.issues) {
+    one.blocked_by = numbers.filter((number) => number > one.issue);
+    one.blocks = numbers.filter((number) => number < one.issue);
+  }
+  const started = Date.now();
+  const report = checkPlan(doc);
+  assert.ok(Date.now() - started < 5000, "the cycle search did not finish quickly on an acyclic graph");
+  assert.equal(report.failures.filter((one) => one.check === "dependency-cycle").length, 0);
+  assert.equal(report.failures.some((one) => one.check === "cycle-search-truncated"), false);
+});
+
+test("a truncated cycle search says so", () => {
+  const doc = plan();
+  const numbers = doc.issues.map((one) => one.issue);
+  for (const one of doc.issues) {
+    one.blocked_by = numbers.filter((number) => number !== one.issue);
+    one.blocks = numbers.filter((number) => number !== one.issue);
+  }
+  const names = failures(checkPlan(doc));
+  assert.ok(names.includes("dependency-cycle"));
+  // A list that stopped early must not read like a complete one.
+  assert.ok(names.includes("cycle-search-truncated"));
+});
+
+// --- round three: the remaining false accepts -------------------------------------------------
+
+test("a date with the shape of an instant that is not one fails", () => {
+  for (const when of ["2026-99-99T99:99:99+99:99", "2026-02-30T00:00:00Z", "0000-00-00T00:00:00Z"]) {
+    const failed = checkGithubState(plan(), { ...state(), captured_at: when }).failures;
+    assert.ok(failed.some((one) => one.check === "snapshot-undated"), `${when} was accepted`);
+  }
+  assert.deepEqual(checkGithubState(plan(), state()).failures, []);
+});
+
+test("a snapshot carrying an issue twice fails", () => {
+  const snapshot = state();
+  // A Map keeps the last entry, so the second copy answered for the first.
+  snapshot.issues = [...snapshot.issues, { ...snapshot.issues.find((one) => one.number === 588), state: "open" }];
+  assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "snapshot-duplicate-issue"));
+});
+
+test("a snapshot with no issues is reported by both readers rather than throwing in one", () => {
+  const doc = plan();
+  for (const broken of [{ ...state(), issues: null }, { ...state(), issues: undefined }]) {
+    assert.equal(checkGithubState(doc, broken).ok, false);
+    const audit = auditCloseEvidence(doc, broken, { live: true });
+    assert.equal(audit.ok, false);
+    assert.ok(audit.failures.some((one) => one.check === "snapshot-empty"));
+  }
+});
+
+test("a pattern that is not a valid unicode regular expression is a schema error, not a fallback", () => {
+  // `\8` is invalid under `u` and legal without it, so falling back quietly evaluated a different
+  // pattern from the one the schema wrote down.
+  const report = validateAgainstSchema("8", { type: "string", pattern: "\\8" });
+  assert.equal(report.ok, false);
+  assert.match(report.errors[0].message, /not a valid unicode regular expression/);
 });
