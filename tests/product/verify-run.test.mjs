@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { canonicalJson } from "../../lib/core.mjs";
-import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
+import { contractFileDigests, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { addAgent, makePlan, newestRunId, run } from "./helpers.mjs";
 
@@ -20,6 +20,31 @@ const assessed = () => {
   const runId = newestRunId(cwd);
   return { cwd, runId, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
 };
+
+test("a result names the contract files it was built from, and verify checks them against this build's", () => {
+  // The digest a result cited was over the contract's canonical form, which is stable against key
+  // order -- and blind to the file: appending one space to a contract file moved the file's byte
+  // digest and left the cited digest exactly where it was. A result that names the contract that
+  // scored it has to name it in a way that can notice the contract changing.
+  const { cwd, runId, resultPath } = assessed();
+  try {
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    const bytes = contractFileDigests();
+    assert.deepEqual(stored.contract.artifact_bytes, bytes, "the result did not name this build's contract files");
+    assert.notEqual(stored.contract.artifact_bytes.combined, stored.contract.digests.combined, "the two digests answer the same question");
+    const clean = run(cwd, ["verify", "--run", runId]);
+    assert.match(clean.stdout, /PASS\tcontract-bytes/);
+
+    // The bytes the result names are not the bytes this build holds: that is what a contract file
+    // edited under a stored result looks like from here, and it is reported rather than passed over.
+    const edited = JSON.parse(readFileSync(resultPath, "utf8"));
+    edited.contract.artifact_bytes = { ...bytes, combined: `sha256:${"c".repeat(64)}` };
+    writeFileSync(resultPath, JSON.stringify(edited, null, 2));
+    const caught = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(caught.stdout, /FAIL\tcontract-bytes/);
+    assert.match(caught.stdout, /not the bytes that produced it/);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
 
 test("a stored result is recomputed from its own record", () => {
   const { cwd, runId } = assessed();

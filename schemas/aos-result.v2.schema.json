@@ -173,6 +173,18 @@
         }
       }
     },
+    "declared_cell_lists": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/id"
+        },
+        "maxItems": 64,
+        "uniqueItems": true
+      }
+    },
     "weights": {
       "description": "Every index in this instrument is an equal-weight mean, so the only weight a surface can carry is one over the number of rows it averaged. Any other number is a claim about a weighting this instrument does not perform: the reciprocals are enumerated here so a weight of 0 or 0.5-on-six-rows fails validation rather than depending on a reader to notice. That the weights are all the same reciprocal, and that the reciprocal matches the row count, is cross-field and checked where the result is read.",
       "type": "object",
@@ -1027,7 +1039,8 @@
         "version",
         "maximum_claim_stage",
         "declared",
-        "digests"
+        "digests",
+        "artifact_bytes"
       ],
       "properties": {
         "id": {
@@ -1050,7 +1063,8 @@
           "required": [
             "process_constructs",
             "outcome_domains",
-            "delegated_artifact_constructs"
+            "delegated_artifact_constructs",
+            "declared_cells"
           ],
           "properties": {
             "process_constructs": {
@@ -1076,8 +1090,31 @@
               },
               "maxItems": 32,
               "uniqueItems": true
+            },
+            "declared_cells": {
+              "description": "The cells the contract declares each row is computed over, by axis. The row sets say which rows a surface carries; this says what each of them averaged, so a row that lost a member is refused by the result's own contract statement rather than read as a row that never had it.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operator_process",
+                "system_outcome",
+                "delegated_artifact"
+              ],
+              "properties": {
+                "operator_process": { "$ref": "#/$defs/declared_cell_lists" },
+                "system_outcome": { "$ref": "#/$defs/declared_cell_lists" },
+                "delegated_artifact": { "$ref": "#/$defs/declared_cell_lists" }
+              }
             }
           }
+        },
+        "artifact_bytes": {
+          "description": "The digest of each contract file's bytes as it ships, and a combined digest over those. Null when the result was built under a contract that is not this build's shipped one, because bytes belong to files and an in-memory contract has none.",
+          "type": ["object", "null"],
+          "additionalProperties": {
+            "$ref": "#/$defs/digest"
+          },
+          "maxProperties": 16
         },
         "digests": {
           "type": "object",
