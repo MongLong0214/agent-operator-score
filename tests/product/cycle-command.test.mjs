@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { addAgent, makePlan, run } from "./helpers.mjs";
+import { addAgent, makePlan, run, verifiedRunner } from "./helpers.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
@@ -17,7 +17,7 @@ const opened = () => {
   run(cwd, ["init"]);
   // Registered with an exact model: a cycle over a model nobody named completes its runs and
   // withholds its aggregate (#561), and these tests are about the aggregate.
-  addAgent(cwd, "solo", undefined, ["--model-id", "fixture/fake-agent-20260101"]);
+  addAgent(cwd, "solo", undefined, ["--model-id", "fixture/fake-agent-20260101"], verifiedRunner(cwd));
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["cycle", "start", ...SEEDS.flatMap((seed) => ["--seed", seed])]);
   return { cwd, plan, home: join(cwd, ".aos") };
@@ -108,7 +108,9 @@ test("three attended runs produce an operator score, and it is the median of all
     const summary = JSON.parse(report.stdout);
     assert.equal(summary.valid_runs, 3, JSON.stringify(summary.excluded));
     assert.equal(summary.complete, true);
-    assert.equal(typeof summary.operator_score, "number");
+    // The reason travels with the failure: a withheld aggregate is a named state, and a bare
+    // "object !== number" on another machine says nothing about which half of the profile failed.
+    assert.equal(typeof summary.operator_score, "number", JSON.stringify(summary.profile_bound_aggregation));
     assert.equal(summary.seeds.length, 3);
 
     // Against what the runs printed, not against what the ledger stored. Reading the expectation
