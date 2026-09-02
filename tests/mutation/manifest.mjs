@@ -2608,6 +2608,15 @@ export const GUARDS = [
     to: "",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left"
+  },
+  {
+    guard: "the rebuild is handed the reliance the result was built from",
+    reason: "the ten metrics are an input like the caps are, and a rebuild that dropped them compared its withheld default against a stored PARTIAL profile -- a result carrying any reliance evidence could never verify",
+    file: "lib/cli.mjs",
+    from: "      reliance: relianceInputOf(result),",
+    to: "",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a result carrying reliance evidence is recomputed from its own record too"
   }
 ];
 
@@ -2910,6 +2919,7 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the reader checks the state it was handed",
+  "the rebuild is handed the reliance the result was built from",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
   "the rows a result must carry come from its contract",

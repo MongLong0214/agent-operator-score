@@ -4,6 +4,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { canonicalJson } from "../../lib/core.mjs";
+import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
+import { buildResult } from "../../lib/result-schema.mjs";
 import { addAgent, makePlan, newestRunId, run } from "./helpers.mjs";
 
 // A result is checkable when the number can be derived again from what the file itself holds. A
@@ -24,6 +27,52 @@ test("a stored result is recomputed from its own record", () => {
     const verified = run(cwd, ["verify", "--run", runId]);
     assert.match(verified.stdout, /PASS\trecompute/);
     assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a result carrying reliance evidence is recomputed from its own record too", () => {
+  // Every run this product makes today withholds the reliance surface, so a check built only on
+  // those verifies a result whose reliance is the default -- and a default round trips whether or
+  // not it was carried through. #583 issues the ten metrics as an input like the caps are, and a
+  // rebuild that dropped that input compared its withheld default against a stored PARTIAL profile
+  // and reported that the result did not follow from its own observations.
+  const { cwd, runId, resultPath } = assessed();
+  try {
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    const contract = shippedEcdContract();
+    const { contract_digest: _contract, profile_digest: _profile, ...facets } = stored.facet_identity;
+    const withReliance = buildResult({
+      evaluation: evaluate(stored.observations, { facets, profile_digest: stored.profile_digest, forms_completed: stored.run.forms_completed }, contract),
+      contract,
+      observations: stored.observations,
+      run: stored.run,
+      caps: stored.system_outcome_profile.caps,
+      uncertainty: stored.uncertainty,
+      generalizability_status: stored.generalizability_status,
+      // The state #583 produces once it has four opportunities to compute a rate over.
+      reliance: { status: "PARTIAL", metrics: { cair: { status: "ISSUED", value: 0.75, numerator: 3, denominator: 4 } } }
+    });
+    assert.equal(withReliance.reliance_calibration_profile.status, "PARTIAL");
+    assert.equal(withReliance.reliance_calibration_profile.metrics.cair.value, 0.75);
+    writeFileSync(resultPath, `${canonicalJson(withReliance)}\n`);
+
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+
+    // What the check does and does not say about this surface, stated rather than assumed. The ten
+    // metrics are an input #583 supplies, not something derived from the observations, so a
+    // different value is a different input and rebuilding honours it -- exactly as a different cap
+    // would be. What the rebuild does enforce are the seam's own rules: a rate issued over fewer
+    // opportunities than the floor is refused, so an edit that breaks them is caught here.
+    const belowFloor = JSON.parse(readFileSync(resultPath, "utf8"));
+    belowFloor.reliance_calibration_profile.metrics.cair.denominator = 2;
+    writeFileSync(resultPath, JSON.stringify(belowFloor, null, 2));
+    const caught = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(caught.stdout, /FAIL\trecompute/);
+    assert.match(caught.stdout, /AOS_RELIANCE_FLOOR/);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
