@@ -13,7 +13,8 @@
     "verify:mvp": "node bin/aos.mjs verify",
     "smoke:package": "node tests/package-smoke.mjs",
     "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
-    "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json"
+    "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
+    "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
     "aos": "./bin/aos.mjs"
@@ -25,13 +26,15 @@
     "governance/",
     "schemas/",
     "scripts/",
+    "fixtures/execution-plan/",
     "README.md",
     "README.ko.md",
     "README.ja.md",
     "README.zh-CN.md",
     "LICENSE",
     "SECURITY.md",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "fixtures/attacks/"
   ],
   "os": [
     "darwin",
