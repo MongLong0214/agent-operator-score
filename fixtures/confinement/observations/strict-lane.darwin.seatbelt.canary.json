@@ -74,16 +74,18 @@
         "run_store": true
       },
       "descendant": {
-        "pid": 25027,
+        "pid": 86738,
         "observed_by_scan": true,
         "dead_after_cleanup": true,
+        "escapee_confined": true,
+        "escapee_status": "1",
         "survivors": []
       }
     },
-    "evidence_digest": "sha256:2eb2ee6cbde02a9bf623c8fbdadf640f225248fc47d2d11a010c7683a4226c31",
-    "program_digest": "sha256:840f082bf6186b477ae6b9bcb93bda04e604697ee188ec2fba4dc0705b71f0cd",
+    "evidence_digest": "sha256:2c8b90ef4ab349036b904b78ed7253d72f8a43c09588ded8240fa07043781871",
+    "program_digest": "sha256:dfc96327ebaded5bfdf42ef37c94874481e217cd5c317e301b722e922a27448e",
     "policy_digest": "sha256:6721a6304c99c0516cc6434a37455d2f482c52f9199ba8b2c2f63fe96982e8e4",
-    "rendered_profile_digest": "sha256:eb3af836f4392b1f8abc7ccd0b7522215bf34d7ebccbf5bd7de2c77cff02460a",
+    "rendered_profile_digest": "sha256:2aa3b6f1da6f767b3e2a237ae545b7ed6ef532f48325eb0f770f020c05af4c89",
     "scan_polls": 7,
     "network_policy": "provider-required-unrestricted",
     "bindings": {

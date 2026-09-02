@@ -12,13 +12,23 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runProcess } from "../../lib/core.mjs";
-import { ISSUANCE_REASONS, issuanceGate, issuanceGateForRun, laneOf } from "../../lib/confinement.mjs";
+import { ISSUANCE_REASONS, issuanceGate, issuanceGateForRun, laneOf, realStrictLaneStatus } from "../../lib/confinement.mjs";
 
 const NOT_OBSERVED = process.platform !== "darwin"
   ? `NOT_OBSERVED: the darwin/macos-seatbelt lane runs only on darwin; this host is ${process.platform}`
   : !existsSync("/usr/bin/sandbox-exec")
     ? "NOT_OBSERVED: /usr/bin/sandbox-exec is absent on this darwin host"
     : null;
+
+// `npm test` may skip this file: a Linux runner has no Seatbelt and skipping is the honest answer.
+// `npm run verify:real-runtime-strict` may not, because that script exists to answer whether a real
+// STRICT run happened here, and a suite that skipped and exited 0 answers it wrongly. The
+// requirement is a test of its own so the script's promise is checked rather than assumed.
+const laneStatus = (reason = NOT_OBSERVED) => realStrictLaneStatus({ backendAvailable: reason === null, reason });
+
+test("the_real_strict_lane_ran_here_or_this_verification_did_not_pass", () => {
+  laneStatus().assertRan();
+});
 
 const codexOnPath = () => {
   const found = spawnSync("/bin/sh", ["-c", "command -v codex"], { encoding: "utf8" });
@@ -183,9 +193,16 @@ test("best_effort_run_records_no_boundary_and_is_never_official", async () => {
 
 test("strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane", { skip: NOT_OBSERVED ?? false, timeout: 240000 }, async (t) => {
   const codex = codexOnPath();
-  if (codex === null) return t.skip("NOT_OBSERVED: codex is not on PATH; the codex-cli.v1 lane was not re-measured");
+  if (codex === null) {
+    laneStatus("NOT_OBSERVED: codex is not on PATH; the codex-cli.v1 lane was not re-measured").assertRan();
+    return t.skip("NOT_OBSERVED: codex is not on PATH; the codex-cli.v1 lane was not re-measured");
+  }
   const status = spawnSync(codex, ["login", "status"], { encoding: "utf8", timeout: 60000 });
-  if (status.status !== 0) return t.skip(`NOT_OBSERVED: \`codex login status\` exited ${status.status}; the lane needs an authenticated runtime`);
+  if (status.status !== 0) {
+    const why = `NOT_OBSERVED: \`codex login status\` exited ${status.status}; the lane needs an authenticated runtime`;
+    laneStatus(why).assertRan();
+    return t.skip(why);
+  }
   const store = makeStore();
   try {
     const spec = { id: "codex", command: "codex", args: ["exec", "--skip-git-repo-check"], adapter: "codex-cli.v1", runtime_name: "codex", allowed_env_names: ["CODEX_HOME"] };

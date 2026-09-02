@@ -2166,7 +2166,7 @@ export const GUARDS = [
     from: 'const runId = listRuns(home).find((id) => !before.has(id)) ?? null;',
     to: "const runId = listRuns(home)[0];",
     test: "tests/product/cycle-command.test.mjs",
-    name: "three attended runs produce an operator score, and it is the median of all of them"
+    name: "three attended runs are three distinct runs, and the cycle says why none of them counted"
   },
   {
     guard: "operator decision window",
@@ -2262,7 +2262,7 @@ export const GUARDS = [
   },
   {
     guard: "AOS_HOME is denied before the workspace is allowed",
-    reason: "Seatbelt's later rule wins; with the deny after the allows, a workspace that contains the store would re-open the whole store to the agent",
+    reason: "Seatbelt's later rule wins, so the deny has to come first: moved after the allows it beats them, and the run's own workspace inside the store becomes unreachable -- a boundary nobody measured",
     file: "lib/confinement.mjs",
     from: "    '(deny file-read* file-write* (subpath \"@AOS_HOME@\"))',\n    '(allow file-read* file-write* (subpath \"@WORKSPACE@\"))',\n    '(allow file-read* file-write* (subpath \"@AGENT_HOME@\"))'",
     to: "    '(allow file-read* file-write* (subpath \"@WORKSPACE@\"))',\n    '(allow file-read* file-write* (subpath \"@AGENT_HOME@\"))',\n    '(deny file-read* file-write* (subpath \"@AOS_HOME@\"))'",
@@ -2334,6 +2334,115 @@ export const GUARDS = [
     to: '  return chosen === "STRICT" ? chosen : "BEST_EFFORT_CLI";',
     test: "tests/product/cli-refusals.test.mjs",
     name: "the isolation lane is the operator's to name, and a name that is neither lane is refused"
+  },
+  {
+    guard: "the boundary's verdict decides whether the run carries a number",
+    reason: "with the gate recorded beside the score instead of in front of it, a run on a lane that cannot be official still printed 100/100 and exited 0, which is the official result the gate had just refused",
+    file: "lib/scorer-v1.mjs",
+    from: "  if (officialIssuance !== null && officialIssuance.official !== true) {",
+    to: "  if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
+  },
+  {
+    guard: "PROFILE_BOUND is earned by the gate and by nothing else",
+    reason: "a claim stage that follows issuance alone calls every scored run profile-bound, including one whose profile no boundary enforced",
+    file: "lib/scorer-v1.mjs",
+    from: '    claim_stage: context.officialIssuance?.official === true && gate.issued ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC",',
+    to: '    claim_stage: gate.issued ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC",',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
+  },
+  {
+    guard: "the assessment is scored under the gate it reports",
+    reason: "computing the verdict for the record but not for the scoring context is the same defect one line later: the result would name the withheld gate and carry the number anyway",
+    file: "lib/cli.mjs",
+    from: "    const officialIssuance = issuanceGateForRun(confinementRecords);",
+    to: "    const officialIssuance = { official: true, reasons: [] };",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_would_be"
+  },
+  {
+    guard: "a record is authenticated before it is judged",
+    reason: "the gate read field shapes, so an object with the right shape and no boundary behind it -- no schema, digests of nothing, a canary result with no cells -- satisfied every condition at once",
+    file: "lib/confinement.mjs",
+    from: '  const problems = record.level === "STRICT" ? authenticityProblems(record) : [];',
+    to: "  const problems = [];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_record_that_is_not_the_boundary_s_own_output_is_refused_rather_than_believed"
+  },
+  {
+    guard: "the canary that certifies the boundary is the one that shipped",
+    reason: "without the program digest any process that writes a PASS-shaped report certifies the boundary, including one the agent wrote",
+    file: "lib/confinement.mjs",
+    from: "    if (canary.program_digest !== BOUNDARY_CANARY_PROGRAM_DIGEST) problems.push(`boundary_canary.program_digest: ${JSON.stringify(canary.program_digest ?? null)} is not the shipped canary`);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_that_did_not_run_the_shipped_program_cannot_certify_the_boundary"
+  },
+  {
+    guard: "an unmeasured network axis is not NOT_OBSERVED",
+    reason: "projecting an absent observation as NOT_OBSERVED is the gate inventing the fact it exists to check, and the honest answer -- nothing measured the axis -- is the one that closes it",
+    file: "lib/confinement.mjs",
+    from: '  if (!network || typeof network !== "object") problems.push("network: no observation of the network axis");',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_missing_network_observation_is_an_invalid_record_and_not_a_quiet_not_observed"
+  },
+  {
+    guard: "the escaped descendant is proved confined",
+    reason: "a descendant that outlives the run is a lifetime problem; one that outlives it outside the boundary is an access problem, and only the kernel's refusal of its write says which happened",
+    file: "lib/confinement.mjs",
+    from: '  for (const name of ["observed_by_scan", "dead_after_cleanup", "escapee_confined"]) {',
+    to: '  for (const name of ["observed_by_scan", "dead_after_cleanup"]) {',
+    test: "tests/product/confinement.test.mjs",
+    name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
+  },
+  {
+    guard: "the process axis needs the sweep and the second poll",
+    reason: "a passing canary and one poll called the axis enforced while the double-fork window was never swept; the group sweep at teardown is what catches a descendant that forks away and keeps the group",
+    file: "lib/confinement.mjs",
+    from: '  return canary?.result === "PASS"\n    && canary.out_of_band?.descendant?.escapee_confined === true\n    && Number.isInteger(polls) && polls >= 2\n    && groupSweep !== null && typeof groupSweep === "object" && Number.isInteger(groupSweep.pgid) && groupSweep.pgid > 0;',
+    to: '  return canary?.result === "PASS" && polls >= 1;',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced"
+  },
+  {
+    guard: "cited evidence is read only if it is the evidence cited",
+    reason: "a row that declares a digest and is judged from whatever is on disk has a decorative declaration: the review changed the digests to zeroes and the row stayed official",
+    file: "lib/confinement.mjs",
+    from: "  if (!isDigest(reference.digest) || sha256Bytes(bytes) !== reference.digest) return { observation: null, mismatch: true, cited: true };",
+    to: "  if (false) return { observation: null, mismatch: true, cited: true };",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_support_row_whose_evidence_does_not_match_its_declared_digest_claims_nothing"
+  },
+  {
+    guard: "a cleanup failure is published by class and digest",
+    reason: "the confinement record is copied whole into the result, so an absolute agent-home path kept here is an operator's home directory published in an evidence surface",
+    file: "lib/confinement.mjs",
+    from: "  record.scratch_not_removed = Array.isArray(cleanupFailures) ? cleanupFailures.map(redactCleanupFailure) : null;",
+    to: "  record.scratch_not_removed = Array.isArray(cleanupFailures) ? cleanupFailures.slice() : null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "cleanup_failures_are_recorded_by_class_and_digest_and_never_by_path"
+  },
+  {
+    guard: "a skipped real lane is not a verified one",
+    reason: "the script exists to answer whether a real STRICT run happened; a suite that skipped every STRICT test and exited 0 answers yes",
+    file: "lib/confinement.mjs",
+    from: '      if (required && !available) throw fail("AOS_REAL_STRICT_NOT_RUN", `${detail}; a skipped lane is NOT_OBSERVED and is not a pass`);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_real_runtime_strict_script_cannot_report_a_skip_as_a_pass"
+  },
+  {
+    guard: "the group sweep is recorded from the group",
+    reason: "a sweep the record claims and the teardown never made is the process axis asserting itself; the pgid and its members come from the table at teardown or the record says nothing",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: "      groupSweep: pgid ? { pgid, members: processGroupMembers(pgid).filter((pid) => pid !== pgid) } : null",
+    to: "      groupSweep: { pgid: 0, members: [] }",
+    test: "tests/product/confinement-real-lane.test.mjs",
+    name: "strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane"
   }
 ];
 
@@ -2431,7 +2540,9 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck exhaustive mapping",
   "ECD subcheck ownership follows the administering form",
   "PATH carries no relative entry",
+  "PROFILE_BOUND is earned by the gate and by nothing else",
   "a .NET startup hook is a pre-main hook like the rest",
+  "a cleanup failure is published by class and digest",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a forged structural set is revalidated like the rest",
@@ -2440,10 +2551,12 @@ export const ACCOUNTED_GUARDS = [
   "a missed known incident is a regression",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a record is authenticated before it is judged",
   "a refused file fails the check",
   "a resolved key is the key",
   "a run is official only when every invocation is",
   "a sequence at its key's indentation is the value",
+  "a skipped real lane is not a verified one",
   "a started phase cannot integrate code on a blocked issue",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
@@ -2456,6 +2569,7 @@ export const ACCOUNTED_GUARDS = [
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "an unknown isolation lane is refused, not defaulted",
+  "an unmeasured network axis is not NOT_OBSERVED",
   "an unproven lane blocks issuance",
   "artifact top-level mode",
   "artifact type in the envelope",
@@ -2470,6 +2584,7 @@ export const ACCOUNTED_GUARDS = [
   "central redaction",
   "checkpoint evidence preserved",
   "child output credential scrub",
+  "cited evidence is read only if it is the evidence cited",
   "cleanup claim not overstated",
   "close-evidence author trust",
   "close-evidence component confirmations",
@@ -2597,16 +2712,22 @@ export const ACCOUNTED_GUARDS = [
   "task-initiated network is NOT_OBSERVED",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
+  "the assessment is scored under the gate it reports",
+  "the boundary's verdict decides whether the run carries a number",
+  "the canary that certifies the boundary is the one that shipped",
   "the capture time names a day that exists",
   "the closing pull request changed something the issue owns",
   "the command prints the floored result",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
+  "the escaped descendant is proved confined",
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
+  "the group sweep is recorded from the group",
   "the matrix reads the canary from its observation",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
+  "the process axis needs the sweep and the second poll",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",

@@ -45,16 +45,19 @@ test("a harness that fails every family the same way is not scored, checkpoints 
   }
 });
 
-test("an agent that does the work is still scored when the operator changes nothing", () => {
+test("an agent that does the work is still measured when the operator changes nothing", () => {
   // The guard must not have been bought at the price of the ordinary case: press Enter through the
-  // questions against a working agent and a number still comes out.
+  // questions against a working agent and the run completes and reports. The number itself is the
+  // confinement gate's to allow -- on a lane that cannot be official #556 withholds it and says
+  // which condition withheld it, which is the line asserted here.
   const home = temporary("aos-live-home-");
   const cwd = temporary("aos-live-cwd-");
   try {
     aos(cwd, home, ["agent", "add", "solo", "--command", process.execPath, "--arg", fixture]);
     const run = aos(cwd, home, ["assess", "--checkpoints"], "\n".repeat(300));
     assert.doesNotMatch(run.stderr + run.stdout, /AOS_AGENT_FAILS_IDENTICALLY/);
-    assert.match(run.stdout, /Score: \d+ \/ 100/);
+    assert.match(run.stdout, /metrics observed/);
+    assert.match(run.stdout, /Score: \d+ \/ 100|RUN_DIAGNOSTIC: not an official profile-bound result — AOS_ISOLATION_/);
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
   }

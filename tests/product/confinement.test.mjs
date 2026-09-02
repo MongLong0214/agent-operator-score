@@ -9,6 +9,7 @@ import {
   BOUNDARY_CANARY_PROGRAM,
   CANARY_CELLS,
   CLAIM_STAGE_CEILING,
+  DESCENDANT_SCAN,
   ISSUANCE_REASONS,
   SUPPORTED_RELEASE_SET,
   SUPPORT_LANES,
@@ -52,6 +53,8 @@ const OPERATOR_CONFIG_DIR = "/Users/someone/.codex";
 // A record shaped the way `runProcess` produces one for a STRICT run that passed everything. Each
 // negative test below breaks exactly one field of it, so what each test proves is that the one
 // field is load-bearing and nothing else changed.
+const canaryCells = () => Object.fromEntries(CANARY_CELLS.map((name) => [name, { expected: "denied", observed: "denied", errno: "EPERM" }]));
+
 const passingRecord = (overrides = {}) => {
   const policy = isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: codex });
   return {
@@ -63,12 +66,22 @@ const passingRecord = (overrides = {}) => {
     filesystem_enforced: true,
     process_enforced: true,
     network_policy: policy.network.policy,
-    network: { provider_transport: "allowed", task_external: "NOT_OBSERVED" },
+    network: { provider_transport: "allowed", task_external: "NOT_OBSERVED", enforcement: "kernel" },
     policy_digest: isolationPolicyDigestOf(policy),
     rendered_profile_digest: sha256Bytes(Buffer.from("(version 1)\n")),
     setup_verified: true,
-    boundary_canary: { result: "PASS", failed: [], evidence_digest: sha256Bytes(Buffer.from("{}")), program_digest: sha256Bytes(Buffer.from(BOUNDARY_CANARY_PROGRAM)) },
-    descendants: { scan: "ancestry-poll", polls: 12, tracked: [], leaked: [], survivors: [], residual: "x" },
+    // The evidence a run produces, not a shape that resembles it: the cells the shipped canary
+    // reported, the checks made outside it, and the digest of the source that was run.
+    boundary_canary: {
+      result: "PASS",
+      failed: [],
+      cells: canaryCells(),
+      out_of_band: { planted_intact: { outside: true, store_root: true, run_store: true }, descendant: { pid: 4243, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true, survivors: [] } },
+      evidence_digest: sha256Bytes(Buffer.from("{}")),
+      program_digest: sha256Bytes(Buffer.from(BOUNDARY_CANARY_PROGRAM)),
+      scan_polls: 7
+    },
+    descendants: { scan: DESCENDANT_SCAN, poll_interval_ms: 200, polls: 12, tracked: [4242], leaked: [], survivors: [], group_sweep: { pgid: 4242, members: [] }, residual: "x" },
     cleanup_verified: true,
     support_status: "SUPPORTED_WITH_CONSTRAINTS",
     ...overrides
@@ -418,7 +431,7 @@ const expectedOutcome = (cell) => {
 
 const passingOutOfBand = () => ({
   planted_intact: { outside: true, store_root: true, run_store: true },
-  descendant: { pid: 4242, observed_by_scan: true, dead_after_cleanup: true }
+  descendant: { pid: 4242, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true }
 });
 
 const passingCells = () => Object.fromEntries(CANARY_CELLS.map((cell) => [cell, {
@@ -444,7 +457,7 @@ test("the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds",
     assert.equal(evaluated.result, "FAIL", cell);
     assert.ok(evaluated.failed.includes(cell), cell);
   }
-  for (const [path, value] of [[["planted_intact", "outside"], false], [["planted_intact", "store_root"], false], [["planted_intact", "run_store"], false], [["descendant", "observed_by_scan"], false], [["descendant", "dead_after_cleanup"], false]]) {
+  for (const [path, value] of [[["planted_intact", "outside"], false], [["planted_intact", "store_root"], false], [["planted_intact", "run_store"], false], [["descendant", "observed_by_scan"], false], [["descendant", "dead_after_cleanup"], false], [["descendant", "escapee_confined"], false]]) {
     const outOfBand = passingOutOfBand();
     outOfBand[path[0]][path[1]] = value;
     const evaluated = evaluateCanary({ cells: passingCells(), stdout, networkPolicy: "provider-required-unrestricted", outOfBand });
@@ -498,7 +511,7 @@ test("the_support_matrix_marks_official_only_where_committed_canary_evidence_pas
 });
 
 test("the_document_renders_the_support_matrix_the_fixture_declares", () => {
-  const rendered = renderSupportMatrix(matrix);
+  const rendered = renderSupportMatrix(supportMatrixDecisions(matrix));
   assert.ok(doc.includes(rendered), "docs/STRICT_CONFINEMENT_FEASIBILITY.md does not contain the rendered support matrix");
   assert.ok(rendered.includes("| darwin | macos-seatbelt | codex-cli.v1 | STRICT |"));
   assert.ok(doc.includes(matrix.evidence_digest), "the document does not state the support matrix digest");
@@ -533,14 +546,19 @@ test("a_canary_observation_that_did_not_pass_withholds_the_row_it_backs", () => 
     const observation = JSON.parse(readFileSync(file, "utf8"));
     observation.captured.result = "FAIL";
     observation.captured.failed = ["outside_write"];
-    writeFileSync(file, JSON.stringify(observation));
-    const row = supportMatrixDecisions(matrix, copy).find((one) => one.official);
+    const bytes = Buffer.from(JSON.stringify(observation), "utf8");
+    writeFileSync(file, bytes);
+    // The row is re-pointed at the bytes it now names, so what this proves is the canary result
+    // and not the digest check beside it -- that one has a test of its own.
+    const restated = JSON.parse(JSON.stringify(matrix));
+    restated.lanes.find((lane) => lane.official).evidence.canary.digest = sha256Bytes(bytes);
+    const row = supportMatrixDecisions(restated, copy).find((one) => one.official);
     assert.equal(row.decision.official, false, "a row backed by a failed canary was issued");
     assert.ok(row.decision.reasons.includes(ISSUANCE_REASONS.CANARY_NOT_PASS));
     assert.equal(row.decision.boundary_canary, "FAIL");
     // And with the observation missing altogether, the row is not run rather than failed.
     rmSync(file);
-    const unrun = supportMatrixDecisions(matrix, copy).find((one) => one.official);
+    const unrun = supportMatrixDecisions(restated, copy).find((one) => one.official);
     assert.equal(unrun.decision.official, false);
     assert.equal(unrun.decision.boundary_canary, "NOT_RUN");
   } finally {

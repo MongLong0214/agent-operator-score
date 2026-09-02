@@ -90,33 +90,34 @@ test("each run takes the next locked seed, and a seed that produced a result is 
   }
 });
 
-test("three attended runs produce an operator score, and it is the median of all of them", () => {
-  // The whole point of the locked cycle: every valid run counts, including a low one.
+test("three attended runs are three distinct runs, and the cycle says why none of them counted", () => {
+  // Every run of the locked cycle is recorded under its own id and its own seed. What the cycle
+  // may then say about them is the confinement gate's to decide: #556 stopped a run on a lane that
+  // is not official from carrying an issued number, and a cycle whose runs carry none has no
+  // median to take. Excluding them silently would make that indistinguishable from a cycle that
+  // never ran. The median arithmetic itself is exercised in tests/product/cycle.test.mjs, where
+  // issued runs can be constructed without a boundary this host cannot provide.
   const { cwd, plan, home } = opened();
   try {
-    const printedScores = [];
     for (let index = 0; index < 3; index += 1) {
       const output = cycleRun(cwd, plan).stdout;
-      const score = /^Score: (\d+) \//m.exec(output);
-      if (score) printedScores.push(Number(score[1]));
+      assert.match(output, /RUN_DIAGNOSTIC: not an official profile-bound result — AOS_ISOLATION_/);
     }
     const report = spawnSync(process.execPath, [cli, "cycle", "--json"], {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home }
     });
     const summary = JSON.parse(report.stdout);
-    assert.equal(summary.valid_runs, 3, JSON.stringify(summary.excluded));
-    assert.equal(summary.complete, true);
-    assert.equal(typeof summary.operator_score, "number");
     assert.equal(summary.seeds.length, 3);
+    assert.equal(summary.valid_runs, 0, JSON.stringify(summary.excluded));
+    assert.equal(summary.complete, false);
+    assert.equal(summary.operator_score, null);
+    assert.equal(summary.excluded.length, 3);
 
-    // Against what the runs printed, not against what the ledger stored. Reading the expectation
-    // out of the ledger made this pass while every seed was recorded with the first run's score --
-    // three copies of one number, and a median assertion that could not see it.
+    // Read from the ledger, which is where a run id being recorded twice would show: three runs,
+    // three ids, three seeds, none of them scored.
     assert.equal(new Set(cycleOf(home).runs.map((entry) => entry.run_id)).size, 3, "a run id was recorded twice");
-    const printed = [...printedScores].sort((a, b) => a - b);
-    assert.equal(printed.length, 3, `saw ${printed.length} scores in the output`);
-    assert.deepEqual(cycleOf(home).runs.map((entry) => entry.final_score).sort((a, b) => a - b), printed);
-    assert.equal(summary.operator_score, printed[1], "the middle of three, not the best of them");
+    assert.deepEqual(cycleOf(home).runs.map((entry) => entry.final_score), [null, null, null]);
+    assert.deepEqual(cycleOf(home).runs.map((entry) => entry.invalid_reason), ["NOT_ISSUED", "NOT_ISSUED", "NOT_ISSUED"]);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -157,13 +158,15 @@ test("running when every seed is spent says so instead of inventing a fourth", (
 
 test("the report never calls repetition confidence", () => {
   // Three runs on one machine say how much this measurement moved when it was repeated, and
-  // nothing about how it would move anywhere else.
+  // nothing about how it would move anywhere else. The word is forbidden on both of the cycle's
+  // pages -- the one with a score on it and the one that says why there is none -- and on this
+  // host it is the second, because the runs were not issued on a lane that could be official.
   const { cwd, plan, home } = opened();
   try {
     for (let index = 0; index < 3; index += 1) cycleRun(cwd, plan);
     const report = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home } });
-    assert.match(report.stdout, /local repeat evidence/);
-    assert.match(report.stdout, /PROFILE-BOUND/);
+    assert.match(report.stdout, /Operator Score withheld/);
+    assert.match(report.stdout, /not counted: .* — NOT_ISSUED/);
     assert.equal(/confidence/i.test(report.stdout), false);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

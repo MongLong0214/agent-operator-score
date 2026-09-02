@@ -229,9 +229,11 @@ STRICT label. The backend's presence is probed on every run, not remembered.
 The filesystem policy is the Phase 0 profile with the holes closed:
 
 - the workspace is the only read-write subpath;
-- `AOS_HOME` is denied by name, and the rule comes *after* the workspace allow so that a
-  workspace which contains the store is still refused -- `prepareConfinement` also rejects that
-  layout outright with `AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME` before rendering anything;
+- `AOS_HOME` is denied by name, and the rule comes *before* the workspace allow -- the later rule
+  wins under Seatbelt, so a deny placed after the allow would be the one that lost. The run's own
+  workspace lives inside the store and stays reachable; a workspace that *contains* the store is
+  refused outright by `prepareConfinement` with `AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME` before
+  anything is rendered;
 - the agent's private HOME is read-write and is where TMPDIR points, so a runtime that must write
   somewhere writes there and the directory goes with the run;
 - the run's scratch directory (the prompt file), the node tree and the runtime CLI tree are
@@ -266,9 +268,18 @@ through its parent, and if it double-forks it is adopted through the reparented 
 provided it is alive at a poll. After the agent exits, `runProcess` kills the group as before and
 then terminates everything the tracker still holds, and the record's `descendants` block carries
 `leaked` (alive after the agent exited), `survivors` (alive after teardown), `tracked` and
-`polls`. A process that double-forks *between* two polls and dies before the next is not seen;
-it is still inside the kernel boundary, and this is listed as a constraint on the lane rather
-than hidden. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
+`polls`. A process that double-forks *between* two polls and re-sessions before the next is
+not seen by the poll, so the poll is not what the record rests on. `processAxisEnforced` writes
+`process_enforced: true` only when three measured things hold together: the canary's own detached
+descendant tried to write outside the boundary and the kernel refused it (`escapee_confined`), the
+scan polled more than once while the agent was alive, and the process group was swept at teardown
+-- which is what catches a descendant that forks away without taking its own session. What remains
+is the descendant that does both inside one 200 ms interval. On a backend with a pid namespace
+(bubblewrap's `--unshare-pid`) that case cannot arise; on Seatbelt it can, and the escapee proof
+is what says such a process is still inside the same profile: it can outlive the run, it cannot
+leave the workspace, and this run's evidence is digested at teardown. That residual is named on
+`descendants.residual`, in the lane's constraints, and in the support table -- it is why the lane
+is `SUPPORTED_WITH_CONSTRAINTS` and not `SUPPORTED`. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
 directory were removed and `survivors` is empty; it is set in `settleConfinement`, after the
 `finally` in `runProcess` has done the removal, so a cleanup failure it cannot see is not one it
 can vouch for.
@@ -283,7 +294,11 @@ read, write and delete outside it, read the store root, read another run's direc
 symlink out, list the operator's home (all expected `denied`), connect outbound (expected
 `allowed` for a provider-required policy -- an `ECONNREFUSED` against a closed local port is a
 connection the kernel let through), and spawn a detached descendant (expected `spawned`, then
-observed by the scan and dead after cleanup). `evaluateCanary` compares every observed cell to
+observed by the scan, proved confined, and dead after cleanup). The descendant is not a `sleep`:
+before it sleeps it tries to write a file outside the boundary and leaves the shell's status where
+the parent can read it inside the workspace. A descendant that outlives its parent is a lifetime
+problem; one that outlives it *outside* the boundary is an access problem, and this cell is the
+kernel's own answer to which of the two happened. `evaluateCanary` compares every observed cell to
 its expectation and the result is `PASS` only when all eleven agree and the planted files outside
 the boundary are intact afterwards; anything else is `FAIL`, with the failed cells named. The
 observation file's digest -- over its bytes, `sha256Bytes` -- is the `evidence_digest` on the
@@ -305,10 +320,23 @@ could say anything else.
 
 ### The gate
 
-`issuanceGate(record)` returns `{ official, isolation_level, backend, boundary_canary,
-reasons[], claim_stage_ceiling, platform_lane, network, policy_digest }` and #559 and #563
-consume it. `official` is true only when every one of these holds at once, and every one that
-fails is named in `reasons`:
+`issuanceGate(record)` returns `{ official, record_problems[], isolation_level, backend,
+boundary_canary, reasons[], claim_stage_ceiling, platform_lane, network, policy_digest }` and #559
+and #563 consume it.
+
+Before any condition below is read, a `STRICT` record is authenticated: it must carry the schema
+the builder stamps, a rendered-profile digest and a policy digest, a network observation with its
+enforcement stated, a canary whose `program_digest` is the digest of the canary source shipped in
+this package, every one of the eleven cells that program reports, the out-of-band checks made from
+outside it, and a descendant block with the poll interval, more than one poll and the teardown
+sweep. Anything missing is `AOS_ISOLATION_RECORD_INVALID` with the missing evidence named in
+`record_problems`. This is the difference between judging a record and judging an object shaped
+like one: a review handed the old gate a record with no schema, no cells, no polls and digests of
+sixty-four zeroes, and got `official: true` with an empty reason list. Missing evidence closes the
+gate; it never opens it.
+
+`official` is true only when every one of these holds at once, and every one that fails is named
+in `reasons`:
 
 | Condition | Reason when it fails |
 | --- | --- |
@@ -322,9 +350,18 @@ fails is named in `reasons`:
 | policy digest present | `AOS_ISOLATION_POLICY_DIGEST_MISSING` |
 | the lane's support status is releasable | `AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE` |
 | the (platform, backend, adapter, level) lane has committed evidence | `AOS_ISOLATION_LANE_NOT_PROVEN` |
+| the record carries the evidence the run produced | `AOS_ISOLATION_RECORD_INVALID` |
+| a matrix row's cited observation matches the digest it declares | `AOS_ISOLATION_EVIDENCE_DIGEST_MISMATCH` |
 
-`claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise; #559
-applies it where the claim stage is decided. `issuanceGateForRun(records)` folds a run's
+`claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise, and the
+CLI applies it: the verdict is a scoring input, so `aos assess` on a lane that cannot be official
+withholds the number (`issued: false`, `score: null`, `claim_stage: "RUN_DIAGNOSTIC"`, blocker
+`ISOLATION_NOT_OFFICIAL` carrying the `AOS_ISOLATION_*` reasons) and exits non-zero, printing the
+stage and the reasons where the score would have been. The arithmetic is still reported as
+`provisional_raw`, because an operator fixing the gate needs to see what the run was worth. This
+is what the level table above means in practice -- `BEST_EFFORT_CLI` is diagnostic only (SSOT §24)
+-- and it is a behaviour change for every host that cannot run the proven lane: `aos cycle` has no
+median to take there, and says so per run rather than printing a number that reads as official. `issuanceGateForRun(records)` folds a run's
 invocations into one decision that is official only when every invocation is, on the same lane
 and policy, and a run with no invocations is not official. `BEST_EFFORT_CLI` and `NONE` cannot
 reach `official` by any path: the level check alone refuses them, and
@@ -345,6 +382,11 @@ the generated profile:
   prompt on stdin exited 0 and answered `OK` in about five seconds
   (`strict-lane.darwin.seatbelt.codex-exec.json`).
 
+`npm run verify:real-runtime-strict` sets `AOS_REAL_STRICT_REQUIRED=1`, and under that variable a
+skip is a failure: on a host without the backend, or without an authenticated Codex, the script
+exits non-zero naming `AOS_REAL_STRICT_NOT_RUN` rather than reporting a suite that skipped
+everything as a pass. `npm test` sets nothing, so the same file skips honestly there.
+
 `tests/product/confinement-real-lane.test.mjs` (`npm run verify:real-runtime-strict`) repeats
 this through `runProcess` rather than the recorder: a node agent that tries to leave the boundary
 and leaves a detached `sleep` behind gets `EPERM` on every outside cell, sees no `AOS_HOME` in its
@@ -353,6 +395,10 @@ descendant is dead after teardown; the installed Codex runtime, run through the 
 0, answers `OK`, and its record is `official: true` with an empty reason list. On a machine
 without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
 reason and does not pass on nothing.
+
+A cleanup failure is recorded by class and by digest of the path, never by the path: this record
+is copied whole into the result the operator publishes, and the directories in it are absolute
+paths under their home with the run's own id in them.
 
 From the CLI, the lane is the operator's to name: `AOS_ISOLATION=STRICT aos agent run ...` (and
 `aos assess`, `aos observe`) runs under the boundary and the record says so; unset, the CLI runs
@@ -377,22 +423,28 @@ measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to 
 
 ### Support matrix
 
-Rendered by `renderSupportMatrix` from `fixtures/confinement/support-matrix.json`, digest
-`sha256:0bf6b1c2b0449d6005c2d5120770874bbba3928c2956f2ee03e15456b5c439b5`. The `Official` column
-is the gate's decision over the row's committed evidence, not the row's own label: the test
-forges an official Linux row and shows the gate refuses it.
+Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
+what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
+digest
+`sha256:d2cd731050245d6f3e8a9ad346d896b3104a84c9297736750ef131d14d118e86`. The `Official` column
+is the gate's decision over the row's committed evidence, not the row's own label: the test forges
+an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
+by digest*, and the digest is checked against the bytes before the observation is read -- a row
+whose citation does not match what is on disk claims nothing
+(`AOS_ISOLATION_EVIDENCE_DIGEST_MISMATCH`). Those observations ship with the package
+(`fixtures/confinement/` is in `files`), so the shipped matrix can prove what it cites.
 
 | Platform | Backend | Adapter | Level | Support | Official | Reason / evidence |
 |---|---|---|---|---|---|---|
 | darwin | macos-seatbelt | codex-cli.v1 | STRICT | SUPPORTED_WITH_CONSTRAINTS | OFFICIAL | canary `strict-lane.darwin.seatbelt.canary.json` PASS; runtime `strict-lane.darwin.seatbelt.codex-auth.json` exit 0 |
-| darwin | macos-seatbelt | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
-| darwin | macos-seatbelt | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
+| darwin | macos-seatbelt | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
+| darwin | macos-seatbelt | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
 | darwin | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
 | darwin | none | * | NONE | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
-| linux | linux-bubblewrap | codex-cli.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
-| linux | linux-bubblewrap | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
-| linux | linux-bubblewrap | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
-| linux | linux-container | * | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- Phase 0 measured the boundary in a container and could not run the darwin-only runtime inside it; no adapter targets it |
+| linux | linux-bubblewrap | codex-cli.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-bubblewrap | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-bubblewrap | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-container | * | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- Phase 0 measured the boundary in a container and could not run the darwin-only runtime inside it; no adapter targets it |
 | linux | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
 | linux | none | * | NONE | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
 
