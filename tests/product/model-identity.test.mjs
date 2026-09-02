@@ -39,7 +39,7 @@ import {
 import { ADAPTERS, buildProfile, profileDigestOf } from "../../lib/profile.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { boundRuntimeIdentity, identityDigestOf, IDENTITY_SCHEMA } from "../../lib/runtime-identity.mjs";
-import { addAgent, makePlan, newestResult, run } from "./helpers.mjs";
+import { addAgent, makePlan, newestResult, run, verifiedRunner } from "./helpers.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
@@ -702,7 +702,11 @@ test("a scored run records model provenance, and the CLI and Markdown show the s
   const cwd = mkdtempSync(join(tmpdir(), "aos-model-run-"));
   try {
     run(cwd, ["init"]);
-    addAgent(cwd, "exact", undefined, ["--model-id", EXACT_A]);
+    // Through a launcher inside this directory, so the executable half of the profile verifies on
+    // any machine: registering the ambient Node binds whatever identity #554 gives it, and on a
+    // host where that binary sits in a group-writable directory the aggregate is withheld -- which
+    // is the intended posture, and not what this test is about.
+    addAgent(cwd, "exact", undefined, ["--model-id", EXACT_A], verifiedRunner(cwd));
     const plan = makePlan(cwd, { default: "exact" });
     const printed = spawnSync(process.execPath, [cli, "assess", "--plan", plan, "--checkpoints", "--seed", SEEDS[0]], {
       cwd, encoding: "utf8", input: UNBLOCK, timeout: 300000,
