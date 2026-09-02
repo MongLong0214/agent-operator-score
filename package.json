@@ -12,6 +12,10 @@
     "test:mutation": "node tests/mutation/run.mjs",
     "verify:mvp": "node bin/aos.mjs verify",
     "smoke:package": "node tests/package-smoke.mjs",
+    "verify:review-holdout-floor": "node --test tests/product/review-holdout-floor.test.mjs",
+    "verify:known-incident-corpus": "node --test tests/product/known-incident-corpus.test.mjs",
+    "verify:no-raw-holdout-data": "node --test tests/product/no-raw-holdout-data.test.mjs",
+    "verify:ecd-contract": "node --test tests/product/ecd-construct-map.test.mjs tests/product/ecd-evidence-model.test.mjs tests/product/ecd-task-model.test.mjs tests/product/ecd-interpretation-use.test.mjs tests/product/ecd-aggregation.test.mjs tests/product/ecd-shortcuts.test.mjs",
     "verify:execution-plan": "node scripts/verify-v020-execution-plan.mjs",
     "verify:execution-plan:live": "node scripts/verify-v020-execution-plan.mjs --live --json",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
@@ -21,7 +25,9 @@
   },
   "files": [
     "bin/",
+    "contracts/",
     "lib/",
+    "fixtures/known-incidents/",
     "docs/",
     "governance/",
     "schemas/",

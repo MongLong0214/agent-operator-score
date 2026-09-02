@@ -79,16 +79,25 @@ test("a self dependency fails", () => {
   assert.ok(failures(checkPlan(doc)).includes("self-dependency"));
 });
 
+// Several tests need an issue that is still blocked behind unfinished work. #559 was that example
+// until #582 and #588 were done and it became ready; the plan moves, so the example is taken from
+// whatever it says today rather than from a number that was true when the test was written.
+const blockedBehindUnfinished = (doc) => {
+  const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
+  const one = doc.issues.find((each) => each.status === "blocked" && each.blocked_by.some((number) => !done.has(number)));
+  assert.ok(one, "the plan has no blocked issue left to serve as the example");
+  return one;
+};
+
 test("a ready issue with an unfinished predecessor fails", () => {
   const doc = plan();
-  const one = entry(doc, 559);
-  one.status = "ready";
+  blockedBehindUnfinished(doc).status = "ready";
   assert.ok(failures(checkPlan(doc)).includes("ready-with-unfinished-predecessor"));
 });
 
 test("a blocked issue whose predecessors all passed is stale and fails", () => {
   const doc = plan();
-  for (const number of entry(doc, 559).blocked_by) entry(doc, number).status = "done";
+  for (const number of blockedBehindUnfinished(doc).blocked_by) entry(doc, number).status = "done";
   assert.ok(failures(checkPlan(doc)).includes("stale-blocked-status"));
 });
 
@@ -128,17 +137,34 @@ test("a release-critical issue without a close-evidence contract fails", () => {
 
 // --- phase-ready is not READY --------------------------------------------------------------
 
+// #556 was the shipped example of a blocked issue with one ready phase until its predecessors
+// (#554, #555, #588) were all done, at which point the plan had to say it was ready. The rules these
+// tests exercise are about the blocked state, so they put #556 back into it rather than depend on
+// which day the plan is read.
+const withFeasibilityBlocked = (doc) => {
+  const feasibility = entry(doc, 556);
+  feasibility.status = "blocked";
+  feasibility.phases.find((one) => one.id === "final-integration").status = "blocked";
+  return doc;
+};
+
 test("phase-ready is separate from issue ready", () => {
   const doc = plan();
   const feasibility = entry(doc, 556);
-  assert.equal(feasibility.status, "blocked");
-  const phase = feasibility.phases.find((one) => one.id === "feasibility-proof");
-  assert.equal(phase.status, "ready");
-  assert.equal(phase.code_integration_allowed, false);
+  const proof = feasibility.phases.find((one) => one.id === "feasibility-proof");
+  const integration = feasibility.phases.find((one) => one.id === "final-integration");
+  // The proof phase is open in either state and never integrates code; the integrating phase
+  // opens only with the issue itself.
+  assert.equal(proof.status, "ready");
+  assert.equal(proof.code_integration_allowed, false);
+  const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
+  const unblocked = feasibility.blocked_by.every((number) => done.has(number));
+  assert.equal(feasibility.status, unblocked ? "ready" : "blocked");
+  assert.equal(integration.status, unblocked ? "ready" : "blocked");
 });
 
 test("a phase-ready phase that claims final integration exceeds its scope and fails", () => {
-  const doc = plan();
+  const doc = withFeasibilityBlocked(plan());
   entry(doc, 556).phases.find((one) => one.id === "feasibility-proof").code_integration_allowed = true;
   assert.ok(failures(checkPlan(doc)).includes("phase-scope-exceeded"));
 });
@@ -159,7 +185,9 @@ test("the committed snapshot agrees with the manifest", () => {
 
 test("a status label that contradicts the manifest fails", () => {
   const snapshot = state();
-  snapshot.issues.find((one) => one.number === 559).labels = ["release:v0.2.0", "priority:P0", "area:measurement", "status:ready"];
+  const example = blockedBehindUnfinished(plan());
+  const issue = snapshot.issues.find((one) => one.number === example.issue);
+  issue.labels = issue.labels.map((label) => (label === "status:blocked" ? "status:ready" : label));
   assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "status-label-mismatch"));
 });
 
@@ -272,23 +300,32 @@ test("a completion record with every part present and confirmed raises no audit 
 
 test("the next batch is decidable from the manifest alone", () => {
   const doc = plan();
-  // Batch 0 is the set that starts with nothing to wait for. Stated as the invariant rather than
-  // as a frozen list, so closing an issue does not require editing this assertion -- an assertion
-  // that has to be edited on every merge stops being read.
-  const batchZero = [553, 554, 555, 556, 565, 567, 570, 572, 582, 588];
+  // Ready is exactly the set whose predecessors are all done and that is not done itself. Stated as
+  // the invariant rather than as a frozen list, so closing an issue does not require editing this
+  // assertion -- an assertion that has to be edited on every merge stops being read. The earlier
+  // form enumerated batch 0, which was the same set until the first batch-1 issue came due.
+  const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
   const ready = doc.issues.filter((one) => one.status === "ready").map((one) => one.issue).sort((a, b) => a - b);
-  const expected = batchZero
-    .filter((number) => entry(doc, number).blocked_by.length === 0)
-    .filter((number) => entry(doc, number).status !== "done");
+  const expected = doc.issues
+    .filter((one) => one.kind !== "epic" && one.status !== "done" && one.blocked_by.every((number) => done.has(number)))
+    .map((one) => one.issue)
+    .sort((a, b) => a - b);
   assert.deepEqual(ready, expected);
   assert.ok(ready.length > 0, "the plan has run out of startable work");
+  // And batch 0 is the set that started with nothing to wait for: every one of them is done or ready.
+  for (const one of doc.issues.filter((one) => one.batch === 0 && one.blocked_by.length === 0)) {
+    assert.ok(one.status === "done" || one.status === "ready", `#${one.issue} is batch 0 and ${one.status}`);
+  }
 
-  // #556 is the phase case: blocked as an issue, open as a probe. It must never appear as ready.
-  assert.equal(ready.includes(556), false);
-  const phaseReady = doc.issues
+  // #556 is the phase case: open as a probe while its issue waits, and ready as an issue only once
+  // every predecessor is done. Until then it is the one issue in the plan that is startable through
+  // a phase and not as itself.
+  const issueReady = entry(doc, 556).blocked_by.every((number) => done.has(number));
+  assert.equal(ready.includes(556), issueReady);
+  const phaseOnly = doc.issues
     .filter((one) => one.status !== "ready" && (one.phases ?? []).some((p) => p.status === "ready"))
     .map((one) => one.issue);
-  assert.deepEqual(phaseReady, [556]);
+  assert.deepEqual(phaseOnly, issueReady ? [] : [556]);
 });
 
 test("a done issue is closed on GitHub and a not-done issue is open", () => {
@@ -373,10 +410,11 @@ test("the excluded-issue check cannot be switched off from inside the plan", () 
 test("in-progress and done are constrained by predecessors, not just ready", () => {
   for (const status of ["in-progress", "done", "ready"]) {
     const doc = plan();
-    entry(doc, 559).status = status;
+    const one = blockedBehindUnfinished(doc);
+    one.status = status;
     assert.ok(
       failures(checkPlan(doc)).includes("ready-with-unfinished-predecessor"),
-      `#559 was allowed to be ${status} while #582 is unfinished`
+      `#${one.issue} was allowed to be ${status} while a predecessor is unfinished`
     );
   }
 });
@@ -478,7 +516,7 @@ test("the committed snapshot says it is a snapshot, so an offline run cannot rea
 
 test("two contradictory status labels do not pass", () => {
   const snapshot = state();
-  const issue = snapshot.issues.find((one) => one.number === 559);
+  const issue = snapshot.issues.find((one) => one.number === blockedBehindUnfinished(plan()).issue);
   issue.labels = [...issue.labels, "status:ready"];
   assert.ok(checkGithubState(plan(), snapshot).failures.some((one) => one.check === "status-label-mismatch"));
 });
@@ -1126,7 +1164,7 @@ test("a phase that has begun on a blocked issue cannot integrate code either", (
   // The scope rule only looked at `ready` phases, so moving one to `in-progress` or `done` while
   // the issue stayed blocked carried the permission the block exists to withhold.
   for (const status of ["ready", "in-progress", "done"]) {
-    const one = plan();
+    const one = withFeasibilityBlocked(plan());
     const phase = entry(one, 556).phases.find((each) => each.id === "final-integration");
     phase.status = status;
     assert.ok(

@@ -338,7 +338,19 @@ measurement.
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` reports both lanes: the local holdout precision, and a known-incident
+fixture precision and recall over `fixtures/known-incidents/`. Below the floor — fifty held-back
+sessions, twenty decided high-severity findings, decisions reaching ten different sessions, and no
+more abstentions than decisions — a rate is withheld rather than printed, and `aos review` stays
+EXPERIMENTAL. Withheld means absent, not zero: every report the command prints is generated from
+the floored result. The floors are declared acceptance thresholds, not statistical ones, and the
+corpus is a set of reconstructions written by the author of the rules — see
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md). The JSON shape this command prints is named and
+versioned in [`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md), which records what replaced the
+unversioned shape it used to print.
 
 Until new, unused sessions are measured, the current reviewer's accuracy is not established. The
 holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.
@@ -365,8 +377,8 @@ Chinese report UI are not yet localized.
 | AOS networking | The dashboard binds to `127.0.0.1`, requires a token, and is read-only and GET-only. No route returns a transcript, and AOS has no external collection client |
 | Agent networking | Codex and Claude Code may contact their model providers during `assess`; this is not an offline run |
 | Dependencies | There are no runtime package dependencies, but a supported Node runtime is required |
-| Agent environment | AOS replaces `HOME`. In the default `BEST_EFFORT_CLI` mode it carries ordinary non-sensitive variables, removes sensitive-looking variables and the operator's existing `AOS_*` values including `AOS_HOME`, then adds four run-context variables |
-| Run context and credentials | The four new AOS variables are `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`. Explicitly allowed variables and supported runtime credentials may also be carried. Names and sources may be recorded; credential values are not |
+| Agent environment | AOS replaces `HOME` and builds the child environment from an allowlist instead of inheriting the operator's. At both scoring levels, including `BEST_EFFORT_CLI`, a variable travels only if the policy names it: a structural name such as `PATH` or `LANG`, the adapter's own config directory, a verified runtime credential, or a separately approved proxy or certificate name. Everything else is absent, including `AOS_*` and `AOS_HOME`. Four run-context variables are then added |
+| Run context and credentials | The four new AOS variables are `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`. Explicitly allowed variables may also be carried, but a credential-shaped name cannot be one of them: a runtime's own credential travels only through the separate runtime-auth declaration, and only to the adapter that reads it. Names and sources may be recorded; credential values are not |
 | Secrets and local storage | Secret values are redacted where output is read. `~/.aos` is mode `0700`; files inside are mode `0600` |
 
 Automatic credential discovery can be disabled with `--no-auto-auth`. Report security issues

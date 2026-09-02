@@ -1,0 +1,92 @@
+{
+  "schema_id": "aos-known-incident.v1",
+  "runtime": "claude",
+  "evidence_status": "COMPLETE",
+  "expected_rules": [],
+  "forbidden_rules": [
+    "edits-outside-the-working-directory"
+  ],
+  "undecided_rules": [],
+  "derived_rules": [
+    "edits-outside-the-working-directory"
+  ],
+  "secret_values": [],
+  "fixture_id": "blind-round-heredoc-patch-envelope",
+  "incident": "A blind session given only the repository URL found that a heredoc writing a file whose content contains a patch envelope produced high-confidence writes to the paths in that content, putting six of this repository's own test fixtures into an edits-outside-the-working-directory finding.",
+  "source": "tests/product/blind-session-findings.test.mjs \"a patch envelope inside a heredoc is content, not a patch that ran\"",
+  "events": [
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:06:30.000Z",
+      "cwd": "/work",
+      "message": {
+        "content": [
+          {
+            "type": "text",
+            "text": "rewrite the effects module"
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "timestamp": "2026-08-20T10:06:40.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "c1",
+            "name": "Bash",
+            "input": {
+              "command": "python3 - <<'PY'\nimport pathlib\np = pathlib.Path('lib/file-effects.mjs')\ns = p.read_text()\ns = s.replace('old', \"apply_patch(`*** Begin Patch\n*** Update File: /repo/a.ts\n*** Update File: /repo/b.ts\n*** End Patch`)\")\np.write_text(s)\nPY"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:06:50.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "c1",
+            "is_error": false,
+            "content": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "timestamp": "2026-08-20T10:07:00.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "c2",
+            "name": "Bash",
+            "input": {
+              "command": "npm test"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "timestamp": "2026-08-20T10:07:10.000Z",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "c2",
+            "is_error": false,
+            "content": "42 passing"
+          }
+        ]
+      }
+    }
+  ]
+}

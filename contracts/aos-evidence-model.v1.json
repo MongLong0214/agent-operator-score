@@ -1,0 +1,491 @@
+{
+  "schema": "aos-evidence-model.v1",
+  "contract_version": "1.0.0",
+  "axes": [
+    {
+      "axis_id": "operator_process",
+      "title": "Operator Process",
+      "definition": "Decisions the operator authored or recorded, from evidence the assessed agent could not produce or edit.",
+      "profile": "Operator Process Profile",
+      "model_sensitive": false,
+      "in_process_index": true,
+      "admissible_authorities": [
+        "operator-canonical-event",
+        "operator-authored-plan"
+      ]
+    },
+    {
+      "axis_id": "reliance_calibration",
+      "title": "Reliance Calibration",
+      "definition": "Reliance episodes in which an independent initial judgment, the advice, its known correctness, the inspection, and the final judgment are all observed.",
+      "profile": "Reliance Calibration Profile",
+      "model_sensitive": true,
+      "in_process_index": false,
+      "admissible_authorities": [
+        "reliance-episode+oracle"
+      ]
+    },
+    {
+      "axis_id": "system_outcome",
+      "title": "System Outcome",
+      "definition": "Effects that were verified rather than reported: verdicts from an isolated verifier, the state of the repository, bytes in a delivered artifact, counts in the invocation ledger.",
+      "profile": "System Outcome Profile",
+      "model_sensitive": true,
+      "in_process_index": false,
+      "admissible_authorities": [
+        "isolated-verifier-process",
+        "isolated-verifier-process+agent-artifact",
+        "workspace-revision-effect",
+        "artifact-byte-effect",
+        "artifact-content-effect",
+        "orchestration-effect",
+        "runtime-invocation-ledger",
+        "runtime-invocation-ledger+agent-artifact"
+      ]
+    },
+    {
+      "axis_id": "delegated_artifact",
+      "title": "Delegated Artifact",
+      "definition": "The quality of what the delegation produced, read from a file the agent wrote. This is a joint product of the operator and the agent and it moves when the model changes, which is why it is not operator process.",
+      "profile": "Operator-Agent System Performance",
+      "model_sensitive": true,
+      "in_process_index": false,
+      "admissible_authorities": [
+        "agent-artifact+deterministic-grader",
+        "agent-declaration",
+        "operator-canonical-event+agent-artifact"
+      ]
+    }
+  ],
+  "authorities": [
+    {
+      "authority_id": "operator-canonical-event",
+      "definition": "An operator turn recorded by AOS while the run was happening. The assessed agent cannot write one.",
+      "class": "primary-event",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "operator_process"
+      ]
+    },
+    {
+      "authority_id": "operator-authored-plan",
+      "definition": "The operator's own plan document, validated and digested before the first invocation.",
+      "class": "operator-report",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "operator_process"
+      ]
+    },
+    {
+      "authority_id": "agent-artifact+deterministic-grader",
+      "definition": "A file the agent wrote, read by a named deterministic grader. The file is the work product under assessment, not a statement about behaviour.",
+      "class": "product",
+      "self_report_only": false,
+      "agent_forgeable": true,
+      "admissible_axes": [
+        "delegated_artifact"
+      ]
+    },
+    {
+      "authority_id": "agent-declaration",
+      "definition": "A statement the agent makes about its own behaviour, with no effect anywhere to check it against.",
+      "class": "self-report",
+      "self_report_only": true,
+      "agent_forgeable": true,
+      "admissible_axes": [
+        "delegated_artifact"
+      ]
+    },
+    {
+      "authority_id": "artifact-byte-effect",
+      "definition": "The presence or absence of specific bytes in a delivered artifact.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "artifact-content-effect",
+      "definition": "A value in a delivered artifact that could only be there if untrusted content had been followed.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "isolated-verifier-process",
+      "definition": "A verifier running out of process on code the assessed run could not change, authenticated by a nonce the assessed module cannot read.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "isolated-verifier-process+agent-artifact",
+      "definition": "An isolated verifier's verdict compared against the claim the agent made.",
+      "class": "composite",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "workspace-revision-effect",
+      "definition": "The repository head, tree state and change set observed by AOS.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "orchestration-effect",
+      "definition": "What the run's handoffs and joins actually carried, recorded by AOS.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "runtime-invocation-ledger",
+      "definition": "Invocation counts recorded by AOS while the run was happening.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "runtime-invocation-ledger+agent-artifact",
+      "definition": "A ledger count compared against a bound the agent declared.",
+      "class": "composite",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "operator-canonical-event+agent-artifact",
+      "definition": "An operator turn compared against the artifact that should reflect it.",
+      "class": "composite",
+      "self_report_only": false,
+      "agent_forgeable": true,
+      "admissible_axes": [
+        "delegated_artifact"
+      ]
+    },
+    {
+      "authority_id": "reliance-episode+oracle",
+      "definition": "A full reliance sequence in which the correctness of the advice is known independently of the operator's response to it.",
+      "class": "composite",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "reliance_calibration"
+      ]
+    }
+  ],
+  "separation_rules": [
+    {
+      "rule_id": "operator-and-system-evidence-are-separate",
+      "statement": "Operator evidence and agent or system evidence never enter the same estimate. Each cell carries exactly one axis, and construct estimates are computed per axis.",
+      "enforced_by": "checkContract axis-authority-admissible and cell-axis-single"
+    },
+    {
+      "rule_id": "self-report-earns-no-credit",
+      "statement": "A cell whose authority is self-report only may not be credit bearing and may not be required for its construct. It is reported descriptively.",
+      "enforced_by": "checkContract self-report-credit"
+    },
+    {
+      "rule_id": "authority-is-mandatory",
+      "statement": "A cell with no evidence authority makes the contract invalid. There is no default and no inherited authority.",
+      "enforced_by": "checkContract cell-authority-known"
+    },
+    {
+      "rule_id": "public-projection-is-a-digest",
+      "statement": "Raw evidence stays in the restricted local store. What leaves it is a digest or a safe summary; secret values and hidden reasoning are never stored or projected.",
+      "enforced_by": "the redaction surface, not by this contract"
+    }
+  ],
+  "scoring_rules": [
+    {
+      "scoring_rule_id": "subcheck-mean.v1",
+      "implemented": true,
+      "opportunity": "One answered subcheck verdict from lib/metrics.mjs, categorical PASS or FAIL, carrying value_0_1 of 1 or 0.",
+      "value_domain": [
+        0,
+        1
+      ],
+      "aggregation": "simple mean over the answered opportunities in the cell",
+      "null_handling": "An unanswered subcheck is null. It contributes no value and does not shrink the denominator of the minimum-opportunity test.",
+      "prohibited_inputs": [
+        "prompt_length",
+        "turn_count",
+        "verbosity",
+        "typing_speed",
+        "wall_clock_speed",
+        "tool_count",
+        "autonomy_level",
+        "confidence_without_correctness",
+        "explanation_length"
+      ]
+    },
+    {
+      "scoring_rule_id": "reliance-cell.v1",
+      "implemented": false,
+      "opportunity": "One reliance episode with an observed independent initial judgment and known advice correctness. Categorical: CORRECT_AI_RELIANCE, CORRECT_SELF_RELIANCE, OVERRELIANCE, UNDERRELIANCE.",
+      "value_domain": [
+        0,
+        1
+      ],
+      "aggregation": "not defined here",
+      "null_handling": "An episode missing the initial judgment is not a reliance opportunity and is discarded rather than scored.",
+      "prohibited_inputs": [
+        "confidence_without_correctness",
+        "turn_count",
+        "explanation_length",
+        "verbosity"
+      ]
+    },
+    {
+      "scoring_rule_id": "calibration-cell.v1",
+      "implemented": false,
+      "opportunity": "One judgment carrying a stated confidence and a verified correctness.",
+      "value_domain": [
+        0,
+        1
+      ],
+      "aggregation": "not defined here",
+      "null_handling": "A judgment with no verified correctness is not a calibration opportunity.",
+      "prohibited_inputs": [
+        "confidence_without_correctness",
+        "verbosity"
+      ]
+    },
+    {
+      "scoring_rule_id": "operator-plan-cell.v1",
+      "implemented": false,
+      "opportunity": "One operator-authored plan field, digested before the first invocation, compared against what the run then did.",
+      "value_domain": [
+        0,
+        1
+      ],
+      "aggregation": "not defined here",
+      "null_handling": "A plan that is the shipped template is not an authored plan and yields no opportunity.",
+      "prohibited_inputs": [
+        "prompt_length",
+        "verbosity",
+        "explanation_length",
+        "tool_count",
+        "autonomy_level"
+      ]
+    },
+    {
+      "scoring_rule_id": "transfer-cell.v1",
+      "implemented": false,
+      "opportunity": "One held-out task attempted with the agent and the transcript withheld, with a verified outcome.",
+      "value_domain": [
+        0,
+        1
+      ],
+      "aggregation": "not defined here",
+      "null_handling": "A held-out attempt whose collaboration phase was not observed is not a transfer opportunity.",
+      "prohibited_inputs": [
+        "wall_clock_speed",
+        "turn_count",
+        "prompt_length"
+      ]
+    }
+  ],
+  "missing_policies": [
+    {
+      "policy_id": "NOT_OBSERVED",
+      "definition": "The opportunity was administered and nothing in the run answers it. It is never converted to 0, PASS or FAIL."
+    },
+    {
+      "policy_id": "INSUFFICIENT_OPPORTUNITIES",
+      "definition": "Fewer opportunities were answered than the cell's minimum. The estimate is null. No partial or imputed value is produced."
+    },
+    {
+      "policy_id": "WITHHELD",
+      "definition": "The evidence exists or could exist but the contract forbids issuing the estimate, because a required cell is missing or no opportunity source is implemented."
+    }
+  ],
+  "prohibited_value_sources": [
+    {
+      "id": "prompt_length",
+      "statement": "A longer prompt is not a better one."
+    },
+    {
+      "id": "turn_count",
+      "statement": "More or fewer turns is not competence."
+    },
+    {
+      "id": "verbosity",
+      "statement": "Output length is not quality."
+    },
+    {
+      "id": "typing_speed",
+      "statement": "Input speed is not skill."
+    },
+    {
+      "id": "wall_clock_speed",
+      "statement": "Finishing sooner is not operating better. Time belongs to system outcome and needs opportunity normalisation first."
+    },
+    {
+      "id": "tool_count",
+      "statement": "Raw tool or invocation count is not competence."
+    },
+    {
+      "id": "autonomy_level",
+      "statement": "How autonomous the agent was allowed to be is a condition, not a score."
+    },
+    {
+      "id": "confidence_without_correctness",
+      "statement": "Confidence unaccompanied by a verified outcome earns nothing."
+    },
+    {
+      "id": "explanation_length",
+      "statement": "That an explanation exists, or how long it is, is not evidence that it is right."
+    }
+  ],
+  "facets": [
+    {
+      "facet_id": "operator",
+      "definition": "Who operated the run.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "task_form",
+      "definition": "The exact seeded form administered.",
+      "levels_observed_per_cycle": 6,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "task_family",
+      "definition": "The family the form belongs to.",
+      "levels_observed_per_cycle": 6,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "difficulty",
+      "definition": "The difficulty of the form.",
+      "levels_observed_per_cycle": null,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "domain",
+      "definition": "The subject domain the form draws on.",
+      "levels_observed_per_cycle": null,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "model",
+      "definition": "The model behind the agent.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "runtime",
+      "definition": "The agent runtime and its version.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "harness",
+      "definition": "The harness and isolation level the run was administered under.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "occasion",
+      "definition": "The sitting the run belongs to.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "sequence",
+      "definition": "Where the form fell in the order administered.",
+      "levels_observed_per_cycle": 6,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "verifier",
+      "definition": "Which verifier produced the verdict.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "language",
+      "definition": "The language the run was conducted in.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "interface",
+      "definition": "The interface the operator used.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "domain_familiarity",
+      "definition": "The operator's prior familiarity with the domain of the form.",
+      "levels_observed_per_cycle": null,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "contract_digest",
+      "definition": "The measurement contract the result was scored under, as its combined digest. A result scored under a different contract was produced by a different instrument, so it is a facet of the measurement and not a property of the operator.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "profile_digest",
+      "definition": "The profile the run was administered under, as a digest. A profile is the operator, the model, the runtime and the harness taken together, and two results that do not both identify one cannot be shown to share one.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    }
+  ],
+  "minimum_opportunity_bases": [
+    {
+      "basis_id": "DECLARED_COVERAGE",
+      "definition": "The minimum is the number of opportunities the cell declares, so a cell answered in part is not issued in part. This follows the rule already stated in lib/metrics.mjs and is a coverage requirement, not a precision one."
+    },
+    {
+      "basis_id": "CONTRACT_SPECIFIED",
+      "definition": "The value is fixed by the text of the contract that commissioned this artifact. It is a design decision and carries no precision evidence."
+    },
+    {
+      "basis_id": "UNESTABLISHED",
+      "definition": "No basis exists. minimum_opportunities is null and the cell can never reach its minimum, so the estimate is INSUFFICIENT_OPPORTUNITIES until a basis is established."
+    }
+  ],
+  "minimum_opportunity_source_clauses": [
+    {
+      "clause_id": "issue-582-reliance-cell",
+      "value": 4,
+      "locator": "github:MongLong0214/agent-operator-score#582, the worked observable-cell example",
+      "quote": "\"minimum_opportunities\": 4",
+      "statement": "The commissioning issue fixes the reliance cell's minimum at four episodes. It is a coverage decision about how many reliance episodes have to be answered before the cell is issued at all, and it carries no precision evidence: nobody has estimated the standard error of a four-episode reliance estimate, and this clause may not be read as one."
+    }
+  ],
+  "precision_basis": {
+    "status": "UNESTABLISHED",
+    "statement": "No minimum in this contract is derived from a precision or generalizability study. A local three-run median or a low deviation is repeat evidence for one profile, not a reliability coefficient. No number here should be read as one."
+  }
+}

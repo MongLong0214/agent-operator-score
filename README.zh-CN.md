@@ -318,7 +318,17 @@ AOS 不会因为能做算术就一定签发正式分数。观察不足的运行�
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` 会同时报告两条通道：本地留出集的精确率，以及 `fixtures/known-incidents/`
+中已知事件夹具的精确率与召回率。低于下限（留出会话 50 个、已判定的高严重度提示 20 条、这些判定
+跨越至少 10 个不同会话、且存疑判定不多于已定判定）时，比率不会打印而是被扣留，`aos review` 仍为
+EXPERIMENTAL。扣留意味着没有该值，而不是 0；该命令打印的每一份报告都由应用下限后的结果生成。
+这些下限是声明的产品验收阈值，并非统计推导所得，夹具集合也是由编写规则的同一人重建的 —— 详见
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。该命令输出的 JSON 形状已在
+[`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md) 中命名并版本化，其中也记录了它取代的那个
+未版本化形状对应读什么。
 
 在新的、未使用过的会话上重新测量之前，不能声称当前 `review` 的准确率已经确立。holdout 台账
 只保存会话哈希、提示 ID、人工判定与理由，不保存会话正文。详见
@@ -342,8 +352,8 @@ node bin/aos.mjs holdout
 | AOS 自身网络 | 面板只绑定 `127.0.0.1`，需要令牌，只读且仅接受 GET。没有返回会话正文的路由，AOS 也没有外部收集客户端 |
 | Agent 网络 | `assess` 中的 Codex 和 Claude Code 可能连接各自的模型提供方；这不是完全离线运行 |
 | 依赖 | 没有运行时包依赖，但需要受支持的 Node |
-| Agent 环境 | AOS 会替换 `HOME`。默认的 `BEST_EFFORT_CLI` 模式会保留普通的非敏感环境变量，移除名称看起来敏感的变量以及用户原有的 `AOS_*`、`AOS_HOME`，再加入四个运行上下文变量 |
-| 运行信息与凭据 | 新加入的 AOS 变量是 `AOS_SESSION_ID`、`AOS_FAMILY`、`AOS_WORKSPACE`、`AOS_TASK_FILE`。明确允许的变量和已支持的运行时凭据也可能被传入。可以记录名称与来源，但不会保存凭据值 |
+| Agent 环境 | AOS 会替换 `HOME`，并且不再继承用户的环境，而是按允许列表重新构建子进程环境。在包括 `BEST_EFFORT_CLI` 在内的两个可计分级别下，只有策略明确写出名称的变量才会传入：`PATH`、`LANG` 这样的结构性名称，适配器自己声明的配置目录，已验证的运行时凭据，以及单独批准的代理或证书名称。其余变量一律缺席，包括 `AOS_*` 和 `AOS_HOME`。随后再加入四个运行上下文变量 |
+| 运行信息与凭据 | 新加入的 AOS 变量是 `AOS_SESSION_ID`、`AOS_FAMILY`、`AOS_WORKSPACE`、`AOS_TASK_FILE`。明确允许的变量也可能被传入，但名称看起来像凭据的变量不能进入这份列表：运行时自己的凭据只经由单独的运行时凭据声明传递，且只传给会读取它的适配器。可以记录名称与来源，但不会保存凭据值 |
 | 敏感值与本地存储 | 输出中的敏感值在读取时被移除。`~/.aos` 权限为 `0700`，其中的文件为 `0600` |
 
 可用 `--no-auto-auth` 关闭凭据自动发现。安全问题请按

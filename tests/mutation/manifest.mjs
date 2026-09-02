@@ -16,6 +16,1061 @@
 
 export const GUARDS = [
   {
+    guard: "corpus abstention cannot outweigh decision",
+    reason: "ten positives, ten negatives and a thousand items that could not say anything published a rate over the twenty somebody could label",
+    file: "lib/incident-corpus.mjs",
+    from: "    metric.abstention_met = metric.undecided <= metric.decided_items;",
+    to: "    metric.abstention_met = true;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a corpus cannot buy a rate with the items it could not label"
+  },
+  {
+    guard: "one fixture id, one item",
+    reason: "the review is stored under the fixture id, so a repeated id scored nine contradicting items against the tenth item's review",
+    file: "lib/incident-corpus.mjs",
+    from: "  refuseDuplicateIds(items);",
+    to: "  void items;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "two items cannot share a fixture id, because one review would score both"
+  },
+  {
+    guard: "the printed shape is named",
+    reason: "the shape this replaced was unversioned, so the only way a consumer could notice the break was to start reading undefined",
+    file: "lib/holdout.mjs",
+    from: "    schema_id: LANE_A_SCHEMA,",
+    to: '    schema_id: "aos-holdout",',
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "the shape lane A returns is named, and the name is the one the migration note documents"
+  },
+  {
+    guard: "decisions must reach past one session",
+    reason: "twenty verdicts inside one held-back session clear a floor of fifty sessions and twenty decisions and measure one session",
+    file: "lib/holdout.mjs",
+    from: "    decided_sessions_met: precision.decided_sessions >= MVP_DECIDED_SESSIONS,",
+    to: "    decided_sessions_met: true,",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "twenty decisions inside one session is a fact about one session"
+  },
+  {
+    guard: "abstention cannot outweigh decision",
+    reason: "a rate over the findings that could be judged, when most of them could not, describes the ones that were easy",
+    file: "lib/holdout.mjs",
+    from: "    abstention_met: precision.unclear <= precision.decided",
+    to: "    abstention_met: true",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "a rate over the findings that could be judged, when most could not, is withheld"
+  },
+  {
+    guard: "the command prints the floored result",
+    reason: "the unfloored acceptance object was the one the default report was generated from, so a rate over one decision reached the screen with a notice under it",
+    file: "lib/cli.mjs",
+    from: "    emit(io, canonicalJson(lane).trimEnd());",
+    to: "    emit(io, canonicalJson({ ...lane, precision: lane.tp / (lane.tp + lane.fp) }).trimEnd());",
+    test: "tests/product/holdout-command.test.mjs",
+    name: "neither report the command can print carries a rate below the floor"
+  },
+  {
+    guard: "the floor follows the worst severity observed",
+    reason: "keeping the first severity seen let the corpus order decide whether a rule's floor was ten or five, so a rate could be published by renaming a file",
+    file: "lib/incident-corpus.mjs",
+    from: "      severities.set(finding.rule, worseOf(severities.get(finding.rule), finding.severity));",
+    to: "      if (!severities.has(finding.rule)) severities.set(finding.rule, finding.severity);",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "the floor follows the worst severity a rule was seen at, not the first one"
+  },
+  {
+    guard: "the same evidence cannot be counted twice",
+    reason: "ten copies of one session under ten fixture ids cleared a floor of ten in each direction and published a rate over two distinct shapes",
+    file: "lib/incident-corpus.mjs",
+    from: "  refuseDuplicateEvidence(items);",
+    to: "  items.length;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "the same evidence twice is one incident, and a corpus that holds it twice is refused"
+  },
+  {
+    guard: "no eligible evidence is said to be none",
+    reason: "reporting zero eligible decided items as \"below the floor of ten\" reads as a corpus that is nearly there, and the corpus that ships has nothing at all",
+    file: "lib/incident-corpus.mjs",
+    from: "    metric.withheld_reason = metric.decided_items === 0",
+    to: "    metric.withheld_reason = false",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "no eligible decided evidence is reported as none, not as a small number"
+  },
+  {
+    guard: "holdout floor",
+    reason: "a precision over one decided finding describes that finding and is published as a product claim",
+    file: "lib/holdout.mjs",
+    from: "const met = floor.sessions_met && floor.decided_met && floor.decided_sessions_met && floor.abstention_met;",
+    to: "const met = true;",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "one true positive and no false positives is undecided, not perfect"
+  },
+  {
+    guard: "withheld precision is absent",
+    reason: "a rate printed below the floor is read as a measurement whatever the status beside it says",
+    file: "lib/holdout.mjs",
+    from: "precision: met ? precision.precision : null,",
+    to: "precision: precision.precision,",
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "forty-nine sessions are not fifty"
+  },
+  {
+    guard: "a violation decides before the floor does",
+    reason: "incomplete evidence reported as clean is a count, and waiting for a bigger sample to say so never says it",
+    file: "lib/holdout.mjs",
+    from: 'const status = violations.length > 0 ? "FAIL"',
+    to: 'const status = false ? "FAIL"',
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "a violation below the floor fails rather than waiting for a bigger sample"
+  },
+  {
+    guard: "corpus leakage refusal",
+    reason: "a rule measured on the session it was written from is asked whether it fits what it was fitted to",
+    file: "lib/incident-corpus.mjs",
+    from: "  if (item.derived_rules.includes(rule)) throw new Error(",
+    to: "  if (false) throw new Error(",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "an item scored by the same evidence it was derived from fails"
+  },
+  {
+    guard: "undecided items are in neither denominator",
+    reason: "folding the cases nobody could label into either side gives a rate that describes the easy ones",
+    file: "lib/incident-corpus.mjs",
+    from: '  if (item.undecided_rules.includes(rule)) return "UNDECIDED";',
+    to: '  if (false) return "UNDECIDED";',
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "an undecided item counts toward neither precision nor recall and is still counted"
+  },
+  {
+    guard: "rate denominator floor",
+    reason: "three decisions is not a precision however many items the corpus holds",
+    file: "lib/incident-corpus.mjs",
+    from: "    metric.precision = corpusMet && precisionDenominator >= floor ? metric.tp / precisionDenominator : null;",
+    to: "    metric.precision = precisionDenominator > 0 ? metric.tp / precisionDenominator : null;",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a denominator below the minimum withholds the rate and reports the raw count"
+  },
+  {
+    guard: "incomplete evidence never reported clean",
+    reason: "a review that could not read the transcript, reported as one that could, is a clean bill of health nobody earned",
+    file: "lib/incident-corpus.mjs",
+    from: '    if (item.evidence_status === "INCOMPLETE" && review.status === "COMPLETE") {',
+    to: "    if (false) {",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "an item whose evidence is incomplete is never reported clean"
+  },
+  {
+    guard: "declared credentials are never reprinted",
+    reason: "the tool that warns about credentials writing one back out is the worst failure it has",
+    file: "lib/incident-corpus.mjs",
+    from: "      if (printed.includes(secret)) {",
+    to: "      if (false) {",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a credential in a corpus item is never written back out"
+  },
+  {
+    guard: "a missed known incident is a regression",
+    reason: "a reviewer that reports nothing has a perfect precision and finds none of the incidents in the corpus",
+    file: "lib/incident-corpus.mjs",
+    from: "      if (item.expected_rules.includes(rule) && !fired.includes(rule)) {",
+    to: "      if (false) {",
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a reviewer that reports nothing has a recall of zero, not a silence"
+  },
+  {
+    guard: "a withheld corpus does not pass",
+    reason: "nothing observed going wrong is not the same as a rate showing it goes right",
+    file: "lib/incident-corpus.mjs",
+    from: '    : withheld.length > 0 || Object.keys(metrics).length === 0 ? "UNDECIDED"',
+    to: '    : false ? "UNDECIDED"',
+    test: "tests/product/known-incident-corpus.test.mjs",
+    name: "a corpus below the floor withholds the rate and reports the raw counts"
+  },
+  {
+    guard: "production-quality needs both lanes",
+    reason: "an undecided lane read as a pass is how a claim outruns the evidence for it",
+    file: "lib/review-lanes.mjs",
+    from: 'const both = lane_a.status === "PASS" && lane_b.status === "PASS";',
+    to: "const both = true;",
+    // Named against a test about the claim, not one about transcript provenance. The mutation did
+    // die under that test, but only against an incidental assertion at the end of it: a guard whose
+    // killing assertion is a bystander is one refactor away from being a guard nothing checks.
+    test: "tests/product/review-holdout-floor.test.mjs",
+    name: "an undecided lane is not a quiet pass"
+  },
+  {
+    guard: "ECD an observation agrees with its own subchecks",
+    reason: "validateObservations skips the verifier and reason checks for anything whose state reads NOT_OBSERVED, so twenty objects declaring NOT_OBSERVED over four passing subchecks each produced PROFILE_BOUND with every binding naming no verifier",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (Object.hasOwn(observation, field) && observation[field] !== normalised[field]) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "an observation this module cannot attribute is refused rather than scored"
+  },
+  {
+    guard: "ECD an answered opportunity names its verifier",
+    reason: "an opportunity with no verifier identity is an assertion rather than an observation, and the rule has to live in this module rather than be inherited from a validator with its own reasons to be lenient",
+    file: "lib/ecd-contract.mjs",
+    from: '    if (answers.length > 0 && (typeof normalised.verifier_id !== "string" || normalised.verifier_id.length === 0)) {',
+    to: "    if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "an observation this module cannot attribute is refused rather than scored"
+  },
+  {
+    guard: "ECD comparability is governed by the contract the results were scored under",
+    reason: "comparability applied whichever sealed contract the caller supplied, so a clone with the invariance rule deleted -- which verifies, nothing in it is invalid -- compared two shipped results across models as though the gate had never been written",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (contract !== null && contract !== policy) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a comparison is governed by the contract the results were scored under, not by one passed in"
+  },
+  {
+    guard: "ECD a bound profile identity is compared",
+    reason: "the profile digest sat on the result and outside the compared facets, so two results under two different profiles compared as one measurement: the field was written down and then not read by the only function whose job is to read it",
+    file: "lib/ecd-contract.mjs",
+    from: "  declaredFacets.profile_digest = profileDigest;",
+    to: "  declaredFacets.profile_digest = declaredFacets.profile_digest;",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a profile identity that was bound is compared, not merely recorded"
+  },
+  {
+    guard: "ECD PROFILE_BOUND names the profile it claims",
+    reason: "the stage was issued from form completion and coverage alone, so a run with no facets and no profile digest claimed performance under one exact profile it had never named",
+    file: "lib/ecd-contract.mjs",
+    from: "  const unidentifiedFacets = identityFacets.filter((facet) => declaredFacets[facet] === undefined || declaredFacets[facet] === null);",
+    to: "  const unidentifiedFacets = [];",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "PROFILE_BOUND is not issued to a run that never named the profile it claims"
+  },
+  {
+    guard: "ECD capabilities are identity, not a property",
+    reason: "a Symbol-keyed brand can be forged and a Proxy answers every property read the check performs, and a review used a branded Proxy to make a below-minimum cell issue a value",
+    file: "lib/ecd-contract.mjs",
+    from: "  const frozen = deepFreeze(rows);\n  derivedFrom.set(frozen, `${kind}:${digest}`);",
+    to: "  const frozen = deepFreeze(rows);\n  Object.defineProperty(frozen, Symbol.for(\"aos.ecd.derived\"), { value: `${kind}:${digest}` });",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a forged brand and a substituted row are not the objects this module produced"
+  },
+  {
+    guard: "ECD observations are what lib/metrics.mjs says they are",
+    reason: "the rows were read field by field off whatever object arrived, so unattributed booleans with a metric id populated the operator-process cells whose whole claim is that the assessed agent cannot write them",
+    file: "lib/ecd-contract.mjs",
+    from: '  const problems = validateObservations(normalisedAll).filter((entry) => entry.reason !== "absent from the result");',
+    to: "  const problems = [];",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "an observation this module cannot attribute is refused rather than scored"
+  },
+  {
+    guard: "ECD opportunities carry what decided them",
+    reason: "an opportunity whose verifier and evidence were dropped on the way in is an opportunity nothing downstream can bind a claim to",
+    file: "lib/ecd-contract.mjs",
+    from: '      observation_digest: `sha256:${createHash("sha256").update(canonicalJson(normalised)).digest("hex")}`',
+    to: '      observation_digest: "sha256:0"',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "every answered opportunity carries what decided it, and the cell carries what it rests on"
+  },
+  {
+    guard: "ECD comparability enforces every declared rule",
+    reason: "filtering on UNESTABLISHED meant the one rule the contract says it enforces enforced nothing, and two runs by two different operators compared as one measurement",
+    file: "lib/ecd-contract.mjs",
+    from: "  const broken = rules",
+    to: '  const broken = rules.filter((rule) => rule.status === "UNESTABLISHED")',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "every declared comparability rule is enforced, not only the ones with no invariance evidence"
+  },
+  {
+    guard: "ECD comparability compares emitted results",
+    reason: "an unfrozen result read as a plain object let a caller edit the facets it was scored under and turn a refusal into a comparison",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (policy === undefined) throw new Error(`AOS_UNEMITTED_RESULT comparability compares results from evaluate; the ${name} argument is not one`);",
+    to: "    if (false) throw new Error(`AOS_UNEMITTED_RESULT ${name}`);",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a result is frozen, so the facets it was scored under are the facets it is compared on"
+  },
+  {
+    guard: "ECD contract identity is derived, not declared",
+    reason: "a facet the caller can set is a gate the caller can open, and results from two different contracts compared true whenever their other facets matched",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (Object.hasOwn(declaredFacets, "contract_digest")) {',
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "two results scored under different contracts are two instruments and are not compared"
+  },
+  {
+    guard: "ECD artifact versions are exact",
+    reason: "the schemas ask for a semantic version rather than this one, so four artifacts at 1.0.0 and one at 9.9.9 verified and every result then quoted the module's hard-coded version",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (contract[key].contract_version !== ECD_CONTRACT_VERSION) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "an artifact at a version this module does not issue fails"
+  },
+  {
+    guard: "ECD claim stages are the three this module scores",
+    reason: "minItems 3 is not three distinct stages, so three PROFILE_BOUND clones sealed and evaluate then read a definition off a stage it could not find",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (canonicalJson(stageIds) !== canonicalJson([...CLAIM_STAGES])) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a claim-stage list that is not the three stages fails rather than crashing the scorer"
+  },
+  {
+    guard: "ECD subcheck ownership follows the administering form",
+    reason: "form ownership guessed from which artifact a metric reads put C5.TC.01 on FAM-4 as well as FAM-5, and FAM-4's opportunity count then included a subcheck FAM-4 never administers",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (administering !== undefined && administering !== formId) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a subcheck attributed to a form that does not administer its metric fails"
+  },
+  {
+    guard: "ECD a cell names only forms that administer its subchecks",
+    reason: "a cell listing a form that administers none of its subchecks claims an opportunity that form never creates",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (canonicalJson([...cell.task_opportunity.form_ids].sort()) !== canonicalJson(administeringForms)) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a cell naming a form that administers none of its subchecks fails"
+  },
+  {
+    guard: "ECD every metric is administered exactly once",
+    reason: "a metric administered by two forms or by none makes the per-form opportunity counts stop partitioning the eighty subchecks",
+    file: "lib/ecd-contract.mjs",
+    from: '      else if (formOfMetric.has(metricId)) fail("form-metric-double-administered"',
+    to: '      else if (false) fail("form-metric-double-administered"',
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a metric administered by two forms or by none fails"
+  },
+  {
+    guard: "ECD a locked form is completed exactly once",
+    reason: "completion was checked with includes, which a list naming one form six times satisfies, against an assumption in the artifact that says exactly once",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (new Set(completed).size !== completed.length) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a form named twice or named at all without being declared is refused"
+  },
+  {
+    guard: "ECD comparability rules gate declared facets",
+    reason: "a rule naming a facet no result declares compares undefined with undefined and gates nothing, which is how an ENFORCED rule sat in the artifact enforcing nothing",
+    file: "lib/ecd-contract.mjs",
+    from: '      if (!facetIds.has(facet)) fail("comparability-facet-unknown"',
+    to: '      if (false) fail("comparability-facet-unknown"',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a comparability rule that gates an undeclared facet or contradicts its status fails"
+  },
+  {
+    guard: "ECD contract seal required before an estimate",
+    reason: "the aggregation steps were exported raw, so every rule in checkEcdContract -- including the one refusing credit to an agent's account of itself -- was advisory to any caller who did not run the verifier",
+    file: "lib/ecd-contract.mjs",
+    from: "  const digest = sealedContracts.get(contract);",
+    to: '  const digest = sealedContracts.get(contract) ?? "";',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "no estimate can be produced from a contract nobody checked"
+  },
+  {
+    guard: "ECD derived rows only",
+    reason: "six construct rows written by hand issued a process index of 0.75 against a contract that documents the index as withheld by construction",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (derivedFrom.get(rows) === `${kind}:${digest}`) return rows;',
+    to: "  if (true) return rows;",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "the process index refuses construct rows a caller assembled"
+  },
+  {
+    guard: "ECD derived rows are frozen",
+    reason: "registration without a freeze lets a caller take real estimates, flip a NOT_OBSERVED to ISSUED and pass them on as the rows that were registered",
+    file: "lib/ecd-contract.mjs",
+    from: "  const frozen = deepFreeze(rows);",
+    to: "  const frozen = rows;",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "derived rows cannot be edited between the stages that produce and consume them"
+  },
+  {
+    guard: "ECD cell resolved from the contract",
+    reason: "taking the cell object from the caller took its credit_bearing, its minimum and its missing policy from the caller too, so a self-report cell could be handed in claiming credit",
+    file: "lib/ecd-contract.mjs",
+    from: "  const cell = contract.cells.cells.find((entry) => entry.cell_id === cellId);",
+    to: '  const cell = typeof cellId === "object" ? cellId : contract.cells.cells.find((entry) => entry.cell_id === cellId);',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a cell estimate is taken from the contract's own cell and never from the caller's"
+  },
+  {
+    guard: "ECD claim stage rests on what was observed",
+    reason: "forms_completed is a list of names the caller hands in, and on its own it made a run that observed nothing report performance observed across every locked form",
+    file: "lib/ecd-contract.mjs",
+    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    to: '  const claimStage = missingForms.length === 0 && unidentifiedFacets.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "naming every form as completed does not make a run that observed nothing PROFILE_BOUND"
+  },
+  {
+    guard: "ECD comparability reads the emitted facet identity",
+    reason: "the gates were read off the top level of the input while evaluate puts the facets under facet_coverage.declared, so two real results on different models and languages compared as one measurement",
+    file: "lib/ecd-contract.mjs",
+    from: "  const sides = { left: left.facet_coverage.declared, right: right.facet_coverage.declared };",
+    to: "  const sides = { left, right };",
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "two results differing only in language or interface may not be compared"
+  },
+  {
+    guard: "ECD comparability refuses an undeclared facet",
+    reason: "every gate in the function is an inequality, so a facet that is absent on both sides read as a facet that matches and comparability({}, {}) returned true",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (missing.length > 0) return deepFreeze({ comparable: false, reason: "FACETS_UNDECLARED", facets: missing, rules: [], undeclared_sides: [] });',
+    to: '  if (false) return deepFreeze({ comparable: false, reason: "FACETS_UNDECLARED", facets: missing, rules: [], undeclared_sides: [] });',
+    test: "tests/product/ecd-interpretation-use.test.mjs",
+    name: "a comparison whose facets nobody declared is refused rather than allowed by default"
+  },
+  {
+    guard: "ECD subcheck cardinality is pinned",
+    reason: "a subcheck name duplicated inside one metric leaves the inferred count at eighty and the distinct count at seventy-nine, and every mapping check is written over the distinct set",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (declaredList.length !== pinnedCount || declared.size !== pinnedCount) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a contract that pins a subcheck cardinality the product does not have fails"
+  },
+  {
+    guard: "ECD contract-specified minimum cannot drift from its clause",
+    reason: "a decided minimum with nothing behind it is indistinguishable from a measured one, and the verifier asked only that it be an integer, so four could have read ninety-nine",
+    file: "lib/ecd-contract.mjs",
+    from: "      } else if (clause.value !== cell.minimum_opportunities) {",
+    to: "      } else if (false) {",
+    test: "tests/product/ecd-evidence-model.test.mjs",
+    name: "a contract-specified minimum names the clause that fixed it, and cannot drift from it"
+  },
+  {
+    guard: "ECD deferred claim may not be scored",
+    reason: "a cell whose authority cannot observe half its claim, scored as though it observed all of it, reports something nobody saw",
+    file: "lib/ecd-contract.mjs",
+    from: '    if (cell.deferred_claim !== null && cell.population_status !== "DECLARED_UNPOPULATED") {',
+    to: "    if (false) {",
+    test: "tests/product/ecd-evidence-model.test.mjs",
+    name: "a cell may not be scored while part of its claim is deferred to an authority it does not hold"
+  },
+  {
+    guard: "ECD form opportunity count is derived",
+    reason: "the per-form counts were believed rather than derived, so a form could declare nine hundred and ninety-nine opportunities over twelve",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (form.declared_opportunity_count !== derived) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form's declared opportunity count is derived from its cells, not believed"
+  },
+  {
+    guard: "ECD shared form cells are disclosed",
+    reason: "the per-form counts partition the eighty, but the cell lists still overlap where one cell is administered by two forms, and a consumer reading those as disjoint double counts it",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (canonicalJson([...form.shared_opportunity_cell_ids].sort()) !== canonicalJson(shared)) {",
+    to: "    if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form that shares a cell with another form says so, because the cell lists still overlap"
+  },
+  {
+    guard: "ECD legacy band surface is disclosed, not asserted away",
+    reason: "the argument recorded no ability category anywhere in the product as passing evidence while the old scorer still assigns one, which reads as a claim that was checked",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (use.legacy_band_surface.status === "PRESENT" && use.legacy_band_surface.modules.length === 0) {',
+    to: "  if (false) {",
+    test: "tests/product/ecd-shortcuts.test.mjs",
+    name: "a legacy band surface declared present and naming nothing fails"
+  },
+  {
+    guard: "ECD subcheck double ownership",
+    reason: "a subcheck owned by two cells is counted twice, and the construct it inflates is the one nobody notices",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (owner.has(id)) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a subcheck mapped twice fails"
+  },
+  {
+    guard: "ECD subcheck exhaustive mapping",
+    reason: "a subcheck that maps to no cell is scored by the old metric and by nothing in the contract, so the contract silently stops describing the product",
+    file: "lib/ecd-contract.mjs",
+    from: 'if (!owner.has(id)) fail("subcheck-unmapped"',
+    to: 'if (false) fail("subcheck-unmapped"',
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a subcheck mapped nowhere fails"
+  },
+  {
+    guard: "ECD cell claims a real subcheck",
+    reason: "a cell claiming a subcheck the product does not have looks covered and observes nothing",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (!declared.has(id)) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a cell claiming a subcheck that does not exist fails"
+  },
+  {
+    guard: "ECD cell has an owning construct",
+    reason: "a declared cell no construct claims is scored and never reaches an estimate, which reads as evidence that was gathered and used",
+    file: "lib/ecd-contract.mjs",
+    from: '    if (!listing.has(cell.cell_id)) fail("cell-unlisted"',
+    to: '    if (false) fail("cell-unlisted"',
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a cell no construct claims fails"
+  },
+  {
+    guard: "ECD self-report earns no credit",
+    reason: "an agent's account of its own permissions is not a safety observation, and letting it carry credit is the defect the evidence model exists to prevent",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (authority.self_report_only === true) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-evidence-model.test.mjs",
+    name: "giving a self-report cell credit fails"
+  },
+  {
+    guard: "ECD form and cell name each other",
+    reason: "a form that claims an opportunity the cell does not expect leaves the cell unobserved forever with nothing saying which half is wrong",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (!cell.task_opportunity.form_ids.includes(form.form_id)) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form claiming a cell that does not name it fails"
+  },
+  {
+    guard: "ECD insufficient opportunities yields null",
+    reason: "a cell answered in part is not a cell scored in part; averaging what came back makes observing less raise the number",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (cell.minimum_opportunities === null || values.length < cell.minimum_opportunities) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a cell below its minimum yields null and INSUFFICIENT_OPPORTUNITIES, never a partial value"
+  },
+  {
+    guard: "ECD missing evidence keeps its own reason",
+    reason: "a cell nothing answered is not the same fact as a cell answered too few times, and collapsing the two hides whether an opportunity was ever administered",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (values.length === 0) return deepFreeze({ ...base, estimate: null, status: cell.missing_policy });",
+    to: '  if (values.length === 0) return deepFreeze({ ...base, estimate: null, status: "INSUFFICIENT_OPPORTUNITIES" });',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a cell nothing answered takes its own missing policy, which is not a zero"
+  },
+  {
+    guard: "ECD construct withheld on a missing required cell",
+    reason: "averaging the required cells that survived makes a construct score higher for having observed less",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (withheld.length > 0 || required.length === 0) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "counterfactual: one required cell missing withholds its construct and the index"
+  },
+  {
+    guard: "ECD process index withheld on a missing construct",
+    reason: "an index computed over the constructs that happened to have evidence is a different scale from one result to the next",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (withheld.length > 0) return deepFreeze({ ...base, value: null, status: "WITHHELD" });',
+    to: '  if (false) return deepFreeze({ ...base, value: null, status: "WITHHELD" });',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "the process index is withheld while any construct in it has no operator-process evidence"
+  },
+  {
+    guard: "ECD prohibited value source refused",
+    reason: "a caller handing the scorer a turn count or an elapsed time is about to build competence out of something this instrument says is not competence, and ignoring it quietly is how it would get in",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (prohibited.has(key)) throw new Error(",
+    to: "    if (false) throw new Error(",
+    test: "tests/product/ecd-shortcuts.test.mjs",
+    name: "handing a prohibited value source to the scorer is refused rather than ignored"
+  },
+  {
+    guard: "PATH carries no relative entry",
+    reason: "a relative PATH entry resolves against the assessed agent's working directory, which is the workspace it was handed",
+    file: "lib/isolation.mjs",
+    from: "      const minimized = minimizePath(value);",
+    to: "      const minimized = value;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a relative or empty PATH entry never reaches the child"
+  },
+  {
+    guard: "the PATH rule is part of the digest",
+    reason: "a run that searched the working directory for its own binary is not the same measurement as one that did not",
+    file: "lib/env-policy.mjs",
+    from: '    ["path_entry_rule", policy.path_entry_rule ?? PATH_ENTRY_RULE]',
+    to: '    ["path_entry_rule", ""]',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a relative or empty PATH entry never reaches the child"
+  },
+  {
+    guard: "credential names are matched whatever their capitalisation",
+    reason: "a case-sensitive refusal is one an operator gets past by pressing shift, and POSIX makes database_url a different variable from DATABASE_URL",
+    file: "lib/env-policy.mjs",
+    from: "  const key = canonical(name);\n  if (DENIED_NAME_SET.has(key)) return true;",
+    to: "  const key = name;\n  if (DENIED_NAME_SET.has(key)) return true;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a credential name is refused whatever its capitalisation, and the list knows the quiet ones"
+  },
+  {
+    guard: "credential names a shape rule cannot see are listed",
+    reason: "PGPASSWORD says nothing about itself, so no name-shape rule can catch it and only a list can",
+    file: "lib/env-policy.mjs",
+    from: '  "PGPASSWORD",',
+    to: '  "PGHOST",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a credential name is refused whatever its capitalisation, and the list knows the quiet ones"
+  },
+  {
+    guard: "the whole policy is revalidated against its adapter at the point of use",
+    reason: "a policy edited after construction forged runtime-auth and transport authority that no adapter granted",
+    file: "lib/isolation.mjs",
+    from: "  const { policy: authorised, unauthorised } = authorisedPolicy(supplied);",
+    to: "  const authorised = supplied;\n  const unauthorised = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy cannot forge runtime-auth or transport authority its adapter never granted"
+  },
+  {
+    guard: "a forged structural set is revalidated like the rest",
+    reason: "structural names skip the config checks, so an open structural_env is a fourth way to name anything at all",
+    file: "lib/env-policy.mjs",
+    from: "      structural_env: keep(policy.structural_env, [...STRUCTURAL_ENV, ...declared.structural_env])",
+    to: "      structural_env: policy.structural_env ?? []",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy cannot forge runtime-auth or transport authority its adapter never granted"
+  },
+  {
+    guard: "what was withheld outright is recorded as such",
+    reason: "refused before the policy was read and never named by it are different statements, and only the first is a guarantee",
+    file: "lib/isolation.mjs",
+    from: "      withheld.push(name);",
+    to: "      removed.push(name);",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the record separates what was withheld outright from what was merely never named"
+  },
+  {
+    guard: "a credential-shaped name is refused as an ordinary allowed name",
+    reason: "the CLI refused --allow-env GH_TOKEN and nothing repeated it, so a hand-edited config carried the operator's token into the child",
+    file: "lib/env-policy.mjs",
+    from: "  const credentialShaped = allow.filter((name) => isSensitiveName(name));",
+    to: "  const credentialShaped = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a stored configuration cannot hand a credential to a child by any declaration"
+  },
+  {
+    guard: "a credential-shaped name is refused at the carry as well",
+    reason: "policy construction is not the only way a policy reaches a spawn, and a forged config_env is the way past it",
+    file: "lib/env-policy.mjs",
+    from: '      ? { carry: false, reason: "credential_shaped" }',
+    to: '      ? { carry: true, reason: "config" }',
+    test: "tests/product/isolation.test.mjs",
+    name: "a credential-shaped name cannot become an ordinary allowed name, by flag or by file"
+  },
+  {
+    guard: "the digest is recomputed over the policy actually applied",
+    reason: "a supplied policy is mutable, so a copied digest describes the object's history rather than the child's environment",
+    file: "lib/isolation.mjs",
+    from: "  const inForce = { ...authorised, policy_digest: envPolicyDigestOf(authorised) };",
+    to: "  const inForce = authorised;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "the withheld prefixes are the module's and the policy's together",
+    reason: "a policy may withhold more than the module does and may not withhold less, and only the first half is observable now that revalidation strips a forged structural set",
+    file: "lib/isolation.mjs",
+    from: "  const withheldPrefixes = [...new Set([...WITHHELD_ENV_PREFIXES, ...(inForce.withheld_env_prefixes ?? [])])];",
+    to: "  const withheldPrefixes = [...WITHHELD_ENV_PREFIXES];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "a policy that narrows the run-metadata door is applied, not merely recorded",
+    reason: "a rule the digest describes and the builder ignores is a record of something that did not happen",
+    file: "lib/isolation.mjs",
+    from: "  const runMetadata = (inForce.run_metadata_env ?? RUN_METADATA_ENV).filter((name) => RUN_METADATA_ENV.includes(name));",
+    to: "  const runMetadata = [...RUN_METADATA_ENV];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a policy may narrow the rules it did not write, and cannot widen them"
+  },
+  {
+    guard: "the run-metadata door cannot be widened in the running process",
+    reason: "one line pushing AOS_HOME onto it hands an agent the runs, results and holdout ledger its own score is read from",
+    file: "lib/env-policy.mjs",
+    from: 'export const RUN_METADATA_ENV = Object.freeze(["AOS_FAMILY", "AOS_SESSION_ID", "AOS_TASK_FILE", "AOS_WORKSPACE"]);',
+    to: 'export const RUN_METADATA_ENV = ["AOS_FAMILY", "AOS_SESSION_ID", "AOS_TASK_FILE", "AOS_WORKSPACE"];',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the run-metadata list cannot be widened in the running process"
+  },
+  {
+    guard: "the digest covers the rules applied outside the allowlist",
+    reason: "the AOS_ withholding and the run-metadata door decide what the child receives and were not digest inputs",
+    file: "lib/env-policy.mjs",
+    from: '    ["run_metadata_env", unique(policy.run_metadata_env ?? RUN_METADATA_ENV)],',
+    to: '    ["run_metadata_env", []],',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the digest describes every rule the builder applied, not only the allowlist"
+  },
+  {
+    guard: "a .NET startup hook is a pre-main hook like the rest",
+    reason: "the host runs each assembly named in DOTNET_STARTUP_HOOKS before the application's Main",
+    file: "lib/env-policy.mjs",
+    from: '      "DOTNET_STARTUP_HOOKS",',
+    to: '      "DOTNET_ROOT",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a .NET startup hook is a hard-forbidden class like every other pre-main hook"
+  },
+  {
+    guard: "doctor checks a required config name has a value",
+    reason: "a declaration with nothing in it carries nothing, and the run then fails as though the runtime were not logged in",
+    file: "lib/cli.mjs",
+    from: "  const missingRequired = (policy.required_env ?? []).filter((name) => !valued(name));",
+    to: "  const missingRequired = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "doctor names what a run will carry, what it will drop, and what is declared but not there"
+  },
+  {
+    guard: "run scratch is created inside the cleanup-protected region",
+    reason: "a policy refused between the first mkdtemp and the try left both temporary directories behind on every refused run",
+    file: "lib/core.mjs",
+    from: "  let internalDir = null;",
+    to: '  let internalDir = mkdtempSync(join(tmpdir(), "aos-prompt-"));',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a refused policy leaves no scratch directory behind"
+  },
+  {
+    guard: "hard-forbidden matching is case-insensitive",
+    reason: "npm folds environment keys to lower case, so a mixed-case npm_config_node_options arrives at a lifecycle child as NODE_OPTIONS",
+    file: "lib/env-policy.mjs",
+    from: "export function hardForbiddenClassOf(name) {\n  const key = canonical(name);",
+    to: "export function hardForbiddenClassOf(name) {\n  const key = name;",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name is refused in every spelling a consumer might fold it into"
+  },
+  {
+    guard: "interpreter startup paths are a forbidden class",
+    reason: "a .pth file under a pointed-at PYTHONUSERBASE runs an import line before the assessed script's first statement",
+    file: "lib/env-policy.mjs",
+    from: '      "PYTHONUSERBASE",',
+    to: '      "PYTHONNOUSERSITE",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a variable that starts an interpreter's own code is in a hard-forbidden class"
+  },
+  {
+    guard: "every transport spelling needs the transport approval",
+    reason: "CARGO_HTTP_PROXY redirects what HTTPS_PROXY redirects, so leaving it unclassified makes the separate approval a spelling test",
+    file: "lib/env-policy.mjs",
+    from: '  "CARGO_HTTP_PROXY", "CARGO_HTTP_CAINFO", "CURL_HOME", "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",',
+    to: '  "NO_PROXY",',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a name that redirects or unverifies the run's traffic needs the transport approval"
+  },
+  {
+    guard: "runtime auth is bound to the adapter that reads it",
+    reason: "without it a hand-edited config gives any credential to any command, and the CLI's check is not reachable from a spawn",
+    file: "lib/env-policy.mjs",
+    from: "  if (undeclaredAuth.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a stored configuration cannot hand a credential to an adapter that does not read it"
+  },
+  {
+    guard: "the adapter's own config directory is declared, not typed twice",
+    reason: "a hand-registered runtime that cannot see its own config directory fails as though it were not logged in",
+    file: "lib/env-policy.mjs",
+    from: "  const declaredConfig = [...(declared.config_env ?? []), ...(adapter?.config_env ? [adapter.config_env] : [])];",
+    to: "  const declaredConfig = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "an adapter's declared config directory travels and nothing else does"
+  },
+  {
+    guard: "the policy digest covers the forbidden rules themselves",
+    reason: "a digest over class names alone does not move when a rule change flips an existing policy from carrying a name to refusing it",
+    file: "lib/env-policy.mjs",
+    from: '    ["hard_forbidden_rules", hardForbiddenRules()]',
+    to: '    ["hard_forbidden_rules", []]',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the policy digest moves when a forbidden rule's contents move, not only its class names"
+  },
+  {
+    guard: "the run-metadata door carries only run metadata",
+    reason: "the injected merge happens after the policy has decided, so an unchecked one is a way past the allowlist",
+    file: "lib/isolation.mjs",
+    from: "  const smuggled = Object.keys(injected).filter((name) => !RUN_METADATA_ENV.includes(name));",
+    to: "  const smuggled = [];",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name cannot be declared into the allowlist by any route"
+  },
+  {
+    guard: "home_source is a kind and never a path",
+    reason: "an arbitrary string in that field puts a directory on the operator's machine into a record whose whole claim is that it is quotable",
+    file: "lib/isolation.mjs",
+    from: "  if (!HOME_SOURCES.has(homeSource)) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the HOME regime is recorded as a kind, and a path cannot be written into that field"
+  },
+  {
+    guard: "the scored result carries the boundary it was produced under",
+    reason: "a result that cannot say which policy produced it cannot be compared with another, which is what the digest beside the score claims",
+    file: "lib/cli.mjs",
+    from: "        if (entry.isolation && !environmentByAgent.has(entry.agent)) environmentByAgent.set(entry.agent, entry.isolation);",
+    to: "        if (false) environmentByAgent.set(entry.agent, entry.isolation);",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a scored result carries the boundary it was produced under, by name and never by value"
+  },
+  {
+    guard: "allowlist-only child environment",
+    reason: "a child built from the operator's environment carries every injection variable nobody has listed yet",
+    file: "lib/isolation.mjs",
+    from: "    const decision = envDecision(inForce, name);",
+    to: "    const decision = { carry: true, reason: \"ordinary\" };",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "no process-injection variable in the operator's shell reaches the spawned child"
+  },
+  {
+    guard: "hard-forbidden class refusal",
+    reason: "a loader or preload variable changes what the assessed process is before its first line, so no flag may carry one",
+    file: "lib/env-policy.mjs",
+    from: "  if (forbidden.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a hard-forbidden name cannot be declared into the allowlist by any route"
+  },
+  {
+    guard: "transport approval binding",
+    reason: "a proxy carried without an adapter declaration and an operator approval redirects every call the run makes",
+    file: "lib/env-policy.mjs",
+    from: "  if (unverified.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a generic command gets no transport env even when the operator asks for one"
+  },
+  {
+    guard: "env policy digest binding",
+    reason: "an evidence bundle that quotes a digest which does not move cannot say which allowlist was in force",
+    file: "lib/env-policy.mjs",
+    from: "  return { ...policy, policy_digest: envPolicyDigestOf(policy) };",
+    to: '  return { ...policy, policy_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000" };',
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the policy digest moves when the allowlist or an approval moves"
+  },
+  {
+    guard: "AOS home withheld from the agent",
+    reason: "an assessed agent handed AOS_HOME can rewrite the run records, the results and the holdout ledger the score is read from",
+    file: "lib/isolation.mjs",
+    from: "    if (withheldPrefixes.some((prefix) => name.startsWith(prefix))) {",
+    to: "    if (false) {",
+    // Re-pointed. Its old test forged AOS_HOME into a policy to isolate this rule, and every later
+    // round closed another way of doing that -- the credential-shape rule reads every AOS_ name as
+    // credential-shaped, and policy revalidation now strips a forged structural set. The rule is
+    // still load-bearing and is now observable directly: it is what puts a name in `withheld`
+    // rather than merely leaving it out of the environment.
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "the record separates what was withheld outright from what was merely never named"
+  },
+  {
+    guard: "realpath compare",
+    reason: "a registered path that now resolves somewhere else is a different program under the same name",
+    file: "lib/runtime-identity.mjs",
+    from: "if (registered[field] !== current[field]) drifted.push(field);",
+    to: "if (false) drifted.push(field);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a path that has become a symlink to somewhere else is refused"
+  },
+  {
+    guard: "fingerprint compare",
+    reason: "a binary rewritten in place keeps its path, its name, its owner and its mode; only the bytes say so",
+    file: "lib/runtime-identity.mjs",
+    from: "const fingerprint = fingerprintOf(descriptor, stat);",
+    to: 'const fingerprint = "sha256:unchanged";',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a binary replaced after registration is refused before the credential is read"
+  },
+  {
+    guard: "symlink chain audit",
+    reason: "a hop in the middle of a symlink chain has its own holder, and whoever can write that directory repoints the run while both ends stay exactly as verified",
+    file: "lib/runtime-identity.mjs",
+    from: "const chain = executableChain(resolved.path, resolved.realpath);",
+    to: "const chain = [resolved.realpath];",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a symlink hop through a writable directory is refused, not only the two ends of the chain"
+  },
+  {
+    guard: "interpreter is part of the identity",
+    reason: "a shebang hands the credential to a second program; a byte-identical script whose interpreter changed is a different runtime",
+    file: "lib/runtime-identity.mjs",
+    from: "interpreter_digest: interpreterChain.length === 0 ? null : `sha256:${sha256Value(interpreterChain)}`,",
+    to: "interpreter_digest: null,",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the interpreter a shebang selects is part of the identity"
+  },
+  {
+    guard: "interpreter inherits its own findings",
+    reason: "an interpreter reached through a directory somebody else can write is as replaceable as the script, and the script's status must say so",
+    file: "lib/runtime-identity.mjs",
+    from: "for (const reason of interpreter.untrusted_reasons) reasons.push(`interpreter ${reason}`);",
+    to: "for (const reason of []) reasons.push(reason);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an interpreter reached through a world-writable directory makes the script untrusted"
+  },
+  {
+    guard: "effective execute permission",
+    reason: "an execute bit that does not apply to this process is a file execvp skips, so reading the mode describes a program the child would never run",
+    file: "lib/runtime-identity.mjs",
+    from: "accessSync(candidate, constants.X_OK);",
+    to: "accessSync(candidate, constants.F_OK);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an execute bit that does not apply to this process is not an executable"
+  },
+  {
+    guard: "parent writable refusal",
+    reason: "anyone who can write the directory can replace the verified program between the check and the spawn",
+    file: "lib/runtime-auth.mjs",
+    from: 'if (autoRequested && current.identity_status !== "VERIFIED") {',
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a world-writable parent directory is refused however verified the file looks"
+  },
+  {
+    guard: "identity-before-resolver ordering",
+    reason: "a check that runs after the resolver has already read the operator's keychain for an unidentified program",
+    // Suppressing the throw was the obvious mutation and it proved nothing: a failed verdict also
+    // carries auto:false, so the resolver stayed uncalled and the test died on its `assert.throws`
+    // rather than on the ordering. This one puts the lookup first and leaves the refusal intact,
+    // which is the defect by name, and the test dies on the call count that measures it.
+    file: "lib/runtime-auth.mjs",
+    from: "const verdict = authorizeRuntimeAuth(agent, adapter, { env, platform });",
+    to: "const asked = resolve(adapter, { platform, env, command: agent?.command }); const verdict = authorizeRuntimeAuth(agent, adapter, { env, platform });",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity check runs before the credential resolver, not after"
+  },
+  {
+    guard: "operator-env credential gate",
+    reason: "a token already in the operator's shell must not travel to a binary whose identity failed, and the child must not start",
+    file: "lib/core.mjs",
+    // `resolved: null` was not enough: isolation then stripped the token on its own and only the
+    // "child never starts" half of the name was exercised. This mutant carries the operator's own
+    // variable through, which is what the refusal is actually preventing.
+    from: "const { resolved: resolvedAuth, verdict: identityVerdict } = resolveRuntimeAuthForAgent(spec, adapter, {});",
+    to: 'const { resolved: resolvedAuth, verdict: identityVerdict } = { resolved: { name: "CLAUDE_CODE_OAUTH_TOKEN", value: process.env.CLAUDE_CODE_OAUTH_TOKEN ?? "", source: "environment" }, verdict: { ok: true, identity: null } };',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an operator's own token does not reach a binary whose identity failed, and the child never starts"
+  },
+  {
+    guard: "spawn the verified file",
+    reason: "the file handed to execve is the recorded realpath, not the configured name resolved a second time in the kernel; this is what removes the PATH search and the symlink chain from the spawn, and it does not close the check-to-execve window, which nothing short of executing a held descriptor would",
+    file: "lib/core.mjs",
+    from: "child = spawn(verifiedPath ?? spec.command, args, {",
+    to: "child = spawn(spec.command, args, {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the file whose identity was verified is the file that is spawned"
+  },
+  {
+    guard: "resolver ownership",
+    reason: "an identity recorded for one adapter with another adapter's resolver asking is refused by name; adapter_id is in the drift comparison too, so what this guard holds is which refusal the operator is shown, not whether the credential is refused",
+    file: "lib/runtime-auth.mjs",
+    from: "if ((registered.adapter_id ?? null) !== (adapter?.id ?? null)) {",
+    to: "if (false) {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the adapter that owns the credential resolver is not the adapter being spawned"
+  },
+  {
+    guard: "legacy migration guard",
+    reason: "an agent registered before identities existed must be migrated, not promoted by treating whatever is on disk now as what was registered then",
+    file: "lib/runtime-auth.mjs",
+    from: "const registered = agent?.runtime_identity ?? null;",
+    to: "const registered = agent?.runtime_identity ?? current;",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a legacy agent with no identity record is refused, not promoted"
+  },
+  {
+    guard: "secret-value scan",
+    reason: "provenance names the credential variable and its source; a record that carried the value would publish it",
+    file: "lib/runtime-auth.mjs",
+    from: "credential_env_name: resolved?.name ?? null,",
+    to: "credential_env_name: resolved?.value ?? null,",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "no credential value is ever written into an identity record"
+  },
+  {
+    guard: "child output credential scrub",
+    reason: "the child is handed the credential on purpose and may print it; the raw AOS_EVENT objects are kept verbatim in the result, past the projection the event store applies",
+    file: "lib/core.mjs",
+    from: 'const parsed = JSON.parse(scrub(line.slice("AOS_EVENT\\t".length)));',
+    to: 'const parsed = JSON.parse(line.slice("AOS_EVENT\\t".length));',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a credential the child quotes back does not survive into anything the run keeps"
+  },
+  {
+    guard: "descriptor-bound fingerprint",
+    reason: "reopening the verified name to hash it is a second resolution of that name, and the bytes it returns can belong to a file whose permissions were never the ones recorded",
+    file: "lib/runtime-identity.mjs",
+    from: "const fingerprint = fingerprintOf(descriptor, stat);",
+    to: 'const fingerprint = fingerprintOf(openSync(resolved.realpath, "r"), stat);',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity is read from the descriptor, not by reopening the name"
+  },
+  {
+    guard: "descriptor-bound metadata",
+    reason: "the mode and owner recorded have to describe the inode that was hashed, and re-stating the name is how they come to describe a different one",
+    file: "lib/runtime-identity.mjs",
+    from: "const stat = fstatSync(descriptor);",
+    to: "const stat = statSync(resolved.realpath);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the identity is read from the descriptor, not by reopening the name"
+  },
+  {
+    guard: "env option scan",
+    reason: "the name env looks up is a second program nobody verified; a scan that skips dashes and takes the next word verifies the argument of -u instead, and passes",
+    file: "lib/runtime-identity.mjs",
+    from: "commands.push(envProgramOf(shebang.args));",
+    to: 'commands.push(shebang.args.find((argument) => !argument.startsWith("-") && !argument.includes("=")) ?? null);',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an env shebang with options still names the interpreter it will run"
+  },
+  {
+    guard: "ACL replaceable rights",
+    reason: "an allow entry granting add_file or delete_child is somebody else's file one mv away; read and list are not, and a deny entry is not a grant at all",
+    file: "lib/runtime-identity.mjs",
+    from: "if (!rights.some((right) => REPLACEABLE_RIGHTS.has(right))) continue;",
+    to: "if (rights.length > 0) continue;",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an ACL listing is read for the rights that let somebody replace a file"
+  },
+  {
+    guard: "unread ACL is not a clean ACL",
+    reason: "a listing that did not run, or that never mentions a path, has said nothing -- and reading silence as absence makes the check pass hardest exactly when it has stopped working",
+    file: "lib/runtime-identity.mjs",
+    from: "const unreadable = !answered || !seen.listed;",
+    to: "const unreadable = false;",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a path the ACL listing never mentions is not read as clean"
+  },
+  {
+    guard: "ACL walk",
+    // macOS only, and deliberately so: Node has no interface to an ACL and `ls -lde` is the only
+    // thing that will say. The mutation runner defers it rather than reporting SURVIVED for a guard
+    // that holds everywhere it applies -- so a macOS lane has to run this one, and the two guards
+    // above cover the rights and the failure behaviour as pure text on every platform.
+    platform: "darwin",
+    reason: "a directory at 0755 owned by the operator can still carry an ACL that lets another account replace what is in it, and the mode-bit walk reads it as clean",
+    file: "lib/runtime-identity.mjs",
+    from: "for (const risk of aclRisksOf([...new Set([...audited.map((entry) => entry.path), resolved.realpath])], platform)) record(risk);",
+    to: "for (const risk of []) record(risk);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a macOS ACL that lets somebody else replace the file is refused"
+  },
+  {
+    guard: "configured argv0",
+    reason: "spawning the resolved path is what makes the run verifiable, and argv0 is what keeps it compatible: a native runtime still reads the command the operator configured in argv[0] rather than a path it was never told about",
+    file: "lib/core.mjs",
+    from: "      argv0: spec.command",
+    to: "      argv0: undefined",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a native runtime keeps the argv0 the operator configured"
+  },
+  {
+    guard: "invocation identity provenance",
+    reason: "the assessment is where anybody reads which program produced a score, and this mapping is the only place the run's identity record reaches it",
+    file: "lib/cli.mjs",
+    from: "runtime_identity: entry.runtime_identity ?? null",
+    to: "runtime_identity_dropped: null",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a stored assessment carries the executable identity each invocation was bound to"
+  },
+  {
     guard: "workspace snapshot map is null-prototype",
     reason: "an agent creating a file named __proto__ wrote through to Object.prototype and vanished from the diff",
     file: "lib/safe-fs.mjs",
@@ -955,11 +2010,67 @@ export const REQUIRED_GUARDS = [
  * the release's branches have landed.
  */
 export const ACCOUNTED_GUARDS = [
+  "ACL replaceable rights",
+  "ACL walk",
+  "AOS home withheld from the agent",
+  "ECD PROFILE_BOUND names the profile it claims",
+  "ECD a bound profile identity is compared",
+  "ECD a cell names only forms that administer its subchecks",
+  "ECD a locked form is completed exactly once",
+  "ECD an answered opportunity names its verifier",
+  "ECD an observation agrees with its own subchecks",
+  "ECD artifact versions are exact",
+  "ECD capabilities are identity, not a property",
+  "ECD cell claims a real subcheck",
+  "ECD cell has an owning construct",
+  "ECD cell resolved from the contract",
+  "ECD claim stage rests on what was observed",
+  "ECD claim stages are the three this module scores",
+  "ECD comparability compares emitted results",
+  "ECD comparability enforces every declared rule",
+  "ECD comparability is governed by the contract the results were scored under",
+  "ECD comparability reads the emitted facet identity",
+  "ECD comparability refuses an undeclared facet",
+  "ECD comparability rules gate declared facets",
+  "ECD construct withheld on a missing required cell",
+  "ECD contract identity is derived, not declared",
+  "ECD contract seal required before an estimate",
+  "ECD contract-specified minimum cannot drift from its clause",
+  "ECD deferred claim may not be scored",
+  "ECD derived rows are frozen",
+  "ECD derived rows only",
+  "ECD every metric is administered exactly once",
+  "ECD form and cell name each other",
+  "ECD form opportunity count is derived",
+  "ECD insufficient opportunities yields null",
+  "ECD legacy band surface is disclosed, not asserted away",
+  "ECD missing evidence keeps its own reason",
+  "ECD observations are what lib/metrics.mjs says they are",
+  "ECD opportunities carry what decided them",
+  "ECD process index withheld on a missing construct",
+  "ECD prohibited value source refused",
+  "ECD self-report earns no credit",
+  "ECD shared form cells are disclosed",
+  "ECD subcheck cardinality is pinned",
+  "ECD subcheck double ownership",
+  "ECD subcheck exhaustive mapping",
+  "ECD subcheck ownership follows the administering form",
+  "PATH carries no relative entry",
+  "a .NET startup hook is a pre-main hook like the rest",
+  "a credential-shaped name is refused as an ordinary allowed name",
+  "a credential-shaped name is refused at the carry as well",
+  "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
+  "a missed known incident is a regression",
   "a phase's predecessors must be in the plan",
+  "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a started phase cannot integrate code on a blocked issue",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
+  "a violation decides before the floor does",
+  "a withheld corpus does not pass",
+  "abstention cannot outweigh decision",
+  "allowlist-only child environment",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "artifact top-level mode",
@@ -972,20 +2083,35 @@ export const ACCOUNTED_GUARDS = [
   "captured stream byte authority",
   "central redaction",
   "checkpoint evidence preserved",
+  "child output credential scrub",
   "cleanup claim not overstated",
   "close-evidence author trust",
   "close-evidence component confirmations",
   "close-evidence issue-specific fields",
   "close-evidence repository confirmation",
   "close-evidence verdict",
+  "configured argv0",
+  "corpus abstention cannot outweigh decision",
+  "corpus leakage refusal",
   "coverage gate",
   "credential env refusal",
+  "credential names a shape rule cannot see are listed",
+  "credential names are matched whatever their capitalisation",
   "cycle run identity",
   "cycle search inside strongly connected components",
+  "decisions must reach past one session",
+  "declared credentials are never reprinted",
+  "descriptor-bound fingerprint",
+  "descriptor-bound metadata",
+  "doctor checks a required config name has a value",
   "done issues have no withheld phase",
+  "effective execute permission",
   "elementary cycle enumeration",
   "entry state coherence",
+  "env option scan",
+  "env policy digest binding",
   "escaping link keeps its own bytes",
+  "every transport spelling needs the transport approval",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
   "exact revision binding",
@@ -994,60 +2120,104 @@ export const ACCOUNTED_GUARDS = [
   "excluded issues present in the snapshot",
   "execution plan cycle detection",
   "false completion cap",
+  "fingerprint compare",
   "handoff exact compare",
+  "hard-forbidden class refusal",
+  "hard-forbidden matching is case-insensitive",
+  "holdout floor",
+  "home_source is a kind and never a path",
   "hot-file single owner",
+  "identity-before-resolver ordering",
+  "incomplete evidence never reported clean",
   "independent checks survive a non-canonical plan",
+  "interpreter inherits its own findings",
+  "interpreter is part of the identity",
+  "interpreter startup paths are a forbidden class",
+  "invocation identity provenance",
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
+  "legacy migration guard",
   "locked cycle seed",
   "malformed-row reporting",
   "missing-result refusal",
+  "no eligible evidence is said to be none",
   "observation channel size bound",
   "observation line size bound",
   "observation schema",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
+  "one fixture id, one item",
   "one snapshot entry per issue",
   "operator decision window",
+  "operator-env credential gate",
   "owned paths are not only prose",
+  "parent writable refusal",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
   "pristine error classification",
   "probe process independence",
   "probe result authentication",
+  "production-quality needs both lanes",
   "pull request produced the commit",
+  "rate denominator floor",
   "raw Buffer authority",
   "raw artifact name bytes",
   "raw filename bytes",
   "raw link target bytes",
+  "realpath compare",
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
+  "resolver ownership",
   "restricted readiness",
+  "run scratch is created inside the cleanup-protected region",
+  "runtime auth is bound to the adapter that reads it",
   "safety cap",
+  "secret-value scan",
   "session ledger byte identity",
   "single observation per probe",
   "skipped directory is still an entry",
   "snapshot provenance",
   "snapshot source matches how it was read",
+  "spawn the verified file",
   "stale blocked status",
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
   "started statuses need finished predecessors",
   "subject nonce non-disclosure",
   "subject runner executed from memory",
+  "symlink chain audit",
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
+  "the PATH rule is part of the digest",
+  "the adapter's own config directory is declared, not typed twice",
   "the capture time names a day that exists",
   "the closing pull request changed something the issue owns",
+  "the command prints the floored result",
+  "the digest covers the rules applied outside the allowlist",
+  "the digest is recomputed over the policy actually applied",
   "the evidence contract is pinned outside the plan",
+  "the floor follows the worst severity observed",
+  "the policy digest covers the forbidden rules themselves",
+  "the printed shape is named",
+  "the run-metadata door cannot be widened in the running process",
+  "the run-metadata door carries only run metadata",
+  "the same evidence cannot be counted twice",
+  "the scored result carries the boundary it was produced under",
+  "the whole policy is revalidated against its adapter at the point of use",
+  "the withheld prefixes are the module's and the policy's together",
   "top-level artifact open does not follow",
+  "transport approval binding",
   "trend dedupe",
   "trusted-file integrity re-check",
   "trusted-process import prohibition",
+  "undecided items are in neither denominator",
   "undeclared isolation is the weakest lane",
+  "unread ACL is not a clean ACL",
   "verification result check",
+  "what was withheld outright is recorded as such",
+  "withheld precision is absent",
   "workspace containment",
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",

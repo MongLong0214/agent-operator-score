@@ -45,6 +45,19 @@ test("every mutation names a test that exists", () => {
   }
 });
 
+test("every guard in the manifest is accounted for, and every accounted guard is still there", () => {
+  // Equality, not a floor. `REQUIRED_GUARDS` is a floor over the eleven the specification named, so
+  // it cannot see a guard that was never in it -- every guard added since could have been deleted
+  // and this suite would have stayed green while reporting that the manifest was checked. A floor
+  // falls behind by default and can be stale and green at the same time; under equality an
+  // unaccounted guard fails and a departed one fails too.
+  const named = [...GUARDS.map((entry) => entry.guard)].sort();
+  const accounted = [...ACCOUNTED_GUARDS].sort();
+  assert.deepEqual(named, accounted);
+  assert.deepEqual(accounted, [...new Set(accounted)], "a name is accounted for twice");
+  assert.deepEqual([...ACCOUNTED_GUARDS], accounted, "ACCOUNTED_GUARDS is not sorted, which is what makes a merge of two branches readable");
+});
+
 test("the manifest covers the named guards and invents none", () => {
   const named = GUARDS.map((entry) => entry.guard);
   // A floor, not an equality: the manifest may hold guards the specification never named, and it

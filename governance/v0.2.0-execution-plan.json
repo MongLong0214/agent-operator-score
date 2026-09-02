@@ -77,7 +77,7 @@
     {
       "issue": 553,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -120,7 +120,7 @@
     {
       "issue": 554,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -162,7 +162,7 @@
     {
       "issue": 555,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -179,6 +179,7 @@
         "adapter-env-allowlist"
       ],
       "owned_paths": [
+        "lib/env-policy.mjs",
         "lib/isolation.mjs"
       ],
       "evidence_bindings": {},
@@ -203,7 +204,7 @@
     {
       "issue": 556,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 1,
       "blocked_by": [
         554,
@@ -246,7 +247,7 @@
         },
         {
           "id": "final-integration",
-          "status": "blocked",
+          "status": "ready",
           "blocked_by": [
             554,
             555,
@@ -351,7 +352,7 @@
     {
       "issue": 559,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 1,
       "blocked_by": [
         582,
@@ -440,7 +441,7 @@
     {
       "issue": 561,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 1,
       "blocked_by": [
         554,
@@ -620,7 +621,9 @@
       ],
       "owned_paths": [
         "lib/holdout.mjs",
-        "lib/review.mjs"
+        "lib/incident-corpus.mjs",
+        "lib/review-lanes.mjs",
+        "fixtures/known-incidents/"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [
@@ -1184,7 +1187,7 @@
     {
       "issue": 582,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
@@ -1211,10 +1214,9 @@
         "observable-cell"
       ],
       "owned_paths": [
-        "lib/ecd.mjs",
-        "schemas/aos-construct-map",
-        "schemas/aos-evidence-model",
-        "governance/aos-construct-map"
+        "lib/ecd-contract.mjs",
+        "contracts/",
+        "docs/ECD_CONTRACT.md"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [
