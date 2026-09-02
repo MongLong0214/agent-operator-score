@@ -2667,7 +2667,7 @@ export const GUARDS = [
     guard: "the report command serves what the result projects to",
     reason: "report.md replaced with a score line was served verbatim, because the command read the file and never asked whether it still followed from result.json",
     file: "lib/cli.mjs",
-    from: "  regenerateReports(home, runId, projectionsOf);",
+    from: "    regenerateReports(home, runId, () => projections);",
     to: "",
     test: "tests/product/projection-consistency.test.mjs",
     name: "the CLI report and recover commands serve and regenerate the same rendering of a stored result"
