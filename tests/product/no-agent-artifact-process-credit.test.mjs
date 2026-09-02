@@ -40,6 +40,20 @@ test("an agent producer cannot record the three events that make an operator int
       assert.throws(() => appendEvent(root, runId, "agent-evil", event), /AOS_NOT_OPERATOR_AUTHORITY/u,
         `${event.event_type} was recorded for an agent producer`);
     }
+    // And with a real attestation on it, minted for this very run: an operator turn belongs in the
+    // operator's stream, and an agent producer carrying one is a stream nothing downstream reads as
+    // the operator's. Without this the producer check would be redundant with the attestation check
+    // and could be deleted with every test still green.
+    const attested = mintOperatorEvent({
+      run_id: runId, source: "interactive-tty", decision_type: "intervention.decide",
+      construct_cell_id: "C4.IQ.01", opportunity_id: "opp-stolen",
+      challenge_digest: evidenceFixture().evidence_digest, value_digest: { choice: "instruct" }, state_revision: 1
+    }, { secret: operatorRunKey(root, runId) });
+    assert.throws(
+      () => appendEvent(root, runId, "agent-evil", { event_type: "operator.decision", family: "FAM-4", payload: { choice: "instruct" }, operator_event: attested }, { source: "interactive-tty" }),
+      /AOS_NOT_OPERATOR_AUTHORITY operator.decision from agent-evil/u,
+      "an attested operator turn was recorded under an agent producer"
+    );
     assert.equal(interventionSummary(readEvents(root, runId)).observed, false);
   } finally {
     rmSync(root, { recursive: true, force: true });

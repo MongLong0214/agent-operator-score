@@ -2993,7 +2993,11 @@ export const GUARDS = [
     reason: "length and turn count are named shortcut prohibitions on these cells, and a mint that copied whatever the caller passed would put both on the record",
     file: "lib/operator-events.mjs",
     from: '  for (const optional of ["candidate_source", "proactive_delegation", "declared_route", "relay_attestation", "file_provenance"]) {',
-    to: "  for (const optional of Object.keys(fields)) {",
+    // The widest form of this mutation -- copying every key the caller passed -- throws at the
+    // module load of the test file, which the runner reports as WRONG-TEST rather than as a kill.
+    // This is the same defect stated narrowly: the four shortcut sources this contract prohibits
+    // by name, admitted onto the record.
+    to: '  for (const optional of ["candidate_source", "proactive_delegation", "declared_route", "relay_attestation", "file_provenance", "instruction_length", "turn_count", "duration_ms", "prompt_length"]) {',
     test: "tests/product/operator-event-projection.test.mjs",
     name: "an operator event cannot be minted carrying a length or a turn count, whatever the caller passes"
   },
