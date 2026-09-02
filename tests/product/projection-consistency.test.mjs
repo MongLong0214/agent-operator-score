@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -151,20 +151,50 @@ test("the dashboard run page and index row are the same projection", async () =>
 });
 
 test("the CLI report and recover commands serve and regenerate the same rendering of a stored result", () => {
+  // Starting from reports that already match tests nothing about regeneration: it expects
+  // `regenerated: false` and gets it whether or not anything is compared. So each projection is
+  // damaged in turn -- including `card.svg`, which was outside both the comparison and the
+  // recovery callback -- and the command has to serve the result rather than the bytes on disk.
   const result = mixed();
   const cwd = mkdtempSync(join(tmpdir(), "aos-projection-cli-"));
   const home = join(cwd, ".aos");
   initHome(home);
   const { runId } = createRun(home, { mode: "TEST", run_id: "run-projection" });
-  writeResult(home, runId, result, renderMarkdown(result), renderHtml(result), renderCard(result));
+  const paths = runPaths(home, runId);
+  const fresh = () => writeResult(home, runId, result, renderMarkdown(result), renderHtml(result), renderCard(result));
+  fresh();
   try {
     const shown = runCli(cwd, ["report", "--run", runId]);
     assert.equal(shown.stdout.trimEnd(), renderMarkdown(result).trimEnd());
     const recovered = JSON.parse(runCli(cwd, ["session", "recover", runId, "--json"]).stdout);
     assert.equal(recovered.action, "COMMIT_TERMINAL_ONCE");
     assert.deepEqual(recovered.reports, { regenerated: false, reason: "reports match the result" });
-    assert.equal(readFileSync(runPaths(home, runId).reportMd, "utf8"), renderMarkdown(result));
-    assert.equal(readFileSync(runPaths(home, runId).reportHtml, "utf8"), renderHtml(result));
+    assert.equal(readFileSync(paths.reportMd, "utf8"), renderMarkdown(result));
+    assert.equal(readFileSync(paths.reportHtml, "utf8"), renderHtml(result));
+
+    // A report replaced with a number the result does not carry. `aos report` served it verbatim.
+    writeFileSync(paths.reportMd, "# Operator Score: 100\n");
+    const served = runCli(cwd, ["report", "--run", runId]);
+    assert.equal(served.stdout.includes("Operator Score: 100"), false, "the CLI served a report the result does not project to");
+    assert.equal(served.stdout.trimEnd(), renderMarkdown(result).trimEnd());
+    assert.equal(readFileSync(paths.reportMd, "utf8"), renderMarkdown(result));
+
+    // The same for the HTML, through the format that reads it.
+    writeFileSync(paths.reportHtml, "<h1>Operator Score: 100</h1>");
+    const servedHtml = runCli(cwd, ["report", "--run", runId, "--format", "html"]);
+    assert.equal(servedHtml.stdout.includes("Operator Score: 100"), false);
+    assert.equal(readFileSync(paths.reportHtml, "utf8"), renderHtml(result));
+
+    // And the card, deleted and corrupted: recovery said "reports match the result" for both,
+    // because the card was on neither list.
+    for (const damage of [() => rmSync(paths.card, { force: true }), () => writeFileSync(paths.card, "<svg>100</svg>")]) {
+      fresh();
+      damage();
+      const after = JSON.parse(runCli(cwd, ["session", "recover", runId, "--json"]).stdout);
+      assert.equal(after.reports.regenerated, true, "a damaged card was reported as matching the result");
+      assert.match(after.reports.reason, /card\.svg/);
+      assert.equal(readFileSync(paths.card, "utf8"), renderCard(result));
+    }
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -210,11 +240,13 @@ test("a stored result whose numbers disagree with its own rows is refused by nam
   for (const [what, forge] of issuanceForgeries) {
     const damaged = JSON.parse(JSON.stringify(withheld));
     forge(damaged);
+    // The issuance pair is a shape -- issued with a number and no reason, or withheld with a
+    // reason and no number, and nothing in between -- and the schema is where this build says so.
+    // Every renderer meets the same refusal because every renderer goes through the same reader,
+    // and the assertion below is the same rule read by a consumer that is not this repository.
     for (const call of [() => projectResult(damaged), () => renderMarkdown(damaged), () => renderHtml(damaged), () => renderCard(damaged)]) {
-      assert.throws(call, /AOS_ISSUANCE_STATE|AOS_RESULT_INCONSISTENT/, what);
+      assert.throws(call, /AOS_RESULT_SCHEMA_INVALID/, what);
     }
-    // And the schema says it too, for the consumer that is not this repository: issued with a
-    // number and no reason, or withheld with a reason and no number, and nothing in between.
     assert.equal(validateAgainstSchema(damaged, loadSchema(RESULT_SCHEMA_URL)).ok, false, what);
   }
   assert.equal(validateAgainstSchema(withheld, loadSchema(RESULT_SCHEMA_URL)).ok, true);

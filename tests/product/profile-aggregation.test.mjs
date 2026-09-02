@@ -418,20 +418,24 @@ test("a stored result cannot elevate the claim it makes, and a claim about an ex
   const raisedCeiling = JSON.parse(JSON.stringify(elevatedEverywhere));
   raisedCeiling.contract.maximum_claim_stage = "GENERALIZABILITY_SUPPORTED";
   assert.throws(() => projectResult(raisedCeiling), /AOS_CLAIM_STAGE/);
-  // A missing ceiling is not permission: a claim resting on nothing is refused by name.
+  // A missing ceiling is not permission: a claim resting on nothing is refused. The schema requires
+  // the ceiling, so this is now refused before the entitlement is read at all -- which is the point
+  // of validating there rather than here: the reader never sees a result missing the field it would
+  // have had to check. `buildResult` still refuses to issue one, by its own name.
   const noCeiling = JSON.parse(JSON.stringify(stored));
   delete noCeiling.contract.maximum_claim_stage;
-  assert.throws(() => projectResult(noCeiling), /AOS_CLAIM_CEILING/);
-  // A stage no build knows is refused rather than printed.
+  assert.throws(() => projectResult(noCeiling), /AOS_RESULT_SCHEMA_INVALID/);
+  // A stage no build knows is a word in a file: the schema enumerates the three, so it never
+  // reaches the ceiling comparison.
   const invented = JSON.parse(JSON.stringify(stored));
   invented.claim_stage = "ATTACKER_DEFINED";
-  assert.throws(() => projectResult(invented), /AOS_CLAIM_STAGE/);
+  assert.throws(() => projectResult(invented), /AOS_RESULT_SCHEMA_INVALID/);
 
   // And the profile a bound claim is bound to has to be a digest over bytes: `sha256:a` is a
   // label, and one nibble cannot identify an exact profile.
   const unbound = JSON.parse(JSON.stringify(stored));
   unbound.profile_digest = "sha256:a";
-  assert.throws(() => projectResult(unbound), /AOS_CLAIM_UNBOUND/);
+  assert.throws(() => projectResult(unbound), /AOS_RESULT_SCHEMA_INVALID/);
   assert.throws(() => buildResult({ contract: populated, evaluation: evaluate(observationsWith(), { ...identified, profile_digest: "sha256:a" }, populated) }), /AOS_CLAIM_UNBOUND/);
   const schema = loadSchema(RESULT_SCHEMA_URL);
   assert.equal(validateAgainstSchema(unbound, schema).ok, false, "the schema accepted a one-nibble digest");
@@ -487,17 +491,22 @@ test("the sanitiser publishes the instrument's own vocabulary and digests only w
 test("a profile result that lost a surface, a row or a status it can read is refused rather than shown as what is left", () => {
   const stored = JSON.parse(canonicalJson(buildResult({ contract: populated, evaluation: fullRun() })));
   assert.equal(projectResult(stored).process.coverage, `${stored.operator_process_profile.coverage.issued} of ${stored.operator_process_profile.coverage.required} required cells issued`);
+  // Which authority refuses is part of what is asserted. Shape -- a field that must be there, a
+  // status that must be one of a list, an issued number beside a withheld reason -- is the schema's
+  // and is checked against the schema itself, once, before anything is read off the result. What
+  // the schema cannot say is what stays with the reader: the rows this result's contract declared,
+  // and whether the numbers follow from the rows. Two authorities, each named where it fires.
   for (const key of ["operator_process_profile", "system_outcome_profile", "reliance_calibration_profile"]) {
     const damaged = JSON.parse(canonicalJson(stored));
     delete damaged[key].coverage;
-    assert.throws(() => projectResult(damaged), /AOS_RESULT_INCOMPLETE/, key);
-    assert.throws(() => renderMarkdown(damaged), /AOS_RESULT_INCOMPLETE/, key);
-    assert.throws(() => renderHtml(damaged), /AOS_RESULT_INCOMPLETE/, key);
-    assert.throws(() => renderCard(damaged), /AOS_RESULT_INCOMPLETE/, key);
+    assert.throws(() => projectResult(damaged), /AOS_RESULT_SCHEMA_INVALID/, key);
+    assert.throws(() => renderMarkdown(damaged), /AOS_RESULT_SCHEMA_INVALID/, key);
+    assert.throws(() => renderHtml(damaged), /AOS_RESULT_SCHEMA_INVALID/, key);
+    assert.throws(() => renderCard(damaged), /AOS_RESULT_SCHEMA_INVALID/, key);
   }
   const noComposite = JSON.parse(canonicalJson(stored));
   delete noComposite.aos_composite;
-  assert.throws(() => projectResult(noComposite), /AOS_RESULT_INCOMPLETE/);
+  assert.throws(() => projectResult(noComposite), /AOS_RESULT_SCHEMA_INVALID/);
 
   // A surface that keeps its shape and loses a row is the same loss by a quieter route: five
   // constructs read as a five-construct profile rather than as a profile missing one, and a
@@ -505,25 +514,37 @@ test("a profile result that lost a surface, a row or a status it can read is ref
   // surface says it averaged are the rows it must carry -- no more and no fewer.
   const damage = (mutate) => { const copy = JSON.parse(canonicalJson(stored)); mutate(copy); return copy; };
   const refusals = [
-    ["a construct row is gone", (r) => delete r.operator_process_profile.constructs.C1],
-    ["a domain row is gone", (r) => delete r.system_outcome_profile.domains.O2],
-    ["a reliance metric is gone", (r) => delete r.reliance_calibration_profile.metrics.csr],
-    ["the delegated-artifact surface is gone", (r) => delete r.aos_composite.delegated_artifact],
-    ["a row nobody averaged was added", (r) => { r.operator_process_profile.constructs.C9 = { ...r.operator_process_profile.constructs.C1, construct_id: "C9" }; }],
-    ["the weights that say what was averaged are gone", (r) => delete r.operator_process_profile.weights],
-    ["a delegated-artifact row is gone", (r) => delete r.aos_composite.delegated_artifact.constructs.C1],
+    // Rows against the contract that declared them: the reader's, because a schema cannot know how
+    // many constructs this result's contract declared.
+    ["a construct row is gone", /AOS_RESULT_INCOMPLETE/, (r) => delete r.operator_process_profile.constructs.C1],
+    ["a domain row is gone", /AOS_RESULT_INCOMPLETE/, (r) => delete r.system_outcome_profile.domains.O2],
+    ["a row nobody averaged was added", /AOS_RESULT_INCOMPLETE/, (r) => { r.operator_process_profile.constructs.C9 = { ...r.operator_process_profile.constructs.C1, construct_id: "C9" }; }],
+    ["a delegated-artifact row is gone", /AOS_RESULT_INCOMPLETE/, (r) => delete r.aos_composite.delegated_artifact.constructs.C1],
     // The row and the evidence that it was expected, removed together: the stored object cannot be
     // its own authority on what it should contain, so the contract's declaration is what is checked.
-    ["a construct row and its weight are gone together", (r) => { delete r.operator_process_profile.constructs.C1; delete r.operator_process_profile.weights.C1; }],
-    ["a domain row and its weight are gone together", (r) => { delete r.system_outcome_profile.domains.O2; delete r.system_outcome_profile.weights.O2; }],
-    ["the row set the contract declared is gone", (r) => delete r.contract.declared],
-    // A field of a row, not only a row: an absent field is not an empty one.
-    ["a domain row lost the cells it was averaged over", (r) => delete r.system_outcome_profile.domains.O1.cells],
-    ["a construct row lost its required cells", (r) => delete r.operator_process_profile.constructs.C1.required_cells],
-    ["a construct row lost its optional cells", (r) => delete r.operator_process_profile.constructs.C1.optional_cells],
-    ["a construct row lost its withheld list", (r) => delete r.operator_process_profile.constructs.C1.withheld_for],
-    ["a construct row lost its title", (r) => delete r.operator_process_profile.constructs.C1.title],
-    ["an artifact row lost its value", (r) => delete r.aos_composite.delegated_artifact.constructs.C1.value]
+    ["a construct row and its weight are gone together", /AOS_RESULT_INCOMPLETE/, (r) => { delete r.operator_process_profile.constructs.C1; delete r.operator_process_profile.weights.C1; }],
+    ["a domain row and its weight are gone together", /AOS_RESULT_INCOMPLETE/, (r) => { delete r.system_outcome_profile.domains.O2; delete r.system_outcome_profile.weights.O2; }],
+    // A weighting this instrument does not perform: every value is a legal weight and no row is
+    // missing, so only the arithmetic says it is wrong.
+    ["the weights claim an unequal share", /AOS_RESULT_INCONSISTENT/, (r) => { for (const id of Object.keys(r.operator_process_profile.weights)) r.operator_process_profile.weights[id] = 0.5; }],
+    // Shape, all of it the schema's: a required field, a whole surface, a list that is not there.
+    ["a reliance metric is gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.reliance_calibration_profile.metrics.csr],
+    ["the delegated-artifact surface is gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.aos_composite.delegated_artifact],
+    ["the weights that say what was averaged are gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.operator_process_profile.weights],
+    ["a weight that is not a share of anything", /AOS_RESULT_SCHEMA_INVALID/, (r) => { r.operator_process_profile.weights.C1 = 0; r.operator_process_profile.weights.C2 = 0.5; }],
+    ["the row set the contract declared is gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.contract.declared],
+    ["a domain row lost the cells it was averaged over", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.system_outcome_profile.domains.O1.cells],
+    ["a construct row lost its required cells", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.operator_process_profile.constructs.C1.required_cells],
+    ["a construct row lost its optional cells", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.operator_process_profile.constructs.C1.optional_cells],
+    ["a construct row lost its withheld list", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.operator_process_profile.constructs.C1.withheld_for],
+    ["a construct row lost its title", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.operator_process_profile.constructs.C1.title],
+    ["an artifact row lost its value", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.aos_composite.delegated_artifact.constructs.C1.value],
+    // The fields no renderer may be left to default: uncertainty printed as `undefined`, an empty
+    // limitation list, a formula naming an aggregation nothing here performs.
+    ["the uncertainty is gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.uncertainty],
+    ["the forbidden uses are gone", /AOS_RESULT_SCHEMA_INVALID/, (r) => delete r.forbidden_uses],
+    ["the composite names another formula", /AOS_RESULT_SCHEMA_INVALID/, (r) => { r.aos_composite.formula = "aos-composite.attacker"; }],
+    ["the generalizability is a word nobody declared", /AOS_RESULT_SCHEMA_INVALID/, (r) => { r.generalizability_status = "ATTACKER_DEFINED"; for (const key of ["operator_process_profile", "reliance_calibration_profile", "system_outcome_profile", "aos_composite"]) r[key].generalizability_status = "ATTACKER_DEFINED"; }]
   ];
   // Edited all the way through -- the row, its weight and the declaration that named it -- and
   // still refused, because the contract this build holds says which rows a result under it carries.
@@ -538,10 +559,10 @@ test("a profile result that lost a surface, a row or a status it can read is ref
   assert.throws(() => projectResult(consistentlyEdited), /AOS_RESULT_INCOMPLETE/, "a result naming this build's own contract was read against the rows it says it has");
   assert.doesNotThrow(() => projectResult(shippedStored));
 
-  for (const [why, mutate] of refusals) {
+  for (const [why, refusal, mutate] of refusals) {
     const damaged = damage(mutate);
     for (const call of [() => projectResult(damaged), () => renderMarkdown(damaged), () => renderHtml(damaged), () => renderCard(damaged)]) {
-      assert.throws(call, /AOS_RESULT_INCOMPLETE/, why);
+      assert.throws(call, refusal, why);
     }
   }
 
@@ -557,8 +578,8 @@ test("a profile result that lost a surface, a row or a status it can read is ref
   ];
   for (const [where, mutate] of unknownStatuses) {
     const damaged = damage(mutate);
-    assert.throws(() => projectResult(damaged), /AOS_RESULT_UNKNOWN_STATUS/, where);
-    assert.throws(() => renderMarkdown(damaged), /AOS_RESULT_UNKNOWN_STATUS/, where);
+    assert.throws(() => projectResult(damaged), /AOS_RESULT_SCHEMA_INVALID/, where);
+    assert.throws(() => renderMarkdown(damaged), /AOS_RESULT_SCHEMA_INVALID/, where);
   }
 });
 
@@ -596,11 +617,15 @@ test("no credential shape and no absolute path reaches the canonical result thro
     google_key: "AIzaSyA1234567890abcdefghijklmnopqrstuvw",
     jwt: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk",
     bearer: "Authorization: Bearer 9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c",
-    root_path: "/private",
     home_path: secretPath,
-    tilde_path: "~/secrets/key.pem",
-    windows_path: "C:\\Users\\alice\\creds.txt",
-    private_key: "-----BEGIN RSA PRIVATE KEY-----"
+    private_key: "-----BEGIN RSA PRIVATE KEY-----",
+    // The two halves the boundary lists missed, and the operator's note that carries both. A word
+    // that names a secret hands one over with a space as readily as with an `=`, and a root that
+    // starts after a colon is still a root -- neither is a new spelling of a credential, both are
+    // the same credential written the way somebody types it into a note.
+    spaced_secret: "database password hunter2",
+    path_after_colon: "workspace:/Users/alice/private/customer.txt",
+    spaced_secret_and_path: "database password hunter2; workspace:/Users/alice/private/customer.txt"
   };
   // Injected at every door into the result, not only the ones a previous round happened to use:
   // the facets, the run record, a cap and its trigger -- and the observations, which the contract
@@ -608,7 +633,13 @@ test("no credential shape and no absolute path reaches the canonical result thro
   const observations = observationsWith().map((observation, index) => (index === 0
     ? { ...observation, verifier_id: "sk-live-DO-NOT-PUBLISH-1234567890", evidence_ids: [secretPath], reason: `read ${secretPath}` }
     : observation));
-  const evaluation = evaluate(observations, { ...identified, facets: { ...identified.facets, workspace: secretPath, ...shapes } }, populated);
+  // A result declares a bounded number of facets and the schema says so, so the shapes go through
+  // in two runs rather than in one run no operator could have. Every shape is still injected as a
+  // facet, and the first run carries the other doors as well.
+  const half = Math.ceil(Object.keys(shapes).length / 2);
+  const [firstHalf, secondHalf] = [Object.fromEntries(Object.entries(shapes).slice(0, half)), Object.fromEntries(Object.entries(shapes).slice(half))];
+  const evaluationOf = (batch) => evaluate(observations, { ...identified, facets: { ...identified.facets, workspace: secretPath, ...batch } }, populated);
+  const evaluation = evaluationOf(firstHalf);
   const result = buildResult({
     contract: populated,
     evaluation,
@@ -622,7 +653,9 @@ test("no credential shape and no absolute path reaches the canonical result thro
       triggers: [{ trigger_id: "t1", construct_or_domain_id: "O3", cell_id: "C6.SL.01", evidence_ids: ["evidence-1"], observed: true, note: canary }]
     }]
   });
-  const rendered = [canonicalJson(result), renderMarkdown(result), renderHtml(result), renderCard(result), canonicalJson(projectResult(result))].join("\n");
+  const second = buildResult({ contract: populated, evaluation: evaluationOf(secondHalf), observations });
+  const renderingsOf = (one) => [canonicalJson(one), renderMarkdown(one), renderHtml(one), renderCard(one), canonicalJson(projectResult(one))];
+  const rendered = [...renderingsOf(result), ...renderingsOf(second)].join("\n");
   // The bindings the contract itself carried: a cell says what it was answered by, and that is a
   // string the caller supplied. Every one of them is published or digested, never copied through.
   const bindings = result.cells.flatMap((cell) => cell.bound_to);
@@ -639,7 +672,8 @@ test("no credential shape and no absolute path reaches the canonical result thro
   assert.equal(rendered.includes("/Users/"), false);
   for (const [name, value] of Object.entries(shapes)) {
     assert.equal(rendered.includes(value), false, `${name} survived into the result or a rendering`);
-    assert.match(result.facet_identity[name], /^sha256:[0-9a-f]{64}$/u, `${name} was not carried as a digest`);
+    const carried = (Object.hasOwn(firstHalf, name) ? result : second).facet_identity[name];
+    assert.match(carried, /^sha256:[0-9a-f]{64}$/u, `${name} was not carried as a digest`);
   }
   // And the safe values a run legitimately carries are untouched, so redaction is not a way of
   // losing the record: an id with hyphens, a suite name, a digest, and ordinary prose.
