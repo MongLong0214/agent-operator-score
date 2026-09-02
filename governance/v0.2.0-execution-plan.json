@@ -352,7 +352,7 @@
     {
       "issue": 559,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 1,
       "blocked_by": [
         582,
@@ -621,7 +621,9 @@
       ],
       "owned_paths": [
         "lib/holdout.mjs",
-        "lib/review.mjs"
+        "lib/incident-corpus.mjs",
+        "lib/review-lanes.mjs",
+        "fixtures/known-incidents/"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [
@@ -1185,7 +1187,7 @@
     {
       "issue": 582,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 0,
       "blocked_by": [],
       "blocks": [
