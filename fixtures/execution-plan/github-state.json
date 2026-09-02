@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T06:48:34.300Z",
+  "captured_at": "2026-09-02T07:00:18.389Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -421,23 +421,53 @@
     {
       "number": 565,
       "title": "[P1][review] review holdout floor·known-incident precision/recall·UNDECIDED gate를 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:review",
         "priority:P1",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 565,
+        "final_sha": "b34ae32abb15d03c83b02444347b17ec1dab907e",
+        "pr": 594,
+        "ci_run_ids": [
+          33600602372
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "holdout_floor": "lane A (lib/holdout.mjs): precision is withheld below 50 holdout sessions, 20 decided high-severity findings, decisions from at least 10 distinct sessions; target precision 0.90; tuning and legacy sessions are counted separately and never toward the floor. lane B (lib/incident-corpus.mjs): a per-rule rate needs 10 eligible decided items at high severity, 5 otherwise, and items a rule was derived from are excluded for leakage before the count. Tests: tests/product/review-holdout-floor.test.mjs (49 is not 50; 50 sessions/19 decided still undecided; 20 decisions inside one session is one session), tests/product/known-incident-corpus.test.mjs.",
+          "precision_recall": "laneReport on the empty ledger at PR #594 head b34ae32: lane A precision null, precision_withheld true, dataset_digest sha256:2ec14e2cef0bc90978f4f1322844fecd445abc360226b12e25e466874d49e455; lane B 11 shipped items, corpus_digest sha256:e5d3041cc9cc1d9075d127ed5beb9501b4113d3aa53fffa2991196b84a937b0b, eligible_decided_pairs 0, excluded_for_leakage 13, every one of the five rules withheld with the reason 'no eligible decided evidence: all N decided label(s) for this rule are on items the rule was derived from'. No rate is issued from the shipped corpus; the report says so rather than printing a small number.",
+          "undecided_gate": "both lanes report status UNDECIDED and the CLI exit reflects it -- 'an undecided lane is not a quiet pass', 'a violation below the floor fails rather than waiting for a bigger sample', 'a rate over the findings that could be judged, when most could not, is withheld'. Two hard gates are evaluated regardless of the floor: incomplete evidence reported as clean (target 0) and secret material reprinted (target 0), both 0 on the shipped corpus.",
+          "mutation": "212/212 guards are load-bearing (CI mutation job on b34ae32, run 33600602372)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#565",
         "#578",
         "#575",
-        "#586"
+        "#586",
+        "#594"
       ]
     },
     {
