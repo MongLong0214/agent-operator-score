@@ -1,72 +1,221 @@
 {
-  "schema": "aos-stale-branch-audit.v1",
+  "schema": "aos-stale-branch-audit.v2",
   "repository": "MongLong0214/agent-operator-score",
   "issue": 572,
   "phase": "read-only-audit",
-  "snapshot_warning": "PHASE A SNAPSHOT TAKEN DURING ACTIVE PARALLEL DEVELOPMENT. This is a point-in-time record, not a deletion list. Do not act on this file. Phase B (blocked on #578) must re-collect every fact in it from scratch -- git ls-remote, merge status, and gh pr list all move under a batch this size, and this file has already gone stale once between its first version and this correction (see revision_history).",
-  "generated_at": "2026-09-02T00:29:41Z",
-  "dev_sha_at_snapshot": "499bb11b004024fc46b9e97300ad8909d86a5073",
+  "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B (blocked on #578 and #588) must re-collect every fact in it from scratch -- git ls-remote, merge status, gh pr list, tag containment and protection -- rather than trust any SHA, count or PR number written here. The previous version of this fixture is the proof: it recorded seven heads, and three of them (task/issue-570-action-pins, task/issue-572-work, task/issue-588-mark-done) had been merged and auto-deleted before this snapshot was taken, while three that did not exist then (task/issue-556-strict-confinement, task/issue-560-operator-events, task/issue-561-model-identity) had appeared.",
+  "generated_at": "2026-09-02T22:56:22Z",
+  "method": "Read-only. Branch inventory from `git ls-remote --heads origin`, cross-checked independently against `gh api repos/MongLong0214/agent-operator-score/branches --paginate` (which bypasses the git protocol); both returned the same seven heads. Containment from `git merge-base --is-ancestor <branch> origin/dev` and `origin/main` with `git rev-list --count` in both directions. Release-tag containment from `git tag --contains <branch>`. Pull requests from `gh pr list --state all --head <branch>` per branch and `gh pr list --state open` for the whole repository. Protection from `gh api repos/.../branches/<branch>/protection` and rulesets from `gh api repos/.../rulesets`. Reference scan by `grep -rn` over the whole working tree at the snapshot dev SHA (workflows, skills, commands, scripts, schemas, contracts, docs, bin, lib, tests) plus `gh search issues` and `git log --all --grep` over the full history. Every number in this file was emitted by those commands rather than typed. No ref was created, deleted, renamed or force-pushed to produce it; see heads_created_after_this_snapshot for the one branch this work itself adds.",
+  "excluded_refs": [
+    "main",
+    "dev"
+  ],
+  "ls_remote_snapshot": [
+    {
+      "name": "dev",
+      "sha": "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49"
+    },
+    {
+      "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+      "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1"
+    },
+    {
+      "name": "main",
+      "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+    },
+    {
+      "name": "task/issue-556-strict-confinement",
+      "sha": "893289f90e6eb4322f54ca979e72016d4e1cb81a"
+    },
+    {
+      "name": "task/issue-560-operator-events",
+      "sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5"
+    },
+    {
+      "name": "task/issue-561-model-identity",
+      "sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695"
+    },
+    {
+      "name": "tmp/read-claude-artifact",
+      "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb"
+    }
+  ],
+  "invariant_baseline": {
+    "note": "The state Phase B must find unchanged after it deletes anything. Recorded now, before any deletion, because an invariant nobody wrote down before the change cannot be checked after it.",
+    "main_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846",
+    "dev_sha": "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49",
+    "tags": [
+      {
+        "name": "archive/pre-v0.1.0-governance",
+        "sha": "36b823f22217e9d8be011318e295231c62a3f813"
+      },
+      {
+        "name": "v0.1.0",
+        "sha": "fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3"
+      },
+      {
+        "name": "v0.1.1",
+        "sha": "efe351c991797a8cde88c23b8e8933d9a90db11d"
+      },
+      {
+        "name": "v0.1.10",
+        "sha": "98353d24fdd6b932c717bd8b9a0971c22986f7b7"
+      },
+      {
+        "name": "v0.1.11",
+        "sha": "4566b33143155b91981d07308bd113ad8fad9b35"
+      },
+      {
+        "name": "v0.1.12",
+        "sha": "c371ac93d49a592925b24de5013bc9b3b303dd7d"
+      },
+      {
+        "name": "v0.1.13",
+        "sha": "1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea"
+      },
+      {
+        "name": "v0.1.14",
+        "sha": "d89a4b22a0e8de14fff316edcae18c3e6caadf9a"
+      },
+      {
+        "name": "v0.1.15",
+        "sha": "426c23d0f62fa2666135f978db0f5802ace7c8cc"
+      },
+      {
+        "name": "v0.1.16",
+        "sha": "120ce7c96feb961ee7c4599c2946f059b8d9b7c6"
+      },
+      {
+        "name": "v0.1.17",
+        "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+      },
+      {
+        "name": "v0.1.2",
+        "sha": "43bae4bf460939a743c837b8e0a05d8f9e044026"
+      },
+      {
+        "name": "v0.1.3",
+        "sha": "dc7f6563ec0d6e951fe984fa026eea8c5efc3aed"
+      },
+      {
+        "name": "v0.1.4",
+        "sha": "ae648b7dca5574c6af938dc44b6802f1bf732929"
+      },
+      {
+        "name": "v0.1.5",
+        "sha": "bbfae658e87ac2de7c6326739704a877fb118301"
+      },
+      {
+        "name": "v0.1.6",
+        "sha": "aebcbd8b7105da88ae71d0e5a80be59b99e8cc53"
+      },
+      {
+        "name": "v0.1.7",
+        "sha": "8e84fbcb42f79d86263aab42a1291ecf09ddba7f"
+      },
+      {
+        "name": "v0.1.8",
+        "sha": "30d30485f4ade54238cba5aa1a8bc85452df7d39"
+      },
+      {
+        "name": "v0.1.9",
+        "sha": "3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0"
+      }
+    ],
+    "protection": {
+      "main": {
+        "allow_deletions": false,
+        "allow_force_pushes": false,
+        "enforce_admins": true
+      },
+      "dev": {
+        "allow_deletions": false,
+        "allow_force_pushes": false,
+        "enforce_admins": true
+      }
+    },
+    "rulesets": [],
+    "delete_branch_on_merge": true,
+    "default_branch": "dev",
+    "open_pr_heads": [
+      {
+        "pr": 611,
+        "branch": "task/issue-560-operator-events",
+        "sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5",
+        "base": "dev",
+        "title": "feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)"
+      },
+      {
+        "pr": 609,
+        "branch": "task/issue-556-strict-confinement",
+        "sha": "893289f90e6eb4322f54ca979e72016d4e1cb81a",
+        "base": "dev",
+        "title": "feat(confinement): STRICT workspace confinement and official issuance gate (#556)"
+      },
+      {
+        "pr": 607,
+        "branch": "task/issue-561-model-identity",
+        "sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695",
+        "base": "dev",
+        "title": "feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)"
+      }
+    ]
+  },
   "revision_history": [
     {
       "generated_at": "2026-09-02T00:18:26Z",
-      "note": "Initial version. Classified task/issue-588-mark-done as must_be_preserved under branches because its PR-list query found no PR referencing it. PR #591 had in fact already been opened against it five minutes earlier (00:13:30Z); the query was stale, not the branch."
+      "note": "First snapshot (PR #592). Classified task/issue-588-mark-done as must_be_preserved because its PR-list query found no PR referencing it; PR #591 had in fact been opened against it five minutes earlier. The query was stale before the document was produced."
     },
     {
       "generated_at": "2026-09-02T00:29:41Z",
-      "note": "Coordinator correction: PR #591 (opened 00:13:30Z, five minutes before the first snapshot's stated generation time of 00:18:26Z) was already open against task/issue-588-mark-done when the first snapshot was generated; that snapshot's PR-list query had gone stale before the document was produced and missed it. Further review-round commits are reported to have landed on the branch locally since. Re-collected live state: moved task/issue-588-mark-done into open_pr_heads_excluded, refreshed task/issue-570-action-pins's SHA (34ad44c, one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (task/issue-572-work, PR #592) to open_pr_heads_excluded. Recorded dev_sha_at_snapshot and this revision_history so a reader can tell how far the repository has moved. See branches_reported_but_not_found_on_origin for a discrepancy this correction did not resolve by assumption."
+      "note": "Correction within PR #592: moved task/issue-588-mark-done into the open-PR-head table, refreshed task/issue-570-action-pins, and recorded seven branches the coordinator reported that were not yet on origin."
+    },
+    {
+      "generated_at": "2026-09-02T22:56:22Z",
+      "note": "Full re-collection at schema v2. The previous snapshot's seven heads are no longer the live seven: task/issue-570-action-pins, task/issue-572-work and task/issue-588-mark-done were merged (PRs #590, #592, #591) and auto-deleted, and task/issue-556-strict-confinement, task/issue-560-operator-events and task/issue-561-model-identity have appeared as open PR heads. dev moved from 499bb11b004024fc46b9e97300ad8909d86a5073 to 2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49. This version adds the issue's full field set -- the six-value classification, release-tag containment, superseding evidence, what would be lost, the reference scan and the protection status -- and an explicit named list of what could not be established, so that no branch reaches a deletion recommendation by default. It also adds the pre-deletion invariant baseline and the deletion log that Phase B has to fill in."
     }
   ],
-  "method": "Read-only: git ls-remote --heads origin, git merge-base --is-ancestor and git rev-list against origin/dev and origin/main, gh pr list --state all --limit 500 --json ..., gh api search/issues, gh api repos/.../branches/<b>/protection, and independently gh api repos/.../branches --paginate to cross-check git ls-remote against the REST API directly. No ref was deleted, force-pushed, or renamed, and none was created or deleted for audit purposes, to produce this file. The one ref created and pushed to origin while this file was being produced is this agent's own required task branch (task/issue-572-work) -- the normal artifact of submitting this file via PR #592, not an audit action; it is recorded in open_pr_heads_excluded like any other branch.",
-  "excluded_refs": ["main", "dev"],
-  "ls_remote_snapshot": [
-    { "name": "dev", "sha": "499bb11b004024fc46b9e97300ad8909d86a5073" },
-    { "name": "fix/a-fixture-backed-agent-is-not-a-runtime", "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1" },
-    { "name": "main", "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846" },
-    { "name": "task/issue-570-action-pins", "sha": "34ad44ccedb8d13a698ab3aa8b82237aec908f5b" },
-    { "name": "task/issue-572-work", "sha": "1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71" },
-    { "name": "task/issue-588-mark-done", "sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a" },
-    { "name": "tmp/read-claude-artifact", "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb" }
-  ],
-  "drift_observed_while_finalizing_this_correction": {
-    "observed_at": "2026-09-02T00:37:14Z",
-    "note": "A follow-up git fetch/ls-remote, run while finalizing this very correction, already showed 3 of the 7 branches recorded above as not-found-on-origin (task/issue-553-work at ddcf43e, task/issue-556-work at f2048b0, task/issue-565-work at 55f651f) now pushed to origin, and task/issue-588-mark-done's head advanced again, to 2c445d9 -- matching neither this document's recorded 034fcac nor the coordinator's previously-cited 88523a4. None of this is incorporated into ls_remote_snapshot, open_pr_heads_excluded, or branches above: doing so would only produce another already-stale snapshot, chasing a target that is moving faster than a full audit pass (merge status + PR check + protection check per branch) can complete. It is recorded here, once, as concrete and timestamped evidence for why the snapshot_warning at the top of this file and the equivalent banner in docs/STALE_BRANCH_AUDIT.md exist, and why Phase B must re-collect rather than trust any snapshot, including this one."
-  },
-  "branches_reported_but_not_found_on_origin": {
-    "note": "The coordinator reported eight new branches in flight: task/issue-553-work, task/issue-554-work, task/issue-555-work, task/issue-556-work, task/issue-565-work, task/issue-567-work, task/issue-572-work, and task/issue-582-work. This agent's own -572-work is accounted for above (it is now on origin, as this PR's head). The other seven were checked twice, independently, at generated_at: git ls-remote --heads origin and gh api repos/MongLong0214/agent-operator-score/branches --paginate (bypasses the git protocol entirely). Both returned the same 7 heads listed in ls_remote_snapshot -- neither method found task/issue-553-work, -554-work, -555-work, -556-work, -565-work, -567-work, or -582-work on origin. A git worktree list / git branch -vv on the shared local checkout at /Users/isaac/projects/agent-operator-score shows local branches with exactly those seven names, each still sitting at dev's current tip (499bb11b, unchanged), in worktrees at /private/tmp/wt-553, wt-554, wt-555, wt-556, wt-565, wt-567, wt-582. That is: they exist as prepared local worktree branches that have not yet been pushed to origin, so they are not yet remote branches for this audit to cover. This is recorded rather than assumed away, because treating an unverified claim as a fact is exactly the failure task/issue-588-mark-done's own unmerged commit (034fcac) was written to close in the execution-plan governance gate. If any of them have been pushed by the time this file is read, this audit is stale for that branch and a fresh regeneration is needed."
-  },
-  "open_pr_heads_excluded": [
+  "previously_recorded_heads_now_absent": [
     {
       "name": "task/issue-570-action-pins",
-      "recommendation": "must_be_preserved",
-      "pr_number": 590,
-      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/590",
-      "pr_state": "OPEN",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 2,
-      "reason": "Head of open PR #590 ('feat(ci): pin every external action to a commit, and check that it stays pinned') targeting dev. ISSUE.md's prohibited-actions list forbids deleting an open PR's head branch. Active review is in progress -- its head advanced from 7d2d1be to 34ad44c ('fix(ci): close the scanner bypasses the review found') between this audit's first snapshot and this correction."
+      "prior_sha": "34ad44ccedb8d13a698ab3aa8b82237aec908f5b",
+      "fate": {
+        "pr": 590,
+        "state": "MERGED",
+        "merged_at": "2026-09-02T07:10:00Z",
+        "merge_commit": "8e87da05e2233d00a5a65ba008a00dfafc2d1d97"
+      },
+      "note": "Merged into dev and removed by the repository's delete_branch_on_merge setting, not by this audit. Its content is on dev."
     },
     {
       "name": "task/issue-572-work",
-      "recommendation": "must_be_preserved",
-      "pr_number": 592,
-      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/592",
-      "pr_state": "OPEN",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 1,
-      "reason": "Head of this very PR (#592, the read-only audit for issue #572) targeting dev. It is the branch this audit is written from and cannot meaningfully classify itself as stale; it is recorded here purely so ls_remote_snapshot coverage stays exact."
+      "prior_sha": "1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71",
+      "fate": {
+        "pr": 592,
+        "state": "MERGED",
+        "merged_at": "2026-09-02T02:47:36Z",
+        "merge_commit": "ea1fe9ec6e7efe360da5ab7ceaa316a7cbfa65d9"
+      },
+      "note": "The previous version of this very audit. Merged into dev and auto-deleted; its content is the file this one supersedes, and remains readable at that merge commit."
     },
     {
       "name": "task/issue-588-mark-done",
-      "recommendation": "must_be_preserved",
-      "pr_number": 591,
-      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/591",
-      "pr_state": "OPEN",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 2,
-      "reason": "Head of open PR #591 ('fix(governance): bind the close-evidence confirmation to one piece of work') targeting dev. PR #591 was in fact already open (created 00:13:30Z) five minutes before this audit's first snapshot was generated (00:18:26Z); the first snapshot's own PR-list query had gone stale before generation and missed it, which is why the first snapshot classified this branch must_be_preserved under branches on the different basis that no PR referenced it and it existed on no other ref -- see revision_history. That finding is now stronger, not weaker: real, active work is landing on it (the coordinator reports further review-round commits, up to 88523a4, beyond origin's snapshot head of 034fcac at generated_at -- unverified by this audit's own read-only remote commands as of generated_at; see the Known limitation note in docs/STALE_BRANCH_AUDIT.md). Whatever its exact current SHA, it must not be deleted while PR #591 is open."
+      "prior_sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a",
+      "fate": {
+        "pr": 591,
+        "state": "MERGED",
+        "merged_at": "2026-09-02T05:10:28Z",
+        "merge_commit": "50c4ddb9643ec170e469f26f47f99a7df4a24802"
+      },
+      "note": "The branch the previous snapshot could not initially classify. It was merged into dev and auto-deleted; the work the previous snapshot worried about losing is on dev."
+    }
+  ],
+  "heads_created_after_this_snapshot": [
+    {
+      "name": "task/issue-572-branch-audit",
+      "sha": null,
+      "classification": "ACTIVE",
+      "note": "The branch this audit is submitted from. It did not exist on origin when ls_remote_snapshot was taken and its head SHA cannot be recorded here, because the commit that carries this file is the commit whose SHA it would be. It is named rather than omitted so that a reader comparing this snapshot against a live ls-remote can account for the difference. It is the head of an open PR while that PR is open, and is covered by the same rule as every other open PR head: it may not be deleted until its PR is closed or merged, at which point delete_branch_on_merge removes it automatically."
     }
   ],
   "branches": [
@@ -76,20 +225,228 @@
       "author_name": "MongLong0214",
       "author_email": "97578200+MongLong0214@users.noreply.github.com",
       "last_commit_date": "2026-08-28T20:37:31+09:00",
-      "age_days": 4,
+      "age_days": 5,
+      "classification": "MERGED",
       "merged_into_dev": true,
       "merged_into_main": true,
-      "unmerged_commit_count": 0,
-      "unmerged_summary": null,
-      "referenced_by_pr": [
-        { "number": 592, "url": "https://github.com/MongLong0214/agent-operator-score/pull/592", "reference_type": "body", "self_reference": true, "note": "PR #592 is this audit's own PR. Its body names this branch as a Phase-A candidate (mirroring issue #572's own candidate list), which is the audit describing itself, not independent evidence that other work relies on or watches this branch. It was opened 00:23:32Z, after the PR search underlying this entry's reason and before the corrected snapshot (00:29:41Z). Recorded because it is a real reference, not filtered out; it does not change the recommendation." }
+      "unique_commits_vs_dev": 0,
+      "unique_commits_vs_main": 0,
+      "behind_dev": 259,
+      "behind_main": 85,
+      "release_tags_containing": [
+        "v0.1.11",
+        "v0.1.12",
+        "v0.1.13",
+        "v0.1.14",
+        "v0.1.15",
+        "v0.1.16",
+        "v0.1.17"
       ],
-      "referenced_elsewhere": [
-        { "type": "issue", "number": 572, "url": "https://github.com/MongLong0214/agent-operator-score/issues/572", "note": "named as a candidate in issue #572's own 'Current candidates' list" }
-      ],
+      "open_pr": null,
+      "superseding": null,
+      "preserve": [],
+      "references": {
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": [
+          "docs/STALE_BRANCH_AUDIT.md -- this audit's own document, naming the branch as a candidate"
+        ],
+        "issues": [
+          {
+            "number": 572,
+            "note": "named in issue #572's own 'Current candidates' list"
+          }
+        ],
+        "prs": [
+          {
+            "number": 592,
+            "note": "the previous #572 Phase A audit PR, which named the branch in its body; a self-reference from the audit describing itself, not evidence of use"
+          }
+        ]
+      },
       "branch_protected": false,
+      "unestablished": [
+        {
+          "fact": "why this branch was created, and what change its name ('a fixture-backed agent is not a runtime') was meant to carry",
+          "searched": "git log --all --grep over the full history, gh search issues, and a gh issue/pr list over every issue and PR in the repository: no issue title, PR title, PR body or commit message anywhere states this intent, and the branch itself carries no commit of its own",
+          "bearing_on_deletion": "none",
+          "why_it_does_not_bear": "intent is a question about the past; data loss is a question about the present, and the present is fully established here. The tip is an ancestor of both origin/dev and origin/main, `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0, and the commit is contained in seven release tags. There is no object on this ref that deleting the ref would remove from the repository, whatever it was created for."
+        }
+      ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of the 355 checked in that search) ever used it as a head branch, and that GitHub-wide search found no reference to it outside issue #572's own candidate list; PR #592 (this audit's own PR, opened after that search) also names it in its body, but only as a self-reference -- see referenced_by_pr. Deleting it after #578's evidence bundle is captured loses nothing."
+      "reason": "The tip commit e75d232 is an ancestor of both origin/dev and origin/main; git rev-list returns 0 commits unique to the branch against either, and git tag --contains places the commit in v0.1.11 through v0.1.17. The branch never carried a commit of its own -- it points at the merge commit of PR #511 (the chore/back-merge-0.1.10 chain) and never advanced from it. No PR has ever used it as a head branch, and no workflow, skill, command, script, schema, contract or document references it outside this audit. Deleting it after #578 and #588 have preserved the release evidence removes a name, not any content."
+    },
+    {
+      "name": "task/issue-556-strict-confinement",
+      "head_sha": "893289f90e6eb4322f54ca979e72016d4e1cb81a",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-03T07:04:44+09:00",
+      "age_days": 0,
+      "classification": "ACTIVE",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unique_commits_vs_dev": 37,
+      "unique_commits_vs_main": 208,
+      "behind_dev": 3,
+      "behind_main": 0,
+      "release_tags_containing": [],
+      "open_pr": {
+        "number": 609,
+        "url": "https://github.com/MongLong0214/agent-operator-score/pull/609",
+        "state": "OPEN",
+        "base": "dev",
+        "head_sha": "893289f90e6eb4322f54ca979e72016d4e1cb81a",
+        "title": "feat(confinement): STRICT workspace confinement and official issuance gate (#556)"
+      },
+      "superseding": null,
+      "preserve": [
+        "37 commits implementing #556 STRICT workspace confinement and the official issuance gate, reachable from no other ref",
+        "lib/confinement adapters and gate wiring across lib/core.mjs, lib/profile.mjs, lib/store.mjs, lib/result-schema.mjs, lib/scorer-v1.mjs, lib/redact.mjs, lib/ecd-contract.mjs, lib/session.mjs",
+        "tests/product/confinement.test.mjs, confinement-real-lane.test.mjs and official-issuance.test.mjs (2665 new test lines) plus the mutation ledger tests/mutation/measured.json",
+        "schemas/aos-result.v2.schema.json additions and the docs/confinement Phase B support matrix"
+      ],
+      "references": {
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": [],
+        "issues": [
+          {
+            "number": 556,
+            "note": "the issue this branch implements"
+          }
+        ],
+        "prs": [
+          {
+            "number": 609,
+            "note": "open PR whose head this branch is"
+          }
+        ]
+      },
+      "branch_protected": false,
+      "unestablished": [],
+      "recommendation": "must_be_preserved",
+      "reason": "Head of open PR #609 ('feat(confinement): STRICT workspace confinement and official issuance gate (#556)') targeting dev, under active review. It carries 37 commits that reach neither dev nor main and is in no release tag; the work exists nowhere else. Deleting the head branch of an open PR is on this issue's own prohibited-actions list."
+    },
+    {
+      "name": "task/issue-560-operator-events",
+      "head_sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-03T07:52:50+09:00",
+      "age_days": 0,
+      "classification": "ACTIVE",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unique_commits_vs_dev": 12,
+      "unique_commits_vs_main": 186,
+      "behind_dev": 0,
+      "behind_main": 0,
+      "release_tags_containing": [],
+      "open_pr": {
+        "number": 611,
+        "url": "https://github.com/MongLong0214/agent-operator-score/pull/611",
+        "state": "OPEN",
+        "base": "dev",
+        "head_sha": "13d016fdfc8f75686c186c64a9a9a67b6f405ae5",
+        "title": "feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)"
+      },
+      "superseding": null,
+      "preserve": [
+        "12 commits implementing #560 operator events and the D1-D3 construct binding, reachable from no other ref",
+        "lib/operator-events.mjs and lib/operator-plan.mjs (1039 new lines), plus the store and CLI ingest path",
+        "schemas/aos-operator-event.v2.schema.json",
+        "tests/product/operator-event-authority.test.mjs, operator-event-projection.test.mjs, operator-channel-authority.test.mjs, no-agent-artifact-process-credit.test.mjs, initial-before-advice.test.mjs"
+      ],
+      "references": {
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": [],
+        "issues": [
+          {
+            "number": 560,
+            "note": "the issue this branch implements"
+          }
+        ],
+        "prs": [
+          {
+            "number": 611,
+            "note": "open PR whose head this branch is"
+          }
+        ]
+      },
+      "branch_protected": false,
+      "unestablished": [],
+      "recommendation": "must_be_preserved",
+      "reason": "Head of open PR #611 ('feat(operator-events): rebind D1-D3 to actual operator events and construct opportunities (#560)') targeting dev, under active review. It carries 12 commits that reach neither dev nor main and is in no release tag."
+    },
+    {
+      "name": "task/issue-561-model-identity",
+      "head_sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-03T05:53:57+09:00",
+      "age_days": 0,
+      "classification": "ACTIVE",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unique_commits_vs_dev": 16,
+      "unique_commits_vs_main": 187,
+      "behind_dev": 3,
+      "behind_main": 0,
+      "release_tags_containing": [],
+      "open_pr": {
+        "number": 607,
+        "url": "https://github.com/MongLong0214/agent-operator-score/pull/607",
+        "state": "OPEN",
+        "base": "dev",
+        "head_sha": "2907ec9046093635418c24d47e6b6cdc3c1c9695",
+        "title": "feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)"
+      },
+      "superseding": null,
+      "preserve": [
+        "16 commits implementing #561 model and runtime identity binding, reachable from no other ref",
+        "lib/model-identity.mjs (1064 new lines), the profile digest binding and the cycle comparability wiring",
+        "schemas/aos-model-provenance.v1.json, fixtures/model-identity/runtime-canary.json, scripts/capture-model-canary.mjs",
+        "tests/product/model-identity.test.mjs and model-canary.test.mjs (1877 new test lines)"
+      ],
+      "references": {
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": [],
+        "issues": [
+          {
+            "number": 561,
+            "note": "the issue this branch implements"
+          }
+        ],
+        "prs": [
+          {
+            "number": 607,
+            "note": "open PR whose head this branch is"
+          }
+        ]
+      },
+      "branch_protected": false,
+      "unestablished": [],
+      "recommendation": "must_be_preserved",
+      "reason": "Head of open PR #607 ('feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)') targeting dev, under active review. It carries 16 commits that reach neither dev nor main and is in no release tag; fixtures/model-identity/runtime-canary.json exists on no other ref."
     },
     {
       "name": "tmp/read-claude-artifact",
@@ -97,28 +454,66 @@
       "author_name": "MongLong0214",
       "author_email": "97578200+MongLong0214@users.noreply.github.com",
       "last_commit_date": "2026-08-29T11:33:54+09:00",
-      "age_days": 3,
+      "age_days": 4,
+      "classification": "MERGED",
       "merged_into_dev": true,
       "merged_into_main": true,
-      "unmerged_commit_count": 0,
-      "unmerged_summary": null,
-      "referenced_by_pr": [
-        { "number": 592, "url": "https://github.com/MongLong0214/agent-operator-score/pull/592", "reference_type": "body", "self_reference": true, "note": "PR #592 is this audit's own PR. Its body names this branch as a Phase-A candidate (mirroring issue #572's own candidate list), which is the audit describing itself, not independent evidence that other work relies on or watches this branch. It was opened 00:23:32Z, after the PR search underlying this entry's reason and before the corrected snapshot (00:29:41Z). Recorded because it is a real reference, not filtered out; it does not change the recommendation." }
+      "unique_commits_vs_dev": 0,
+      "unique_commits_vs_main": 0,
+      "behind_dev": 207,
+      "behind_main": 33,
+      "release_tags_containing": [
+        "v0.1.16",
+        "v0.1.17"
       ],
-      "referenced_elsewhere": [
-        { "type": "issue", "number": 572, "url": "https://github.com/MongLong0214/agent-operator-score/issues/572", "note": "named as a candidate in issue #572's own 'Current candidates' list" }
-      ],
+      "open_pr": null,
+      "superseding": null,
+      "preserve": [],
+      "references": {
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": [
+          "docs/STALE_BRANCH_AUDIT.md -- this audit's own document, naming the branch as a candidate"
+        ],
+        "issues": [
+          {
+            "number": 572,
+            "note": "named in issue #572's own 'Current candidates' list"
+          }
+        ],
+        "prs": [
+          {
+            "number": 592,
+            "note": "the previous #572 Phase A audit PR, which named the branch in its body; a self-reference, not evidence of use"
+          }
+        ]
+      },
       "branch_protected": false,
+      "unestablished": [
+        {
+          "fact": "what the branch was used to read, and whether anything was ever committed to it and later discarded",
+          "searched": "git log --all --grep='claude artifact', gh search issues, and the full PR list: nothing names it; the reflog for a branch on origin is not readable from a clone, so a commit pushed and then force-replaced before this audit would leave no trace this audit can see",
+          "bearing_on_deletion": "none",
+          "why_it_does_not_bear": "the question is about objects that are not on the ref now. The ref as it stands is an ancestor of both origin/dev and origin/main with 0 unique commits against either, so deleting it removes no reachable object. A hypothetical object already unreachable from this ref is not preserved by keeping the ref either, which is precisely why #572 routes evidence into committed fixtures and issue records rather than leaving it on a branch."
+        }
+      ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "Tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique vs either) via PR #538's back-merge chain. This is a tmp/* branch; repository policy caps those at 7 days or task end, and this one is already 3 days old with its content long since merged elsewhere. No PR references it as a head; PR #592 (this audit's own PR) names it in its body, but only as a self-reference -- see referenced_by_pr. Deleting it after #578 loses nothing."
+      "reason": "The tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique against either) and in release tags v0.1.16 and v0.1.17; it is the merge commit of PR #538, the chore/back-merge-0.1.15 chain, and the branch never advanced past it. It is a tmp/* branch, which repository policy caps at seven days or task end; it is past that. No PR ever used it as a head and nothing in the repository references it outside this audit."
     }
   ],
-  "repository_policy_notes": {
-    "default_branch": "dev",
-    "delete_branch_on_merge": true,
-    "rulesets": [],
-    "main_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
-    "dev_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
-    "candidate_branch_protection": "none of the 5 non-main/dev branches on origin (7 heads in ls_remote_snapshot minus main and dev; checked via gh api repos/.../branches/<b>/protection) have branch protection configured"
+  "deletion_log": "fixtures/stale-branches/deletion-log.json",
+  "repository_policy": {
+    "note": "The branch policy this issue asks to be written down. It is descriptive of the repository's current settings where it can be (delete_branch_on_merge is on), and prescriptive where no setting enforces it.",
+    "rules": [
+      "feature/, task/ and fix/ branches are deleted once their PR merges. delete_branch_on_merge is enabled, so this happens automatically; the two branches in this audit that were not removed are the two that never had a PR.",
+      "tmp/* branches live at most seven days or until their task ends, whichever comes first. No setting enforces this; it is checked by re-running this audit.",
+      "release/ and hotfix/ branches are deleted after the release ships and the back-merge into dev lands.",
+      "main and dev are protected: no deletion, no force push, enforced for admins. No repository rulesets are configured.",
+      "A branch is not an evidence archive. Anything worth keeping is moved into a commit, a committed fixture, a document or an issue record before the branch it lived on is deleted -- which is the whole reason this audit's Phase B is blocked on #578 and #588 rather than running now."
+    ]
   }
 }
