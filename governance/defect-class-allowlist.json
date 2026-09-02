@@ -79,6 +79,16 @@
       "file": "tests/product/defect-classes.test.mjs",
       "match": "const plain = {};",
       "note": "the demonstration object the corpus test poisons on purpose"
+    },
+    {
+      "file": "lib/ecd-contract.mjs",
+      "match": "const loaded = {};",
+      "note": "keyed by the ARTIFACTS constant this module declares; the contract files are the values, never a key"
+    },
+    {
+      "file": "lib/ecd-contract.mjs",
+      "match": "const per = {};",
+      "note": "keyed by ARTIFACT_KEYS, the module's own fixed list; a digest per named artefact"
     }
   ],
   "text-digest": [
