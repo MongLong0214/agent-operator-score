@@ -3,24 +3,70 @@
   "repository": "MongLong0214/agent-operator-score",
   "issue": 572,
   "phase": "read-only-audit",
-  "generated_at": "2026-09-02T00:18:26Z",
-  "method": "Read-only: `git ls-remote --heads origin`, `git merge-base --is-ancestor` and `git rev-list` against origin/dev and origin/main, `gh pr list --state all --limit 500 --json ...`, `gh api search/issues`, and `gh api repos/.../branches/<b>/protection`. No ref was created, deleted, force-pushed, or renamed to produce this file.",
+  "snapshot_warning": "PHASE A SNAPSHOT TAKEN DURING ACTIVE PARALLEL DEVELOPMENT. This is a point-in-time record, not a deletion list. Do not act on this file. Phase B (blocked on #578) must re-collect every fact in it from scratch -- git ls-remote, merge status, and gh pr list all move under a batch this size, and this file has already gone stale once between its first version and this correction (see revision_history).",
+  "generated_at": "2026-09-02T00:29:41Z",
+  "dev_sha_at_snapshot": "499bb11b004024fc46b9e97300ad8909d86a5073",
+  "revision_history": [
+    {
+      "generated_at": "2026-09-02T00:18:26Z",
+      "note": "Initial version. Classified task/issue-588-mark-done as must_be_preserved under branches because no PR referenced it at that time."
+    },
+    {
+      "generated_at": "2026-09-02T00:29:41Z",
+      "note": "Coordinator correction: PR #591 was opened against task/issue-588-mark-done after the first snapshot, and further review-round commits are reported to have landed on it locally. Re-collected live state: moved task/issue-588-mark-done into open_pr_heads_excluded, refreshed task/issue-570-action-pins's SHA (34ad44c, one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (task/issue-572-work, PR #592) to open_pr_heads_excluded. Recorded dev_sha_at_snapshot and this revision_history so a reader can tell how far the repository has moved. See branches_reported_but_not_found_on_origin for a discrepancy this correction did not resolve by assumption."
+    }
+  ],
+  "method": "Read-only: git ls-remote --heads origin, git merge-base --is-ancestor and git rev-list against origin/dev and origin/main, gh pr list --state all --limit 500 --json ..., gh api search/issues, gh api repos/.../branches/<b>/protection, and independently gh api repos/.../branches --paginate to cross-check git ls-remote against the REST API directly. No ref was created, deleted, force-pushed, or renamed to produce this file.",
   "excluded_refs": ["main", "dev"],
   "ls_remote_snapshot": [
     { "name": "dev", "sha": "499bb11b004024fc46b9e97300ad8909d86a5073" },
     { "name": "fix/a-fixture-backed-agent-is-not-a-runtime", "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1" },
     { "name": "main", "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846" },
-    { "name": "task/issue-570-action-pins", "sha": "7d2d1be696c4a5a80cf8c1f58bcf9178bd024c63" },
+    { "name": "task/issue-570-action-pins", "sha": "34ad44ccedb8d13a698ab3aa8b82237aec908f5b" },
+    { "name": "task/issue-572-work", "sha": "1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71" },
     { "name": "task/issue-588-mark-done", "sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a" },
     { "name": "tmp/read-claude-artifact", "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb" }
   ],
+  "drift_observed_while_finalizing_this_correction": {
+    "observed_at": "2026-09-02T00:37:14Z",
+    "note": "A follow-up git fetch/ls-remote, run while finalizing this very correction, already showed 3 of the 7 branches recorded above as not-found-on-origin (task/issue-553-work at ddcf43e, task/issue-556-work at f2048b0, task/issue-565-work at 55f651f) now pushed to origin, and task/issue-588-mark-done's head advanced again, to 2c445d9 -- matching neither this document's recorded 034fcac nor the coordinator's previously-cited 88523a4. None of this is incorporated into ls_remote_snapshot, open_pr_heads_excluded, or branches above: doing so would only produce another already-stale snapshot, chasing a target that is moving faster than a full audit pass (merge status + PR check + protection check per branch) can complete. It is recorded here, once, as concrete and timestamped evidence for why the snapshot_warning at the top of this file and the equivalent banner in docs/STALE_BRANCH_AUDIT.md exist, and why Phase B must re-collect rather than trust any snapshot, including this one."
+  },
+  "branches_reported_but_not_found_on_origin": {
+    "note": "The coordinator reported eight new branches in flight: task/issue-553-work, task/issue-554-work, task/issue-555-work, task/issue-556-work, task/issue-565-work, task/issue-567-work, task/issue-572-work, and task/issue-582-work. This agent's own -572-work is accounted for above (it is now on origin, as this PR's head). The other seven were checked twice, independently, at generated_at: git ls-remote --heads origin and gh api repos/MongLong0214/agent-operator-score/branches --paginate (bypasses the git protocol entirely). Both returned the same 7 heads listed in ls_remote_snapshot -- neither method found task/issue-553-work, -554-work, -555-work, -556-work, -565-work, -567-work, or -582-work on origin. A git worktree list / git branch -vv on the shared local checkout at /Users/isaac/projects/agent-operator-score shows local branches with exactly those seven names, each still sitting at dev's current tip (499bb11b, unchanged), in worktrees at /private/tmp/wt-553, wt-554, wt-555, wt-556, wt-565, wt-567, wt-582. That is: they exist as prepared local worktree branches that have not yet been pushed to origin, so they are not yet remote branches for this audit to cover. This is recorded rather than assumed away, because treating an unverified claim as a fact is exactly the failure task/issue-588-mark-done's own unmerged commit (034fcac) was written to close in the execution-plan governance gate. If any of them have been pushed by the time this file is read, this audit is stale for that branch and a fresh regeneration is needed."
+  },
   "open_pr_heads_excluded": [
     {
       "name": "task/issue-570-action-pins",
+      "recommendation": "must_be_preserved",
       "pr_number": 590,
       "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/590",
       "pr_state": "OPEN",
-      "reason": "Head of an open PR (#590, 'feat(ci): pin every external action to a commit, and check that it stays pinned') targeting dev. ISSUE.md scopes the per-branch table to branches that are 'not main, dev, or an open PR's head' -- this is active in-flight work, not a stale ref, so it is recorded here rather than in the branches table. It is excluded from branch coverage for the same reason `main` and `dev` are."
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unmerged_commit_count": 2,
+      "reason": "Head of open PR #590 ('feat(ci): pin every external action to a commit, and check that it stays pinned') targeting dev. ISSUE.md's prohibited-actions list forbids deleting an open PR's head branch. Active review is in progress -- its head advanced from 7d2d1be to 34ad44c ('fix(ci): close the scanner bypasses the review found') between this audit's first snapshot and this correction."
+    },
+    {
+      "name": "task/issue-572-work",
+      "recommendation": "must_be_preserved",
+      "pr_number": 592,
+      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/592",
+      "pr_state": "OPEN",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unmerged_commit_count": 1,
+      "reason": "Head of this very PR (#592, the read-only audit for issue #572) targeting dev. It is the branch this audit is written from and cannot meaningfully classify itself as stale; it is recorded here purely so ls_remote_snapshot coverage stays exact."
+    },
+    {
+      "name": "task/issue-588-mark-done",
+      "recommendation": "must_be_preserved",
+      "pr_number": 591,
+      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/591",
+      "pr_state": "OPEN",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unmerged_commit_count": 2,
+      "reason": "Head of open PR #591 ('fix(governance): bind the close-evidence confirmation to one piece of work') targeting dev, opened after this audit's first snapshot was taken. The first snapshot classified this branch must_be_preserved under branches because at that time no PR referenced it and it existed on no other ref -- see revision_history. That finding is now stronger, not weaker: real, active work is landing on it (the coordinator reports further review-round commits, up to 88523a4, beyond origin's snapshot head of 034fcac at generated_at -- unverified by this audit's own read-only remote commands as of generated_at; see the Known limitation note in docs/STALE_BRANCH_AUDIT.md). Whatever its exact current SHA, it must not be deleted while PR #591 is open."
     }
   ],
   "branches": [
@@ -44,23 +90,6 @@
       "reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of 355 checked) ever used it as a head branch, and a GitHub-wide search finds no reference to it outside issue #572's own candidate list. Deleting it after #578's evidence bundle is captured loses nothing."
     },
     {
-      "name": "task/issue-588-mark-done",
-      "head_sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a",
-      "author_name": "MongLong0214",
-      "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-02T08:29:26+09:00",
-      "age_days": 0,
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 2,
-      "unmerged_summary": "2 commits forked exactly at dev's current tip (499bb11b): bc98c45 'chore(governance): record #588 as done and refresh the issue snapshot' marks issue #588 done and refreshes the committed GitHub-state fixture; 034fcac 'fix(governance): harden the execution-plan checks against a forged pass' closes 7 named gaps an adversarial review found in the #588 governance gate (forged close-evidence records, unauthorized attesters, a self-disabling excluded-issue check, predecessor gating that only covered `ready`, an unreported destructive-phase restriction on #572 itself, an unvalidated fixture-as-snapshot, undercounted status labels) plus JSON-schema-subset and cycle-detection bugfixes, adding 8 mutation guards.",
-      "referenced_by_pr": [],
-      "referenced_elsewhere": [],
-      "branch_protected": false,
-      "recommendation": "must_be_preserved",
-      "reason": "Carries 2 commits of real, unmerged hardening work for the #588 execution-plan governance gate that exist on no other ref: `git branch -r --contains 034fcac...` and `git tag --contains 034fcac...` both return only this branch, no PR (of 355 checked, open or closed) ever pointed to it as a head or mentioned it in a body, and a GitHub-wide search for the branch name returns zero results -- it is not even on issue #572's own candidate list, so nobody is watching it. Deleting it would silently lose the fix for 7 named adversarial-review gaps plus schema and cycle-detection bugfixes and 8 mutation guards, none of which exist in dev today. Needs a human decision (rebase onto dev and open a PR under an issue, or confirm the work is superseded) before any deletion; until that decision it must survive untouched."
-    },
-    {
       "name": "tmp/read-claude-artifact",
       "head_sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
       "author_name": "MongLong0214",
@@ -77,7 +106,7 @@
       ],
       "branch_protected": false,
       "recommendation": "safe_to_delete_after_578",
-      "reason": "Tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique vs either) via PR #538's back-merge chain. This is a `tmp/*` branch; repository policy caps those at 7 days or task end, and this one is already 3 days old with its content long since merged elsewhere. No PR references it as a head. Deleting it after #578 loses nothing."
+      "reason": "Tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique vs either) via PR #538's back-merge chain. This is a tmp/* branch; repository policy caps those at 7 days or task end, and this one is already 3 days old with its content long since merged elsewhere. No PR references it as a head. Deleting it after #578 loses nothing."
     }
   ],
   "repository_policy_notes": {
@@ -86,6 +115,6 @@
     "rulesets": [],
     "main_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
     "dev_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
-    "candidate_branch_protection": "none of the 4 non-main/dev branches (checked via `gh api repos/.../branches/<b>/protection`) have branch protection configured"
+    "candidate_branch_protection": "none of the 7 non-main/dev branches on origin (checked via gh api repos/.../branches/<b>/protection) have branch protection configured"
   }
 }

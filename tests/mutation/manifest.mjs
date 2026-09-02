@@ -20,10 +20,10 @@ export const GUARDS = [
     reason:
       "a branch whose only copy of real work sits nowhere else must never read as safe to delete -- that is the exact loss #578's evidence-preservation gate exists to prevent",
     file: "fixtures/stale-branches/audit.json",
-    from: '"recommendation": "must_be_preserved"',
-    to: '"recommendation": "safe_to_delete_after_578"',
+    from: '"name": "task/issue-588-mark-done",\n      "recommendation": "must_be_preserved"',
+    to: '"name": "task/issue-588-mark-done",\n      "recommendation": "safe_to_delete_after_578"',
     test: "tests/product/stale-branch-audit.test.mjs",
-    name: "a branch with unmerged work found nowhere else must be marked must be preserved"
+    name: "an open-PR-head branch with unmerged work found nowhere else must be marked must be preserved"
   },
   {
     guard: "stale-branch audit deletion recommendations carry a reason",
