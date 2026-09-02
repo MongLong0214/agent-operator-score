@@ -2210,7 +2210,7 @@ export const GUARDS = [
     guard: "issuance needs a passing canary with evidence",
     reason: "the canary is the only channel that says the profile applied; a gate that accepted any canary object, or a PASS with no evidence digest, would issue over a profile sandbox-exec rejected",
     file: "lib/confinement.mjs",
-    from: "  if (canary === null || canary.result !== \"PASS\" || !isDigest(canary.evidence_digest)) reasons.push(ISSUANCE_REASONS.CANARY_NOT_PASS);",
+    from: "  if (canaryVerdict !== \"PASS\" || !isDigest(canary?.evidence_digest)) reasons.push(ISSUANCE_REASONS.CANARY_NOT_PASS);",
     to: "  if (canary === null) reasons.push(ISSUANCE_REASONS.CANARY_NOT_PASS);",
     test: "tests/product/confinement.test.mjs",
     name: "blocks_official_when_boundary_canary_fails"
@@ -2262,10 +2262,10 @@ export const GUARDS = [
   },
   {
     guard: "AOS_HOME is denied before the workspace is allowed",
-    reason: "Seatbelt's later rule wins, so the deny has to come first: moved after the allows it beats them, and the run's own workspace inside the store becomes unreachable -- a boundary nobody measured",
+    reason: "Seatbelt's later rule wins, so the run's own trees have to be granted after the denies: moved before them, the operator-home deny beats the runtime tree installed under it and the workspaces-root deny beats this run's own workspace",
     file: "lib/confinement.mjs",
-    from: "    '(deny file-read* file-write* (subpath \"@AOS_HOME@\"))',\n    '(allow file-read* file-write* (subpath \"@WORKSPACE@\"))',\n    '(allow file-read* file-write* (subpath \"@AGENT_HOME@\"))'",
-    to: "    '(allow file-read* file-write* (subpath \"@WORKSPACE@\"))',\n    '(allow file-read* file-write* (subpath \"@AGENT_HOME@\"))',\n    '(deny file-read* file-write* (subpath \"@AOS_HOME@\"))'",
+    from: "  lines.push(`(allow file-read* ${subpaths(fs.readable)})`);\n  lines.push(`(allow file-read* file-write* ${subpaths(fs.writable)})`);",
+    to: "  lines.splice(lines.indexOf(\"(allow ipc-posix-shm)\"), 0, `(allow file-read* ${subpaths(fs.readable)})`, `(allow file-read* file-write* ${subpaths(fs.writable)})`);",
     test: "tests/product/confinement.test.mjs",
     name: "denies_aos_home_from_generated_profile"
   },
@@ -2309,7 +2309,7 @@ export const GUARDS = [
     guard: "the matrix reads the canary from its observation",
     reason: "the support matrix's official column is the gate over the committed observation, not the row's own label; a decision that trusted the presence of the file would issue over a recorded FAIL",
     file: "lib/confinement.mjs",
-    from: "    const canaryPassed = captured?.result === \"PASS\" && isDigest(captured?.evidence_digest);",
+    from: "    const canaryPassed = observedCanary.result === \"PASS\" && isDigest(captured?.evidence_digest);",
     to: "    const canaryPassed = canaryObservation !== null;",
     test: "tests/product/confinement.test.mjs",
     name: "a_canary_observation_that_did_not_pass_withholds_the_row_it_backs"
@@ -2391,10 +2391,10 @@ export const GUARDS = [
   },
   {
     guard: "the process axis needs the sweep and the second poll",
-    reason: "a passing canary and one poll called the axis enforced while the double-fork window was never swept; the group sweep at teardown is what catches a descendant that forks away and keeps the group",
+    reason: "a passing canary, two polls and a group sweep still miss the descendant that reparents and regroups between two polls; the survivor sweep -- the run marker in a process's environment, the run's own directories among its open files -- is what finds it, and an axis that did not require the sweep issued over exactly that process",
     file: "lib/confinement.mjs",
-    from: '  return canary?.result === "PASS"\n    && canary.out_of_band?.descendant?.escapee_confined === true\n    && Number.isInteger(polls) && polls >= 2\n    && groupSweep !== null && typeof groupSweep === "object" && Number.isInteger(groupSweep.pgid) && groupSweep.pgid > 0;',
-    to: '  return canary?.result === "PASS" && polls >= 1;',
+    from: '    && sweep !== null && typeof sweep === "object" && sweep.scanned === true\n    && Array.isArray(sweep.survivors) && sweep.survivors.length === 0;',
+    to: ";",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced"
   },
@@ -2507,6 +2507,70 @@ export const GUARDS = [
     to: '  const built = profileFor(agent, "STRICT");',
     test: "tests/product/official-issuance.test.mjs",
     name: "an_assessment_records_the_lane_it_ran_under_in_the_profile_it_is_bound_to"
+  },
+  {
+    guard: "the profile digest binds the boundary and the runtime configuration",
+    reason: "both fields were stored on the profile and left out of its digest, so a Seatbelt policy change or a new MCP server in config.toml aggregated into the cohort it changed",
+    file: "lib/profile.mjs",
+    from: "    isolation_policy_digest: profile.isolation_policy_digest ?? null,\n    runtime_config_digest: profile.runtime_config_digest ?? null,",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_profile_digest_binds_the_boundary_and_the_runtime_configuration"
+  },
+  {
+    guard: "the profile is rendered from the policy that is digested",
+    reason: "a second list of grants inside the renderer made the policy digest decorative: the review set the declared readable set to empty and the rendered rules did not move",
+    file: "lib/confinement.mjs",
+    from: "    `(allow file-read* ${subpaths(fs.system_readable)} ${literals(fs.system_readable_files)})`,",
+    to: '    \'(allow file-read* (subpath "/usr/lib") (subpath "/usr/share") (subpath "/System") (subpath "/Library") (subpath "/private/etc") (literal "/") (literal "/private") (literal "/private/var") (literal "/Users") (literal "/etc") (literal "/tmp") (literal "/var") (literal "/usr") (literal "/usr/bin") (literal "/bin"))\',',
+    test: "tests/product/confinement.test.mjs",
+    name: "the_generated_profile_reads_only_what_the_policy_declares"
+  },
+  {
+    guard: "the canary verdict is derived from its cells",
+    reason: "the gate trusted the reported result: a record whose outside_read observed allowed against expected denied, with result PASS left in place, was issued as official with no reasons",
+    file: "lib/confinement.mjs",
+    from: "      if (cell.contradicted) problems.push(`boundary_canary.cells.${name}: observed ${JSON.stringify(cell.observed)} against expected ${JSON.stringify(cell.expected)}`);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
+  },
+  {
+    guard: "the derived verdict ignores the reported one",
+    reason: "returning the record's own result would put the summary back in charge of the decision the cells are there to make",
+    file: "lib/confinement.mjs",
+    from: '  if (derived.some((cell) => cell.contradicted)) return "FAIL";',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
+  },
+  {
+    guard: "a run workspace is never inside the store",
+    reason: "an agent reads its working directory out of getcwd whatever the environment says, so a workspace under AOS_HOME discloses the store -- the forbidden implementation the issue names",
+    file: "lib/store.mjs",
+    from: "    workspaces: join(workspacesRoot(home), runId),",
+    to: '    workspaces: join(root, "workspaces"),',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "no_run_workspace_lives_inside_the_store"
+  },
+  {
+    guard: "the spawn refuses a workspace inside the store",
+    reason: "the layout is decided three files away from the spawn; without this assertion a caller could hand runProcess a workspace under the store and the child would read the store's path out of its own cwd",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: "          throw new Error(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE ${context.workspace}`);",
+    to: "",
+    test: "tests/product/confinement-real-lane.test.mjs",
+    name: "strict_run_refuses_a_workspace_that_contains_the_store_and_leaves_no_scratch"
+  },
+  {
+    guard: "a committed observation carries no transcript",
+    reason: "the package ships fixtures/confinement/, and the recorder used to copy the runtime's raw stdout and stderr into it -- prompt, answer, banner and session id, which SSOT excludes from committed evidence",
+    file: "fixtures/confinement/probes/strict-lane.mjs",
+    from: "        stdout: streamSummary(result.stdout),\n        stderr: streamSummary(result.stderr),",
+    to: "        stdout: excerpt(result.stdout),\n        stderr: excerpt(result.stderr),",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "no_committed_observation_carries_a_runtime_transcript"
   }
 ];
 
@@ -2606,6 +2670,7 @@ export const ACCOUNTED_GUARDS = [
   "PATH carries no relative entry",
   "a .NET startup hook is a pre-main hook like the rest",
   "a cleanup failure is published by class and digest",
+  "a committed observation carries no transcript",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a forged structural set is revalidated like the rest",
@@ -2618,6 +2683,7 @@ export const ACCOUNTED_GUARDS = [
   "a refused file fails the check",
   "a resolved key is the key",
   "a run is official only when every invocation is",
+  "a run workspace is never inside the store",
   "a sequence at its key's indentation is the value",
   "a skipped real lane is not a verified one",
   "a started phase cannot integrate code on a blocked issue",
@@ -2782,9 +2848,11 @@ export const ACCOUNTED_GUARDS = [
   "the assessment profile is built for the lane the run uses",
   "the boundary's verdict decides whether the run carries a number",
   "the canary that certifies the boundary is the one that shipped",
+  "the canary verdict is derived from its cells",
   "the capture time names a day that exists",
   "the closing pull request changed something the issue owns",
   "the command prints the floored result",
+  "the derived verdict ignores the reported one",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
   "the escaped descendant is proved confined",
@@ -2797,10 +2865,13 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the process axis needs the sweep and the second poll",
+  "the profile digest binds the boundary and the runtime configuration",
+  "the profile is rendered from the policy that is digested",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
+  "the spawn refuses a workspace inside the store",
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
   "the whole policy is revalidated against its adapter at the point of use",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -70,7 +70,17 @@ const measured = (overrides = {}) => {
       program_digest: captured.program_digest,
       scan_polls: captured.scan_polls
     },
-    descendants: { scan: "ancestry-poll+process-group-sweep", poll_interval_ms: 200, polls: 12, tracked: [4242], leaked: [], survivors: [], group_sweep: { pgid: 4242, members: [] }, residual: "named" },
+    descendants: {
+      scan: "ancestry-poll+process-group-sweep+survivor-sweep",
+      poll_interval_ms: 200,
+      polls: 12,
+      tracked: [4242],
+      leaked: [],
+      survivors: [],
+      group_sweep: { pgid: 4242, members: [] },
+      survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [] },
+      residual: "named"
+    },
     cleanup_verified: true,
     scratch_not_removed: [],
     support_status: "SUPPORTED_WITH_CONSTRAINTS",
@@ -95,6 +105,38 @@ test("a_record_that_is_not_the_boundary_s_own_output_is_refused_rather_than_beli
   // And the measured record from the same lane still passes, so this refuses forgery and not
   // STRICT itself.
   assert.deepEqual(issuanceGate(measured()).reasons, []);
+});
+
+test("a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary", () => {
+  // The review's reproduction: the committed official record, with `outside_read` reporting that
+  // it read what it expected to be denied, and `result: "PASS"` left in place. The gate returned
+  // official with no reasons, because it checked that each cell was an object and then believed
+  // the summary above them. A cell is an observation; `result` is a claim about the observations.
+  for (const [name, contradiction] of [
+    ["outside_read", { expected: "denied", observed: "allowed", errno: null }],
+    ["store_root_read", { expected: "denied", observed: "allowed", errno: null }],
+    ["operator_home_list", { expected: "denied", observed: "allowed", errno: null }],
+    ["host_etc_read", { expected: "denied", observed: "allowed", errno: null }],
+    ["workspace_write", { expected: "allowed", observed: "denied", errno: "EPERM" }],
+    ["system_library_read", { expected: "allowed", observed: "denied", errno: "EPERM" }]
+  ]) {
+    const canary = measured().boundary_canary;
+    const forgedCanary = { ...canary, result: "PASS", failed: [], cells: { ...canary.cells, [name]: contradiction } };
+    const decision = issuanceGate(measured({ boundary_canary: forgedCanary }));
+    assert.equal(decision.official, false, `${name}: a contradicted cell was issued as official`);
+    assert.equal(decision.boundary_canary, "FAIL", `${name}: the derived verdict followed the reported one`);
+    assert.ok(decision.reasons.includes(ISSUANCE_REASONS.CANARY_NOT_PASS), `${name}: ${decision.reasons.join(", ")}`);
+    assert.match(decision.record_problems.join(" "), new RegExp(name, "u"));
+  }
+  // A cell that reports nothing is not a pass by omission either.
+  const canary = measured().boundary_canary;
+  const silent = { ...canary, cells: { ...canary.cells, outside_read: { errno: null } } };
+  assert.equal(issuanceGate(measured({ boundary_canary: silent })).boundary_canary, "NOT_RUN");
+  // And the whole of it the other way round: a record whose cells all hold is official even with
+  // the summary missing, because the summary was never the input.
+  const withoutResult = { ...canary };
+  delete withoutResult.result;
+  assert.deepEqual(issuanceGate(measured({ boundary_canary: withoutResult })).reasons, []);
 });
 
 test("a_missing_network_observation_is_an_invalid_record_and_not_a_quiet_not_observed", () => {
@@ -133,19 +175,52 @@ test("a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced", async 
   const { processAxisEnforced } = await import("../../lib/confinement.mjs");
   const canary = measured().boundary_canary;
   const sweep = { pgid: 4242, members: [] };
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep }), true);
-  assert.equal(processAxisEnforced({ canary, polls: 1, groupSweep: sweep }), false, "one poll watched nothing");
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: null }), false, "the group was never swept");
-  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: { pgid: 0, members: [] } }), false, "pgid 0 is not a group");
+  const clean = { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [] };
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: clean }), true);
+  assert.equal(processAxisEnforced({ canary, polls: 1, groupSweep: sweep, survivorSweep: clean }), false, "one poll watched nothing");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: null, survivorSweep: clean }), false, "the group was never swept");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: { pgid: 0, members: [] }, survivorSweep: clean }), false, "pgid 0 is not a group");
   const unconfined = { ...canary, out_of_band: { ...canary.out_of_band, descendant: { ...canary.out_of_band.descendant, escapee_confined: false } } };
-  assert.equal(processAxisEnforced({ canary: unconfined, polls: 12, groupSweep: sweep }), false, "the escapee was not proved confined");
-  assert.equal(processAxisEnforced({ canary: { ...canary, result: "FAIL" }, polls: 12, groupSweep: sweep }), false);
+  assert.equal(processAxisEnforced({ canary: unconfined, polls: 12, groupSweep: sweep, survivorSweep: clean }), false, "the escapee was not proved confined");
+  // The canary's own cells decide, not the word on top of them: a record that says PASS over a
+  // cell that observed what it expected to be denied is a failed boundary.
+  const contradicted = { ...canary, cells: { ...canary.cells, outside_read: { expected: "denied", observed: "allowed", errno: null } } };
+  assert.equal(processAxisEnforced({ canary: contradicted, polls: 12, groupSweep: sweep, survivorSweep: clean }), false);
 
   // The double-fork blind spot: the record used to call the process axis enforced on a passing
   // canary and one poll. What is required now is what was measured -- the group sweep beside the
   // ancestry poll, and the canary's own escapee proved confined and dead.
   const withoutSweep = measured({ descendants: { ...measured().descendants, group_sweep: undefined } });
   assert.ok(issuanceGate(withoutSweep).record_problems.join(" ").includes("group_sweep"));
+
+  // The case the review reproduced and the record used to issue over: poll one holds the root,
+  // later polls hold a live process at ppid 1 with a group of its own, and ancestry sees nothing.
+  // The tracker is honest about that -- and the survivor sweep is what closes it, so a record
+  // whose sweep did not run, or ran and found something, cannot call the axis enforced.
+  const escapedTable = () => {
+    let poll = 0;
+    return () => {
+      poll += 1;
+      return poll === 1
+        ? [{ pid: 100, ppid: 1, pgid: 100, start: "A" }]
+        : [{ pid: 100, ppid: 1, pgid: 100, start: "A" }, { pid: 200, ppid: 1, pgid: 200, start: "B" }];
+    };
+  };
+  const { descendantTracker } = await import("../../lib/confinement.mjs");
+  const tracker = descendantTracker(100, { table: escapedTable(), intervalMs: 10 });
+  tracker.poll();
+  tracker.poll();
+  assert.deepEqual(tracker.tracked(), [100], "the ancestry poll is not expected to find a reparented, regrouped process");
+  assert.deepEqual(tracker.alive().filter((pid) => pid !== 100), [], "and it does not see it alive either");
+  // So the axis rests on the sweep, and the sweep decides it.
+  const sweepFound = { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [200] };
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: sweepFound }), false, "a swept survivor left the axis enforced");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: { scanned: false, scanners: [], survivors: [] } }), false, "a sweep that could not run left the axis enforced");
+  assert.equal(processAxisEnforced({ canary, polls: 12, groupSweep: sweep, survivorSweep: null }), false, "no sweep left the axis enforced");
+  const escaped = measured({ descendants: { ...measured().descendants, survivor_sweep: sweepFound } });
+  const escapedDecision = issuanceGate(escaped);
+  assert.equal(escapedDecision.official, false, "a run with a swept survivor was issued");
+  assert.match(escapedDecision.record_problems.join(" "), /survivor_sweep/u);
   const decision = issuanceGate(measured({ boundary_canary: unconfined }));
   assert.equal(decision.official, false);
   assert.match(decision.record_problems.join(" "), /escapee/u);
@@ -261,10 +336,20 @@ test("the_matrix_decides_the_process_axis_with_the_helper_a_run_uses", async () 
   const row = supportMatrixDecisions(matrix).find((one) => one.official === true);
   assert.equal(row.decision.official, true);
   assert.equal(
-    processAxisEnforced({ canary: { result: captured.result, out_of_band: captured.out_of_band }, polls: captured.scan_polls, groupSweep: captured.group_sweep }),
+    processAxisEnforced({
+      canary: { result: captured.result, cells: captured.cells, out_of_band: captured.out_of_band },
+      polls: captured.scan_polls,
+      groupSweep: captured.group_sweep,
+      survivorSweep: captured.survivor_sweep
+    }),
     true,
     "the table is official where the helper is not"
   );
+  // The committed observation carries the sweep the helper requires, so the row is not resting on
+  // a sweep the recorder invented for it.
+  assert.equal(captured.survivor_sweep.scanned, true);
+  assert.deepEqual(captured.survivor_sweep.survivors, []);
+  assert.ok(captured.survivor_sweep.scanners.includes("environment-marker"));
 
   // Take the sweep out of the observation the row cites and the row goes with it.
   const copy = mkdtempSync(join(tmpdir(), "aos-matrix-sweep-"));
@@ -275,6 +360,7 @@ test("the_matrix_decides_the_process_axis_with_the_helper_a_run_uses", async () 
     const file = join(copy, reference.file);
     const observation = JSON.parse(readFileSync(file, "utf8"));
     delete observation.captured.group_sweep;
+    delete observation.captured.survivor_sweep;
     const bytes = Buffer.from(JSON.stringify(observation), "utf8");
     writeFileSync(file, bytes);
     fixture.lanes.find((one) => one.official === true).evidence.canary.digest = sha256Bytes(bytes);
@@ -407,6 +493,97 @@ test("an_assessment_records_the_lane_it_ran_under_in_the_profile_it_is_bound_to"
     }
   } finally {
     rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("the_profile_digest_binds_the_boundary_and_the_runtime_configuration", async () => {
+  // Both fields were stored on the profile and left out of the digest, so a Seatbelt policy change
+  // or a new MCP server in `config.toml` aggregated into the cohort it changed. The digest is
+  // recomputed here for each, which is the assertion the previous round's test did not make.
+  const { buildProfile, profileDigestOf } = await import("../../lib/profile.mjs");
+  const agent = { id: "a", command: process.execPath, args: [], adapter: "codex-cli.v1", runtime_name: "codex" };
+  const built = (over) => buildProfile({ profileId: "a", agent, isolation: "STRICT", probe: () => "", ...over });
+  const base = built({ isolationPolicyDigest: `sha256:${"a".repeat(64)}`, runtimeConfigDigest: `sha256:${"b".repeat(64)}` });
+  const otherPolicy = built({ isolationPolicyDigest: `sha256:${"c".repeat(64)}`, runtimeConfigDigest: `sha256:${"b".repeat(64)}` });
+  const otherConfig = built({ isolationPolicyDigest: `sha256:${"a".repeat(64)}`, runtimeConfigDigest: `sha256:${"d".repeat(64)}` });
+  assert.notEqual(base.profile_digest, otherPolicy.profile_digest, "a different boundary aggregated into one cohort");
+  assert.notEqual(base.profile_digest, otherConfig.profile_digest, "a different runtime configuration aggregated into one cohort");
+  assert.equal(base.profile_digest, built({ isolationPolicyDigest: `sha256:${"a".repeat(64)}`, runtimeConfigDigest: `sha256:${"b".repeat(64)}` }).profile_digest);
+  // And through the digest function directly, over the stored fields, so the binding is in the
+  // digest rather than in what `buildProfile` happens to pass.
+  assert.notEqual(
+    profileDigestOf({ ...base, isolation_policy_digest: `sha256:${"e".repeat(64)}` }),
+    profileDigestOf(base)
+  );
+  assert.notEqual(
+    profileDigestOf({ ...base, runtime_config_digest: `sha256:${"f".repeat(64)}` }),
+    profileDigestOf(base)
+  );
+});
+
+test("no_run_workspace_lives_inside_the_store", async () => {
+  // The last disclosure: an agent reads its own working directory out of `getcwd` whatever the
+  // environment says, and the workspace used to be `<store>/runs/<run>/workspaces/<family>`. The
+  // store keeps AOS's records; the workspaces have their own root beside it.
+  const { runPaths, workspacesRoot } = await import("../../lib/store.mjs");
+  const home = "/Users/alice/.aos";
+  const paths = runPaths(home, "run-1");
+  assert.equal(paths.workspaces.startsWith(`${home}/`), false, `the workspace is inside the store: ${paths.workspaces}`);
+  assert.equal(paths.workspaces.includes(home), false, "the workspace path spells the store out");
+  assert.equal(workspacesRoot(home), "/Users/alice/aos-workspaces");
+  assert.equal(paths.workspaces, "/Users/alice/aos-workspaces/run-1");
+  // One directory per run, so a run's workspaces go with it and a sibling run's are a directory
+  // the boundary denies by name.
+  assert.notEqual(runPaths(home, "run-2").workspaces, paths.workspaces);
+  // The store keeps its own records where they were.
+  assert.ok(paths.manifest.startsWith(`${home}/`) && paths.result.startsWith(`${home}/`));
+});
+
+test("no_committed_observation_carries_a_runtime_transcript", () => {
+  // The package ships `fixtures/confinement/`, and SSOT excludes raw transcripts from committed
+  // evidence. What a runtime wrote is recorded as bytes, lines, a digest and a set of markers.
+  // The recorder first, because the committed files are only as good as what writes them and this
+  // lane can be re-recorded on any darwin host with Codex: what a runtime wrote is summarised,
+  // never copied.
+  const probe = readFileSync(join(fixtureDir, "probes", "strict-lane.mjs"), "utf8");
+  assert.match(probe, /stdout: streamSummary\(result\.stdout\),\n\s*stderr: streamSummary\(result\.stderr\),/u, "the recorder no longer summarises the runtime's streams");
+  assert.equal(/stdout_excerpt: excerpt\(result\./u.test(probe), false, "the recorder copies a runtime stream verbatim");
+  const names = readdirSync(join(fixtureDir, "observations")).filter((name) => name.startsWith("strict-lane."));
+  assert.ok(names.length >= 5, `only ${names.length} observations`);
+  for (const name of names) {
+    const observation = observations(name);
+    for (const key of ["stdout", "stderr"]) {
+      const stream = observation[key];
+      if (stream === undefined) continue;
+      assert.equal(typeof stream, "object", `${name}: ${key} is not a summary`);
+      assert.match(String(stream.digest), /^sha256:[0-9a-f]{64}$/u, `${name}: ${key} has no digest`);
+      assert.deepEqual(Object.keys(stream).sort(), ["bytes", "digest", "lines", "markers"], `${name}: ${key} carries more than a summary`);
+    }
+    const text = JSON.stringify(observation);
+    // The runtime's own words, its banner and its session id: none of them are here. The host
+    // description is this machine's own output and is exempt -- it is the one thing a reader needs
+    // in full, and it is scrubbed of paths and host name.
+    if (name !== "strict-lane.darwin.host.json") {
+      for (const pattern of [/session[_-]?id/iu, /conversation/iu, /model context/iu, /tokens used/u]) {
+        assert.doesNotMatch(text, pattern, `${name} carries ${pattern}`);
+      }
+    }
+    // A transcript is long and has lines in it. Every string in an observation is a field AOS
+    // wrote -- a path placeholder, a digest, a status, this repository's own one-line prompt --
+    // and none of them is either. The host description is the exception and says why above.
+    if (name === "strict-lane.darwin.host.json") continue;
+    const strings = [];
+    const walk = (value, path) => {
+      if (typeof value === "string") { strings.push([path, value]); return; }
+      if (Array.isArray(value)) { value.forEach((one, index) => walk(one, `${path}[${index}]`)); return; }
+      if (value && typeof value === "object") { for (const [key, one] of Object.entries(value)) walk(one, `${path}.${key}`); }
+    };
+    walk(observation, name);
+    for (const [path, value] of strings) {
+      if (path.endsWith(".command") || path.endsWith(".prompt")) continue;
+      assert.ok(value.length <= 200, `${path} is ${value.length} characters long, which is not a field`);
+      assert.equal(value.includes("\n"), false, `${path} carries more than one line`);
+    }
   }
 });
 

@@ -4,8 +4,28 @@
   "exit_status": 0,
   "signal": null,
   "spawn_error": null,
-  "stdout_excerpt": "",
-  "stderr_excerpt": "",
+  "stdout": {
+    "bytes": 0,
+    "lines": 0,
+    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": false,
+      "error": false,
+      "tokens_used": false
+    }
+  },
+  "stderr": {
+    "bytes": 0,
+    "lines": 0,
+    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": false,
+      "error": false,
+      "tokens_used": false
+    }
+  },
   "parse_error": null,
   "captured": {
     "removed": {

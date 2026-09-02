@@ -42,10 +42,20 @@ test("cleaning up scratch cannot end a run", async () => {
       { id: "x", command: process.execPath, args: ["-e", leaveAWriter] },
       { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "s", timeoutMs: 30000 }
     );
-    assert.equal(result.ok, true, "the run did not survive its own cleanup");
+    // The property under test: cleanup reports what it could not remove instead of throwing from
+    // a `finally` and replacing the run's own result. The run has a result, and it is the agent's.
+    assert.equal(result.exit_code, 0, "the run did not survive its own cleanup");
+    assert.match(result.stdout_excerpt, /did the work/u);
     assert.equal(Array.isArray(result.scratch_not_removed), true);
-    // A directory left in the system temp folder is the smaller loss, and it is reported.
-    assert.equal(result.scratch_not_removed.every((entry) => typeof entry === "string"), true);
+    // By class and by digest of the path, never by the path: #556 publishes this record whole.
+    for (const entry of result.scratch_not_removed) {
+      assert.deepEqual(Object.keys(entry).sort(), ["class", "code", "path_digest"]);
+      assert.match(entry.path_digest, /^sha256:[0-9a-f]{64}$/u);
+    }
+    // And the writer itself: a descendant still running after the agent exited is a leak, which
+    // #556's survivor sweep finds even when it took its own session between two polls. It is
+    // reported rather than swallowed, and the run is not issued on it.
+    if (result.leaked_descendants) assert.equal(result.ok, false, "a leaked descendant left the run ok");
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

@@ -226,9 +226,29 @@ builds a `bwrap` argument vector, and where `bwrap` is not on the machine `prepa
 refuses with `AOS_ISOLATION_BACKEND_ABSENT` rather than running the agent unconfined under a
 STRICT label. The backend's presence is probed on every run, not remembered.
 
+The profile is rendered *from* the policy. Every grant the boundary carries is declared in
+`policy.filesystem` -- the writable trees, the readable trees, the platform's own trees and files,
+the devices, the executables and the denies -- and `renderSeatbeltProfile` emits those arrays and
+nothing of its own. It used to keep a second list, which made the policy digest decorative: a
+review set the declared readable set to empty and the rendered rules did not move. One mapping
+means the digest governs the bytes, which is what `isolation_policy_digest` on the profile is for.
+
+The system grants are the narrowest set the runtime was measured to need on this machine:
+`/usr/lib`, `/System/Library` and `/private/var/db/dyld` as trees, plus the individual symlinks a
+path resolves through (`/tmp`, `/var`, `/etc`, `/Users`, `/usr`, `/bin`). `/Library`, `/usr/share`,
+`/private/etc`, `/private/var/select` and `/private/var/db/timezone` were granted in Phase 0 and
+are not needed: `codex login status` and `codex exec` both run without them, measured by removing
+each in turn. Two canary cells hold the line -- `system_library_read` proves the granted tree is
+readable, `host_etc_read` proves `/private/etc/hosts` is not -- so a policy that widens again fails
+the canary rather than passing quietly. The run's own trees are granted *after* the denies, because
+a later rule wins and a node or runtime installed under the operator's home has to stay readable
+while the rest of that home does not.
+
 The filesystem policy is the Phase 0 profile with the holes closed:
 
 - the workspace is the only read-write subpath;
+- the operator's home and the directory holding every other run's workspace are denied by name
+  too, and the run's own workspace and trees are granted back after them;
 - `AOS_HOME` is denied by name, and the rule comes *before* the workspace allow -- the later rule
   wins under Seatbelt, so a deny placed after the allow would be the one that lost. The run's own
   workspace lives inside the store and stays reachable; a workspace that *contains* the store is
@@ -270,14 +290,28 @@ then terminates everything the tracker still holds, and the record's `descendant
 `leaked` (alive after the agent exited), `survivors` (alive after teardown), `tracked` and
 `polls`. A process that double-forks *between* two polls and re-sessions before the next is
 not seen by the poll, so the poll is not what the record rests on. `processAxisEnforced` writes
-`process_enforced: true` only when three measured things hold together: the canary's own detached
+`process_enforced: true` only when four measured things hold together: the canary's own detached
 descendant tried to write outside the boundary and the kernel refused it (`escapee_confined`), the
-scan polled more than once while the agent was alive, and the process group was swept at teardown
--- which is what catches a descendant that forks away without taking its own session. What remains
-is the descendant that does both inside one 200 ms interval. On a backend with a pid namespace
-(bubblewrap's `--unshare-pid`) that case cannot arise; on Seatbelt it can, and the escapee proof
-is what says such a process is still inside the same profile: it can outlive the run, it cannot
-leave the workspace, and this run's evidence is digested at teardown. That residual is named on
+scan polled more than once while the agent was alive, the process group was swept at teardown --
+which catches a descendant that forks away without taking its own session -- and `survivorSweep`
+ran and found nothing.
+
+That sweep is what closes the double-fork-plus-`setsid` case. It looks for this run's marker
+(`AOS_SESSION_ID=<session>`, unique to the run) in every process environment, and for the run's own
+workspace, agent HOME and scratch among every process's open files and working directories: both
+handles survive a reparent and a regroup, which is exactly what the process table does not. It runs
+at teardown, kills what it finds, sweeps again, and the record carries the second result -- so a
+run that caught its own escapee reads clean and one that could not kill it does not. A sweep that
+could not run leaves the axis unenforced rather than unmentioned, and the sweep never treats itself
+or any process above it as a survivor. The canary proves the mechanism on every STRICT run: beside
+the descendant it leaves for the ancestry scan, it starts a child that spawns a grandchild and
+exits at once, so the grandchild is reparented to init in a session and a group of its own, and the
+run is official only if the sweep found it and it was gone afterwards.
+
+What is left is a process that clears its own environment *and* closes every handle it inherited
+before the sweep runs -- and such a process is still inside the same kernel-enforced profile, which
+the escapee cell measures on every run. On a backend with a pid namespace (bubblewrap's
+`--unshare-pid`) the case cannot arise at all. That residual is named on
 `descendants.residual`, in the lane's constraints, and in the support table -- it is why the lane
 is `SUPPORTED_WITH_CONSTRAINTS` and not `SUPPORTED`. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
 directory were removed and `survivors` is empty; it is set in `settleConfinement`, after the
@@ -302,7 +336,14 @@ problem; one that outlives it *outside* the boundary is an access problem, and t
 kernel's own answer to which of the two happened. `evaluateCanary` compares every observed cell to
 its expectation and the result is `PASS` only when all eleven agree and the planted files outside
 the boundary are intact afterwards; anything else is `FAIL`, with the failed cells named. The
-`evidence_digest` on the record is the digest of the canary's own report -- the bytes the program
+Every cell's verdict is derived from its own `expected`/`observed` pair, and the `result` a record
+reports is never read: a review handed the gate the committed official record with `outside_read`
+reporting that it had read what it expected to be denied, `result: "PASS"` left in place, and got
+`official: true` with no reasons. A cell that contradicts its expectation is a failed boundary, a
+cell that reports nothing is `NOT_RUN`, and the summary above them is a claim about observations
+rather than one of them.
+
+The `evidence_digest` on the record is the digest of the canary's own report -- the bytes the program
 wrote to stdout -- and the raw observation is kept beside the run. The digest of the *file* an
 observation is committed as is a different value, and it is what the support matrix cites a row's
 evidence by; the two are never the same number and the table names which is which.
@@ -385,6 +426,13 @@ the generated profile:
   prompt on stdin exited 0 and answered `OK` in about five seconds
   (`strict-lane.darwin.seatbelt.codex-exec.json`).
 
+What a runtime wrote is recorded as a summary -- bytes, lines, a digest over the bytes, and which
+of a few markers the stream contained -- and never as text. `fixtures/confinement/` ships with the
+package, SSOT excludes raw transcripts from committed evidence, and the recorder used to copy the
+runtime's stdout and stderr verbatim: the prompt, the model's answer, the banner and a session id.
+The digest is what makes the summary evidence, because it is over what the runtime actually wrote
+and a re-run can be compared against it.
+
 The probe stamps the lane official only if all three of its subprocesses succeeded -- the canary,
 `codex login status` and `codex exec` -- and it records its own teardown as an observation
 (`strict-lane.darwin.seatbelt.cleanup.json`: the staged credential copy, the agent HOME, the run
@@ -419,11 +467,14 @@ cohort), and the lane the CLI runs under is bound as `isolation_level` plus
 `isolation_policy_digest`, so a run under `AOS_ISOLATION=STRICT` is a different cohort from one
 under the default lane instead of an identical digest with a different boundary.
 
-Nothing in the child's environment carries the store path: `AOS_WORKSPACE` is `.` against a cwd of
-the workspace, and `assertNoStorePathInEnv` refuses the spawn if any variable -- from any layer --
-contains it. The workspace still lives inside the store, so the child's cwd and its own argv name
-that one directory; nothing above it is disclosed. Moving run workspaces outside `AOS_HOME` is what
-would close the rest, and it is a change to where runs are kept rather than to this boundary.
+Nothing the child can read discloses the store. `AOS_WORKSPACE` is `.` against a cwd of the
+workspace and `assertNoStorePathInEnv` refuses the spawn if any variable -- from any layer --
+carries the store path; and the workspaces no longer live inside the store at all. `runPaths` puts
+them under their own root beside it (`<store>-workspaces/<run>/<family>`, or `AOS_WORKSPACES`), so
+the working directory an agent reads out of `getcwd` names its own workspace and nothing above it.
+`runProcess` refuses a workspace under `AOS_HOME` outright
+(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE`), because the layout is decided three files away from the
+spawn. The store keeps AOS's own records: manifests, events, results, reports.
 
 A cleanup failure is recorded by class and by digest of the path, never by the path: this record
 is copied whole into the result the operator publishes, and the directories in it are absolute
@@ -455,7 +506,7 @@ measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to 
 Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
 what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
 digest
-`sha256:cf11dbdfe0b04cb82f226f08a93a3167ad66b3450fe011121b2af5b0caf34d65`. The `Official` column
+`sha256:33c5d5e6e457ffc00968c080658218a32c1e67854b9d1bac2ec40283abc73c28`. The `Official` column
 is the gate's decision over the row's committed evidence, not the row's own label: the test forges
 an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
 by digest*, and the digest is checked against the bytes before the observation is read -- a row

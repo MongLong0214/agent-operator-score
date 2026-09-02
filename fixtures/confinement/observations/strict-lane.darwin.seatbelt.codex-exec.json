@@ -4,11 +4,31 @@
   "exit_status": 0,
   "signal": null,
   "spawn_error": null,
-  "stdout_excerpt": "OK\n",
-  "stderr_excerpt": "OpenAI Codex v0.148.0\n--------\nworkdir: @WORKSPACE@\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: danger-full-access\nreasoning effort: xhigh\nreasoning summaries: none\nsession id: 01a061ce-b701-77a0-ae5c-1ee019945dca\n--------\nuser\nReply with exactly the single word OK and nothing else.\ncodex\nOK\ntokens used\n3,254\n",
+  "stdout": {
+    "bytes": 3,
+    "lines": 2,
+    "digest": "sha256:a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": true,
+      "error": false,
+      "tokens_used": false
+    }
+  },
+  "stderr": {
+    "bytes": 426,
+    "lines": 18,
+    "digest": "sha256:b9026657b554d9f4a00b3b496ab036f72e571dd915fbfdef5fa8ca66b32fa139",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": true,
+      "error": false,
+      "tokens_used": true
+    }
+  },
   "parse_error": null,
   "captured": {
-    "duration_ms": 4862,
+    "duration_ms": 4755,
     "staging": {
       "dir": "@AGENT_TEMP_HOME@/.codex",
       "staged": [
@@ -17,6 +37,18 @@
       ],
       "source": "default_dir"
     },
-    "prompt": "Reply with exactly the single word OK and nothing else."
+    "prompt": "Reply with exactly the single word OK and nothing else.",
+    "answer": {
+      "bytes": 2,
+      "lines": 1,
+      "digest": "sha256:565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "markers": {
+        "logged_in": false,
+        "answered_ok": true,
+        "error": false,
+        "tokens_used": false
+      }
+    },
+    "answered_expected_word": true
   }
 }

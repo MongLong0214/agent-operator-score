@@ -11,6 +11,7 @@ import {
   CLAIM_STAGE_CEILING,
   DESCENDANT_SCAN,
   ISSUANCE_REASONS,
+  PLATFORM_READ_SETS,
   SUPPORTED_RELEASE_SET,
   SUPPORT_LANES,
   adapterForPlatform,
@@ -41,6 +42,8 @@ const codex = ADAPTERS["codex-cli.v1"];
 const generic = ADAPTERS["generic-command.v1"];
 
 const BINDINGS = Object.freeze({
+  "@OPERATOR_HOME@": "/Users/someone",
+  "@WORKSPACE_PARENT@": "/private/var/aos-workspaces/run-1",
   "@WORKSPACE@": "/private/var/aos/runs/run-1/workspaces/FAM-1",
   "@AOS_HOME@": "/private/var/aos",
   "@AGENT_HOME@": "/private/tmp/aos-agent-home-abc",
@@ -53,7 +56,13 @@ const OPERATOR_CONFIG_DIR = "/Users/someone/.codex";
 // A record shaped the way `runProcess` produces one for a STRICT run that passed everything. Each
 // negative test below breaks exactly one field of it, so what each test proves is that the one
 // field is load-bearing and nothing else changed.
-const canaryCells = () => Object.fromEntries(CANARY_CELLS.map((name) => [name, { expected: "denied", observed: "denied", errno: "EPERM" }]));
+// Each cell with the verdict its expectation asks for: the gate derives PASS from the pair on
+// every cell, so a fixture that wrote "denied" over a cell expecting "spawned" would be describing
+// a boundary failure.
+const canaryCells = () => Object.fromEntries(CANARY_CELLS.map((name) => {
+  const expected = expectedOutcome(name);
+  return [name, { expected, observed: expected, errno: expected === "denied" ? "EPERM" : null }];
+}));
 
 const passingRecord = (overrides = {}) => {
   const policy = isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: codex });
@@ -76,12 +85,16 @@ const passingRecord = (overrides = {}) => {
       result: "PASS",
       failed: [],
       cells: canaryCells(),
-      out_of_band: { planted_intact: { outside: true, store_root: true, run_store: true }, descendant: { pid: 4243, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true, survivors: [] } },
+      out_of_band: {
+        planted_intact: { outside: true, store_root: true, run_store: true },
+        descendant: { pid: 4243, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true, survivors: [] },
+        orphan: { pid: 4244, found_by_sweep: true, dead_after_cleanup: true, scanners: ["environment-marker", "open-path"] }
+      },
       evidence_digest: sha256Bytes(Buffer.from("{}")),
       program_digest: sha256Bytes(Buffer.from(BOUNDARY_CANARY_PROGRAM)),
       scan_polls: 7
     },
-    descendants: { scan: DESCENDANT_SCAN, poll_interval_ms: 200, polls: 12, tracked: [4242], leaked: [], survivors: [], group_sweep: { pgid: 4242, members: [] }, residual: "x" },
+    descendants: { scan: DESCENDANT_SCAN, poll_interval_ms: 200, polls: 12, tracked: [4242], leaked: [], survivors: [], group_sweep: { pgid: 4242, members: [] }, survivor_sweep: { scanned: true, scanners: ["environment-marker", "open-path"], marker_used: true, paths: 3, survivors: [] }, residual: "x" },
     cleanup_verified: true,
     support_status: "SUPPORTED_WITH_CONSTRAINTS",
     ...overrides
@@ -249,14 +262,58 @@ test("policy_names_provider_network_as_unrestricted_and_unknown_provider_as_disa
   assert.throws(() => isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: codex, networkPolicy: "restricted" }), /AOS_ISOLATION_NETWORK_POLICY_UNSUPPORTED/u);
 });
 
+test("the_generated_profile_reads_only_what_the_policy_declares", () => {
+  // One mapping. The renderer used to carry its own list of system trees, so the policy digest --
+  // which is what makes two runs comparable, and what #561 folds into the profile -- governed
+  // nothing about the bytes that were actually applied: the review set the declared readable set
+  // to empty and the rendered rules did not move.
+  const policy = isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: codex });
+  const rendered = renderSeatbeltProfile(policy, BINDINGS);
+  // Every path the profile grants is a path the policy declares, bound or platform-constant.
+  const declared = new Set([
+    ...policy.filesystem.system_readable,
+    ...policy.filesystem.system_readable_files,
+    ...policy.filesystem.device_readable,
+    ...policy.filesystem.device_writable,
+    ...policy.filesystem.executable,
+    ...policy.filesystem.readable,
+    ...policy.filesystem.writable,
+    ...policy.filesystem.denied
+  ].map((name) => BINDINGS[name] ?? name));
+  for (const line of rendered.split("\n")) {
+    if (!line.startsWith("(allow file") && !line.startsWith("(deny file") && !line.startsWith("(allow process-exec")) continue;
+    for (const path of line.match(/"([^"]+)"/gu) ?? []) {
+      assert.ok(declared.has(path.slice(1, -1)), `${path} is granted and the policy does not declare it`);
+    }
+  }
+  // And the narrowing itself: the trees that used to be granted wholesale are gone, and the two
+  // canary cells that hold the line are declared.
+  for (const gone of ["/Library", "/usr/share", "/private/etc", "/private/var/select", "/private/var/db/timezone"]) {
+    assert.equal(rendered.includes(`"${gone}"`), false, `${gone} is still granted`);
+  }
+  assert.ok(rendered.includes('(subpath "/System/Library")') && !rendered.includes('(subpath "/System")'), "the whole of /System is still granted");
+  assert.ok(CANARY_CELLS.includes("system_library_read") && CANARY_CELLS.includes("host_etc_read"));
+  // Emptying the declared set changes the bytes, which is the property the review's reproduction
+  // showed was missing.
+  const narrowed = { ...policy, filesystem: { ...policy.filesystem, readable: [] } };
+  assert.notEqual(renderSeatbeltProfile(narrowed, BINDINGS), rendered, "the policy does not govern the rendered profile");
+});
+
 test("denies_aos_home_from_generated_profile", () => {
   const policy = isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: codex });
   const profile = renderSeatbeltProfile(policy, BINDINGS);
   assert.ok(profile.startsWith("(version 1)\n(deny default)\n"), "the profile does not open with deny-default");
   const denyHome = profile.indexOf(`(deny file-read* file-write* (subpath "${BINDINGS["@AOS_HOME@"]}"))`);
-  const allowWorkspace = profile.indexOf(`(allow file-read* file-write* (subpath "${BINDINGS["@WORKSPACE@"]}"))`);
+  const allowWorkspace = profile.indexOf(`(subpath "${BINDINGS["@WORKSPACE@"]}")`);
   assert.ok(denyHome >= 0, "AOS_HOME is not explicitly denied");
   assert.ok(allowWorkspace > denyHome, "the workspace allow must follow the AOS_HOME deny, because the later rule wins");
+  // #556 round 3: the operator's home and the directory holding every other run's workspace are
+  // denied by name as well, and the run's own trees are granted back after them -- a node or
+  // runtime installed under the operator's home has to stay readable.
+  const denyOperator = profile.indexOf(`(deny file-read* file-write* (subpath "${BINDINGS["@OPERATOR_HOME@"]}"))`);
+  const denyWorkspaces = profile.indexOf(`(deny file-read* file-write* (subpath "${BINDINGS["@WORKSPACE_PARENT@"]}"))`);
+  assert.ok(denyOperator >= 0 && denyWorkspaces >= 0, "the operator home and the workspaces root are not denied");
+  assert.ok(profile.lastIndexOf(`(subpath "${BINDINGS["@RUNTIME_CLI_TREE@"]}")`) > denyOperator, "the runtime tree must be granted back after the operator-home deny");
   // The workspace lives inside AOS_HOME. A workspace that contains AOS_HOME would make the later
   // allow re-open the whole store, so it is refused before any profile is written.
   assert.throws(
@@ -291,9 +348,15 @@ test("the_generated_profile_never_names_the_operator_runtime_config_directory", 
   assert.ok(!generic.includes("network-outbound"), "a runtime with unknown network needs was given network");
   // The operator's home is never allowed as a subtree; only listing `/Users` itself is, for the
   // path walk. The run scratch that holds the task file is readable and not writable.
-  assert.ok(!withConfig.includes('(subpath "/Users/someone")'));
-  assert.ok(withConfig.includes(`(allow file-read* (subpath "${BINDINGS["@RUN_SCRATCH@"]}"))`));
-  assert.ok(withConfig.includes(`(allow file-read* file-write* (subpath "${BINDINGS["@AGENT_HOME@"]}"))`));
+  assert.ok(!withConfig.includes('(allow file-read* (subpath "/Users/someone")') && !withConfig.includes('(allow file-read* file-write* (subpath "/Users/someone")'));
+  // Read-only, and granted in the same rule as the other trees the run brings with it -- the
+  // renderer emits the policy's `readable` list, so the assertion is on the list's membership in
+  // the read rule rather than on a rule of its own.
+  const readRule = withConfig.split("\n").find((line) => line.startsWith("(allow file-read* (subpath") && line.includes(BINDINGS["@RUN_SCRATCH@"]));
+  assert.ok(readRule !== undefined, "the run scratch is not readable");
+  assert.equal(readRule.includes("file-write*"), false, "the run scratch is writable");
+  const writeRule = withConfig.split("\n").find((line) => line.startsWith("(allow file-read* file-write* (subpath"));
+  assert.ok(writeRule.includes(BINDINGS["@AGENT_HOME@"]), "the agent HOME is not writable");
 });
 
 test("stages_only_the_declared_runtime_config_files_into_the_agent_home", () => {
@@ -340,7 +403,15 @@ test("isolation_policy_digest_is_stable_and_path_free", () => {
   assert.equal(isolationPolicyDigestOf(isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: codex })), digest);
   // Two runs are comparable exactly when their policy digests match, so a concrete path in the
   // policy would make every run incomparable with every other. Paths stay as placeholders.
-  assert.doesNotMatch(JSON.stringify(policy), /"\/[^"]*"/u, "the policy carries a concrete path");
+  // Concrete paths are placeholders, with one exception: the platform's own trees, which are
+  // constants of the operating system rather than facts about this machine. The policy declares
+  // which of them the boundary grants -- that is what makes the digest govern the rendered bytes --
+  // and every one of them is in `PLATFORM_READ_SETS`.
+  const platformPaths = new Set(Object.values(PLATFORM_READ_SETS).flatMap((set) => Object.values(set).flat()));
+  for (const quoted of JSON.stringify(policy).match(/"\/[^"]*"/gu) ?? []) {
+    const path = quoted.slice(1, -1);
+    assert.ok(platformPaths.has(path), `the policy carries a concrete path: ${path}`);
+  }
   assert.throws(() => isolationPolicyDigestOf({ ...policy, filesystem: { ...policy.filesystem, writable: ["/private/tmp/x"] } }), /AOS_ISOLATION_POLICY_PATH_LEAK/u);
   assert.notEqual(isolationPolicyDigestOf(isolationPolicyFor({ level: "STRICT", platform: "darwin", backend: "macos-seatbelt", adapter: generic })), digest, "network policy did not move the digest");
   assert.notEqual(isolationPolicyDigestOf(isolationPolicyFor({ level: "BEST_EFFORT_CLI", platform: "darwin", backend: "none", adapter: codex })), digest);
@@ -425,19 +496,23 @@ test("the_descendant_tracker_follows_ancestry_and_drops_a_reused_pid", () => {
 const expectedOutcome = (cell) => {
   if (cell === "workspace_read" || cell === "workspace_write") return "allowed";
   if (cell === "network_outbound_connect") return "allowed";
-  if (cell === "detached_descendant") return "spawned";
+  // #556 round 3: the read grant the runtime was measured to need is expected to be allowed, and
+  // the host configuration tree beside it is expected to be denied.
+  if (cell === "system_library_read") return "allowed";
+  if (cell === "detached_descendant" || cell === "orphaned_descendant") return "spawned";
   return "denied";
 };
 
 const passingOutOfBand = () => ({
   planted_intact: { outside: true, store_root: true, run_store: true },
-  descendant: { pid: 4242, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true }
+  descendant: { pid: 4242, observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true },
+  orphan: { pid: 4243, found_by_sweep: true, dead_after_cleanup: true, scanners: ["environment-marker", "open-path"] }
 });
 
 const passingCells = () => Object.fromEntries(CANARY_CELLS.map((cell) => [cell, {
   outcome: expectedOutcome(cell),
   errno: expectedOutcome(cell) === "denied" ? "EPERM" : null,
-  detail: cell === "detached_descendant" ? { pid: 4242 } : null
+  detail: cell === "detached_descendant" ? { pid: 4242 } : cell === "orphaned_descendant" ? { parent: 4243 } : null
 }]));
 
 test("the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds", () => {
@@ -457,7 +532,7 @@ test("the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds",
     assert.equal(evaluated.result, "FAIL", cell);
     assert.ok(evaluated.failed.includes(cell), cell);
   }
-  for (const [path, value] of [[["planted_intact", "outside"], false], [["planted_intact", "store_root"], false], [["planted_intact", "run_store"], false], [["descendant", "observed_by_scan"], false], [["descendant", "dead_after_cleanup"], false], [["descendant", "escapee_confined"], false]]) {
+  for (const [path, value] of [[["planted_intact", "outside"], false], [["planted_intact", "store_root"], false], [["planted_intact", "run_store"], false], [["descendant", "observed_by_scan"], false], [["descendant", "dead_after_cleanup"], false], [["descendant", "escapee_confined"], false], [["orphan", "found_by_sweep"], false], [["orphan", "dead_after_cleanup"], false]]) {
     const outOfBand = passingOutOfBand();
     outOfBand[path[0]][path[1]] = value;
     const evaluated = evaluateCanary({ cells: passingCells(), stdout, networkPolicy: "provider-required-unrestricted", outOfBand });
@@ -499,10 +574,18 @@ test("the_support_matrix_marks_official_only_where_committed_canary_evidence_pas
         assert.equal(observation.captured?.result, "PASS", `${reference.file} does not record a passing canary`);
         assert.ok(Number.isInteger(observation.captured?.group_sweep?.pgid) && observation.captured.group_sweep.pgid > 0, `${reference.file}: no process group was swept`);
       }
+      // Read from the structural summary, not from a transcript: #556 round 3 stopped committing
+      // the runtime's own output, so what the observation carries is bytes, lines, a digest of the
+      // bytes and which markers the stream contained.
       if (kind === "runtime") {
-        assert.match(observation.stderr_excerpt + observation.stdout_excerpt, /Logged in/u, `${reference.file}: the runtime did not authenticate`);
+        assert.equal(observation.stderr.markers.logged_in || observation.stdout.markers.logged_in, true, `${reference.file}: the runtime did not authenticate`);
       }
-      if (kind === "exec") assert.match(observation.stdout_excerpt + (observation.captured?.last_message ?? ""), /OK/u, `${reference.file}: the runtime did not answer inside the boundary`);
+      if (kind === "exec") assert.equal(observation.captured?.answered_expected_word, true, `${reference.file}: the runtime did not answer inside the boundary`);
+      for (const stream of [observation.stdout, observation.stderr]) {
+        if (stream === undefined) continue;
+        assert.match(String(stream.digest), /^sha256:[0-9a-f]{64}$/u, `${reference.file}: a stream with no digest`);
+        assert.equal(Object.hasOwn(stream, "text"), false, `${reference.file}: a stream summary carrying text`);
+      }
       if (kind === "cleanup") {
         const removed = Object.values(observation.captured?.removed ?? {});
         assert.ok(removed.length >= 3 && removed.every((gone) => gone === true), `${reference.file}: the probe left something behind`);
@@ -558,16 +641,21 @@ test("a_canary_observation_that_did_not_pass_withholds_the_row_it_backs", () => 
     const observation = JSON.parse(readFileSync(file, "utf8"));
     observation.captured.result = "FAIL";
     observation.captured.failed = ["outside_write"];
+    // The cells are what the gate reads -- `result` is a summary it ignores -- so the failure has
+    // to be in the observation, not in the word above it.
+    observation.captured.cells.outside_write = { expected: "denied", observed: "allowed", errno: null };
     const bytes = Buffer.from(JSON.stringify(observation), "utf8");
     writeFileSync(file, bytes);
     // The row is re-pointed at the bytes it now names, so what this proves is the canary result
     // and not the digest check beside it -- that one has a test of its own.
+    // Every cell still reported, so what withholds the row is the failed one and not a record the
+    // gate cannot read at all.
     const restated = JSON.parse(JSON.stringify(matrix));
     restated.lanes.find((lane) => lane.official).evidence.canary.digest = sha256Bytes(bytes);
     const row = supportMatrixDecisions(restated, copy).find((one) => one.official);
     assert.equal(row.decision.official, false, "a row backed by a failed canary was issued");
     assert.ok(row.decision.reasons.includes(ISSUANCE_REASONS.CANARY_NOT_PASS));
-    assert.equal(row.decision.boundary_canary, "FAIL");
+    assert.equal(row.decision.boundary_canary, "FAIL", JSON.stringify(row.decision.record_problems));
     // And with the observation missing altogether, the row is not run rather than failed.
     rmSync(file);
     const unrun = supportMatrixDecisions(restated, copy).find((one) => one.official);

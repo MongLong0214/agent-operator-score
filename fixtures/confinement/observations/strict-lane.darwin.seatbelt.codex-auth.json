@@ -4,11 +4,31 @@
   "exit_status": 0,
   "signal": null,
   "spawn_error": null,
-  "stdout_excerpt": "",
-  "stderr_excerpt": "Logged in using ChatGPT\n",
+  "stdout": {
+    "bytes": 0,
+    "lines": 0,
+    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": false,
+      "error": false,
+      "tokens_used": false
+    }
+  },
+  "stderr": {
+    "bytes": 24,
+    "lines": 2,
+    "digest": "sha256:16118df3eb3595e44a4721878cef0f79910e6564e10ff0e78e451e7c4e478947",
+    "markers": {
+      "logged_in": true,
+      "answered_ok": false,
+      "error": false,
+      "tokens_used": false
+    }
+  },
   "parse_error": null,
   "captured": {
-    "duration_ms": 56,
+    "duration_ms": 52,
     "staging": {
       "dir": "@AGENT_TEMP_HOME@/.codex",
       "staged": [

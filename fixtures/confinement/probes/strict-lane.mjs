@@ -25,6 +25,30 @@ const writeMatrix = process.argv.includes("--matrix");
 
 const excerpt = (buffer, limit = 2000) => (buffer ?? Buffer.alloc(0)).toString("utf8").slice(0, limit);
 
+/**
+ * What a runtime's stream looked like, without quoting it.
+ *
+ * Bytes, lines, and a digest over the bytes, plus which of a small set of markers the output
+ * contained -- whether it authenticated, whether it reported the one word the prompt asked for,
+ * whether it printed an error. Enough to judge the run and to detect a change in it; nothing of
+ * the conversation, the model's words or the session identifier.
+ */
+const streamSummary = (buffer) => {
+  const bytes = buffer ?? Buffer.alloc(0);
+  const text = bytes.toString("utf8");
+  return {
+    bytes: bytes.length,
+    lines: text.length === 0 ? 0 : text.split("\n").length,
+    digest: sha256Bytes(bytes),
+    markers: {
+      logged_in: /Logged in/u.test(text),
+      answered_ok: /\bOK\b/u.test(text),
+      error: /\berror\b/iu.test(text),
+      tokens_used: /tokens used/u.test(text)
+    }
+  };
+};
+
 const main = async () => {
   if (process.platform !== "darwin") throw new Error("strict-lane.mjs measures the darwin/macos-seatbelt lane and runs only on darwin");
   const operatorHome = realpathSync(process.env.HOME);
@@ -32,12 +56,20 @@ const main = async () => {
   const base = mkdtempSync(join(tmpdir(), "aos-strict-lane-"));
   const aosHome = join(base, "home");
   const runId = "run-strict-lane";
-  const workspace = join(aosHome, "runs", runId, "workspaces", "FAM-1");
-  const otherRun = join(aosHome, "runs", "run-other", "workspaces", "FAM-1");
+  // The layout a real run has since #556: the store holds AOS's own records, and the workspaces
+  // live in their own root beside it, one directory per run. The boundary denies that root by name
+  // and grants back the one workspace in hand, so the other run below is a directory this run
+  // cannot read.
+  const workspacesRoot = join(base, "home-workspaces");
+  const workspace = join(workspacesRoot, runId, "FAM-1");
+  const otherRun = join(workspacesRoot, "run-other", "FAM-1");
   const agentHome = mkdtempSync(join(tmpdir(), "aos-agent-home-"));
   const runScratch = mkdtempSync(join(tmpdir(), "aos-prompt-"));
   mkdirSync(workspace, { recursive: true });
   mkdirSync(otherRun, { recursive: true });
+  // The store itself, which now holds only AOS's own records: the canary plants a file in its root
+  // and in a run directory to prove neither is readable from inside the boundary.
+  mkdirSync(join(aosHome, "runs", runId), { recursive: true });
   writeFileSync(join(otherRun, "secret.txt"), "other-run-secret\n");
   writeFileSync(join(workspace, "task.md"), "# task\n\nReply with the single word OK.\n");
   // Exactly the operator's own resolution: CODEX_HOME when set, else `~/.codex`. The handle stages
@@ -45,12 +77,17 @@ const main = async () => {
   const env = { PATH: process.env.PATH, ...(process.env.CODEX_HOME ? { CODEX_HOME: process.env.CODEX_HOME } : {}) };
   // Both spellings of every path: `os.tmpdir()` hands out `/var/folders/...` and the kernel
   // reports `/private/var/folders/...`, and a runtime may print either.
-  const resolvedOr = (path) => {
+  const readFileOrEmpty = (path) => {
+  try { return readFileSync(path, "utf8"); } catch { return ""; }
+};
+
+const resolvedOr = (path) => {
     try { return realpathSync(path); } catch { return path; }
   };
   const scrubber = (text) => {
     const pairs = [
       [workspace, "@WORKSPACE@"],
+      [workspacesRoot, "@WORKSPACES_ROOT@"],
       [aosHome, "@AOS_HOME@"],
       [base, "@BASE@"],
       [agentHome, "@AGENT_TEMP_HOME@"],
@@ -111,8 +148,8 @@ const main = async () => {
       exit_status: canary.exit_code,
       signal: canary.signal,
       spawn_error: canary.spawn_error,
-      stdout_excerpt: "",
-      stderr_excerpt: excerpt(Buffer.from(canary.stderr_excerpt)),
+      stdout: streamSummary(Buffer.alloc(0)),
+      stderr: streamSummary(Buffer.from(canary.stderr_excerpt)),
       parse_error: null,
       captured: {
         result: canary.result,
@@ -128,6 +165,10 @@ const main = async () => {
         // reads the process axis from this through the same helper a run uses, so the row cannot
         // synthesize a sweep the lane never made.
         group_sweep: canary.group_sweep,
+        // And the sweep that survives a reparent and a regroup, with what it scanned by. The
+        // matrix requires it, so a recorded lane that never looked for the orphan cannot be
+        // official.
+        survivor_sweep: canary.survivor_sweep,
         network_policy: handle.policy.network.policy,
         bindings: Object.fromEntries(Object.entries(handle.bindings).map(([key, value]) => [key, value === null ? null : scrubber(value)]))
       }
@@ -146,10 +187,17 @@ const main = async () => {
         exit_status: result.status,
         signal: result.signal,
         spawn_error: result.error ? result.error.message : null,
-        stdout_excerpt: excerpt(result.stdout),
-        stderr_excerpt: excerpt(result.stderr),
+        // Not the transcript. A runtime's stdout and stderr carry the prompt, the model's answer,
+        // its banner and its session id, and SSOT excludes raw transcripts from committed
+        // evidence -- so what is recorded is the shape of the output and a digest of its bytes.
+        // The digest is what makes this evidence: it is over what the runtime actually wrote, and
+        // a reader can recompute it from a re-run.
+        stdout: streamSummary(result.stdout),
+        stderr: streamSummary(result.stderr),
         parse_error: null,
-        captured: { duration_ms: Date.now() - started, staging, ...extra }
+        // A function when the record depends on what the run left behind: arguments are evaluated
+        // before the call, so an object built there would describe the state before the runtime ran.
+        captured: { duration_ms: Date.now() - started, staging, ...(typeof extra === "function" ? extra(result) : extra) }
       });
       return result;
     };
@@ -158,7 +206,13 @@ const main = async () => {
     // The same argument vector `agent discover` registers for Codex, the prompt on stdin the way
     // `runProcess` sends it, plus `-o` so that the answer is captured without parsing the stream.
     const prompt = "Reply with exactly the single word OK and nothing else.";
-    const exec = runCodex(["exec", "--skip-git-repo-check", "-C", workspace, "-o", lastMessage, "-"], "strict-lane.darwin.seatbelt.codex-exec", prompt, { prompt });
+    const exec = runCodex(["exec", "--skip-git-repo-check", "-C", workspace, "-o", lastMessage, "-"], "strict-lane.darwin.seatbelt.codex-exec", prompt, () => ({
+      // The prompt is this repository's own one-line instruction, so it is quoted; the answer is
+      // the model's, so only its shape and whether it is the word the prompt asked for.
+      prompt,
+      answer: streamSummary(Buffer.from(readFileOrEmpty(lastMessage), "utf8")),
+      answered_expected_word: readFileOrEmpty(lastMessage).trim() === "OK"
+    }));
     outcomes.exec = exec.status;
     let last = null;
     try { last = readFileSync(lastMessage, "utf8"); } catch {}
@@ -170,8 +224,10 @@ const main = async () => {
       exit_status: host.status,
       signal: host.signal,
       spawn_error: null,
-      stdout_excerpt: excerpt(host.stdout),
-      stderr_excerpt: excerpt(host.stderr),
+      // The host description is this machine's own, not a runtime's output: kept as text because
+      // the whole point of it is to be read, and scrubbed of the operator's paths and host name.
+      stdout_excerpt: scrubber(excerpt(host.stdout)),
+      stderr_excerpt: scrubber(excerpt(host.stderr)),
       parse_error: null,
       captured: null
     });
@@ -189,8 +245,8 @@ const main = async () => {
       exit_status: 0,
       signal: null,
       spawn_error: null,
-      stdout_excerpt: "",
-      stderr_excerpt: "",
+      stdout: streamSummary(Buffer.alloc(0)),
+      stderr: streamSummary(Buffer.alloc(0)),
       parse_error: null,
       captured: {
         removed: {

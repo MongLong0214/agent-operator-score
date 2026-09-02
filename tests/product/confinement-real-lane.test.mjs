@@ -52,18 +52,23 @@ const withPrivateTmp = async (fn) => {
   }
 };
 
-// A store laid out the way `runPaths` lays one out: the workspace under `runs/<id>/workspaces/`,
+// A store laid out the way `runPaths` lays one out: the workspace in its own root beside the store,
 // with a second run beside it holding something the first must not read.
 const makeStore = () => {
   const base = mkdtempSync(join(tmpdir(), "aos-real-lane-"));
   const aosHome = join(base, "home");
-  const workspace = join(aosHome, "runs", "run-under-test", "workspaces", "FAM-1");
-  const otherRun = join(aosHome, "runs", "run-other", "workspaces", "FAM-1");
+  // #556 round 3: workspaces live outside the store, because the agent runs with its workspace as
+  // its working directory and a workspace inside the store hands it the store's path through
+  // `getcwd`. One directory per run under a root the boundary denies by name.
+  const workspacesRoot = join(base, "home-workspaces");
+  const workspace = join(workspacesRoot, "run-under-test", "FAM-1");
+  const otherRun = join(workspacesRoot, "run-other", "FAM-1");
   mkdirSync(workspace, { recursive: true });
+  mkdirSync(join(aosHome, "runs", "run-under-test"), { recursive: true });
   mkdirSync(otherRun, { recursive: true });
   writeFileSync(join(otherRun, "secret.txt"), "other-run-secret\n");
   writeFileSync(join(base, "outside.txt"), "outside-the-workspace\n");
-  return { base, aosHome, workspace, otherRun };
+  return { base, aosHome, workspacesRoot, workspace, otherRun };
 };
 
 // The agent under test. It reports what it could reach in the Phase 0 vocabulary and leaves a
@@ -180,6 +185,15 @@ test("strict_run_refuses_a_workspace_that_contains_the_store_and_leaves_no_scrat
       await assert.rejects(
         runProcess(nodeAgent, { workspace: store.workspace, family: "FAM-1", stage: "probe", prompt: "probe", promptFile: join(store.workspace, "task.md"), session: "real-lane", timeoutMs: 60000, isolation: "STRICT" }),
         /AOS_ISOLATION_AOS_HOME_REQUIRED/u
+      );
+      // And a workspace inside the store, which is the disclosure #556 forbids: the layout puts
+      // workspaces in their own root, and the spawn refuses one that is not there rather than
+      // handing the agent the store's path through its own working directory.
+      const inside = join(store.aosHome, "runs", "run-under-test", "workspaces", "FAM-1");
+      mkdirSync(inside, { recursive: true });
+      await assert.rejects(
+        runProcess(nodeAgent, { workspace: inside, family: "FAM-1", stage: "probe", prompt: "probe", promptFile: join(inside, "task.md"), session: "real-lane", timeoutMs: 60000, isolation: "STRICT", aosHome: store.aosHome }),
+        /AOS_ISOLATION_WORKSPACE_INSIDE_STORE/u
       );
       assert.deepEqual(readdirSync(privateTmp), [], "a refused run left scratch behind");
     });
