@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { validateOperatorPlan } from "../../lib/operator-plan.mjs";
 import test from "node:test";
-import { addAgent, cli, initBare, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
+import { addAgent, cli, initBare, makePlan, newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 
@@ -66,35 +66,85 @@ test("one agent can complete a controlled assessment", () => {
     // regression.
     run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
-    assert.equal(result.schema_id, "aos-mvp-result.v1");
-    assert.equal(result.status, "INCOMPLETE");
-    assert.equal(result.score, null);
-    assert.deepEqual(result.coverage.unobserved_dimensions, ["D4"]);
-    assert.equal(result.blockers.some((blocker) => blocker.code === "COVERAGE"), true);
-    // Everything it could observe, it observed well.
-    assert.equal(result.provisional_raw >= 70, true, `provisional was ${result.provisional_raw}`);
-    assert.deepEqual(result.agent_portfolio.used, ["solo"]);
-    assert.ok(result.operator_plan_digest);
+    const record = newestRecord(cwd);
+    assert.equal(result.schema_id, "aos-result.v2");
+    assert.equal(Object.hasOwn(result, "score"), false);
+    // The three profiles, and what each of them rests on. The composite is withheld because the
+    // process index is: the contract's operator-process cells are not populated in this build, and
+    // an unattended run answers none of the monitoring metrics either.
+    assert.equal(result.operator_process_profile.index, null);
+    assert.equal(result.aos_composite.value, null);
+    assert.deepEqual(result.aos_composite.withheld_for.includes("operator_process"), true);
+    assert.equal(result.claim_stage, "RUN_DIAGNOSTIC");
+    assert.equal(result.observations.length, 20);
+    // Everything it could observe, it observed well: no more than the monitoring metrics missing.
+    assert.equal(result.observations.filter((entry) => entry.value === 1).length >= 14, true);
+    assert.deepEqual(record.agent_portfolio.used, ["solo"]);
+    assert.ok(result.run.operator_plan_digest);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
-test("six vendor-neutral aliases share one operator score without agent-count bonus", () => {
-  const cwd = temporary("aos-six-");
+test("six vendor-neutral aliases produce the same numbers as one, with no agent-count bonus", () => {
+  // The name used to promise a comparison the body never made: it ran six agents and asserted the
+  // string "agent_count" was absent from the observations, which a bonus taken from
+  // `run.invocation_count` would leave true. So both runs happen here and their numbers are
+  // compared -- if the count fed anything, one of these two results would differ from the other.
+  const solo = temporary("aos-one-");
+  const six = temporary("aos-six-");
+  const ids = ["codex", "claude", "gemini", "grok", "hermes", "buzz"];
   try {
-    run(cwd, ["init"]);
-    const ids = ["codex", "claude", "gemini", "grok", "hermes", "buzz"];
-    for (const id of ids) addAgent(cwd, id);
-    const routes = Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]));
-    const plan = makePlan(cwd, routes);
-    run(cwd, ["assess", "--plan", plan, "--json"], 3);
-    const result = newestResult(cwd);
-    // Six agents, one score. The count is not an input, and the only way to keep that true is for
-    // nothing in the result to carry it.
-    assert.deepEqual(result.agent_portfolio.used, [...ids].sort());
-    assert.equal(result.agent_portfolio.invocations, 6);
-    assert.equal(JSON.stringify(result.metrics).includes("agent_count"), false);
-    assert.equal(result.provisional_raw >= 70, true);
-  } finally { rmSync(cwd, { recursive: true, force: true }); }
+    run(solo, ["init"]);
+    addAgent(solo, "solo");
+    run(solo, ["assess", "--plan", makePlan(solo, { default: "solo" }), "--json"], 3);
+    const one = newestResult(solo);
+
+    run(six, ["init"]);
+    for (const id of ids) addAgent(six, id);
+    run(six, ["assess", "--plan", makePlan(six, Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]))), "--json"], 3);
+    const many = newestResult(six);
+
+    // The two runs really are one agent and six, and the field a bonus would be drawn from differs.
+    const record = newestRecord(six);
+    assert.deepEqual(record.agent_portfolio.used, [...ids].sort());
+    assert.equal(record.agent_portfolio.invocations, 6);
+    assert.deepEqual(many.run.agents_used, [...ids].sort());
+    assert.deepEqual(one.run.agents_used, ["solo"]);
+    assert.equal(many.run.agents_used.length, 6);
+    assert.equal(one.run.agents_used.length, 1);
+    // The count this test varies is the number of agents. The number of invocations is six in both
+    // runs -- one per family -- which is worth stating rather than leaving a reader to assume this
+    // covers it: what is held here is that six agents earn nothing that one agent does not.
+    assert.equal(many.run.invocation_count, one.run.invocation_count);
+
+    // And every number the instrument issued is the same number.
+    assert.equal(many.system_outcome_profile.index, one.system_outcome_profile.index);
+    assert.equal(many.system_outcome_profile.raw_index, one.system_outcome_profile.raw_index);
+    assert.equal(many.aos_composite.value, one.aos_composite.value);
+    assert.equal(many.operator_process_profile.index, one.operator_process_profile.index);
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(many.system_outcome_profile.domains).map(([id, row]) => [id, row.value])),
+      Object.fromEntries(Object.entries(one.system_outcome_profile.domains).map(([id, row]) => [id, row.value]))
+    );
+    assert.deepEqual(many.operator_process_profile.coverage, one.operator_process_profile.coverage);
+    assert.deepEqual(many.system_outcome_profile.coverage, one.system_outcome_profile.coverage);
+    // What is withheld is withheld for the same reason in both, and what was issued is a number --
+    // so "identical" here is not two blanks compared with each other. An unattended run withholds
+    // the process index, and with it the outcome index and the composite; three of the four outcome
+    // domains are issued at 100 and are what the comparison actually rests on.
+    assert.deepEqual(many.aos_composite.withheld_for, one.aos_composite.withheld_for);
+    assert.deepEqual(many.system_outcome_profile.withheld_for, one.system_outcome_profile.withheld_for);
+    const issuedDomains = (result) => Object.entries(result.system_outcome_profile.domains)
+      .filter(([, row]) => row.status === "ISSUED")
+      .map(([id, row]) => [id, row.value]);
+    assert.equal(issuedDomains(one).length >= 3, true, "the runs issued nothing, so nothing was compared");
+    assert.deepEqual(issuedDomains(many), issuedDomains(one));
+    for (const field of ["agent_count", "invocation_count", "agents_used"]) {
+      assert.equal(JSON.stringify(many.observations).includes(field), false, `${field} reached the observations`);
+    }
+    assert.equal(many.observations.filter((entry) => entry.value === 1).length >= 14, true);
+  } finally {
+    for (const dir of [solo, six]) rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("parallel workers use isolated workspaces and evidence-bound handoffs", () => {
@@ -105,16 +155,16 @@ test("parallel workers use isolated workspaces and evidence-bound handoffs", () 
     const routes = { "FAM-1": "a", "FAM-2": "a", "FAM-3": "a|b>joiner", "FAM-4": "b", "FAM-5": "joiner", "FAM-6": "a" };
     const plan = makePlan(cwd, routes);
     run(cwd, ["assess", "--plan", plan, "--json"], 3);
-    const result = newestResult(cwd);
-    assert.equal(result.family_results["FAM-3"].invocations.length, 3);
-    assert.equal(result.family_results["FAM-3"].handoff_complete, true);
+    const record = newestRecord(cwd);
+    assert.equal(record.family_results["FAM-3"].invocations.length, 3);
+    assert.equal(record.family_results["FAM-3"].handoff_complete, true);
     // Observed, not merely unobjectionable. Without this, planting no marker at all would leave
     // every handoff "unobservable" and the run would still report a complete handoff.
-    const integrity = result.family_results["FAM-3"].handoff_integrity;
+    const integrity = record.family_results["FAM-3"].handoff_integrity;
     assert.equal(integrity.observed, true, "consumption was never observed");
     assert.equal(integrity.consumed, 2, "both branches should have been shown as read");
     assert.equal(integrity.unconsumed, 0);
-    assert.deepEqual(result.family_results["FAM-3"].join.covered, ["a", "b"]);
+    assert.deepEqual(record.family_results["FAM-3"].join.covered, ["a", "b"]);
     const runId = newestRunId(cwd);
     const graph = JSON.parse(run(cwd, ["session", "graph", runId, "--json"]).stdout);
     const created = graph.filter((edge) => edge.type === "handoff.created");
@@ -240,29 +290,31 @@ test("a seed names the scenario, and a run records the one it used", () => {
 
     run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);
     const first = newestResult(cwd);
-    assert.equal(first.seed, "000000000000002a");
-    assert.equal(first.suite_manifest.seed, "000000000000002a");
-    assert.deepEqual(first.seeded_families, ["FAM-2", "FAM-4", "FAM-6"]);
+    assert.equal(first.run.seed, "000000000000002a");
+    assert.equal(newestRecord(cwd).suite_manifest.seed, "000000000000002a");
+    assert.deepEqual(first.run.seeded_families, ["FAM-2", "FAM-4", "FAM-6"]);
 
     // The run manifest and the result must name the same suite. Two sites write it, and a run that
     // recorded one suite while its result claimed another would be unreadable after the fact.
     const manifest = JSON.parse(
       readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "manifest.json"), "utf8")
     );
-    assert.equal(manifest.suite_digest, first.suite_digest);
-    assert.equal(manifest.seed, first.seed);
+    // Same digest, one spelling: the run manifest writes it bare and the published result writes
+    // every digest with the prefix that says what the hex is a digest under.
+    assert.equal(`sha256:${manifest.suite_digest}`, first.run.suite_digest);
+    assert.equal(manifest.seed, first.run.seed);
 
     run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);
     const repeated = newestResult(cwd);
-    assert.equal(repeated.suite_digest, first.suite_digest, "the same seed produced a different suite");
+    assert.equal(repeated.run.suite_digest, first.run.suite_digest, "the same seed produced a different suite");
 
     run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2b"], 3);
     const different = newestResult(cwd);
-    assert.notEqual(different.suite_digest, first.suite_digest, "a different seed produced the same suite");
+    assert.notEqual(different.run.suite_digest, first.run.suite_digest, "a different seed produced the same suite");
 
     // Without --seed one is drawn, and it is a real seed rather than a placeholder.
     run(cwd, ["assess", "--plan", "operator-plan.json"], 3);
-    assert.match(newestResult(cwd).seed, /^[0-9a-f]{16}$/);
+    assert.match(newestResult(cwd).run.seed, /^[0-9a-f]{16}$/);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
 
@@ -300,13 +352,13 @@ test("a join that never opened its branches is reported as unconsumed", () => {
       env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_SKIP_EVIDENCE: "1" }
     });
     const result = newestResult(cwd);
-    const fam3 = result.family_results["FAM-3"];
+    const fam3 = newestRecord(cwd).family_results["FAM-3"];
     assert.equal(fam3.handoff_integrity.unconsumed, 2, "a join that read nothing was accepted");
     assert.equal(fam3.handoff_complete, false);
     assert.deepEqual(fam3.join.covered, []);
     // Two of four, not zero: the handoff was made and the branches were distinguishable. What
     // failed is that the join did not read them, and those are the two subchecks that say so.
-    const m10 = result.metrics.find((entry) => entry.metric_id === "M10");
+    const m10 = result.observations.find((entry) => entry.metric_id === "M10");
     assert.equal(m10.value, 0.5, "the metric did not follow the evidence");
     assert.equal(m10.subchecks.find((entry) => entry.id === "receiver-consumed-evidence").pass, false);
     assert.equal(m10.subchecks.find((entry) => entry.id === "join-covers-required-branches").pass, false);

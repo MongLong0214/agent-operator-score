@@ -13,6 +13,7 @@ import {
   shippedEcdContract
 } from "../../lib/ecd-contract.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
+import { complete, contractWithAPopulatedIndex, observationsWith } from "./ecd-fixtures.mjs";
 
 // verify:observable-cell-aggregation
 //
@@ -20,76 +21,6 @@ import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 // and those are the tests below: a stronger model must not move an operator's process cell, a worse
 // operator decision must move exactly one construct, a longer prompt must move nothing, and one
 // missing required cell must withhold rather than average over what is left.
-
-const complete = { forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"] };
-
-/** `overrides` maps a metric id to a verdict, a subcheck map, or null for "not observed at all". */
-const observationsWith = (overrides = {}) => METRIC_IDS.map((id) => {
-  const override = Object.hasOwn(overrides, id) ? overrides[id] : true;
-  if (override === null) return observationOf({ metric_id: id, reason: "not observed in this run" });
-  // `??` would turn a deliberate null into false, which is the difference between "the run did not
-  // answer this" and "the run got it wrong" -- the exact distinction these tests exist to check.
-  const verdict = (subcheck) => (typeof override === "object" && Object.hasOwn(override, subcheck) ? override[subcheck] : typeof override === "object" ? false : override);
-  return observationOf({
-    metric_id: id,
-    verifier_id: "test.v1",
-    subchecks: METRICS[id].subchecks.map((subcheck) => ({ id: subcheck, pass: verdict(subcheck) })),
-    reason: "test"
-  });
-});
-
-/**
- * A contract in which every construct in the index has a populated operator-process cell.
- *
- * The shipped contract cannot issue the index, and that is the finding rather than a gap. But it
- * leaves the only state the aggregation arithmetic computes in untested, and the first version of
- * the test below bought that coverage by handing `processIndex` six rows written by hand. Those
- * rows issued 0.75 while this module documented the index as withheld by construction -- the helper
- * had a test proving it would bypass the contract.
- *
- * The coverage is bought here the only way that means anything: a different contract, built by
- * moving one declared subcheck into each unpopulated operator-process cell, and put through the
- * same verifier and the same seal as the shipped one. If any of these edits broke a rule,
- * `sealEcdContract` throws and this test fails rather than measuring an arrangement the contract
- * forbids.
- */
-const POPULATED = [
-  { target: "C1.OF.01", donor: "C1.GF.01", form: "FAM-1" },
-  { target: "C2.OD.01", donor: "C2.CS.01", form: "FAM-2" },
-  { target: "C5.VD.01", donor: "C5.FO.01", form: "FAM-5" },
-  { target: "C6.OG.01", donor: "C6.BP.01", form: "FAM-6" }
-];
-
-const contractWithAPopulatedIndex = () => {
-  const doc = JSON.parse(JSON.stringify(loadEcdContract()));
-  const cellById = new Map(doc.cells.cells.map((one) => [one.cell_id, one]));
-  for (const { target, donor, form: formId } of POPULATED) {
-    const from = cellById.get(donor);
-    const to = cellById.get(target);
-    const moved = from.subcheck_ids.pop();
-    from.minimum_opportunities = from.subcheck_ids.length;
-    // The subcheck keeps the family that administers it; what moves is which cell it stands for.
-    const administration = from.subcheck_administered_by.find((entry) => entry.subcheck_id === moved);
-    from.subcheck_administered_by = from.subcheck_administered_by.filter((entry) => entry.subcheck_id !== moved);
-    to.subcheck_administered_by = [administration];
-    to.subcheck_ids = [moved];
-    to.population_status = "SUBCHECK_BACKED";
-    to.scoring_rule_id = "subcheck-mean.v1";
-    to.minimum_opportunities = 1;
-    to.minimum_opportunities_basis = "DECLARED_COVERAGE";
-    to.minimum_opportunities_source = null;
-    // The cell may be scored only once its authority can observe the whole claim, so populating it
-    // means answering the deferred half rather than dropping the field.
-    to.deferred_claim = null;
-    to.task_opportunity.form_ids = [formId];
-    const form = doc.task_model.forms.find((one) => one.form_id === formId);
-    form.construct_opportunity_cell_ids.push(target);
-    form.required_cell_ids.push(target);
-  }
-  doc.task_model.unadministered_opportunity_sources = doc.task_model.unadministered_opportunity_sources
-    .filter((source) => source.source_id !== "operator-authored-plan");
-  return sealEcdContract(doc);
-};
 
 const cell = (result, id) => result.cells.find((one) => one.cell_id === id);
 const construct = (result, id, axis) => result.constructs.find((one) => one.construct_id === id && one.axis === axis);

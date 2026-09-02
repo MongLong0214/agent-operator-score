@@ -117,6 +117,29 @@ try {
     const recomputed = cli(["verify", "--run", runId]);
     if (/FAIL/.test(recomputed)) throw new Error(recomputed);
   });
+
+  check("the packaged result module can read every file it names", () => {
+    // A module that exports a URL to a file the tarball does not ship is a dead reference nobody
+    // finds until an operator hits it: `files` is a whitelist, and adding a fixture directory to
+    // the repository does not add it to the package. Every URL the installed module hands out is
+    // opened here, from the installed copy.
+    const script = [
+      "const mod = await import(process.argv[1]);",
+      "const { readFileSync } = await import('node:fs');",
+      "const urls = Object.entries(mod).filter(([, value]) => value instanceof URL);",
+      "if (urls.length === 0) throw new Error('the module exported no file URLs, so this check verified nothing');",
+      "for (const [name, url] of urls) {",
+      "  const bytes = readFileSync(url);",
+      "  if (bytes.length === 0) throw new Error(`${name} is empty in the installed package`);",
+      "  JSON.parse(bytes.toString('utf8'));",
+      "}",
+      "console.log(urls.map(([name]) => name).join(' '));"
+    ].join("\n");
+    const modulePath = join(prefix, "lib", "node_modules", "agent-operator-score", "lib", "result-schema.mjs");
+    const named = execFileSync(process.execPath, ["--input-type=module", "-e", script, modulePath], { encoding: "utf8", timeout: 60000 }).trim();
+    if (!/AGGREGATION_VECTORS_URL/.test(named)) throw new Error(`the aggregation vectors were not among the exported URLs: ${named}`);
+    if (!/RESULT_SCHEMA_URL/.test(named)) throw new Error(`the result schema was not among the exported URLs: ${named}`);
+  });
 } finally {
   rmSync(workspace, { recursive: true, force: true });
 }

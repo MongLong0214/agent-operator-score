@@ -90,53 +90,67 @@ test("each run takes the next locked seed, and a seed that produced a result is 
   }
 });
 
-test("three attended runs produce an operator score, and it is the median of all of them", () => {
-  // The whole point of the locked cycle: every valid run counts, including a low one.
+test("three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one", () => {
+  // The locked cycle still runs three seeds and records three distinct runs. What it does not do
+  // is produce a number: re-deriving the legacy scorer's score from a profile run's observations
+  // would be a number about the new run under an instrument that never measured it, and averaging
+  // three of those would put the old model beside the new one. #563 owns saying what a cycle of
+  // profiles aggregates to, and until it does the command says whose question it is.
   const { cwd, plan, home } = opened();
   try {
-    const printedScores = [];
     for (let index = 0; index < 3; index += 1) {
       const output = cycleRun(cwd, plan).stdout;
-      const score = /^Score: (\d+) \//m.exec(output);
-      if (score) printedScores.push(Number(score[1]));
+      assert.match(output, /#563/u, "the run said nothing about why there is no cycle number");
+      assert.equal(/^recorded: \d+$/m.test(output), false, "a legacy score was recomputed for a profile run");
     }
+    const stored = cycleOf(home);
+    assert.equal(stored.runs.length, 3);
+    assert.equal(new Set(stored.runs.map((entry) => entry.run_id)).size, 3, "a run id was recorded twice");
+    assert.deepEqual(stored.runs.map((entry) => entry.result_schema), ["aos-result.v2", "aos-result.v2", "aos-result.v2"]);
+    // Nothing in the ledger carries a number for these runs, which is what stops one being averaged.
+    assert.deepEqual(stored.runs.map((entry) => entry.final_score), [null, null, null]);
+    for (const entry of stored.runs) assert.deepEqual(entry.dimensions, {});
+
     const report = spawnSync(process.execPath, [cli, "cycle", "--json"], {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home }
     });
+    assert.equal(report.status, 1);
     const summary = JSON.parse(report.stdout);
-    assert.equal(summary.valid_runs, 3, JSON.stringify(summary.excluded));
-    assert.equal(summary.complete, true);
-    assert.equal(typeof summary.operator_score, "number");
+    assert.equal(summary.aggregate, null);
+    assert.equal(summary.complete, false);
+    assert.equal(summary.result_schema, "aos-result.v2");
+    assert.match(summary.withheld_reason, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
+    assert.match(summary.withheld_reason, /#563/u);
     assert.equal(summary.seeds.length, 3);
+    assert.equal(Object.hasOwn(summary, "operator_score"), false);
 
-    // Against what the runs printed, not against what the ledger stored. Reading the expectation
-    // out of the ledger made this pass while every seed was recorded with the first run's score --
-    // three copies of one number, and a median assertion that could not see it.
-    assert.equal(new Set(cycleOf(home).runs.map((entry) => entry.run_id)).size, 3, "a run id was recorded twice");
-    const printed = [...printedScores].sort((a, b) => a - b);
-    assert.equal(printed.length, 3, `saw ${printed.length} scores in the output`);
-    assert.deepEqual(cycleOf(home).runs.map((entry) => entry.final_score).sort((a, b) => a - b), printed);
-    assert.equal(summary.operator_score, printed[1], "the middle of three, not the best of them");
+    const printed = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home } });
+    assert.equal(printed.stdout.includes("Operator Score"), false);
+    assert.equal(/\b\d+ \/ 100\b/u.test(printed.stdout), false);
+    assert.match(printed.stdout, /#563/u);
+    // Each run's own report still says everything the run found; the cycle is what has no number.
+    for (const entry of stored.runs) assert.match(printed.stdout, new RegExp(entry.run_id, "u"));
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
 });
 
-test("an unattended run is not a run in this cycle, and says why", () => {
-  // D4 stays empty without an operator turn, so the score is withheld and the run cannot count.
-  // Excluding it silently would make a cycle that dropped one indistinguishable from one that
-  // never ran it.
+test("an unattended run is recorded as the run it was, and the cycle still has no number to withhold it from", () => {
+  // The monitoring metrics stay empty without an operator turn, so the run's own profiles say so.
+  // The cycle records it either way: the ledger's job is to say which runs happened under which
+  // seeds, and since #559 it has no score of its own to exclude a run from.
   const { cwd, plan, home } = opened();
   try {
     cycleRun(cwd, plan, { answers: "" });
     const stored = cycleOf(home);
     assert.equal(stored.runs.length, 1);
-    assert.equal(stored.runs[0].valid, false);
-    assert.equal(stored.runs[0].invalid_reason, "NOT_ISSUED");
+    assert.equal(stored.runs[0].result_schema, "aos-result.v2");
+    assert.equal(stored.runs[0].final_score, null);
 
     const report = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home } });
-    assert.match(report.stdout, /not counted: 0000000000000011 — NOT_ISSUED/);
-    assert.match(report.stdout, /Operator Score withheld/);
+    assert.match(report.stdout, /0000000000000011/u);
+    assert.match(report.stdout, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
+    assert.equal(report.stdout.includes("Operator Score"), false);
     assert.notEqual(report.status, 0);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
@@ -155,16 +169,18 @@ test("running when every seed is spent says so instead of inventing a fourth", (
   }
 });
 
-test("the report never calls repetition confidence", () => {
-  // Three runs on one machine say how much this measurement moved when it was repeated, and
-  // nothing about how it would move anywhere else.
+test("the report never calls repetition confidence, and never calls a withheld aggregate anything else", () => {
+  // Three runs on one machine would say how much a measurement moved when it was repeated, and
+  // nothing about how it would move anywhere else -- so the word was never "confidence". There is
+  // no repeat number at all now, and the page says that in those words rather than in softer ones.
   const { cwd, plan, home } = opened();
   try {
     for (let index = 0; index < 3; index += 1) cycleRun(cwd, plan);
     const report = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home } });
-    assert.match(report.stdout, /local repeat evidence/);
-    assert.match(report.stdout, /PROFILE-BOUND/);
+    assert.match(report.stdout, /PROFILE-BOUND/u);
     assert.equal(/confidence/i.test(report.stdout), false);
+    assert.equal(/stability|spread|deviation|local repeat evidence/i.test(report.stdout), false, "a repeat statistic was printed over runs nothing aggregated");
+    assert.match(report.stdout, /#563/u);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

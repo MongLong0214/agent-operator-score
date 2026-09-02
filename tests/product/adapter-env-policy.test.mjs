@@ -10,7 +10,7 @@ import { buildAgentEnv, isSensitiveName, isolationRecord } from "../../lib/isola
 import { ADAPTERS, buildProfile } from "../../lib/profile.mjs";
 import { runProcess } from "../../lib/core.mjs";
 import { describeExecutable } from "../../lib/runtime-identity.mjs";
-import { addAgent, cli, initBare, makePlan, newestResult, run } from "./helpers.mjs";
+import { addAgent, cli, initBare, makePlan, newestRecord, newestResult, run } from "./helpers.mjs";
 
 /**
  * The variables that change what a process is before it runs a line of its own.
@@ -749,10 +749,10 @@ test("a scored result carries the boundary it was produced under, by name and ne
     const plan = makePlan(cwd, { default: "solo" });
     // Exit 3: an unattended run is INCOMPLETE by design, which is not what this test is about.
     run(cwd, ["assess", "--plan", plan, "--json"], 3);
-    const result = newestResult(cwd);
-    const record = result.isolation.by_agent.solo;
-    assert.ok(record, "the result did not say what environment the agent ran under");
-    assert.equal(result.isolation.level, "BEST_EFFORT_CLI");
+    const stored = newestRecord(cwd);
+    const record = stored.isolation.by_agent.solo;
+    assert.ok(record, "the run did not say what environment the agent ran under");
+    assert.equal(stored.isolation.level, "BEST_EFFORT_CLI");
     assert.equal(record.adapter_id, "generic-command.v1");
     assert.match(record.env_policy_digest, /^sha256:[0-9a-f]{64}$/);
     assert.equal(record.home_source, "aos_temporary");
@@ -761,13 +761,13 @@ test("a scored result carries the boundary it was produced under, by name and ne
     assert.equal(record.allowed_env_names.includes("PATH"), true);
     // The applied policy, per invocation, so drift inside one run is visible without repeating the
     // whole record twenty times.
-    for (const family of Object.values(result.family_results)) {
+    for (const family of Object.values(stored.family_results)) {
       for (const invocation of family.invocations) {
-        assert.equal(invocation.env_policy_digest, record.env_policy_digest, "an invocation ran under a policy the result does not describe");
+        assert.equal(invocation.env_policy_digest, record.env_policy_digest, "an invocation ran under a policy the record does not describe");
       }
     }
-    // And no value of any kind reached the file.
-    const serialized = JSON.stringify(result);
+    // And no value of any kind reached either file -- the published result least of all.
+    const serialized = JSON.stringify(stored) + JSON.stringify(newestResult(cwd));
     assert.equal(serialized.includes("ghp_notarealtokenusedonlyforthistest4"), false, "a credential value reached the result");
     assert.equal(serialized.includes("/tmp/aos-test-python"), false, "an environment value reached the result");
   } finally {
