@@ -2384,7 +2384,7 @@ export const GUARDS = [
     guard: "an unmeasured network axis is not NOT_OBSERVED",
     reason: "projecting an absent observation as NOT_OBSERVED is the gate inventing the fact it exists to check, and the honest answer -- nothing measured the axis -- is the one that closes it",
     file: "lib/confinement.mjs",
-    from: '  if (!network || typeof network !== "object") problems.push("network: no observation of the network axis");',
+    from: '  if (!networkStated) problems.push("network: no observation of the network axis");',
     to: "",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_missing_network_observation_is_an_invalid_record_and_not_a_quiet_not_observed"
