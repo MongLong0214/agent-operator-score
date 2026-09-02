@@ -1435,6 +1435,13 @@ export const GUARDS = [
     // Linux only, and named as such. APFS refuses a filename that is not valid UTF-8, so the case
     // cannot be constructed on macOS and the test returns early there; the mutation job runs on
     // ubuntu, which is where this one is decided.
+    //
+    // The sentence above was the whole of it until #560: the comment said "Linux only" and nothing
+    // told the runner, so `npm run test:mutation` on a Mac reported SURVIVED for a guard that holds
+    // everywhere it applies -- a false alarm in the one report whose job is to say which guards are
+    // real. `ACL walk` above has carried the field since it was written; this one is the same case
+    // in the other direction.
+    platform: "linux",
     reason: "readdir decoded as UTF-8 gives two files whose names differ by one byte a single unreadable-entry row",
     file: "lib/digest.mjs",
     from: '      return readdirSync(directory, { encoding: "buffer" }).sort(Buffer.compare);',
@@ -2170,12 +2177,17 @@ export const GUARDS = [
   },
   {
     guard: "operator decision window",
-    reason: "every stage sends an instruction, so without a window the plan being carried out reads as the operator stepping in",
+    // Repointed by #560. This guard was held by the fact that every stage sent a `user.instruction`
+    // under producer `operator`, so without the window the plan being carried out read as the
+    // operator stepping in. That instruction is now a `plan.instruction` under producer `aos` and is
+    // never scored, so the old fixture stopped exercising the line and the mutation survived. What
+    // the window still decides is stated below, and the test that decides it is named here.
+    reason: "a turn that answers no question is not an answer: without the window every later operator turn is attributed to the last checkpoint, which manufactures the opportunity rather than observing one",
     file: "lib/checkpoint.mjs",
     from: "if (closes) asked = false;",
     to: "",
-    test: "tests/product/checkpoint-runtime.test.mjs",
-    name: "retrying unchanged is not an intervention, whatever it is called"
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "an operator turn with no checkpoint in front of it is not an intervention, because an opportunity nobody administered is not one"
   },
   {
     guard: "credential env refusal",

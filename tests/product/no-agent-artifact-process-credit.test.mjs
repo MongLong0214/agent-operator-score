@@ -390,3 +390,35 @@ test("counterfactual: an initial judgment bundled into one payload with the post
   }), /reliance opportunity rejected/u);
   assert.equal(reliance.opportunities().length, 0);
 });
+
+// --- the checkpoint window, which is the opportunity itself ---------------------------------------
+
+test("an operator turn with no checkpoint in front of it is not an intervention, because an opportunity nobody administered is not one", () => {
+  // The window guard in `lib/checkpoint.mjs` used to be held by a different fact: every stage sent a
+  // `user.instruction` under producer `operator`, so without the window the plan being carried out
+  // read as the operator stepping in. That instruction is a `plan.instruction` under producer `aos`
+  // since this issue and is never scored, so the old fixture no longer exercises the line. What the
+  // window still decides is this: a turn that answers no question is not an answer, and an
+  // opportunity nobody administered is the thing #560 refuses to let anything manufacture.
+  const evidence = evidenceFixture();
+  const operatorRecord = (event_type, event_id, payload) => ({ event_type, event_id, family: "FAM-4", producer_id: "operator", payload });
+  const answered = [
+    operatorRecord("checkpoint.raised", "c-1", evidence),
+    operatorRecord("operator.decision", "d-1", { stage: "s1", choice: "retry", inspected: 1 })
+  ];
+  assert.equal(interventionSummary(answered).interventions, 1);
+  const withAnUnaskedTurn = [
+    ...answered,
+    operatorRecord("user.instruction", "i-2", { stage: "s1", instruction_digest: "sha256:zz" }),
+    operatorRecord("session.cancelled", "x-2", { stage: "s1", reason: "later" })
+  ];
+  assert.equal(interventionSummary(withAnUnaskedTurn).interventions, 1,
+    "a turn recorded after the window closed, with no checkpoint of its own, was counted as an intervention");
+  // And a second checkpoint opens a second window, so this is a window rather than a one-shot.
+  const askedTwice = [
+    ...answered,
+    operatorRecord("checkpoint.raised", "c-2", evidence),
+    operatorRecord("operator.decision", "d-2", { stage: "s1", choice: "reroute", route_changed: true })
+  ];
+  assert.equal(interventionSummary(askedTwice).interventions, 2);
+});
