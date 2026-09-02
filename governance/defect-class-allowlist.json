@@ -1,0 +1,323 @@
+{
+  "plain-object-map": [
+    {
+      "file": "lib/cli.mjs",
+      "match": "const branchMarkers = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/cli.mjs",
+      "match": "const artifacts = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/cli.mjs",
+      "match": "const scenarioParamsByFamily = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/cli.mjs",
+      "match": "const invocationsByFamily = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/cli.mjs",
+      "match": "const familyResults = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/core.mjs",
+      "match": "const out = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/cycle.mjs",
+      "match": "const perDimension = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/isolation.mjs",
+      "match": "const env = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/metrics.mjs",
+      "match": "const byDimension = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/redact.mjs",
+      "match": "const out = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/scorer-v1.mjs",
+      "match": "const dimensions = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/store.mjs",
+      "match": "const result = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/verifier-isolation.test.mjs",
+      "match": "const files = {};",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/defect-classes.test.mjs",
+      "match": "const map = {};",
+      "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "tests/product/defect-classes.test.mjs",
+      "match": "const plain = {};",
+      "note": "the demonstration object the corpus test poisons on purpose"
+    },
+    {
+      "file": "tests/mutation/manifest.mjs",
+      "match": "const files = {};",
+      "note": "a mutation `to` string quoting the plain-object shape safe-fs used to have; the manifest never runs it"
+    }
+  ],
+  "text-digest": [
+    {
+      "file": "lib/core.mjs",
+      "match": "try { version = readFileSync(\"/proc/version\", \"utf8\"); } catch {}",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "lib/core.mjs",
+      "match": "text = readFileSync(file, \"utf8\");",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "lib/core.mjs",
+      "match": "const stat = readFileSync(`/proc/${name}/stat`, \"utf8\");",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "lib/core.mjs",
+      "match": "return sha256Text(readFileSync(file, \"utf8\").replace(/\\r\\n/g, \"\\n\"));",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "lib/execution-plan.mjs",
+      "match": "export const loadPlan = (url = PLAN_URL) => JSON.parse(readFileSync(url, \"utf8\"));",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "lib/execution-plan.mjs",
+      "match": "export const loadSchema = (url = SCHEMA_URL) => JSON.parse(readFileSync(url, \"utf8\"));",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "scripts/check-defect-classes.mjs",
+      "match": "const allowlist = JSON.parse(readFileSync(ALLOWLIST_PATH, \"utf8\"));",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "scripts/check-defect-classes.mjs",
+      "match": "const text = readFileSync(path, \"utf8\");",
+      "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
+    },
+    {
+      "file": "tests/product/defect-classes.test.mjs",
+      "match": "export const dig",
+      "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "tests/product/defect-classes.test.mjs",
+      "match": "const original = readFileSync(path, \"utf8\");",
+      "note": "reads the allowlist for restore; nothing here is hashed"
+    }
+  ],
+  "regex-no-unicode": [
+    {
+      "file": "lib/review.mjs",
+      "match": "for (const value of text.match(new RegExp(pattern.source, `${pattern.flags.replace(\"g\", \"\"",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/review.mjs",
+      "match": "const matched = text ? text.match(new RegExp(pattern.source, `${pattern.flags.replace(\"g\",",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/session.mjs",
+      "match": "const HARNESS_BLOCK = new RegExp(`^(?:<(${HARNESS_TAGS}|hook-[\\\\w-]+)>[\\\\s\\\\S]*?<\\\\/\\\\1>\\\\",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "scripts/check-defect-classes.mjs",
+      "match": "const computed = new RegExp(`${name}\\\\[(?![\"'\\`])[^\\\\]]+\\\\]\\\\s*=`);",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/checkpoint-runtime.test.mjs",
+      "match": "for (const question of QUESTIONS) assert.match(text, new RegExp(question.ask.replace(\"?\", ",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/cycle-abandon.test.mjs",
+      "match": "assert.match(shown.stdout, new RegExp(`abandoned earlier: ${openedId}`));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/cycle-abandon.test.mjs",
+      "match": "assert.match(aosIn(home, home, [\"cycle\"]).stdout, new RegExp(openedId));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/cycle-abandon.test.mjs",
+      "match": "assert.match(before.stderr, new RegExp(`delete .*${project.replace(/[.*+?^${}()|[\\]\\\\]/g, ",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/cycle-command.test.mjs",
+      "match": "assert.match(first.stdout, new RegExp(`seed ${SEEDS[0]}`));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/dashboard.test.mjs",
+      "match": "assert.match(body, new RegExp(runId));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/holdout-command.test.mjs",
+      "match": "assert.match(listed.stdout, new RegExp(`${id}.*false-positive`));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/holdout-integrity.test.mjs",
+      "match": "assert.doesNotMatch(shown, new RegExp(\"b\".repeat(12)));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/operator-reported.test.mjs",
+      "match": "assert.match(listed.stderr, new RegExp(elsewhere.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/orchestration.test.mjs",
+      "match": "assert.match(branchPrompt, new RegExp(MARKER_FILE));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/readme-translations.test.mjs",
+      "match": "assert.match(text, new RegExp(`<strong>${name}</strong>`), `${file}: does not mark itself ",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/readme-translations.test.mjs",
+      "match": "assert.match(text, new RegExp(`<a href=\"${other.file}\">${other.name}</a>`), `${file}: no l",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/readme-translations.test.mjs",
+      "match": "assert.match(text, new RegExp(`<img src=\"${path}\"`), `${file}: does not embed ${path}`);",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "for (const id of METRIC_IDS) assert.match(markdown, new RegExp(`\\\\| ${id} \\\\|`), id);",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "assert.match(svg, new RegExp(`>${cap.max}<`), `${code}: the ceiling value is not drawn`);",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "assert.match(svg, new RegExp(code), `${code}: the ceiling is not named`);",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "assert.match(svg, new RegExp(bandOf(cap.max)), `${code}: ${bandOf(cap.max)} is not drawn`)",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "assert.match(svg, new RegExp(`width=\"${width}\"`), `the bar for ${cap.max} is not ${width} ",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "assert.match(svg, new RegExp(`${MINIMUM_OBSERVED} of ${METRIC_IDS.length} metrics`));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/report.test.mjs",
+      "match": "assert.match(svg, new RegExp(`${REQUIRED_METRICS[0]}–${REQUIRED_METRICS.at(-1)}`));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/routing-and-init.test.mjs",
+      "match": "assert.match(aos(cwd, home, [\"agent\", \"list\"]).stdout, new RegExp(fixture.replace(/[.*+?^$",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/defect-classes.test.mjs",
+      "match": "export const pattern = (p) => new RegExp(p);",
+      "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "tests/product/holdout.test.mjs",
+      "match": "assert.match(gate.detail, new RegExp(DIGEST.replace(/^sha256:/, \"\").slice(0, 12)));",
+      "note": "twelve hex characters of a fixed test digest; no astral input can reach it"
+    }
+  ],
+  "date-parse-validator": [
+    {
+      "file": "lib/session.mjs",
+      "match": "const at = Date.parse(row.timestamp ?? \"\");",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/session.mjs",
+      "match": "const at = Date.parse(row.timestamp ?? \"\");",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "lib/session.mjs",
+      "match": "if (row.session_id === id && typeof row.prompt === \"string\") times.push({ at: Date.parse(r",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/fake-agent.mjs",
+      "match": ".map((doc) => ({ ...doc, updated: Date.parse(doc.text.match(/Updated:\\s*(\\S+)/)?.[1] ?? \"\"",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/grok-adapter.test.mjs",
+      "match": "assert.equal(session.operatorTurns[0].at, Date.parse(\"2026-08-21T09:21:30.155Z\"));",
+      "note": "pre-existing when the rule landed"
+    },
+    {
+      "file": "tests/product/defect-classes.test.mjs",
+      "match": "export const when = (value) => Date.parse(value);",
+      "note": "the plant this test writes, quoted as a string"
+    },
+    {
+      "file": "lib/execution-plan.mjs",
+      "match": "return Number.isFinite(Date.parse(value));",
+      "note": "the last line of a validator that has already checked every calendar field by hand; Date.parse here only refuses what the regex and range checks let through, never accepts"
+    },
+    {
+      "file": "lib/execution-plan.mjs",
+      "match": "const capturedAt = Date.parse(snapshot?.captured_at ?? \"\");",
+      "note": "reads an instant for the age report after checkGithubState has refused any captured_at that is not a real calendar instant; not a validator"
+    }
+  ],
+  "unbounded-schema-array": [],
+  "assertless-test": [
+    {
+      "file": "tests/product/handoff-exact-digest.test.mjs",
+      "match": "a handoff consumed with the digests it was handed is accepted",
+      "note": "the assertion is the expected exit status the run() helper checks; the body has no bare assert because the helper owns it"
+    }
+  ]
+}
