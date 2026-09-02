@@ -1,0 +1,395 @@
+{
+  "schema": "aos-interpretation-use-argument.v1",
+  "contract_version": "1.0.0",
+  "claim_stages": [
+    {
+      "stage_id": "RUN_DIAGNOSTIC",
+      "definition": "Behaviour and outcome observed in one run.",
+      "permits": [
+        "debugging",
+        "feedback"
+      ],
+      "forbids": [
+        "ability",
+        "category",
+        "percentile",
+        "rank"
+      ]
+    },
+    {
+      "stage_id": "PROFILE_BOUND",
+      "definition": "Performance observed across every locked operational form under one exact profile and measurement contract.",
+      "permits": [
+        "local self-diagnosis",
+        "local improvement tracking under the same profile"
+      ],
+      "forbids": [
+        "ability",
+        "category",
+        "percentile",
+        "rank",
+        "cross-profile comparison"
+      ]
+    },
+    {
+      "stage_id": "GENERALIZABILITY_SUPPORTED",
+      "definition": "A calibrated inference over a defined universe with facet, form-equivalence, invariance, uncertainty and prospective validity evidence.",
+      "permits": [
+        "the explicitly registered use only"
+      ],
+      "forbids": [
+        "any use not registered"
+      ]
+    }
+  ],
+  "default_claim_stage": "PROFILE_BOUND",
+  "maximum_claim_stage": "PROFILE_BOUND",
+  "generalizability_status": "UNESTABLISHED",
+  "standard_setting": null,
+  "categories": null,
+  "cut_scores": null,
+  "intended_uses": [
+    "local self-diagnosis",
+    "profile-bound feedback",
+    "tracking change under the same exact profile and contract",
+    "identifying specific operating-process weaknesses"
+  ],
+  "forbidden_uses": [
+    "hiring",
+    "promotion",
+    "certification",
+    "population ranking",
+    "cross-model comparison without invariance evidence",
+    "cross-language comparison without invariance evidence",
+    "cross-interface comparison without invariance evidence",
+    "universal prediction of coding-agent performance"
+  ],
+  "comparability_rules": [
+    {
+      "rule_id": "invariance-required",
+      "facets": [
+        "language",
+        "interface",
+        "model",
+        "runtime",
+        "harness"
+      ],
+      "statement": "Two results whose declared level differs on any of these facets may not be compared directly until measurement-invariance or DIF evidence supports the comparison.",
+      "status": "UNESTABLISHED"
+    },
+    {
+      "rule_id": "profile-identity",
+      "facets": [
+        "operator",
+        "occasion"
+      ],
+      "statement": "Two results from different profiles are two measurements. A difference between them is not a change in the operator.",
+      "status": "ENFORCED"
+    }
+  ],
+  "inferences": [
+    {
+      "inference_id": "scoring",
+      "order": 1,
+      "claim": "Canonical events, effects and task oracles are converted into the declared observable cells correctly.",
+      "assumptions": [
+        "Every cell names an evidence authority and no cell inherits one.",
+        "A subcheck belongs to exactly one cell, so no observation is counted twice.",
+        "Missing evidence is preserved as NOT_OBSERVED, INSUFFICIENT_OPPORTUNITIES or WITHHELD and never converted to 0, PASS or FAIL."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "exhaustive-exclusive-mapping",
+          "status": "PASS",
+          "detail": "checkContract proves every M01-M20 subcheck maps to exactly one cell and one axis, and that no cell claims a subcheck that does not exist."
+        },
+        {
+          "evidence_id": "deterministic-scorer-contract",
+          "status": "PASS",
+          "detail": "The cell, construct and index arithmetic is deterministic and is exercised by fixture vectors."
+        },
+        {
+          "evidence_id": "trusted-verifier-boundary",
+          "status": "PASS",
+          "detail": "The FAM-5 verifier runs out of process and strips the nonce and argv before loading the assessed module."
+        },
+        {
+          "evidence_id": "counterfactual-and-mutation-tests",
+          "status": "PASS",
+          "detail": "The six counterfactuals in the contract are tests, and the guards they rest on are in the mutation manifest."
+        },
+        {
+          "evidence_id": "raw-byte-evidence",
+          "status": "UNESTABLISHED",
+          "detail": "Not every cell's evidence is retained as raw bytes; some are retained as grader verdicts."
+        }
+      ],
+      "rebuttals": [
+        {
+          "rebuttal_id": "self-report-substituted-for-effect",
+          "status": "PARTIALLY_MITIGATED",
+          "detail": "Two cells are read from agent declarations with no effect behind them. Both are credit_bearing false and neither is required for its construct."
+        },
+        {
+          "rebuttal_id": "operator-action-forged-by-the-agent",
+          "status": "MITIGATED",
+          "detail": "Operator process cells are read from canonical events the agent cannot write."
+        },
+        {
+          "rebuttal_id": "oracle-leaked-or-mismatched",
+          "status": "OPEN",
+          "detail": "Several graders match against terms the family brief already names, so copying the brief can satisfy them."
+        },
+        {
+          "rebuttal_id": "verifier-or-rater-bias",
+          "status": "OPEN",
+          "detail": "One verifier, one rater implementation, no agreement study."
+        },
+        {
+          "rebuttal_id": "unsupported-partial-credit",
+          "status": "MITIGATED",
+          "detail": "A cell below its minimum yields null with INSUFFICIENT_OPPORTUNITIES rather than a partial value."
+        }
+      ],
+      "status": "SUPPORTED",
+      "maximum_claim_stage_if_supported": "RUN_DIAGNOSTIC"
+    },
+    {
+      "inference_id": "within_cycle_generalization",
+      "order": 2,
+      "claim": "The completed locked forms summarise the sampled profile conditions.",
+      "assumptions": [
+        "Every locked operational form was completed exactly once.",
+        "The exact profile and measurement contract identity is recorded with the result.",
+        "Operational forms are distinguished from warmup and practice, and exposure is tracked.",
+        "Opportunity count, coverage, spread and uncertainty are visible in the result."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "profile-and-contract-identity",
+          "status": "PASS",
+          "detail": "The profile digest and the contract digest are recorded with the result."
+        },
+        {
+          "evidence_id": "form-completion",
+          "status": "UNESTABLISHED",
+          "detail": "Completion is checked per cycle; no evidence establishes that a partially completed cycle is comparable to a complete one."
+        },
+        {
+          "evidence_id": "form-exposure-ledger",
+          "status": "UNESTABLISHED",
+          "detail": "The task model requires an exposure ledger; this contract does not implement one."
+        },
+        {
+          "evidence_id": "uncertainty-visible",
+          "status": "UNESTABLISHED",
+          "detail": "Opportunity counts and distributions are reported. No interval, standard error or method is claimed."
+        }
+      ],
+      "rebuttals": [
+        {
+          "rebuttal_id": "cherry-picking-successful-forms",
+          "status": "MITIGATED",
+          "detail": "A construct estimate is withheld unless every required cell is issued, so dropping a form withholds rather than improves."
+        },
+        {
+          "rebuttal_id": "practice-or-memorisation",
+          "status": "OPEN",
+          "detail": "Sequence and occasion are declared facets but no exposure ledger enforces single administration."
+        },
+        {
+          "rebuttal_id": "materially-unequal-form-difficulty",
+          "status": "OPEN",
+          "detail": "Difficulty is UNESTABLISHED for every form."
+        },
+        {
+          "rebuttal_id": "model-or-runtime-drift",
+          "status": "OPEN",
+          "detail": "The runtime version is probed and recorded, which makes drift visible and does not correct for it."
+        },
+        {
+          "rebuttal_id": "occasion-effects",
+          "status": "OPEN",
+          "detail": "One occasion per cycle. No variance component is estimated."
+        }
+      ],
+      "status": "PARTIALLY_SUPPORTED",
+      "maximum_claim_stage_if_supported": "PROFILE_BOUND"
+    },
+    {
+      "inference_id": "extrapolation",
+      "order": 3,
+      "claim": "The profile predicts performance across a specified universe of coding-agent operating situations.",
+      "assumptions": [
+        "An explicit universe of operating situations is defined.",
+        "Facet variance for task, model, occasion, verifier, language and interface is estimated.",
+        "Forms are linked with anchors and calibration data is sufficient."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "universe-definition",
+          "status": "UNESTABLISHED",
+          "detail": "No universe is defined."
+        },
+        {
+          "evidence_id": "g-study",
+          "status": "UNESTABLISHED",
+          "detail": "No G-study or hierarchical facet model exists."
+        },
+        {
+          "evidence_id": "d-study",
+          "status": "UNESTABLISHED",
+          "detail": "No D-study design exists."
+        },
+        {
+          "evidence_id": "form-linking-and-anchors",
+          "status": "UNESTABLISHED",
+          "detail": "No anchors exist and form equivalence is not claimed."
+        },
+        {
+          "evidence_id": "calibration-sample",
+          "status": "UNESTABLISHED",
+          "detail": "No calibration sample exists in this repository."
+        }
+      ],
+      "rebuttals": [
+        {
+          "rebuttal_id": "narrow-task-family-coverage",
+          "status": "OPEN",
+          "detail": "Six families, one form each."
+        },
+        {
+          "rebuttal_id": "person-by-task-or-model-interaction",
+          "status": "OPEN",
+          "detail": "Not estimable from one occasion and one model."
+        },
+        {
+          "rebuttal_id": "domain-familiarity",
+          "status": "OPEN",
+          "detail": "Declared as a facet with no observed levels."
+        },
+        {
+          "rebuttal_id": "interface-or-translation-effects",
+          "status": "OPEN",
+          "detail": "Comparison across language and interface is withheld."
+        },
+        {
+          "rebuttal_id": "sparse-or-unrepresentative-calibration",
+          "status": "OPEN",
+          "detail": "No calibration data."
+        }
+      ],
+      "status": "UNSUPPORTED",
+      "maximum_claim_stage_if_supported": "GENERALIZABILITY_SUPPORTED"
+    },
+    {
+      "inference_id": "use",
+      "order": 4,
+      "claim": "The result supports local self-diagnosis without unacceptable adverse consequences.",
+      "assumptions": [
+        "No category, band, cut score, percentile or rank is emitted at any stage.",
+        "Forbidden uses are stated on the result itself.",
+        "Uncertainty and limitations travel with the number."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "no-standard-setting-no-category",
+          "status": "PASS",
+          "detail": "category, cut_scores, percentile and rank are null in the construct map and in every issued result."
+        },
+        {
+          "evidence_id": "forbidden-use-copy",
+          "status": "PASS",
+          "detail": "The forbidden use list is part of this artifact and travels with the result."
+        },
+        {
+          "evidence_id": "validation-registry",
+          "status": "UNESTABLISHED",
+          "detail": "The registry categories are recorded here as statuses; none is a completed validation study."
+        },
+        {
+          "evidence_id": "fairness-and-invariance",
+          "status": "UNESTABLISHED",
+          "detail": "No DIF or invariance evidence exists."
+        },
+        {
+          "evidence_id": "misuse-and-consequence-audit",
+          "status": "UNESTABLISHED",
+          "detail": "No consequence study has been run."
+        }
+      ],
+      "rebuttals": [
+        {
+          "rebuttal_id": "score-gaming",
+          "status": "PARTIALLY_MITIGATED",
+          "detail": "Prohibited value sources are declared and no scoring rule may consume them, which closes the length, speed and turn-count routes and not the others."
+        },
+        {
+          "rebuttal_id": "overconfidence-from-a-high-number",
+          "status": "PARTIALLY_MITIGATED",
+          "detail": "The index is labelled descriptive and carries no category."
+        },
+        {
+          "rebuttal_id": "accessibility-or-language-disadvantage",
+          "status": "OPEN",
+          "detail": "One language observed, no invariance evidence."
+        },
+        {
+          "rebuttal_id": "misuse-in-hiring-or-certification",
+          "status": "PARTIALLY_MITIGATED",
+          "detail": "Stated as forbidden. A statement is not a control."
+        },
+        {
+          "rebuttal_id": "cognitive-forcing-burden-changes-the-construct",
+          "status": "OPEN",
+          "detail": "The checkpoint prompt is itself an intervention and may change what is being measured."
+        },
+        {
+          "rebuttal_id": "privacy-or-security-harm",
+          "status": "PARTIALLY_MITIGATED",
+          "detail": "Raw evidence stays local and the public projection is a digest or safe summary."
+        }
+      ],
+      "status": "SUPPORTED_FOR_LOCAL_SELF_DIAGNOSIS_ONLY",
+      "maximum_claim_stage_if_supported": "PROFILE_BOUND"
+    }
+  ],
+  "validation_registry": [
+    {
+      "category": "content",
+      "status": "UNESTABLISHED",
+      "detail": "Six families were designed against the construct map; no content review by an independent panel has happened."
+    },
+    {
+      "category": "response_process",
+      "status": "UNESTABLISHED",
+      "detail": "No think-aloud or process study exists."
+    },
+    {
+      "category": "internal_structure",
+      "status": "UNESTABLISHED",
+      "detail": "No factor or dimensionality evidence exists. The construct map is a design, not a finding."
+    },
+    {
+      "category": "relations_to_other_variables",
+      "status": "UNESTABLISHED",
+      "detail": "No external criterion has been collected."
+    },
+    {
+      "category": "generalizability",
+      "status": "UNESTABLISHED",
+      "detail": "No G-study."
+    },
+    {
+      "category": "fairness_invariance",
+      "status": "UNESTABLISHED",
+      "detail": "No DIF or invariance analysis."
+    },
+    {
+      "category": "consequences",
+      "status": "UNESTABLISHED",
+      "detail": "No consequence review."
+    }
+  ],
+  "release_note": "Green CI is implementation evidence. It is not validity evidence, and no entry in the registry may be moved by a passing test run."
+}

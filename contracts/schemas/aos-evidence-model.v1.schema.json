@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-evidence-model.v1.schema.json",
+  "title": "AOS evidence model",
+  "description": "What counts as evidence for a cell, who is entitled to say it happened, what a value may never be made of, and what is done when the evidence is not there.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "contract_version", "axes", "authorities", "separation_rules", "scoring_rules",
+    "missing_policies", "prohibited_value_sources", "facets", "minimum_opportunity_bases", "precision_basis"
+  ],
+  "properties": {
+    "schema": { "const": "aos-evidence-model.v1" },
+    "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "axes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/axis" } },
+    "authorities": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/authority" } },
+    "separation_rules": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/rule" } },
+    "scoring_rules": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scoring_rule" } },
+    "missing_policies": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/policy" } },
+    "prohibited_value_sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/prohibited" } },
+    "facets": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/facet" } },
+    "minimum_opportunity_bases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/basis" } },
+    "precision_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "statement"],
+      "properties": {
+        "status": { "enum": ["UNESTABLISHED", "ESTABLISHED"] },
+        "statement": { "type": "string", "minLength": 20 }
+      }
+    }
+  },
+  "$defs": {
+    "axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis_id", "title", "definition", "profile", "model_sensitive", "in_process_index", "admissible_authorities"],
+      "properties": {
+        "axis_id": { "enum": ["operator_process", "reliance_calibration", "system_outcome", "delegated_artifact"] },
+        "title": { "type": "string", "minLength": 3 },
+        "definition": { "type": "string", "minLength": 20 },
+        "profile": { "type": "string", "minLength": 3 },
+        "model_sensitive": { "type": "boolean" },
+        "in_process_index": { "type": "boolean" },
+        "admissible_authorities": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority_id", "definition", "class", "self_report_only", "agent_forgeable", "admissible_axes"],
+      "properties": {
+        "authority_id": { "type": "string", "minLength": 3 },
+        "definition": { "type": "string", "minLength": 20 },
+        "class": { "enum": ["primary-event", "primary-effect", "product", "operator-report", "self-report", "composite"] },
+        "self_report_only": { "type": "boolean" },
+        "agent_forgeable": { "type": "boolean" },
+        "admissible_axes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "statement", "enforced_by"],
+      "properties": {
+        "rule_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "statement": { "type": "string", "minLength": 20 },
+        "enforced_by": { "type": "string", "minLength": 4 }
+      }
+    },
+    "scoring_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scoring_rule_id", "implemented", "opportunity", "value_domain", "aggregation", "null_handling", "prohibited_inputs"],
+      "properties": {
+        "scoring_rule_id": { "type": "string", "minLength": 3 },
+        "implemented": { "type": "boolean" },
+        "opportunity": { "type": "string", "minLength": 20 },
+        "value_domain": { "type": "array", "minItems": 2, "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+        "aggregation": { "type": "string", "minLength": 4 },
+        "null_handling": { "type": "string", "minLength": 20 },
+        "prohibited_inputs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_id", "definition"],
+      "properties": {
+        "policy_id": { "enum": ["NOT_OBSERVED", "INSUFFICIENT_OPPORTUNITIES", "WITHHELD"] },
+        "definition": { "type": "string", "minLength": 20 }
+      }
+    },
+    "prohibited": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "statement": { "type": "string", "minLength": 10 }
+      }
+    },
+    "facet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facet_id", "definition", "levels_observed_per_cycle", "variance_component"],
+      "properties": {
+        "facet_id": { "type": "string", "pattern": "^[a-z_]+$" },
+        "definition": { "type": "string", "minLength": 10 },
+        "levels_observed_per_cycle": { "type": ["integer", "null"], "minimum": 1 },
+        "variance_component": { "enum": ["UNESTABLISHED", "ESTIMATED"] }
+      }
+    },
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis_id", "definition"],
+      "properties": {
+        "basis_id": { "enum": ["DECLARED_COVERAGE", "CONTRACT_SPECIFIED", "UNESTABLISHED"] },
+        "definition": { "type": "string", "minLength": 20 }
+      }
+    }
+  }
+}

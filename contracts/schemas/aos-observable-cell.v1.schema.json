@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-observable-cell.v1.schema.json",
+  "title": "AOS observable cell registry",
+  "description": "Every scored cell in the AOS evidence-centred design, and the eleven things a cell has to say before anything may be scored into it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract_version", "cells"],
+  "properties": {
+    "schema": { "const": "aos-observable-cell.v1" },
+    "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "cells": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/cell" } }
+  },
+  "$defs": {
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id", "construct_id", "axis", "title", "claim", "observable", "task_opportunity",
+        "authority", "rival_explanations", "minimum_opportunities", "minimum_opportunities_basis",
+        "scoring_rule_id", "missing_policy", "facet_identity", "subcheck_ids",
+        "required_for_construct", "credit_bearing", "population_status"
+      ],
+      "properties": {
+        "cell_id": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" },
+        "construct_id": { "type": "string", "pattern": "^C[1-7]$" },
+        "axis": { "enum": ["operator_process", "reliance_calibration", "system_outcome", "delegated_artifact"] },
+        "title": { "type": "string", "minLength": 3 },
+        "claim": { "type": "string", "minLength": 20 },
+        "observable": { "type": "string", "minLength": 20 },
+        "task_opportunity": { "$ref": "#/$defs/task_opportunity" },
+        "authority": { "type": "string", "minLength": 3 },
+        "rival_explanations": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/rival" } },
+        "minimum_opportunities": { "type": ["integer", "null"], "minimum": 1 },
+        "minimum_opportunities_basis": { "enum": ["DECLARED_COVERAGE", "CONTRACT_SPECIFIED", "UNESTABLISHED"] },
+        "scoring_rule_id": { "type": "string", "minLength": 3 },
+        "missing_policy": { "enum": ["NOT_OBSERVED", "INSUFFICIENT_OPPORTUNITIES", "WITHHELD"] },
+        "facet_identity": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "subcheck_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^M[0-9]{2}\\.[a-z0-9-]+$" } },
+        "required_for_construct": { "type": "boolean" },
+        "credit_bearing": { "type": "boolean" },
+        "population_status": { "enum": ["SUBCHECK_BACKED", "DECLARED_UNPOPULATED"] }
+      }
+    },
+    "task_opportunity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form_ids", "task_features", "shortcut_prohibitions"],
+      "properties": {
+        "form_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "task_features": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "shortcut_prohibitions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "rival": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "status", "mitigation"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "statement": { "type": "string", "minLength": 20 },
+        "status": { "enum": ["OPEN", "PARTIALLY_MITIGATED", "CONTROLLED"] },
+        "mitigation": { "type": "string", "minLength": 4 }
+      }
+    }
+  }
+}

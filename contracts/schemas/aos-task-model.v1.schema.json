@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-task-model.v1.schema.json",
+  "title": "AOS task model",
+  "description": "What each administered form creates an opportunity for, what perturbation and oracle it must carry, and which opportunity sources are declared but not administered.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract_version", "form_classes", "equivalence", "exposure_ledger", "forms", "unadministered_opportunity_sources"],
+  "properties": {
+    "schema": { "const": "aos-task-model.v1" },
+    "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "form_classes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/form_class" } },
+    "equivalence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "statement"],
+      "properties": {
+        "status": { "enum": ["UNESTABLISHED", "ESTABLISHED"] },
+        "statement": { "type": "string", "minLength": 20 }
+      }
+    },
+    "exposure_ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "statement"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "statement": { "type": "string", "minLength": 20 }
+      }
+    },
+    "forms": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/form" } },
+    "unadministered_opportunity_sources": { "type": "array", "items": { "$ref": "#/$defs/source" } }
+  },
+  "$defs": {
+    "form_class": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class_id", "definition"],
+      "properties": {
+        "class_id": { "enum": ["WARMUP", "PRACTICE", "OPERATIONAL", "TRANSFER"] },
+        "definition": { "type": "string", "minLength": 20 }
+      }
+    },
+    "form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "form_id", "family", "title", "class", "scored_once_per_cycle",
+        "construct_opportunity_cell_ids", "required_cell_ids", "optional_cell_ids",
+        "required_perturbation", "required_oracle", "facets", "shortcut_prohibitions", "minimum_opportunity_count"
+      ],
+      "properties": {
+        "form_id": { "type": "string", "minLength": 1 },
+        "family": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 5 },
+        "class": { "enum": ["WARMUP", "PRACTICE", "OPERATIONAL", "TRANSFER"] },
+        "scored_once_per_cycle": { "type": "boolean" },
+        "construct_opportunity_cell_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
+        "required_cell_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
+        "optional_cell_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
+        "required_perturbation": { "type": "string", "minLength": 10 },
+        "required_oracle": { "type": "string", "minLength": 10 },
+        "facets": { "$ref": "#/$defs/form_facets" },
+        "shortcut_prohibitions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 3 } },
+        "minimum_opportunity_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "form_facets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "domain", "difficulty", "language", "interface"],
+      "properties": {
+        "family": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string", "minLength": 3 },
+        "difficulty": { "$ref": "#/$defs/facet_value" },
+        "language": { "$ref": "#/$defs/facet_value" },
+        "interface": { "$ref": "#/$defs/facet_value" }
+      }
+    },
+    "facet_value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "status", "note"],
+      "properties": {
+        "value": { "type": ["string", "null"], "minLength": 1 },
+        "status": { "enum": ["DECLARED", "UNESTABLISHED"] },
+        "note": { "type": "string", "minLength": 10 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "required_for_cell_ids", "statement", "status"],
+      "properties": {
+        "source_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "required_for_cell_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
+        "statement": { "type": "string", "minLength": 20 },
+        "status": { "enum": ["NOT_ADMINISTERED", "ADMINISTERED"] }
+      }
+    }
+  }
+}

@@ -16,6 +16,105 @@
 
 export const GUARDS = [
   {
+    guard: "ECD subcheck double ownership",
+    reason: "a subcheck owned by two cells is counted twice, and the construct it inflates is the one nobody notices",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (owner.has(id)) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a subcheck mapped twice fails"
+  },
+  {
+    guard: "ECD subcheck exhaustive mapping",
+    reason: "a subcheck that maps to no cell is scored by the old metric and by nothing in the contract, so the contract silently stops describing the product",
+    file: "lib/ecd-contract.mjs",
+    from: 'if (!owner.has(id)) fail("subcheck-unmapped"',
+    to: 'if (false) fail("subcheck-unmapped"',
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a subcheck mapped nowhere fails"
+  },
+  {
+    guard: "ECD cell claims a real subcheck",
+    reason: "a cell claiming a subcheck the product does not have looks covered and observes nothing",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (!declared.has(id)) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a cell claiming a subcheck that does not exist fails"
+  },
+  {
+    guard: "ECD cell has an owning construct",
+    reason: "a declared cell no construct claims is scored and never reaches an estimate, which reads as evidence that was gathered and used",
+    file: "lib/ecd-contract.mjs",
+    from: '    if (!listing.has(cell.cell_id)) fail("cell-unlisted"',
+    to: '    if (false) fail("cell-unlisted"',
+    test: "tests/product/ecd-construct-map.test.mjs",
+    name: "a cell no construct claims fails"
+  },
+  {
+    guard: "ECD self-report earns no credit",
+    reason: "an agent's account of its own permissions is not a safety observation, and letting it carry credit is the defect the evidence model exists to prevent",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (authority.self_report_only === true) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-evidence-model.test.mjs",
+    name: "giving a self-report cell credit fails"
+  },
+  {
+    guard: "ECD form and cell name each other",
+    reason: "a form that claims an opportunity the cell does not expect leaves the cell unobserved forever with nothing saying which half is wrong",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (!cell.task_opportunity.form_ids.includes(form.form_id)) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form claiming a cell that does not name it fails"
+  },
+  {
+    guard: "ECD insufficient opportunities yields null",
+    reason: "a cell answered in part is not a cell scored in part; averaging what came back makes observing less raise the number",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (cell.minimum_opportunities === null || values.length < cell.minimum_opportunities) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a cell below its minimum yields null and INSUFFICIENT_OPPORTUNITIES, never a partial value"
+  },
+  {
+    guard: "ECD missing evidence keeps its own reason",
+    reason: "a cell nothing answered is not the same fact as a cell answered too few times, and collapsing the two hides whether an opportunity was ever administered",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (values.length === 0) return { ...base, estimate: null, status: cell.missing_policy };",
+    to: '  if (values.length === 0) return { ...base, estimate: null, status: "INSUFFICIENT_OPPORTUNITIES" };',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "a cell nothing answered takes its own missing policy, which is not a zero"
+  },
+  {
+    guard: "ECD construct withheld on a missing required cell",
+    reason: "averaging the required cells that survived makes a construct score higher for having observed less",
+    file: "lib/ecd-contract.mjs",
+    from: "      if (withheld.length > 0 || required.length === 0) {",
+    to: "      if (false) {",
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "counterfactual: one required cell missing withholds its construct and the index"
+  },
+  {
+    guard: "ECD process index withheld on a missing construct",
+    reason: "an index computed over the constructs that happened to have evidence is a different scale from one result to the next",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (withheld.length > 0) return { ...base, value: null, status: "WITHHELD" };',
+    to: '  if (false) return { ...base, value: null, status: "WITHHELD" };',
+    test: "tests/product/ecd-aggregation.test.mjs",
+    name: "the process index is withheld while any construct in it has no operator-process evidence"
+  },
+  {
+    guard: "ECD prohibited value source refused",
+    reason: "a caller handing the scorer a turn count or an elapsed time is about to build competence out of something this instrument says is not competence, and ignoring it quietly is how it would get in",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (prohibited.has(key)) throw new Error(",
+    to: "    if (false) throw new Error(",
+    test: "tests/product/ecd-shortcuts.test.mjs",
+    name: "handing a prohibited value source to the scorer is refused rather than ignored"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
