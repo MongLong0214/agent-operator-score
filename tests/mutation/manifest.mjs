@@ -28,10 +28,46 @@ export const GUARDS = [
     guard: "fingerprint compare",
     reason: "a binary rewritten in place keeps its path, its name, its owner and its mode; only the bytes say so",
     file: "lib/runtime-identity.mjs",
-    from: "file_fingerprint: fingerprintOf(resolved.realpath, stat),",
-    to: 'file_fingerprint: "sha256:unchanged",',
+    from: "const fingerprint = fingerprintOf(descriptor, stat);",
+    to: 'const fingerprint = "sha256:unchanged";',
     test: "tests/product/runtime-identity.test.mjs",
-    name: "a binary replaced between registration and spawn is refused"
+    name: "a binary replaced after registration is refused before the credential is read"
+  },
+  {
+    guard: "symlink chain audit",
+    reason: "a hop in the middle of a symlink chain has its own holder, and whoever can write that directory repoints the run while both ends stay exactly as verified",
+    file: "lib/runtime-identity.mjs",
+    from: "const chain = executableChain(resolved.path, resolved.realpath);",
+    to: "const chain = [resolved.realpath];",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a symlink hop through a writable directory is refused, not only the two ends of the chain"
+  },
+  {
+    guard: "interpreter is part of the identity",
+    reason: "a shebang hands the credential to a second program; a byte-identical script whose interpreter changed is a different runtime",
+    file: "lib/runtime-identity.mjs",
+    from: "interpreter_digest: interpreterChain.length === 0 ? null : `sha256:${sha256Value(interpreterChain)}`,",
+    to: "interpreter_digest: null,",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the interpreter a shebang selects is part of the identity"
+  },
+  {
+    guard: "interpreter inherits its own findings",
+    reason: "an interpreter reached through a directory somebody else can write is as replaceable as the script, and the script's status must say so",
+    file: "lib/runtime-identity.mjs",
+    from: "for (const reason of interpreter.untrusted_reasons) reasons.push(`interpreter ${reason}`);",
+    to: "for (const reason of []) reasons.push(reason);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an interpreter reached through a world-writable directory makes the script untrusted"
+  },
+  {
+    guard: "effective execute permission",
+    reason: "an execute bit that does not apply to this process is a file execvp skips, so reading the mode describes a program the child would never run",
+    file: "lib/runtime-identity.mjs",
+    from: "accessSync(candidate, constants.X_OK);",
+    to: "accessSync(candidate, constants.F_OK);",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "an execute bit that does not apply to this process is not an executable"
   },
   {
     guard: "parent writable refusal",
@@ -61,8 +97,17 @@ export const GUARDS = [
     name: "an operator's own token does not reach a binary whose identity failed, and the child never starts"
   },
   {
+    guard: "spawn the verified file",
+    reason: "spawning the configured name resolves it a second time, later, in the kernel -- so the record describes one file and another one runs",
+    file: "lib/core.mjs",
+    from: "child = spawn(verifiedPath ?? spec.command, args, {",
+    to: "child = spawn(spec.command, args, {",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "the file whose identity was verified is the file that is spawned"
+  },
+  {
     guard: "resolver ownership",
-    reason: "a keychain entry belongs to the adapter that owns the resolver, not to whatever command was registered under it",
+    reason: "an identity recorded for one adapter with another adapter's resolver asking is refused by name; adapter_id is in the drift comparison too, so what this guard holds is which refusal the operator is shown, not whether the credential is refused",
     file: "lib/runtime-auth.mjs",
     from: "if ((registered.adapter_id ?? null) !== (adapter?.id ?? null)) {",
     to: "if (false) {",
@@ -71,10 +116,10 @@ export const GUARDS = [
   },
   {
     guard: "legacy migration guard",
-    reason: "an agent registered before identities were recorded must be migrated, not promoted to verified by silence",
+    reason: "an agent registered before identities existed must be migrated, not promoted by treating whatever is on disk now as what was registered then",
     file: "lib/runtime-auth.mjs",
-    from: 'if (registered === null || typeof registered !== "object") {',
-    to: "if (false) {",
+    from: "const registered = agent?.runtime_identity ?? null;",
+    to: "const registered = agent?.runtime_identity ?? current;",
     test: "tests/product/runtime-identity.test.mjs",
     name: "a legacy agent with no identity record is refused, not promoted"
   },
@@ -86,6 +131,24 @@ export const GUARDS = [
     to: "credential_env_name: resolved?.value ?? null,",
     test: "tests/product/runtime-identity.test.mjs",
     name: "no credential value is ever written into an identity record"
+  },
+  {
+    guard: "child output credential scrub",
+    reason: "the child is handed the credential on purpose and may print it; the raw AOS_EVENT objects are kept verbatim in the result, past the projection the event store applies",
+    file: "lib/core.mjs",
+    from: 'const parsed = JSON.parse(scrub(line.slice("AOS_EVENT\\t".length)));',
+    to: 'const parsed = JSON.parse(line.slice("AOS_EVENT\\t".length));',
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a credential the child quotes back does not survive into anything the run keeps"
+  },
+  {
+    guard: "invocation identity provenance",
+    reason: "the assessment is where anybody reads which program produced a score, and this mapping is the only place the run's identity record reaches it",
+    file: "lib/cli.mjs",
+    from: "runtime_identity: entry.runtime_identity ?? null",
+    to: "runtime_identity_dropped: null",
+    test: "tests/product/runtime-identity.test.mjs",
+    name: "a stored assessment carries the executable identity each invocation was bound to"
   },
   {
     guard: "execution plan cycle detection",

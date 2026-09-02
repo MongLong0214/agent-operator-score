@@ -1,8 +1,7 @@
 # Runtime executable identity
 
-A credential AOS finds for the operator — in their environment, in the macOS login Keychain, or
-through a runtime's own configuration — is handed to one program: the exact executable that was
-verified when the agent was registered.
+A credential AOS finds for the operator — in their environment or in the macOS login Keychain — is
+handed to one program: the exact executable that was verified when the agent was registered.
 
 The check this replaces compared basenames. An adapter declared that only `claude` may receive its
 credential, the configured command ended in `/claude`, and that was the whole test. A name survives
@@ -19,11 +18,18 @@ for anything it registers. Nothing here reads a credential, so nothing here can 
 | --- | --- |
 | `resolved_realpath`, `realpath_digest` | Where the name resolves after symlinks, the way the child will resolve it |
 | `file_fingerprint` | SHA-256 over the raw bytes, so a replacement in place is visible |
+| `interpreter_digest`, `interpreter_chain` | What a `#!` line hands the file to. `#!/usr/bin/env node` runs whatever `node` resolves to, and that program gets the credential |
 | `owner_uid`, `mode` | Who can rewrite it without moving it |
-| `parent_security` | Whether any directory on the way to it is world-writable, group-writable by an untrusted group, or owned by a third account |
+| `parent_security` | Whether any directory on the way to it — through **every** symlink hop, not only the two ends — is world-writable, group-writable by an untrusted group, owned by a third account, or carries a macOS ACL that lets somebody put a different file there |
 | `platform_identity` | macOS `codesign` team and designated requirement, **when macOS will say**. Absent is recorded as absent, never as a pass |
 | `adapter_id` | Which adapter's resolver this identity belongs to |
 | `identity_status` | `VERIFIED` or `UNTRUSTED` |
+
+Every field is read through a single open descriptor: `open` once, `fstat` that handle, hash through
+that handle. Resolving the name a second time to stat it and a third time to read it is a race with
+itself — the fingerprint of one file recorded against the permissions of another — and the only two
+tools here that cannot take a descriptor, `codesign` and `ls -lde`, are followed by a check that the
+name still reaches the same inode.
 
 ## What is checked, and when
 
@@ -32,15 +38,23 @@ resolver has answered has already let AOS read the operator's credential store o
 program nobody identified, and refusing afterwards does not put the credential back. If the check
 fails, the lookup and the child process are both abandoned.
 
+The child is then spawned by the verified *path*, with `argv0` set to the command the operator
+configured. Spawning the name would resolve it a second time, later, in the kernel.
+
 The gate is about a credential, not about which programs may run. An agent with no resolver on its
 adapter and no declared credential variable has nothing at stake and is not verified at all.
 
 ## Denied
 
 - `/tmp/claude`, or any executable whose directory is world-writable
-- a directory on the way to it that is group-writable by a group other than root's, or owned by a
-  third account
+- a directory on the way to it that is group-writable by a group other than root's, owned by a third
+  account, or carrying a macOS ACL entry that allows another principal to add, delete or replace
+  entries in it
+- a symlink hop whose own holding directory is writable, even when the first link and the final
+  target are both beyond reproach
 - the registered binary replaced byte for byte at the same path
+- a `#!` interpreter that has changed, or that cannot be resolved, or that is itself reached through
+  a directory somebody else can write
 - the path turned into a symlink pointing somewhere else
 - owner or mode changed since registration
 - the name now resolving to a wrapper earlier on `PATH`
@@ -65,13 +79,39 @@ by `admin` for the same reason and gets the same answer: not trusted for an auto
 An operator who has looked at their own install and disagrees sets the variable themselves and
 re-adds the agent with `--allow-runtime-auth`.
 
+An ACL is read the same way. Only `allow` entries count — a `deny` entry takes permission away, and
+`group:everyone deny delete` sits on half the directories in a home folder — but every allow entry
+that could put a different file there is a finding, including one naming the operator's own account.
+This module does not get to decide which ACL somebody added on purpose is the harmless kind.
+
+## What credential material a run keeps
+
+The identity record has no field for a value. Beyond that, the child *is* given the credential and
+may print it, so what a run retains from the child is filtered twice: by the shape-matching redactor
+every output in this product passes through, and by removing the exact values this run put in the
+child's environment. That second pass is what covers a token whose shape the redactor has never
+seen. It applies to both output excerpts and to the raw `AOS_EVENT` objects kept in
+`semantic_events`, which reach `result.json` without passing through the event store's projection.
+
+What it does not cover: files the agent writes into its own workspace. An agent that has been handed
+a credential can write it to disk, and no filter on AOS's side of the pipe changes that.
+
 ## What this does not do
 
-- It binds the executable, not its arguments. An interpreter registered as the command with a script
-  as an argument is verified as the interpreter; `aos agent doctor` reports fixture-backed agents
-  separately for the same reason.
+- It binds the executable and its `#!` chain, not its arguments. An operator who registers
+  `/usr/bin/env` or a shell as the command, with the real program in `args`, has chosen the program
+  by argument — undecidable in general (`sh -c "…"` is arbitrary), and it is the operator's own
+  configuration rather than something an attacker changes underneath them. `aos agent doctor`
+  reports fixture-backed agents separately for the same reason.
 - Signing evidence exists only where the platform provides it. A runtime installed from npm on Linux
   carries none, and `platform_identity.recorded` is `false` — an absence of evidence, which is not
   evidence of a good signature.
-- The gap between the check and `execve` is small, not zero. That is why a writable directory
-  anywhere above the executable is refused outright rather than measured.
+- The gap between the check and `execve` is small, not zero, and it is not one instruction: the
+  keychain lookup between them may wait up to four seconds, and the `security` subprocess appearing
+  is itself a signal to anyone watching that verification has finished. Spawning the verified path
+  removes the second name resolution; atomic replacement of that path is not closed by anything
+  short of executing a held descriptor, and Node exposes no `fexecve`. That is why a writable
+  directory anywhere above the executable — through every symlink hop, by mode or by ACL — is
+  refused outright rather than measured.
+- A same-UID attacker is out of scope and always was. Anything running as the operator can rewrite
+  the agent config, so no check this file makes constrains it.

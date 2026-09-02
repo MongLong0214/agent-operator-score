@@ -14,7 +14,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
@@ -34,6 +34,7 @@ import {
   identityDrift,
   resolveExecutable
 } from "../../lib/runtime-identity.mjs";
+import { addAgent, makePlan, newestResult, newestRunId, run } from "./helpers.mjs";
 
 const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "bin", "aos.mjs");
 const CLAUDE = ADAPTERS["claude-code.v1"];
@@ -113,7 +114,11 @@ test("an identity record names the exact file, never the name it was reached by"
   }
 });
 
-test("a binary replaced between registration and spawn is refused", () => {
+// The name says registration, not spawn, on purpose. This replaces the binary before the
+// authorization call, so what it proves is that a rewrite between `aos agent add` and the
+// credential lookup is caught -- not that the microseconds between the check and `execve` are
+// closed. Nothing in this file can prove that, and an earlier name here claimed it did.
+test("a binary replaced after registration is refused before the credential is read", () => {
   // Same path, same name, same mode. Only the bytes changed, which is the whole attack.
   const directory = scratch();
   try {
@@ -268,6 +273,10 @@ test("the adapter that owns the credential resolver is not the adapter being spa
     const verdict = authorizeRuntimeAuth(agent, CLAUDE, {});
     assert.equal(verdict.ok, false);
     assert.equal(verdict.code, "AOS_RUNTIME_AUTH_RESOLVER_MISMATCH");
+    // Said out loud because it is easy to overstate what this check holds: `adapter_id` is in the
+    // drift comparison as well, so removing the ownership check above changes which refusal the
+    // operator is shown -- not whether the credential is refused.
+    assert.ok(identityDrift(registered, describeExecutable(file, { adapterId: "claude-code.v1" })).includes("adapter_id"));
 
     const { thrown, calls } = refusal(agent);
     assert.match(thrown.message, /AOS_RUNTIME_AUTH_RESOLVER_MISMATCH/);
@@ -397,7 +406,10 @@ test("an operator's own token does not reach a binary whose identity failed, and
       if (previous === undefined) delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
       else process.env.CLAUDE_CODE_OAUTH_TOKEN = previous;
     }
-    assert.equal(resolveExecutable(marker), null, "the child was spawned after the identity was refused");
+    // `existsSync`, not `resolveExecutable`. The child creates this marker with `touch`, so it is
+    // not executable and `resolveExecutable` answers null whether the child ran or not -- an
+    // assertion that could not fail is not an assertion.
+    assert.equal(existsSync(marker), false, "the child was spawned after the identity was refused");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -486,5 +498,362 @@ test("aos agent add records the executable identity, and doctor names the migrat
     assert.match(drifted.stdout, /aos agent add/);
   } finally {
     for (const dir of [home, directory]) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// Round two. Everything below answers a finding from the independent adversarial review of #554,
+// and each one is built the same way as the tests above it: real files in a temporary directory,
+// because a mock would agree with whatever the implementation believes.
+
+test("a symlink hop through a writable directory is refused, not only the two ends of the chain", () => {
+  // /safe/claude -> /bridge/hop -> /trusted/real-claude. Both ends belong to the operator and both
+  // pass. `/bridge` is the middle, and whoever can write it repoints `hop` at their own file with
+  // every recorded field about `/safe` and `/trusted` unchanged. An earlier round walked the first
+  // link and the final target and never looked between them.
+  const directory = scratch();
+  try {
+    const safe = join(directory, "safe");
+    const bridge = join(directory, "bridge");
+    const trusted = join(directory, "trusted");
+    for (const dir of [safe, bridge, trusted]) mkdirSync(dir, { mode: 0o755 });
+    const real = executable(trusted, "real-claude", "exit 0");
+    const hop = join(bridge, "hop");
+    symlinkSync(real, hop);
+    const command = join(safe, "claude");
+    symlinkSync(hop, command);
+    chmodSync(bridge, 0o777);
+
+    const identity = describeExecutable(command, { adapterId: "claude-code.v1" });
+    assert.equal(identity.resolved_realpath, realpathSync(real));
+    assert.equal(identity.parent_security.world_writable, true);
+    assert.ok(
+      identity.untrusted_reasons.includes(`world_writable ${bridge}`),
+      `the hop's own directory was never audited: ${identity.untrusted_reasons.join(", ")}`
+    );
+    assert.equal(identity.identity_status, "UNTRUSTED");
+
+    const { thrown, calls } = refusal(agentAt(command, identity));
+    assert.match(thrown.message, /AOS_RUNTIME_IDENTITY_UNTRUSTED/);
+    assert.equal(calls, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the interpreter a shebang selects is part of the identity", () => {
+  // A script does not run itself. `#!/usr/bin/env <name>` makes the kernel run `env`, and `env`
+  // searches PATH for the name -- so the byte-identical, correctly-owned script hands the
+  // operator's credential to whatever that search finds. Nothing about the script changes.
+  const directory = scratch();
+  try {
+    const first = join(directory, "first");
+    const second = join(directory, "second");
+    for (const dir of [first, second]) mkdirSync(dir, { mode: 0o755 });
+    executable(first, "aos-test-interpreter", "exit 0");
+    executable(second, "aos-test-interpreter", "exit 1");
+    const script = join(directory, "claude");
+    writeFileSync(script, "#!/usr/bin/env aos-test-interpreter\nexit 0\n");
+    chmodSync(script, 0o755);
+
+    const registered = describeExecutable(script, { env: { PATH: first }, adapterId: "claude-code.v1" });
+    assert.equal(registered.identity_status, "VERIFIED", registered.untrusted_reasons.join(", "));
+    assert.deepEqual(registered.interpreter_chain.map((entry) => entry.command), ["/usr/bin/env", "aos-test-interpreter"]);
+
+    const now = describeExecutable(script, { env: { PATH: second }, adapterId: "claude-code.v1" });
+    // The file is byte for byte what it was. Only the program it hands itself to has changed.
+    assert.equal(now.file_fingerprint, registered.file_fingerprint);
+    assert.equal(now.resolved_realpath, registered.resolved_realpath);
+    assert.deepEqual(identityDrift(registered, now), ["interpreter_digest"]);
+
+    const { thrown, calls } = refusal(agentAt(script, registered), { env: { PATH: second } });
+    assert.match(thrown.message, /AOS_RUNTIME_IDENTITY_DRIFT/);
+    assert.equal(calls, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("an interpreter reached through a world-writable directory makes the script untrusted", () => {
+  const directory = scratch();
+  try {
+    const wide = join(directory, "wide");
+    // chmod after mkdir: mkdir is filtered through the umask and 0777 arrives as 0755.
+    mkdirSync(wide, { mode: 0o755 });
+    chmodSync(wide, 0o777);
+    executable(wide, "aos-test-interpreter", "exit 0");
+    const script = join(directory, "claude");
+    writeFileSync(script, "#!/usr/bin/env aos-test-interpreter\nexit 0\n");
+    chmodSync(script, 0o755);
+
+    const identity = describeExecutable(script, { env: { PATH: wide }, adapterId: "claude-code.v1" });
+    assert.equal(identity.identity_status, "UNTRUSTED");
+    assert.ok(
+      identity.untrusted_reasons.some((reason) => reason === `interpreter world_writable ${wide}`),
+      `the interpreter's directory was never audited: ${identity.untrusted_reasons.join(", ")}`
+    );
+
+    const { thrown, calls } = refusal(agentAt(script, identity), { env: { PATH: wide } });
+    assert.match(thrown.message, /AOS_RUNTIME_IDENTITY_UNTRUSTED/);
+    assert.equal(calls, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a shebang naming an interpreter that cannot be resolved is not read as having none", () => {
+  const directory = scratch();
+  try {
+    const script = join(directory, "claude");
+    writeFileSync(script, "#!/usr/bin/env aos-test-interpreter-that-is-not-installed\nexit 0\n");
+    chmodSync(script, 0o755);
+    const identity = describeExecutable(script, { env: { PATH: directory }, adapterId: "claude-code.v1" });
+    assert.equal(identity.identity_status, "UNTRUSTED");
+    assert.ok(identity.untrusted_reasons.includes("interpreter_unresolved aos-test-interpreter-that-is-not-installed"));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a macOS ACL that lets somebody else replace the file is refused", { skip: process.platform !== "darwin" }, () => {
+  // Mode 0755, owned by the operator, and still one `mv` from being somebody else's file. Node has
+  // no interface to an ACL, so the mode walk reads this directory as clean.
+  const directory = scratch();
+  try {
+    const holder = join(directory, "bin");
+    mkdirSync(holder, { mode: 0o755 });
+    const file = executable(holder, "claude", "exit 0");
+    const clean = describeExecutable(file, { adapterId: "claude-code.v1" });
+    assert.equal(clean.identity_status, "VERIFIED", clean.untrusted_reasons.join(", "));
+    assert.equal(clean.parent_security.acl_writable, false);
+
+    const applied = spawnSync("/bin/chmod", ["+a", "group:everyone allow add_file,delete_child", holder], { encoding: "utf8" });
+    assert.equal(applied.status, 0, applied.stderr);
+
+    const identity = describeExecutable(file, { adapterId: "claude-code.v1" });
+    // Nothing the mode bits can see has changed.
+    assert.equal(identity.mode, clean.mode);
+    assert.equal(identity.owner_uid, clean.owner_uid);
+    assert.equal(identity.parent_security.world_writable, false);
+    assert.equal(identity.parent_security.group_writable_untrusted, false);
+    assert.equal(identity.parent_security.acl_writable, true);
+    assert.equal(identity.identity_status, "UNTRUSTED");
+
+    const { thrown, calls } = refusal(agentAt(file, identity));
+    assert.match(thrown.message, /AOS_RUNTIME_IDENTITY_UNTRUSTED/);
+    assert.equal(calls, 0);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("an execute bit that does not apply to this process is not an executable", { skip: process.getuid() === 0 }, () => {
+  // 0011 has execute bits set and the owner is not one of them. POSIX resolves permission by the
+  // first class that matches, so this process -- the owner -- may not execute it, and `execvp`
+  // carries on down PATH. Reading `mode & 0111` would have described a file the child never runs.
+  const directory = scratch();
+  try {
+    const shadowed = join(directory, "shadowed");
+    const real = join(directory, "real");
+    for (const dir of [shadowed, real]) mkdirSync(dir, { mode: 0o755 });
+    const decoy = join(shadowed, "claude");
+    writeFileSync(decoy, "#!/bin/sh\nexit 0\n");
+    chmodSync(decoy, 0o011);
+    const genuine = executable(real, "claude", "exit 0");
+
+    assert.equal(resolveExecutable(decoy), null);
+    const found = resolveExecutable("claude", { env: { PATH: [shadowed, real].join(delimiter) } });
+    assert.equal(found.realpath, realpathSync(genuine));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a PATH entry that is not absolute is not searched", () => {
+  // A relative entry is resolved against a working directory, and the child's is the workspace --
+  // not this process's. Anything AOS verified through one would be a statement about another file.
+  const directory = scratch();
+  const previous = process.cwd();
+  try {
+    const holder = join(directory, "bin");
+    mkdirSync(holder, { mode: 0o755 });
+    executable(holder, "claude", "exit 0");
+    process.chdir(holder);
+    assert.equal(resolveExecutable("claude", { env: { PATH: "." } }), null);
+    assert.equal(resolveExecutable("claude", { env: { PATH: "" } }), null);
+    // The same directory named absolutely does resolve, so the nulls above are the rule and not a
+    // file that was never there.
+    assert.notEqual(resolveExecutable("claude", { env: { PATH: holder } }), null);
+  } finally {
+    process.chdir(previous);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("an explicitly approved wrapper is still compared against the identity it was approved as", () => {
+  // `--allow-runtime-auth` is the operator saying this program may carry this variable. It is not
+  // them saying nobody need look at it again: the wrapper still has an identity and it is still
+  // compared, which is the difference between an approval and an exemption.
+  const directory = scratch();
+  try {
+    const holder = join(directory, "bin");
+    mkdirSync(holder, { mode: 0o755 });
+    const file = executable(holder, "claude", "exit 0");
+    chmodSync(holder, 0o777);
+    const registered = describeExecutable(file, { adapterId: "claude-code.v1" });
+    // A directory the automatic path refuses outright.
+    assert.equal(registered.identity_status, "UNTRUSTED");
+
+    const approved = agentAt(file, registered, {
+      auto_runtime_auth: false,
+      runtime_auth_env_names: ["CLAUDE_CODE_OAUTH_TOKEN"]
+    });
+    const verdict = authorizeRuntimeAuth(approved, CLAUDE, {});
+    assert.equal(verdict.ok, true, verdict.detail);
+    assert.equal(verdict.auto, false);
+    assert.equal(verdict.identity_status, "UNTRUSTED");
+
+    // And the same wrapper rewritten is refused, approval or not.
+    executable(holder, "claude", "exit 1");
+    const { thrown } = refusal(approved);
+    assert.match(thrown.message, /AOS_RUNTIME_IDENTITY_DRIFT/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("an explicitly approved credential on an agent with no recorded identity says to migrate", () => {
+  const directory = scratch();
+  try {
+    const file = executable(directory, "claude", "exit 0");
+    const legacy = agentAt(file, null, {
+      auto_runtime_auth: false,
+      runtime_auth_env_names: ["CLAUDE_CODE_OAUTH_TOKEN"]
+    });
+    const verdict = authorizeRuntimeAuth(legacy, CLAUDE, {});
+    // Not refused: the operator approved this one by name, and AOS is not reaching into a store on
+    // its own behalf. Recorded as unmigrated, because a run that says VERIFIED here would be saying
+    // something nobody checked.
+    assert.equal(verdict.ok, true);
+    assert.equal(verdict.auto, false);
+    assert.equal(verdict.identity_status, "MIGRATION_REQUIRED");
+    assert.match(verdict.detail, /explicit approval/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+/** A child that reports the file it was actually executed as, and quotes its own credential. */
+const reporter = (directory, name) => {
+  const file = join(directory, name);
+  writeFileSync(
+    file,
+    "#!/bin/sh\n" +
+    'echo "argv0=$0"\n' +
+    `printf 'AOS_EVENT\\t{"event_type":"completion.claimed","payload":{"claim":"%s"}}\\n' "$CLAUDE_CODE_OAUTH_TOKEN"\n`
+  );
+  chmodSync(file, 0o755);
+  return file;
+};
+
+const withOperatorToken = async (value, body) => {
+  const previous = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+  process.env.CLAUDE_CODE_OAUTH_TOKEN = value;
+  try {
+    return await body();
+  } finally {
+    if (previous === undefined) delete process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    else process.env.CLAUDE_CODE_OAUTH_TOKEN = previous;
+  }
+};
+
+const runOnce = (spec, directory) => runProcess(spec, {
+  workspace: directory,
+  family: "FAM-1",
+  stage: "s",
+  prompt: "hello",
+  session: "sess",
+  isolation: "BEST_EFFORT_CLI",
+  timeoutMs: 10000
+});
+
+test("the file whose identity was verified is the file that is spawned", async () => {
+  // The command is a name; the identity is a file. Spawning the name resolves it a second time, at
+  // a later moment, by the kernel -- so the record describes one file and another one runs. The
+  // child reports the path it was executed as, and it is the verified one.
+  const directory = scratch();
+  try {
+    const vendor = reporter(directory, "vendor-runtime");
+    const command = join(directory, "claude");
+    symlinkSync(vendor, command);
+    const identity = describeExecutable(command, { adapterId: "claude-code.v1" });
+    assert.equal(identity.identity_status, "VERIFIED", identity.untrusted_reasons.join(", "));
+
+    const result = await withOperatorToken("aos554-opaque-runtime-credential", () =>
+      runOnce(agentAt(command, identity), directory));
+    assert.equal(result.exit_code, 0, result.stderr_excerpt);
+    assert.ok(
+      result.stdout_excerpt.includes(`argv0=${realpathSync(vendor)}`),
+      `the child was reached through the name rather than the verified file: ${result.stdout_excerpt}`
+    );
+    // And the run says which program the credential was bound to.
+    assert.equal(result.runtime_identity.identity_digest, identity.identity_digest);
+    assert.equal(result.runtime_identity.credential_env_name, "CLAUDE_CODE_OAUTH_TOKEN");
+    assert.equal(result.runtime_identity.credential_source, "environment");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a credential the child quotes back does not survive into anything the run keeps", async () => {
+  // The claim that no credential value is ever stored covered the identity record and stopped
+  // there. The child is handed the credential on purpose, it may print whatever it likes, and the
+  // raw `AOS_EVENT` objects were kept verbatim in `semantic_events` and written to result.json --
+  // past the projection the event store applies. This value matches none of the redactor's shape
+  // patterns, so what removes it is knowing exactly what was handed over.
+  const directory = scratch();
+  const secret = "aos554-opaque-runtime-credential";
+  try {
+    const command = reporter(directory, "claude");
+    const identity = describeExecutable(command, { adapterId: "claude-code.v1" });
+    assert.equal(identity.identity_status, "VERIFIED", identity.untrusted_reasons.join(", "));
+
+    const result = await withOperatorToken(secret, () => runOnce(agentAt(command, identity), directory));
+    assert.equal(result.exit_code, 0, result.stderr_excerpt);
+    // The child really did print it, so the absence below is redaction and not an empty stream.
+    assert.equal(result.semantic_events.length, 1);
+    assert.equal(result.semantic_events[0].event_type, "completion.claimed");
+    assert.equal(result.semantic_events[0].payload.claim.includes(secret), false);
+    assert.equal(JSON.stringify(result).includes(secret), false, "the credential reached the stored result");
+    assert.equal(result.stdout_excerpt.includes(secret), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a stored assessment carries the executable identity each invocation was bound to", () => {
+  // `runProcess` produces the provenance and the assessment is where anybody reads it. The mapping
+  // that builds `family_results` dropped the field on the floor, so the promise of the issue --
+  // evidence of which program the run went to -- existed only in memory.
+  const cwd = scratch();
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+    run(cwd, ["assess", "--plan", plan, "--json"], 3);
+    const result = newestResult(cwd);
+    const invocation = result.family_results["FAM-1"].invocations[0];
+    assert.equal(Object.hasOwn(invocation, "runtime_identity"), true, "the stored assessment dropped the identity provenance");
+    const provenance = invocation.runtime_identity;
+    for (const field of ["identity_status", "identity_digest", "credential_env_name", "credential_source", "explicit_env_names"]) {
+      assert.equal(Object.hasOwn(provenance, field), true, `runtime_identity is missing ${field}`);
+    }
+    // A fixture agent has no credential at stake, and the record says so rather than saying nothing.
+    assert.equal(provenance.credential_env_name, null);
+    assert.equal(provenance.credential_source, null);
+    // And the file it is stored in is the one an operator reads.
+    const stored = JSON.parse(readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "result.json"), "utf8"));
+    assert.equal(Object.hasOwn(stored.family_results["FAM-1"].invocations[0], "runtime_identity"), true);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
   }
 });
