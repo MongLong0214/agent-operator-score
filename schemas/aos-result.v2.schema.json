@@ -913,6 +913,7 @@
     "incomplete_forms",
     "unsupported_forms",
     "unidentified_facets",
+    "boundary_withheld",
     "facet_identity",
     "facet_coverage",
     "operator_process_profile",
@@ -1200,6 +1201,16 @@
         "$ref": "#/$defs/id"
       },
       "maxItems": 64,
+      "uniqueItems": true
+    },
+    "boundary_withheld": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^AOS_ISOLATION_[A-Z_]+$",
+        "maxLength": 200
+      },
+      "maxItems": 32,
       "uniqueItems": true
     },
     "facet_identity": {

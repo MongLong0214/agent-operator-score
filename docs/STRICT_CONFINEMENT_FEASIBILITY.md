@@ -239,6 +239,16 @@ declaring `/etc/ssl` and `/etc/resolv.conf`, which is the Seatbelt defect on the
 digest describing one boundary while the argument vector applied another, with `/etc/hostname` and
 `/etc/machine-id` inside it.
 
+The special mounts are the other half of the same rule, and they were the half still broken: `--proc
+/proc`, `--dev /dev` and `--tmpfs /tmp` were added unconditionally, so emptying both device arrays
+produced a byte-identical argument vector and the policy digest could move while the applied
+boundary did not. `--dev` was the worst of the three, mounting a whole device instance whose
+contents the policy never named. Now a tmpfs holds `/dev` and each declared node is bound onto it at
+the access the policy gives it (`--ro-bind-try` for `device_readable`, `--dev-bind-try` for
+`device_writable`); `/proc` follows the process axis, since a fresh proc instance is what a pid
+namespace is for; and the private `/tmp` is declared as `filesystem.private_tmpfs`, a key that
+exists only on a mount-namespace backend because Seatbelt has no mounts to give.
+
 The system grants are the narrowest set the runtime was measured to need on this machine:
 `/usr/lib`, `/System/Library` and `/private/var/db/dyld` as trees, plus the individual symlinks a
 path resolves through (`/tmp`, `/var`, `/etc`, `/Users`, `/usr`, `/bin`). `/Library`, `/usr/share`,
@@ -461,15 +471,23 @@ or publishing a null transport, is refused rather than read as permission.
 
 `claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise, and the
 CLI applies it against the result surface #559 introduced. The verdict travels into `evaluate` as
-the run's `boundary`, and two things follow from it. The claim stage falls to `RUN_DIAGNOSTIC` on
+the run's `boundary` -- and an absent verdict withholds exactly like a negative one: a caller who
+says nothing about the boundary has established nothing about it, so an omitted, null or malformed
+boundary is `AOS_ISOLATION_NOT_MEASURED` rather than permission. Two things follow from it. The claim stage falls to `RUN_DIAGNOSTIC` on
 every surface, with the `AOS_ISOLATION_*` codes carried beside it in `boundary_withheld`. And the
 composite -- the surface labelled *PROFILE-BOUND OPERATOR-AGENT SYSTEM PERFORMANCE* -- is withheld:
 `issued: false`, `value: null`, and a `withheld_reason` naming the isolation conditions, so `aos
-assess` exits non-zero and prints the reasons where the number would have been. The two indices are
+assess` exits non-zero and prints the reasons where the number would have been. The codes travel on
+the result as `boundary_withheld`, beside the other three lists that say why a claim stage fell, and
+`aos verify --run` recomputes the result under them: without that input every withheld result
+recomputed as an issued one, so an untampered artifact failed its own verification and the check
+meant to catch a forged number produced the number a forger would want. The two indices are
 not withheld by the gate: what happened in the run happened, and the indices say so. It is the
 claim about the profile that the boundary decides, and a headline number whose own label says
 "profile-bound" is that claim. This is what the level table above means in practice --
-`BEST_EFFORT_CLI` is diagnostic only (SSOT §24) -- and it is a behaviour change for every host
+`BEST_EFFORT_CLI` is diagnostic only (SSOT §24), which the legacy scorer now enforces on its own
+side too: `issuanceCheck` issues under a declared `STRICT` level and nothing else, where its default
+of `BEST_EFFORT_CLI` used to hand a caller who declared no level at all the permissive answer -- and it is a behaviour change for every host
 that cannot run the proven lane: `aos cycle` has no aggregate to take there, and says so per run
 rather than printing a number that reads as official. `issuanceGateForRun(records)` folds a run's
 invocations into one decision that is official only when every invocation is, on the same lane

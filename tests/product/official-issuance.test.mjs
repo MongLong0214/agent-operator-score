@@ -23,7 +23,7 @@ import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { createRun, writeResult } from "../../lib/store.mjs";
 import { METRIC_IDS, METRICS, observationOf } from "../../lib/metrics.mjs";
-import { newestRecord, newestResult, run } from "./helpers.mjs";
+import { newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 import { evaluate } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
@@ -1437,7 +1437,7 @@ test("a_required_metric_with_an_unanswered_subcheck_withholds_the_score", () => 
     evidence_ids: ["e"],
     reason: "fixture"
   });
-  const boundary = { officialIssuance: { official: true, reasons: [] } };
+  const boundary = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
   const whole = METRIC_IDS.map((id) => answered(id));
   assert.equal(scoreRun(whole, boundary).issued, true);
 
@@ -1477,9 +1477,24 @@ test("a_run_that_the_boundary_did_not_make_official_carries_no_score", () => {
   // worth, under the claim stage it can support.
   assert.equal(withheld.provisional_raw, 100);
 
-  const official = scoreRun(observed, { officialIssuance: { official: true, reasons: [] } });
+  const official = scoreRun(observed, { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } });
   assert.equal(official.issued, true);
   assert.equal(official.claim_stage, "PROFILE_BOUND");
+
+  // The declared level is a second condition, and it is not satisfied by a permissive default.
+  // SSOT S24 makes BEST_EFFORT_CLI diagnostic-only: it is a replaced HOME and a filtered
+  // environment, not a boundary. An omitted level is not a level at all, and the default that
+  // filled it in with BEST_EFFORT_CLI let a caller who declared nothing issue a number.
+  for (const level of [undefined, "BEST_EFFORT_CLI", "NONE", "UNKNOWN"]) {
+    const context = { officialIssuance: { official: true, reasons: [] }, ...(level === undefined ? {} : { isolationLevel: level }) };
+    const scored = scoreRun(observed, context);
+    assert.equal(scored.issued, false, String(level));
+    assert.equal(scored.score, null, String(level));
+    assert.ok(
+      scored.blockers.some((one) => one.code === "ISOLATION_LEVEL_NOT_STRICT" || one.code === "ISOLATION_NONE"),
+      `${String(level)}: ${scored.blockers.map((one) => one.code).join(", ")}`
+    );
+  }
 
   // A caller that supplies no verdict has measured no boundary. Absent evidence withholds exactly
   // like a negative verdict -- the review found this failing open, with a perfect observation set
@@ -1540,27 +1555,72 @@ test("a_run_that_measured_everything_still_publishes_no_number_when_the_boundary
   // no number and the isolation condition that withheld it, on the surface the number would have
   // been on -- not a number one claim stage lower.
   const contract = contractWithAPopulatedIndex();
-  const held = buildResult({
-    contract,
-    evaluation: evaluate(observationsWith(), { ...identified, boundary: { official: true, reasons: [] } }, contract)
-  });
+  // The fixture identity carries a boundary that held, because PROFILE_BOUND is a claim about an
+  // enforced environment. `unbounded` is that identity with the boundary taken back off, which is
+  // the case this test is about: a caller who establishes nothing about the boundary.
+  const { boundary: _held, ...unbounded } = identified;
+  const held = buildResult({ contract, evaluation: evaluate(observationsWith(), identified, contract) });
   assert.equal(held.aos_composite.issued, true);
   assert.equal(typeof held.aos_composite.value, "number");
   assert.equal(held.claim_stage, "PROFILE_BOUND");
 
-  for (const boundary of [
-    { official: false, reasons: ["AOS_ISOLATION_LEVEL_NOT_STRICT"] },
-    { official: false, reasons: ["AOS_ISOLATION_CANARY_NOT_PASS", "AOS_ISOLATION_LEAKED_DESCENDANT"] },
-    { official: false, reasons: [] }
-  ]) {
-    const withheld = buildResult({ contract, evaluation: evaluate(observationsWith(), { ...identified, boundary }, contract) });
-    assert.equal(withheld.aos_composite.issued, false, JSON.stringify(boundary));
-    assert.equal(withheld.aos_composite.value, null);
-    assert.match(withheld.aos_composite.withheld_reason, /AOS_ISOLATION_/u);
-    assert.equal(withheld.claim_stage, "RUN_DIAGNOSTIC");
+  // Refused, and not-measured. The three absent shapes are the ones that matter: a caller who says
+  // nothing about the boundary has established nothing about it, and this PR's own rule -- absent
+  // evidence never opens a gate -- was written backwards here for one round. Omitted, null and
+  // undefined each returned PROFILE_BOUND with an issued composite of 100 until this test.
+  const contexts = [
+    ["a refused boundary", { ...unbounded, boundary: { official: false, reasons: ["AOS_ISOLATION_LEVEL_NOT_STRICT"] } }],
+    ["two named conditions", { ...unbounded, boundary: { official: false, reasons: ["AOS_ISOLATION_CANARY_NOT_PASS", "AOS_ISOLATION_LEAKED_DESCENDANT"] } }],
+    ["a refusal with no reasons", { ...unbounded, boundary: { official: false, reasons: [] } }],
+    ["an omitted boundary", { ...unbounded }],
+    ["a null boundary", { ...unbounded, boundary: null }],
+    ["an undefined boundary", { ...unbounded, boundary: undefined }],
+    ["a boundary that is not an object", { ...unbounded, boundary: "official" }],
+    ["a boundary whose verdict is not a boolean", { ...unbounded, boundary: { official: "true", reasons: [] } }]
+  ];
+  for (const [label, context] of contexts) {
+    const evaluation = evaluate(observationsWith(), context, contract);
+    const withheld = buildResult({ contract, evaluation });
+    assert.equal(withheld.aos_composite.issued, false, label);
+    assert.equal(withheld.aos_composite.value, null, label);
+    assert.match(withheld.aos_composite.withheld_reason, /AOS_ISOLATION_/u, label);
+    assert.equal(withheld.claim_stage, "RUN_DIAGNOSTIC", label);
+    // Named on the result, not only in prose: the reader is told which condition withheld the
+    // number, and an unmeasured boundary is named as unmeasured rather than left blank.
+    assert.ok(withheld.boundary_withheld.length > 0, label);
+    for (const code of withheld.boundary_withheld) assert.match(code, /^AOS_ISOLATION_[A-Z_]+$/u, label);
     // The two indices are what this run measured and they are not withheld by the boundary: what
     // happened in the run happened. It is the claim about the profile that is not supported.
-    assert.equal(withheld.operator_process_profile.issued, true);
-    assert.equal(withheld.system_outcome_profile.issued, true);
+    assert.equal(withheld.operator_process_profile.issued, true, label);
+    assert.equal(withheld.system_outcome_profile.issued, true, label);
+  }
+  assert.deepEqual(
+    buildResult({ contract, evaluation: evaluate(observationsWith(), { ...unbounded }, contract) }).boundary_withheld,
+    ["AOS_ISOLATION_NOT_MEASURED"],
+    "an unmeasured boundary is not named as such"
+  );
+  assert.deepEqual(held.boundary_withheld, []);
+});
+
+test("a_withheld_result_verifies_as_the_result_it_is", () => {
+  // `aos verify` recomputes a stored result from its own observations and compares. The boundary is
+  // an input to that computation, so leaving it out recomputed every withheld result as an issued
+  // one: an untampered artifact failed its own verification, and -- worse -- the recomputation that
+  // is supposed to catch a forged number produced the number the forger wanted. The codes travel on
+  // the result, which is what makes the recomputation possible without trusting the verifier's own
+  // idea of the lane it is running on.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-withheld-"));
+  try {
+    const agent = join(cwd, "agent.mjs");
+    writeFileSync(agent, "process.stdout.write('done\\n');\n");
+    run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
+    run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    const stored = newestResult(cwd);
+    assert.ok(stored.boundary_withheld.length > 0, "this host issued an official boundary; the case is not exercised");
+    const runId = newestRunId(cwd);
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/u, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
   }
 });

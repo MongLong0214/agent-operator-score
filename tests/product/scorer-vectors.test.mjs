@@ -10,7 +10,7 @@ import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
 // arithmetic and the metric gates, so the boundary is stated once here rather than at every call:
 // what they assert is what the scorer does with observations, not what this machine's isolation
 // backend can do.
-const UNDER_AN_OFFICIAL_BOUNDARY = { officialIssuance: { official: true, reasons: [] } };
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
 const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
 
 

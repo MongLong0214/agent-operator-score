@@ -484,11 +484,13 @@ test("bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees", ()
   const declared = new Set([
     ...policy.filesystem.system_readable,
     ...policy.filesystem.system_readable_files,
+    ...policy.filesystem.device_readable,
+    ...policy.filesystem.device_writable,
     ...policy.filesystem.readable.map((name) => bindings[name]),
     ...policy.filesystem.writable.map((name) => bindings[name])
   ]);
   for (let at = 0; at < args.length; at += 1) {
-    if (!["--ro-bind", "--ro-bind-try", "--bind"].includes(args[at])) continue;
+    if (!["--ro-bind", "--ro-bind-try", "--bind", "--dev-bind-try"].includes(args[at])) continue;
     assert.ok(declared.has(args[at + 1]), `${args[at + 1]} is mounted and the policy does not declare it`);
     assert.equal(args[at + 1], args[at + 2], "a tree is mounted at a different path inside");
   }
@@ -499,6 +501,38 @@ test("bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees", ()
   // And the policy governs the vector: emptying the declared system trees changes what is mounted.
   const narrowed = { ...policy, filesystem: { ...policy.filesystem, system_readable: [] } };
   assert.notEqual(bubblewrapArgs(narrowed, bindings, ["/bin/true"]).join(" "), bubblewrapArgs(policy, bindings, ["/bin/true"]).join(" "), "the policy does not govern the mounts");
+
+  // The device half of the same rule. `--dev /dev` mounts a whole devtmpfs whose contents the
+  // policy never named, and `--proc` and `--tmpfs /tmp` were added unconditionally: emptying both
+  // device arrays left the argument vector byte-identical, so the policy digest could move while
+  // the applied boundary did not. Every special mount is declared, and every declared node is
+  // mounted at the access the policy gives it.
+  assert.equal(text.includes("--dev /dev"), false, "a whole device instance is mounted and the policy declares nodes");
+  for (const node of policy.filesystem.device_writable) assert.ok(text.includes(`--dev-bind-try ${node} ${node}`), `${node} is declared writable and is not mounted writable`);
+  for (const node of policy.filesystem.device_readable) {
+    if (policy.filesystem.device_writable.includes(node)) continue;
+    assert.ok(text.includes(`--ro-bind-try ${node} ${node}`), `${node} is declared readable and is not mounted`);
+    assert.equal(text.includes(`--dev-bind-try ${node} ${node}`), false, `${node} is declared read-only and is mounted writable`);
+  }
+  for (const declaredIn of ["device_readable", "device_writable"]) {
+    const without = { ...policy, filesystem: { ...policy.filesystem, [declaredIn]: [] } };
+    assert.notEqual(
+      bubblewrapArgs(without, bindings, ["/bin/true"]).join(" "),
+      bubblewrapArgs(policy, bindings, ["/bin/true"]).join(" "),
+      `${declaredIn} does not govern the device nodes that are mounted`
+    );
+  }
+  const noDevices = { ...policy, filesystem: { ...policy.filesystem, device_readable: [], device_writable: [] } };
+  assert.equal(bubblewrapArgs(noDevices, bindings, ["/bin/true"]).some((one) => one.startsWith("/dev")), false, "a device node is mounted that the policy does not declare");
+  // The private /tmp and the fresh /proc are declared too, on the backend that can give them: the
+  // mount namespace. Emptying either declaration takes the mount out.
+  assert.ok(text.includes("--tmpfs /tmp"), "the private tmpfs is not mounted");
+  assert.deepEqual([...policy.filesystem.private_tmpfs], ["/tmp"]);
+  const noTmp = bubblewrapArgs({ ...policy, filesystem: { ...policy.filesystem, private_tmpfs: [] } }, bindings, ["/bin/true"]).join(" ");
+  assert.equal(noTmp.includes("--tmpfs /tmp"), false, "the private tmpfs is mounted whatever the policy says");
+  assert.ok(text.includes("--proc /proc"), "the namespace has no proc instance");
+  const scanned = { ...policy, process: { ...policy.process, enforcement: "scan-and-signal" } };
+  assert.equal(bubblewrapArgs(scanned, bindings, ["/bin/true"]).includes("--proc"), false, "a proc instance is mounted for a policy with no pid namespace");
   const offline = bubblewrapArgs(isolationPolicyFor({ level: "STRICT", platform: "linux", backend: "linux-bubblewrap", adapter: generic }), bindings, ["/bin/true"]);
   assert.ok(offline.includes("--unshare-net"), "an unknown-provider runtime kept its network");
   assert.throws(() => bubblewrapArgs(policy, { ...bindings, "@WORKSPACE@": "/private/var" }, ["/bin/true"]), /AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME/u);

@@ -2857,6 +2857,51 @@ export const GUARDS = [
     name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
   },
   {
+    guard: "an absent boundary is not a passing one",
+    reason: "a caller who says nothing about the boundary has established nothing about it; the version that read `context.boundary ?? null` and withheld only on a non-null value gave an omitted, null or undefined boundary a PROFILE_BOUND claim and an issued composite of 100",
+    file: "lib/ecd-contract.mjs",
+    from: "  const boundaryWithheld = boundary === null\n    ? [\"AOS_ISOLATION_NOT_MEASURED\"]",
+    to: "  const boundaryWithheld = boundary === null\n    ? []",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_still_publishes_no_number_when_the_boundary_did_not_hold"
+  },
+  {
+    guard: "a verifier recomputes under the boundary the result names",
+    reason: "the boundary is an input to the evaluation, so a recomputation without it rebuilt every withheld result as an issued one -- the untampered artifact failed its own verification and the check meant to catch a forged number produced the number a forger would want",
+    file: "lib/cli.mjs",
+    from: "profile_digest: result.profile_digest, forms_completed: forms, boundary }, contract);",
+    to: "profile_digest: result.profile_digest, forms_completed: forms }, contract);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "an issued legacy number needs a declared STRICT level",
+    reason: "SSOT S24 makes BEST_EFFORT_CLI diagnostic-only, and the permissive default meant a caller who declared no level at all issued a hundred over a replaced HOME and a filtered environment",
+    file: "lib/scorer-v1.mjs",
+    from: "  } else if (isolationLevel !== \"STRICT\") {",
+    to: "  } else if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
+  },
+  {
+    guard: "the device nodes are the policy's, not the renderer's",
+    reason: "`--dev` mounts a whole devtmpfs the policy never named; emptying both device arrays left the argument vector byte-identical, so the policy digest could move while the applied boundary did not",
+    file: "lib/confinement.mjs",
+    from: "  const devices = [...fs.device_readable, ...fs.device_writable];\n  if (devices.length > 0) args.push(\"--tmpfs\", \"/dev\");",
+    to: "  args.push(\"--dev\", \"/dev\");",
+    test: "tests/product/confinement.test.mjs",
+    name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
+  },
+  {
+    guard: "the private tmpfs is declared before it is mounted",
+    reason: "an unconditional `--tmpfs /tmp` is a grant no policy field carries, so nothing in the digest says the run got a private /tmp and nothing would say if it stopped",
+    file: "lib/confinement.mjs",
+    from: "  for (const directory of fs.private_tmpfs ?? []) args.push(\"--tmpfs\", directory);",
+    to: "  args.push(\"--tmpfs\", \"/tmp\");",
+    test: "tests/product/confinement.test.mjs",
+    name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
+  },
+  {
     guard: "the boundary withholds the number, not only the claim stage",
     reason: "with the boundary term gone the composite issues its number on a lane the confinement gate refused, and a surface labelled PROFILE-BOUND publishes a figure for a profile nothing enforced -- one claim stage lower, and read as a number anyway",
     file: "lib/result-schema.mjs",
@@ -3604,6 +3649,7 @@ export const ACCOUNTED_GUARDS = [
   "a symlinked staging source is refused by name",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
+  "a verifier recomputes under the boundary the result names",
   "a violation decides before the floor does",
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
@@ -3615,9 +3661,11 @@ export const ACCOUNTED_GUARDS = [
   "a write after settlement is visible",
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
+  "an absent boundary is not a passing one",
   "an alias is the node it names",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an issued legacy number needs a declared STRICT level",
   "an observation's markers are read, not only its exit code",
   "an unidentified runtime cannot carry the lane",
   "an unknown isolation lane is refused, not defaulted",
@@ -3821,6 +3869,7 @@ export const ACCOUNTED_GUARDS = [
   "the contract digest covers the contract's bytes",
   "the contract states the cells each row averages",
   "the derived verdict ignores the reported one",
+  "the device nodes are the policy's, not the renderer's",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
   "the escaped descendant is proved confined",
@@ -3836,6 +3885,7 @@ export const ACCOUNTED_GUARDS = [
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
+  "the private tmpfs is declared before it is mounted",
   "the process axis needs the sweep and the second poll",
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",

@@ -31,9 +31,10 @@ const bandNames = [...new Set(Object.values(BAND_NAMES).flatMap((names) => Objec
 // claim section prints them on purpose -- as forbidden uses -- and the fields that would carry
 // them are asserted null below instead.
 // #556. The legacy scorer withholds its number on a lane the confinement gate did not call
-// official, which is every lane a unit test runs on. These fixtures are about what the renderers do
-// with a legacy record that has a score, so they are built under a boundary that held.
-const UNDER_AN_OFFICIAL_BOUNDARY = { officialIssuance: { official: true, reasons: [] } };
+// official and under any level but STRICT, which is every lane a unit test runs on. These fixtures
+// are about what the renderers do with a legacy record that has a score, so they are built under a
+// boundary that held.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
 const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
 
 const forbidden = [

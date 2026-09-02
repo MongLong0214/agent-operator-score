@@ -25,7 +25,7 @@ const observations = (over = {}) =>
 // #556: a run whose confinement nobody established is not issued, and these fixtures are about
 // what the report renders rather than about a boundary. The verdict is stated here so the pages
 // under test are the ones an official run produces.
-const UNDER_AN_OFFICIAL_BOUNDARY = { officialIssuance: { official: true, reasons: [] } };
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
 
 const resultOf = (over = {}, context = {}) => {
   const metrics = observations(over);

@@ -19,7 +19,11 @@ export const facets = Object.freeze({ language: "en", interface: "cli", model: "
 // what a profile-bound claim rests on; the fixture states a real one so the tests exercise the
 // shape the product requires rather than a shorthand only the tests accept.
 export const FIXTURE_PROFILE_DIGEST = `sha256:${sha256Value({ fixture: "aos-profile-fixture.v1" })}`;
-export const identified = Object.freeze({ ...complete, facets, profile_digest: FIXTURE_PROFILE_DIGEST });
+// #556. A boundary that held. PROFILE_BOUND is a claim about an enforced environment, so a fixture
+// that expects one has to say the environment was enforced -- and it says so here rather than
+// getting it by default, because an absent boundary withholds by name and that is the rule.
+export const BOUNDARY_HELD = Object.freeze({ official: true, reasons: Object.freeze([]) });
+export const identified = Object.freeze({ ...complete, facets, profile_digest: FIXTURE_PROFILE_DIGEST, boundary: BOUNDARY_HELD });
 
 /** `overrides` maps a metric id to a verdict, a subcheck map, or null for "not observed at all". */
 export const observationsWith = (overrides = {}) => METRIC_IDS.map((id) => {
