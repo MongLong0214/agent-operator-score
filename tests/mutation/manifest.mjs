@@ -16,6 +16,87 @@
 
 export const GUARDS = [
   {
+    guard: "captured stream byte authority",
+    reason: "a digest of decoded output gives two different agent outputs the same failure signature",
+    file: "lib/core.mjs",
+    from: "      stdout_digest: sha256Bytes(stdout),",
+    to: '      stdout_digest: sha256Bytes(Buffer.from(stdout.toString("utf8"), "utf8")),',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a captured stream digest is over the bytes the agent produced"
+  },
+  {
+    guard: "raw Buffer authority",
+    reason: "a digest taken after a UTF-8 decode calls a 0xFF byte and an honest U+FFFD the same file",
+    file: "lib/digest.mjs",
+    from: '  if (!Buffer.isBuffer(bytes) && !ArrayBuffer.isView(bytes)) throw new Error("AOS_DIGEST_NOT_BYTES");',
+    to: "",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "sha256Bytes digests the buffer it is given and refuses anything that is not one"
+  },
+  {
+    guard: "binary handling",
+    reason: "a text projection offered for undecodable bytes is a digest of U+FFFD, which every binary shares",
+    file: "lib/digest.mjs",
+    from: "const strictDecoder = new TextDecoder(\"utf-8\", { fatal: true, ignoreBOM: true });",
+    to: 'const strictDecoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: true });',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a text projection is offered only for bytes that are valid UTF-8"
+  },
+  {
+    guard: "canonical path, type and mode tuple",
+    reason: "a tree digest that drops the mode hands on a file made executable as unchanged",
+    file: "lib/digest.mjs",
+    from: "  entry.mode ?? \"-\",",
+    to: '  "-",',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a tree digest changes when a mode changes and not when only an mtime does"
+  },
+  {
+    guard: "refusal marker in the tree digest",
+    reason: "a refusal left out of the digest lets an agent hide an edit by making the file unreadable",
+    file: "lib/digest.mjs",
+    from: '  entry.refused === null ? "-" : `refused:${entry.refused}`,',
+    to: '  "-",',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "two refusals of the same entry for different reasons are two different trees"
+  },
+  {
+    guard: "symlink escape refusal",
+    reason: "a link followed out of the tree puts files the tree does not contain into its digest",
+    file: "lib/digest.mjs",
+    from: "        if (!linkTargetInside(base, directory, full)) {",
+    to: "        if (false) {",
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a symlink out of the tree is refused rather than digested"
+  },
+  {
+    guard: "handoff exact compare",
+    reason: "a consume taken on the receiver's word closes a handoff for an artifact it never read",
+    file: "lib/cli.mjs",
+    from: "    if (!handoffDigestsMatch(created.payload?.artifact_digests ?? [], artifacts)) {",
+    to: "    if (false) {",
+    test: "tests/product/handoff-exact-digest.test.mjs",
+    name: "a handoff consumed with a digest that was not handed is refused"
+  },
+  {
+    guard: "legacy digest separation",
+    reason: "a bare-hex normalised digest admitted as identity is a claim nobody can verify",
+    file: "lib/cli.mjs",
+    from: '  if (artifacts.some((value) => !isByteDigest(value))) return fail(io, "AOS_INVALID_ARTIFACT_DIGEST", 2);',
+    to: "",
+    test: "tests/product/handoff-exact-digest.test.mjs",
+    name: "a legacy normalised digest is not accepted as an artifact digest"
+  },
+  {
+    guard: "workspace snapshot reads bytes",
+    reason: "a snapshot taken over decoded text reports a CRLF rewrite as an untouched workspace",
+    file: "lib/safe-fs.mjs",
+    from: "      files[relative] = sha256Bytes(readFileSync(full));",
+    to: '      files[relative] = sha256Bytes(Buffer.from(readFileSync(full, "utf8").replace(/\\r\\n/g, "\\n"), "utf8"));',
+    test: "tests/product/byte-digest.test.mjs",
+    name: "a workspace snapshot sees a line-ending rewrite and a one-byte binary edit"
+  },
+  {
     guard: "execution plan cycle detection",
     reason: "a dependency cycle sends an agent to work that can never be unblocked",
     file: "lib/execution-plan.mjs",
