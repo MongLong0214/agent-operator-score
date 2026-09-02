@@ -2448,15 +2448,6 @@ export const GUARDS = [
     name: "the cohort key describes what was applied: the policy, the executable and the model"
   },
   {
-    guard: "both sides resolve the same set of agents",
-    reason: "the cycle resolved expected provenance for every configured agent while the run resolved it only for the ones that ran, so a registered and unused agent moved the run's key away from the cycle's and the run was excluded as PROFILE_CHANGED",
-    file: "lib/cli.mjs",
-    from: "        provenance: resolved ?? expectedRunProvenance({ ...built.model_inputs, runtime: built.runtime_transcript }),",
-    to: "        provenance: resolved,",
-    test: "tests/product/model-identity.test.mjs",
-    name: "a configured agent that never ran does not move the cohort out from under the run"
-  },
-  {
     guard: "an imported run names the producer of its evidence",
     reason: "an empty by_agent map produced lines mentioning neither a model nor an executable, which reads as a Run with nothing to say rather than one saying that nothing here observed either",
     file: "lib/cli.mjs",
@@ -2466,13 +2457,49 @@ export const GUARDS = [
     name: "an imported run is a Run, so it carries a provenance record and a result on disk"
   },
   {
-    guard: "the card carries the model and the aggregation state",
-    reason: "the card is the surface that leaves the page, and a number on it with no model, no executable and no withholding reason beside it is the reading this issue exists to refuse",
+    guard: "the card quotes the stored identity lines",
+    reason: "the card is the third renderer and the one that leaves the page; it derived its own model, executable and aggregation state from the first by_agent entry, so a two-agent result showed one model and the card could say something the stored projection did not",
     file: "lib/report-card.mjs",
-    from: "    [language === \"ko\" ? \"모델\" : \"model\", model],",
-    to: "",
+    from: "  const lines = Array.isArray(result.model_identity?.lines) ? result.model_identity.lines : modelIdentityLines(null);",
+    to: "  const lines = modelIdentityLines(result.model_identity ?? null);",
     test: "tests/product/model-identity.test.mjs",
-    name: "the card carries the identity too, and never renders what is missing as a zero"
+    name: "the card quotes the stored identity lines, every agent of them, and renders nothing missing as a zero"
+  },
+  {
+    guard: "the cohort key is the operator's binding, never the child's transcript",
+    reason: "the cycle locked the provenance it expected the runtime to state, so a forged Codex row was the difference between PROFILE_CHANGED and valid and three forged runs reached the score threshold; a contradiction may still move the key, which is the one direction a child cannot profit from",
+    file: "lib/model-identity.mjs",
+    from: "  return withEvent.status === \"MISMATCH\" ? withEvent : bound;",
+    to: "  return withEvent;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the operator's binding admits a run to the cohort; the transcript may only contradict it"
+  },
+  {
+    guard: "a contradicting transcript still leaves the cohort",
+    reason: "a key that ignored the transcript entirely would keep a run that named another model inside the cohort it is not in",
+    file: "lib/model-identity.mjs",
+    from: "  if (fromRuntime.length === 0 || typeof bound.id !== \"string\") return bound;",
+    to: "  if (true) return bound;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the operator's binding admits a run to the cohort; the transcript may only contradict it"
+  },
+  {
+    guard: "the transcript scan spends a bounded budget",
+    reason: "the scan runs after the child exited, so it is outside the timeout that bounds the child: ten thousand files of sixty-four megabytes is a cheap thing to leave behind and six hundred gigabytes of synchronous reading to do",
+    file: "lib/model-identity.mjs",
+    from: "    if (out.length >= limits.files || Date.now() > limits.deadline) return;",
+    to: "    if (false) return;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the transcript scan is bounded, and exhausting the budget is a named answer"
+  },
+  {
+    guard: "a scan that ran out of budget says so",
+    reason: "stopping early and finding silence are different facts, and a reader that cannot tell them apart cannot tell a quiet runtime from a scan that gave up",
+    file: "lib/model-identity.mjs",
+    from: "  if (overspent && events.length === 0) return exhausted(events);",
+    to: "  if (false) return exhausted(events);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the transcript scan is bounded, and exhausting the budget is a named answer"
   },
   {
     guard: "absent coverage is not a measured zero",
@@ -2481,7 +2508,7 @@ export const GUARDS = [
     from: "      typeof coverage.observed === \"number\" && typeof coverage.total === \"number\" ? `${coverage.observed}/${coverage.total}` : \"—\"",
     to: "      `${coverage.observed ?? 0}/${coverage.total ?? 20}`",
     test: "tests/product/model-identity.test.mjs",
-    name: "the card carries the identity too, and never renders what is missing as a zero"
+    name: "the card quotes the stored identity lines, every agent of them, and renders nothing missing as a zero"
   },
   {
     guard: "the run listing says what each run may claim",
@@ -2556,22 +2583,13 @@ export const GUARDS = [
     name: "the profile digest covers the provenance record, source and evidence included"
   },
   {
-    guard: "a cycle locks the profile its runs will have",
-    reason: "the digest covers the provenance and a run resolves its own before digesting, so a cycle that locked the pre-run binding would exclude every run its runtime confirmed",
-    file: "lib/cli.mjs",
-    from: "      provenance: expectedRunProvenance({ ...profile.model_inputs, runtime: profile.runtime_transcript })",
-    to: "      provenance: profile.model_provenance",
-    test: "tests/product/cycle-command.test.mjs",
-    name: "three attended runs produce an operator score, and it is the median of all of them"
-  },
-  {
     guard: "the evidence digest is over the claim, not the transcript row",
     reason: "a cohort key carrying the row's digest makes every repeat of one measurement its own profile, so three runs of one model could never form a cycle",
     file: "lib/model-identity.mjs",
     from: "  const claim = { schema_id: MODEL_PROVENANCE_SCHEMA, source: winner.source, provider, id, runtime: winner.runtime };",
     to: "  const claim = { schema_id: MODEL_PROVENANCE_SCHEMA, source: winner.source, provider, id, runtime: winner.runtime, row_digest: winner.row_digest };",
     test: "tests/product/model-identity.test.mjs",
-    name: "a run the runtime confirmed is in the cohort its cycle locked, and one it contradicted is not"
+    name: "the evidence digest is over the claim's bytes and is stable across two identical claims"
   },
   {
     guard: "every segment of a snapshot name has to be readable",
@@ -2788,10 +2806,10 @@ export const ACCOUNTED_GUARDS = [
   "a .NET startup hook is a pre-main hook like the rest",
   "a bare alias is never an exact identity",
   "a complete cycle is not an issued cycle",
+  "a contradicting transcript still leaves the cohort",
   "a credential is not a model id",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
-  "a cycle locks the profile its runs will have",
   "a date-shaped substring is not a snapshot on its own",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
@@ -2809,6 +2827,7 @@ export const ACCOUNTED_GUARDS = [
   "a risky security state is never VERIFIED",
   "a run that failed still records what it was bound to",
   "a run under a different profile digest is not a run in this cycle",
+  "a scan that ran out of budget says so",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
   "a status the record asserts about itself is not evidence",
@@ -2837,7 +2856,6 @@ export const ACCOUNTED_GUARDS = [
   "artifact type in the envelope",
   "binary handling",
   "block scalar measured from its key",
-  "both sides resolve the same set of agents",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
@@ -2977,9 +2995,10 @@ export const ACCOUNTED_GUARDS = [
   "the assessed process does not decide issuance",
   "the canary's digests verify against what it carries",
   "the capture time names a day that exists",
-  "the card carries the model and the aggregation state",
+  "the card quotes the stored identity lines",
   "the closing pull request changed something the issue owns",
   "the cohort key describes the policy that was applied",
+  "the cohort key is the operator's binding, never the child's transcript",
   "the command prints the floored result",
   "the comparison projection is read from the contract",
   "the cycle command quotes the stored decision",
@@ -3008,6 +3027,7 @@ export const ACCOUNTED_GUARDS = [
   "the runtime's own event outranks the declaration",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
+  "the transcript scan spends a bounded budget",
   "the weakest run decides the cycle",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",

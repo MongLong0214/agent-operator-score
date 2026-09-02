@@ -8,6 +8,12 @@
 // forward plus the SHA-256 of each row's raw bytes, with no transcript content copied -- and this
 // file re-derives every verdict from it and recomputes every digest it can.
 //
+// Every observation comes from invoking the runtime -- `codex exec`, `claude -p`, one trivial
+// prompt each, in a workspace that existed only for that invocation -- and reading the transcript
+// that invocation wrote through the product's own reader. A runtime that is absent, unauthenticated
+// or offline is recorded as a named blocker, because "no canary" and "a canary nobody could run"
+// are different statements.
+//
 // What it is not: proof that the capture happened. The transcripts are unsigned local files on one
 // operator machine and there is no attestation channel between that machine and this repository,
 // so a reviewer holding only the repository cannot tell this from a well-formed invention. The
@@ -45,16 +51,31 @@ const eventOf = (observation) => ({
   value_digest: null
 });
 
-test("the canary says what it is: a replay fixture, and what it cannot prove", () => {
+test("the canary says what it is: a real capture replayed, and what it cannot prove", () => {
   // The claim this file makes about itself is the thing most worth checking, because an
-  // overclaiming fixture is worse than none: it reads as a canary and is a recording.
-  assert.equal(canary.kind, "replay-fixture");
+  // overclaiming fixture is worse than none.
+  assert.equal(canary.kind, "live-capture-replay");
   assert.match(canary.unverifiable_from_repository, /not proved by it/u);
-  assert.match(canary.capture.command, /observeModelEvents/u);
+  assert.match(canary.capture.command, /invokes each runtime/u);
   // And no fabricated executable identity: the capture records the model half it observed, so the
   // issuance it recorded is the one with no runtime identity in hand.
   for (const observation of canary.observations) {
     assert.equal(observation.issuance.status, "withheld");
+  }
+});
+
+test("every observation came from an invocation of the runtime, not from whatever was lying around", () => {
+  // The capture used to scan pre-existing session directories, so the fixture recorded rows some
+  // other session had written and the word "canary" was doing work the evidence did not (#561
+  // round 6). Each observation now names the invocation it came from.
+  for (const observation of canary.observations) {
+    assert.match(observation.invocation.command, /^(codex|claude)\b/u, observation.runtime);
+    assert.equal(observation.invocation.exit_code, 0, observation.runtime);
+    assert.ok(observation.invocation.duration_ms > 0, `${observation.runtime}: an invocation takes time`);
+    assert.equal(typeof observation.invocation.isolated_home, "boolean");
+    assert.match(observation.invocation.workspace_digest, /^sha256:[0-9a-f]{64}$/u);
+    assert.ok(typeof observation.runtime_version === "string" && observation.runtime_version.length > 0, observation.runtime);
+    assert.equal(observation.invocation.prompt.length > 0, true);
   }
 });
 
@@ -82,11 +103,12 @@ test("no transcript content and no absolute path was copied into the canary", ()
   for (const observation of canary.observations) {
     assert.deepEqual(
       Object.keys(observation).sort(),
-      ["alias_class", "declared", "event_digest", "event_line", "issuance", "model", "mutable_alias", "observed_row_digest", "provider", "runtime", "verification", "workspace_digest"]
+      ["alias_class", "declared", "event_digest", "event_line", "invocation", "issuance", "model", "mutable_alias", "observed_row_digest", "provider", "runtime", "runtime_version", "verification"]
     );
-    for (const field of ["event_digest", "observed_row_digest", "workspace_digest"]) {
+    for (const field of ["event_digest", "observed_row_digest"]) {
       assert.match(observation[field], /^sha256:[0-9a-f]{64}$/u, field);
     }
+    assert.match(observation.invocation.workspace_digest, /^sha256:[0-9a-f]{64}$/u);
   }
 });
 

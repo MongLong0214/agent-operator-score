@@ -27,7 +27,7 @@ import { isolationPolicyDigestOf } from "../../lib/isolation.mjs";
 import {
   aliasClassOf,
   cycleModelIdentity,
-  expectedRunProvenance,
+  cohortProvenance,
   issuancePolicyFor,
   modelIdentityLines,
   modelIdentityProjection,
@@ -109,7 +109,13 @@ const withProvenance = (profile, provenance) => ({
   model_provenance: provenance
 });
 
-const expectedProfile = (profile) => withProvenance(profile, expectedRunProvenance({ ...profile.model_inputs, runtime: profile.runtime_transcript }));
+// The profile a cohort key is taken over: what the operator bound, and a contradiction when the
+// run's own transcript named something else.
+const cohortProfile = (profile, events = []) => withProvenance(profile, cohortProvenance({
+  ...profile.model_inputs,
+  runtime: profile.runtime_transcript,
+  events
+}));
 
 const resolvedProfile = (profile, events) => {
   const fromRuntime = events.filter((event) => event.runtime === profile.runtime_transcript);
@@ -168,6 +174,14 @@ test("the evidence digest is over the claim's bytes and is stable across two ide
   // Reproducible from the record's own claim, so a reader can check it without trusting the field.
   assert.equal(first.evidence_digest, sha256Bytes(Buffer.from(canonicalJson(first.evidence.claim), "utf8")));
   assert.notEqual(first.evidence_digest, resolveModelProvenance({ declared: declared(EXACT_B) }).evidence_digest);
+  // Two runs of one model under one runtime make the same claim, whatever rows they wrote. The
+  // digest is a profile-digest input, so carrying the transcript row into it would make every
+  // repeat of one measurement its own profile and no cycle could ever complete. The row is
+  // recorded beside the claim instead.
+  const monday = resolveModelProvenance({ runtimeEvent: { ...confirming(EXACT_A), row_digest: `sha256:${"1".repeat(64)}` }, declared: declared(EXACT_A) });
+  const tuesday = resolveModelProvenance({ runtimeEvent: { ...confirming(EXACT_A), row_digest: `sha256:${"2".repeat(64)}` }, declared: declared(EXACT_A) });
+  assert.equal(monday.evidence_digest, tuesday.evidence_digest);
+  assert.notEqual(monday.evidence.row_digest, tuesday.evidence.row_digest);
 });
 
 test("detected A vs declared B is a named mismatch that fails closed", () => {
@@ -303,8 +317,8 @@ test("a fixture replay of Codex and Claude transcript rows yields the model, dig
     utimesSync(join(claudeDir, "stale.jsonl"), new Date(Date.now() - 86_400_000), new Date(Date.now() - 86_400_000));
 
     const events = [
-      ...observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "codex" }),
-      ...observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "claude-code" })
+      ...observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "codex" }).events,
+      ...observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "claude-code" }).events
     ];
     const codex = events.find((entry) => entry.runtime === "codex");
     assert.equal(codex.model, "gpt-5.6-terra");
@@ -348,6 +362,40 @@ test("a runtime event confirms a bound identity, contradicts it by name, or was 
   assert.equal(issuancePolicyFor({ provenance: bound, verification: verifyModelIdentity(bound, [same, other], { runtime: "codex" }) }).profile_bound_aggregation.reason, "MODEL_EVENT_AMBIGUOUS");
 });
 
+test("the transcript scan is bounded, and exhausting the budget is a named answer", () => {
+  // The scan runs after the child has exited, so it is outside the timeout that bounds the child.
+  // Ten thousand files of sixty-four megabytes each is a cheap thing for an assessed program to
+  // leave behind and about six hundred gigabytes of synchronous reading for this to do (#561
+  // round 6). The budget is over the whole scan, and running out of it is an answer -- not a
+  // reason to keep reading.
+  const home = mkdtempSync(join(tmpdir(), "aos-model-budget-"));
+  try {
+    const workspace = "/tmp/aos-runs/run-9/workspaces/FAM-1";
+    const dir = join(home, ".codex", "sessions", "2026", "09", "03");
+    mkdirSync(dir, { recursive: true });
+    const row = `${JSON.stringify({ type: "session_meta", payload: { cwd: workspace, model_provider: "openai" } })}\n${JSON.stringify({ type: "turn_context", payload: { cwd: workspace, model: "gpt-4o-2024-08-06" } })}\n`;
+    // Well under the per-file cap and far over the budget in aggregate.
+    const filler = `${JSON.stringify({ type: "noise", payload: { pad: "x".repeat(4000) } })}\n`.repeat(300);
+    for (let index = 0; index < 40; index += 1) writeFileSync(join(dir, `rollout-${index}.jsonl`), filler);
+    writeFileSync(join(dir, "rollout-answer.jsonl"), row);
+
+    const generous = observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex" });
+    assert.equal(generous.events.length, 1, "the answer is still found when the budget allows it");
+    assert.equal(generous.exhausted, false);
+
+    const starved = observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex", budget: { bytes: 4096, files: 2 } });
+    assert.equal(starved.exhausted, true);
+    assert.equal(starved.reason, "AOS_MODEL_SCAN_BUDGET");
+    // A scan that ran out of budget is not corroboration and says which blocker stopped it.
+    const provenance = resolveModelProvenance({ declared: declared(EXACT_A) });
+    const verification = verifyModelIdentity(provenance, starved.events, { runtime: "codex", scan: starved });
+    assert.equal(verification.status, "NOT_OBSERVED");
+    assert.equal(verification.code, "AOS_MODEL_SCAN_BUDGET");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test("a transcript value that is not a plausible model name leaves as a digest, never as text", () => {
   // The transcript is written by the child process, so its `model` field is attacker-controlled
   // text that this product then prints in JSON, the CLI, Markdown and HTML. A credential written
@@ -363,7 +411,7 @@ test("a transcript value that is not a plausible model name leaves as a digest, 
       JSON.stringify({ type: "assistant", cwd: workspace, message: { model: "x".repeat(300) } })
     ];
     writeFileSync(join(dir, "s1.jsonl"), `${rows.join("\n")}\n`);
-    const events = observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "claude-code" });
+    const events = observeModelEvents({ env: { HOME: home }, workspace, since: Date.now() - 60_000, runtime: "claude-code" }).events;
     assert.equal(events.length, 2);
     for (const event of events) {
       assert.equal(event.model, null);
@@ -574,9 +622,9 @@ test("a transcript the configured runtime did not write is not evidence either w
     const claudeDir = join(home, ".claude", "projects", "-tmp-aos-runs-run-3-workspaces-FAM-1");
     mkdirSync(claudeDir, { recursive: true });
     writeFileSync(join(claudeDir, "s1.jsonl"), `${JSON.stringify({ type: "assistant", cwd: workspace, message: { model: "claude-opus-5" } })}\n`);
-    assert.deepEqual(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex" }), []);
-    assert.equal(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "claude-code" }).length, 1);
-    assert.deepEqual(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: null }), []);
+    assert.deepEqual(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "codex" }).events, []);
+    assert.equal(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: "claude-code" }).events.length, 1);
+    assert.deepEqual(observeModelEvents({ env: { HOME: home }, workspace, since: 0, runtime: null }).events, []);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
@@ -605,29 +653,31 @@ test("the profile digest covers the provenance record, source and evidence inclu
   }
 });
 
-test("a run the runtime confirmed is in the cohort its cycle locked, and one it contradicted is not", () => {
-  // The digest covers the provenance, and the provenance is resolved from the run's own event
-  // before the digest is taken -- so the cycle has to lock the profile it expects its runs to
-  // have: the model the operator bound, as the configured runtime will confirm it. A run whose
-  // transcript agreed lands on that digest; a run whose transcript named something else lands
-  // somewhere else and `runValidity` says PROFILE_CHANGED rather than averaging it in.
+test("the operator's binding admits a run to the cohort; the transcript may only contradict it", () => {
+  // The cohort key decides whether a run counts toward an Operator Score, so nothing the assessed
+  // process writes may decide it. The cycle used to lock the provenance it expected the runtime to
+  // state, which made a forged Codex row the difference between PROFILE_CHANGED and valid: three
+  // fabricated rows reached the score threshold. What the key is taken over is what the operator
+  // bound; a transcript that names another model is a contradiction and does move the key, which
+  // is the one direction the child cannot profit from.
   const agentWith = (model) => agent({ model_id: model, adapter: "codex-cli.v1" });
-  const locked = profileDigestOf(expectedProfile(build({ agent: agentWith(EXACT_A) })));
-  const confirmedRun = profileDigestOf(resolvedProfile(build({ agent: agentWith(EXACT_A) }), [confirming(EXACT_A)]));
-  assert.equal(confirmedRun, locked, "a confirmed run is the profile the cycle locked");
-  const silentRun = profileDigestOf(resolvedProfile(build({ agent: agentWith(EXACT_A) }), []));
-  assert.notEqual(silentRun, locked, "a run nothing corroborated is not that profile");
-  const otherRun = profileDigestOf(resolvedProfile(build({ agent: agentWith(EXACT_A) }), [confirming(EXACT_B)]));
-  assert.notEqual(otherRun, locked, "a run whose transcript named another model is not that profile");
+  const locked = profileDigestOf(cohortProfile(build({ agent: agentWith(EXACT_A) })));
+  const silent = profileDigestOf(cohortProfile(build({ agent: agentWith(EXACT_A) }), []));
+  const forged = profileDigestOf(cohortProfile(build({ agent: agentWith(EXACT_A) }), [confirming(EXACT_A)]));
+  assert.equal(silent, locked, "a run nothing corroborated fell out of its own cohort");
+  assert.equal(forged, locked, "a transcript row changed the cohort key");
+  const contradicted = profileDigestOf(cohortProfile(build({ agent: agentWith(EXACT_A) }), [confirming(EXACT_B)]));
+  assert.notEqual(contradicted, locked, "a run that named another model stayed in the cohort");
+
   const cycle = { seeds: [1], profile_digest: locked, suite_major: 0, scorer_major: 0 };
   const run = (digest) => ({ seed: 1, profile_digest: digest, suite_major: 0, scorer_major: 0, terminal_committed: true, issued: true });
-  assert.equal(runValidity(cycle, run(confirmedRun)).valid, true);
-  assert.equal(runValidity(cycle, run(otherRun)).reason, "PROFILE_CHANGED");
-  // Two confirmed runs of the same model are one cohort: the evidence digest is over the claim,
-  // not over the transcript row, or every repeat would be its own profile and no cycle could ever
-  // complete.
-  const second = profileDigestOf(resolvedProfile(build({ agent: agentWith(EXACT_A) }), [{ ...confirming(EXACT_A), row_digest: `sha256:${"7".repeat(64)}` }]));
-  assert.equal(second, confirmedRun);
+  assert.equal(runValidity(cycle, run(silent)).valid, true);
+  assert.equal(runValidity(cycle, run(forged)).valid, true);
+  assert.equal(runValidity(cycle, run(contradicted)).reason, "PROFILE_CHANGED");
+  // Two runs of the same declaration are one cohort whatever their transcripts said, or no cycle
+  // could complete without the child's cooperation.
+  const second = profileDigestOf(cohortProfile(build({ agent: agentWith(EXACT_A) }), [{ ...confirming(EXACT_A), row_digest: `sha256:${"7".repeat(64)}` }]));
+  assert.equal(second, locked);
 });
 
 test("the profile digest moves for each model, runtime, adapter, environment, isolation and language field on its own", () => {
@@ -913,35 +963,33 @@ test("Markdown and HTML quote the stored identity lines instead of deriving them
   assert.equal(html.includes(`Model (main): declared ${EXACT_A}`), false);
 });
 
-test("the card carries the identity too, and never renders what is missing as a zero", () => {
-  // The card is the surface that leaves the page: it is shared on its own, so a number on it with
-  // no model, no executable and no withholding reason beside it is the reading this issue exists
-  // to refuse. Absent coverage was also drawn as `0/20`, which is a measurement nobody made.
-  const named = modelIdentityRecord({
-    by_agent: { main: { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" } },
-    profile_digest: "d".repeat(64)
-  });
-  const withModel = renderCard({
+test("the card quotes the stored identity lines, every agent of them, and renders nothing missing as a zero", () => {
+  // The card is the third renderer and the one that leaves the page. Markdown and HTML quote the
+  // record's own lines; this derived its own from the first `by_agent` entry, so a two-agent result
+  // showed one model and a stored projection could say something the card did not (#561 round 6).
+  const sentinels = ["SENTINEL_MODEL_ONE", "SENTINEL_MODEL_TWO", "SENTINEL_PROFILE", "SENTINEL_AGGREGATION"];
+  const stored = {
+    ...modelIdentityRecord({
+      by_agent: {
+        first: { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" },
+        second: { provenance: resolveModelProvenance({ declared: declared(EXACT_B) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" }
+      },
+      profile_digest: "d".repeat(64)
+    }),
+    lines: sentinels
+  };
+  const result = {
     run_id: "r", status: "SCORED", score: { final: 71, band: "MODERATE", raw: 71 }, coverage: { observed: 20, total: 20 },
     metrics: [], dimensions: {}, limitations: [], seed: "0000000000000011", profile_digest: "d".repeat(64),
-    agent_portfolio: { used: ["main"] }, model_identity: named
-  });
-  assert.match(withModel, /gpt-4o-2024-08-06/u, "the card does not say which model produced the number");
-  assert.match(withModel, new RegExp(identity().identity_digest.slice("sha256:".length, "sha256:".length + 12), "u"));
-  const unknown = modelIdentityRecord({
-    by_agent: { main: { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: null, runtime_identity_status: "MIGRATION_REQUIRED" } },
-    profile_digest: "d".repeat(64)
-  });
-  const card = renderCard({
-    run_id: "r", status: "SCORED", score: null, provisional_raw: 0, coverage: { observed: 4, total: 20 },
-    metrics: [], dimensions: {}, limitations: [], seed: "0000000000000011", profile_digest: "d".repeat(64),
-    agent_portfolio: { used: ["main"] }, model_identity: unknown
-  });
-  assert.match(card, /model/u);
-  assert.match(card, /MODEL_UNKNOWN/u);
-  assert.match(card, /unverified/u);
+    agent_portfolio: { used: ["first", "second"] }, model_identity: stored
+  };
+  for (const locale of ["en-US", "ko-KR"]) {
+    const card = renderCard(result, { locale });
+    for (const line of sentinels) assert.equal(card.includes(htmlEscape(line)), true, `${locale}: ${line}`);
+    assert.equal(card.includes("gpt-4o-2024-08-06"), false, `${locale}: the card derived its own model line`);
+  }
   // Missing is not zero: a result with no coverage says so rather than drawing a measured 0 of 20.
-  const bare = renderCard({ run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, metrics: [], dimensions: {}, limitations: [] });
+  const bare = renderCard({ run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, metrics: [], dimensions: {}, limitations: [] }, { locale: "en-US" });
   assert.equal(/0\/20/u.test(bare), false, "absent coverage was rendered as a measurement");
   assert.match(bare, /—/u);
 });
@@ -1278,11 +1326,15 @@ test("the cohort key describes what was applied: the policy, the executable and 
     // describing one profile while the ledger files it under another.
     assert.equal(confirmed.model_identity.profile_digest, confirmed.profile_digest);
     assert.equal(silent.model_identity.profile_digest, silent.profile_digest);
+    // The record keeps the issue's source precedence: the runtime's own statement outranks the
+    // declaration and is what the run says it used.
     assert.equal(confirmed.model_identity.by_agent.exact.provenance.source, "runtime-event");
     assert.equal(silent.model_identity.by_agent.exact.provenance.source, "declared");
-    // Same agent, same registration, two provenances: the digest covers how the model was
-    // established, so these are two profiles and the key has to say so.
-    assert.notEqual(confirmed.profile_digest, silent.profile_digest, "both runs were filed under the pre-run binding");
+    // And the cohort key does not move with it, because the transcript is the assessed child's to
+    // write: what the key is taken over is the binding the operator made, recorded beside the
+    // resolved provenance so both are readable (#561 round 6).
+    assert.equal(confirmed.model_identity.by_agent.exact.cohort_provenance.source, "declared");
+    assert.equal(confirmed.profile_digest, silent.profile_digest, "a transcript row moved the cohort key");
     assert.equal(confirmed.model_identity.by_agent.exact.runtime_identity_digest, confirmed.process.applied_runtime_identity.identity_digest);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

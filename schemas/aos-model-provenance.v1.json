@@ -8,7 +8,7 @@
     "id": "string|null. `provider/model` when the provider is known, else the model name alone. Null when the model is unknown or when detected and declared disagree.",
     "source": "runtime-event | runtime-config | declared | unknown. The highest-precedence source that named the model.",
     "confidence": "HIGH | MEDIUM | LOW | NONE. Fixed by source: runtime-event HIGH, runtime-config MEDIUM, declared LOW, unknown NONE.",
-    "evidence_digest": "sha256:<hex>|null. Digest over the bytes of the canonical claim that produced the record (source, provider, id, runtime, row digest). Null when unknown.",
+    "evidence_digest": "sha256:<hex>|null. Digest over the bytes of the canonical claim that produced the record: schema id, source, provider, id and runtime. The transcript row's own digest is deliberately not in it -- this digest is a profile-digest input, and a cohort key carrying the row would make every repeat of one measurement its own profile. The row is recorded beside the claim in `evidence.row_digest` and in the verification's observations. Null when unknown.",
     "mutable_alias": "true | false | null. True for `latest`, `default`, `gpt`, `sonnet` and every provider-managed name without a snapshot marker; false for an exact snapshot; null when no model was identified."
   },
   "source_precedence": [
