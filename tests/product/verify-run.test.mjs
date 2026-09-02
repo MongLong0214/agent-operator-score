@@ -108,3 +108,48 @@ test("a stored result of an instrument this build does not recognise is refused,
     rmSync(cwd, { recursive: true, force: true });
   }
 });
+
+test("a claim the stored result is not entitled to make is caught by the verifier, not only by the reader", () => {
+  // The claim is what a reader concludes, so it is compared like the numbers: editing it alone
+  // used to leave verify's comparison saying the result still followed from its own record.
+  const { cwd, runId, resultPath } = assessed();
+  try {
+    const result = JSON.parse(readFileSync(resultPath, "utf8"));
+    // Forged so the reader cannot object: the claim, every surface's copy of it, the ceiling the
+    // result states, and the generalizability the top stage rests on, all moved together. Nothing
+    // inside the file contradicts anything else, so the only thing left that can catch it is the
+    // comparison against what the observations actually produce.
+    const elevated = {
+      ...result,
+      claim_stage: "GENERALIZABILITY_SUPPORTED",
+      generalizability_status: "ESTABLISHED",
+      contract: { ...result.contract, maximum_claim_stage: "GENERALIZABILITY_SUPPORTED" }
+    };
+    for (const key of ["operator_process_profile", "reliance_calibration_profile", "system_outcome_profile", "aos_composite"]) {
+      elevated[key] = { ...elevated[key], claim_stage: "GENERALIZABILITY_SUPPORTED", generalizability_status: "ESTABLISHED" };
+    }
+    writeFileSync(resultPath, JSON.stringify(elevated, null, 2));
+    const verified = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(verified.stdout, /FAIL\trecompute/);
+
+    // The quietest forgery of the three: leave the claim where it is and raise only the ceiling the
+    // result states it was issued under. Nothing in the file contradicts anything -- the claim is
+    // within its stated ceiling -- and the reader has no way to know the ceiling is not the
+    // contract's. Only rebuilding from the observations and comparing the claim can say so.
+    writeFileSync(resultPath, JSON.stringify({
+      ...result,
+      contract: { ...result.contract, maximum_claim_stage: "GENERALIZABILITY_SUPPORTED" }
+    }, null, 2));
+    const raisedCeiling = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(raisedCeiling.stdout, /FAIL\trecompute/);
+    assert.match(raisedCeiling.stdout, /do(?:es)? not follow from the stored observations/);
+
+    // And the cruder forgery -- the claim raised in one place only -- is refused before any
+    // comparison, because a result whose surfaces disagree with its own top line is unreadable.
+    writeFileSync(resultPath, JSON.stringify({ ...result, claim_stage: "GENERALIZABILITY_SUPPORTED" }, null, 2));
+    const inconsistent = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(inconsistent.stdout + inconsistent.stderr, /AOS_CLAIM_STAGE|FAIL\trecompute/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});

@@ -2424,8 +2424,8 @@ export const GUARDS = [
     guard: "provider credential formats are recognised",
     reason: "an AWS key id or a GitHub token carries its own prefix and no English word beside it, so the word-plus-value rule walks straight past it and the result publishes the key",
     file: "lib/result-schema.mjs",
-    from: "  (ABSOLUTE_PATH.test(text) || CREDENTIAL_TEXT.test(text) || CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
-    to: "  (ABSOLUTE_PATH.test(text) || CREDENTIAL_TEXT.test(text) || OPAQUE_TOKEN.test(text));",
+    from: "    CREDENTIAL_FORMAT.test(text) || OPAQUE_TOKEN.test(text));",
+    to: "    OPAQUE_TOKEN.test(text));",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
@@ -2433,8 +2433,8 @@ export const GUARDS = [
     guard: "a one-segment absolute path is a path",
     reason: "/private names a place on this machine as surely as /Users/alice/notes does, and requiring a second segment let the shorter one through",
     file: "lib/result-schema.mjs",
-    from: "const ABSOLUTE_PATH = /(?:^|[\\s\"'`=(,:\\[])(?:~(?:\\/|$)|[A-Za-z]:\\\\|\\/[A-Za-z0-9._~-])/u;",
-    to: "const ABSOLUTE_PATH = /(?:^|[\\s\"'`=(,:\\[])(?:~(?:\\/|$)|[A-Za-z]:\\\\|\\/[A-Za-z0-9._~-]+[/\\\\])/u;",
+    from: "  \"|\\\\/[A-Za-z0-9._~-]\",                        // /private -- one segment is a place on this machine",
+    to: "  \"|\\\\/[A-Za-z0-9._~-]+[\\\\/\\\\\\\\]\",",
     test: "tests/product/profile-aggregation.test.mjs",
     name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
   },
@@ -2491,6 +2491,69 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/cycle-command.test.mjs",
     name: "three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one"
+  },
+  {
+    guard: "a filesystem location is one however it is spelled",
+    reason: "each round found the next spelling: one segment, then two slashes, then a UNC share -- a predicate written as a list of remembered forms is a list somebody adds to after the next review",
+    file: "lib/result-schema.mjs",
+    from: "  \"|\\\\/\\\\/[A-Za-z0-9._~-]\",                     // //server/share -- POSIX double slash and SMB alike\n  \"|\\\\\\\\\\\\\\\\[A-Za-z0-9._~-]\",                    // \\\\server\\share -- a Windows UNC path",
+    to: "  \"|(?!)\",\n  \"|(?!)\",",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a URL carrying userinfo is a credential",
+    reason: "`postgresql://alice:hunter2@db/prod` is a password whatever the scheme is, and no English word names it, so the word rule and the provider formats both walk past it",
+    file: "lib/result-schema.mjs",
+    from: "  (FILESYSTEM_LOCATION.test(text) || URL_USERINFO.test(text) || CREDENTIAL_TEXT.test(text) ||",
+    to: "  (FILESYSTEM_LOCATION.test(text) || CREDENTIAL_TEXT.test(text) ||",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "no credential shape and no absolute path reaches the canonical result through any door -- facets, run, caps, observations or cell bindings -- and safe values are untouched"
+  },
+  {
+    guard: "a stored result may not elevate its own claim",
+    reason: "the claim stage is what a reader is entitled to conclude, so it is the field worth editing: changing it alone left every profile at PROFILE_BOUND and the elevated claim printed anyway",
+    file: "lib/result-schema.mjs",
+    from: "  assertClaimState(\"this stored result\", result);",
+    to: "",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a stored result cannot elevate the claim it makes, and a claim about an exact profile has to name one"
+  },
+  {
+    guard: "a bound claim names the profile it is bound to",
+    reason: "PROFILE_BOUND is a claim about an exact profile, and `sha256:a` is a label rather than a digest over bytes -- a claim bound to nothing is the overstatement the stage exists to prevent",
+    file: "lib/result-schema.mjs",
+    from: "  if (stage !== \"RUN_DIAGNOSTIC\" && !PROFILE_DIGEST_TEXT.test(String(result.profile_digest))) {",
+    to: "  if (false) {",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a stored result cannot elevate the claim it makes, and a claim about an exact profile has to name one"
+  },
+  {
+    guard: "the result states the claim ceiling it was issued under",
+    reason: "a reader has no contract in hand, so a claim checked against nothing is a claim checked by whoever wrote the file",
+    file: "lib/result-schema.mjs",
+    from: "      maximum_claim_stage: contract.interpretation_use.maximum_claim_stage,",
+    to: "      maximum_claim_stage: \"GENERALIZABILITY_SUPPORTED\",",
+    test: "tests/product/profile-aggregation.test.mjs",
+    name: "a stored result cannot elevate the claim it makes, and a claim about an exact profile has to name one"
+  },
+  {
+    guard: "the claim is compared like the numbers are",
+    reason: "verify recomputes the result from its own record, and a comparison that omitted the claim reported that an elevated one still followed from the observations",
+    file: "lib/cli.mjs",
+    from: "      one.forbidden_uses, one.profile_digest, one.contract?.maximum_claim_stage",
+    to: "      one.forbidden_uses, one.profile_digest",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a claim the stored result is not entitled to make is caught by the verifier, not only by the reader"
+  },
+  {
+    guard: "the card carries every reliance metric",
+    reason: "ten metrics are ten answers and the surface's status is not one of them; a card that printed WITHHELD and stopped was a different rendering of the same result",
+    file: "lib/profile-report.mjs",
+    from: "    ...view.reliance.rows.map((row, index) => text(",
+    to: "    ...[].map((row, index) => text(",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "a reliance metric that was computed is printed with its value in every renderer, not summarised away"
   }
 ];
 
@@ -2588,9 +2651,12 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck ownership follows the administering form",
   "PATH carries no relative entry",
   "a .NET startup hook is a pre-main hook like the rest",
+  "a URL carrying userinfo is a credential",
+  "a bound claim names the profile it is bound to",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
+  "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
   "a missed known incident is a regression",
@@ -2603,6 +2669,7 @@ export const ACCOUNTED_GUARDS = [
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
   "a status this build does not know is refused",
+  "a stored result may not elevate its own claim",
   "a surface carries the rows it says it averaged",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
@@ -2774,6 +2841,8 @@ export const ACCOUNTED_GUARDS = [
   "the adapter's own config directory is declared, not typed twice",
   "the assessment writes the profile result",
   "the capture time names a day that exists",
+  "the card carries every reliance metric",
+  "the claim is compared like the numbers are",
   "the closing pull request changed something the issue owns",
   "the command prints the floored result",
   "the digest covers the rules applied outside the allowlist",
@@ -2783,6 +2852,7 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
   "the reader checks the state it was handed",
+  "the result states the claim ceiling it was issued under",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",

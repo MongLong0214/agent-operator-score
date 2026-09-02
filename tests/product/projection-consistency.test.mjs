@@ -69,18 +69,38 @@ test("the projection is built from the stored numbers alone and survives a JSON 
   assert.deepEqual(SECTION_ORDER, ["operator_process", "reliance_calibration", "system_outcome", "aos_composite", "claim"]);
 });
 
-test("every full renderer prints every phrase of the projection, and the card prints every headline phrase", () => {
+test("every renderer prints every phrase of the projection -- the card included, and the reliance metrics with it", () => {
+  // One list, three renderings. Holding the card to a smaller subset is how it came to omit all
+  // ten reliance metrics and every forbidden use: a summary that leaves out what the result may not
+  // be used for is not a summary of that result. `headline` remains as the subset a reader sees
+  // first, and it is checked as a subset rather than as a lower bar.
   const result = mixed();
   const view = projectResult(result);
-  assert.ok(view.phrases.length >= 30, `only ${view.phrases.length} phrases`);
+  assert.ok(view.phrases.length >= 40, `only ${view.phrases.length} phrases`);
   assert.ok(view.headline.length >= 8);
   for (const phrase of view.headline) assert.ok(view.phrases.includes(phrase), `headline phrase not in phrases: ${phrase}`);
-  const { markdown, html, card } = fullRenderers(result);
-  for (const phrase of view.phrases) {
-    assert.ok(contains(markdown, phrase), `markdown lacks: ${phrase}`);
-    assert.ok(contains(html, phrase), `html lacks: ${phrase}`);
+  for (const [name, output] of Object.entries(fullRenderers(result))) {
+    for (const phrase of view.phrases) assert.ok(contains(output, phrase), `${name} lacks: ${phrase}`);
   }
-  for (const phrase of view.headline) assert.ok(contains(card, phrase), `card lacks: ${phrase}`);
+});
+
+test("a reliance metric that was computed is printed with its value in every renderer, not summarised away", () => {
+  // The reviewer's case: cair issued at 0.75 appeared in the markdown and the html and in neither
+  // the card's rows nor its numbers, because the card printed the surface's status and stopped.
+  const result = buildResult({
+    contract: populated,
+    evaluation: evaluate(observationsWith(), identified, populated),
+    reliance: { status: "PARTIAL", metrics: { cair: { value: 0.75, status: "ISSUED", numerator: 3, denominator: 4 } } }
+  });
+  const view = projectResult(result);
+  assert.equal(view.reliance.rows.length, 10);
+  assert.equal(view.reliance.rows.find((row) => row.id === "cair").value, "0.75");
+  for (const [name, output] of Object.entries(fullRenderers(result))) {
+    for (const row of view.reliance.rows) {
+      assert.ok(contains(output, `${row.id}: ${row.value}`), `${name} lacks reliance metric ${row.id}`);
+    }
+    assert.ok(contains(output, "0.75"), `${name} lacks the value cair was issued at`);
+  }
 });
 
 test("every renderer shows the surfaces in the mandated order: process, reliance, outcome, composite, claim", () => {

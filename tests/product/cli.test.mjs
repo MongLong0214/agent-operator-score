@@ -257,7 +257,9 @@ test("a seed names the scenario, and a run records the one it used", () => {
     const manifest = JSON.parse(
       readFileSync(join(cwd, ".aos", "runs", newestRunId(cwd), "manifest.json"), "utf8")
     );
-    assert.equal(manifest.suite_digest, first.run.suite_digest);
+    // Same digest, one spelling: the run manifest writes it bare and the published result writes
+    // every digest with the prefix that says what the hex is a digest under.
+    assert.equal(`sha256:${manifest.suite_digest}`, first.run.suite_digest);
     assert.equal(manifest.seed, first.run.seed);
 
     run(cwd, ["assess", "--plan", "operator-plan.json", "--seed", "2a"], 3);

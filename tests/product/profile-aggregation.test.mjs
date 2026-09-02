@@ -393,6 +393,60 @@ test("a result whose schema is neither the profile schema nor the legacy one is 
   assert.equal(isLegacyResult(buildResult({ contract: populated, evaluation: fullRun() })), false);
 });
 
+test("a stored result cannot elevate the claim it makes, and a claim about an exact profile has to name one", () => {
+  // The stage is what a reader is allowed to conclude, which makes it the field worth editing.
+  // Changing the top-level claim alone left every profile at PROFILE_BOUND, validated, projected,
+  // and printed the elevated claim; the contract permits PROFILE_BOUND and nothing above it.
+  const result = buildResult({ contract: populated, evaluation: fullRun() });
+  assert.equal(result.claim_stage, "PROFILE_BOUND");
+  assert.equal(result.contract.maximum_claim_stage, "PROFILE_BOUND");
+  const stored = JSON.parse(canonicalJson(result));
+
+  const elevated = JSON.parse(JSON.stringify(stored));
+  elevated.claim_stage = "GENERALIZABILITY_SUPPORTED";
+  for (const call of [() => projectResult(elevated), () => renderMarkdown(elevated), () => renderHtml(elevated), () => renderCard(elevated)]) {
+    assert.throws(call, /AOS_CLAIM_STAGE/);
+  }
+  // Elevated consistently -- every surface too -- and still refused, because the ceiling is the
+  // contract's and the result says which contract set it.
+  const elevatedEverywhere = JSON.parse(JSON.stringify(elevated));
+  for (const key of ["operator_process_profile", "reliance_calibration_profile", "system_outcome_profile", "aos_composite"]) {
+    elevatedEverywhere[key].claim_stage = "GENERALIZABILITY_SUPPORTED";
+  }
+  assert.throws(() => projectResult(elevatedEverywhere), /AOS_CLAIM_EXCEEDS_CONTRACT/);
+  // And with the ceiling itself edited, the claim still needs the generalizability it rests on.
+  const raisedCeiling = JSON.parse(JSON.stringify(elevatedEverywhere));
+  raisedCeiling.contract.maximum_claim_stage = "GENERALIZABILITY_SUPPORTED";
+  assert.throws(() => projectResult(raisedCeiling), /AOS_CLAIM_STAGE/);
+  // A missing ceiling is not permission: a claim resting on nothing is refused by name.
+  const noCeiling = JSON.parse(JSON.stringify(stored));
+  delete noCeiling.contract.maximum_claim_stage;
+  assert.throws(() => projectResult(noCeiling), /AOS_CLAIM_CEILING/);
+  // A stage no build knows is refused rather than printed.
+  const invented = JSON.parse(JSON.stringify(stored));
+  invented.claim_stage = "ATTACKER_DEFINED";
+  assert.throws(() => projectResult(invented), /AOS_CLAIM_STAGE/);
+
+  // And the profile a bound claim is bound to has to be a digest over bytes: `sha256:a` is a
+  // label, and one nibble cannot identify an exact profile.
+  const unbound = JSON.parse(JSON.stringify(stored));
+  unbound.profile_digest = "sha256:a";
+  assert.throws(() => projectResult(unbound), /AOS_CLAIM_UNBOUND/);
+  assert.throws(() => buildResult({ contract: populated, evaluation: evaluate(observationsWith(), { ...identified, profile_digest: "sha256:a" }, populated) }), /AOS_CLAIM_UNBOUND/);
+  const schema = loadSchema(RESULT_SCHEMA_URL);
+  assert.equal(validateAgainstSchema(unbound, schema).ok, false, "the schema accepted a one-nibble digest");
+  assert.equal(validateAgainstSchema(stored, schema).ok, true);
+  // Every digest in the schema is the same definition, and it is 64 lowercase hex.
+  const patterns = new Set();
+  const walk = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (typeof node.pattern === "string" && node.pattern.includes("sha256")) patterns.add(node.pattern);
+    for (const child of Object.values(node)) walk(child);
+  };
+  walk(schema);
+  assert.deepEqual([...patterns], ["^sha256:[0-9a-f]{64}$"], "a digest has one spelling in this schema");
+});
+
 test("the sanitiser publishes the instrument's own vocabulary and digests only what must not be published", () => {
   // The gate every published value passes through is only safe if it is also accurate. A rule wide
   // enough to eat `authoritative-source-selected` -- a subcheck this product declares, digested
@@ -491,6 +545,19 @@ test("no credential shape and no absolute path reaches the canonical result thro
   // Every shape that has to be caught, each one in a facet of its own: the provider formats carry
   // their own prefix and no English word beside them, and a path can be one segment long.
   const shapes = {
+    // A filesystem location of any kind -- the predicate is the class, so the cases are the class.
+    posix_root: "/private",
+    posix_double_slash: "//server/private/share",
+    windows_unc: String.raw`\\server\private\share`,
+    windows_drive: String.raw`C:\Users\alice\creds.txt`,
+    windows_drive_forward: "C:/Users/alice/creds.txt",
+    home_relative: "~/secrets/key.pem",
+    home_bare: "~",
+    file_url: "file:///Users/alice/notes.txt",
+    // A URL that carries who you are in it, whatever the scheme.
+    postgres_url: "postgresql://alice:hunter2@db.example/prod",
+    ssh_url: "ssh://root@10.0.0.1/etc/shadow",
+    https_userinfo: "https://alice:hunter2@internal.example/dashboard",
     aws_key: "AKIAIOSFODNN7EXAMPLE",
     github_token: "ghp_16CharactersOrMoreOfTokenHere1234",
     slack_token: "xoxb-123456789012-abcdefghijkl",
@@ -551,7 +618,20 @@ test("no credential shape and no absolute path reaches the canonical result thro
   });
   assert.equal(safe.run.run_id, "run-b804de78-ab88-42cb-b542-894f2e021495");
   assert.equal(safe.run.suite, "aos-suite-v1");
+  // A bare digest is the same digest; the result publishes one spelling of it rather than two.
+  const bare = buildResult({ contract: populated, evaluation: fullRun(), run: { suite_digest: "b".repeat(64) } });
+  assert.equal(bare.run.suite_digest, `sha256:${"b".repeat(64)}`);
+  assert.deepEqual(bare.run.redacted, []);
   assert.deepEqual(safe.run.redacted, []);
+  // A URL with no userinfo is a reference, not a credential, and a relative path names a file in
+  // this repository. A predicate that ate those would take the words out of the report.
+  const kept = buildResult({
+    contract: populated,
+    evaluation: evaluate(observationsWith(), { ...identified, facets: { ...identified.facets, docs: "https://example.com/docs", module: "lib/result-schema.mjs", windows_relative: String.raw`docs\readme.md`, ratio: "0-100", either: "and/or" } }, populated)
+  });
+  for (const [facet, value] of Object.entries({ docs: "https://example.com/docs", module: "lib/result-schema.mjs", windows_relative: String.raw`docs\readme.md`, ratio: "0-100", either: "and/or" })) {
+    assert.equal(kept.facet_identity[facet], value, `${facet} was digested and is not a location or a credential`);
+  }
   assert.equal(safe.observations.every((row) => row.reason === "test" || row.reason === "not observed in this run"), true, "ordinary prose was digested");
   // What is declared and safe is kept verbatim, so redaction is not a way of losing the record.
   assert.equal(result.run.run_id, "run-1");

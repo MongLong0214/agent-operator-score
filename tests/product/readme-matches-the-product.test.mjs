@@ -139,7 +139,10 @@ test("an unattended run says it cannot be scored before it spends anything", () 
     const run = aosIn(cwd, home, ["assess"]);
     assert.match(run.stderr, /no --checkpoints/);
     assert.match(run.stderr, /17 of 20/);
-    assert.match(run.stderr, /gate of 18/);
+    // The notice says what will be withheld and why, rather than naming provisional_raw -- a field
+    // of the legacy record that the profile result this run writes does not carry.
+    assert.match(run.stderr, /process index and the composite will be withheld/);
+    assert.equal(run.stderr.includes("provisional_raw"), false);
     // Before the run, not in the summary after it: the notice is worth nothing once the quota is gone.
     assert.ok(
       run.stderr.indexOf("no --checkpoints") < (run.stdout.indexOf("metrics observed") + run.stderr.length),
