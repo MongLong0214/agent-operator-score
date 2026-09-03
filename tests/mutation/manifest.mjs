@@ -16,6 +16,24 @@
 
 export const GUARDS = [
   {
+    guard: "a route event names the agent that ran",
+    reason: "the ledger's whole claim is that it says who actually did the work; an emitter that copied the plan's route into the agent field would make every route event agree with the declaration by construction, which is the fallback this issue removed rebuilt one layer down",
+    file: "lib/cli.mjs",
+    from: "    agent_id: entry.agent,",
+    to: "    agent_id: route,",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "the agent a route event names is the agent that ran, not the one the plan named"
+  },
+  {
+    guard: "the emitter does not fabricate task attribution",
+    reason: "AOS invokes an agent for a family, not for a task the agent's own plan describes; writing a plan task id onto an invocation AOS did not make per task is the declaration wearing the ledger's clothes, and every capability and minimality answer would then rest on it",
+    file: "lib/cli.mjs",
+    from: "    task_id: null,\n    agent_id: entry.agent,",
+    to: "    task_id: \"verification\",\n    agent_id: entry.agent,",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "the run's own route events are the record the oracle scores, and the plan is not"
+  },
+  {
     guard: "an opportunity id cannot pass for the operator event id",
     reason: "an opportunity id and an operator event id answer different questions, and a field named for one holding the other is an identifier's shape standing in for its provenance -- the shapes are the only thing keeping the swap out",
     file: "lib/routing-oracle.mjs",
@@ -26,10 +44,10 @@ export const GUARDS = [
   },
   {
     guard: "a partly attributed ledger is not the cost basis",
-    reason: "counting a ledger that speaks about some tasks gives the rest nought invocations each, and the route then costs less than the cheapest possible one -- a run nobody finished observing, reported as one that beat the oracle",
+    reason: "a route is costed only when every task has an attributed owner; loosening this to \"some\" gives the unattributed tasks nought invocations each and the route then costs less than the cheapest possible one -- a run nobody finished observing, reported as one that beat the oracle",
     file: "lib/routing-oracle.mjs",
-    from: "  const costBasis = requirements.length > 0 && requirements.every((requirement) => invocationsOf.has(requirement.task_id))",
-    to: "  const costBasis = requirements.length > 0 && requirements.some((requirement) => invocationsOf.has(requirement.task_id))",
+    from: "  const assigned = requirements.length > 0 && requirements.every((requirement) => ownerOf.has(requirement.task_id));",
+    to: "  const assigned = requirements.length > 0 && requirements.some((requirement) => ownerOf.has(requirement.task_id));",
     test: "tests/product/actual-route-authority.test.mjs",
     name: "a ledger that speaks about some tasks does not make the route cheaper than the cheapest one"
   },
@@ -3601,6 +3619,7 @@ export const ACCOUNTED_GUARDS = [
   "a resolved key is the key",
   "a result has to agree with itself",
   "a root is a root wherever it starts",
+  "a route event names the agent that ran",
   "a route label that is not an identifier assigns nobody",
   "a row is held to the cells its contract declared",
   "a row is read as a whole",
@@ -3840,6 +3859,7 @@ export const ACCOUNTED_GUARDS = [
   "the contract states the cells each row averages",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
+  "the emitter does not fabricate task attribution",
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
   "the ledger's owner replaces the declaration",

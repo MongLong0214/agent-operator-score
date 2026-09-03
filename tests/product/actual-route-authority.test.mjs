@@ -206,18 +206,18 @@ test("a route label that is not an identifier assigns nobody", () => {
     { task_id: "release", owner_id: "/Users/alice/private/notes.txt" }
   ];
   const oracle = routeOracle({ requirements, capabilities: twoKnown(), declared_assignment: declared });
-  const owners = new Map(oracle.assignment.map((entry) => [entry.task_id, entry.owner_id]));
-  assert.equal(owners.get("verification"), null);
-  assert.equal(owners.get("release"), null);
+  const proposed = new Map(oracle.assignment.map((entry) => [entry.task_id, entry.proposed_owner_id]));
+  assert.equal(proposed.get("verification"), null, "the artifact's text was recorded as a proposed owner");
+  assert.equal(proposed.get("release"), null);
   assert.deepEqual(oracle.refused_owner_labels, ["release", "verification"]);
   assert.equal(JSON.stringify(oracle).includes("rm -rf"), false, "the artifact's text reached the oracle record");
   assert.equal(JSON.stringify(oracle).includes("/Users/alice"), false);
-  // And an unassigned task withholds rather than passing.
-  const capability = oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
-  assert.equal(capability.pass, null);
-  // An owner label that is an identifier is kept.
+  // A proposal is not an assignment either way: nothing here has an owner, because no event ran.
+  for (const entry of oracle.assignment) assert.equal(entry.owner_id, null);
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").pass, null);
+  // An owner label that is an identifier is kept as the proposal it is.
   const good = routeOracle({ requirements, capabilities: twoKnown(), declared_assignment: declared.slice(0, 3) });
-  assert.equal(new Map(good.assignment.map((entry) => [entry.task_id, entry.owner_id])).get("contract"), "one");
+  assert.equal(new Map(good.assignment.map((entry) => [entry.task_id, entry.proposed_owner_id])).get("contract"), "one");
   assert.deepEqual(good.refused_owner_labels, []);
 });
 
@@ -281,9 +281,11 @@ test("a ledger that speaks about some tasks does not make the route cheaper than
   }));
 
   const oracle = routeOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: partial });
-  assert.equal(oracle.cost_basis, "declared-assignment");
-  assert.equal(oracle.actual_cost, oracle.minimum.minimum_cost);
-  assert.equal(oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route").pass, true);
+  assert.equal(oracle.cost_basis, null, "a partly attributed ledger produced a cost");
+  assert.equal(oracle.actual_cost, null);
+  // And nothing is scored off the proposal that filled the gap in the first version.
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route").pass, null);
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").pass, null);
 
   // Every task attributed, and the ledger is the basis.
   const whole = Object.keys(owners).sort().map((taskId, index) => event({

@@ -134,10 +134,23 @@ test("the same plan text with a different actual route is judged by the actual r
 
 test("a perfect declaration with no invocation event cannot reach full credit", () => {
   const declared = m09({ routes: MINIMAL, ledger: [] });
-  assert.equal(sub(declared, "no-redundant-invocation"), null);
-  assert.equal(sub(declared, "invocation-budget-respected"), null);
-  assert.notEqual(declared.value, 1, "a declaration alone reached full marks");
-  assert.equal(declared.value, 0.5);
+  for (const entry of declared.subchecks) assert.equal(entry.pass, null, `${entry.id} was answered from the plan alone`);
+  assert.equal(declared.value, 0, "a declaration alone earned credit");
+
+  // Nor when the ledger recorded invocations it could not attribute to a task. That is the shape a
+  // real run produces, and it used to let the plan supply every owner: two events naming two
+  // different agents gave the same full result, because neither decided anything.
+  const unattributed = (agent) => [1, 2].map((index) => ({
+    ...event("contract", agent, index), task_id: null, purpose_id: `FAM-3/stage-${index}`, artifact_ids: [`artifact-${index}`]
+  }));
+  const one = m09({ routes: MINIMAL, ledger: unattributed("strong") });
+  const other = m09({ routes: MINIMAL, ledger: unattributed("other") });
+  assert.equal(sub(one, "capability-matches-task"), null);
+  assert.equal(sub(one, "simplest-adequate-route"), null);
+  assert.notEqual(one.value, 1, "task-null events plus a plan reached full marks");
+  // The ledger half is answerable and identical, which is what makes the two runs comparable at all.
+  assert.deepEqual(one.subchecks, other.subchecks);
+  assert.equal(sub(one, "invocation-budget-respected"), true);
 });
 
 test("an actual route whose owner AOS knows nothing about is not observed", () => {

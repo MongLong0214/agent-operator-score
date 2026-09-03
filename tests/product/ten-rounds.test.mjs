@@ -100,24 +100,43 @@ test("a plan with no verification step does not pass the check about verificatio
   };
   const capabilities = new Map(["a1", "a2"].map((id) =>
     [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })]));
-  const m09 = (tasks) => observeRun({
+  // The ledger, not the plan: since #558 only an admitted event attributes a task to an agent, so
+  // the counterfactual has to move what ran rather than what was written down.
+  const ledger = (owners) => Object.keys(owners).sort().map((task_id, index) => ({
+    schema_id: "aos-actual-route-event.v1",
+    task_id,
+    agent_id: owners[task_id],
+    route_id: "a1>a2",
+    invocation_id: `invocation-${index + 1}`,
+    purpose_id: task_id,
+    started_at: null,
+    completed_at: null,
+    artifact_ids: [`artifact-${index + 1}`],
+    handoff_ids: [],
+    capability_digest: null,
+    operator_decision_event_id: null,
+    operator_opportunity_id: null
+  }));
+  const m09 = (tasks, owners) => observeRun({
     artifacts: { plan: { tasks } },
     params: P,
-    routing: { work, capabilities, actual_route_events: [] }
+    routing: { work, capabilities, actual_route_events: ledger(owners) }
   }).find((entry) => entry.metric_id === "M09");
   const both = (routes) => [
     { id: "implementation", route: routes[0], depends_on: [] },
     { id: "verification", route: routes[1], depends_on: ["implementation"] }
   ];
 
-  assert.equal(sub([m09(both(["a1", "a1"]))], "M09", "simplest-adequate-route"), false);
-  assert.equal(sub([m09(both(["a1", "a2"]))], "M09", "simplest-adequate-route"), true);
-  // The task is gone, so nothing assigns it an owner and there is no answer to give.
-  const missing = m09([{ id: "implementation", route: "a1", depends_on: [] }]);
+  const shared = { implementation: "a1", verification: "a1" };
+  const apart = { implementation: "a1", verification: "a2" };
+  assert.equal(sub([m09(both(["a1", "a1"]), shared)], "M09", "simplest-adequate-route"), false);
+  assert.equal(sub([m09(both(["a1", "a2"]), apart)], "M09", "simplest-adequate-route"), true);
+  // The verification work was never done, so nothing attributes it and there is no answer to give.
+  const missing = m09([{ id: "implementation", route: "a1", depends_on: [] }], { implementation: "a1" });
   assert.equal(sub([missing], "M09", "simplest-adequate-route"), null);
   assert.equal(sub([missing], "M09", "capability-matches-task"), null);
   assert.notEqual(missing.value, 1, "deleting the task reached full marks");
-  assert.equal(missing.value < m09(both(["a1", "a2"])).value, true, "deleting the task did not cost anything");
+  assert.equal(missing.value < m09(both(["a1", "a2"]), apart).value, true, "deleting the task did not cost anything");
 });
 
 // Round 6. `assess` writes this file when no --plan is named, and `git add -A` committed the stub into

@@ -1,6 +1,6 @@
 {
   "schema": "aos-observable-cell.v1",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "declared_subcheck_count": 80,
   "cells": [
     {
@@ -771,7 +771,7 @@
       "title": "Routing fitness and minimality",
       "claim": "Each task is routed to a capability that matches it, without a redundant invocation.",
       "deferred_claim": null,
-      "observable": "plan.json tasks[].route -> a route per task, distinct routes for implementation and verification, and the distinctness of the declared route set",
+      "observable": "the work.json AOS seeds into the FAM-3 workspace before the agent runs -> a requirement per task; the capability record AOS holds for each registered agent's adapter; the run's actual route events -> whether every task's attributed owner holds the capabilities its requirement names, and whether the route taken is the cheapest one that satisfies every constraint at once",
       "task_opportunity": {
         "form_ids": [
           "FAM-3"
@@ -789,10 +789,16 @@
       "authority": "agent-artifact+deterministic-grader",
       "rival_explanations": [
         {
-          "id": "tautological-subcheck",
-          "statement": "simplest-adequate-route is a predicate that cannot fail. lib/observe.mjs records this as a known defect and states why it was not replaced with a guess.",
+          "id": "no-per-task-attribution",
+          "statement": "AOS invokes an agent for a family, not for one of the tasks the agent's own plan describes, so no actual route event attributes a task to an agent and these subchecks are NOT_OBSERVED in an ordinary run. The cell is answerable only where a caller supplies per-task attribution.",
           "status": "OPEN",
-          "mitigation": "The defect is carried into the contract so the cell is not read as fully evidenced. One of the three opportunities in this cell is known to be uninformative."
+          "mitigation": "Stated rather than papered over: the routing oracle refuses to let the plan's proposed owner stand in for an attributed one, so the cell withholds instead of scoring a declaration."
+        },
+        {
+          "id": "axis-and-authority-lag",
+          "statement": "This cell is declared on the delegated_artifact axis under an agent-artifact authority, and since #558 its subchecks are decided from the seeded requirement, AOS's own capability registry and the runtime invocation ledger -- none of which is the agent's artifact.",
+          "status": "OPEN",
+          "mitigation": "Moving the cell to system_outcome is a construct-map change owned by #582, and it would make the outcome estimate depend on a cell that withholds in every ordinary run. Recorded here so the mismatch is visible rather than implied."
         },
         {
           "id": "model-capability",
@@ -848,7 +854,7 @@
       "title": "Planned invocation budget held",
       "claim": "The number of invocations the run actually spent stayed inside the bound the plan implies.",
       "deferred_claim": null,
-      "observable": "invocation ledger for the family -> count, compared against the declared task count plus a fixed allowance",
+      "observable": "invocation ledger for the family -> count, compared against the invocation bound the seeded work requirement declares, per task and in total",
       "task_opportunity": {
         "form_ids": [
           "FAM-3"
@@ -867,15 +873,15 @@
       "rival_explanations": [
         {
           "id": "bound-set-by-the-graded-party",
-          "statement": "The bound is derived from the task count the agent itself declared, so declaring more tasks raises the agent's own ceiling.",
-          "status": "OPEN",
-          "mitigation": "None. The operator's planned budget exists in the operator plan but is not the bound compared against."
+          "statement": "The bound used to be derived from the task count the agent itself declared, so declaring more tasks raised the agent's own ceiling.",
+          "status": "CONTROLLED",
+          "mitigation": "Since #558 the bound comes from the work AOS seeds before the agent runs, not from the plan the agent writes afterwards. The operator's own planned budget still exists in the operator plan and is still not the bound compared against."
         },
         {
           "id": "count-not-cost",
           "statement": "Invocation count is not cost. Token spend and wall-clock cost are not observed here and must not be inferred from it.",
           "status": "OPEN",
-          "mitigation": "Cost belongs to the System Outcome profile and requires opportunity normalisation before any comparison."
+          "mitigation": "Cost belongs to the System Outcome profile and requires opportunity normalisation before any comparison. The routing oracle publishes a canonical route cost beside the run, and it is null until per-task attribution exists, so nothing consumes it as an outcome number yet."
         }
       ],
       "minimum_opportunities": 1,
