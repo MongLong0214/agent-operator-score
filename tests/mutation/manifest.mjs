@@ -3152,8 +3152,12 @@ export const GUARDS = [
     file: "lib/profile.mjs",
     from: "    isolation_policy_digest: profile.isolation_policy_digest ?? null,\n    runtime_config_digest: profile.runtime_config_digest ?? null,",
     to: "    isolation_policy_digest: null,\n    runtime_config_digest: profile.runtime_config_digest ?? null,",
-    test: "tests/product/model-identity.test.mjs",
-    name: "the profile digest moves for each model, runtime, adapter, environment, isolation and language field on its own"
+    // Witnessed by the test that moves the policy digest and nothing else. #561's field-by-field
+    // test varies the isolation *level*, which is its own digest input, so nulling the policy
+    // digest left that one green -- a guard reading as load-bearing on a witness that could not
+    // see it.
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_profile_digest_binds_the_boundary_and_the_runtime_configuration"
   },
   {
     guard: "a run under a different profile digest is not a run in this cycle",
