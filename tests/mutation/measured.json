@@ -7,7 +7,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "ACL walk": {
@@ -16,7 +16,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "AOS home withheld from the agent": {
@@ -25,7 +25,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "AOS_HOME is denied before the workspace is allowed": {
@@ -34,7 +34,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "ECD PROFILE_BOUND names the profile it claims": {
@@ -43,7 +43,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD a bound profile identity is compared": {
@@ -52,7 +52,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD a cell names only forms that administer its subchecks": {
@@ -61,7 +61,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD a locked form is completed exactly once": {
@@ -70,7 +70,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD an answered opportunity names its verifier": {
@@ -79,7 +79,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD an observation agrees with its own subchecks": {
@@ -88,7 +88,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD artifact versions are exact": {
@@ -97,7 +97,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD capabilities are identity, not a property": {
@@ -106,7 +106,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD cell claims a real subcheck": {
@@ -115,7 +115,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD cell has an owning construct": {
@@ -124,7 +124,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD cell resolved from the contract": {
@@ -133,7 +133,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD claim stage rests on what was observed": {
@@ -142,7 +142,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD claim stages are the three this module scores": {
@@ -151,7 +151,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD comparability compares emitted results": {
@@ -160,7 +160,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD comparability enforces every declared rule": {
@@ -169,7 +169,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD comparability is governed by the contract the results were scored under": {
@@ -178,7 +178,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD comparability reads the emitted facet identity": {
@@ -187,7 +187,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD comparability refuses an undeclared facet": {
@@ -196,7 +196,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD comparability rules gate declared facets": {
@@ -205,7 +205,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD construct withheld on a missing required cell": {
@@ -214,7 +214,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD contract identity is derived, not declared": {
@@ -223,7 +223,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD contract seal required before an estimate": {
@@ -232,7 +232,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD contract-specified minimum cannot drift from its clause": {
@@ -241,7 +241,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD deferred claim may not be scored": {
@@ -250,7 +250,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD derived rows are frozen": {
@@ -259,7 +259,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD derived rows only": {
@@ -268,7 +268,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD every metric is administered exactly once": {
@@ -277,7 +277,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD form and cell name each other": {
@@ -286,7 +286,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD form opportunity count is derived": {
@@ -295,7 +295,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD insufficient opportunities yields null": {
@@ -304,7 +304,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD legacy band surface is disclosed, not asserted away": {
@@ -313,7 +313,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD missing evidence keeps its own reason": {
@@ -322,7 +322,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD observations are what lib/metrics.mjs says they are": {
@@ -331,7 +331,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD opportunities carry what decided them": {
@@ -340,7 +340,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "ECD process index withheld on a missing construct": {
@@ -349,7 +349,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD prohibited value source refused": {
@@ -358,7 +358,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD self-report earns no credit": {
@@ -367,7 +367,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD shared form cells are disclosed": {
@@ -376,7 +376,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD subcheck cardinality is pinned": {
@@ -385,7 +385,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.996Z"
       }
     },
     "ECD subcheck double ownership": {
@@ -394,7 +394,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD subcheck exhaustive mapping": {
@@ -403,7 +403,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.266Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "ECD subcheck ownership follows the administering form": {
@@ -412,7 +412,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.996Z"
+      }
+    },
+    "EVIDENCE_ONLY names where the evidence goes": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6fd815ed758cb88e68a96ca421f91f3a8fc419dfa280c1842fb7396d0fa7e40d",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "EVIDENCE_ONLY records whether the migration happened": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8961648cadd8e50208ea3d06e18d4364ca9f41789efa6ccb698bd7ff10437725",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "MERGED holds no commit that reaches neither line": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3b47e8a3bf1f0ead3c4faf60c87a659f2db1285938bd8cdc26807dc9badd6755",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "PATH carries no relative entry": {
@@ -421,7 +448,52 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
+      }
+    },
+    "SUPERSEDED accounts for every commit on no other line": {
+      "platform": "darwin",
+      "fingerprint": "sha256:40e8c9265673361219580e296b8ac8ad84c4d09b539515cbc249713d64487a51",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "SUPERSEDED requires the thing that superseded it": {
+      "platform": "darwin",
+      "fingerprint": "sha256:b101b9b21cdef2f5177035ce57ee40d6f529e86a5aef992bc5131e08715993aa",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "UNIQUE_WORK carries the plan that gets the work off the branch": {
+      "platform": "darwin",
+      "fingerprint": "sha256:0cc2d713e22c36cde3cf9eb44da524a9aaac5dc8e23655b1e05ae7f3c82e1e80",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "UNIQUE_WORK names what is unique to it": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4e6960011f3e9467c57d07033301aee7a8695afea12079b8586c095fa0952b6e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "UNKNOWN_HOLD names what blocks the decision": {
+      "platform": "darwin",
+      "fingerprint": "sha256:bf1e52f0dc028b40940717bbbafb0bee7699739c2f6bf02892a7ff6249f4625e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "a .NET startup hook is a pre-main hook like the rest": {
@@ -430,7 +502,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "a /proc listing is not a list of survivors": {
@@ -439,7 +511,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
+      }
+    },
+    "a NOT_YET deletion log cites no boundary observations": {
+      "platform": "darwin",
+      "fingerprint": "sha256:29412971a16ac731f755eaf96b54bb18050e5ed7c83cf23e139ec26a80ec284a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "a NOT_YET deletion log may not list deletions": {
+      "platform": "darwin",
+      "fingerprint": "sha256:fbd7fde20724de3573f77d0d9f820b139686f19a55aaeca1ff91914de61191ee",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "a SUPERSEDED accounting is compared against the commits the collector derived": {
+      "platform": "darwin",
+      "fingerprint": "sha256:47dae9f719a0199850e441a68af86ea859496371eb0f5ede7e05d577bb4da161",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a URL carrying userinfo is a credential": {
@@ -448,7 +547,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a bare alias is never an exact identity": {
@@ -457,7 +556,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
+      }
+    },
+    "a blocker closed without close evidence has not cleared": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ea007286be63e8913980819bacfcb9eb7a6ce192140cfa4ec6cd833c592ed190",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "a bound claim names the profile it is bound to": {
@@ -466,7 +574,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
+      }
+    },
+    "a boundary needs both of its observations": {
+      "platform": "darwin",
+      "fingerprint": "sha256:7e13767b1a648cb5385099ebad86becd3813c9290c61b9c8342270535cd02d2d",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "a calendar-impossible instant is refused before any arithmetic": {
+      "platform": "darwin",
+      "fingerprint": "sha256:7e147b58acb776ff7cbb7a2806f3268fe0eaf7b5d2cdb4ad1bdadd4ab7d5a8d3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "a cancel typed at a shell is not an operator turn": {
@@ -475,7 +601,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "a candidate source version is published as a digest": {
@@ -484,7 +610,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
+      }
+    },
+    "a capped pull request history is refused when the observation is verified": {
+      "platform": "darwin",
+      "fingerprint": "sha256:92efd8612fb803eb6cd3f1e54d1a845d9af96eb19c51a71142efabaf24f2bc6f",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "a capped pull request history supports no claim in the record": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3d9badd61079c5e93b6a2da8c107ee52c057052f22b56732bd6374a1442dcfd6",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "a citation is checked against the answer the cited command gave": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6defad458e3864194648884b09f486f66a7cb871dac370c3e9732f1bf019e6c9",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a cleanup failure is published by class and digest": {
@@ -493,7 +646,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
+      }
+    },
+    "a collector read error names a relative path": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3fd58ef55b2ec13a383f73f519a9eb5011f43d4375797265977c877c4c762df3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "a command that returned nothing is not an empty list": {
+      "platform": "darwin",
+      "fingerprint": "sha256:490a66c48e05aa8bffaf6f3be782c41c53f376341fea2b3d32694c8646bcdfae",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "a committed observation carries no transcript": {
@@ -502,7 +673,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "a complete cycle is not an issued cycle": {
@@ -511,7 +682,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
+      }
+    },
+    "a completed deletion requires the observation that witnessed it": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d5276f0a437fe83a213ca0fccfddb719726110e6766432a2e6ece5989e1dfd32",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "a completed log cites both boundary observation digests": {
+      "platform": "darwin",
+      "fingerprint": "sha256:bdd9b8dd4f8731b2ba5e27904501f8b4205b22d9274c9aec3d8fb62c7c41b0bb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "a contradicting transcript still leaves the cohort": {
@@ -520,7 +709,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a copy taken while the tree moved is not a snapshot": {
@@ -529,7 +718,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "a credential is not a model id": {
@@ -538,7 +727,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "a credential is staged for the runtime, not for the label": {
@@ -547,7 +736,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "a credential is what it is filed under, at any length": {
@@ -556,7 +745,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "a credential-shaped name is refused as an ordinary allowed name": {
@@ -565,7 +754,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "a credential-shaped name is refused at the carry as well": {
@@ -574,7 +763,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "a cycle answers with the provenance its runs resolved": {
@@ -583,7 +772,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a cycle locks the executable as it is, not as it was registered": {
@@ -592,7 +781,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a cycle of profiles withholds its aggregate by name": {
@@ -601,7 +790,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a cycle reads the executable its runs saw": {
@@ -610,7 +799,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a cycle whose model is unknown says so": {
@@ -619,7 +808,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a date-shaped substring is not a snapshot on its own": {
@@ -628,7 +817,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a decision binds to the construct it is evidence about": {
@@ -637,7 +826,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a decision names the dimension it belongs to": {
@@ -646,7 +835,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a declared route is published as digests": {
@@ -655,16 +844,52 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a declared schedule never certifies collision safety": {
       "platform": "darwin",
-      "fingerprint": "sha256:fd2e853ca951d24b11a3b80e674bb4ee1ba084c5b7783c6a4957f8a1cb92cb12",
+      "fingerprint": "sha256:4b07a21d8d28160d0baabb170ba17170546d68db6762afad4e8625b7fbad0d9d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.992Z"
+      }
+    },
+    "a deletion names the commit the audit judged": {
+      "platform": "darwin",
+      "fingerprint": "sha256:e228db595a0ec4ec901a582fcced3a584d1f18f8749680a662f0424a75043a04",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "a deletion outside the audit is refused": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d4e793ab2b24e0b8d439d0a4098f8182105f7aa655f217cadea5a027b5e70703",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "a deletion recommendation carries a reason": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a3f03cf00c67fd92f4ef269121a04c69d9aaf5c5fdb8c125109068f06fc41508",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "a deletion-blocking unknown blocks the deletion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1de04b035679d018141b8a667e09e70ddb1fd5b23bf45868e2f3851debed0187",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "a deny the kernel refused, not a file that was not there": {
@@ -673,7 +898,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
+      }
+    },
+    "a derivation cites a receipt the observation carries": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8b243596b6baf2d4c0f9ee1a627156643af0d2615876518257d02ece36747665",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "a detected model that contradicts the declared one is a mismatch": {
@@ -682,7 +916,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a diagnostic never issues a profile-bound aggregate": {
@@ -691,7 +925,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "a facet is not normalised into a digest": {
@@ -700,7 +934,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a failed observation's error is redacted": {
@@ -709,7 +943,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a family that never settled is a missing answer": {
@@ -718,7 +952,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "a family with no known naming rules is not exact": {
@@ -727,7 +961,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a filesystem location is one however it is spelled": {
@@ -736,7 +970,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
+      }
+    },
+    "a finding anywhere empties the eligible set": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8af8c88a369dcd07615a01dbe8ef3ea42e5af85fb09a9a7692c2a1996e4a1649",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "a forged structural set is revalidated like the rest": {
@@ -745,7 +988,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "a handoff is recorded only where something was handed": {
@@ -754,7 +997,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "a leaked descendant blocks issuance": {
@@ -763,16 +1006,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "a live audit needs a live snapshot": {
       "platform": "darwin",
-      "fingerprint": "sha256:b65aec751b7f5668cafcd4c0f30a666772d7e6dc62d9bf60831c59e88eef1927",
+      "fingerprint": "sha256:d5cf8ed3d45971f291a074509650f6ecdcb8681d1340505706af1a5cc1af7bf0",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
+      }
+    },
+    "a live head the audit never covered is reported": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2fc23834f352f5540db5f49faea3b44854d859b42b2e88a791a28c7fd1e94f64",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
+      }
+    },
+    "a log checked without its observations is not a log that passed": {
+      "platform": "darwin",
+      "fingerprint": "sha256:500a200d66539cadc406a53aed0cf212e4064483831d8c4bb789c6de704d5998",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a metric's status and its value are one state": {
@@ -781,7 +1042,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a mismatch cannot be bound into a profile": {
@@ -790,7 +1051,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a missed known incident is a regression": {
@@ -799,7 +1060,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "a model id this product cannot read is refused": {
@@ -808,7 +1069,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
+      }
+    },
+    "a multi-phase issue is not closed by the phase that has run": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3e9a7ac0f9f604e4ebd0079845ca8565ab1afba9ae9e7974cd66850f1d118858",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "a mutable alias withholds the profile-bound aggregate": {
@@ -817,7 +1087,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a name that is not a model name is never printed": {
@@ -826,7 +1096,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a name without snapshot proof is a mutable alias": {
@@ -835,7 +1105,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a named evidence id is published as a digest": {
@@ -844,7 +1114,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "a named secret assigned a value is a secret at any length": {
@@ -853,7 +1123,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a named secret is a secret without a digit in it": {
@@ -862,7 +1132,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a namespace deny needs a plant behind it": {
@@ -871,7 +1141,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "a new run is never scored by the old scorer": {
@@ -880,7 +1150,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a one-segment absolute path is a path": {
@@ -889,25 +1159,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "a partly attributed ledger is not the cost basis": {
       "platform": "darwin",
-      "fingerprint": "sha256:4d6d77f3cacb77cc947bfe445a05981a3a05f9f12333c92c7548b5a29a6e619c",
+      "fingerprint": "sha256:8dcad536fae18a3e7f701ad7f616a816c6cf94cb6c2f2a73b736ca338777703d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "a phase's predecessors must be in the plan": {
       "platform": "darwin",
-      "fingerprint": "sha256:75bbfea4225f64f67932571aa6090d10e0f625f08cfeee3b616c822592a995d5",
+      "fingerprint": "sha256:f255d3befca4b2b2b7b4f99a6e672d81ed4f4a22f7e37ca716870b0d8dda6ca7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "a policy no backend implements is not measured": {
@@ -916,7 +1186,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "a policy that narrows the run-metadata door is applied, not merely recorded": {
@@ -925,7 +1195,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "a process with no key for a run says so": {
@@ -934,7 +1204,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
+      }
+    },
+    "a protected branch is never deletion-eligible": {
+      "platform": "darwin",
+      "fingerprint": "sha256:74cd8842a39fe5de4ff90c797bd646fe20e31b7ce236acce53958e2b7def05a5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "a provider refusal is narrow, not any non-zero exit": {
@@ -943,7 +1222,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
+      }
+    },
+    "a pull request opened after the audit blocks the deletion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a2860008ffe228dd6671184c1a6fe5a50043f53051ad3702d3edaf069193f4cf",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "a raw value is hashed because it was supplied raw": {
@@ -952,7 +1240,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "a recomputation compares the boundary facts it published": {
@@ -961,7 +1249,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "a recomputation runs under the run's own boundary": {
@@ -970,7 +1258,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a record an older release wrote is read as what it is": {
@@ -979,7 +1267,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a record is authenticated before it is judged": {
@@ -988,16 +1276,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "a redundant invocation is one that added nothing": {
       "platform": "darwin",
-      "fingerprint": "sha256:a21b4e4d27d5f8bfb9cd2d33c95443f281c833c7b5e25d8fdcea5a85bd83d6e0",
+      "fingerprint": "sha256:da6434f7ff07f90906bbbfb5c998e52848f1d92f3ec3ba9179e8a6b988dfd915",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "a refused file fails the check": {
@@ -1006,7 +1294,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "a relay id is published as a digest": {
@@ -1015,7 +1303,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a reliance trace is built on a journal": {
@@ -1024,16 +1312,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "a required artifact or handoff is checked against the ledger": {
       "platform": "darwin",
-      "fingerprint": "sha256:32f2868bcd5da0b513b5bd88918efdfcf8cf014364d76368d78f1782dcc62212",
+      "fingerprint": "sha256:db226cd2123fafd7042e49a5c2299c5626907874677981a349eebd4a66047389",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.991Z"
       }
     },
     "a required metric with an unanswered subcheck is not present": {
@@ -1042,7 +1330,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "a reroute is a routing decision": {
@@ -1051,7 +1339,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a resolved key is the key": {
@@ -1060,7 +1348,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "a result has to agree with itself": {
@@ -1069,7 +1357,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a risky security state is never VERIFIED": {
@@ -1078,7 +1366,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a root is a root wherever it starts": {
@@ -1087,7 +1375,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a route event names the agent that ran": {
@@ -1096,16 +1384,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "a route label that is not an identifier assigns nobody": {
       "platform": "darwin",
-      "fingerprint": "sha256:7767989d28060bae485c2d1a8df099ac288494806f6a7719de1d24abb5134da3",
+      "fingerprint": "sha256:dde0ae00e4960273a949897a1444ba25804772dc7c2113d8bbea2b3e40d444e7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "a row is held to the cells its contract declared": {
@@ -1114,7 +1402,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a row is read as a whole": {
@@ -1123,7 +1411,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a run is official only when every invocation is": {
@@ -1132,7 +1420,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "a run that failed still records what it was bound to": {
@@ -1141,7 +1429,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "a run the cycle cannot identify closes it": {
@@ -1150,7 +1438,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a run under a different profile digest is not a run in this cycle": {
@@ -1159,7 +1447,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a run workspace is never inside the store": {
@@ -1168,7 +1456,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "a runtime tree inside the store is refused": {
@@ -1177,7 +1465,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "a sanitised value is one this module boxed": {
@@ -1186,7 +1474,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a scan that ran out of budget says so": {
@@ -1195,7 +1483,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "a scorable cell with no bound decision withholds": {
@@ -1204,7 +1492,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "a scored Process row carries its five references": {
@@ -1213,7 +1501,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
+      }
+    },
+    "a search that returned no page is not a complete sweep": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d9b34877ce287f6965dc4057ec4c455ef9999870f03be042bb99dc2746032052",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "a secret handed over with a space is still handed over": {
@@ -1222,7 +1519,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a sequence at its key's indentation is the value": {
@@ -1231,7 +1528,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "a settlement nobody could check is not a clean one": {
@@ -1240,7 +1537,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "a skipped real lane is not a verified one": {
@@ -1249,16 +1546,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "a started phase cannot integrate code on a blocked issue": {
       "platform": "darwin",
-      "fingerprint": "sha256:706280ef594f440b63905831700534ab120a446124d29eb7e654b6abcb70b291",
+      "fingerprint": "sha256:298f880a70a6a228c43fcc57ed2c45973d10b966c9681f4c52ec6700a279211e",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "a state revision is stated, never defaulted": {
@@ -1267,7 +1564,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
+      }
+    },
+    "a state that may not be deleted fixes its recommendation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6379966f4cc7323e71f041cb41132a99c08131674df424ba287e3df50b6a86d3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "a status the record asserts about itself is not evidence": {
@@ -1276,7 +1582,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a status this build does not know is refused": {
@@ -1285,7 +1591,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a status with no digest under it is the weakest one": {
@@ -1294,7 +1600,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a stored operator trace is re-checked at the read": {
@@ -1303,7 +1609,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "a stored result may not elevate its own claim": {
@@ -1312,16 +1618,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "a subcheck verdict is one of three states, never rounded": {
       "platform": "darwin",
-      "fingerprint": "sha256:9c93fac70cb04fbfef9a5ab1e4b5adabd6385515ce2bfb5c2bffa09cdc618f23",
+      "fingerprint": "sha256:5bf4844aa4a2622df8822bb735d9c9df5110a8e4a8c243949c2eae771a0235eb",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "a surface carries the rows it says it averaged": {
@@ -1330,7 +1636,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "a symlinked staging source is refused by name": {
@@ -1339,34 +1645,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
+      }
+    },
+    "a tag's ref object is part of its identity": {
+      "platform": "darwin",
+      "fingerprint": "sha256:cceffeed61b9a9d7bbfbc4a88e5f22606f0201f2ad645a24d13acc5eebf6e024",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "a task id is a reference to a task this run holds": {
       "platform": "darwin",
-      "fingerprint": "sha256:a57fe279134847d9caac3fef7655ef8509e4be952f9ada987596e3efdff9e961",
+      "fingerprint": "sha256:181e789376aa1f6e31a8cef00ca381f7e09afd691f5a28ee312b10b04eef9e6f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.991Z"
       }
     },
     "a task re-entering an ancestor's resource is the one that checks it": {
       "platform": "darwin",
-      "fingerprint": "sha256:553111f7afc3e875c66558a2953d46127580e130d73eccd78c05e3af08794f1a",
+      "fingerprint": "sha256:eed112af7eb87aa670d302267e790f5c963068f109c3904056eeb87b87015c14",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "a task two agents invoked has no owner": {
       "platform": "darwin",
-      "fingerprint": "sha256:4b49fc77a0e5f127ef8ba5021deb43293947eec012f196446776d1cd576828be",
+      "fingerprint": "sha256:661c3955dcf8b254ad8de782edc543962f0bb52644a5d5f235f44f4413025aa6",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "a transcript is never sufficient on its own": {
@@ -1375,7 +1690,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "a transcript that names another model contradicts the binding": {
@@ -1384,7 +1699,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a transcript value is never printed unless it is a model name": {
@@ -1393,7 +1708,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "a tree the digest cannot cover is not certified": {
@@ -1402,25 +1717,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "a truncated cycle search says so": {
       "platform": "darwin",
-      "fingerprint": "sha256:81402134e308ba829b52394d5a9119bbb5703f9c9a9194e824800462202f2438",
+      "fingerprint": "sha256:691b78da81a1968b74451c488e09c34d23b766ca74f6851974924e611e79c6e8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "a truncated reachability answer is not an answer": {
       "platform": "darwin",
-      "fingerprint": "sha256:9b183bea96141ac8bc118389b511409ff4a97b3d0c7a3d8ba7b1f5a09386d319",
+      "fingerprint": "sha256:ec29b04bf8a7630f5307abf07f6c357110bc0d83a3149d189227fa276586eefe",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
+      }
+    },
+    "a truncated reference sweep supports no reference claim": {
+      "platform": "darwin",
+      "fingerprint": "sha256:32fdd48d49b14535e290e1e85f56fbc93f102c363f13a2358b0183ebd4d52503",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "a truncated sweep is refused when the observation is verified": {
+      "platform": "darwin",
+      "fingerprint": "sha256:09efc64a4eb960d4c426793947b47572a50a1191a187b61e2322b70699dacae5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "a value and its digest are not both accepted": {
@@ -1429,7 +1762,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "a verdict that contradicts itself is not a verdict": {
@@ -1438,7 +1771,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "a verifier reads the boundary off the record, not off the result": {
@@ -1447,7 +1780,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "a violation decides before the floor does": {
@@ -1456,7 +1789,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "a weight is a reciprocal or it is not a weight": {
@@ -1465,7 +1798,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a weight is a share of an equal-weight mean": {
@@ -1474,7 +1807,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a withheld corpus does not pass": {
@@ -1483,7 +1816,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "a withheld identity caps the canonical claim": {
@@ -1492,7 +1825,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a withheld identity withholds the composite": {
@@ -1501,7 +1834,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "a withheld metric says so rather than reading as uncomputed": {
@@ -1510,7 +1843,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a withheld rate keeps the counts that withheld it": {
@@ -1519,16 +1852,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "a work graph that refers to itself has no order to route": {
       "platform": "darwin",
-      "fingerprint": "sha256:80ba034147d876c7f99a5f94c8b41ae2f9b3b0ab3221bdbe11bd13557dcfeb7c",
+      "fingerprint": "sha256:4bf59c459e5e415a503e63ece24c458c249ce78c6b02c3cc9f90d15ca5247868",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "a workspace that contains the store is refused": {
@@ -1537,7 +1870,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "a workspace that resolves into the store is refused": {
@@ -1546,7 +1879,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "a write after settlement is visible": {
@@ -1555,7 +1888,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "absent coverage is not a measured zero": {
@@ -1564,7 +1897,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
+      }
+    },
+    "absent protection on both sides is not unchanged protection": {
+      "platform": "darwin",
+      "fingerprint": "sha256:654848db92073eefbd549f225a67dde2dad1e46bd047a6157e769b9a5c56e0a9",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "abstention cannot outweigh decision": {
@@ -1573,7 +1915,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "adapter membership is a published name, not a path shape": {
@@ -1582,7 +1924,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "advice is answered once": {
@@ -1591,7 +1933,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "agent-relay event needs its attestation": {
@@ -1600,7 +1942,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "allowlist-only child environment": {
@@ -1609,7 +1951,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "an UNTRUSTED identity is not a verified one": {
@@ -1618,7 +1960,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "an absent boundary is not a passing one": {
@@ -1627,7 +1969,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
+      }
+    },
+    "an after-snapshot head is in flight, not merely named": {
+      "platform": "darwin",
+      "fingerprint": "sha256:e8800710ec8f7218f2582515c9224dfc5f2ffd1251bf2e4899e0488d11e6951e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "an alias is the node it names": {
@@ -1636,7 +1987,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
+      }
+    },
+    "an asserted number equals the number the collector derived": {
+      "platform": "darwin",
+      "fingerprint": "sha256:b23e20f75191df40b95ab257f9fea67131abf83710bc6e8fa9f3547bfee58bbd",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "an asserted open PR appears in the collected history": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3e24001ac15a798d0ec872918216cb455198144bd2c06aac53dd876814124b42",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "an asserted tree scan is the one that ran": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2bbc527a3f43ff2360a0a178ca5e06300dfa4f2b4c551290cbfcbf755bb7c653",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "an empty completion says why nothing was eligible": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8bc8e6af79f09a700692cb238f9ae7a9b9c24733f29d54d17314c0b29583fc0d",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "an empty isolation lane is not a chosen one": {
@@ -1645,16 +2032,52 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
+      }
+    },
+    "an entry records its reference scan and tag containment": {
+      "platform": "darwin",
+      "fingerprint": "sha256:636bb7102e6681e5111c5677b2ba7b809a2f05e706b7d8225d4f12dbe132f404",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "an event's capability digest is recomputed and compared": {
       "platform": "darwin",
-      "fingerprint": "sha256:6246a7c1419d0c225c84c41043aa79c2e463461cf487a8f7bc39147fb8d6b19a",
+      "fingerprint": "sha256:06e0dd5883ecdfc79c09a29e51b8077b455da5a5f06af6593b5fca06e771d07b",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
+      }
+    },
+    "an excused head is classified as the in-flight work it claims to be": {
+      "platform": "darwin",
+      "fingerprint": "sha256:028f4b043c9edb0f3897eac4ecaaaf2d3f41b27e3a0f2de351a7c059a56198b8",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
+      }
+    },
+    "an excused head records no SHA it cannot have": {
+      "platform": "darwin",
+      "fingerprint": "sha256:244b332b60355bce34e8737296d21721e4f760f5149e171cd993b00f9ef152a3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
+      }
+    },
+    "an excused head's own claims are checked against the observation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:42ae2e689dc0d1acc01989d45983aaba1741b4280c2d8fbcb06db48b9d173a5f",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "an import reads every event before it creates a Run": {
@@ -1663,7 +2086,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "an imported run is written down": {
@@ -1672,7 +2095,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "an imported run names the producer of its evidence": {
@@ -1681,7 +2104,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "an incomplete result's terminal names it": {
@@ -1690,7 +2113,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "an inconsistent snapshot withholds": {
@@ -1699,7 +2122,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "an initial judgment after the reveal is refused": {
@@ -1708,7 +2131,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an initial judgment is not committed with a post-advice response": {
@@ -1717,7 +2140,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an initial judgment names its evidence": {
@@ -1726,16 +2149,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an invalid routing contract withholds every routing observable": {
       "platform": "darwin",
-      "fingerprint": "sha256:b5b2182245c8706068ba7861503d02529f1d94f72860e86fa1efd87a80fb0140",
+      "fingerprint": "sha256:9378a65717fe32891f0c7b9ead84d644bfec600b1b686e33337c6ad9476d65c2",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "an invocation nobody can attribute decides nothing": {
@@ -1744,7 +2167,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an issue number is a number before it is a pattern": {
@@ -1753,16 +2176,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "an issue owns a surface": {
       "platform": "darwin",
-      "fingerprint": "sha256:442daffa7574b4fc5dfd702aba8a08f0e0f3d72995b68d20a5c8add400476a01",
+      "fingerprint": "sha256:6732ddc619a752f7b5c9ce8b81bb973885a10bbf8b2999f0c638a250f191119c",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "an issued legacy number needs a declared STRICT level": {
@@ -1771,7 +2194,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "an observation run carries a provenance record too": {
@@ -1780,7 +2203,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "an observation that could not run still leaves its record": {
@@ -1789,7 +2212,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "an observation's markers are read, not only its exit code": {
@@ -1798,7 +2221,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "an older schema generation is named, not accused": {
@@ -1807,7 +2230,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
+      }
+    },
+    "an omitted observation family is not an observed empty one": {
+      "platform": "darwin",
+      "fingerprint": "sha256:73c9c16475d59c572fde47edc3584fb4ab754869bddc820bb16ee1150844639b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "an open PR head survives the deletion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:53f0d4a0e22c8f84d070a9cac797431c11eb988110a389178e1418b95b9cee4e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "an open PR makes the branch ACTIVE, whatever it is labelled": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2d6512f0ece3823646278aa3055f2330effbb3868262218ab61d505748db4b71",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "an open handle is corroboration, not a warrant": {
@@ -1816,7 +2266,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
+      }
+    },
+    "an open pull request is looked for in every source that would know": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9fa86a0833924efa659f1b295f29f053d64f9c21d9d3c575d89c4947ac8ce247",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "an operator decision binds only to an operator_process cell": {
@@ -1825,16 +2284,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "an operator decision is lined up with the stage it was about": {
       "platform": "darwin",
-      "fingerprint": "sha256:0d36a22b3840c453fe761c9efe2e4df28c1fa5b7765dd4353f73c9815600162f",
+      "fingerprint": "sha256:bc9442d5a940e6e84afd7eee0203af4eee0ae0efc318049f23d19d19dddb9b6d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.991Z"
       }
     },
     "an operator event is assembled from named fields": {
@@ -1843,7 +2302,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an operator event states its challenge and its value": {
@@ -1852,43 +2311,52 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an opportunity id cannot pass for the operator event id": {
       "platform": "darwin",
-      "fingerprint": "sha256:31e70d4e126008a6a3a672f5f9fd893b8c2ba7b096720ba8fd4293243b3c9252",
+      "fingerprint": "sha256:3a27c1c1d2732044a84d600c469fc5cde84145e6f5f0591cde542098edc463e8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.992Z"
+      }
+    },
+    "an out-of-range month, day, hour, minute or second is refused": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1597650fd5de3cc459bbf444da0884b4ff453c844faaed64f13a0243eb5c5835",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "an overlap in the ledger is a collision whatever the schedule said": {
       "platform": "darwin",
-      "fingerprint": "sha256:197683c00a40d5ada7fc022aa8caec9d4be4ed084cbb11dc042c59358f665f2a",
+      "fingerprint": "sha256:4f34d0469374f8a861f359c83c15e56a4e951cccf2b0bd19ab880d33c4c92d8f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "an overlap the requirement does not permit is not an adequate route": {
       "platform": "darwin",
-      "fingerprint": "sha256:7edf9defc6211e6c444f1422a71747c9bf72f784611bd24f8a48d6290f26570e",
+      "fingerprint": "sha256:32cfe23745cc4df4366b71e0938d6778e5e4100bc2447f8e45ec6668853e0a67",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.991Z"
       }
     },
     "an owner AOS cannot judge is not delegation the operator got wrong": {
       "platform": "darwin",
-      "fingerprint": "sha256:2f3f47ec4ae27411196036ae320b5d8755a1f735f023f23d83fcae800e9ba724",
+      "fingerprint": "sha256:11bd6532f485ccf6d7e89068f68c67eb75502d0534c9c7d48f142eda3ffeb9d8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "an unanswered checkpoint mints nothing": {
@@ -1897,7 +2365,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "an unexplained holder of the run's directories withholds": {
@@ -1906,7 +2374,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "an unidentified runtime cannot carry the lane": {
@@ -1915,16 +2383,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "an unknown capability source keeps no abilities": {
       "platform": "darwin",
-      "fingerprint": "sha256:26308d00b6400ce84a52db4ae2dc23c13bf7987f15d3b871247f2bd70cb25160",
+      "fingerprint": "sha256:938b80b83167e74331843099eae5a81a5bece08558e670c393d5b4f7ee4b6af8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "an unknown isolation lane is refused, not defaulted": {
@@ -1933,7 +2401,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "an unknown model withholds the aggregate by its own name": {
@@ -1942,7 +2410,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
+      }
+    },
+    "an unknown protection state is not an unprotected branch": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3c42280b7ec69e7168f63381459423615355943a1cfcc1c27964e5cac9cf8bc3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "an unknown status is not a verdict": {
@@ -1951,7 +2428,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
+      }
+    },
+    "an unknown's bearing is one of two values, not free text": {
+      "platform": "darwin",
+      "fingerprint": "sha256:0b81b467d1175bc4d5e12b4525c03cf1c9fad2a10dd1bbf328507aae209629b1",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "an unmeasured network axis is not NOT_OBSERVED": {
@@ -1960,7 +2446,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "an unmeasured network policy has no expectation": {
@@ -1969,7 +2455,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "an unnameable transcript row withholds the aggregate": {
@@ -1978,7 +2464,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "an unproven lane blocks issuance": {
@@ -1987,7 +2473,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "an unverified executable withholds the aggregate": {
@@ -1996,7 +2482,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "artifact top-level mode": {
@@ -2005,7 +2491,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "artifact type in the envelope": {
@@ -2014,7 +2500,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "binary handling": {
@@ -2023,7 +2509,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "block scalar measured from its key": {
@@ -2032,7 +2518,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
+      }
+    },
+    "both blocking issues are named while the log is blocked": {
+      "platform": "darwin",
+      "fingerprint": "sha256:76462bade31b2a5894c4999edd56a10c73a7d50df26175b92aefe5797d6b44b6",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "both canary judges share one denial predicate": {
@@ -2041,7 +2536,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "bubblewrap mounts what the policy declares": {
@@ -2050,7 +2545,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "canonical manifest order and uniqueness": {
@@ -2059,7 +2554,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "canonical path, type and mode tuple": {
@@ -2068,7 +2563,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "canonical row field alphabet": {
@@ -2077,7 +2572,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
+      }
+    },
+    "canonicalization descends into objects": {
+      "platform": "darwin",
+      "fingerprint": "sha256:aae41fc7debf29aa1981704c4ba9fa39e880c7c376b9d20d6108451b510091a5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "captured stderr byte authority": {
@@ -2086,7 +2590,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "captured stream byte authority": {
@@ -2095,7 +2599,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "carriage returns stripped": {
@@ -2104,7 +2608,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "central redaction": {
@@ -2113,7 +2617,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "checkpoint evidence preserved": {
@@ -2122,7 +2626,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "checkpoint observation reads who wrote the record": {
@@ -2131,7 +2635,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "child output credential scrub": {
@@ -2140,7 +2644,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "cited evidence is read only if it is the evidence cited": {
@@ -2149,7 +2653,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "cleanup claim not overstated": {
@@ -2158,7 +2662,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "cleanup is read from the teardown that happened": {
@@ -2167,7 +2671,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "cleanup is verified by the scans that can answer": {
@@ -2176,52 +2680,61 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "close-evidence author trust": {
       "platform": "darwin",
-      "fingerprint": "sha256:0250fd9faa1b90a73c64848c86cb60f0c748d7cf331688238a67aef6e45bfd08",
+      "fingerprint": "sha256:cdd4fb2904c000e42a4a5f2816a5e88692bea09cb88cb3e438330867e1ee7349",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "close-evidence component confirmations": {
       "platform": "darwin",
-      "fingerprint": "sha256:bffddeeb836fdd2e4621228c247bd02193e5f7d8752dd02181410ef03f86ef5f",
+      "fingerprint": "sha256:9863fc6efeef02c8661fb2b569f355e6dbd38e4eb1a23aa3ea1acbf894f76b65",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "close-evidence issue-specific fields": {
       "platform": "darwin",
-      "fingerprint": "sha256:e7bfd5ca55d5aaba16792ce7508fdd9e9b2f47ba6204f0852a47b3b2927b3989",
+      "fingerprint": "sha256:82c1eedb99c0b8adafed132af703f7f8806e2b1c2112cb299ed4a8f4a22998b0",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "close-evidence repository confirmation": {
       "platform": "darwin",
-      "fingerprint": "sha256:bd96907cbe5198093c3a31d3baba3f1ee0d39e1963dde7044a3c539175ae123c",
+      "fingerprint": "sha256:5b78b88e01064aaee6543ef83ab5c17e3f70f0db0d82d3999e423ac976e4f850",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "close-evidence verdict": {
       "platform": "darwin",
-      "fingerprint": "sha256:d31e7dd7045437541bcf055796e659fd7d9e814cfe61a72595d9a489d58a8b23",
+      "fingerprint": "sha256:e94bdcf20d377f3952cd66f30d6dcf845f86bcfe5adc614685681822e87860e4",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
+      }
+    },
+    "completion requires an authority to check the prerequisites against": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1f6afbfcd45403aedf57ae02a2f0346d3fb8909af120e8b7df9d27eff836c173",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "composite action discovery": {
@@ -2230,7 +2743,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "configured argv0": {
@@ -2239,7 +2752,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "container image digest": {
@@ -2248,7 +2761,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.263Z"
+        "at": "2026-09-03T22:29:57.994Z"
+      }
+    },
+    "containment is measured, not inferred from a label": {
+      "platform": "darwin",
+      "fingerprint": "sha256:cef08e2c85e10e06e3ff4b6cf21d32a3c6181e7da0bf90717eda6e6be9e2cac2",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "corpus abstention cannot outweigh decision": {
@@ -2257,7 +2779,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "corpus leakage refusal": {
@@ -2266,7 +2788,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "coverage gate": {
@@ -2275,7 +2797,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "credential env refusal": {
@@ -2284,7 +2806,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "credential names a shape rule cannot see are listed": {
@@ -2293,7 +2815,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "credential names are matched whatever their capitalisation": {
@@ -2302,7 +2824,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "cycle run identity": {
@@ -2311,16 +2833,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "cycle search inside strongly connected components": {
       "platform": "darwin",
-      "fingerprint": "sha256:3a3dbfd4c01fb173a6ad8bb22202d003b751e359fa6a515a9d21dda52df84152",
+      "fingerprint": "sha256:cca8c4a39916f5ede2c37e394638c8c16067d03b50d13d368bc453cb79152f28",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "decisions must reach past one session": {
@@ -2329,7 +2851,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "declared credentials are never reprinted": {
@@ -2338,7 +2860,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "declared route and actual route stay separate": {
@@ -2347,7 +2869,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "descriptor-bound fingerprint": {
@@ -2356,7 +2878,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "descriptor-bound metadata": {
@@ -2365,7 +2887,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "directory skip list": {
@@ -2374,7 +2896,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.263Z"
+        "at": "2026-09-03T22:29:57.994Z"
+      }
+    },
+    "dismissing an unknown requires an argument": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4b2883fe2611296b67ef294c80ef37412408245197274124e8535a77c9bc2ace",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "doctor checks a required config name has a value": {
@@ -2383,16 +2914,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "done issues have no withheld phase": {
       "platform": "darwin",
-      "fingerprint": "sha256:d4ab2a124d7843bb785002b21a3770813a3d8cbbb0f89c62b8abbc28bf0cf403",
+      "fingerprint": "sha256:908556f3447df21608fa609906e1f538d46520cd65e8ec1c210453aa6f0ebca6",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "effective execute permission": {
@@ -2401,16 +2932,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
+      }
+    },
+    "either spelling of an open pull request blocks": {
+      "platform": "darwin",
+      "fingerprint": "sha256:89115c1a3633915f9b8ac09d909146dfe58c2dfc26142473c0f698f5bf9c2c8a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "elementary cycle enumeration": {
       "platform": "darwin",
-      "fingerprint": "sha256:87cb763e8e313e13c8985cc840c26d31154e90ecc9f03e8ef297895359f8af94",
+      "fingerprint": "sha256:2796044eddeb797005826d0e87871a829a882f3d76e9fb4a5f111aaaca99f5eb",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "entry state coherence": {
@@ -2419,7 +2959,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "env option scan": {
@@ -2428,7 +2968,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "env policy digest binding": {
@@ -2437,7 +2977,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "escaped key resolved before it is a key": {
@@ -2446,7 +2986,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "escaping link keeps its own bytes": {
@@ -2455,7 +2995,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
+      }
+    },
+    "every asserted graph fact names a derivation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d9f67532077e52a48f70f6ae878b2afe7b9c6968ead82e45225eb9822b466153",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "every directory entry is charged to the scan budget": {
@@ -2464,7 +3013,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
+      }
+    },
+    "every invariant family is recorded on both sides": {
+      "platform": "darwin",
+      "fingerprint": "sha256:5ff69787150595285231423ca7dfdebc671b31d5af2909ee502f07df0c2e678c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "every kind of evidence is required by name": {
@@ -2473,7 +3031,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "every observation a row cites must record a run that succeeded": {
@@ -2482,7 +3040,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "every projection is compared with the result": {
@@ -2491,7 +3049,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "every published string is constrained at the mint": {
@@ -2500,7 +3058,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "every segment of a snapshot name has to be readable": {
@@ -2509,7 +3067,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "every transport spelling needs the transport approval": {
@@ -2518,7 +3076,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "everything published passes the one gate": {
@@ -2527,7 +3085,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "evidence bound to the audited revision": {
@@ -2536,25 +3094,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "evidence contract cannot be switched off": {
       "platform": "darwin",
-      "fingerprint": "sha256:35c5e62edf23fc20a5750c54d563cd1f8aac43d000fdaa0bfb0febd1c84eebec",
+      "fingerprint": "sha256:a880bbd80c36aa641c7816cb5f559b46941a1a17cb38651215d5b52bdddadea0",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "evidence failures decide the route's adequacy": {
       "platform": "darwin",
-      "fingerprint": "sha256:1a90fa4247270165182a98f04b51940ee542f2f2612aee809fab79d73c7acc7a",
+      "fingerprint": "sha256:584168df549193cbd3bdff75873e5f5a41baba75279debcfeff198512c7c09f5",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "exact revision binding": {
@@ -2563,43 +3121,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "exactly one status label": {
       "platform": "darwin",
-      "fingerprint": "sha256:6ebe64c916cb0ce7a46c198d8a5a543543ab9b40cce8d896d83726884498809e",
+      "fingerprint": "sha256:9c1bc56082665b5eb964f0e2fdc79bfdc1b2bad25ca2a3f6a834a8f4a59cf5b7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "excluded issues are a floor": {
       "platform": "darwin",
-      "fingerprint": "sha256:7ad147496a650a5834712e11a0fcdf7c18678434847f882874f2ce3df1feb31f",
+      "fingerprint": "sha256:f12f006aa8d67c79d19e68f8ec2c3d38600cb9cb11efd2038d972e70ddab0535",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "excluded issues present in the snapshot": {
       "platform": "darwin",
-      "fingerprint": "sha256:db5f879c5d02d7ee99347c028258a9ac0b3cc685fbc65ee3c891bad207f5d223",
+      "fingerprint": "sha256:89aaf6345e54e037bc2d1e2863ee2c0e95b76353611cf18fa07ea3f55c996ca2",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "execution plan cycle detection": {
       "platform": "darwin",
-      "fingerprint": "sha256:11f60657637079c32c4a1ad4848538b2ed30cb9769895e7d3fea6463a8c394cf",
+      "fingerprint": "sha256:aca129afb035eabce681c9a9be34d7b4c52f65616ad1f1ec8dba32be9c8a94c1",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "explicit keys are keys": {
@@ -2608,7 +3166,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "false completion cap": {
@@ -2617,7 +3175,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "fingerprint compare": {
@@ -2626,7 +3184,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "flow-mapping uses": {
@@ -2635,7 +3193,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "full-SHA action reference": {
@@ -2644,7 +3202,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "grading reads what was frozen at settlement": {
@@ -2653,7 +3211,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "handoff exact compare": {
@@ -2662,7 +3220,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "hard-forbidden class refusal": {
@@ -2671,7 +3229,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "hard-forbidden matching is case-insensitive": {
@@ -2680,7 +3238,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "holdout floor": {
@@ -2689,7 +3247,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "home_source is a kind and never a path": {
@@ -2698,16 +3256,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "hot-file single owner": {
       "platform": "darwin",
-      "fingerprint": "sha256:7bbc1ca40061693f10e531fbd92f46b7257e1c3dcf1217caf443fdb456461fae",
+      "fingerprint": "sha256:752640da3eac464cf3a8f14554c7b2c442ff0e1d95a5284446ce86c9bf5973b4",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "identity-before-resolver ordering": {
@@ -2716,7 +3274,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "incomplete evidence never reported clean": {
@@ -2725,16 +3283,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "independent checks survive a non-canonical plan": {
       "platform": "darwin",
-      "fingerprint": "sha256:699497faf17b44e33fd99f97b55b19b51d013977a0e4fc99bf3f54eb983a0029",
+      "fingerprint": "sha256:d882876c315699b42db90b22d4734452b36fb7ec15bbc99bd0fbd5e2e6bd0a8d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "interpreter inherits its own findings": {
@@ -2743,7 +3301,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "interpreter is part of the identity": {
@@ -2752,7 +3310,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "interpreter startup paths are a forbidden class": {
@@ -2761,7 +3319,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "invocation identity provenance": {
@@ -2770,7 +3328,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "issuance needs STRICT": {
@@ -2779,7 +3337,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "issuance needs a passing canary with evidence": {
@@ -2788,7 +3346,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "legacy digest separation": {
@@ -2797,7 +3355,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "legacy ledger row is not holdout evidence": {
@@ -2806,7 +3364,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "legacy migration guard": {
@@ -2815,7 +3373,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "local reference redirection": {
@@ -2824,7 +3382,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.263Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "locked cycle seed": {
@@ -2833,7 +3391,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.008Z"
+      }
+    },
+    "main and dev are compared across the deletion itself": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1403d327bfcf5af2a5b63003e6f571ff4465d456698a27e5cecaa0f397a87b7a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "malformed-row reporting": {
@@ -2842,7 +3409,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "merge keys bring their keys with them": {
@@ -2851,7 +3418,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "missing invariance evidence withholds": {
@@ -2860,7 +3427,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "missing-result refusal": {
@@ -2869,7 +3436,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
+      }
+    },
+    "naming something to preserve refuses the deletion recommendation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d2ba4ba26142b7db68769f8a80058e2a12e0e9662d7b71f8cc849f9b2de5d671",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
+      }
+    },
+    "no deletion is authorized without a pre-deletion observation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1f9e8a9eea5392b6648fc306418933296291e7ac0d1afc14e3f2780dae6d6291",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "no eligible evidence is said to be none": {
@@ -2878,7 +3463,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "no raw confinement evidence is a verification failure": {
@@ -2887,7 +3472,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "no variable may carry the store path": {
@@ -2896,7 +3481,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
+      }
+    },
+    "nothing claimed as deleted is still there": {
+      "platform": "darwin",
+      "fingerprint": "sha256:39c49cf1541523942d239d4ac9419b2953c1bba7ebbd74a7ff0cab464313b47b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "nothing is eligible without a live observation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:e0a82f0e95d80174254458ffc44afd378e52b861fc1a27bd17d41f0e258323db",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "nothing vanished that the log did not claim": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a079659ad7854cb87c226d816231d1a3225193294c9a80cca5561c306edb932a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "observation channel size bound": {
@@ -2905,7 +3517,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "observation line size bound": {
@@ -2914,7 +3526,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "observation schema": {
@@ -2923,25 +3535,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "offline does not assert close evidence": {
       "platform": "darwin",
-      "fingerprint": "sha256:badacc2447e995f02635990f34d8f1f63107401123183f5ed7479bc3eeed1027",
+      "fingerprint": "sha256:09d2a2e99cae5e192649e694f289af04e0f886c50f0c640d0a122549faeb155b",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "offline runs do not print or report a pass": {
       "platform": "darwin",
-      "fingerprint": "sha256:316b59d322b3e44787e4f87869a444e3f83f830f0b0b2b98abab1927585094ca",
+      "fingerprint": "sha256:b252c02600278c0767bc29086502c1188c6b0f96194c8baba182ccfa11660b42",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "one fixture id, one item": {
@@ -2950,16 +3562,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "one snapshot entry per issue": {
       "platform": "darwin",
-      "fingerprint": "sha256:e0c56a864f476660050104c5294ee54abdaf8307e4eb7af341150b9b1e19b806",
+      "fingerprint": "sha256:299ac7c85d7040e9ad528cc24f629d7193edd712432af545bcfb85fda47bd5be",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "oneOf means exactly one": {
@@ -2968,7 +3580,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "only the configured runtime corroborates its own binding": {
@@ -2977,7 +3589,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "only the configured runtime's transcript tree is read": {
@@ -2986,7 +3598,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "only the declared runtime files are staged": {
@@ -2995,7 +3607,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "operator decision window": {
@@ -3004,7 +3616,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "operator event authority is the matrix's, not the caller's": {
@@ -3013,7 +3625,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator event authority matrix": {
@@ -3022,7 +3634,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator event cross-session rejection": {
@@ -3031,7 +3643,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator event replay rejection": {
@@ -3040,7 +3652,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator event session binding is verified": {
@@ -3049,7 +3661,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator event state revision advances": {
@@ -3058,7 +3670,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator event unknown source has no authority": {
@@ -3067,7 +3679,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator silence is NOT_OBSERVED": {
@@ -3076,7 +3688,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "operator-env credential gate": {
@@ -3085,7 +3697,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "operator-file event needs explicit provenance": {
@@ -3094,16 +3706,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "owned paths are not only prose": {
       "platform": "darwin",
-      "fingerprint": "sha256:21cf058dbff5675f101be6dd779e2e8f5087e7a0fc1e700108f1043bfdb4c2d0",
+      "fingerprint": "sha256:5d52029c122675d86ad48652d7520fbaee53d970e9cc985a3dcc6dad03fbcd0e",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "parent writable refusal": {
@@ -3112,25 +3724,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "phase permissions are pinned, not only phase names": {
       "platform": "darwin",
-      "fingerprint": "sha256:718b1e003c6764819cd60b34c16be57b6cac4713070bc8d4527e8852b886eb3b",
+      "fingerprint": "sha256:2f7254618f6fa2dbcfafcc9742bcd5667948b974c86c85ffa7e3f62d9e8d9728",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "phases are a contract": {
       "platform": "darwin",
-      "fingerprint": "sha256:40adada51da0aaf192e10559f842a95c46e140ac7b403334e24a44219b048558",
+      "fingerprint": "sha256:919bc3ac15987c481abaa61bc9b6b9d6760688b905eee3766e4d37eeb995fe12",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "pristine error classification": {
@@ -3139,7 +3751,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "probe process independence": {
@@ -3148,7 +3760,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "probe result authentication": {
@@ -3157,7 +3769,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "production-quality needs both lanes": {
@@ -3166,7 +3778,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "profile cap never names the process axis": {
@@ -3175,7 +3787,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile cap reaches the composite": {
@@ -3184,7 +3796,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile cap reaches the outcome index": {
@@ -3193,7 +3805,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile composite is the 50:50 mean": {
@@ -3202,7 +3814,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile composite withheld with the outcome index": {
@@ -3211,7 +3823,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile composite withheld with the process index": {
@@ -3220,7 +3832,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile evaluation is emitted under the given contract": {
@@ -3229,7 +3841,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile index weights every row the same": {
@@ -3238,7 +3850,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile index withholds on a missing row": {
@@ -3247,7 +3859,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile legacy result is not migrated": {
@@ -3256,7 +3868,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile outcome domains match the contract": {
@@ -3265,7 +3877,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile outcome grouping comes from the contract": {
@@ -3274,7 +3886,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile process index is never capped": {
@@ -3283,7 +3895,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile process index is the contract's own": {
@@ -3292,7 +3904,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile projection refuses a result that lost a surface": {
@@ -3301,7 +3913,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile reliance carries its own coverage": {
@@ -3310,7 +3922,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile reliance floor": {
@@ -3319,7 +3931,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile renderer recomputes nothing": {
@@ -3328,7 +3940,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile results are not aggregated with legacy ones": {
@@ -3337,7 +3949,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "profile undeclared run fields are digested": {
@@ -3346,7 +3958,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "profile unknown result schema is refused": {
@@ -3355,7 +3967,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.286Z"
+        "at": "2026-09-03T22:29:58.021Z"
+      }
+    },
+    "protection is compared as content, not as a projection": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3301724ed4d42fe6d5ec9182e17bea4e87b905f601cf577604c55b72293255c5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "protection is re-checked live, not read from the stored flag": {
+      "platform": "darwin",
+      "fingerprint": "sha256:14cd271d5878abb8ef58ca4aa6ab72b0ef26435dbcc63b269a7cb03c9f8652c1",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "provider credential formats are recognised": {
@@ -3364,7 +3994,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "pull request produced the commit": {
@@ -3373,7 +4003,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "quoted keys are keys": {
@@ -3382,7 +4012,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "rate denominator floor": {
@@ -3391,7 +4021,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "raw Buffer authority": {
@@ -3400,7 +4030,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "raw artifact name bytes": {
@@ -3409,7 +4039,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "raw filename bytes": {
@@ -3422,7 +4052,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "realpath compare": {
@@ -3431,7 +4061,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "refusal marker in the tree digest": {
@@ -3440,7 +4070,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "refused size in the tree digest": {
@@ -3449,7 +4079,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "refused tree is not artifact identity": {
@@ -3458,7 +4088,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "resolver ownership": {
@@ -3467,16 +4097,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "restricted readiness": {
       "platform": "darwin",
-      "fingerprint": "sha256:b35aa8027821463b4e6acfa2e3ab9e75fcd662fe355ee367897b0f650da45653",
+      "fingerprint": "sha256:aa98ad8ecbbfbfaa0e28f32053a56e104ec02aaed3b0b59ea419034844953006",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "reviewed action allowlist": {
@@ -3485,34 +4115,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "route cost counts the handoffs a split buys": {
       "platform": "darwin",
-      "fingerprint": "sha256:ceea491e70f914656e29309563df9dfe1a9042a11f0a8b18710db933625c6429",
+      "fingerprint": "sha256:0ee2d8a75f8aa001c120f14fdff84a8c5efac37057fb826580cb5890fed25643",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "routing capability rests on a source AOS may score": {
       "platform": "darwin",
-      "fingerprint": "sha256:763c97329f6e700fabd47a3a2fbcefea0244e3bac8828629a9c45014da11da4b",
+      "fingerprint": "sha256:2d24c8cedf5f4b0da93e1e6ae23b616803fd4db60cd52a7330fb41228ca1aa0a",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "routing minimality withholds on an owner AOS cannot judge": {
       "platform": "darwin",
-      "fingerprint": "sha256:cd0b9cd6e13c8db54923ab0a3d515ac6b9174ee36c21acaac133a1a58f05055c",
+      "fingerprint": "sha256:041cf23c24aea84a0ec773555c939ffdce1de803af4b379b562f4c8708255655",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
+      }
+    },
+    "rulesets are compared by content, not by cardinality": {
+      "platform": "darwin",
+      "fingerprint": "sha256:e2cad23705319be2d58e2d8f76ff0c04d3011d23abc8b364063a59f3e350bd72",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "run scratch is created inside the cleanup-protected region": {
@@ -3521,7 +4160,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "runtime auth is bound to the adapter that reads it": {
@@ -3530,7 +4169,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "safety cap": {
@@ -3539,7 +4178,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "secret-shaped material is not a model name": {
@@ -3548,7 +4187,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "secret-value scan": {
@@ -3557,7 +4196,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "session ledger byte identity": {
@@ -3566,7 +4205,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "settle reads the cleanup failures": {
@@ -3575,7 +4214,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "single observation per probe": {
@@ -3584,7 +4223,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "skipped directory is still an entry": {
@@ -3593,25 +4232,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "snapshot provenance": {
       "platform": "darwin",
-      "fingerprint": "sha256:feae0b33970bd9e8c4c5f64ca09ed559420e66139fb0d8bc1fe43dc0179c6432",
+      "fingerprint": "sha256:2026a8e88ad2b4bea9471d7eefe7c833027d45fdfb28a83cc9b901639d0218a4",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "snapshot source matches how it was read": {
       "platform": "darwin",
-      "fingerprint": "sha256:feba395bb54225059053e7799b9c2db84f7e72f8f843e686d385e8316bb3061a",
+      "fingerprint": "sha256:50c8f6687b6a16e70a55168e388626df736210fc582ada5a27c3a35ef37d4b5f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "spawn the verified file": {
@@ -3620,43 +4259,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "stale blocked status": {
       "platform": "darwin",
-      "fingerprint": "sha256:924bb388b8bb00029f44e24696d255f1d3954c5714f28341a90603e94fee1fa0",
+      "fingerprint": "sha256:ed317180c122ec45222e763f485518e7cbbce6c0621bd21ac3cebe7bb9ab5ac3",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "stale-branch audit deletion recommendations carry a reason": {
       "platform": "darwin",
-      "fingerprint": "sha256:cdb96de0590840347b71db9ca57eac396f07930aded920486ef50d9e4b807934",
+      "fingerprint": "sha256:b59f2622d6c180f98b25326f7a6df04366b1b36d5016b244e61c05e5c5a6f545",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "stale-branch audit preserves orphaned unmerged work": {
       "platform": "darwin",
-      "fingerprint": "sha256:a9f721b6a805a7f33fd6a34ef84bd0fbd87fc0430e090768aa56f855d1213b51",
+      "fingerprint": "sha256:537493a9a5375f76a3ef90821426b313c8190b0f7732822b95aa46b944368157",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "started statuses need finished predecessors": {
       "platform": "darwin",
-      "fingerprint": "sha256:862dcd440bb3b51dd3fc008ecd21ee135079a69da69fe1bd73f34505e9c866af",
+      "fingerprint": "sha256:7a4e6943f5999e21ed84dc625a2bdcda712ae0b09e91f4b0775fef63335584b6",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "subject nonce non-disclosure": {
@@ -3665,7 +4304,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "subject runner executed from memory": {
@@ -3674,7 +4313,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "supply-chain digest covers the .npmrc": {
@@ -3683,7 +4322,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.263Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "supply-chain digest covers the policy": {
@@ -3692,7 +4331,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "supply-chain digest covers the verifier": {
@@ -3701,7 +4340,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.263Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "support is read from the lane table, not restated": {
@@ -3710,7 +4349,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "symlink chain audit": {
@@ -3719,7 +4358,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "symlink chain containment": {
@@ -3728,7 +4367,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "symlink component expansion": {
@@ -3737,7 +4376,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "symlink escape refusal": {
@@ -3746,7 +4385,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
+      }
+    },
+    "tag containment cites the ancestry test for each tag it answered about": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a77966945819d5065f9d04235a1aa7c36c17d2d98b8cd5c3591c456712fe3361",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
+      }
+    },
+    "tag containment is derived against the repository's tags": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9b5ee0d912614a9cc0c589af2062188727361f59d7f620bde8d52154998db256",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "task-initiated network is NOT_OBSERVED": {
@@ -3755,7 +4412,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "the PATH rule is part of the digest": {
@@ -3764,7 +4421,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "the adapter's own config directory is declared, not typed twice": {
@@ -3773,7 +4430,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.998Z"
+      }
+    },
+    "the after-snapshot exception is bound to the branch the audit was submitted from": {
+      "platform": "darwin",
+      "fingerprint": "sha256:fef8f0255e2cc800ed0590256228ba8f52b02d36a3556024875bb29f16a7ae01",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "the artifact obligation is checked by opening the file": {
@@ -3782,7 +4448,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "the assessed process does not decide issuance": {
@@ -3791,7 +4457,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the assessment is scored under the gate it reports": {
@@ -3800,7 +4466,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "the assessment profile is built for the lane the run uses": {
@@ -3809,7 +4475,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the assessment writes the profile result": {
@@ -3818,7 +4484,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
+      }
+    },
+    "the audited commit is the commit the snapshot observed": {
+      "platform": "darwin",
+      "fingerprint": "sha256:99f3384a047a19155f2d1628440468fb9ce4096532965be07eec66ab27d3515a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
+      }
+    },
+    "the baseline records the stable plugin/install source at all": {
+      "platform": "darwin",
+      "fingerprint": "sha256:f57a36ee9d5cb139b2808e887c209b2473363fdfb462fe89e1c5c614d8b0f8bb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "the binding is in the assessment path": {
@@ -3827,7 +4511,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
+      }
+    },
+    "the blockers clear in the canonical snapshot, not in the log": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8f1733d5a1f7a675f9b9b0eb20ab04ec6d475ba57f1a150e134d22541b4d42e4",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "the boundary withholds every index, not only the composite": {
@@ -3836,7 +4529,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the boundary withholds the number, not only the claim stage": {
@@ -3845,7 +4538,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the boundary's verdict decides whether the run carries a number": {
@@ -3854,7 +4547,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "the canary expectation is this module's, not the record's": {
@@ -3863,7 +4556,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the canary proves the stripped descendant was confined": {
@@ -3872,7 +4565,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the canary that certifies the boundary is the one that shipped": {
@@ -3881,7 +4574,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "the canary verdict is derived from its cells": {
@@ -3890,7 +4583,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the canary's digests verify against what it carries": {
@@ -3899,7 +4592,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "the canary's own escapee is killed and checked": {
@@ -3908,7 +4601,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "the candidate source is digested, never named": {
@@ -3917,16 +4610,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the capture time names a day that exists": {
       "platform": "darwin",
-      "fingerprint": "sha256:1ba07483799625aabdb03d814e2f8de551a22dd2acaaf3db70cd8457f826d377",
+      "fingerprint": "sha256:9461583855e8dc6ad57b086644d7b8c15f5c3e3040dc62f1e4f618f0fd72e3e0",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "the card carries every reliance metric": {
@@ -3935,7 +4628,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "the card carries the delegated-artifact rows": {
@@ -3944,7 +4637,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "the card drops no facet": {
@@ -3953,7 +4646,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "the card quotes the stored identity lines": {
@@ -3962,7 +4655,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the channel decides the source": {
@@ -3971,7 +4664,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the claim is compared like the numbers are": {
@@ -3980,7 +4673,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "the claim stage reads the boundary": {
@@ -3989,7 +4682,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the closing pull request changed something the issue owns": {
@@ -3998,7 +4691,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     },
     "the cohort digest refuses what staging refuses": {
@@ -4007,7 +4700,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "the cohort key describes the policy that was applied": {
@@ -4016,7 +4709,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the cohort key is the operator's binding, never the child's transcript": {
@@ -4025,7 +4718,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
+      }
+    },
+    "the collector writes no local ref": {
+      "platform": "darwin",
+      "fingerprint": "sha256:aff768f1a1a228ad72b202af70b1baaa60dfd9f8c4fc39c2ba2aad84be737dc0",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
       }
     },
     "the command prints the floored result": {
@@ -4034,7 +4736,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
+      }
+    },
+    "the committed observation read each pull request history to the end": {
+      "platform": "darwin",
+      "fingerprint": "sha256:63631f6a03dae18306e7e5536966363fbc884ecbe0df37ccea1a59527b236957",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "the comparison projection is read from the contract": {
@@ -4043,7 +4754,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "the composite has to agree with its own inputs": {
@@ -4052,7 +4763,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "the contract digest covers the contract's bytes": {
@@ -4061,7 +4772,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
+      }
+    },
+    "the contract names the gate that binds the record to its evidence": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d5b416853a775195ab3ba5f15ef7e422180aceef2d92741a0fe20e8aab6c7144",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "the contract states the cells each row averages": {
@@ -4070,7 +4790,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "the copy carries the modes it copied": {
@@ -4079,7 +4799,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
+      }
+    },
+    "the count deletion turns on is recorded": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ae4598aff60392ff6dafc91e4aeebcf87ff6378de415c6a293ff0ab001b3a804",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.002Z"
       }
     },
     "the cycle command quotes the stored decision": {
@@ -4088,7 +4817,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "the dashboard quotes the stored cycle decision": {
@@ -4097,7 +4826,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
+      }
+    },
+    "the deleted ref is live at the commit being deleted": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d038c2faaaff49637a8c49497703b0604a227fbdc7611d879e6f2d3f046de564",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the deleted ref still exists live": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a0d59363cf32b88adf272907c96f0b22f773e2c934e92aeb8716c1f242629ce0",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
+      }
+    },
+    "the deletion log is checked against the observations it cites": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d8340db8795e8293a27bc119774d7e5b9a5341124bbb01e62f1d42cc9f5b7275",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "the derived verdict ignores the reported one": {
@@ -4106,7 +4862,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the device nodes are the policy's, not the renderer's": {
@@ -4115,7 +4871,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the digest covers the rules applied outside the allowlist": {
@@ -4124,7 +4880,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "the digest is recomputed over the policy actually applied": {
@@ -4133,7 +4889,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "the emitter attributes an invocation to the stage AOS invoked it for": {
@@ -4142,7 +4898,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "the escaped descendant is proved confined": {
@@ -4151,7 +4907,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "the evidence a row must cite follows its level, not its label": {
@@ -4160,16 +4916,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "the evidence contract is pinned outside the plan": {
       "platform": "darwin",
-      "fingerprint": "sha256:763d63ac1851068faf4285ff6a3648bcd6ebc7248d2294c35e0f1f886d7da094",
+      "fingerprint": "sha256:2c8833c8b9ed99477a96ca3a092cd4a7cc30e19a322738369ca8e4322d8e006c",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "the evidence digest is over the claim, not the transcript row": {
@@ -4178,7 +4934,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
+      }
+    },
+    "the exception needs a submission branch to be about": {
+      "platform": "darwin",
+      "fingerprint": "sha256:243792143e9d70f98bc1c9823ee966a4aa7fb06f9ae64d734c85f6646cebdda4",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "the executable identity digest is recomputed, not read": {
@@ -4187,7 +4952,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the floor follows the worst severity observed": {
@@ -4196,7 +4961,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "the freeze certificate is over the copy": {
@@ -4205,7 +4970,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the freeze copies no link": {
@@ -4214,7 +4979,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
+      }
+    },
+    "the fresh observation's derivations are the ones checked": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ee2a986ba538896b8aed295b640b08bbfe8aa5b7d1908c92d56158cf26ca4752",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "the group sweep is recorded from the group": {
@@ -4223,7 +4997,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the identity aggregation is recomputed from its agents": {
@@ -4232,7 +5006,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "the identity record is published field by field": {
@@ -4241,7 +5015,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.283Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "the identity record names the agents that ran": {
@@ -4250,7 +5024,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
+      }
+    },
+    "the invariant baseline agrees with the snapshot it was taken from": {
+      "platform": "darwin",
+      "fingerprint": "sha256:26cbd4675d077817dd65dc63a2bb65b67c53dd7a627de9529898dad5df1fd65a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.006Z"
       }
     },
     "the lane is bound into the cohort": {
@@ -4259,7 +5042,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the lane's identity comes from the runtime that authenticated": {
@@ -4268,16 +5051,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the ledger's owner replaces the declaration": {
       "platform": "darwin",
-      "fingerprint": "sha256:ae7d62463cbc0735c151dccbc6eb9611c24ac359a1b33266fb58ade9343b3992",
+      "fingerprint": "sha256:ec968b20ee1a2a890291c575afb97af122590d8e35f44c52f33e3c093f79841b",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "the matrix decides the process axis with the run's own helper": {
@@ -4286,7 +5069,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the matrix reads what the teardown could not remove": {
@@ -4295,16 +5078,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "the minimum route is the cheapest and its tie-break is canonical": {
       "platform": "darwin",
-      "fingerprint": "sha256:1057adf06083d93213142def21ecd211e4ab509d68aa8962aebfb24422675c9c",
+      "fingerprint": "sha256:30b307961320874a4ce9fdccd27c7bdd510620e1d5aecd5219deecb711727fa2",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "the network axis is enumerated, not typed": {
@@ -4313,7 +5096,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the network enforcement name is the gate's own vocabulary": {
@@ -4322,7 +5105,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.009Z"
+      }
+    },
+    "the observation digest is recursive over its content": {
+      "platform": "darwin",
+      "fingerprint": "sha256:e38676d23bc4ff7bbf35263e0dc619d28fe7459ef6cc13e1b509ec1e47cfd248",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "the observations carry the operator events they rest on": {
@@ -4331,7 +5123,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the operator event projection is an allowlist": {
@@ -4340,7 +5132,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the operator-typed event set is what the gate covers": {
@@ -4349,16 +5141,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "the per-task invocation bound is compared": {
       "platform": "darwin",
-      "fingerprint": "sha256:c673eaa5ec8095cd7018df0d22525d1e7a22f82fd5e44019c97818d87559fe3a",
+      "fingerprint": "sha256:58c69c17a06d81e99ec32d11f4cb1c622e8779e0091b2fbb4fe4cc85e5c4e036",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "the phrase list names the artifact rows it is supposed to check": {
@@ -4367,7 +5159,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "the policy digest covers the forbidden rules themselves": {
@@ -4376,7 +5168,43 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
+      }
+    },
+    "the post-deletion observation follows the deletion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ca744845b710bfb0a59852f9b500a2449112f0273dcb0ca828f80409fb7ea720",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the post-deletion observation is taken promptly": {
+      "platform": "darwin",
+      "fingerprint": "sha256:bd036c9a5b32c9d6c2834e45f5963e1add8d395c72b22655247c365916cf7193",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the pre-deletion observation is fresh": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8341429e1aa85e78dc7182a00aa13ec727f52505c6f9ab0fd35f8f50bc287557",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the pre-deletion observation predates the deletion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c4907d6fb9bcedd34d5fa056162303ef6a1dd6f4e9485eb46e66093262a4c89e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "the printed shape is named": {
@@ -4385,7 +5213,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "the private tmpfs is declared before it is mounted": {
@@ -4394,7 +5222,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the process axis needs the sweep and the second poll": {
@@ -4403,7 +5231,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the process group is enumerated, not assumed": {
@@ -4412,7 +5240,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the profile digest binds the boundary and the runtime configuration": {
@@ -4421,7 +5249,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the profile digest covers the executable identity": {
@@ -4430,7 +5258,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the profile digest covers the isolation policy": {
@@ -4439,7 +5267,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the profile digest covers the mutable alias state": {
@@ -4448,7 +5276,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the profile digest covers the provenance record": {
@@ -4457,7 +5285,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "the profile is rendered from the policy that is digested": {
@@ -4466,7 +5294,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the profile renderers quote the stored lines": {
@@ -4475,7 +5303,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.018Z"
       }
     },
     "the profile-bound claim is printed only when it was reached": {
@@ -4484,7 +5312,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "the projection verb is the record's own source": {
@@ -4493,16 +5321,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "the proposal comes from an admitted operator decision": {
       "platform": "darwin",
-      "fingerprint": "sha256:36a5f477b657eeb38ececae118a18d9ef94d79acf21c8ed13b1c7560f94ce422",
+      "fingerprint": "sha256:5c6ab0d52431e8109a0248cf2b9b7ad0a87548e6602e0397f1acf98806517770",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.259Z"
+        "at": "2026-09-03T22:29:57.991Z"
+      }
+    },
+    "the published contract names an entry point that exists": {
+      "platform": "darwin",
+      "fingerprint": "sha256:73df4a8cc209621ce4ad8e562427a671fd474b6a7ac8a7e9e26964ea766d77ce",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "the published result carries the boundary it ran under": {
@@ -4511,7 +5348,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
+      }
+    },
+    "the pull request history is read to the end": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a75937e329ae0b06c6cf02aefe9c01508fc9af733c573538113675e2dc966210",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "the reader checks the state it was handed": {
@@ -4520,7 +5366,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "the rebuild is handed the reliance the result was built from": {
@@ -4529,7 +5375,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "the record binding covers the payload the scorer reads": {
@@ -4538,7 +5384,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.025Z"
+      }
+    },
+    "the record cites the post-deletion observation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:be54834fcaca82fb0971443a491d26904d23f412566c8b309cdcd1a7270bc08b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the record cites the pre-deletion observation it was checked against": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6d0f95f907cdd13534d08818d96a3847cbd41dea4e09a0891d6c736d15f529bb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the references a record reports are the ones the sweep returned": {
+      "platform": "darwin",
+      "fingerprint": "sha256:f57302ae74124c6c552f096cbc4a06812a79e161be8e5eceecd0ca44540dd4e3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
       }
     },
     "the reliance evidence survives its trace": {
@@ -4547,7 +5420,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
+      }
+    },
+    "the rendered audit does not describe a command the collector retired": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3ab7682ee3c661806896e155037ca73548be51d4f6322927ce086b52e5485bca",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "the renderer refuses a workspace inside the store": {
@@ -4556,7 +5438,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the renderers quote the stored identity lines": {
@@ -4565,7 +5447,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the report command serves what the result projects to": {
@@ -4574,16 +5456,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.023Z"
       }
     },
     "the requirement's tasks are the stages the route declared": {
       "platform": "darwin",
-      "fingerprint": "sha256:5be4e78ae61675ba864d19ceb5d417094bfa2fdb0a59f7c2960c754a22a6fcbc",
+      "fingerprint": "sha256:db9207cfc0f5487be1335b10e905a57466d4745e04469fa37c0c3551f9b13a0c",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.260Z"
+        "at": "2026-09-03T22:29:57.992Z"
       }
     },
     "the result publishes redacted cleanup failures": {
@@ -4592,7 +5474,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the result states the claim ceiling it was issued under": {
@@ -4601,7 +5483,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "the result states the rows its contract declared": {
@@ -4610,7 +5492,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "the reveal is read from the journal, not from this object": {
@@ -4619,16 +5501,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the routing evidence id is one a published result keeps": {
       "platform": "darwin",
-      "fingerprint": "sha256:b3edb5c0b03fdee77ab18bacf3177f10d2257a67ceb0316680a2464c2f9e6b9c",
+      "fingerprint": "sha256:7d1a0951fabe70db9b863e2fc50e2b67e7b68e560d6f13756b5a0927dbd0312f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "the rows a result must carry come from its contract": {
@@ -4637,7 +5519,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.288Z"
+        "at": "2026-09-03T22:29:58.022Z"
       }
     },
     "the run key is one key for one run": {
@@ -4646,7 +5528,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.290Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the run listing says what each run may claim": {
@@ -4655,7 +5537,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "the run reports the executable it spawned": {
@@ -4664,7 +5546,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
       }
     },
     "the run resolves its provenance again once its own events are in hand": {
@@ -4673,7 +5555,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.285Z"
+        "at": "2026-09-03T22:29:58.020Z"
       }
     },
     "the run-metadata door cannot be widened in the running process": {
@@ -4682,7 +5564,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "the run-metadata door carries only run metadata": {
@@ -4691,7 +5573,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "the runtime's own event outranks the declaration": {
@@ -4700,7 +5582,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.281Z"
+        "at": "2026-09-03T22:29:58.016Z"
       }
     },
     "the same evidence cannot be counted twice": {
@@ -4709,7 +5591,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "the scored result carries the boundary it was produced under": {
@@ -4718,16 +5600,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "the search bound refusal is named as one": {
       "platform": "darwin",
-      "fingerprint": "sha256:4ce86580d297e79202ddd2bea63ef5d65ec3eac7f2ba0c0266ed5ba068f449cb",
+      "fingerprint": "sha256:a1bb6a8105f3a3aa7db178e5b667a31e453f3592f7ea329bfbd88de7985b12bc",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.261Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "the settlement digest is over the tree the comparison recomputes": {
@@ -4736,7 +5618,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "the spawn judge reads the gate's expectation table": {
@@ -4745,7 +5627,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.273Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "the spawn refuses a workspace inside the store": {
@@ -4754,7 +5636,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the staged credential copy is private": {
@@ -4763,7 +5645,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "the staged credential is scrubbed by value": {
@@ -4772,7 +5654,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "the staged secrets reach the scrubber": {
@@ -4781,7 +5663,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.280Z"
+        "at": "2026-09-03T22:29:58.015Z"
       }
     },
     "the store refuses an operator event type from another producer": {
@@ -4790,7 +5672,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "the store requires an attestation for an operator event": {
@@ -4799,7 +5681,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.289Z"
+        "at": "2026-09-03T22:29:58.024Z"
       }
     },
     "the stored record is bound, not only the event on it": {
@@ -4808,7 +5690,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.025Z"
       }
     },
     "the table shows the decision and not the label": {
@@ -4817,7 +5699,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "the teardown observation reports what cleanup returned": {
@@ -4826,16 +5708,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.279Z"
+        "at": "2026-09-03T22:29:58.014Z"
       }
     },
     "the total invocation bound is compared": {
       "platform": "darwin",
-      "fingerprint": "sha256:4dca9b7dd549db7d2ef61e9e81e59857a31081bf1631d087c68fe681281feae6",
+      "fingerprint": "sha256:cd5ca975f336305730c3b3b86f67db45e5f4936c0feeb7d8c882a9f787f80f55",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.993Z"
       }
     },
     "the transcript recogniser knows the configured workspaces root": {
@@ -4844,7 +5726,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the transcript scan spends a bounded budget": {
@@ -4853,7 +5735,34 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.282Z"
+        "at": "2026-09-03T22:29:58.017Z"
+      }
+    },
+    "the tree scan reads the integration line": {
+      "platform": "darwin",
+      "fingerprint": "sha256:41bcde1fc67d224b40bacf47d651d8744f6d1d54572f638ed8be86d2d1a3e490",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.005Z"
+      }
+    },
+    "the tree scan receipt names the commit it scanned": {
+      "platform": "darwin",
+      "fingerprint": "sha256:eb89f3e360893241eb36494f722fd97664a76beeb60f1412b70a5b08a724d45b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.004Z"
+      }
+    },
+    "the two head transports are cross-checked": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8aa9fbd2287ecfac06333cec516af581be1d1aaa03cbe1e6090689f08ab05c33",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T22:29:58.003Z"
       }
     },
     "the verified executable must be the adapter's runtime": {
@@ -4862,7 +5771,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.277Z"
+        "at": "2026-09-03T22:29:58.012Z"
       }
     },
     "the weakest run decides the cycle": {
@@ -4871,7 +5780,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.284Z"
+        "at": "2026-09-03T22:29:58.019Z"
       }
     },
     "the whole gate decision has to agree, not its headline": {
@@ -4880,7 +5789,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "the whole policy is revalidated against its adapter at the point of use": {
@@ -4889,7 +5798,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "the withheld prefixes are the module's and the policy's together": {
@@ -4898,7 +5807,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "the withheld reason travels with the surface": {
@@ -4907,7 +5816,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "the workspace is named relatively so the store is not": {
@@ -4916,7 +5825,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.276Z"
+        "at": "2026-09-03T22:29:58.011Z"
       }
     },
     "top-level artifact open does not follow": {
@@ -4925,7 +5834,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "tracked descendants are terminated at teardown": {
@@ -4934,7 +5843,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.275Z"
+        "at": "2026-09-03T22:29:58.010Z"
       }
     },
     "transport approval binding": {
@@ -4943,7 +5852,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.268Z"
+        "at": "2026-09-03T22:29:57.998Z"
       }
     },
     "trend dedupe": {
@@ -4952,7 +5861,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "trusted-file integrity re-check": {
@@ -4961,7 +5870,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "trusted-process import prohibition": {
@@ -4970,7 +5879,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "undecided items are in neither denominator": {
@@ -4979,7 +5888,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.265Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "undeclared isolation is the weakest lane": {
@@ -4988,7 +5897,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "unread ACL is not a clean ACL": {
@@ -4997,7 +5906,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "unreadable directory reported": {
@@ -5006,7 +5915,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "unreadable uses: fails closed": {
@@ -5015,7 +5924,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "unverified cleanup blocks issuance": {
@@ -5024,7 +5933,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "uses under with: or env: is an input": {
@@ -5033,7 +5942,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "verification re-derives the settlement half too": {
@@ -5042,7 +5951,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.278Z"
+        "at": "2026-09-03T22:29:58.013Z"
       }
     },
     "verification re-gates the invocations the record carries": {
@@ -5051,7 +5960,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.274Z"
+        "at": "2026-09-03T22:29:58.009Z"
       }
     },
     "verification result check": {
@@ -5060,7 +5969,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.007Z"
       }
     },
     "version comment after a flow mapping": {
@@ -5069,7 +5978,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.262Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "version comment is a version": {
@@ -5078,7 +5987,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.263Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "what runs after a reroute belongs to the decision that caused it": {
@@ -5087,7 +5996,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.291Z"
+        "at": "2026-09-03T22:29:58.026Z"
       }
     },
     "what was withheld outright is recorded as such": {
@@ -5096,7 +6005,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.267Z"
+        "at": "2026-09-03T22:29:57.997Z"
       }
     },
     "withheld is never a number, and issued is never a reason": {
@@ -5105,7 +6014,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.287Z"
+        "at": "2026-09-03T22:29:58.021Z"
       }
     },
     "withheld precision is absent": {
@@ -5114,7 +6023,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.995Z"
       }
     },
     "workflow permission drift": {
@@ -5123,7 +6032,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.264Z"
+        "at": "2026-09-03T22:29:57.994Z"
       }
     },
     "workspace containment": {
@@ -5132,7 +6041,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.272Z"
+        "at": "2026-09-03T22:29:58.008Z"
       }
     },
     "workspace snapshot map is null-prototype": {
@@ -5141,7 +6050,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "workspace snapshot reads bytes": {
@@ -5150,7 +6059,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.270Z"
+        "at": "2026-09-03T22:29:58.000Z"
       }
     },
     "workspace snapshot records directories": {
@@ -5159,7 +6068,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.269Z"
+        "at": "2026-09-03T22:29:57.999Z"
       }
     },
     "write access asked of the repository": {
@@ -5168,7 +6077,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T08:37:57.271Z"
+        "at": "2026-09-03T22:29:58.001Z"
       }
     }
   }
