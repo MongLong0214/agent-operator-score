@@ -2547,11 +2547,11 @@ export const GUARDS = [
     name: "a cycle over an unknown model completes its runs and withholds the profile-bound aggregate by name"
   },
   {
-    guard: "a cycle is judged over the runs that ran",
-    reason: "judging only the runs whose composite issued narrowed the cohort to nothing, so a healthy cycle was judged over agents the plan never used and reported MODEL_UNKNOWN",
+    guard: "a run the cycle cannot identify closes it",
+    reason: "gating the refusal on a run's validity let a run with no provenance record at all sit inside an issued cycle, which is the completion condition -- every Run carries one -- read as its opposite",
     file: "lib/model-identity.mjs",
-    from: "  const valid = ran.filter((run) => run.model_identity?.by_agent && typeof run.model_identity.by_agent === \"object\");",
-    to: "  const valid = ran.filter((run) => run.valid === true);",
+    from: "  if (valid.some((run) => !run.model_identity?.by_agent || typeof run.model_identity.by_agent !== \"object\")) return null;",
+    to: "  if (valid.some((run) => run.valid === true && !run.model_identity?.by_agent)) return null;",
     test: "tests/product/model-identity.test.mjs",
     name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
   },
@@ -3550,7 +3550,6 @@ export const ACCOUNTED_GUARDS = [
   "a credential is not a model id",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
-  "a cycle is judged over the runs that ran",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
   "a cycle reads the executable its runs saw",
@@ -3586,6 +3585,7 @@ export const ACCOUNTED_GUARDS = [
   "a row is held to the cells its contract declared",
   "a row is read as a whole",
   "a run that failed still records what it was bound to",
+  "a run the cycle cannot identify closes it",
   "a run under a different profile digest is not a run in this cycle",
   "a sanitised value is one this module boxed",
   "a scan that ran out of budget says so",

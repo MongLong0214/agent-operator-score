@@ -253,7 +253,10 @@ test("the operator score sits above the runs it was computed from", async () => 
       { seed: "0000000000000001", valid: true, invalid_reason: null, final_score: 71, dimensions: { D1: 80 }, model_identity: confirmedRun() },
       { seed: "0000000000000002", valid: true, invalid_reason: null, final_score: 74, dimensions: { D1: 80 }, model_identity: confirmedRun() },
       { seed: "0000000000000003", valid: true, invalid_reason: null, final_score: 77, dimensions: { D1: 80 }, model_identity: confirmedRun() },
-      { seed: "0000000000000004", valid: false, invalid_reason: "NOT_ISSUED", final_score: null, dimensions: {} }
+      // Identified like the others: since #561 a cycle holding a run it cannot identify withholds,
+      // and a run that did not issue is still a run the cycle ran. Its exclusion is about the
+      // score, not about who ran it.
+      { seed: "0000000000000004", valid: false, invalid_reason: "NOT_ISSUED", final_score: null, dimensions: {}, model_identity: confirmedRun() }
     ]
   });
   const dashboard = await startDashboard({ home });
