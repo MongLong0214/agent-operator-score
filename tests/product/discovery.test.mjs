@@ -294,6 +294,14 @@ test("a same-name binary in a directory somebody else can write is blocked, neve
   const candidate = record.candidates.find((one) => one.id === "codex");
   assert.equal(candidate.identity.status, "UNTRUSTED");
   assert.equal(candidate.support_status, "BLOCKED");
+  // Two gates refuse this candidate independently, and BLOCKED on its own names neither of them:
+  // the support verdict reads #554's status back for itself, and the credential gate refuses to
+  // look anything up for an executable that is not VERIFIED, which arrives here as `auth.status`.
+  // Delete either one and the other still returns BLOCKED, so a test that stops at the outcome
+  // holds neither. `blocked_reasons` is where they are individually visible -- one entry per gate
+  // that refused, which is why the same code appears twice for one untrusted executable.
+  assert.equal(candidate.auth.status, "BLOCKED");
+  assert.deepEqual(candidate.blocked_reasons, [REASON_CODES.IDENTITY_UNVERIFIED, REASON_CODES.IDENTITY_UNVERIFIED]);
   assert.equal(record.selected_runtime, null);
   assert.equal(record.status, "BLOCKED");
   assert.equal(record.reason_code, REASON_CODES.ALL_CANDIDATES_BLOCKED);
@@ -383,6 +391,9 @@ test("a declared model the command line contradicts is a mismatch and blocks the
   const candidate = record.candidates.find((one) => one.id === "codex");
   assert.equal(candidate.model.status, "MISMATCH");
   assert.equal(candidate.support_status, "BLOCKED");
+  // The mismatch is the whole reason, and saying so is what keeps this test a witness for the
+  // model term rather than for whatever else might block a candidate one fixture change from now.
+  assert.deepEqual(candidate.blocked_reasons, [REASON_CODES.MODEL_MISMATCH]);
   assert.equal(record.status, "BLOCKED");
   rmSync(root, { recursive: true, force: true });
 });

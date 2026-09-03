@@ -5012,6 +5012,24 @@ export const GUARDS = [
     name: "a same-name binary in a directory somebody else can write is blocked, never selected"
   },
   {
+    guard: "a contradicted model blocks the candidate outright",
+    reason: "a run whose declared model and whose command line name different models is not a measurement of either, and ranking it last still leaves it reachable",
+    file: "lib/discovery.mjs",
+    from: "  if (model.status === \"MISMATCH\") blocked.push(REASON_CODES.MODEL_MISMATCH);",
+    to: "  if (false) blocked.push(REASON_CODES.MODEL_MISMATCH);",
+    test: "tests/product/discovery.test.mjs",
+    name: "a declared model the command line contradicts is a mismatch and blocks the candidate"
+  },
+  {
+    guard: "a credential gate that refused blocks the candidate outright",
+    reason: "the auth stage's own refusal has to reach the support verdict, or a candidate AOS would not look a credential up for is still a candidate AOS would select",
+    file: "lib/discovery.mjs",
+    from: "  if (auth.status === \"BLOCKED\") blocked.push(auth.reason ?? REASON_CODES.IDENTITY_UNVERIFIED);",
+    to: "  if (false) blocked.push(auth.reason ?? REASON_CODES.IDENTITY_UNVERIFIED);",
+    test: "tests/product/discovery.test.mjs",
+    name: "a same-name binary in a directory somebody else can write is blocked, never selected"
+  },
+  {
     guard: "an inexact model never reaches official support",
     reason: "a number filed under a name the provider may re-point tomorrow is not comparable with the same number next week, and the issue forbids approving an unknown model",
     file: "lib/discovery.mjs",
@@ -5275,8 +5293,10 @@ export const ACCOUNTED_GUARDS = [
   "a committed observation carries no transcript",
   "a complete cycle is not an issued cycle",
   "a configuration directory with no declared file is not a login",
+  "a contradicted model blocks the candidate outright",
   "a contradicting transcript still leaves the cohort",
   "a copy taken while the tree moved is not a snapshot",
+  "a credential gate that refused blocks the candidate outright",
   "a credential is not a model id",
   "a credential is staged for the runtime, not for the label",
   "a credential is what it is filed under, at any length",

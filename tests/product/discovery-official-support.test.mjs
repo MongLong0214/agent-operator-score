@@ -100,6 +100,11 @@ test("BEST_EFFORT is never reported as OFFICIAL_READY, whatever else is true", (
   assert.equal(codex.isolation.lane_official, false);
   assert.equal(codex.support_status, "DIAGNOSTIC_ONLY");
   assert.equal(record.status, "DIAGNOSTIC_ONLY");
+  // The lane is the reason, said out loud. Every other term of the conjunction is true on this
+  // host, so DIAGNOSTIC_ONLY alone would still read as a pass if some later fixture change made a
+  // second term withhold and the isolation term stopped doing anything.
+  assert.deepEqual(codex.blocked_reasons, ["AOS_DISCOVERY_ISOLATION_NOT_STRICT"]);
+  assert.equal(record.reason_code, "AOS_DISCOVERY_ISOLATION_NOT_STRICT");
   assert.equal(record.profile.isolation_level, "BEST_EFFORT_CLI");
   rmSync(root, { recursive: true, force: true });
 });
