@@ -2559,6 +2559,15 @@ export const GUARDS = [
     name: "a cycle over an unknown model completes its runs and withholds the profile-bound aggregate by name"
   },
   {
+    guard: "a status with no digest under it is the weakest one",
+    reason: "read at face value a VERIFIED with no executable digest tied with a real one, the tie kept the run that had a digest, and the cycle issued over an executable one of its runs never identified",
+    file: "lib/model-identity.mjs",
+    from: "      .map((entry) => (typeof entry.runtime_identity_digest === \"string\"",
+    to: "      .map((entry) => (true",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
+  },
+  {
     guard: "a cycle answers with the provenance its runs resolved",
     reason: "reading the binding alone let a run whose own provenance resolved to UNKNOWN sit inside a cycle reporting the exact model it was supposed to have used -- the run said it could not name what it ran and the cycle answered anyway",
     file: "lib/model-identity.mjs",
@@ -2616,8 +2625,8 @@ export const GUARDS = [
     guard: "a cycle reads the executable its runs saw",
     reason: "the binding carries the registration's status, so a stale VERIFIED registration turned a run whose executable was UNTRUSTED into an issued cycle",
     file: "lib/model-identity.mjs",
-    from: "      runtime_identity_status: weakest?.runtime_identity_status ?? bound?.runtime_identity_status ?? \"MIGRATION_REQUIRED\",",
-    to: "      runtime_identity_status: bound?.runtime_identity_status ?? \"MIGRATION_REQUIRED\",",
+    from: "      : { digest: weakest.runtime_identity_digest ?? null, status: weakest.runtime_identity_status, drifted: weakest.runtime_identity_drifted ?? null };",
+    to: "      : { digest: bound?.runtime_identity_digest ?? null, status: bound?.runtime_identity_status ?? \"MIGRATION_REQUIRED\", drifted: null };",
     test: "tests/product/model-identity.test.mjs",
     name: "a cycle's runtime identity is the runs' own, not the registration it was opened with"
   },
@@ -4111,6 +4120,7 @@ export const ACCOUNTED_GUARDS = [
   "a state revision is stated, never defaulted",
   "a status the record asserts about itself is not evidence",
   "a status this build does not know is refused",
+  "a status with no digest under it is the weakest one",
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
   "a surface carries the rows it says it averaged",

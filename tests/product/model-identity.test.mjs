@@ -757,6 +757,16 @@ test("a cycle is judged over the agents that ran, whether or not their runs earn
       profile_digest: "d".repeat(64)
     })
   };
+  // The digest is the third field with the same hole in it: a run reporting VERIFIED with no
+  // executable digest is withheld in its own record, and the cycle completed it from the
+  // registration and issued (#561 round 14).
+  const noDigest = JSON.parse(JSON.stringify(partial));
+  noDigest.model_identity.by_agent.solo.runtime_identity_digest = null;
+  assert.equal(
+    cycleModelIdentity({ binding, runs: [unissued, noDigest] })?.profile_bound_aggregation.status,
+    "withheld",
+    "a run with no executable digest was completed from the binding"
+  );
   for (const field of ["provenance", "runtime_identity_status"]) {
     const stripped = JSON.parse(JSON.stringify(partial));
     delete stripped.model_identity.by_agent.solo[field];
