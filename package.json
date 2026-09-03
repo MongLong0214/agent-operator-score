@@ -23,6 +23,7 @@
     "verify:isolation-boundary": "node --test tests/product/confinement.test.mjs",
     "verify:official-issuance-gate": "node --test tests/product/confinement.test.mjs tests/product/official-issuance.test.mjs tests/product/confinement-real-lane.test.mjs",
     "verify:real-runtime-strict": "AOS_REAL_STRICT_REQUIRED=1 node --test tests/product/confinement-real-lane.test.mjs",
+    "verify:model-identity": "node --test tests/product/model-identity.test.mjs tests/product/model-canary.test.mjs tests/product/profile.test.mjs tests/product/cycle-command.test.mjs tests/product/dashboard.test.mjs",
     "verify:profile-aggregation": "node --test tests/product/profile-aggregation.test.mjs",
     "verify:process-outcome-counterfactual": "node --test tests/product/process-outcome-counterfactual.test.mjs",
     "verify:projection-consistency": "node --test tests/product/projection-consistency.test.mjs",

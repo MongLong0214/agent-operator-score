@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { Readable } from "node:stream";
@@ -30,11 +30,32 @@ export function run(cwd, args, expected = 0, env = {}) {
  * them is what a real adapter does with `CODEX_HOME`, and it keeps the fixture on the same footing
  * as the runtimes it stands in for.
  */
-export function addAgent(cwd, id, script = fakeAgent) {
+/**
+ * A launcher for the fixture agent whose own executable identity verifies (#554, #561).
+ *
+ * Registering `process.execPath` directly records the identity of whatever Node the test happens
+ * to run under. On a machine where that binary sits in a group-writable or third-party-owned
+ * directory -- GitHub's hosted tool cache is one -- #554 records it UNTRUSTED, and since #561 an
+ * unverified executable withholds the profile-bound aggregate. That is the intended posture and
+ * not something a test should assert its way around, so the fixture stands in for a runtime
+ * installed where a runtime normally is: a two-line launcher inside the test's own directory,
+ * which is exactly what the identity tests elsewhere use.
+ */
+export function verifiedRunner(cwd) {
+  const launcher = join(cwd, "fixture-runtime");
+  writeFileSync(launcher, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} "$@"\n`, { mode: 0o755 });
+  chmodSync(launcher, 0o755);
+  return launcher;
+}
+
+export function addAgent(cwd, id, script = fakeAgent, extraArgs = [], command = process.execPath) {
   run(cwd, [
-    "agent", "add", id, "--command", process.execPath, "--arg", script,
+    "agent", "add", id, "--command", command, "--arg", script,
     "--allow-env", "FAKE_AGENT_PROFILE",
-    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE"
+    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE",
+    // What the fixture runtime announces in its own transcript, the way Codex and Claude Code do.
+    "--allow-env", "FAKE_AGENT_MODEL",
+    ...extraArgs
   ]);
 }
 
