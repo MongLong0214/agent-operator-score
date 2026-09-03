@@ -1875,62 +1875,152 @@ export const GUARDS = [
     name: "two contradictory status labels do not pass"
   },
   {
-    guard: "stale-branch audit preserves orphaned unmerged work",
+    guard: "a state that may not be deleted fixes its recommendation",
     reason:
-      "a branch whose only copy of real work sits nowhere else must never read as safe to delete -- that is the exact loss #578's evidence-preservation gate exists to prevent",
-    file: "fixtures/stale-branches/audit.json",
-    from: "\"recommendation\": \"must_be_preserved\",\n      \"reason\": \"Head of open PR #609",
-    to: "\"recommendation\": \"safe_to_delete_after_578\",\n      \"reason\": \"Head of open PR #609",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "every branch with an open PR is classified ACTIVE and recommended for preservation"
-  },
-  {
-    guard: "stale-branch audit deletion recommendations carry a reason",
-    reason:
-      "a deletion recommendation with no stated reason is unreviewable -- the next reader cannot tell an evidenced call from a guess",
-    file: "fixtures/stale-branches/audit.json",
-    from: "\"reason\": \"The tip commit e75d232 is an ancestor of both origin/dev and origin/main; git rev-list returns 0 commits unique to the branch against either, and git tag --contains places the commit in v0.1.11 through v0.1.17. The branch never carried a commit of its own -- it points at the merge commit of PR #511 (the chore/back-merge-0.1.10 chain) and never advanced from it. No PR has ever used it as a head branch, and no workflow, skill, command, script, schema, contract or document references it outside this audit. Deleting it after #578 and #588 have preserved the release evidence removes a name, not any content.\"",
-    to: "\"reason\": \"\"",
-    test: "tests/product/stale-branch-audit.test.mjs",
-    name: "no entry recommends deletion without a substantive reason"
-  },
-  {
-    guard: "only a classification whose content is elsewhere may read as deletable",
-    reason:
-      "widening the deletable set is how UNIQUE_WORK becomes deletable by relabelling rather than by anything being true about the branch",
-    file: "lib/branch-audit.mjs",
-    from: "const DELETABLE_CLASSIFICATIONS = new Set([\"MERGED\", \"SUPERSEDED\"]);",
-    to: "const DELETABLE_CLASSIFICATIONS = new Set([\"MERGED\", \"SUPERSEDED\", \"UNIQUE_WORK\", \"EVIDENCE_ONLY\"]);",
+      "this is the single rule that refuses both 'UNIQUE_WORK, safe to delete' and 'UNIQUE_WORK, needs decision'; without it the classification decides nothing about what may happen to the branch",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (contract.recommendation && entry.recommendation !== contract.recommendation) {",
+    to: "    if (false) {",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "a branch classified UNIQUE_WORK is never deletion-eligible, however it is recommended"
   },
   {
     guard: "SUPERSEDED requires the thing that superseded it",
     reason:
-      "SUPERSEDED with no superseding PR, issue or SHA is an assertion that the work is safe with nothing behind it -- the label would become the cheapest route to deletion",
-    file: "lib/branch-audit.mjs",
-    from: "    if (entry.classification === \"SUPERSEDED\" && !entry.superseding) {",
-    to: "    if (false && entry.classification === \"SUPERSEDED\" && !entry.superseding) {",
+      "SUPERSEDED with no superseding PR, issue or SHA is an assertion that the work is safe with nothing behind it, which would make the label the cheapest route to deletion",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!record) return push(\"classified SUPERSEDED with nothing recorded that supersedes it\");",
+    to: "      if (!record) return;",
     test: "tests/product/stale-branch-audit.test.mjs",
-    name: "a branch classified SUPERSEDED with nothing recorded that supersedes it is refused"
+    name: "SUPERSEDED without a complete superseding record is refused, component by component"
+  },
+  {
+    guard: "SUPERSEDED accounts for every commit on no other line",
+    reason:
+      "the premise of SUPERSEDED is that commits were reimplemented rather than merged; without per-commit accounting the label would carry unmerged work off the repository",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (outstanding > 0 && (record.supersedes_commits ?? []).length !== outstanding) {",
+    to: "      if (false && outstanding > 0 && (record.supersedes_commits ?? []).length !== outstanding) {",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "SUPERSEDED must account for every commit that reaches neither dev nor main"
+  },
+  {
+    guard: "UNIQUE_WORK carries the plan that gets the work off the branch",
+    reason:
+      "the issue's UNIQUE_WORK route is a plan, not a label: canonical issue, replacement base, cherry-pick or reimplement, and a new PR. Without the plan the state records only that something would be lost",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!plan) return push(\"classified UNIQUE_WORK with no plan for getting the work off the branch\");",
+    to: "      if (!plan) return;",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "UNIQUE_WORK requires the preservation plan the issue specifies, component by component"
+  },
+  {
+    guard: "UNIQUE_WORK names what is unique to it",
+    reason:
+      "a UNIQUE_WORK entry with an empty preserve list has classified a branch as holding the only copy of something and then not said what",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!isList(entry.preserve)) push(\"classified UNIQUE_WORK without naming what is unique to it\");",
+    to: "      if (false && !isList(entry.preserve)) push(\"classified UNIQUE_WORK without naming what is unique to it\");",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "UNIQUE_WORK requires the preservation plan the issue specifies, component by component"
+  },
+  {
+    guard: "EVIDENCE_ONLY names where the evidence goes",
+    reason:
+      "the issue's EVIDENCE_ONLY route is migrate-then-delete; a destination-less entry is a branch used as an archive, which the policy exists to forbid",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!destination) return push(\"classified EVIDENCE_ONLY with no destination for the evidence\");",
+    to: "      if (!destination) return;",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "EVIDENCE_ONLY requires a concrete destination for the evidence before anything is cleared"
+  },
+  {
+    guard: "EVIDENCE_ONLY records whether the migration happened",
+    reason:
+      "a destination nobody migrated to is a plan, and a plan is not preservation",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (destination.migrated !== false && destination.migrated !== true) push(\"evidence destination does not record whether the migration has happened\");",
+    to: "      if (false && destination.migrated !== false && destination.migrated !== true) push(\"evidence destination does not record whether the migration has happened\");",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "EVIDENCE_ONLY requires a concrete destination for the evidence before anything is cleared"
+  },
+  {
+    guard: "UNKNOWN_HOLD names what blocks the decision",
+    reason:
+      "UNKNOWN_HOLD with nothing marked blocks_deletion is a hold with no subject, which reads as caution while recording nothing",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!entry.unestablished.some((item) => item.bearing_on_deletion === \"blocks_deletion\")) {",
+    to: "      if (false && !entry.unestablished.some((item) => item.bearing_on_deletion === \"blocks_deletion\")) {",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "UNKNOWN_HOLD must name what blocks the decision"
+  },
+  {
+    guard: "MERGED holds no commit that reaches neither line",
+    reason:
+      "the difference against dev alone and against main alone both overcount; the count deletion turns on is commits on neither, and MERGED means it is zero",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (entry.unique_commits_vs_dev_and_main !== 0) push(\"classified MERGED while holding commits neither dev nor main has\");",
+    to: "      if (false && entry.unique_commits_vs_dev_and_main !== 0) push(\"classified MERGED while holding commits neither dev nor main has\");",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "the count that deletion turns on is commits reaching neither line, recorded separately"
+  },
+  {
+    guard: "the count deletion turns on is recorded",
+    reason:
+      "without it the SUPERSEDED accounting and the MERGED check have no operand, and an entry that simply omits it would be judged on the two counts that overcount",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (typeof entry.unique_commits_vs_dev_and_main !== \"number\") push(\"does not record how many commits reach neither dev nor main, which is the count deletion actually turns on\");",
+    to: "    if (false && typeof entry.unique_commits_vs_dev_and_main !== \"number\") push(\"does not record how many commits reach neither dev nor main, which is the count deletion actually turns on\");",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "the count that deletion turns on is commits reaching neither line, recorded separately"
+  },
+  {
+    guard: "naming something to preserve refuses the deletion recommendation",
+    reason:
+      "the preserve list is the audit's own answer to what would be lost; a non-empty answer beside a deletion recommendation is the exact loss #578 exists to prevent",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (deletable && isList(entry.preserve)) push(`recommends deletion while naming ${entry.preserve.length} thing(s) that would be lost`);",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a branch that names something worth preserving is never deletion-eligible"
+  },
+  {
+    guard: "a deletion recommendation carries a reason",
+    reason:
+      "a deletion recommendation with no stated reason is unreviewable: the next reader cannot tell an evidenced call from a guess",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (deletable && !isNonEmptyString(entry.reason, 21)) push(\"recommends deletion with no substantive reason\");",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "no entry recommends deletion without a substantive reason"
+  },
+  {
+    guard: "an entry records its reference scan and tag containment",
+    reason:
+      "\"nothing refers to this branch\" and \"it is in no release\" are claims that need a recorded search; an entry that omits them was never asked",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (!entry.references || typeof entry.references !== \"object\") push('records no reference scan, so \"nothing refers to it\" was never established');",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "an entry that records no preserve list, tag containment or reference scan is refused"
   },
   {
     guard: "a deletion-blocking unknown blocks the deletion",
     reason:
-      "an unknown the audit itself marked as blocking deletion has to actually stop the recommendation, or recording it was decoration",
-    file: "lib/branch-audit.mjs",
-    from: "        if (entry.recommendation === \"safe_to_delete_after_578\") {",
-    to: "        if (false) {",
+      "an unknown the audit itself marked as blocking has to actually stop the recommendation, or recording it was decoration",
+    file: "scripts/branch-audit.mjs",
+    from: "        if (entry.recommendation === \"safe_to_delete_after_578\") findings.push(`${entry.name}: \"${item.fact}\" blocks deletion, yet the branch reads as deletable`);",
+    to: "        continue;",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "an unestablished fact that blocks deletion cannot sit on a branch marked deletable"
   },
   {
     guard: "dismissing an unknown requires an argument",
     reason:
-      "without this, 'bearing_on_deletion: none' is a word that costs nothing and every unknown resolves to safe -- which is the default this issue exists to refuse",
-    file: "lib/branch-audit.mjs",
-    from: "      if (!isNonEmptyString(item.why_it_does_not_bear, 21)) {",
-    to: "      if (false && !isNonEmptyString(item.why_it_does_not_bear, 21)) {",
+      "without this, bearing_on_deletion:none is a word that costs nothing and every unknown resolves to safe, which is the default this issue exists to refuse",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!isNonEmptyString(item.why_it_does_not_bear, 21)) findings.push(`${entry.name}: \"${item.fact}\" is dismissed as not bearing on deletion without saying why`);",
+    to: "      if (false && !isNonEmptyString(item.why_it_does_not_bear, 21)) findings.push(`${entry.name}: \"${item.fact}\" is dismissed as not bearing on deletion without saying why`);",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "an unestablished fact dismissed as not bearing on deletion, with no argument, is refused"
   },
@@ -1938,7 +2028,7 @@ export const GUARDS = [
     guard: "an unknown's bearing is one of two values, not free text",
     reason:
       "an invented bearing value would fall through every branch of the check and be treated as harmless, which is worse than an unrecognized one being refused",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "      if (item.bearing_on_deletion !== \"none\") {",
     to: "      if (false) {",
     test: "tests/product/stale-branch-audit.test.mjs",
@@ -1948,57 +2038,217 @@ export const GUARDS = [
     guard: "a finding anywhere empties the eligible set",
     reason:
       "an audit with a broken invariant is not a document to delete branches from; letting the untouched entries stay eligible makes a corrupt audit still authorize deletions",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "  if (blocking.length > 0) return { eligible: [], ineligible: [...branches], findings: blocking };",
     to: "  if (false) return { eligible: [], ineligible: [...branches], findings: blocking };",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "a finding on one branch empties the deletion-eligible set entirely"
   },
   {
-    guard: "an open PR head is never deletion-eligible",
+    guard: "an open PR makes the branch ACTIVE, whatever it is labelled",
     reason:
-      "deleting the head branch of an open pull request destroys its diff, and that is the one action #572 prohibits outright",
-    file: "lib/branch-audit.mjs",
-    from: "      entry.open_pr === null &&",
-    to: "      true &&",
+      "deleting the head branch of an open pull request destroys its diff, and that is the one action #572 prohibits outright; a branch with a PR open on it labelled anything else is that prohibition being routed around",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (entry.open_pr && entry.classification !== \"ACTIVE\") push(`has open PR #${entry.open_pr.number} but is classified ${entry.classification}`);",
+    to: "",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "a branch recorded as MERGED while a PR is open on it is still not deletion-eligible"
-  },
-  {
-    guard: "containment against dev is measured, not inferred from a label",
-    reason:
-      "merged_into_dev is a claim; the commit count is the measurement, and dropping it lets a mislabelled branch carrying real commits read as deletable",
-    file: "lib/branch-audit.mjs",
-    from: "      entry.unique_commits_vs_dev === 0 &&",
-    to: "      true &&",
-    test: "tests/product/stale-branch-audit.test.mjs",
-    name: "a branch still carrying commits dev does not have is not deletion-eligible"
   },
   {
     guard: "a protected branch is never deletion-eligible",
     reason:
       "protection is a deliberate statement that a ref is not to be removed; an audit that can recommend deleting one has overruled the repository's own setting on its own authority",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "      entry.branch_protected === false &&",
     to: "      true &&",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "a protected branch is not deletion-eligible"
   },
   {
+    guard: "containment is measured, not inferred from a label",
+    reason:
+      "merged_into_dev is a claim; the commit counts are the measurement, and dropping them lets a mislabelled branch carrying real commits read as deletable",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (entry.unique_commits_vs_dev !== 0 || entry.unique_commits_vs_main !== 0) push(\"classified MERGED while holding commits dev or main does not have\");",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a branch still carrying commits dev does not have is not deletion-eligible"
+  },
+  {
+    guard: "the audited commit is the commit the snapshot observed",
+    reason:
+      "a name is not a ref: without this a branch that advanced past the snapshot inherits a verdict formed about a commit it no longer points at",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (entry.head_sha !== observed.get(name)) findings.push(`${name} is audited at ${entry.head_sha} but the snapshot observed it at ${observed.get(name)}`);",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "an entry audited at a commit the snapshot did not observe is refused"
+  },
+  {
+    guard: "a live head the audit never covered is reported",
+    reason:
+      "coverage measured against the audit's own snapshot is circular; a branch that exists and appears nowhere in the audit is a branch nobody decided about",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (!known.has(head.name)) findings.push(`${head.name} exists on the live repository but appears nowhere in this audit`);",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a live head that appears nowhere in the audit is refused, and the two transports must agree"
+  },
+  {
+    guard: "the two head transports are cross-checked",
+    reason:
+      "git and the REST API are collected separately so that one of them being wrong is visible; comparing them is what makes the second collection worth running",
+    file: "scripts/branch-audit.mjs",
+    from: "      else if (rest.get(head.name) !== head.sha) findings.push(`${head.name} is ${head.sha} over git and ${rest.get(head.name)} over REST`);",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a live head that appears nowhere in the audit is refused, and the two transports must agree"
+  },
+  {
+    guard: "no deletion is authorized without a live observation",
+    reason:
+      "the stored audit is written by the party proposing the deletion; authorizing from it alone lets the same record supply both the evidence and the verdict",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!live) return [...findings, \"no live observation was supplied, so no deletion can be authorized from stored facts alone\"];",
+    to: "  if (false) return findings;",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a deletion authorized only from stored facts is refused outright"
+  },
+  {
+    guard: "the deletion record cites the observation it was checked against",
+    reason:
+      "without the digest binding, \"we looked\" is a claim about some other look, and any observation could be swapped for the one that happened to pass",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (observationDigest(live) !== log?.live_observation?.digest) {",
+    to: "  if (false) {",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a deletion record that does not cite the digest of the observation it was checked against is refused"
+  },
+  {
+    guard: "the observation is fresh relative to the deletion",
+    reason:
+      "a day-old observation cannot report the pull request someone opened this morning, which is precisely the race this gate exists to lose safely",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (collected <= completed && completed - collected > maxAgeSeconds) findings.push(`the live observation was ${Math.round(completed - collected)}s old when the deletion ran, past the ${maxAgeSeconds}s this gate allows`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "an observation collected after the deletion, or too long before it, is refused"
+  },
+  {
+    guard: "the observation predates the deletion it authorizes",
+    reason:
+      "collecting the evidence after the destructive act reverses the order that makes it evidence at all",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (collected > completed) findings.push(\"the live observation was collected after the deletion it is supposed to authorize\");",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "an observation collected after the deletion, or too long before it, is refused"
+  },
+  {
+    guard: "an observation carries the receipts for its own commands",
+    reason:
+      "an observation with no command receipts is a transcript nobody can re-run, which is the shape a hand-written one takes",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!isList(live.receipts)) findings.push(\"the live observation carries no command receipts, so nothing says where its facts came from\");",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "an observation with no command receipts, or of the wrong schema, is refused"
+  },
+  {
+    guard: "the deleted ref is live at the commit being deleted",
+    reason:
+      "a branch that moved since the audit is a different branch; deleting the name at a stale commit removes work nobody looked at",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (liveHeads.has(deleted.name) && liveHeads.get(deleted.name) !== deleted.sha) findings.push(`${deleted.name} was deleted at ${deleted.sha} but live it points at ${liveHeads.get(deleted.name)}`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a deletion at a commit the branch no longer points at is refused"
+  },
+  {
+    guard: "the deleted ref still exists live",
+    reason:
+      "deleting something the observation cannot see means the observation and the action are about different repositories",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (!liveHeads.has(deleted.name)) findings.push(`${deleted.name} was deleted but the live observation does not show it on the repository`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a deletion of a branch the live repository does not have is refused"
+  },
+  {
+    guard: "a pull request opened after the audit blocks the deletion",
+    reason:
+      "a stored snapshot cannot see a PR opened five minutes later; without this, the audit-to-deletion window is a hole straight through the one prohibition that cannot be walked back",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (pr) findings.push(`${entry.name} reads as eligible in the audit but PR #${pr.number} is open on it live`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a pull request opened after the audit was written blocks the deletion, whatever the audit says"
+  },
+  {
     guard: "a deletion outside the audit is refused",
     reason:
       "a branch nobody audited is a deletion nobody reviewed; silently skipping it is how an unreviewed ref disappears with the reviewed ones",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "    if (!entry) {\n      findings.push(`${deleted.name} was deleted but this audit never covered it`);\n      continue;\n    }",
     to: "    if (!entry) {\n      continue;\n    }",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a deletion log entry for a branch outside the audit is refused"
   },
   {
+    guard: "a deletion names the commit the audit judged",
+    reason:
+      "deleting the audited name at a different commit deletes something nobody looked at, the route by which a branch that picked up work after the snapshot is removed on an old verdict's authority",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (deleted.sha !== entry.head_sha) findings.push(`${deleted.name} was deleted at ${deleted.sha}, but this audit judged it at ${entry.head_sha}`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a deletion log that names an eligible branch at a commit the audit did not judge is refused"
+  },
+  {
+    guard: "the blockers clear in the canonical snapshot, not in the log",
+    reason:
+      "free text inside the artifact it authorizes made \"only after #578\" a sentence rather than a condition; the canonical execution-plan snapshot is the authority and the log's account of it is cross-checked",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (canonical.state !== \"closed\") findings.push(`#${issue} is ${canonical.state} in the canonical issue-state snapshot, so Phase B is still blocked`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a COMPLETED deletion log cannot clear its own prerequisites: the canonical snapshot decides"
+  },
+  {
+    guard: "a blocker closed without close evidence has not cleared",
+    reason:
+      "#572's whole premise is that deletion follows preserved evidence; an issue closed with no evidence recorded is a closed issue, not preserved evidence",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (!canonical.close_evidence) findings.push(`#${issue} has no close evidence in the canonical issue-state snapshot`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a blocker closed without close evidence does not clear it"
+  },
+  {
+    guard: "completion requires an authority to check the prerequisites against",
+    reason:
+      "with no canonical snapshot supplied there is nothing to compare the log's claims to, and defaulting to accept would make the authority optional",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!completion) return [...findings, \"the deletion log claims completion but no canonical issue-state snapshot was supplied to check its prerequisites against\"];",
+    to: "  if (!completion) return findings;",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a COMPLETED deletion log with no canonical snapshot to check against is refused"
+  },
+  {
+    guard: "an empty completion says why nothing was eligible",
+    reason:
+      "a legitimate no-op and a Phase B that silently did nothing look identical unless the reason is recorded",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (log.deleted.length === 0 && log.no_op_reason === undefined) findings.push(\"the deletion log says COMPLETED and deleted nothing without saying why nothing was eligible\");",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a completed deletion log that deleted nothing and does not say why is refused"
+  },
+  {
     guard: "a NOT_YET deletion log may not list deletions",
     reason:
       "a log that says nothing was deleted while listing deletions is the shape a half-run Phase B leaves behind, and it must not read as clean",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "    if (log.deleted.length > 0) findings.push(\"the deletion log says NOT_YET but lists deletions\");",
     to: "",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
@@ -2007,92 +2257,122 @@ export const GUARDS = [
   {
     guard: "COMPLETED requires the post-delete state read back",
     reason:
-      "without this, COMPLETED is a word somebody typed -- the invariants #572 lists can only be checked against state actually re-read after the deletion",
-    file: "lib/branch-audit.mjs",
-    from: "    if (!log.post_delete_state) findings.push(\"the deletion log says COMPLETED without reading the post-delete state back\");",
+      "without this, COMPLETED is a word somebody typed: the invariants #572 lists can only be checked against state actually re-read after the deletion",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!log.post_delete_state) findings.push(\"the deletion log says COMPLETED without reading the post-delete state back\");",
     to: "",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "a COMPLETED deletion log with no post-delete state read back is refused"
   },
   {
-    guard: "the invariant baseline must agree with the snapshot it was taken from",
+    guard: "both blocking issues are named while the log is blocked",
+    reason:
+      "a log that forgets one blocker records a weaker precondition than the one it is under",
+    file: "scripts/branch-audit.mjs",
+    from: "    for (const issue of DELETION_BLOCKED_BY) if (!blockers.has(issue)) findings.push(`the deletion log is NOT_YET but does not record #${issue} as blocking it`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a deletion log that drops one of the blocking issues is refused while NOT_YET"
+  },
+  {
+    guard: "the invariant baseline agrees with the snapshot it was taken from",
     reason:
       "a baseline that disagrees with its own ls-remote snapshot cannot tell anyone whether main moved, because it never recorded where main was",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "  if (baseline.main_sha !== head(\"main\")) findings.push(\"baseline main SHA disagrees with the main entry in the ls-remote snapshot\");",
     to: "",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "a baseline whose main SHA disagrees with the snapshot is refused"
   },
   {
-    guard: "the audited commit is the commit the snapshot observed",
+    guard: "protection is compared as content, not as a projection",
     reason:
-      "a name is not a ref -- without this a branch that advanced past the snapshot inherits a verdict formed about a commit it no longer points at",
-    file: "lib/branch-audit.mjs",
-    from: "    if (entry.head_sha !== observed.get(name)) {",
-    to: "    if (false) {",
-    test: "tests/product/stale-branch-audit.test.mjs",
-    name: "an entry audited at a commit the snapshot did not observe is refused"
-  },
-  {
-    guard: "naming something to preserve refuses the deletion recommendation",
-    reason:
-      "the preserve list is the audit's own answer to what would be lost; a non-empty answer beside a deletion recommendation is the exact loss #578 exists to prevent",
-    file: "lib/branch-audit.mjs",
-    from: "      findings.push(`${entry.name}: recommends deletion while naming ${entry.preserve.length} thing(s) that would be lost`);",
+      "three booleans out of a twelve-field protection object cannot report that a fourth changed; comparing the canonicalized object is what makes the invariant cover what the API returns",
+    file: "scripts/branch-audit.mjs",
+    from: "        if (was !== now) findings.push(`${ref} protection changed across the deletion`);",
     to: "",
-    test: "tests/product/stale-branch-audit.test.mjs",
-    name: "a branch that names something worth preserving is never deletion-eligible"
-  },
-  {
-    guard: "a deletion names the commit the audit judged",
-    reason:
-      "deleting the audited name at a different commit deletes something nobody looked at -- the route by which a branch that picked up unique work after the snapshot is removed on an old verdict's authority",
-    file: "lib/branch-audit.mjs",
-    from: "    if (deleted.sha !== entry.head_sha) {\n      findings.push(`${deleted.name} was deleted at ${deleted.sha}, but this audit judged it at ${entry.head_sha}`);\n    }",
-    to: "",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "a deletion log that names an eligible branch at a commit the audit did not judge is refused"
-  },
-  {
-    guard: "COMPLETED requires #578 and #588 to have cleared",
-    reason:
-      "without this, flipping the status is the whole cost of deleting before the evidence was preserved -- 'only after #578' has to be a checked precondition, not a sentence in a document",
-    file: "lib/branch-audit.mjs",
-    from: "      if (!entry) findings.push(`the deletion log says COMPLETED without recording that #${issue} cleared`);\n      else if (!isNonEmptyString(entry.evidence, 11)) findings.push(`the deletion log says #${issue} cleared but cites nothing for it`);",
-    to: "      if (entry && !isNonEmptyString(entry.evidence, 11)) findings.push(`the deletion log says #${issue} cleared but cites nothing for it`);",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
-    name: "a COMPLETED deletion log that does not record both blocking issues as cleared is refused"
+    name: "branch protection changed across the deletion is refused, in any field the API returns"
+  },
+  {
+    guard: "rulesets are compared by content, not by cardinality",
+    reason:
+      "two rulesets of equal length are not the same two rulesets, and an equal-count replacement is exactly how a policy change hides inside a cleanup",
+    file: "scripts/branch-audit.mjs",
+    from: "    else if (contentDigest(after.rulesets) !== contentDigest(baseline.rulesets ?? [])) findings.push(\"the repository's ruleset configuration changed across the deletion\");",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a ruleset replaced by a different one of the same count is refused"
+  },
+  {
+    guard: "the stable plugin/install source is compared",
+    reason:
+      "the issue names it among the invariants: a cleanup that changes how people install the project has changed the thing the invariant exists to hold still",
+    file: "scripts/branch-audit.mjs",
+    from: "    else if (contentDigest(after.install_source) !== contentDigest(baseline.install_source)) findings.push(\"the stable plugin/install source changed across the deletion\");",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "the stable plugin/install source changed across the deletion is refused"
+  },
+  {
+    guard: "the baseline records the stable plugin/install source at all",
+    reason:
+      "an invariant with no recorded before-state cannot be checked afterwards, and a test named for every named invariant would pass over the missing one",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!isList(baseline.install_source?.files)) findings.push(\"the baseline does not record the stable plugin/install source, so nothing can say it is unchanged\");",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a baseline with no stable plugin/install source is refused"
   },
   {
     guard: "a tag's ref object is part of its identity",
     reason:
       "comparing only the peeled commit lets a tag be replaced by a different tag object -- a different annotation, a different signature -- over the same commit, which is a tag move nothing would notice",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "      if (was.ref_sha !== tag.ref_sha) findings.push(`tag ${tag.name} was replaced across the deletion: its ref pointed at ${was.ref_sha} and now points at ${tag.ref_sha}`);",
     to: "",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "a tag replaced by another tag object over the same commit is refused"
   },
   {
-    guard: "protection is compared across the deletion, not only recorded",
-    reason:
-      "#572 lists branch protection among the invariants; a baseline nobody compares afterwards reports nothing about whether main stayed undeletable",
-    file: "lib/branch-audit.mjs",
-    from: "          if (was !== now) findings.push(`${ref} protection changed across the deletion: ${setting} was ${was} and is now ${now}`);",
-    to: "",
-    test: "tests/product/branch-cleanup-invariants.test.mjs",
-    name: "branch protection loosened across the deletion is refused"
-  },
-  {
     guard: "an open PR head still exists after the deletion",
     reason:
       "the one thing a cleanup must not touch; checking it afterwards is the only way to find out that it did",
-    file: "lib/branch-audit.mjs",
+    file: "scripts/branch-audit.mjs",
     from: "        if (!still.has(entry.branch)) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) is gone after the deletion`);\n        else if (still.get(entry.branch) !== entry.sha) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) moved across the deletion`);",
     to: "        if (still.has(entry.branch) && still.get(entry.branch) !== entry.sha) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) moved across the deletion`);",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "an open PR head that is gone or moved across the deletion is refused"
+  },
+  {
+    guard: "a multi-phase issue is not closed by the phase that has run",
+    reason:
+      "GitHub's closing keywords do not know about phases; an issue closed by the Phase A PR takes the blocked final-deletion phase with it, and the record has to say so where a reader and a test can both see it",
+    file: "fixtures/stale-branches/audit.json",
+    from: "\"closes_issue\": false",
+    to: "\"closes_issue\": true",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a multi-phase issue is not closed by the phase that has run"
+  },
+  {
+    guard: "stale-branch audit preserves orphaned unmerged work",
+    reason:
+      "a branch whose only copy of real work sits nowhere else must never read as safe to delete: that is the exact loss #578's evidence-preservation gate exists to prevent",
+    file: "fixtures/stale-branches/audit.json",
+    from: "\"recommendation\": \"must_be_preserved\",\n      \"reason\": \"Head of open PR #609",
+    to: "\"recommendation\": \"safe_to_delete_after_578\",\n      \"reason\": \"Head of open PR #609",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "every branch with an open PR is classified ACTIVE and recommended for preservation"
+  },
+  {
+    guard: "stale-branch audit deletion recommendations carry a reason",
+    reason:
+      "a deletion recommendation with no stated reason is unreviewable in the committed record, not only in the validator",
+    file: "fixtures/stale-branches/audit.json",
+    from: "\"reason\": \"The tip commit e75d232 is an ancestor of both origin/dev and origin/main; git rev-list returns 0 commits unique to the branch against either, and git tag --contains places the commit in v0.1.11 through v0.1.17. The branch never carried a commit of its own -- it points at the merge commit of PR #511 (the chore/back-merge-0.1.10 chain) and never advanced from it. The receipted GitHub-wide search and tree scan find no reference to it outside this audit, issue #572's own candidate list, and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh live observation still shows it at this commit with no PR open, removes a name and no content.\"",
+    to: "\"reason\": \"\"",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "no entry recommends deletion without a substantive reason"
   },
   {
     guard: "undeclared isolation is the weakest lane",
@@ -3031,7 +3311,6 @@ export const ACCOUNTED_GUARDS = [
   "ACL replaceable rights",
   "ACL walk",
   "AOS home withheld from the agent",
-  "COMPLETED requires #578 and #588 to have cleared",
   "COMPLETED requires the post-delete state read back",
   "ECD PROFILE_BOUND names the profile it claims",
   "ECD a bound profile identity is compared",
@@ -3075,25 +3354,36 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck double ownership",
   "ECD subcheck exhaustive mapping",
   "ECD subcheck ownership follows the administering form",
+  "EVIDENCE_ONLY names where the evidence goes",
+  "EVIDENCE_ONLY records whether the migration happened",
+  "MERGED holds no commit that reaches neither line",
   "PATH carries no relative entry",
+  "SUPERSEDED accounts for every commit on no other line",
   "SUPERSEDED requires the thing that superseded it",
+  "UNIQUE_WORK carries the plan that gets the work off the branch",
+  "UNIQUE_WORK names what is unique to it",
+  "UNKNOWN_HOLD names what blocks the decision",
   "a .NET startup hook is a pre-main hook like the rest",
   "a NOT_YET deletion log may not list deletions",
   "a URL carrying userinfo is a credential",
+  "a blocker closed without close evidence has not cleared",
   "a bound claim names the profile it is bound to",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
   "a deletion names the commit the audit judged",
   "a deletion outside the audit is refused",
+  "a deletion recommendation carries a reason",
   "a deletion-blocking unknown blocks the deletion",
   "a facet is not normalised into a digest",
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
   "a forged structural set is revalidated like the rest",
   "a live audit needs a live snapshot",
+  "a live head the audit never covered is reported",
   "a metric's status and its value are one state",
   "a missed known incident is a regression",
+  "a multi-phase issue is not closed by the phase that has run",
   "a named secret assigned a value is a secret at any length",
   "a named secret is a secret without a digit in it",
   "a new run is never scored by the old scorer",
@@ -3101,6 +3391,7 @@ export const ACCOUNTED_GUARDS = [
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a protected branch is never deletion-eligible",
+  "a pull request opened after the audit blocks the deletion",
   "a refused file fails the check",
   "a resolved key is the key",
   "a result has to agree with itself",
@@ -3111,6 +3402,7 @@ export const ACCOUNTED_GUARDS = [
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
   "a started phase cannot integrate code on a blocked issue",
+  "a state that may not be deleted fixes its recommendation",
   "a status this build does not know is refused",
   "a stored result may not elevate its own claim",
   "a surface carries the rows it says it averaged",
@@ -3126,15 +3418,19 @@ export const ACCOUNTED_GUARDS = [
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
   "an alias is the node it names",
+  "an empty completion says why nothing was eligible",
+  "an entry records its reference scan and tag containment",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
-  "an open PR head is never deletion-eligible",
+  "an observation carries the receipts for its own commands",
   "an open PR head still exists after the deletion",
+  "an open PR makes the branch ACTIVE, whatever it is labelled",
   "an unknown's bearing is one of two values, not free text",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
   "block scalar measured from its key",
+  "both blocking issues are named while the log is blocked",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
@@ -3150,10 +3446,11 @@ export const ACCOUNTED_GUARDS = [
   "close-evidence issue-specific fields",
   "close-evidence repository confirmation",
   "close-evidence verdict",
+  "completion requires an authority to check the prerequisites against",
   "composite action discovery",
   "configured argv0",
   "container image digest",
-  "containment against dev is measured, not inferred from a label",
+  "containment is measured, not inferred from a label",
   "corpus abstention cannot outweigh decision",
   "corpus leakage refusal",
   "coverage gate",
@@ -3214,6 +3511,7 @@ export const ACCOUNTED_GUARDS = [
   "merge keys bring their keys with them",
   "missing-result refusal",
   "naming something to preserve refuses the deletion recommendation",
+  "no deletion is authorized without a live observation",
   "no eligible evidence is said to be none",
   "observation channel size bound",
   "observation line size bound",
@@ -3223,7 +3521,6 @@ export const ACCOUNTED_GUARDS = [
   "one fixture id, one item",
   "one snapshot entry per issue",
   "oneOf means exactly one",
-  "only a classification whose content is elsewhere may read as deletable",
   "operator decision window",
   "operator-env credential gate",
   "owned paths are not only prose",
@@ -3255,7 +3552,7 @@ export const ACCOUNTED_GUARDS = [
   "profile results are not aggregated with legacy ones",
   "profile undeclared run fields are digested",
   "profile unknown result schema is refused",
-  "protection is compared across the deletion, not only recorded",
+  "protection is compared as content, not as a projection",
   "provider credential formats are recognised",
   "pull request produced the commit",
   "quoted keys are keys",
@@ -3271,6 +3568,7 @@ export const ACCOUNTED_GUARDS = [
   "resolver ownership",
   "restricted readiness",
   "reviewed action allowlist",
+  "rulesets are compared by content, not by cardinality",
   "run scratch is created inside the cleanup-protected region",
   "runtime auth is bound to the adapter that reads it",
   "safety cap",
@@ -3298,6 +3596,8 @@ export const ACCOUNTED_GUARDS = [
   "the adapter's own config directory is declared, not typed twice",
   "the assessment writes the profile result",
   "the audited commit is the commit the snapshot observed",
+  "the baseline records the stable plugin/install source at all",
+  "the blockers clear in the canonical snapshot, not in the log",
   "the capture time names a day that exists",
   "the card carries every reliance metric",
   "the card carries the delegated-artifact rows",
@@ -3308,11 +3608,17 @@ export const ACCOUNTED_GUARDS = [
   "the composite has to agree with its own inputs",
   "the contract digest covers the contract's bytes",
   "the contract states the cells each row averages",
+  "the count deletion turns on is recorded",
+  "the deleted ref is live at the commit being deleted",
+  "the deleted ref still exists live",
+  "the deletion record cites the observation it was checked against",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
-  "the invariant baseline must agree with the snapshot it was taken from",
+  "the invariant baseline agrees with the snapshot it was taken from",
+  "the observation is fresh relative to the deletion",
+  "the observation predates the deletion it authorizes",
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
@@ -3326,6 +3632,8 @@ export const ACCOUNTED_GUARDS = [
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
+  "the stable plugin/install source is compared",
+  "the two head transports are cross-checked",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the withheld reason travels with the surface",
