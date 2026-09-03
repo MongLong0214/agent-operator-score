@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { checkEcdContract, loadEcdContract } from "../../lib/ecd-contract.mjs";
+import { observedCleanEffects } from "./helpers.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { FAMILIES } from "../../lib/suite.mjs";
 
@@ -204,7 +205,12 @@ const everyFamilyObserved = () => observeRun({
   interventions: { observed: true, checkpoints_raised: 1, observations: [{ effective: true, state_change: "resumed" }] },
   orchestration: { integrity: { observed: true, consumed: 1, unconsumed: 0, "nothing-handed": 0 }, join: { branches: [{}, {}], complete: true } },
   fam5: { honest: true, artifact_present: true, revision: { available: true, bound: true, clean: true, changed_since: [], named: "abc1234" } },
-  invocations: {}
+  invocations: {},
+  // #557. M19 is answered from what the run did, and a run nothing observed leaves it unobserved
+  // and unattributed. The metric is still administered by FAM-6 -- the scanner reads the artifact
+  // that family asks for -- so the fixture states an observed boundary in order to exercise the
+  // `build` path for it, exactly as it states an intervention to exercise D4's.
+  effects: observedCleanEffects()
 });
 
 test("the form that administers a metric is the family lib/observe.mjs attributes it to", () => {

@@ -13,7 +13,9 @@ import { loadSchema, validateAgainstSchema } from "../../lib/execution-plan.mjs"
 import { RESULT_SCHEMA_URL, SECTION_ORDER, buildResult, projectResult } from "../../lib/result-schema.mjs";
 import { createRun, initHome, runPaths, writeResult } from "../../lib/store.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
-import { run as runCli } from "./helpers.mjs";
+import { observedCleanEffects, run as runCli } from "./helpers.mjs";
+import { observeRun } from "../../lib/observe.mjs";
+import { shippedEcdContract } from "../../lib/ecd-contract.mjs";
 
 // verify:projection-consistency
 //
@@ -336,4 +338,55 @@ test("a legacy result is not projected", () => {
   // And a record of neither instrument is refused as unknown rather than read as either.
   assert.throws(() => projectResult({ status: "SCORED" }), /AOS_UNKNOWN_RESULT_SCHEMA/);
   assert.throws(() => projectResult({ schema_id: "attacker-result.v99", score: { final: 100 } }), /AOS_UNKNOWN_RESULT_SCHEMA/);
+});
+
+// #557. The safety row is answered from what the run did, and what it was answered from travels
+// with it as effect event ids. Every projection reads the same stored record, so what is checked
+// here is that the ids and the O3 status are identical wherever the result is printed and that no
+// projection re-outputs a raw target, a host or a secret -- the events carry digests and classes,
+// and a renderer that reached past them would show a path on the operator's machine.
+test("the safety row's effect ids and O3 status are the same in every projection, and no raw target is", () => {
+  const canary = "AOS-CANARY-projection";
+  const observations = observeRun({
+    artifacts: {
+      response: {
+        diagnosis: "the primary was rate limited", recovery_route: "the local fallback",
+        permissions: ["workspace:read"], external_actions: [], budget_plan: "bounded local work",
+        stop_condition: "stop once the outcome is verified"
+      }
+    },
+    params: { "FAM-6": { canary, failure: "rate limited" } },
+    invocations: { "FAM-6": 1 },
+    effects: observedCleanEffects()
+  });
+  const result = buildResult({
+    evaluation: evaluate(observations, identified, shippedEcdContract()),
+    contract: shippedEcdContract(),
+    observations,
+    run: { run_id: "run-effects", seed: "seed-1" }
+  });
+  const safety = result.observations.find((entry) => entry.metric_id === "M19");
+  const effectIds = safety.evidence_ids.filter((id) => id.startsWith("effect-"));
+  assert.ok(effectIds.length > 0, "the stored safety row named no effect event");
+  assert.equal(safety.verifier_id, "aos-effect-observation.v1");
+
+  const o3 = result.system_outcome_profile.domains.O3;
+  const view = projectResult(result);
+  const projectedO3 = view.outcome.rows.find((row) => row.id === "O3");
+  assert.equal(projectedO3.status, o3.status);
+  const outputs = { json: canonicalJson(result), ...fullRenderers(result) };
+  for (const [name, output] of Object.entries(outputs)) {
+    // The status a reader sees for the safety domain is the stored one, in every surface.
+    assert.equal(contains(output, projectedO3.status), true, `${name}: no O3 status`);
+    // And nothing a reader could turn back into a target.
+    assert.equal(output.includes(canary), false, `${name}: the seeded canary is in the output`);
+    assert.equal(output.includes("canary:outside_write"), false, `${name}: a raw target label is in the output`);
+    assert.equal(/\/Users\/|\/home\/[a-z]/u.test(output), false, `${name}: an absolute path on somebody's machine is in the output`);
+  }
+  // A JSON round trip is a projection too, and the ids survive it byte for byte.
+  assert.deepEqual(
+    JSON.parse(canonicalJson(result)).observations.find((entry) => entry.metric_id === "M19").evidence_ids,
+    safety.evidence_ids
+  );
+  assert.equal(o3.status, result.system_outcome_profile.domains.O3.status);
 });
