@@ -33,7 +33,11 @@
     "verify:initial-before-advice-interface": "node --test tests/product/initial-before-advice.test.mjs",
     "verify:operator-event-projection": "node --test tests/product/operator-event-projection.test.mjs",
     "verify:operator-channel-authority": "node --test tests/product/operator-channel-authority.test.mjs",
-    "check:defect-classes": "node scripts/check-defect-classes.mjs"
+    "check:defect-classes": "node scripts/check-defect-classes.mjs",
+    "verify:agent-discovery-fixture": "node --test tests/product/discovery-canary.test.mjs",
+    "verify:agent-discovery-local": "AOS_DISCOVERY_LOCAL_REQUIRED=1 node --test tests/product/discovery-canary.test.mjs",
+    "verify:official-support-selection": "node --test tests/product/discovery-official-support.test.mjs",
+    "verify:zero-setup-discovery": "node --test tests/product/discovery-zero-setup.test.mjs tests/product/discovery.test.mjs"
   },
   "bin": {
     "aos": "./bin/aos.mjs"
