@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { observeRun } from "../../lib/observe.mjs";
-import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord } from "../../lib/routing-oracle.mjs";
+import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, routingObservables } from "../../lib/routing-oracle.mjs";
 
 const WORK = {
   tasks: [
@@ -68,17 +68,31 @@ const m09 = ({ routes = MINIMAL, ledger = null, work = WORK, capabilities = CAPA
 const sub = (observation, id) => observation.subchecks.find((entry) => entry.id === id).pass;
 
 test("M09 carries no subcheck whose expression is true of every input", () => {
-  // The two that were. `simplest-adequate-route` distinguished nothing at all; this asks it a run
-  // it must fail, which is the only thing that shows it can.
+  // All four, each shown passing and then shown not passing. A subcheck that has never been
+  // observed to answer anything but `true` is the defect this issue exists to remove, so the
+  // falsifying run is named for each of them rather than for the two that were tautologies.
+  const ledger = ledgerFor(MINIMAL);
+  const passing = m09({ routes: MINIMAL });
+  for (const id of ["capability-matches-task", "simplest-adequate-route", "no-redundant-invocation", "invocation-budget-respected"]) {
+    assert.equal(sub(passing, id), true, `${id} does not pass on a run that satisfies it`);
+  }
+  assert.equal(passing.value, 1);
+
+  // `simplest-adequate-route` distinguished nothing at all: `new Set(n).size <= n`.
   const spread = { contract: "strong", implementation: "other", docs: "strong", verification: "other", release: "strong" };
-  assert.equal(sub(m09({ routes: MINIMAL }), "simplest-adequate-route"), true);
   assert.equal(sub(m09({ routes: spread }), "simplest-adequate-route"), false);
 
   // `capability-matches-task` was satisfied by any non-empty string. An owner AOS holds no record
   // for is now not an owner that matched.
-  assert.equal(sub(m09({ routes: MINIMAL }), "capability-matches-task"), true);
-  const unregistered = { ...MINIMAL, docs: "someone-else" };
-  assert.equal(sub(m09({ routes: unregistered }), "capability-matches-task"), null);
+  assert.equal(sub(m09({ routes: { ...MINIMAL, docs: "someone-else" } }), "capability-matches-task"), null);
+  // And a known shortfall is a fail rather than a silence.
+  const narrow = new Map([...CAPABILITIES(), ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "aos-known" })]]);
+  assert.equal(sub(m09({ routes: { ...MINIMAL, verification: "narrow" }, capabilities: narrow }), "capability-matches-task"), false);
+
+  const repeat = { ...ledger[0], invocation_id: "invocation-repeat" };
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: [...ledger, repeat] }), "no-redundant-invocation"), false);
+  const extra = { ...ledger[0], invocation_id: "invocation-extra", artifact_ids: ["artifact-extra"] };
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: [...ledger, extra] }), "invocation-budget-respected"), false);
 });
 
 test("one redundant agent lowers routing minimality and nothing else", () => {
@@ -111,7 +125,10 @@ test("the same plan text with a different actual route is judged by the actual r
 
   assert.equal(sub(followed, "simplest-adequate-route"), true);
   assert.equal(sub(diverged, "simplest-adequate-route"), false);
-  assert.match(diverged.subchecks.length > 0 ? followed.verifier_id : "", /aos-route-oracle/u);
+  // The plan is the same object in both, so nothing about the artifact explains the difference.
+  assert.equal(followed.verifier_id, "aos-route-oracle.v1");
+  assert.equal(diverged.verifier_id, "aos-route-oracle.v1");
+  assert.notEqual(followed.value, diverged.value);
 });
 
 test("a perfect declaration with no invocation event cannot reach full credit", () => {
@@ -132,9 +149,21 @@ test("an actual route whose owner AOS knows nothing about is not observed", () =
 
 test("routing the independent verifier to the owner of the work it checks fails independence", () => {
   const sameOwner = { contract: "strong", implementation: "strong", docs: "strong", verification: "strong", release: "strong" };
+  const input = { work: WORK, plan: PLAN(sameOwner), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(sameOwner) };
+
+  // The independence observable itself, by name, not only the minimality verdict it also sinks.
+  const independence = routingObservables(input).oracle.observables
+    .find((entry) => entry.observable_id === "verification-independence");
+  assert.equal(independence.pass, false);
+  assert.match(independence.reason, /verification and implementation share owner strong/u);
+
+  // And it reaches the metric, through the one subcheck adequacy is asked on.
   const observation = m09({ routes: sameOwner });
   assert.equal(sub(observation, "simplest-adequate-route"), false);
-  // Named on the record rather than only folded into the minimality verdict.
+  assert.match(
+    routingObservables(input).oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route").reason,
+    /not adequate/u
+  );
   assert.equal(sub(m09({ routes: MINIMAL }), "simplest-adequate-route"), true);
   assert.notEqual(observation.value, 1);
 });

@@ -131,11 +131,19 @@ test("a work graph naming a dependency that is not a task is refused", () => {
 
 test("a prototype key in the work does not become a task through Object.prototype", () => {
   for (const key of corpus.classes["prototype-keys"].cases) {
-    const derived = requirementsFromWork({ tasks: [{ id: key, resource: "r", depends_on: [] }, { id: "real", resource: "r2", depends_on: [key] }] });
+    const derived = requirementsFromWork({ tasks: [{ id: key, resource: "shared", depends_on: [] }, { id: "real", resource: "shared", depends_on: [key] }] });
     assert.deepEqual(derived.problems, [], `${key} was refused as a task id`);
+    // Present as a task, which a plain object would have swallowed: `__proto__` written to an object
+    // literal writes through the setter and then does not appear in `Object.keys`.
     assert.deepEqual(derived.requirements.map((entry) => entry.task_id).sort(), [key, "real"].sort());
+    // And it is a task the rest of the derivation can see: `real` re-enters its resource, so it is
+    // the task that checks it.
+    assert.deepEqual(derived.requirements.find((entry) => entry.task_id === "real").forbidden_same_owner_with, [key]);
+    // Nothing reached the prototype: a fresh object has none of these as its own or inherited value.
+    assert.equal({}[key === "__proto__" ? "resource" : key] === "shared", false, `${key} wrote through to Object.prototype`);
   }
   assert.equal(Object.prototype.polluted, undefined);
+  assert.equal(Object.hasOwn(Object.prototype, "shared"), false);
 });
 
 test("a work graph larger than the declared bound is refused, not sampled", () => {
