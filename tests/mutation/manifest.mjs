@@ -2571,8 +2571,8 @@ export const GUARDS = [
     guard: "a run the cycle cannot identify closes it",
     reason: "gating the refusal on a run's validity let a run with no provenance record at all sit inside an issued cycle, which is the completion condition -- every Run carries one -- read as its opposite",
     file: "lib/model-identity.mjs",
-    from: "  if (valid.some((run) => !identifies(run))) return null;",
-    to: "  if (valid.some((run) => run.valid === true && !run.model_identity?.by_agent)) return null;",
+    from: "      && typeof entry.runtime_identity_status === \"string\");",
+    to: "      && true);",
     test: "tests/product/model-identity.test.mjs",
     name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
   },

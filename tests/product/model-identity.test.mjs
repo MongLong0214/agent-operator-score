@@ -747,6 +747,21 @@ test("a cycle is judged over the agents that ran, whether or not their runs earn
       profile_digest: "d".repeat(64)
     })
   };
+  // An agent named with the answer missing is the same state a third time: every field the merge
+  // reads falls back to the binding, so a partial entry was answered with the registration -- the
+  // substitution the merge exists to prevent (#561 round 13).
+  const partial = {
+    valid: false,
+    model_identity: modelIdentityRecord({
+      by_agent: agent("solo", { provenance: resolveModelProvenance({ declared: declared(EXACT_A) }), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" }),
+      profile_digest: "d".repeat(64)
+    })
+  };
+  for (const field of ["provenance", "runtime_identity_status"]) {
+    const stripped = JSON.parse(JSON.stringify(partial));
+    delete stripped.model_identity.by_agent.solo[field];
+    assert.equal(cycleModelIdentity({ binding, runs: [unissued, stripped] }), null, `a run missing ${field} was answered with the binding`);
+  }
   const withUnnamed = cycleModelIdentity({ binding, runs: [unissued, unnamedRun] });
   assert.equal(withUnnamed.by_agent.solo.provenance.status, "UNKNOWN", "the cycle answered with the model the run failed to name");
   assert.equal(withUnnamed.profile_bound_aggregation.status, "withheld");
