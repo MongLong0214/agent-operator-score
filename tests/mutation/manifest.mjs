@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "a subcheck verdict is one of three states, never rounded",
+    reason: "coercing an unrecognised answer to false is how a verifier's withheld state becomes the operator getting it wrong, which is the defect this release spent forty rounds on in other shapes",
+    file: "lib/metrics.mjs",
+    from: "    if (entry.pass !== true && entry.pass !== false && entry.pass !== null) {",
+    to: "    if (false) {",
+    test: "tests/product/routing-requirements.test.mjs",
+    name: "a subcheck verdict that is not one of the three states is refused, not rounded to a failure"
+  },
+  {
     guard: "a route label that is not an identifier assigns nobody",
     reason: "the declared side of an assignment is text out of the artifact under measurement, and a label with a newline or a path in it names nobody -- accepting one would put untrusted text into the record and let it answer a question about an owner",
     file: "lib/routing-oracle.mjs",
@@ -46,7 +55,7 @@ export const GUARDS = [
     guard: "route cost counts the handoffs a split buys",
     reason: "without the handoff term every assignment costs the same and `simplest-adequate-route` is a tautology again, which is the defect this issue exists to remove",
     file: "lib/routing-oracle.mjs",
-    from: "  return invocations + requirement.depends_on.filter((dependency) => ownerOf.get(dependency) !== owner).length;",
+    from: "  return invocations + dependenciesOf(requirement).filter((dependency) => ownerOf.get(dependency) !== owner).length;",
     to: "  return invocations;",
     test: "tests/product/routing-counterfactual.test.mjs",
     name: "one redundant agent lowers routing minimality and nothing else"
@@ -3568,6 +3577,7 @@ export const ACCOUNTED_GUARDS = [
   "a status this build does not know is refused",
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
+  "a subcheck verdict is one of three states, never rounded",
   "a surface carries the rows it says it averaged",
   "a task re-entering an ancestor's resource is the one that checks it",
   "a truncated cycle search says so",

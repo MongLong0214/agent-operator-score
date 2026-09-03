@@ -38,6 +38,7 @@ import {
   routeOracle,
   routeOracleDigest,
   routeOracleEvidenceId,
+  routingObservables,
   validateActualRouteEvent,
   validateAgentCapability,
   validateRoutingRequirement
@@ -242,4 +243,26 @@ test("the collision verdict says which authority decided it", () => {
   // The ledger answers it even where the schedule also would, so the stronger authority is the one
   // recorded.
   assert.deepEqual(collision(apart, schedule).basis, ["invocation-ledger"]);
+});
+
+test("the scored row and the oracle record describe the same oracle", () => {
+  // `assess` builds both from one frozen input object, so the digest the M09 row carries as evidence
+  // has to be the digest of the record written beside the run. If the two could differ, the number
+  // and the working it rests on would be two different oracles with one name.
+  const capabilities = twoKnown();
+  const plan = { tasks: WORK.tasks.map((task) => ({ id: task.id, route: "one", depends_on: task.depends_on })) };
+  const input = { work: WORK, plan, capabilities, actual_route_events: [event({ agent_id: "one" })] };
+
+  const observation = observeRun({ artifacts: { plan }, params: { "FAM-3": {} }, routing: input })
+    .find((entry) => entry.metric_id === "M09");
+  const record = routingObservables(input).oracle;
+
+  assert.equal(observation.verifier_id, record.verifier_id);
+  assert.equal(
+    observation.evidence_ids.includes(routeOracleEvidenceId(record.route_oracle_digest)),
+    true,
+    "the scored row names a different oracle record from the one written beside the run"
+  );
+  // And the digest is the record's own, recomputed rather than read off it.
+  assert.equal(routeOracleDigest(record), record.route_oracle_digest);
 });

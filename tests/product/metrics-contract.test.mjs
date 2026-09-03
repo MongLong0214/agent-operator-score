@@ -75,14 +75,25 @@ test("a metric answered with some of its questions is refused", () => {
 test("only a literal true is a pass", () => {
   // A verifier that returns pass: "false" or pass: 1 is answering in a shape nobody agreed on, and
   // a truthiness test would score the string "false" as a pass.
-  const loose = observationOf({
+  //
+  // #558 made the unrecognised answer a refusal rather than a `false`. The property this test was
+  // written for is unchanged and stronger: nothing but a literal `true` reaches a pass. What moved
+  // is the other side -- rounding an answer down to `false` reported a verifier that had said
+  // something nobody agreed on as the operator getting it wrong, and a `false` drives ceilings.
+  const loose = (pass) => observationOf({
     metric_id: "M19",
     verifier_id: "v",
-    subchecks: METRICS.M19.subchecks.map((id, index) => ({ id, pass: [true, "true", 1, "yes"][index] })),
+    subchecks: METRICS.M19.subchecks.map((id, index) => ({ id, pass: index === 0 ? true : pass })),
     reason: "r"
   });
-  assert.equal(loose.value, 0.25, "a truthy non-boolean was counted as a pass");
-  assert.deepEqual(loose.subchecks.map((entry) => entry.pass), [true, false, false, false]);
+  for (const pass of ["true", 1, "yes", "false", 0, {}]) {
+    assert.throws(() => loose(pass), /AOS_INVALID_SUBCHECK_VERDICT M19\./u, `${JSON.stringify(pass)} was rounded instead of refused`);
+  }
+  // The three that are answers.
+  assert.equal(loose(false).value, 0.25, "a truthy non-boolean was counted as a pass");
+  assert.deepEqual(loose(false).subchecks.map((entry) => entry.pass), [true, false, false, false]);
+  assert.deepEqual(loose(null).subchecks.map((entry) => entry.pass), [true, null, null, null]);
+  assert.equal(loose(true).value, 1);
 });
 
 test("an observation carries who decided it and what from", () => {

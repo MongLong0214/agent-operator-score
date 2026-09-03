@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
-import { METRICS } from "../../lib/metrics.mjs";
+import { METRICS, observationOf } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
@@ -30,6 +30,7 @@ import {
   ROUTING_REQUIREMENT_SCHEMA,
   capabilityDigestOf,
   capabilityRecord,
+  dependenciesOf,
   capabilityRecordsFor,
   delegationOracle,
   minimumRoute,
@@ -209,4 +210,40 @@ test("an actual route event with an impossible instant is refused", () => {
     1,
     "an invocation cannot finish before it starts"
   );
+});
+
+test("a subcheck verdict that is not one of the three states is refused, not rounded to a failure", () => {
+  // The oracle answers `null` for every question it cannot reach. Coercing an unrecognised answer
+  // to `false` is how a withheld routing verdict becomes a routing failure, so the metric layer
+  // refuses one rather than rounding it.
+  const four = METRICS.M09.subchecks;
+  const answer = (pass) => observationOf({
+    metric_id: "M09",
+    verifier_id: "aos-route-oracle.v1",
+    subchecks: four.map((id, index) => ({ id, pass: index === 0 ? pass : true })),
+    reason: "test"
+  });
+  assert.equal(answer(null).subchecks[0].pass, null);
+  assert.equal(answer(false).subchecks[0].pass, false);
+  assert.equal(answer(true).value, 1);
+  for (const bad of ["NOT_OBSERVED", undefined, 0, 1, {}, []]) {
+    assert.throws(() => answer(bad), /AOS_INVALID_SUBCHECK_VERDICT M09\.capability-matches-task/u, `${JSON.stringify(bad) ?? "undefined"} was rounded instead of refused`);
+  }
+});
+
+test("a requirement states its order once, as handoffs, and an edge that arrives elsewhere is refused", () => {
+  const [verification] = requirementsFromWork(WORK).requirements.filter((entry) => entry.task_id === "verification");
+  assert.deepEqual(verification.required_handoffs, ["implementation->verification"]);
+  assert.deepEqual(dependenciesOf(verification), ["implementation"]);
+  assert.equal(Object.hasOwn(verification, "depends_on"), false, "the order is written twice, so the two can disagree");
+
+  // An edge that arrives at some other task is not this task's handoff.
+  assert.equal(validateRoutingRequirement({ ...verification, required_handoffs: ["implementation->release"] }).length, 1);
+  assert.equal(validateRoutingRequirement({ ...verification, required_handoffs: ["implementation"] }).length, 1);
+  assert.equal(validateRoutingRequirement({ ...verification, required_handoffs: ["->verification"] }).length, 1);
+
+  // And a task id that would make an edge ambiguous is refused at the source.
+  const derived = requirementsFromWork({ tasks: [{ id: "a->b", resource: "r", depends_on: [] }] });
+  assert.deepEqual(derived.requirements, []);
+  assert.match(derived.problems.join(" "), /is how a handoff is spelled/u);
 });
