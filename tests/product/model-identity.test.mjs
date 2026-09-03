@@ -733,6 +733,24 @@ test("a cycle is judged over the agents that ran, whether or not their runs earn
   assert.equal(cycleModelIdentity({ binding, runs: [{ ...unissued, valid: true }, { valid: true, model_identity: null }] }), null);
   assert.equal(cycleModelIdentity({ binding, runs: [unissued, { valid: false, invalid_reason: "NOT_ISSUED", model_identity: null }] }), null);
   assert.equal(cycleModelIdentity({ binding, runs: [unissued, { invalid_reason: "NOT_ISSUED" }] }), null);
+  // A record with no agent in it, and one whose agent could not name what it ran, are the same
+  // state as no record spelled two other ways. Asking only whether `by_agent` was an object let
+  // the first through, and reading provenance off the binding let the second be answered with the
+  // model the run was supposed to have used (#561 round 12).
+  const empty = { valid: false, model_identity: modelIdentityRecord({ by_agent: {}, profile_digest: "d".repeat(64) }) };
+  assert.equal(cycleModelIdentity({ binding, runs: [unissued, empty] }), null);
+  const unnamedRun = {
+    valid: false,
+    invalid_reason: "PROFILE_CHANGED",
+    model_identity: modelIdentityRecord({
+      by_agent: agent("solo", { provenance: resolveModelProvenance({}), verification: null, runtime_identity_digest: identity().identity_digest, runtime_identity_status: "VERIFIED" }),
+      profile_digest: "d".repeat(64)
+    })
+  };
+  const withUnnamed = cycleModelIdentity({ binding, runs: [unissued, unnamedRun] });
+  assert.equal(withUnnamed.by_agent.solo.provenance.status, "UNKNOWN", "the cycle answered with the model the run failed to name");
+  assert.equal(withUnnamed.profile_bound_aggregation.status, "withheld");
+  assert.equal(withUnnamed.profile_bound_aggregation.reason, "MODEL_UNKNOWN");
 });
 
 test("one contradicted run withholds the whole cycle, however many others agreed", () => {

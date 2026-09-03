@@ -2547,10 +2547,19 @@ export const GUARDS = [
     name: "a cycle over an unknown model completes its runs and withholds the profile-bound aggregate by name"
   },
   {
+    guard: "a cycle answers with the provenance its runs resolved",
+    reason: "reading the binding alone let a run whose own provenance resolved to UNKNOWN sit inside a cycle reporting the exact model it was supposed to have used -- the run said it could not name what it ran and the cycle answered anyway",
+    file: "lib/model-identity.mjs",
+    from: "      provenance: unnamed?.provenance ?? bound?.provenance ?? (named.length > 0 ? named[0].provenance : null),",
+    to: "      provenance: bound?.provenance ?? null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
+  },
+  {
     guard: "a run the cycle cannot identify closes it",
     reason: "gating the refusal on a run's validity let a run with no provenance record at all sit inside an issued cycle, which is the completion condition -- every Run carries one -- read as its opposite",
     file: "lib/model-identity.mjs",
-    from: "  if (valid.some((run) => !run.model_identity?.by_agent || typeof run.model_identity.by_agent !== \"object\")) return null;",
+    from: "  if (valid.some((run) => !identifies(run))) return null;",
     to: "  if (valid.some((run) => run.valid === true && !run.model_identity?.by_agent)) return null;",
     test: "tests/product/model-identity.test.mjs",
     name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
@@ -3550,6 +3559,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential is not a model id",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cycle answers with the provenance its runs resolved",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
   "a cycle reads the executable its runs saw",
