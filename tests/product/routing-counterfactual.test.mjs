@@ -223,3 +223,45 @@ test("no seeded requirement leaves every routing question unanswered rather than
   for (const entry of nothing.subchecks) assert.equal(entry.pass, null, `${entry.id} answered without a requirement`);
   assert.equal(nothing.value, 0);
 });
+
+test("removing only the artifact lowers only adequacy, and removing only the handoff lowers only that", () => {
+  // Directive §5.3 asks for the isolation, not just the failure: a run that differs from an adequate
+  // one in one piece of evidence has to differ in one verdict. Asserting the failure alone would
+  // pass against a module that failed everything whenever anything was missing.
+  const requirements = REQUIREMENT();
+  const complete = ledgerFor(MINIMAL);
+  const verdicts = (ledger) => Object.fromEntries(
+    routingObservables({ requirements, capabilities: CAPABILITIES(), actual_route_events: ledger })
+      .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
+
+  const base = verdicts(complete);
+  assert.equal(base["simplest-adequate-route"], true, "the run this measures deviation from is not adequate");
+
+  // The requirement AOS derives from FAM-3's work declares no artifacts, so the artifact half of the
+  // isolation is exercised on a requirement that does: one task, one artifact owed.
+  const [solo] = requirementsFromWork({ tasks: [{ id: "only", resource: "r", depends_on: [] }] }).requirements;
+  const owed = { ...solo, required_artifacts: Object.freeze(["artifact:out.json"]) };
+  const ran = (artifacts) => [{
+    schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
+    task_id: "only", agent_id: "strong", route_id: "strong", invocation_id: "invocation-1", purpose_id: "only",
+    started_at: null, completed_at: null, artifact_ids: artifacts, handoff_ids: [],
+    capability_digest: null, operator_decision_event_id: null, operator_opportunity_id: null
+  }];
+  const withArtifact = Object.fromEntries(routingObservables({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran(["artifact:out.json"]) })
+    .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
+  const withoutArtifact = Object.fromEntries(routingObservables({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran([]) })
+    .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
+  assert.equal(withArtifact["simplest-adequate-route"], true);
+  assert.equal(withoutArtifact["simplest-adequate-route"], false);
+  for (const id of ["capability-matches-task", "no-redundant-invocation", "invocation-budget-respected"]) {
+    assert.equal(withoutArtifact[id], withArtifact[id], `${id} moved when only the artifact was removed`);
+  }
+
+  // The handoff half, on the seeded requirement, which does declare handoffs.
+  const emptied = complete.map((entry) => ({ ...entry, handoff_ids: [] }));
+  const withoutHandoff = verdicts(emptied);
+  assert.equal(withoutHandoff["simplest-adequate-route"], false);
+  for (const id of ["capability-matches-task", "no-redundant-invocation", "invocation-budget-respected", "verification-independence"]) {
+    assert.equal(withoutHandoff[id], base[id], `${id} moved when only the handoff payload was removed`);
+  }
+});

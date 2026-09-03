@@ -1,0 +1,197 @@
+// #558 / directive §5.1. The requirement, the budget and the capability record are the operator's
+// and AOS's. This file is the adversary: for each of the seven ways an agent could reach into them,
+// it writes the artifact an agent would write and asserts nothing moved.
+//
+// These are negative tests in the strict sense -- every one of them passes by *not* changing an
+// answer -- so each also asserts the positive it is paired with, or it would pass just as well
+// against a module that answered nothing at all.
+
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  ACTUAL_ROUTE_EVENT_SCHEMA,
+  CAPABILITY_VOCABULARY,
+  capabilityRecord,
+  capabilityRecordsFor,
+  capabilityDigestOf,
+  requirementsFromRoute,
+  routeOracle,
+  routingObservables,
+  validateActualRouteEvent
+} from "../../lib/routing-oracle.mjs";
+
+const OPERATOR_ROUTE = "alpha>beta";
+const REQUIREMENT = () => requirementsFromRoute({
+  form_id: "FAM-3",
+  route: OPERATOR_ROUTE,
+  required_artifacts: ["artifact:plan.json"]
+});
+
+const CAPABILITIES = () => capabilityRecordsFor({
+  alpha: { id: "alpha", adapter: "codex-cli.v1" },
+  beta: { id: "beta", adapter: "codex-cli.v1" }
+});
+
+const event = (taskId, agentId, overrides = {}) => ({
+  schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
+  task_id: taskId,
+  agent_id: agentId,
+  route_id: OPERATOR_ROUTE,
+  invocation_id: `invocation-${taskId}`,
+  purpose_id: taskId,
+  started_at: null,
+  completed_at: null,
+  artifact_ids: [],
+  handoff_ids: [],
+  capability_digest: null,
+  operator_decision_event_id: null,
+  operator_opportunity_id: null,
+  ...overrides
+});
+
+const LEDGER = () => [
+  event("FAM-3/stage-1", "alpha", { artifact_ids: ["artifact-1"] }),
+  event("FAM-3/stage-2", "beta", { artifact_ids: ["artifact:plan.json"], handoff_ids: ["FAM-3/stage-1->FAM-3/stage-2"] })
+];
+
+const oracleFor = (plan, ledger = LEDGER()) => routingObservables({
+  requirements: REQUIREMENT().requirements,
+  requirement_problems: REQUIREMENT().problems,
+  plan,
+  capabilities: CAPABILITIES(),
+  actual_route_events: ledger
+}).oracle;
+
+const verdicts = (oracle) => Object.fromEntries(oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
+
+// The run this file measures deviation from. If this stops passing, every assertion below is
+// comparing two identical failures.
+const HONEST = () => oracleFor({ tasks: [{ id: "contract", route: "alpha", depends_on: [] }] });
+
+test("the reference run this file measures against is answered, not withheld", () => {
+  const baseline = verdicts(HONEST());
+  assert.equal(baseline["capability-matches-task"], true);
+  assert.equal(baseline["simplest-adequate-route"], true);
+  assert.equal(baseline["no-redundant-invocation"], true);
+  assert.equal(baseline["invocation-budget-respected"], true);
+  assert.equal(baseline["verification-independence"], true);
+});
+
+test("an agent that writes a different route label changes no requirement and no owner", () => {
+  // The plan is the agent's. It can name whatever route it likes; the requirement is the route the
+  // operator declared, and the owner is the agent AOS invoked.
+  const hostile = oracleFor({
+    tasks: [{ id: "contract", route: "an-agent-i-invented", depends_on: [] }],
+    route: "an-agent-i-invented>and-another"
+  });
+  assert.deepEqual(verdicts(hostile), verdicts(HONEST()));
+  assert.deepEqual(hostile.requirements.map((entry) => entry.task_id), ["FAM-3/stage-1", "FAM-3/stage-2"]);
+  for (const row of hostile.assignment) assert.equal(["alpha", "beta"].includes(row.owner_id), true, `${row.task_id} went to ${row.owner_id}`);
+  assert.equal(hostile.route_oracle_digest, HONEST().route_oracle_digest, "the artifact moved the record it is the subject of");
+});
+
+test("an agent that invents a task id adds no task and, as an event, is refused", () => {
+  const hostile = oracleFor({ tasks: [{ id: "a-task-nobody-asked-for", route: "alpha", depends_on: [] }] });
+  assert.deepEqual(hostile.requirements.map((entry) => entry.task_id), ["FAM-3/stage-1", "FAM-3/stage-2"]);
+  assert.deepEqual(verdicts(hostile), verdicts(HONEST()));
+
+  // And the same id arriving as a ledger event is refused rather than dropped.
+  const forged = oracleFor(null, [...LEDGER(), event("a-task-nobody-asked-for", "alpha", { invocation_id: "invocation-forged" })]);
+  assert.equal(forged.rejected_route_events.length, 1);
+  assert.match(forged.rejected_route_events[0].reason, /is not a task in this run's routing requirement/u);
+});
+
+test("an agent cannot raise the invocation or cost budget it is measured against", () => {
+  const budgets = (oracle) => oracle.requirements.map((entry) => [entry.task_id, entry.max_invocations, entry.route_cost_budget]);
+  const hostile = oracleFor({
+    tasks: [{ id: "contract", route: "alpha", depends_on: [], max_invocations: 99, route_cost_budget: 99 }],
+    max_invocations: 99,
+    budget: { max_total_invocations: 99 }
+  });
+  assert.deepEqual(budgets(hostile), budgets(HONEST()));
+  assert.deepEqual(budgets(hostile), [["FAM-3/stage-1", 1, 1], ["FAM-3/stage-2", 1, 2]]);
+
+  // The budget still bites: a second invocation of one stage fails it whatever the plan asked for.
+  const twice = oracleFor({ tasks: [] }, [...LEDGER(), event("FAM-3/stage-1", "alpha", { invocation_id: "invocation-again", artifact_ids: ["artifact-again"] })]);
+  assert.equal(verdicts(twice)["invocation-budget-respected"], false);
+});
+
+test("an agent cannot remove a required artifact from the requirement", () => {
+  const artifacts = (oracle) => oracle.requirements.flatMap((entry) => entry.required_artifacts);
+  const hostile = oracleFor({ tasks: [{ id: "contract", route: "alpha", depends_on: [] }], required_artifacts: [] });
+  assert.deepEqual(artifacts(hostile), ["artifact:plan.json"]);
+  assert.deepEqual(verdicts(hostile), verdicts(HONEST()));
+
+  // And the obligation still bites when the ledger does not show the artifact.
+  const without = oracleFor(null, [LEDGER()[0], { ...LEDGER()[1], artifact_ids: [] }]);
+  assert.equal(verdicts(without)["simplest-adequate-route"], false);
+  assert.equal(without.constraint_failures.some((entry) => entry.constraint === "artifact"), true);
+});
+
+test("an agent cannot declare itself a runtime AOS holds a capability record for", () => {
+  // The capability record is built from the operator's registration and AOS's adapter table. An
+  // artifact claiming an adapter is text in a file the oracle never reads for this.
+  const claimed = capabilityRecordsFor({ ghost: { id: "ghost", adapter: "codex-cli.v1", declared_by: "the agent" } });
+  const honestly = capabilityRecordsFor({ ghost: { id: "ghost" } });
+  assert.equal(claimed.get("ghost").source, "aos-known", "an operator registration is the operator's");
+  assert.equal(honestly.get("ghost").source, "unknown");
+
+  // What an agent can reach -- the plan -- moves nothing.
+  const hostile = oracleFor({
+    tasks: [{ id: "contract", route: "alpha", depends_on: [] }],
+    agent_capabilities: { alpha: [...CAPABILITY_VOCABULARY] },
+    adapter: "codex-cli.v1"
+  });
+  assert.deepEqual(
+    hostile.capabilities.map((entry) => [entry.agent_id, entry.source]),
+    HONEST().capabilities.map((entry) => [entry.agent_id, entry.source])
+  );
+
+  // And a capability digest submitted on an event is recomputed, never believed.
+  const forged = oracleFor(null, [
+    { ...LEDGER()[0], capability_digest: `sha256:${"0".repeat(64)}` },
+    LEDGER()[1]
+  ]);
+  assert.equal(forged.rejected_route_events.length, 1);
+  assert.match(forged.rejected_route_events[0].reason, /not the digest of the record AOS holds/u);
+  assert.equal(capabilityDigestOf(CAPABILITIES().get("alpha")), CAPABILITIES().get("alpha").capability_digest);
+});
+
+test("an opportunity id offered as the operator event id is refused in both directions", () => {
+  const opportunity = "opp-FAM-3-stage-1-1";
+  const operatorEvent = "operator-2f1c4d0e-9b7a-4c31-8f52-0a6d3b8e1c47";
+  assert.deepEqual(validateActualRouteEvent(event("FAM-3/stage-1", "alpha", { operator_opportunity_id: opportunity })), []);
+  assert.equal(validateActualRouteEvent(event("FAM-3/stage-1", "alpha", { operator_decision_event_id: opportunity })).length, 1);
+  assert.equal(validateActualRouteEvent(event("FAM-3/stage-1", "alpha", { operator_opportunity_id: operatorEvent })).length, 1);
+});
+
+test("the requirement is a function of the operator's route alone, so a record edited later re-derives", () => {
+  // There is no path from a run's artifacts back into the requirement: it is built by
+  // `requirementsFromRoute` from the route string and the artifact list AOS states, and
+  // `routingObservables` derives nothing from the plan except the diagnostic proposal and schedule.
+  // So the same route always produces the same requirement, and an edited plan cannot change it.
+  const first = requirementsFromRoute({ form_id: "FAM-3", route: OPERATOR_ROUTE, required_artifacts: ["artifact:plan.json"] });
+  const again = requirementsFromRoute({ form_id: "FAM-3", route: OPERATOR_ROUTE, required_artifacts: ["artifact:plan.json"] });
+  assert.deepEqual(first, again);
+
+  // A different route is a different requirement, which is what makes the sameness above a fact
+  // about the input rather than about the function ignoring it.
+  const other = requirementsFromRoute({ form_id: "FAM-3", route: "alpha", required_artifacts: ["artifact:plan.json"] });
+  assert.notDeepEqual(other.requirements.map((entry) => entry.task_id), first.requirements.map((entry) => entry.task_id));
+
+  // And the plan reaches nothing at all. Since the requirement's tasks became the stages AOS runs,
+  // the plan's own task ids cannot line up with them, so the proposal and the declared schedule are
+  // both empty however hostile the artifact is. That is stronger than the diagnostic-only rule it
+  // replaced -- there is no path from the artifact into the record to argue about -- and it is
+  // recorded here rather than left as two fields a reader would assume were populated.
+  const oracle = oracleFor({
+    tasks: [{ id: "contract", route: "someone-else", depends_on: [] }, { id: "FAM-3/stage-1", route: "someone-else", depends_on: [] }]
+  });
+  assert.equal(JSON.stringify(oracle.requirements).includes("someone-else"), false, "the artifact reached the requirement");
+  assert.equal(JSON.stringify(oracle.observables).includes("someone-else"), false, "the artifact reached a verdict");
+  // Even a plan that guesses the stage id: the ledger already assigned that task, and the ledger wins.
+  assert.equal(oracle.assignment.find((entry) => entry.task_id === "FAM-3/stage-1").owner_id, "alpha");
+  assert.equal(oracle.assignment.find((entry) => entry.task_id === "FAM-3/stage-1").provenance, "actual-route-event");
+  assert.deepEqual(verdicts(oracle), verdicts(HONEST()));
+});

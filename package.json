@@ -33,6 +33,7 @@
   "verify:actual-route-authority": "node --test tests/product/actual-route-authority.test.mjs",
   "verify:routing-counterfactual": "node --test tests/product/routing-counterfactual.test.mjs",
   "verify:routing-cli-authority": "node --test tests/product/routing-cli-authority.test.mjs",
+  "verify:routing-requirement-authority": "node --test tests/product/routing-requirement-authority.test.mjs",
   "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
