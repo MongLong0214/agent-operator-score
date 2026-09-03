@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, authorizeDeletion, deletionAuthorizationFindings, deletionEligibility, loadCompletionSnapshot, openPrHeadDeletionFindings } from "../../scripts/branch-audit.mjs";
+import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, loadCompletionSnapshot, makeDeletionRunner, openPrHeadDeletionFindings, runDeletion } from "../../scripts/branch-audit.mjs";
 import { observationDigest } from "../../scripts/collect-branch-state.mjs";
 
 // The prohibition in #572 that cannot be walked back: deleting the head branch of an open pull
@@ -40,6 +40,23 @@ const boundaryPair = () => {
   const gone = deletedNames();
   const post = observation({
     collected_at: "2026-09-10T00:01:00Z",
+    heads: pre.heads.filter((head) => !gone.has(head.name)),
+    rest_heads: pre.rest_heads.filter((head) => !gone.has(head.name))
+  });
+  return { pre, post };
+};
+
+/**
+ * The same pair, stamped around the real clock. The runner takes `completed_at` from the wall clock
+ * between its two collections, so a pair fixed at some other date fails the freshness window for a
+ * reason that has nothing to do with what is being tested.
+ */
+const iso = (offsetSeconds) => new Date(Date.now() + offsetSeconds * 1000).toISOString().replace(/\.\d{3}Z$/u, "Z");
+const livePair = () => {
+  const pre = observation({ collected_at: iso(-5) });
+  const gone = deletedNames();
+  const post = observation({
+    collected_at: iso(5),
     heads: pre.heads.filter((head) => !gone.has(head.name)),
     rest_heads: pre.rest_heads.filter((head) => !gone.has(head.name))
   });
@@ -215,6 +232,16 @@ test("a truncated reference sweep is refused rather than read as nothing found",
   assert.ok(findings.some((f) => f.includes("was not established")), `a truncated sweep passed as a complete one: ${findings.join(" | ")}`);
 });
 
+test("a capped pull request history blocks the deletion", () => {
+  const { post } = boundaryPair();
+  const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
+  const branch = Object.keys(pre.derivations)[0];
+  pre.derivations[branch].pr_history.complete = false;
+  pre.digest = observationDigest(pre);
+  const findings = authorize({ pre, post });
+  assert.ok(findings.some((f) => f.includes("bounded slice")), `a capped PR history authorized a deletion: ${findings.join(" | ")}`);
+});
+
 test("a live head the audit never covered blocks the deletion", () => {
   const { post } = boundaryPair();
   const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
@@ -228,21 +255,115 @@ test("the deletion is refused while the canonical snapshot still shows a blocker
   assert.ok(authorize({ completion }).some((f) => f.includes("still blocked")), "a deletion ran while a blocker was open");
 });
 
-// The gate collects the observation rather than accepting one, so it is not a value the deleting
-// party composes. `collect` is injectable only to drive both sides of the boundary from a test.
-test("the authorization entry point collects its own observation", () => {
-  const { pre, post } = boundaryPair();
-  let called = 0;
-  const collect = () => { called += 1; return structuredClone(pre); };
-  const findings = authorizeDeletion({ audit, log: completedLog(pre, post), completion: clearedCompletion(), post, collect });
-  assert.equal(called, 1, "the gate did not collect an observation of its own");
-  assert.deepEqual(findings, [], `a correct deletion was refused: ${findings.join(" | ")}`);
+// The gate collects both observations around the caller's action. Recollecting one side and
+// accepting the other closes nothing: the invariants are a comparison, and a comparison is only as
+// trustworthy as its worse operand.
+test("the gate collects both boundary observations itself, around the deletion", () => {
+  const { pre, post } = livePair();
+  const collected = [];
+  const gone = deletedNames();
+  let performedWith = null;
+  // The first call is before the deletion and the second after it, so the fake collector returns the
+  // state that actually corresponds to each moment.
+  const collect = () => { collected.push(1); return structuredClone(collected.length === 1 ? pre : post); };
+  const run = makeDeletionRunner(collect, clearedCompletion)({ audit, perform: (list) => { performedWith = list; } });
+  assert.equal(collected.length, 2, "the gate did not collect on both sides of the deletion");
+  assert.deepEqual(performedWith.map((entry) => entry.name).sort(), [...gone].sort(), "the gate did not act on exactly the eligible set");
+  assert.equal(run.authorized, true, `a correct deletion was refused: ${run.findings.join(" | ")}`);
+  assert.equal(run.log.status, "COMPLETED");
+  assert.equal(run.log.pre_observation.digest, observationDigest(pre), "the emitted log does not cite the observation the gate collected first");
+  assert.equal(run.log.post_observation.digest, observationDigest(post), "the emitted log does not cite the observation the gate collected last");
 });
 
-test("a collector that fails authorizes nothing", () => {
+// The reviewer's reproduction: a caller-composed pre observation from an injected collector plus a
+// caller-composed post observation used to authorize with no findings. Neither is a parameter now,
+// so passing them has no effect at all.
+// The set the gate acts on is the audit's eligible set narrowed by what is true right now. A branch
+// that moved, or picked up a pull request, after the audit was written is eligible on paper and must
+// not be touched.
+test("the gate does not act on a branch the live repository no longer agrees about", () => {
+  const eligible = deletionEligibility(audit).eligible;
+  assert.ok(eligible.length >= 2, "fewer than two eligible branches, so this test could not tell narrowing from refusal");
+  const moved = eligible[0].name;
+  const claimed = eligible[1].name;
+  const pre = observation({
+    collected_at: iso(-5),
+    heads: audit.live_observation.heads.map((head) => (head.name === moved ? { ...head, sha: "c".repeat(40) } : head)),
+    open_prs: [...audit.live_observation.open_prs, { number: 999, head_branch: claimed, head_sha: eligible[1].head_sha, base: "dev", state: "OPEN" }]
+  });
+  pre.rest_heads = pre.heads;
+  pre.digest = observationDigest(pre);
+  const post = observation({ collected_at: iso(5), heads: pre.heads, rest_heads: pre.heads });
+  let performedWith = null;
+  let calls = 0;
+  const collect = () => { calls += 1; return structuredClone(calls === 1 ? pre : post); };
+  const run = makeDeletionRunner(collect, clearedCompletion)({ audit, perform: (list) => { performedWith = list; } });
+  assert.deepEqual(performedWith, [], `the gate acted on a branch the live repository disagreed about: ${JSON.stringify(performedWith)}`);
+  assert.deepEqual(run.deleted, [], "the record claims deletions the gate did not make");
+});
+
+test("the gate has no parameter through which a composed observation reaches the decision", () => {
+  const { pre, post } = livePair();
+  const forgedPost = structuredClone(post);
+  forgedPost.protection = { main: { allow_deletions: { enabled: true } }, dev: post.protection.dev };
+  let calls = 0;
+  const honest = () => { calls += 1; return structuredClone(calls === 1 ? pre : forgedPost); };
+  // Every one of these keys was accepted by the previous entry point.
+  const run = makeDeletionRunner(honest, clearedCompletion)({
+    audit,
+    perform: () => {},
+    collect: () => structuredClone(pre),
+    pre: structuredClone(pre),
+    post: structuredClone(post),
+    completion: clearedCompletion(),
+    maxAgeSeconds: 10 ** 9
+  });
+  assert.equal(calls, 2, "an injected collect/pre/post parameter displaced the gate's own collection");
+  assert.ok(run.findings.some((f) => f.includes("main protection changed")), `the supplied post observation was used instead of the collected one: ${run.findings.join(" | ")}`);
+  assert.equal(run.authorized, false, "a deletion that loosened main's protection was authorized");
+});
+
+test("the exported gate exposes no collector at all", () => {
+  const { pre } = boundaryPair();
+  let injected = 0;
+  // `runDeletion` is bound to the real collector; passing one is inert. Offline it fails to collect,
+  // which is itself the assertion: the parameter did not take.
+  const run = runDeletion({ audit, perform: () => {}, collect: () => { injected += 1; return structuredClone(pre); } });
+  assert.equal(injected, 0, "runDeletion used a collector handed to it");
+  assert.equal(run.authorized, false, "runDeletion authorized a deletion without reaching the repository");
+});
+
+test("the prerequisites are read before anything is deleted, not after", () => {
   const { pre, post } = boundaryPair();
-  const collect = () => { throw new Error("github unreachable"); };
-  const findings = authorizeDeletion({ audit, log: completedLog(pre, post), completion: clearedCompletion(), post, collect });
-  assert.ok(findings.some((f) => f.includes("could not be collected")), `a failed collection did not block the deletion: ${findings.join(" | ")}`);
-  assert.notDeepEqual(findings, [], "a failed collection authorized the deletion");
+  let performed = false;
+  let collected = 0;
+  const collect = () => { collected += 1; return structuredClone(collected === 1 ? pre : post); };
+  // The real canonical snapshot still has a blocker open.
+  const run = makeDeletionRunner(collect)({ audit, perform: () => { performed = true; } });
+  assert.equal(performed, false, "the gate deleted before checking whether Phase B may start");
+  assert.equal(collected, 0, "the gate collected before checking whether Phase B may start");
+  assert.ok(run.findings.some((f) => f.includes("still blocked")), `the refusal does not name the open blocker: ${run.findings.join(" | ")}`);
+});
+
+test("a collector that fails authorizes nothing, on either side of the deletion", () => {
+  const { pre, post } = boundaryPair();
+  const before = makeDeletionRunner(() => { throw new Error("github unreachable"); }, clearedCompletion)({ audit, perform: () => {} });
+  assert.ok(before.findings.some((f) => f.includes("pre-deletion observation could not be collected")), `a failed first collection did not block: ${before.findings.join(" | ")}`);
+  assert.equal(before.log, null);
+
+  let calls = 0;
+  const failsAfter = () => { calls += 1; if (calls === 2) throw new Error("github unreachable"); return structuredClone(pre); };
+  const after = makeDeletionRunner(failsAfter, clearedCompletion)({ audit, perform: () => {} });
+  assert.ok(after.findings.some((f) => f.includes("post-deletion observation could not be collected")), `a failed second collection did not block: ${after.findings.join(" | ")}`);
+  assert.equal(after.log, null, "a deletion with no witness still emitted a record");
+});
+
+test("a deletion action that throws is still witnessed and reported", () => {
+  const { pre, post } = livePair();
+  let calls = 0;
+  const collect = () => { calls += 1; return structuredClone(calls === 1 ? pre : post); };
+  const run = makeDeletionRunner(collect, clearedCompletion)({ audit, perform: () => { throw new Error("push --delete refused"); } });
+  assert.equal(calls, 2, "a failed deletion was not witnessed");
+  assert.ok(run.findings.some((f) => f.includes("did not complete")), `a failed deletion was not reported: ${run.findings.join(" | ")}`);
+  assert.equal(run.authorized, false);
 });

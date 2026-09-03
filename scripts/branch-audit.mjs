@@ -310,6 +310,12 @@ export const derivationFindings = (audit, observation = audit?.live_observation)
     if (!entry.open_pr && openInHistory.length > 0) {
       findings.push(`${entry.name}: records no open PR, but the collected history shows #${openInHistory[0].number} open on it`);
     }
+    // "No pull request ever used this branch as a head" is a claim about everything, so a history
+    // read as a bounded slice does not support it: the pull request that was cut off looks exactly
+    // like the one that never existed.
+    if (derived.pr_history && derived.pr_history.complete !== true) {
+      findings.push(`${entry.name}: the pull request history was read as a bounded slice, so no claim about its PR history rests on it`);
+    }
     const sweep = (observation.reference_sweep ?? []).find((one) => one.branch === entry.name);
     if (!sweep) findings.push(`${entry.name}: no GitHub-wide reference sweep`);
     else if (sweep.complete !== true) findings.push(`${entry.name}: the reference sweep was truncated, so no reference claim rests on it`);
@@ -512,6 +518,29 @@ export const boundaryInvariantFindings = (deletionLog, pre, post) => {
   return findings;
 };
 
+/**
+ * Whether Phase B may start at all, read from the canonical snapshot rather than from anything the
+ * deletion record says about itself.
+ *
+ * Split out because two callers need the same answer: the log check, and the runner, which has to
+ * know before it deletes anything rather than after.
+ */
+export const prerequisiteFindings = (completion) => {
+  if (!completion) return ["no canonical issue-state snapshot was available to check the prerequisites against"];
+  const findings = [];
+  const byNumber = new Map((completion.issues ?? []).map((issue) => [issue.number, issue]));
+  for (const issue of DELETION_BLOCKED_BY) {
+    const canonical = byNumber.get(issue);
+    if (!canonical) {
+      findings.push(`the canonical issue-state snapshot has no record of #${issue}, so nothing says it cleared`);
+      continue;
+    }
+    if (canonical.state !== "closed") findings.push(`#${issue} is ${canonical.state} in the canonical issue-state snapshot, so Phase B is still blocked`);
+    if (!canonical.close_evidence) findings.push(`#${issue} has no close evidence in the canonical issue-state snapshot`);
+  }
+  return findings;
+};
+
 /** The canonical record of which issues are finished. Read, never restated. */
 export const loadCompletionSnapshot = (url = new URL("../fixtures/execution-plan/github-state.json", import.meta.url)) =>
   JSON.parse(readFileSync(url, "utf8"));
@@ -557,16 +586,12 @@ export const deletionLogFindings = (log, { completion = null } = {}) => {
   // The prerequisite is not the log's to clear. Free text saying #578 passed was accepted before,
   // which made "only after #578" a sentence rather than a condition.
   if (!completion) return [...findings, "the deletion log claims completion but no canonical issue-state snapshot was supplied to check its prerequisites against"];
+  findings.push(...prerequisiteFindings(completion));
   const byNumber = new Map((completion.issues ?? []).map((issue) => [issue.number, issue]));
   const claimed = new Map((log.blockers_cleared ?? []).map((entry) => [entry.issue, entry]));
   for (const issue of DELETION_BLOCKED_BY) {
     const canonical = byNumber.get(issue);
-    if (!canonical) {
-      findings.push(`the canonical issue-state snapshot has no record of #${issue}, so nothing says it cleared`);
-      continue;
-    }
-    if (canonical.state !== "closed") findings.push(`#${issue} is ${canonical.state} in the canonical issue-state snapshot, so Phase B is still blocked`);
-    if (!canonical.close_evidence) findings.push(`#${issue} has no close evidence in the canonical issue-state snapshot`);
+    if (!canonical) continue;
     const claim = claimed.get(issue);
     if (!claim) findings.push(`the deletion log does not record #${issue} among the blockers it cleared`);
     else if (claim.canonical_state && claim.canonical_state !== canonical.state) {
@@ -676,25 +701,112 @@ export const deletionAuthorizationFindings = ({ audit, log, pre = null, post = n
 };
 
 /**
- * The entry point Phase B is meant to call, and the reason it takes a collector rather than data.
+ * The entry point Phase B calls, and the reason it takes neither an observation nor a collector.
  *
- * A gate handed an observation is a gate deciding on whatever the caller chose to hand it. Here the
- * runner performs the collection inside the authorization, so the observation is not a parameter
- * anyone can compose. `collect` is injectable only so the tests can drive both sides of the
- * boundary; in the real path it is the collector module's own function, and the default is exactly
- * that.
+ * The previous version accepted `collect` and `post`, which meant the trusted-collection boundary
+ * could be stepped around from outside: an injected collector supplied the pre-observation and a
+ * parameter supplied the post-observation, and a deletion authorized itself with two records the
+ * deleting party had composed. Recollecting one side and accepting the other closes nothing, because
+ * the invariants are a comparison and a comparison is only as trustworthy as its worse operand.
  *
- * What remains outside this boundary, and is stated rather than papered over: nothing here can
- * attest that the machine running it is the machine anyone thinks it is. Offline verification ends
- * at internal consistency plus re-runnable receipts.
+ * So this function has no parameter through which state reaches a decision. It loads the canonical
+ * prerequisite snapshot, collects the observation before the deletion, decides what may be deleted,
+ * calls `perform` with exactly that list, collects the observation after, and emits the record. The
+ * caller supplies the action, never the evidence, and never the account of what the action did.
+ *
+ * `perform` is called only if nothing is outstanding. If it throws, the post-observation is still
+ * collected and the boundary still checked, because a deletion that failed halfway has still changed
+ * the repository and the question of what it changed is the same question.
  */
-export const authorizeDeletion = ({ audit, log, completion = null, repository, cwd, collect = collectLive, post = null } = {}) => {
+const runner = (collect, loadCompletion = loadCompletionSnapshot) => ({ audit, perform, repository, cwd } = {}) => {
+  const completion = loadCompletion();
+  const target = { repository: repository ?? audit?.repository, cwd };
+
+  const blocked = prerequisiteFindings(completion);
+  if (blocked.length > 0) return { authorized: false, deleted: [], findings: blocked, log: null };
+
   let pre;
   try {
-    pre = collect({ repository: repository ?? audit?.repository, cwd });
+    pre = collect(target);
   } catch (error) {
-    return [`the pre-deletion observation could not be collected, so nothing is authorized: ${error.message}`];
+    return { authorized: false, deleted: [], findings: [`the pre-deletion observation could not be collected, so nothing is authorized: ${error.message}`], log: null };
   }
   pre.digest = observationDigest(pre);
-  return deletionAuthorizationFindings({ audit, log, pre, post, completion });
+
+  const before = [
+    ...verifyObservation(pre).map((finding) => `pre-deletion observation: ${finding}`),
+    ...auditCoverageFindings(audit, pre),
+    ...derivationFindings(audit),
+    ...classificationFindings(audit),
+    ...unestablishedFindings(audit)
+  ];
+  if (before.length > 0) return { authorized: false, deleted: [], findings: before, log: null };
+
+  // What may go: eligible in the audit, and still true of the repository as it is right now.
+  const liveHeads = new Map((pre.heads ?? []).map((head) => [head.name, head.sha]));
+  const openPrByBranch = new Map((pre.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
+  const deleted = deletionEligibility(audit).eligible
+    .filter((entry) => liveHeads.get(entry.name) === entry.head_sha && !openPrByBranch.has(entry.name))
+    .map((entry) => ({ name: entry.name, sha: entry.head_sha }));
+
+  let performError = null;
+  try {
+    if (perform) perform(deleted);
+  } catch (error) {
+    performError = error;
+  }
+  const completedAt = new Date().toISOString().replace(/\.\d{3}Z$/u, "Z");
+
+  let post;
+  try {
+    post = collect(target);
+  } catch (error) {
+    return {
+      authorized: false,
+      deleted,
+      findings: [`the deletion ran but the post-deletion observation could not be collected, so its effect is unrecorded: ${error.message}`],
+      log: null
+    };
+  }
+  post.digest = observationDigest(post);
+
+  const log = {
+    schema: "aos-branch-deletion-log.v1",
+    status: "COMPLETED",
+    completed_at: completedAt,
+    blocked_by: [...DELETION_BLOCKED_BY],
+    blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed" })),
+    deleted,
+    ...(deleted.length === 0
+      ? { no_op_reason: "a fresh audit found no ref eligible for deletion at the commit it judged, with no pull request open on it" }
+      : {}),
+    pre_observation: { digest: pre.digest, collected_at: pre.collected_at },
+    post_observation: { digest: post.digest, collected_at: post.collected_at },
+    note: "Emitted by scripts/branch-audit.mjs runDeletion; both observations were collected by the gate, not supplied to it."
+  };
+
+  const findings = [
+    ...(performError ? [`the deletion did not complete: ${performError.message}`] : []),
+    ...deletionAuthorizationFindings({ audit, log, pre, post, completion })
+  ];
+  return { authorized: findings.length === 0, deleted, findings, log };
 };
+
+/**
+ * The gate. No `collect`, no `pre`, no `post`, no `completion`, no `maxAgeSeconds` -- passing any of
+ * them has no effect, which is the property the tests assert rather than describe.
+ */
+export const runDeletion = runner(collectLive);
+
+/**
+ * The seam, and the only thing that can substitute the two sources the gate reads: the collector and
+ * the canonical prerequisite snapshot.
+ *
+ * It exists because the orchestration above -- check, collect, decide, act, recollect, compare --
+ * has to be exercised offline, and there is no honest way to do that against a live repository from
+ * a test suite. Both substitutions are made once, when a runner is built, and neither is reachable
+ * from a call to one. A caller who builds their own runner is not stepping around the gate; they are
+ * declining to use it, which is a different thing and visible in the code that does it. What the
+ * gate itself exposes is nothing.
+ */
+export const makeDeletionRunner = runner;

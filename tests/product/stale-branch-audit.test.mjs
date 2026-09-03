@@ -109,6 +109,27 @@ test("a branch record whose number disagrees with its derivation is refused, fie
   }
 });
 
+// `gh pr list --limit 200` documents that flag as a maximum. An omitted 201st historical pull
+// request is indistinguishable from a branch that never had one, which is precisely the claim the
+// record makes -- "no pull request has ever used this branch as a head". A history read as a bounded
+// slice supports no claim about what is not in it.
+test("a pull request history read as a bounded slice supports no claim about it", () => {
+  const audit = loadAudit();
+  for (const derived of Object.values(audit.live_observation.derivations)) {
+    assert.equal(derived.pr_history.complete, true, "the committed observation read a PR history as a bounded slice");
+  }
+  const capped = structuredClone(audit.live_observation);
+  const branch = audit.branches[0].name;
+  capped.derivations[branch].pr_history.complete = false;
+  const findings = derivationFindings({ ...audit, live_observation: capped });
+  assert.ok(findings.some((f) => f.includes("bounded slice")), `a capped PR history passed the derivation check: ${findings.join(" | ")}`);
+  assert.notDeepEqual(verifyObservation(capped), [], "a capped PR history passed observation verification");
+  // A history with the flag missing entirely is the older shape, and is refused the same way.
+  const legacy = structuredClone(audit.live_observation);
+  delete legacy.derivations[branch].pr_history.complete;
+  assert.notDeepEqual(verifyObservation(legacy), [], "a PR history with no completeness signal passed");
+});
+
 test("a branch record whose reference or PR claims were never collected is refused", () => {
   const audit = loadAudit();
   const entry = merged(audit);
@@ -335,7 +356,9 @@ test("Phase A records the Phase B contract and does not emit the Phase B artifac
   assert.match(contract.prerequisite_authority, /github-state\.json/u, "the contract does not name the canonical authority that decides whether the blockers cleared");
   assert.match(contract.required_shape.pre_observation, /digest/u, "the contract does not require the pre-deletion observation digest");
   assert.match(contract.required_shape.post_observation, /digest/u, "the contract does not require the post-deletion observation digest");
-  assert.match(contract.entry_point, /authorizeDeletion/u, "the contract does not name the entry point that collects its own observation");
+  assert.match(contract.entry_point, /runDeletion/u, "the contract does not name the entry point that collects its own observations");
+  assert.match(contract.entry_point, /no parameter/u, "the contract does not say the entry point takes no state");
+  assert.match(contract.emitted_not_authored, /produced by runDeletion/u, "the contract does not say the log is emitted rather than written");
   for (const family of ["protection", "install source", "open pull request head"]) {
     assert.ok(contract.invariant_comparison.includes(family), `the invariant comparison does not name ${family}`);
   }

@@ -110,10 +110,16 @@ const receipted = (receipts, source, command, args, { allowExit = [0], ...option
  * `--paginate --slurp` returns one array element per page; flattening it is the complete list. The
  * receipt covers the raw bytes of every page together, so a truncated read cannot digest the same
  * as a complete one.
+ *
+ * `complete` is returned rather than assumed. A caller that reads a bounded slice -- `--limit`, a
+ * single page, a search cut off at its cap -- has not established that what it did not see is not
+ * there, and the difference has to survive into the record for a consumer to refuse it. Every caller
+ * here reads to the end; the flag exists so that one which stops early cannot be mistaken for one
+ * that found nothing.
  */
 const apiList = (receipts, source, path) => {
   const pages = JSON.parse(receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", path]).text || "[]");
-  return pages.flat();
+  return { items: pages.flat(), complete: true };
 };
 
 const apiOne = (receipts, source, path) => JSON.parse(receipted(receipts, source, "gh", ["api", path]).text || "null");
@@ -159,11 +165,11 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const restHeads = apiList(receipts, "rest-branches", `repos/${repository}/branches?per_page=100`)
+  const restHeads = apiList(receipts, "rest-branches", `repos/${repository}/branches?per_page=100`).items
     .map((branch) => ({ name: branch.name, sha: branch.commit.sha, protected: branch.protected }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const openPrs = apiList(receipts, "rest-open-prs", `repos/${repository}/pulls?state=open&per_page=100`)
+  const openPrs = apiList(receipts, "rest-open-prs", `repos/${repository}/pulls?state=open&per_page=100`).items
     .map((pr) => ({ number: pr.number, head_branch: pr.head.ref, head_sha: pr.head.sha, base: pr.base.ref, state: "OPEN" }))
     .sort((a, b) => a.number - b.number);
 
@@ -183,7 +189,7 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
     ["main", "dev"].map((ref) => [ref, apiOne(receipts, `rest-protection-${ref}`, `repos/${repository}/branches/${ref}/protection`)])
   );
 
-  const rulesets = apiList(receipts, "rest-rulesets", `repos/${repository}/rulesets?per_page=100`);
+  const rulesets = apiList(receipts, "rest-rulesets", `repos/${repository}/rulesets?per_page=100`).items;
   const repo = apiOne(receipts, "rest-repo", `repos/${repository}`);
   const settings = { default_branch: repo.default_branch, delete_branch_on_merge: repo.delete_branch_on_merge };
 
@@ -195,6 +201,7 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
     })()
   };
 
+  const owner = repository.split("/")[0];
   const devSha = heads.find((head) => head.name === "dev")?.sha;
   const mainSha = heads.find((head) => head.name === "main")?.sha;
 
@@ -207,8 +214,7 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
   const derivations = Object.fromEntries(auditable.map(({ name, sha }) => {
     const log = receipted(receipts, `git-log-${name}`, "git", ["log", "-1", "--format=%cI%x09%an%x09%ae", sha], { cwd }).text.trim().split("\t");
     const grep = receipted(receipts, `git-grep-${name}`, "git", ["grep", "-n", "--fixed-strings", name, "HEAD", "--", ":!docs/STALE_BRANCH_AUDIT.md", ":!fixtures/stale-branches/"], { cwd, allowExit: [0, 1] });
-    const prs = JSON.parse(receipted(receipts, `pr-history-${name}`, "gh",
-      ["pr", "list", "--repo", repository, "--state", "all", "--head", name, "--limit", "200", "--json", "number,state,mergedAt,baseRefName,headRefOid"], { cwd }).text || "[]");
+    const prs = apiList(receipts, `pr-history-${name}`, `repos/${repository}/pulls?state=all&head=${owner}:${name}&per_page=100`);
     return [name, {
       last_commit: { date: log[0], author_name: log[1], author_email: log[2], source: `git-log-${name}` },
       ancestor_of_dev: { value: receipted(receipts, `is-ancestor-dev-${name}`, "git", ["merge-base", "--is-ancestor", sha, devSha], { cwd, allowExit: [0, 1] }).status === 0, source: `is-ancestor-dev-${name}` },
@@ -222,7 +228,11 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
       unique_vs_dev_and_main: { value: count(`rev-list-neither-${name}`, [sha, "--not", devSha, mainSha]), source: `rev-list-neither-${name}` },
       tags_containing: { value: receipted(receipts, `tags-containing-${name}`, "git", ["tag", "--contains", sha], { cwd }).text.split("\n").filter(Boolean).sort(), source: `tags-containing-${name}` },
       tree_scan: { value: grep.text.split("\n").filter(Boolean).map((line) => line.split(":").slice(0, 2).join(":")), source: `git-grep-${name}` },
-      pr_history: { value: prs.map((pr) => ({ number: pr.number, state: pr.state, merged_at: pr.mergedAt, base: pr.baseRefName, head_sha: pr.headRefOid })), source: `pr-history-${name}` }
+      pr_history: {
+        value: prs.items.map((pr) => ({ number: pr.number, state: pr.state.toUpperCase(), merged_at: pr.merged_at, base: pr.base.ref, head_sha: pr.head.sha })),
+        complete: prs.complete,
+        source: `pr-history-${name}`
+      }
     }];
   }));
 
@@ -280,6 +290,11 @@ export const verifyObservation = (observation) => {
   }
   for (const sweep of observation.reference_sweep ?? []) {
     if (sweep.complete !== true) findings.push(`${sweep.branch}: the reference sweep returned ${sweep.hits.length} of ${sweep.total_count} results, so "nothing refers to it" was not established`);
+  }
+  for (const [branch, derivation] of Object.entries(observation.derivations ?? {})) {
+    if (derivation.pr_history && derivation.pr_history.complete !== true) {
+      findings.push(`${branch}: the pull request history was read as a bounded slice, so "no pull request ever used this branch as a head" was not established`);
+    }
   }
   for (const branch of (observation.heads ?? []).map((head) => head.name)) {
     if (branch === "main" || branch === "dev") continue;

@@ -8,9 +8,9 @@
 > report ordinary progress as damage. Four heads have turned over across the versions of this
 > document, one of them while a snapshot was being taken.
 
-- **Generated:** 2026-09-03T01:46:38Z
+- **Generated:** 2026-09-03T02:29:20Z
 - **Repository:** `MongLong0214/agent-operator-score`
-- **Observation digest:** `sha256:7a3f463420fff835eb5de5febec133acadd7a396ec415ea35947386ce0fe62dd` (recursive over the whole record)
+- **Observation digest:** `sha256:d4f6ae641909ec121dc75ca868b1264c09b825573e575fb6e87d46ec6bbfa589` (recursive over the whole record)
 - **`dev` at snapshot:** `52536444e3aacba9db82d27df5dce22d84826db5`
 - **`main` at snapshot:** `d2c68036ebf9f9fd7287258fd3cec252133ef846`
 - **Machine-readable source of truth:** [`fixtures/stale-branches/audit.json`](../fixtures/stale-branches/audit.json)
@@ -45,15 +45,15 @@ prove nothing.
 
 | command | exit | bytes | digest |
 |---|---|---|---|
-| `git ls-remote --heads origin` | 0 | 616 | `sha256:aca7fdf53495e7308ecd16d2dc7dcf26a4e1935269b791e725241a2b84c32d7c` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4879 | `sha256:b8258f12c7e98757295714c41d7d7944ffb8f78f24c2bf6d7602f3681ac0338b` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 223315 | `sha256:4fa4bdd300ceafb2bc63a46d5f69263be7cc8d46c149272b716cad3642e8998b` |
+| `git ls-remote --heads origin` | 0 | 616 | `sha256:4c524fb9994be815132d3a5c4d2fa15fe6fca3a8e0f78ef3ff4271e331f5c44c` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4879 | `sha256:87ed2e369c0f47c197f441c442d4fe46228349d021fc894cbe95db2f264de53e` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 225946 | `sha256:c20d5ad3c1991dbf11fd434f6733fecfc66a05a88e30818bb63ee079af62735c` |
 | `git ls-remote --tags origin` | 0 | 2323 | `sha256:e4110333eb2096c906041412784a350fe30b478de0af6caf9f24d61a5b2012db` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/main/protection` | 0 | 1845 | `sha256:a61f822cb0c04a82978c62885dcf4f79608597db586540bd95de31ed00573aba` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/dev/protection` | 0 | 1839 | `sha256:23df58f6a5b41ffe54474d6561826e50b771c36dca772c62c4031869f67648a0` |
 | `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100` | 0 | 4 | `sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05` |
-| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6760 | `sha256:f6aa81975a94b33967c7716064fe218958ce70b9864f9e19d3db799f70b05d90` |
-| `git fetch -q origin 52536444e3aacba9db82d27df5dce22d84826db5 e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 87b133b6ba7a13d821b28617460d6c3e6848a45f 49adbee8073ae6e9f67367614199e005c6982a54 cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb fcd666fa938103559849b26a260fe9b6c381e580 2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6760 | `sha256:8270d3a5c8b9498a53435c6739c6990d60962409a235402601b2d96a824d5f1c` |
+| `git fetch -q origin 52536444e3aacba9db82d27df5dce22d84826db5 e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 87b133b6ba7a13d821b28617460d6c3e6848a45f 5241d95c0bc68e9063630a8fe014fc07863717e7 5e209bb6f1e02a4c02389c4883ab9712cab7d5a0 37fc22a0107561c77ddd18423cfce0e6f4fea190 2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 
 What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
 offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
@@ -83,8 +83,8 @@ itself.
 |---|---|---|---|---|---|---|---|
 | `fix/a-fixture-backed-agent-is-not-a-runtime` | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` | MERGED | yes / yes | 0 | v0.1.11, v0.1.12, v0.1.13, v0.1.14, v0.1.15, v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
 | `task/issue-556-strict-confinement` | `87b133b6ba7a13d821b28617460d6c3e6848a45f` | ACTIVE | no / no | 46 | none | [#609](https://github.com/MongLong0214/agent-operator-score/pull/609) | **must_be_preserved** |
-| `task/issue-558-routing-oracle` | `49adbee8073ae6e9f67367614199e005c6982a54` | ACTIVE | no / no | 8 | none | [#614](https://github.com/MongLong0214/agent-operator-score/pull/614) | **must_be_preserved** |
-| `task/issue-561-model-identity` | `cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb` | ACTIVE | no / no | 26 | none | [#607](https://github.com/MongLong0214/agent-operator-score/pull/607) | **must_be_preserved** |
+| `task/issue-558-routing-oracle` | `5241d95c0bc68e9063630a8fe014fc07863717e7` | ACTIVE | no / no | 10 | none | [#614](https://github.com/MongLong0214/agent-operator-score/pull/614) | **must_be_preserved** |
+| `task/issue-561-model-identity` | `5e209bb6f1e02a4c02389c4883ab9712cab7d5a0` | ACTIVE | no / no | 27 | none | [#607](https://github.com/MongLong0214/agent-operator-score/pull/607) | **must_be_preserved** |
 | `tmp/read-claude-artifact` | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | MERGED | yes / yes | 0 | v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
 
 `main` (`d2c68036ebf9f9fd7287258fd3cec252133ef846`) and `dev` (`52536444e3aacba9db82d27df5dce22d84826db5`) are excluded
@@ -160,7 +160,7 @@ Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "task/issue-556-strict-confinement"`) | none found |
 | GitHub-wide pull requests | none found |
 | sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
-| repository tree (`git-grep-task/issue-556-strict-confinement`) | none found |
+| repository tree (`git-grep-task/issue-556-strict-confinement`) | HEAD:tests/product/branch-cleanup-invariants.test.mjs |
 
 Head of open PR #609 targeting dev, under active review. Receipted derivations show 46 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record.
 
@@ -170,17 +170,17 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 
 | field | value | derived by |
 |---|---|---|
-| current SHA | `49adbee8073ae6e9f67367614199e005c6982a54` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
-| last update | 2026-09-03T10:46:21+09:00 (0 days before this snapshot) | `git-log-task/issue-558-routing-oracle` |
+| current SHA | `5241d95c0bc68e9063630a8fe014fc07863717e7` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-03T11:28:06+09:00 (0 days before this snapshot) | `git-log-task/issue-558-routing-oracle` |
 | owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-task/issue-558-routing-oracle` |
 | classification | **ACTIVE** | — |
 | PR history (all states) | #614 OPEN | `pr-history-task/issue-558-routing-oracle` |
 | contained in `dev` / `main` | no / no | `is-ancestor-dev-task/issue-558-routing-oracle`, `is-ancestor-main-task/issue-558-routing-oracle` |
-| unique commits vs `dev` / `main` | 8 / 200 | `rev-list-dev-task/issue-558-routing-oracle`, `rev-list-main-task/issue-558-routing-oracle` |
-| **commits reaching neither line** | **8** | `rev-list-neither-task/issue-558-routing-oracle` |
+| unique commits vs `dev` / `main` | 10 / 202 | `rev-list-dev-task/issue-558-routing-oracle`, `rev-list-main-task/issue-558-routing-oracle` |
+| **commits reaching neither line** | **10** | `rev-list-neither-task/issue-558-routing-oracle` |
 | release-tag containment | in no release tag | `tags-containing-task/issue-558-routing-oracle` |
 | superseding PR/issue/SHA | none recorded | — |
-| to preserve | 8 commits implementing #558 the #558 routing oracle, reachable from no other ref; its library, schema and fixture surface, reachable from no other ref; its product tests and mutation guards | — |
+| to preserve | 10 commits implementing #558 the #558 routing oracle, reachable from no other ref; its library, schema and fixture surface, reachable from no other ref; its product tests and mutation guards | — |
 | protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
 | **recommendation** | **must_be_preserved** | — |
 
@@ -191,7 +191,7 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
 | repository tree (`git-grep-task/issue-558-routing-oracle`) | none found |
 
-Head of open PR #614 targeting dev, under active review. Receipted derivations show 8 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record.
+Head of open PR #614 targeting dev, under active review. Receipted derivations show 10 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record.
 
 Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
@@ -199,17 +199,17 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 
 | field | value | derived by |
 |---|---|---|
-| current SHA | `cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
-| last update | 2026-09-03T10:34:15+09:00 (0 days before this snapshot) | `git-log-task/issue-561-model-identity` |
+| current SHA | `5e209bb6f1e02a4c02389c4883ab9712cab7d5a0` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-03T11:23:59+09:00 (0 days before this snapshot) | `git-log-task/issue-561-model-identity` |
 | owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-task/issue-561-model-identity` |
 | classification | **ACTIVE** | — |
 | PR history (all states) | #607 OPEN | `pr-history-task/issue-561-model-identity` |
 | contained in `dev` / `main` | no / no | `is-ancestor-dev-task/issue-561-model-identity`, `is-ancestor-main-task/issue-561-model-identity` |
-| unique commits vs `dev` / `main` | 26 / 216 | `rev-list-dev-task/issue-561-model-identity`, `rev-list-main-task/issue-561-model-identity` |
-| **commits reaching neither line** | **26** | `rev-list-neither-task/issue-561-model-identity` |
+| unique commits vs `dev` / `main` | 27 / 219 | `rev-list-dev-task/issue-561-model-identity`, `rev-list-main-task/issue-561-model-identity` |
+| **commits reaching neither line** | **27** | `rev-list-neither-task/issue-561-model-identity` |
 | release-tag containment | in no release tag | `tags-containing-task/issue-561-model-identity` |
 | superseding PR/issue/SHA | none recorded | — |
-| to preserve | 26 commits implementing #561 model and runtime identity binding, reachable from no other ref; lib/model-identity.mjs, the profile digest binding and the cycle comparability wiring; schemas/aos-model-provenance.v1.json, fixtures/model-identity/runtime-canary.json, scripts/capture-model-canary.mjs; tests/product/model-identity.test.mjs and model-canary.test.mjs | — |
+| to preserve | 27 commits implementing #561 model and runtime identity binding, reachable from no other ref; lib/model-identity.mjs, the profile digest binding and the cycle comparability wiring; schemas/aos-model-provenance.v1.json, fixtures/model-identity/runtime-canary.json, scripts/capture-model-canary.mjs; tests/product/model-identity.test.mjs and model-canary.test.mjs | — |
 | protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
 | **recommendation** | **must_be_preserved** | — |
 
@@ -220,7 +220,7 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
 | repository tree (`git-grep-task/issue-561-model-identity`) | none found |
 
-Head of open PR #607 targeting dev, under active review. Receipted derivations show 26 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record.
+Head of open PR #607 targeting dev, under active review. Receipted derivations show 27 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record.
 
 Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
@@ -353,10 +353,10 @@ commit, and nothing would notice.
 
 | PR | head branch | head SHA | base |
 |---|---|---|---|
-| [#607](https://github.com/MongLong0214/agent-operator-score/pull/607) | `task/issue-561-model-identity` | `cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb` | dev |
+| [#607](https://github.com/MongLong0214/agent-operator-score/pull/607) | `task/issue-561-model-identity` | `5e209bb6f1e02a4c02389c4883ab9712cab7d5a0` | dev |
 | [#609](https://github.com/MongLong0214/agent-operator-score/pull/609) | `task/issue-556-strict-confinement` | `87b133b6ba7a13d821b28617460d6c3e6848a45f` | dev |
-| [#612](https://github.com/MongLong0214/agent-operator-score/pull/612) | `task/issue-572-branch-audit` | `fcd666fa938103559849b26a260fe9b6c381e580` | dev |
-| [#614](https://github.com/MongLong0214/agent-operator-score/pull/614) | `task/issue-558-routing-oracle` | `49adbee8073ae6e9f67367614199e005c6982a54` | dev |
+| [#612](https://github.com/MongLong0214/agent-operator-score/pull/612) | `task/issue-572-branch-audit` | `37fc22a0107561c77ddd18423cfce0e6f4fea190` | dev |
+| [#614](https://github.com/MongLong0214/agent-operator-score/pull/614) | `task/issue-558-routing-oracle` | `5241d95c0bc68e9063630a8fe014fc07863717e7` | dev |
 
 ## Repository branch policy
 
@@ -370,19 +370,32 @@ The branch policy this issue asks to be written down. Descriptive of the reposit
 
 ## What Phase B must do, once #578 and #588 have cleared
 
-1. **Call `authorizeDeletion({ audit, log, completion })`.** It collects the pre-deletion
-   observation itself; there is no parameter for handing it one.
-2. **Delete only what the fresh audit finds eligible, at the exact commit it judged.** As of this
-   snapshot that is
+**Call `runDeletion({ audit, perform })`.** That is the whole interface. It has no parameter
+through which state reaches a decision -- no collector, no observation, no prerequisite snapshot, no
+freshness window -- because a gate handed its evidence decides on whatever it was handed, and
+recollecting one side of a comparison while accepting the other closes nothing.
+
+What it does, in order:
+
+1. **Reads the canonical prerequisite snapshot itself** and stops there if #578 or #588 is not closed
+   with close evidence. Nothing is collected and nothing is deleted first: a check that runs after
+   the act is a report, and the act is not reversible.
+2. **Collects the observation before the deletion**, and re-runs the whole audit against it --
+   coverage, derivations, classification, unestablished facts, and the observation's own shape.
+3. **Narrows the eligible set to what is still true.** A branch is deleted only if the fresh
+   observation shows it at the exact commit the audit judged with no pull request open on it. As of
+   this snapshot the audit's eligible set is
    `fix/a-fixture-backed-agent-is-not-a-runtime` (`e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1`) and
-   `tmp/read-claude-artifact` (`2d6392f578dd2667d5f1f6ba5073a2c4311430eb`), and nothing else. A fresh audit finding
-   nothing eligible is a legitimate completion, not a failure -- auto-delete makes it ordinary.
-3. **Collect a second observation immediately afterwards**, and write
-   `fixtures/stale-branches/deletion-log.json` citing both digests, in the shape
-   `phase_b_contract.required_shape` records. The log carries no state of its own: the state lives
-   in the two observations, and the log names them.
-4. **The invariants are the difference between those two observations** -- `main`, `dev`, tag ref
-   and commit identity, the complete protection objects, the rulesets, the install source, the
-   repository settings, and every open pull request head. The set of heads that vanished between
-   them must equal exactly the set the log says it deleted: a deletion that took one extra ref with
-   it, and a log claiming a deletion that did not happen, are both findings.
+   `tmp/read-claude-artifact` (`2d6392f578dd2667d5f1f6ba5073a2c4311430eb`); what survives the narrowing is decided then, not now.
+   Nothing surviving it is a legitimate completion, not a failure -- auto-delete makes that ordinary.
+4. **Calls `perform` with exactly that list.** The caller supplies the action and nothing else.
+5. **Collects the observation after**, whether or not the action succeeded -- a deletion that failed
+   halfway has still changed the repository, and what it changed is the same question.
+6. **Compares the two observations** -- `main`, `dev`, tag ref and commit identity, the complete
+   protection objects, the rulesets, the install source, the repository settings, and every open pull
+   request head. The set of heads that vanished between them must equal exactly the set being
+   claimed: a deletion that took one extra ref with it, and a claim of a deletion that did not
+   happen, are both findings.
+7. **Emits `fixtures/stale-branches/deletion-log.json`** citing both observation digests. The log is
+   produced, not authored: it carries no state of its own, and the two records it names were
+   collected by the gate rather than supplied to it.
