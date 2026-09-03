@@ -269,3 +269,70 @@ test("an operator who reroutes at a checkpoint supplies the proposal the oracle 
   const tasks = new Set(record.routing_oracle.requirements.map((entry) => entry.task_id));
   for (const row of proposed) assert.equal(tasks.has(row.task_id), true, `${row.task_id} is not a task of this run`);
 });
+
+/**
+ * What route cost is on the path the product runs -- and, just as much, what it is not.
+ *
+ * #558 round 1 (G-03/O-08) reproduced this through the binary: because `requirementsFromRoute`
+ * builds the requirement from the operator's own declared route, the requirement's tasks *are* that
+ * route's stages, so adding a stage adds a task and the minimum rises by exactly what the actual
+ * route rises by. `actual_cost === minimum_cost` at every breadth, `simplest-adequate-route` is true
+ * of every adequate route however wide, and `over_delegation_reference` is structurally zero.
+ *
+ * The guarantee that a needless stage costs more than the minimum was witnessed only against
+ * `requirementsFromWork`, which no production path calls. That is the class this repository fixed
+ * for the `mkdtemp` helper in this same file: a witness that exercises something the product does
+ * not run is load-bearing nowhere. So the cost arithmetic is pinned here, on the production path,
+ * with the numbers -- which is what makes the mutation guard on the handoff term bite -- and the
+ * inability to price breadth is asserted rather than left to be discovered again.
+ *
+ * This test does not make breadth judgeable. That needs a requirement independent of the route
+ * under measurement -- the attested `route.assign` at plan approval, #558's remaining work item.
+ * What it does is stop the claim and the mechanism drifting apart while that is outstanding.
+ */
+test("route cost on the production path counts handoffs, and cannot price route breadth", async (t) => {
+  const cwd = workspace(t);
+  initBare(cwd);
+  for (const id of ["alpha", "beta", "gamma"]) addAdaptedAgent(cwd, id, "codex-cli.v1");
+
+  const costOf = (route) => {
+    const plan = makePlan(cwd, { default: "alpha", "FAM-3": route });
+    runCli(cwd, ["assess", "--plan", plan, "--seed", "1"], 3);
+    const record = newestRecord(cwd);
+    return { oracle: record.routing_oracle, delegation: record.delegation_oracle };
+  };
+
+  // Two stages. One invocation each, plus the single handoff the split buys: 1 + (1 + 1) = 3.
+  // The literal is the point -- a cost of 2 here is the handoff term gone, and no comparison
+  // against the minimum would notice, because the minimum would have dropped with it.
+  const two = costOf("alpha>beta");
+  assert.equal(two.oracle.requirements.length, 2);
+  assert.equal(two.oracle.actual_cost, 3, "the handoff a two-stage split buys is not being counted");
+  assert.equal(two.oracle.minimum.minimum_cost, 3);
+
+  // Three stages: 1 + 2 + 2 = 5. Each added serial stage costs two, not one.
+  const three = costOf("alpha>beta>gamma");
+  assert.equal(three.oracle.requirements.length, 3);
+  assert.equal(three.oracle.actual_cost, 5, "the handoffs a three-stage split buys are not being counted");
+  assert.equal(three.oracle.minimum.minimum_cost, 5);
+  assert.equal(three.oracle.actual_cost - two.oracle.actual_cost, 2);
+
+  // And now the half that is not controlled, asserted so it cannot quietly start working and go
+  // unnoticed, or quietly get worse. The wider route is not judged as costing more than its own
+  // minimum, because its minimum is derived from it.
+  for (const [label, run] of [["two-stage", two], ["three-stage", three]]) {
+    assert.equal(run.oracle.actual_cost, run.oracle.minimum.minimum_cost, `${label}: actual and minimum diverged on the production path`);
+    assert.equal(run.delegation.over_delegation_reference, 0, `${label}: over_delegation_reference is no longer structurally zero`);
+    assert.equal(run.delegation.expected_value_class, "MINIMAL", `${label}: the class is no longer MINIMAL`);
+    const simplest = run.oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route");
+    assert.equal(simplest.pass, true, `${label}: adequacy changed shape`);
+  }
+  // Stated as the property rather than as three numbers: a stage the work did not need is not
+  // distinguishable from one it did. When the `route.assign` producer lands this assertion is the
+  // one that must be inverted, and it names itself so.
+  assert.equal(
+    three.oracle.actual_cost - three.oracle.minimum.minimum_cost,
+    two.oracle.actual_cost - two.oracle.minimum.minimum_cost,
+    "breadth now moves the distance from the minimum -- if that is deliberate, this test is the claim to update"
+  );
+});

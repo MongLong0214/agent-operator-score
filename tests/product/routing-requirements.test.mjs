@@ -77,20 +77,19 @@ const event = (overrides = {}) => ({
   ...overrides
 });
 
-test("the requirement the oracle uses is the work AOS seeded, not a copy written beside it", (t) => {
+test("the requirement the oracle uses is the work AOS seeded, not a copy written beside it", () => {
   // A second copy of the task graph in this module would pass its own test forever while the suite
   // moved. This reads the file the suite writes into a real workspace.
   //
-  // A read-only host answers `mkdtemp` with EPERM. That is neither a pass nor a failure -- it is
-  // evidence this machine could not collect -- so it is skipped by name rather than reported as a
-  // defect in the product.
-  let workspace;
-  try {
-    workspace = mkdtempSync(join(tmpdir(), "aos-routing-"));
-  } catch (error) {
-    t.skip(`this host refuses a temporary directory (${error.code ?? error.message}), so the seeded workspace could not be read here`);
-    return;
-  }
+  // It used to catch `mkdtemp`'s EPERM and skip by name, on the reasoning that a read-only host is
+  // evidence this machine could not collect. #556's `no guard's witness can skip in the environment
+  // that measures it` refuses that shape, and the sibling file `routing-cli-authority.test.mjs` was
+  // fixed for it in the merge; this one survived only because it witnesses no mutation guard, which
+  // makes it less visible and no less wrong. A test that can decide not to assert covers nothing on
+  // the run where it decides that, and every other end-to-end test here calls `mkdtempSync` bare --
+  // so a host that refuses one already fails the suite in fifty places, and catching it here only
+  // made this the file that stayed green on a machine where nothing ran.
+  const workspace = mkdtempSync(join(tmpdir(), "aos-routing-"));
   try {
     prepareScenario("FAM-3", workspace, "0");
     const seeded = JSON.parse(readFileSync(join(workspace, "work.json"), "utf8"));

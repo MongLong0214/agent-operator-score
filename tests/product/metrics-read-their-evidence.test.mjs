@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { observeInterventions } from "../../lib/checkpoint.mjs";
+import { NOT_OBSERVED, validateObservations } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { capsFor } from "../../lib/scorer-v1.mjs";
 import { scenarioParams } from "../../lib/suite-seed.mjs";
@@ -449,8 +450,9 @@ test("an all-empty run takes no credit anywhere it did not earn it", () => {
   // "checked and found wanting" to the report, the ceilings and the reader.
   const unstated = observations.flatMap((entry) =>
     (entry.subchecks ?? []).filter((s) => s.pass === null).map((s) => `${entry.metric_id}.${s.id}`));
-  // M18 is not here because `response: {}` says nothing at all, so the whole metric is NOT_OBSERVED
-  // and carries no subchecks -- the outer guard catching it before the per-field one has to.
+  // M18 is not here because `response: {}` says nothing at all, so the metric never reaches the
+  // subcheck layer and carries no subchecks -- the outer guard catching it before the per-field one
+  // has to.
   //
   // #558 added the four M09 rows. This run seeded no routing requirement, holds no capability record
   // and recorded no invocation, so the routing oracle answers none of its four questions. Before
@@ -463,4 +465,21 @@ test("an all-empty run takes no credit anywhere it did not earn it", () => {
     "M09.simplest-adequate-route",
     "M17.no-hidden-failure"
   ]);
+
+  // And the row those four nulls roll up into says the same thing they do. This file's subject is
+  // that silence is distinguishable from "checked and found wanting", and listing the nulls proved
+  // it of the subchecks while the metric above them read FAIL with a value of 0 -- the distinction
+  // held one layer down and was thrown away one layer up, on this very run. M09 is the first metric
+  // that can be all-null; M17 carries one null too but answers the other three, so it is scored --
+  // and scored FAIL at 0, which is the contrast that matters: a row with an answer earns a zero,
+  // a row with no answer earns nothing at all.
+  const state = (id) => observations.find((entry) => entry.metric_id === id);
+  assert.equal(state("M09").state, NOT_OBSERVED);
+  assert.equal(state("M09").value, null);
+  assert.notEqual(state("M17").state, NOT_OBSERVED);
+  assert.equal(state("M17").value, 0);
+  // NOT_OBSERVED with four subchecks under it is a shape only the all-null rollup produces. M18
+  // reaches the same state with none, and both are valid: what is refused is a value beside it.
+  assert.equal(state("M18").subchecks.length, 0);
+  assert.deepEqual(validateObservations(observations).filter((entry) => entry.reason !== "absent from the result"), []);
 });

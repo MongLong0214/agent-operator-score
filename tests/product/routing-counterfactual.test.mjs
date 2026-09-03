@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { NOT_OBSERVED, coverageOf, dimensionScore } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, dependenciesOf, requirementsFromWork, routingObservables } from "../../lib/routing-oracle.mjs";
 
@@ -103,6 +104,25 @@ test("M09 carries no subcheck whose expression is true of every input", () => {
   assert.equal(sub(m09({ routes: MINIMAL, ledger: [...ledger, extra] }), "invocation-budget-respected"), false);
 });
 
+/**
+ * ISSUE.md's first counterfactual, and it holds -- of `requirementsFromWork`, which is the producer
+ * this file's `m09` helper uses and which no production path calls.
+ *
+ * Round 1 (G-03/O-08) is why that sentence is here rather than left implied. A work graph is
+ * independent of the route chosen to execute it, so moving a task to a second owner really does buy
+ * two handoffs and really does cost more than the minimum, and this test really does distinguish
+ * the behaviour. What it cannot do is say the same of a run: `lib/cli.mjs` builds its requirement
+ * with `requirementsFromRoute`, where the requirement's tasks are the route's own stages, so the
+ * minimum rises with the actual route and a needless stage is indistinguishable from a needed one.
+ *
+ * The mutation guard `route cost counts the handoffs a split buys` used to be witnessed here; it
+ * now points at `route cost on the production path counts handoffs, and cannot price route breadth`
+ * in `tests/product/routing-cli-authority.test.mjs`, which asserts the arithmetic through the
+ * binary. This test is kept, not retired: it is the only place the priced-breadth property is
+ * demonstrated at all, and it is what the production path will look like once the attested
+ * `route.assign` at plan approval makes the requirement independent of the route -- #558's
+ * remaining work item. Until then it is a statement about this function, and it says so.
+ */
 test("one redundant agent lowers routing minimality and nothing else", () => {
   const minimal = m09({ routes: MINIMAL });
   // The same five tasks and the same five invocations, with one task moved to a second owner that
@@ -142,7 +162,11 @@ test("the same plan text with a different actual route is judged by the actual r
 test("a perfect declaration with no invocation event cannot reach full credit", () => {
   const declared = m09({ routes: MINIMAL, ledger: [] });
   for (const entry of declared.subchecks) assert.equal(entry.pass, null, `${entry.id} was answered from the plan alone`);
-  assert.equal(declared.value, 0, "a declaration alone earned credit");
+  // Null, not zero. This asserted `=== 0` for the same reason the test below did: four unanswered
+  // questions used to roll up to FAIL. "Cannot reach full credit" is satisfied by withholding and
+  // is not satisfied by a zero, which is a verdict against the operator on evidence nobody has.
+  assert.equal(declared.state, NOT_OBSERVED, "a declaration alone earned credit");
+  assert.equal(declared.value, null, "a declaration alone earned credit");
 
   // Nor when the ledger recorded invocations it could not attribute to a task. That is the shape a
   // real run produces, and it used to let the plan supply every owner: two events naming two
@@ -221,9 +245,28 @@ test("more invocations than the requirement allows breaks the invocation budget"
 });
 
 test("no seeded requirement leaves every routing question unanswered rather than passed", () => {
-  const nothing = observeRun({ artifacts: { plan: PLAN(MINIMAL) }, params: { "FAM-3": {} } }).find((entry) => entry.metric_id === "M09");
+  const observations = observeRun({ artifacts: { plan: PLAN(MINIMAL) }, params: { "FAM-3": {} } });
+  const nothing = observations.find((entry) => entry.metric_id === "M09");
   for (const entry of nothing.subchecks) assert.equal(entry.pass, null, `${entry.id} answered without a requirement`);
-  assert.equal(nothing.value, 0);
+
+  // This used to assert `nothing.value === 0`, under this name. Four unanswered questions rolled up
+  // through `STATE_BY_PASSING[0]` to FAIL with a value of zero, so the row this test calls
+  // "unanswered" was published as the operator having got all four wrong -- and the assertion
+  // recorded that as the expected result. A test whose name says one thing and whose assertion
+  // pins the opposite is worse than no test: it holds the defect in place.
+  assert.equal(nothing.state, NOT_OBSERVED);
+  assert.equal(nothing.value, null);
+  // And the row says so rather than claiming the oracle decided it.
+  assert.match(nothing.reason, /^not observed by aos-route-oracle\.v1: /u);
+
+  // The consequence, which is why the value matters: an unanswered row must not enter the coverage
+  // count, and must not drag its dimension toward zero. Asserted as "D3 is what it would be if M09
+  // were not in the array at all", which is the property, rather than against a literal -- M10 is
+  // also unobserved on this run, and pinning the count would make this test about the plan fixture.
+  const withoutM09 = observations.filter((entry) => entry.metric_id !== "M09");
+  assert.equal(coverageOf(observations).by_dimension.D3.observed, coverageOf(withoutM09).by_dimension.D3.observed);
+  assert.equal(dimensionScore(observations, "D3"), dimensionScore(withoutM09, "D3"));
+  assert.notEqual(dimensionScore(observations, "D3"), 0, "an unanswered M09 dragged D3 to zero");
 });
 
 test("removing only the artifact lowers only adequacy, and removing only the handoff lowers only that", () => {

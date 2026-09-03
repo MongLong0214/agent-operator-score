@@ -197,12 +197,20 @@ export const GUARDS = [
   },
   {
     guard: "route cost counts the handoffs a split buys",
-    reason: "without the handoff term every assignment costs the same and `simplest-adequate-route` is a tautology again, which is the defect this issue exists to remove",
+    // Re-pointed at the production path. The witness was `one redundant agent lowers routing
+    // minimality and nothing else`, which builds its requirement with `requirementsFromWork` -- a
+    // producer no production path calls, so the guard was load-bearing nowhere, which is the class
+    // the `mkdtemp` helper in that same file was fixed for. The reason moved too, because the old
+    // one was not true of a run: on the route-derived requirement the handoff term is a constant
+    // offset that raises the actual route and its own minimum equally, so dropping it does not turn
+    // `simplest-adequate-route` back into a tautology -- it silently rescales every published route
+    // cost, and no comparison against the minimum notices. The new witness pins the arithmetic.
+    reason: "the handoff term is what makes a published route cost mean invocations plus the splits they were carried across; dropping it rescales every cost on the production path and no minimum comparison notices, because the minimum drops with it",
     file: "lib/routing-oracle.mjs",
     from: "  return invocations + dependenciesOf(requirement).filter((dependency) => ownerOf.get(dependency) !== owner).length;",
     to: "  return invocations;",
-    test: "tests/product/routing-counterfactual.test.mjs",
-    name: "one redundant agent lowers routing minimality and nothing else"
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "route cost on the production path counts handoffs, and cannot price route breadth"
   },
   {
     guard: "the minimum route is the cheapest and its tie-break is canonical",

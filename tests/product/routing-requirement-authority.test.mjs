@@ -171,8 +171,12 @@ test("an opportunity id offered as the operator event id is refused in both dire
 test("the requirement is a function of the operator's route alone, so a record edited later re-derives", () => {
   // There is no path from a run's artifacts back into the requirement: it is built by
   // `requirementsFromRoute` from the route string and the artifact list AOS states, and
-  // `routingObservables` derives nothing from the plan except the diagnostic proposal and schedule.
-  // So the same route always produces the same requirement, and an edited plan cannot change it.
+  // `routingObservables` reads no plan at all -- it takes a requirement its caller already built.
+  // The "diagnostic proposal and schedule" this comment used to name were the agent's artifact
+  // supplying a proposed owner and a declared schedule; both were removed when the requirement's
+  // tasks became the stages AOS runs, and the proposal that remains is the operator's own attested
+  // `route.assign`, which is not an artifact. So the same route always produces the same
+  // requirement, and an edited plan cannot change it.
   const first = requirementsFromRoute({ form_id: "FAM-3", route: OPERATOR_ROUTE, required_artifacts: ["artifact:plan.json"] });
   const again = requirementsFromRoute({ form_id: "FAM-3", route: OPERATOR_ROUTE, required_artifacts: ["artifact:plan.json"] });
   assert.deepEqual(first, again);

@@ -59,6 +59,46 @@ test("not observed is null, and never a zero", () => {
   assert.notEqual(absent.value, 0);
 });
 
+test("a metric that answered none of its four questions is not observed, not a zero", () => {
+  // The mirror of the test above, and the one that was missing. `subchecks: null` was the only way
+  // to reach NOT_OBSERVED, so a verifier that asked all four questions and could answer none rolled
+  // up through `STATE_BY_PASSING[0]` to FAIL with a value of 0 -- counted as an observed metric and
+  // averaged into its dimension as a nought. Until #558 no metric could produce four nulls, so the
+  // rule stated twice in `lib/metrics.mjs` was true by accident rather than by construction; M09's
+  // oracle can decline all four, and this fixes it at the layer that turns subchecks into a state
+  // rather than at the one call site that reaches it today.
+  const none = observationOf({
+    metric_id: "M09",
+    verifier_id: "aos-route-oracle.v1",
+    subchecks: METRICS.M09.subchecks.map((id) => ({ id, pass: null })),
+    evidence_ids: ["route-oracle-1"],
+    reason: "the oracle answered none of its four questions"
+  });
+  assert.equal(none.state, NOT_OBSERVED);
+  assert.equal(none.value, null);
+  assert.notEqual(none.value, 0);
+  // The four nulls are kept, unlike the `subchecks: null` route above: which verifier looked, on
+  // what evidence, and which questions it could not answer are all worth more than an empty array,
+  // and `opportunitiesOf` builds one opportunity per declared subcheck either way.
+  assert.deepEqual(none.subchecks.map((entry) => entry.pass), [null, null, null, null]);
+  assert.equal(none.verifier_id, "aos-route-oracle.v1");
+  assert.deepEqual(validateObservations([none]).filter((entry) => entry.metric_id === "M09"), []);
+
+  // It leaves the dimension and the coverage count alone, which is the whole point: a row nobody
+  // answered must not be the row that drags D3 to zero.
+  assert.equal(dimensionScore([none], "D3"), null);
+  assert.equal(coverageOf([none]).observed, 0);
+
+  // One answered subcheck is a different thing entirely, and still scores.
+  const one = observationOf({
+    metric_id: "M09",
+    verifier_id: "aos-route-oracle.v1",
+    subchecks: METRICS.M09.subchecks.map((id, index) => ({ id, pass: index === 0 ? false : null })),
+    reason: "one answer"
+  });
+  assert.deepEqual([one.state, one.value], ["FAIL", 0]);
+});
+
 test("a metric answered with some of its questions is refused", () => {
   // Not a partial result: a result whose author did not say what happened to the rest.
   assert.throws(
