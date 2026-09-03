@@ -426,3 +426,19 @@ test("a tree scan run against something other than the observed dev commit is re
     assert.ok(findings.some((one) => one.includes("about a different tree")), `a scan of another tree passed: ${findings.join(" | ")}`);
   });
 });
+
+// The reviewer's reproduction: the derivations are collected fresh and then the record is checked
+// against its own stored copy. A branch whose live graph facts disagree with the audit -- not
+// contained, commits reaching neither line -- stayed eligible because only coverage was re-run.
+test("a branch whose live graph facts disagree with the audit is refused", () => {
+  drive({}, (_fixture, audit, observation) => {
+    const pre = structuredClone(observation);
+    const derived = pre.derivations["tmp/merged-thing"];
+    derived.unique_vs_dev_and_main.value = 99;
+    derived.ancestor_of_dev.value = false;
+    pre.digest = observationDigest(pre);
+    const { eligible, findings } = liveEligibility(audit, pre);
+    assert.deepEqual(eligible, [], "a branch the fresh derivations contradict stayed eligible");
+    assert.ok(findings.some((one) => one.includes("the collector derived")), `the disagreement with the fresh derivations was not reported: ${findings.join(" | ")}`);
+  });
+});
