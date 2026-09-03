@@ -8,6 +8,12 @@
 // It reads the machine and never a provider: the record it writes carries names, statuses and
 // digests, and `tests/product/discovery-canary.test.mjs` refuses it if an absolute path or
 // anything credential-shaped ever reaches it.
+//
+// What the fixture is evidence *of* is one machine. `verify:agent-discovery-local` is wired into no
+// CI job, so no lane re-records this file and no lane reproduces the official pairing in it; what
+// CI checks is that the committed record still agrees with the shipped support table. The `note`
+// the fixture carries says so, so the file cannot be read as a CI-verified artifact by someone who
+// only opens the fixture.
 
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -42,7 +48,7 @@ const fixture = {
   recorded_on: `darwin ${kernel} ${process.arch}, macOS ${os}`,
   runtime_observed: codexVersion,
   node_version: process.versions.node,
-  note: "Produced by scripts/record-discovery-canary.mjs against the runtimes actually installed on that machine. Both lanes ran the real `aos discover` path: the real PATH, the real executable identity reading, the real seatbelt probe and the committed support matrix. Neither lane made a provider call, and neither read a credential value -- the record carries names and digests only, which is why it is committable.",
+  note: "Produced by scripts/record-discovery-canary.mjs against the runtimes actually installed on that machine. Both lanes ran the real `aos discover` path: the real PATH, the real executable identity reading, the real seatbelt probe and the committed support matrix. Neither lane made a provider call, and neither read a credential value -- the record carries names and digests only, which is why it is committable. What attests it is one operator machine and not a lane: `npm run verify:agent-discovery-local` is the script that refuses a skipped canary, and no job in .github/workflows/ci.yml runs it, so CI holds this file against the shipped support table and never re-records it. The official pairing below is a host observation; nothing in CI has reproduced it.",
   lanes: [
     {
       lane: "zero-config",

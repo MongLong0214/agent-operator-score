@@ -3,7 +3,7 @@
   "recorded_on": "darwin 25.3.0 arm64, macOS 26.3",
   "runtime_observed": "codex-cli 0.148.0",
   "node_version": "22.23.2",
-  "note": "Produced by scripts/record-discovery-canary.mjs against the runtimes actually installed on that machine. Both lanes ran the real `aos discover` path: the real PATH, the real executable identity reading, the real seatbelt probe and the committed support matrix. Neither lane made a provider call, and neither read a credential value -- the record carries names and digests only, which is why it is committable.",
+  "note": "Produced by scripts/record-discovery-canary.mjs against the runtimes actually installed on that machine. Both lanes ran the real `aos discover` path: the real PATH, the real executable identity reading, the real seatbelt probe and the committed support matrix. Neither lane made a provider call, and neither read a credential value -- the record carries names and digests only, which is why it is committable. What attests it is one operator machine and not a lane: `npm run verify:agent-discovery-local` is the script that refuses a skipped canary, and no job in .github/workflows/ci.yml runs it, so CI holds this file against the shipped support table and never re-records it. The official pairing below is a host observation; nothing in CI has reproduced it.",
   "lanes": [
     {
       "lane": "zero-config",

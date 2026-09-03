@@ -7,6 +7,13 @@
 // that no longer exists, and it must fail rather than sit there. The local half runs the real thing
 // here, with no injected backend and no injected identity, and refuses to call a skip a pass when
 // `AOS_DISCOVERY_LOCAL_REQUIRED=1` says the lane was the point.
+//
+// Neither half is a CI measurement of the committed record. `verify:agent-discovery-local` -- the
+// script that turns the local half's skip into a failure -- is wired into no job in
+// .github/workflows/ci.yml, and on a runner with no runtime installed the local half skips. So what
+// CI proves here is agreement between the committed observation and the shipped support table; the
+// observation itself is attested by the one operator machine named in the fixture's `recorded_on`,
+// and the fixture's `note` says so in the file rather than only here.
 
 import assert from "node:assert/strict";
 import test from "node:test";

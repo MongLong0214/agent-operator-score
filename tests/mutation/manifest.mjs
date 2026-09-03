@@ -5004,7 +5004,7 @@ export const GUARDS = [
   },
   {
     guard: "an untrusted executable blocks the candidate outright",
-    reason: "refusing to select is the difference between a runtime AOS declined and a runtime AOS ranked last, and a ranked one is still reachable",
+    reason: "the credential gate refuses every non-VERIFIED identity first, so this term cannot change a support status on its own; what it carries is the second entry in blocked_reasons, which is the only place the two gates that refused are individually visible, and a dedupe there would restore the mutant CI caught",
     file: "lib/discovery.mjs",
     from: "  if (identity.status !== \"VERIFIED\") blocked.push(REASON_CODES.IDENTITY_UNVERIFIED);",
     to: "  if (false) blocked.push(REASON_CODES.IDENTITY_UNVERIFIED);",
@@ -5028,6 +5028,24 @@ export const GUARDS = [
     to: "  if (false) blocked.push(auth.reason ?? REASON_CODES.IDENTITY_UNVERIFIED);",
     test: "tests/product/discovery.test.mjs",
     name: "a same-name binary in a directory somebody else can write is blocked, never selected"
+  },
+  {
+    guard: "a binary swapped since registration never reaches official support",
+    reason: "drift is the case the stale-cache rule exists for: the identity stage still reports it on the record, and a support verdict that does not read it back reports OFFICIAL_READY for a program nobody has identified since it changed",
+    file: "lib/discovery.mjs",
+    from: "  if (drift.length > 0) withheld.push(\"AOS_RUNTIME_IDENTITY_DRIFT\");",
+    to: "  if (false) withheld.push(\"AOS_RUNTIME_IDENTITY_DRIFT\");",
+    test: "tests/product/discovery.test.mjs",
+    name: "a binary replaced since registration never reaches official support, however ready the rest of the host is"
+  },
+  {
+    guard: "a name the runtime cannot start without never reaches official support",
+    reason: "the environment stage's ACTION_REQUIRED has to reach the support verdict, or a host that cannot start the runtime at all is reported OFFICIAL_READY with the unsatisfied name still on the same record",
+    file: "lib/discovery.mjs",
+    from: "  if (env.status !== \"READY\") withheld.push(REASON_CODES.ENV_NOT_GRANTED);",
+    to: "  if (false) withheld.push(REASON_CODES.ENV_NOT_GRANTED);",
+    test: "tests/product/discovery.test.mjs",
+    name: "a name the runtime cannot start without never reaches official support when nothing supplies it"
   },
   {
     guard: "an inexact model never reaches official support",
@@ -5132,7 +5150,7 @@ export const GUARDS = [
     guard: "an untrusted reason travels without the path it names",
     reason: "#554 records absolute paths in its reasons, and this record is printed, pasted and committed as a fixture",
     file: "lib/discovery.mjs",
-    from: "    untrusted_reasons: [...new Set((identity.untrusted_reasons ?? []).map((reason) => reason.split(\" \")[0]))].sort(),",
+    from: "    untrusted_reasons: [...new Set((identity.untrusted_reasons ?? []).map((reason) => withoutPaths(reason)))].sort(),",
     to: "    untrusted_reasons: [...new Set(identity.untrusted_reasons ?? [])].sort(),",
     test: "tests/product/discovery.test.mjs",
     name: "a refused candidate names the class of problem and never the path it was found at"
@@ -5283,6 +5301,7 @@ export const ACCOUNTED_GUARDS = [
   "a URL carrying userinfo is a credential",
   "a backend refusal loses the path it named",
   "a bare alias is never an exact identity",
+  "a binary swapped since registration never reaches official support",
   "a blocked candidate is not selectable",
   "a borrowed explanation loses the paths it named",
   "a bound claim names the profile it is bound to",
@@ -5331,6 +5350,7 @@ export const ACCOUNTED_GUARDS = [
   "a mutable alias withholds the profile-bound aggregate",
   "a name that is not a model name is never printed",
   "a name the runtime cannot start without is required unless the boundary supplies it",
+  "a name the runtime cannot start without never reaches official support",
   "a name without snapshot proof is a mutable alias",
   "a named evidence id is published as a digest",
   "a named secret assigned a value is a secret at any length",

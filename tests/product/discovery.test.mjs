@@ -36,7 +36,8 @@ import {
   selectRuntime,
   zeroInputCounters
 } from "../../lib/discovery.mjs";
-import { SUPPORT_MATRIX_SCHEMA } from "../../lib/confinement.mjs";
+import { RUNTIME_CONFIG_STAGING, SUPPORT_MATRIX_SCHEMA } from "../../lib/confinement.mjs";
+import { ADAPTERS } from "../../lib/profile.mjs";
 import { describeExecutable } from "../../lib/runtime-identity.mjs";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "aos-discovery-"));
@@ -349,6 +350,98 @@ test("a binary replaced since registration is reported as drift and the stored a
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a binary replaced since registration never reaches official support, however ready the rest of the host is", () => {
+  // The witness for the drift term of `supportStatusOf`. The test above proves drift is *detected*
+  // and that the stored record survives it; neither of those reads the support verdict, so deleting
+  // the drift term left the whole 1334-test suite bit-identical to baseline while a host whose
+  // binary was swapped after registration reported OFFICIAL_READY with an empty `blocked_reasons`
+  // and `identity.drift` still reading ["file_fingerprint"] on the same record.
+  //
+  // Everything else about this host is deliberately ready -- verified, adapter-matched, an exact
+  // model, a staged login, STRICT isolation -- so the drift term is the only thing withholding it
+  // and `blocked_reasons` names it alone. That is what makes the assertion a witness for one term
+  // rather than for whatever else happens to be wrong.
+  const root = scratch();
+  const { pathDir, file } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
+  const operatorHome = operatorHomeWith(root, { codexConfig: true });
+  const registered = describeExecutable("codex", { env: { PATH: pathDir, HOME: operatorHome }, adapterId: "codex-cli.v1" });
+  assert.equal(registered.identity_status, "VERIFIED");
+  const home = homeWith(root, {
+    codex: agent("codex", "codex", "codex-cli.v1", { runtime_identity: registered, model_id: "openai/gpt-4o-2024-08-06" })
+  });
+  writeFileSync(file, "#!/bin/sh\necho replaced\n");
+  chmodSync(file, 0o755);
+
+  const record = discover(baseOptions(root, { home, pathDirs: [pathDir], operatorHome }));
+  const candidate = record.candidates.find((one) => one.id === "codex");
+
+  // The host is otherwise official: every other term of the support verdict passes here.
+  assert.equal(candidate.identity.status, "VERIFIED");
+  assert.equal(candidate.identity.adapter_runtime_match, true);
+  assert.equal(candidate.auth.status, "PRESENT");
+  assert.equal(candidate.model.status, "EXACT");
+  assert.equal(candidate.env.status, "READY");
+  assert.equal(candidate.isolation.lane_official, true);
+
+  assert.deepEqual(candidate.identity.drift, ["file_fingerprint"]);
+  assert.deepEqual(candidate.blocked_reasons, ["AOS_RUNTIME_IDENTITY_DRIFT"]);
+  assert.equal(candidate.support_status, "DIAGNOSTIC_ONLY");
+  assert.notEqual(record.status, "OFFICIAL_READY");
+  assert.equal(record.reason_code, "AOS_RUNTIME_IDENTITY_DRIFT");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a name the runtime cannot start without never reaches official support when nothing supplies it", () => {
+  // The witness for the environment term of `supportStatusOf`, and the same defect as the drift
+  // one above: `environmentReadiness` was tested for its own verdict, nothing read that verdict
+  // back out of the support decision, and deleting the term left the suite bit-identical while a
+  // host reported OFFICIAL_READY carrying `env.status: "ACTION_REQUIRED"` on the same record.
+  //
+  // The host: codex verified and adapter-matched, an exact model, `OPENAI_API_KEY` in the
+  // environment so the credential is PRESENT, and no `~/.codex`, so nothing is staged and nothing
+  // supplies CODEX_HOME. One term withholds it, and `blocked_reasons` says which.
+  const root = scratch();
+  const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
+  const operatorHome = operatorHomeWith(root);
+  const home = homeWith(root, {
+    codex: agent("codex", "codex", "codex-cli.v1", { model_id: "openai/gpt-4o-2024-08-06", runtime_auth_env_names: ["OPENAI_API_KEY"] })
+  });
+  const record = discover(baseOptions(root, { home, pathDirs: [pathDir], operatorHome, env: { OPENAI_API_KEY: SECRET } }));
+  const candidate = record.candidates.find((one) => one.id === "codex");
+
+  assert.equal(candidate.identity.status, "VERIFIED");
+  assert.equal(candidate.identity.adapter_runtime_match, true);
+  assert.deepEqual(candidate.identity.drift, []);
+  assert.equal(candidate.auth.status, "PRESENT");
+  assert.equal(candidate.model.status, "EXACT");
+  assert.equal(candidate.isolation.lane_official, true);
+
+  assert.equal(candidate.env.status, "ACTION_REQUIRED");
+  assert.deepEqual(candidate.env.missing_required, ["CODEX_HOME"]);
+  assert.deepEqual(candidate.blocked_reasons, [REASON_CODES.ENV_NOT_GRANTED]);
+  assert.equal(candidate.support_status, "DIAGNOSTIC_ONLY");
+  assert.notEqual(record.status, "OFFICIAL_READY");
+  assert.equal(record.reason_code, REASON_CODES.ENV_NOT_GRANTED);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("the adapter table keeps the runtime-match term dominated", () => {
+  // `supportStatusOf` also withholds on `adapter_runtime_match !== true`, and that term has no
+  // witness of its own because under every adapter this release ships it cannot be the only thing
+  // withholding a candidate: `credentialReadiness` refuses a mismatched runtime with
+  // ACTION_REQUIRED wherever there are stakes, and reports NOT_APPLICABLE where there is no
+  // credential path at all, so the auth term one line below always fires with it.
+  //
+  // That is a property of ADAPTERS rather than of `supportStatusOf`, so it is checked here rather
+  // than asserted in a comment. An adapter that declares a credential environment variable, stages
+  // no configuration directory and has no resolver has no stakes and a satisfiable credential, so
+  // a failed match would withhold on its own -- and this dismissal would need to become a witness.
+  const undominated = Object.entries(ADAPTERS)
+    .filter(([id, adapter]) => (adapter.auth_env ?? []).length > 0 && !RUNTIME_CONFIG_STAGING.has(id) && adapter.auth_resolver == null)
+    .map(([id]) => id);
+  assert.deepEqual(undominated, [], "this adapter makes the runtime-match term of supportStatusOf independently reachable, so it needs a witness of its own");
+});
+
 test("an unknown model never reaches OFFICIAL_READY however good the rest of the host is", () => {
   const root = scratch();
   const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
@@ -563,10 +656,46 @@ test("a refused candidate names the class of problem and never the path it was f
   const record = discover(baseOptions(root, { home, pathDirs: [impostor.pathDir], operatorHome }));
 
   const candidate = record.candidates.find((one) => one.id === "codex");
-  assert.deepEqual(candidate.identity.untrusted_reasons, ["world_writable"]);
+  assert.deepEqual(candidate.identity.untrusted_reasons, ["world_writable <path>"]);
   const text = JSON.stringify(record);
   assert.ok(!text.includes(impostor.pathDir), "the directory the refused binary was found in is a private path");
   assert.ok(!text.includes(root));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a refusal that names a nested interpreter keeps the interpreter's own class, not the bare word", () => {
+  // The reduction used to take the first token of each reason #554 recorded, which is the class for
+  // four of its five shapes and not for the fifth: a shebang's problem arrives as
+  // `interpreter <nested reason> <path>`, so `split(" ")[0]` yielded the bare word `interpreter`
+  // and the Set then collapsed every distinct interpreter fault into one entry. The operator was
+  // told the class was "interpreter" and never that the interpreter was world-writable -- the
+  // opposite of what this field's own comment promises. The fixtures elsewhere in this file all
+  // shebang `/bin/sh`, which is root-owned, so nothing here reached that branch.
+  const root = scratch();
+  const open = join(root, "open");
+  mkdirSync(open, { recursive: true });
+  chmodSync(open, 0o777);
+  const interpreter = join(open, "myint");
+  writeFileSync(interpreter, "#!/bin/sh\nexit 0\n");
+  chmodSync(interpreter, 0o755);
+  // The runtime itself sits in a directory only this account can write. Its one problem is where
+  // its interpreter lives, so whatever survives redaction has to come from the nested reason.
+  const pathDir = join(root, "bin");
+  mkdirSync(pathDir, { recursive: true });
+  chmodSync(pathDir, 0o755);
+  writeFileSync(join(pathDir, "codex"), `#!${interpreter}\nexit 0\n`);
+  chmodSync(join(pathDir, "codex"), 0o755);
+
+  const operatorHome = operatorHomeWith(root, { codexConfig: true });
+  const record = discover(baseOptions(root, { home: homeWith(root), pathDirs: [pathDir], operatorHome }));
+  const candidate = record.candidates.find((one) => one.id === "codex");
+
+  assert.equal(candidate.identity.status, "UNTRUSTED");
+  assert.deepEqual(candidate.identity.untrusted_reasons, ["interpreter world_writable <path>"]);
+  const text = JSON.stringify(record);
+  assert.ok(!text.includes(open), "the interpreter's directory is a private path");
+  assert.ok(!text.includes(root));
+  assert.equal(candidate.support_status, "BLOCKED");
   rmSync(root, { recursive: true, force: true });
 });
 
