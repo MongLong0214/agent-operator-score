@@ -16,6 +16,87 @@
 
 export const GUARDS = [
   {
+    guard: "a task id is a reference to a task this run holds",
+    reason: "the shape of an identifier is not proof that it identifies anything; an event naming a task the requirement does not hold used to be admitted and then dropped by every consumer that looked its task up, so it counted as an invocation nowhere and left the route looking cheaper than the work it did",
+    file: "lib/routing-oracle.mjs",
+    from: "    if (known !== null && event.task_id !== null && !known.has(event.task_id)) {",
+    to: "    if (false) {",
+    test: "tests/product/minimal-route-oracle.test.mjs",
+    name: "an event naming a task the requirement does not hold is refused, not silently dropped"
+  },
+  {
+    guard: "a required artifact or handoff is checked against the ledger",
+    reason: "both lists were validated at construction and read by nothing, so a route whose every event carried an empty artifact list took full credit for work with nothing to show for it",
+    file: "lib/routing-oracle.mjs",
+    from: "      const missing = requirement[field].filter((id) => !(held.get(requirement.task_id) ?? new Set()).has(id));",
+    to: "      const missing = [];",
+    test: "tests/product/minimal-route-oracle.test.mjs",
+    name: "a required artifact or handoff the ledger does not show is an inadequate route"
+  },
+  {
+    guard: "an overlap the requirement does not permit is not an adequate route",
+    reason: "`allowed_parallelism` was validated at construction and consumed nowhere, so two tasks the ledger showed running at once over one resource left the route minimal and adequate",
+    file: "lib/routing-oracle.mjs",
+    from: "      if (one.allowed_parallelism === \"parallel\" && other.allowed_parallelism === \"parallel\") continue;",
+    to: "      continue;",
+    test: "tests/product/minimal-route-oracle.test.mjs",
+    name: "two tasks the requirement does not allow in parallel are not adequate when the ledger shows them together"
+  },
+  {
+    guard: "evidence failures decide the route's adequacy",
+    reason: "computing what the evidence fails to show and then not consulting it would leave every artifact, handoff and overlap obligation as a field on a record nobody reads",
+    file: "lib/routing-oracle.mjs",
+    from: "    ? [...routeConstraintFailures(requirements, ownerOf, ownerCapabilities), ...routeEvidenceFailures(requirements, admitted)]",
+    to: "    ? [...routeConstraintFailures(requirements, ownerOf, ownerCapabilities)]",
+    test: "tests/product/minimal-route-oracle.test.mjs",
+    name: "a required artifact or handoff the ledger does not show is an inadequate route"
+  },
+  {
+    guard: "a declared schedule never certifies collision safety",
+    reason: "the agent's own plan certifying the safety fact the plan is the subject of is the defect this issue exists to remove; it survived one round by being labelled rather than deleted, and a label on a verdict does not stop the verdict being issued",
+    file: "lib/routing-oracle.mjs",
+    from: "    if ((timedOf.get(pair.left) ?? []).length > 0 && (timedOf.get(pair.right) ?? []).length > 0) { bases.add(\"invocation-ledger\"); continue; }\n    unresolved.push(`${pair.left} and ${pair.right}`);",
+    to: "    if ((timedOf.get(pair.left) ?? []).length > 0 && (timedOf.get(pair.right) ?? []).length > 0) { bases.add(\"invocation-ledger\"); continue; }\n    if (schedule.get(pair.left)?.has(pair.right) === true || schedule.get(pair.right)?.has(pair.left) === true) { bases.add(\"declared-schedule\"); continue; }\n    unresolved.push(`${pair.left} and ${pair.right}`);",
+    test: "tests/product/actual-route-authority.test.mjs",
+    name: "a declared schedule cannot certify that shared-resource work was kept apart"
+  },
+  {
+    guard: "the requirement's tasks are the stages the route declared",
+    reason: "a requirement whose tasks AOS never executes can never have an owner attributed to it, and every question that needs one withholds forever -- an instrument whose only production answer is 'not observed' is not measuring the thing it is named for",
+    file: "lib/routing-oracle.mjs",
+    from: "      ? group.map((_, branch) => `${formId}${STAGE_SEPARATOR}parallel-${index + 1}${STAGE_SEPARATOR}branch-${branch + 1}`)\n      : [`${formId}${STAGE_SEPARATOR}stage-${index + 1}`]);",
+    to: "      ? group.map((_, branch) => `${formId}${STAGE_SEPARATOR}parallel-${index + 1}${STAGE_SEPARATOR}branch-${branch + 1}`)\n      : [`${formId}${STAGE_SEPARATOR}task-${index + 1}`]);",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "a completed run attributes every route event to a stage the operator's route declared"
+  },
+  {
+    guard: "the emitter attributes an invocation to the stage AOS invoked it for",
+    reason: "an emitter that left the task null attributes nobody, and the two questions that need an owner then withhold in every run the product can perform",
+    file: "lib/cli.mjs",
+    from: "    task_id: isText(entry.task) ? `${family}/${entry.task}` : null,",
+    to: "    task_id: null,",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "a completed run attributes every route event to a stage the operator's route declared"
+  },
+  {
+    guard: "a handoff is recorded only where something was handed",
+    reason: "a handoff whose sender produced nothing is a handoff that did not happen, and recording its id anyway would let an empty hand satisfy a requirement that asks for the work to have arrived",
+    file: "lib/cli.mjs",
+    from: "      .filter((handoff) => handoff.from_task !== null && handoff.artifactDigests.length > 0)",
+    to: "      .filter((handoff) => handoff.from_task !== null)",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "a handoff from a stage that produced nothing is not a handoff that happened"
+  },
+  {
+    guard: "the artifact obligation is checked by opening the file",
+    reason: "AOS states one artifact per family and can look for it; taking the agent's word that it was written would be the artifact under measurement certifying its own existence",
+    file: "lib/cli.mjs",
+    from: "    .filter(([, file]) => workspace !== null && existsSync(join(workspace, file)))",
+    to: "    .filter(() => true)",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "a stage that produced no required artifact is not an adequate route"
+  },
+  {
     guard: "a route event names the agent that ran",
     reason: "the ledger's whole claim is that it says who actually did the work; an emitter that copied the plan's route into the agent field would make every route event agree with the declaration by construction, which is the fallback this issue removed rebuilt one layer down",
     file: "lib/cli.mjs",
@@ -23,15 +104,6 @@ export const GUARDS = [
     to: "    agent_id: route,",
     test: "tests/product/routing-cli-authority.test.mjs",
     name: "the agent a route event names is the agent that ran, not the one the plan named"
-  },
-  {
-    guard: "the emitter does not fabricate task attribution",
-    reason: "AOS invokes an agent for a family, not for a task the agent's own plan describes; writing a plan task id onto an invocation AOS did not make per task is the declaration wearing the ledger's clothes, and every capability and minimality answer would then rest on it",
-    file: "lib/cli.mjs",
-    from: "    task_id: null,\n    agent_id: entry.agent,",
-    to: "    task_id: \"verification\",\n    agent_id: entry.agent,",
-    test: "tests/product/routing-cli-authority.test.mjs",
-    name: "the run's own route events are the record the oracle scores, and the plan is not"
   },
   {
     guard: "an opportunity id cannot pass for the operator event id",
@@ -3595,9 +3667,11 @@ export const ACCOUNTED_GUARDS = [
   "a decision binds to the construct it is evidence about",
   "a decision names the dimension it belongs to",
   "a declared route is published as digests",
+  "a declared schedule never certifies collision safety",
   "a facet is not normalised into a digest",
   "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
+  "a handoff is recorded only where something was handed",
   "a live audit needs a live snapshot",
   "a metric's status and its value are one state",
   "a missed known incident is a regression",
@@ -3615,6 +3689,7 @@ export const ACCOUNTED_GUARDS = [
   "a refused file fails the check",
   "a relay id is published as a digest",
   "a reliance trace is built on a journal",
+  "a required artifact or handoff is checked against the ledger",
   "a reroute is a routing decision",
   "a resolved key is the key",
   "a result has to agree with itself",
@@ -3635,6 +3710,7 @@ export const ACCOUNTED_GUARDS = [
   "a stored result may not elevate its own claim",
   "a subcheck verdict is one of three states, never rounded",
   "a surface carries the rows it says it averaged",
+  "a task id is a reference to a task this run holds",
   "a task re-entering an ancestor's resource is the one that checks it",
   "a task two agents invoked has no owner",
   "a truncated cycle search says so",
@@ -3665,6 +3741,7 @@ export const ACCOUNTED_GUARDS = [
   "an operator event states its challenge and its value",
   "an opportunity id cannot pass for the operator event id",
   "an overlap in the ledger is a collision whatever the schedule said",
+  "an overlap the requirement does not permit is not an adequate route",
   "an owner AOS cannot judge is not delegation the operator got wrong",
   "an unanswered checkpoint mints nothing",
   "an unknown capability source keeps no abilities",
@@ -3720,6 +3797,7 @@ export const ACCOUNTED_GUARDS = [
   "everything published passes the one gate",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
+  "evidence failures decide the route's adequacy",
   "exact revision binding",
   "exactly one status label",
   "excluded issues are a floor",
@@ -3843,6 +3921,7 @@ export const ACCOUNTED_GUARDS = [
   "symlink escape refusal",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
+  "the artifact obligation is checked by opening the file",
   "the assessment writes the profile result",
   "the binding is in the assessment path",
   "the candidate source is digested, never named",
@@ -3859,7 +3938,7 @@ export const ACCOUNTED_GUARDS = [
   "the contract states the cells each row averages",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
-  "the emitter does not fabricate task attribution",
+  "the emitter attributes an invocation to the stage AOS invoked it for",
   "the evidence contract is pinned outside the plan",
   "the floor follows the worst severity observed",
   "the ledger's owner replaces the declaration",
@@ -3876,6 +3955,7 @@ export const ACCOUNTED_GUARDS = [
   "the record binding covers the payload the scorer reads",
   "the reliance evidence survives its trace",
   "the report command serves what the result projects to",
+  "the requirement's tasks are the stages the route declared",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
   "the reveal is read from the journal, not from this object",

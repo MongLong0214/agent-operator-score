@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { observeInterventions } from "../../lib/checkpoint.mjs";
 import { observeRun } from "../../lib/observe.mjs";
-import { CAPABILITY_VOCABULARY, capabilityRecord } from "../../lib/routing-oracle.mjs";
+import { CAPABILITY_VOCABULARY, capabilityRecord, requirementsFromWork } from "../../lib/routing-oracle.mjs";
 import { capsFor } from "../../lib/scorer-v1.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import { resolveRuntimeAuth } from "../../lib/runtime-auth.mjs";
@@ -112,7 +112,7 @@ test("a plan with no verification step does not pass the check about verificatio
     started_at: null,
     completed_at: null,
     artifact_ids: [`artifact-${index + 1}`],
-    handoff_ids: [],
+    handoff_ids: requirementsFromWork(work).requirements.find((entry) => entry.task_id === task_id).required_handoffs,
     capability_digest: null,
     operator_decision_event_id: null,
     operator_opportunity_id: null
@@ -120,7 +120,7 @@ test("a plan with no verification step does not pass the check about verificatio
   const m09 = (tasks, owners) => observeRun({
     artifacts: { plan: { tasks } },
     params: P,
-    routing: { work, capabilities, actual_route_events: ledger(owners) }
+    routing: { requirements: requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger(owners) }
   }).find((entry) => entry.metric_id === "M09");
   const both = (routes) => [
     { id: "implementation", route: routes[0], depends_on: [] },

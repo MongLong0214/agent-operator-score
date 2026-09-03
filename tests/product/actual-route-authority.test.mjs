@@ -7,9 +7,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
@@ -17,7 +16,6 @@ import { METRICS } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
-import { prepareScenario } from "../../lib/suite.mjs";
 import {
   ACTUAL_ROUTE_EVENT_SCHEMA,
   AGENT_CAPABILITY_SCHEMA,
@@ -221,16 +219,22 @@ test("a route label that is not an identifier assigns nobody", () => {
   assert.deepEqual(good.refused_owner_labels, []);
 });
 
-test("the collision verdict says which authority decided it", () => {
+test("a declared schedule cannot certify that shared-resource work was kept apart", () => {
+  // It could, and that was the defect: a pair the plan said was ordered passed with
+  // `basis: ["declared-schedule"]` and no timing at all -- the agent's own artifact certifying the
+  // safety fact the artifact is the subject of. Labelling the basis did not stop the verdict being
+  // issued; only the ledger issues one now.
   const requirements = requirementsFromWork(WORK).requirements;
   const schedule = WORK.tasks.map((task) => ({ task_id: task.id, after: task.depends_on }));
   const collision = (events, declaredSchedule) => routeOracle({
     requirements, capabilities: twoKnown(), declared_schedule: declaredSchedule, actual_route_events: events
   }).observables.find((entry) => entry.observable_id === "collision-safe-parallelism");
 
-  // The artifact's own order, and nothing timed. A reader has to be able to see that a declaration
-  // answered this, not an observation.
-  assert.deepEqual(collision([], schedule).basis, ["declared-schedule"]);
+  // The artifact's own order, complete and correct, and nothing timed. It answers nothing.
+  const declaredOnly = collision([], schedule);
+  assert.equal(declaredOnly.pass, null, "a declaration certified that two tasks did not collide");
+  assert.deepEqual(declaredOnly.basis, []);
+  assert.match(declaredOnly.reason, /not evidence that it happened/u);
 
   const timed = (taskId, agentId, from, to) => event({
     task_id: taskId, agent_id: agentId, invocation_id: `invocation-${taskId}`, purpose_id: taskId,
@@ -240,10 +244,14 @@ test("the collision verdict says which authority decided it", () => {
     timed("implementation", "one", "2026-09-01T10:00:00Z", "2026-09-01T10:05:00Z"),
     timed("verification", "two", "2026-09-01T10:06:00Z", "2026-09-01T10:09:00Z")
   ];
+  // Only the ledger passes it, and it says so.
+  assert.equal(collision(apart, []).pass, true);
   assert.deepEqual(collision(apart, []).basis, ["invocation-ledger"]);
-  // The ledger answers it even where the schedule also would, so the stronger authority is the one
-  // recorded.
   assert.deepEqual(collision(apart, schedule).basis, ["invocation-ledger"]);
+
+  // The declaration is still on the record, so a reader can compare what was planned with what ran.
+  const oracle = routeOracle({ requirements, capabilities: twoKnown(), declared_schedule: schedule, actual_route_events: [] });
+  assert.equal(oracle.declared_schedule.length > 0, true, "the plan's schedule was dropped rather than kept as context");
 });
 
 test("the scored row and the oracle record describe the same oracle", () => {

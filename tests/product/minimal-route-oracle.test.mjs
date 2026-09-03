@@ -8,9 +8,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
@@ -18,7 +17,6 @@ import { METRICS } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
-import { prepareScenario } from "../../lib/suite.mjs";
 import {
   ACTUAL_ROUTE_EVENT_SCHEMA,
   AGENT_CAPABILITY_SCHEMA,
@@ -174,8 +172,10 @@ test("a requirement asking for a capability the owner does not hold fails rather
 test("the delegation reference tells over-delegation from inadequacy and owns no reliance episode", () => {
   const requirements = requirementsFromWork(WORK).requirements;
   const capabilities = twoKnown();
+  const handoffsInto = (taskId) => requirements.find((entry) => entry.task_id === taskId).required_handoffs;
   const assign = (owners) => Object.keys(owners).sort().map((taskId, index) => event({
-    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
+    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId,
+    artifact_ids: [`artifact-${index + 1}`], handoff_ids: [...handoffsInto(taskId)]
   }));
   const minimal = { contract: "one", implementation: "one", docs: "one", verification: "two", release: "one" };
   const split = { contract: "one", implementation: "one", docs: "two", verification: "two", release: "one" };
@@ -208,8 +208,10 @@ test("an owner AOS cannot judge is not delegation the operator got wrong", () =>
   // judgement about the operator built out of AOS not knowing what an agent can do.
   const requirements = requirementsFromWork(WORK).requirements;
   const capabilities = twoKnown();
+  const handoffsInto = (taskId) => requirements.find((entry) => entry.task_id === taskId).required_handoffs;
   const assign = (owners) => Object.keys(owners).sort().map((taskId, index) => event({
-    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
+    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId,
+    artifact_ids: [`artifact-${index + 1}`], handoff_ids: [...handoffsInto(taskId)]
   }));
   const unknownOwners = { contract: "a1", implementation: "a1", docs: "a1", verification: "a2", release: "a1" };
   const undecided = delegationOracle(routeOracle({ requirements, capabilities, actual_route_events: assign(unknownOwners) }));
@@ -225,4 +227,79 @@ test("an owner AOS cannot judge is not delegation the operator got wrong", () =>
     actual_route_events: assign({ contract: "one", implementation: "one", docs: "one", verification: "narrow", release: "one" })
   }));
   assert.equal(shortfall.expected_value_class, "UNDER_DELEGATED");
+});
+
+test("a required artifact or handoff the ledger does not show is an inadequate route", () => {
+  // Both lists were validated at construction and read by nothing. A route whose every event
+  // carried `artifact_ids: []` took full credit for work with nothing to show for it, and a handoff
+  // that was named and never made cost the route a point of cost and proved nothing.
+  const [solo] = requirementsFromWork({ tasks: [{ id: "a", resource: "r", depends_on: [] }] }).requirements;
+  const withArtifact = { ...solo, required_artifacts: Object.freeze(["artifact:out.json"]) };
+  const ran = (overrides) => event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-1", ...overrides });
+  const capabilities = twoKnown();
+  const observableOf = (requirements, events, id) =>
+    routeOracle({ requirements, capabilities, actual_route_events: events }).observables.find((entry) => entry.observable_id === id);
+
+  assert.equal(observableOf([withArtifact], [ran({ artifact_ids: ["artifact:out.json"] })], "simplest-adequate-route").pass, true);
+  assert.equal(observableOf([withArtifact], [ran({ artifact_ids: [] })], "simplest-adequate-route").pass, false,
+    "a task that produced none of the artifacts it owed was adequate");
+  assert.match(observableOf([withArtifact], [ran({ artifact_ids: [] })], "simplest-adequate-route").reason, /requires artifact/u);
+
+  // The same for a handoff, on the two-task graph where one is declared.
+  const pair = requirementsFromWork({ tasks: [{ id: "a", resource: "r1", depends_on: [] }, { id: "b", resource: "r2", depends_on: ["a"] }] }).requirements;
+  assert.deepEqual(pair.find((entry) => entry.task_id === "b").required_handoffs, ["a->b"]);
+  const both = (handoffs) => [
+    event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-a", artifact_ids: ["artifact-a"] }),
+    event({ task_id: "b", agent_id: "one", purpose_id: "b", invocation_id: "invocation-b", artifact_ids: ["artifact-b"], handoff_ids: handoffs })
+  ];
+  assert.equal(observableOf(pair, both(["a->b"]), "simplest-adequate-route").pass, true);
+  assert.equal(observableOf(pair, both([]), "simplest-adequate-route").pass, false, "a handoff that never happened satisfied a requirement that asks for it");
+  assert.equal(routeOracle({ requirements: pair, capabilities, actual_route_events: both([]) })
+    .constraint_failures.some((entry) => entry.constraint === "handoff" && entry.basis === "missing-evidence"), true);
+});
+
+test("two tasks the requirement does not allow in parallel are not adequate when the ledger shows them together", () => {
+  // `allowed_parallelism` was validated at construction and consumed nowhere, so a shared-resource
+  // overlap made `collision-safe-parallelism` false while the route stayed minimal and adequate.
+  const requirements = requirementsFromWork(WORK).requirements;
+  const timed = (taskId, agentId, from, to) => event({
+    task_id: taskId, agent_id: agentId, invocation_id: `invocation-${taskId}`, purpose_id: taskId,
+    started_at: from, completed_at: to, artifact_ids: [`artifact-${taskId}`],
+    handoff_ids: [...requirements.find((entry) => entry.task_id === taskId).required_handoffs]
+  });
+  const owners = { contract: "one", implementation: "one", docs: "one", verification: "two", release: "one" };
+  const ledger = (implementationEnd, verificationStart) => Object.keys(owners).sort().map((taskId) =>
+    taskId === "implementation" ? timed(taskId, owners[taskId], "2026-09-01T10:00:00Z", implementationEnd)
+      : taskId === "verification" ? timed(taskId, owners[taskId], verificationStart, "2026-09-01T10:20:00Z")
+        : timed(taskId, owners[taskId], "2026-09-01T09:00:00Z", "2026-09-01T09:01:00Z"));
+
+  const apart = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: ledger("2026-09-01T10:05:00Z", "2026-09-01T10:06:00Z") });
+  assert.equal(apart.observables.find((entry) => entry.observable_id === "collision-safe-parallelism").pass, true);
+  assert.equal(apart.observables.find((entry) => entry.observable_id === "simplest-adequate-route").pass, true);
+
+  // implementation and verification both own `src`, and the requirement calls both serial.
+  const together = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: ledger("2026-09-01T10:10:00Z", "2026-09-01T10:05:00Z") });
+  assert.equal(together.observables.find((entry) => entry.observable_id === "collision-safe-parallelism").pass, false);
+  assert.equal(together.observables.find((entry) => entry.observable_id === "simplest-adequate-route").pass, false,
+    "a route the ledger shows colliding over a shared resource was still adequate");
+  assert.equal(together.constraint_failures.some((entry) => entry.constraint === "parallelism" && entry.basis === "observed-overlap"), true);
+});
+
+test("an event naming a task the requirement does not hold is refused, not silently dropped", () => {
+  // The shape of an identifier is not proof that it identifies anything. A well-formed
+  // `task_id: "phantom"` was admitted and then dropped by every consumer that looked its task up,
+  // so it counted as an invocation nowhere and left the route looking cheaper than the work it did.
+  const requirements = requirementsFromWork({ tasks: [{ id: "a", resource: "r", depends_on: [] }] }).requirements;
+  const real = event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-a", artifact_ids: ["artifact-a"] });
+  const phantom = event({ task_id: "phantom", agent_id: "one", purpose_id: "phantom", invocation_id: "invocation-phantom", artifact_ids: ["artifact-p"] });
+
+  const oracle = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: [real, phantom] });
+  assert.deepEqual(oracle.actual_route_events.map((entry) => entry.invocation_id), ["invocation-a"]);
+  assert.equal(oracle.rejected_route_events.length, 1);
+  assert.match(oracle.rejected_route_events[0].reason, /is not a task in this run's routing requirement/u);
+  // A null task id is still admitted: it attributes nobody and says so, which is different from
+  // naming a task that does not exist.
+  const unattributed = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: [real, event({ invocation_id: "invocation-loose" })] });
+  assert.deepEqual(unattributed.rejected_route_events, []);
+  assert.equal(unattributed.actual_route_events.length, 2);
 });

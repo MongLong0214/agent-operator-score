@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { METRIC_IDS, NOT_OBSERVED } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
-import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord } from "../../lib/routing-oracle.mjs";
+import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, requirementsFromWork } from "../../lib/routing-oracle.mjs";
 import { scoreRun } from "../../lib/scorer-v1.mjs";
 import { scenarioParams } from "../../lib/suite-seed.mjs";
 
@@ -23,8 +23,10 @@ const WORK = {
   ]
 };
 const ROUTED = { contract: "r1", implementation: "r1", docs: "r1", verification: "r2", release: "r1" };
+const REQUIREMENT = () => requirementsFromWork(WORK).requirements;
+const handoffsInto = (taskId) => REQUIREMENT().find((entry) => entry.task_id === taskId).required_handoffs;
 const routingInput = () => ({
-  work: WORK,
+  requirements: REQUIREMENT(),
   capabilities: new Map(["r1", "r2"].map((id) =>
     [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })])),
   actual_route_events: Object.keys(ROUTED).sort().map((taskId, index) => ({
@@ -37,7 +39,7 @@ const routingInput = () => ({
     started_at: null,
     completed_at: null,
     artifact_ids: [`artifact-${index + 1}`],
-    handoff_ids: [],
+    handoff_ids: [...handoffsInto(taskId)],
     capability_digest: null,
     operator_decision_event_id: null,
     operator_opportunity_id: null

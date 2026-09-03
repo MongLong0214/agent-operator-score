@@ -767,11 +767,11 @@
     {
       "cell_id": "C2.RF.01",
       "construct_id": "C2",
-      "axis": "delegated_artifact",
+      "axis": "system_outcome",
       "title": "Routing fitness and minimality",
       "claim": "Each task is routed to a capability that matches it, without a redundant invocation.",
       "deferred_claim": null,
-      "observable": "the work.json AOS seeds into the FAM-3 workspace before the agent runs -> a requirement per task; the capability record AOS holds for each registered agent's adapter; the run's actual route events -> whether every task's attributed owner holds the capabilities its requirement names, and whether the route taken is the cheapest one that satisfies every constraint at once",
+      "observable": "the route the operator declared for the form, read from the operator plan before anything runs -> one requirement per stage; the capability record AOS holds for each registered agent's adapter; the run's invocation ledger -> which agent AOS invoked for each stage, what it produced and what was carried into it -> whether every stage's owner holds the capabilities the requirement names, and whether the route taken is the cheapest one satisfying every constraint at once",
       "task_opportunity": {
         "form_ids": [
           "FAM-3"
@@ -786,25 +786,25 @@
           "turn_count"
         ]
       },
-      "authority": "agent-artifact+deterministic-grader",
+      "authority": "runtime-invocation-ledger",
       "rival_explanations": [
         {
-          "id": "no-per-task-attribution",
-          "statement": "AOS invokes an agent for a family, not for one of the tasks the agent's own plan describes, so no actual route event attributes a task to an agent and these subchecks are NOT_OBSERVED in an ordinary run. The cell is answerable only where a caller supplies per-task attribution.",
+          "id": "capability-registry-is-coarse",
+          "statement": "AOS states one capability set per adapter it ships, so every agent registered under a known adapter holds every capability any stage requires. A capability shortfall is therefore reachable only from a narrower record than AOS itself produces.",
           "status": "OPEN",
-          "mitigation": "Stated rather than papered over: the routing oracle refuses to let the plan's proposed owner stand in for an attributed one, so the cell withholds instead of scoring a declaration."
+          "mitigation": "An agent registered under an adapter AOS does not ship is `unknown` and withholds the cell rather than passing it, so the coarseness never becomes credit for an agent AOS knows nothing about."
         },
         {
-          "id": "axis-and-authority-lag",
-          "statement": "This cell is declared on the delegated_artifact axis under an agent-artifact authority, and since #558 its subchecks are decided from the seeded requirement, AOS's own capability registry and the runtime invocation ledger -- none of which is the agent's artifact.",
-          "status": "OPEN",
-          "mitigation": "Moving the cell to system_outcome is a construct-map change owned by #582, and it would make the outcome estimate depend on a cell that withholds in every ordinary run. Recorded here so the mismatch is visible rather than implied."
+          "id": "route-breadth-as-value",
+          "statement": "A route with more stages is not a better route. Paying credit for breadth would make the number rise with spend.",
+          "status": "CONTROLLED",
+          "mitigation": "Route cost counts invocations plus the handoffs a split buys, so a stage the work did not need costs more than the minimum rather than less. Agent count is not a term, and tool_count and autonomy_level are prohibited value sources in this contract."
         },
         {
-          "id": "model-capability",
-          "statement": "A model that writes well produces this artifact from a weak operator instruction, so the observation is a property of the operator-agent pair rather than of the operator alone.",
-          "status": "OPEN",
-          "mitigation": "The cell sits on the delegated_artifact axis and is excluded from the operator process index, which is computed from operator_process cells only."
+          "id": "reported-not-gating",
+          "statement": "This cell is optional for its construct, so its estimate is reported beside the outcome axis and is not averaged into it. Routing fitness therefore moves no index.",
+          "status": "CONTROLLED",
+          "mitigation": "Deliberate. The cell withholds for an agent registered under an adapter AOS does not ship, because AOS cannot say what such a runtime is able to do; making it required would withhold the outcome index and the composite for every operator using an unrecognised command, which is a heavier claim than the cell is entitled to make. It is credit-bearing and reported so a reader can see the estimate."
         }
       ],
       "minimum_opportunities": 3,
@@ -843,7 +843,7 @@
           "form_id": "FAM-3"
         }
       ],
-      "required_for_construct": true,
+      "required_for_construct": false,
       "credit_bearing": true,
       "population_status": "SUBCHECK_BACKED"
     },
@@ -854,7 +854,7 @@
       "title": "Planned invocation budget held",
       "claim": "The number of invocations the run actually spent stayed inside the bound the plan implies.",
       "deferred_claim": null,
-      "observable": "invocation ledger for the family -> count, compared against the invocation bound the seeded work requirement declares, per task and in total",
+      "observable": "invocation ledger for the form -> count, compared against the invocation bound the requirement built from the operator's declared route states, per stage and in total",
       "task_opportunity": {
         "form_ids": [
           "FAM-3"
@@ -869,7 +869,7 @@
           "turn_count"
         ]
       },
-      "authority": "runtime-invocation-ledger+agent-artifact",
+      "authority": "runtime-invocation-ledger",
       "rival_explanations": [
         {
           "id": "bound-set-by-the-graded-party",

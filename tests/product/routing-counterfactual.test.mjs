@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { observeRun } from "../../lib/observe.mjs";
-import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, routingObservables } from "../../lib/routing-oracle.mjs";
+import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, dependenciesOf, requirementsFromWork, routingObservables } from "../../lib/routing-oracle.mjs";
 
 const WORK = {
   tasks: [
@@ -23,6 +23,11 @@ const WORK = {
   ],
   collision: "implementation and verification both own src and must be serial"
 };
+
+const REQUIREMENT = () => requirementsFromWork(WORK).requirements;
+// The handoffs the requirement names, carried. A route that did not carry them is a different run
+// and has its own test; these fixtures are about ownership, so they show the work arriving.
+const handoffsInto = (taskId) => REQUIREMENT().find((entry) => entry.task_id === taskId).required_handoffs;
 
 const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] });
 const CAPABILITIES = () => new Map([["strong", known("strong")], ["other", known("other")]]);
@@ -51,7 +56,7 @@ const event = (taskId, agentId, index) => ({
   started_at: null,
   completed_at: null,
   artifact_ids: [`artifact-${index}`],
-  handoff_ids: [],
+  handoff_ids: [...handoffsInto(taskId)],
   capability_digest: null,
   operator_decision_event_id: null,
   operator_opportunity_id: null
@@ -63,7 +68,7 @@ const m09 = ({ routes = MINIMAL, ledger = null, work = WORK, capabilities = CAPA
   observeRun({
     artifacts: { plan: PLAN(routes) },
     params: { "FAM-3": {} },
-    routing: { work, capabilities, actual_route_events: ledger ?? ledgerFor(routes) }
+    routing: { requirements: work === null ? null : requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger ?? ledgerFor(routes) }
   }).find((entry) => entry.metric_id === "M09");
 
 const sub = (observation, id) => observation.subchecks.find((entry) => entry.id === id).pass;
@@ -115,13 +120,13 @@ test("the same plan text with a different actual route is judged by the actual r
   const followed = observeRun({
     artifacts: { plan },
     params: { "FAM-3": {} },
-    routing: { work: WORK, capabilities: CAPABILITIES(), actual_route_events: ledgerFor(MINIMAL) }
+    routing: { requirements: REQUIREMENT(), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(MINIMAL) }
   }).find((entry) => entry.metric_id === "M09");
   // Identical plan bytes. The ledger says verification went to the agent that wrote the code.
   const diverged = observeRun({
     artifacts: { plan },
     params: { "FAM-3": {} },
-    routing: { work: WORK, capabilities: CAPABILITIES(), actual_route_events: ledgerFor({ ...MINIMAL, verification: "other" }) }
+    routing: { requirements: REQUIREMENT(), capabilities: CAPABILITIES(), actual_route_events: ledgerFor({ ...MINIMAL, verification: "other" }) }
   }).find((entry) => entry.metric_id === "M09");
 
   assert.equal(sub(followed, "simplest-adequate-route"), true);
@@ -163,7 +168,7 @@ test("an actual route whose owner AOS knows nothing about is not observed", () =
 
 test("routing the independent verifier to the owner of the work it checks fails independence", () => {
   const sameOwner = { contract: "strong", implementation: "strong", docs: "strong", verification: "strong", release: "strong" };
-  const input = { work: WORK, plan: PLAN(sameOwner), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(sameOwner) };
+  const input = { requirements: REQUIREMENT(), plan: PLAN(sameOwner), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(sameOwner) };
 
   // The independence observable itself, by name, not only the minimality verdict it also sinks.
   const independence = routingObservables(input).oracle.observables
