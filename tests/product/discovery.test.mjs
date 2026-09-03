@@ -200,7 +200,8 @@ test("a verified Codex install is discovered, selected and reported without anyt
   assert.equal(codex.adapter_id, "codex-cli.v1");
   assert.equal(codex.identity.status, "VERIFIED");
   assert.equal(codex.identity.adapter_runtime_match, true);
-  assert.equal(record.zero_input.manual_registration, 0);
+  assert.deepEqual(record.zero_input, { terminal_commands: 0, config_edits: 0, manual_registration: 0, setup_questions: 0 });
+  assert.equal(record.next_action, null);
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -418,7 +419,13 @@ test("an exact tie asks once, with a typed request and no answer of its own", ()
   assert.equal(record.selected_runtime, null);
   assert.equal(record.tie_break.schema_id, TIE_BREAK_SCHEMA);
   assert.deepEqual(record.tie_break.options.map((one) => one.id).sort(), ["codex-a", "codex-b"]);
+  assert.equal(record.tie_break.asked_at_most_once, true);
   assert.equal(record.zero_input.setup_questions, 1);
+  // Once, not once per discovery: a second run of the same host asks the same question under the
+  // same id, so a relay that has already carried it has something to recognise it by.
+  const again = discover(baseOptions(root, { home, pathDirs: [first.pathDir], operatorHome }));
+  assert.equal(again.tie_break.question_id, record.tie_break.question_id);
+  assert.equal(again.zero_input.setup_questions, 1);
   rmSync(root, { recursive: true, force: true });
 });
 

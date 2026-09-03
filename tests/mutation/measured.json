@@ -687,11 +687,11 @@
     },
     "a discovery stage cannot skip the one before it": {
       "platform": "darwin",
-      "fingerprint": "sha256:abf26488c13ab61fbed76099b25e03b1fbc34c21e763d74bf12ea5ae39e4fc7e",
+      "fingerprint": "sha256:04542b8e4fb1a8778164d2a5cc5e3befdcb4835ff4db29fb8b1e7a6ad4bc6578",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-03T09:58:49.411Z"
+        "at": "2026-09-03T10:10:48.367Z"
       }
     },
     "a facet is not normalised into a digest": {
