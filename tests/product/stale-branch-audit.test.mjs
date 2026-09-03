@@ -379,9 +379,9 @@ test("Phase A records the Phase B contract and does not emit the Phase B artifac
   assert.match(contract.prerequisite_authority, /github-state\.json/u, "the contract does not name the canonical authority that decides whether the blockers cleared");
   assert.match(contract.required_shape.pre_observation, /digest/u, "the contract does not require the pre-deletion observation digest");
   assert.match(contract.required_shape.post_observation, /digest/u, "the contract does not require the post-deletion observation digest");
-  assert.match(contract.entry_point, /runDeletion/u, "the contract does not name the entry point that collects its own observations");
-  assert.match(contract.entry_point, /no parameter/u, "the contract does not say the entry point takes no state");
-  assert.match(contract.emitted_not_authored, /produced by runDeletion/u, "the contract does not say the log is emitted rather than written");
+  assert.match(contract.entry_point, /liveEligibility/u, "the contract does not name the report Phase B starts from");
+  assert.match(contract.entry_point, /ships no executor/u, "the contract does not say Phase A ships no executor");
+  assert.match(contract.verifiers, /boundaryInvariantFindings/u, "the contract does not name the verifiers Phase B has to satisfy");
   for (const family of ["protection", "install source", "open pull request head"]) {
     assert.ok(contract.invariant_comparison.includes(family), `the invariant comparison does not name ${family}`);
   }
@@ -713,7 +713,7 @@ test("every gate function the contract and the document name is actually exporte
     "scripts/collect-branch-state.mjs": readFileSync(join(root, "scripts", "collect-branch-state.mjs"), "utf8"),
     "scripts/branch-audit.mjs": readFileSync(join(root, "scripts", "branch-audit.mjs"), "utf8")
   };
-  const internal = new Set(["runDeletionAgainst", "afterSnapshotComplaint", "collectLive", "loadCompletion", "makeDeletionRunner"]);
+  const internal = new Set(["afterSnapshotComplaint", "collectLive", "liveOpenPr", "liveProtected", "withoutPaths"]);
   let checked = 0;
   for (const [where, text] of Object.entries(sources)) {
     for (const [, name] of text.matchAll(apiShaped)) {
@@ -726,6 +726,9 @@ test("every gate function the contract and the document name is actually exporte
   // The retired name specifically, since it is the one that drifted.
   assert.equal(exported.has("authorizeDeletion"), false, "authorizeDeletion is exported again; the contract text and the export must be changed together");
   assert.equal(exported.has("makeDeletionRunner"), false, "the runner factory is exported again, which is a door in the gate");
+  // Phase A ships verifiers, not an executor. A function that performs the deletion belongs to the
+  // blocked phase, and the issue's own phase boundary allows 조회/분류/evidence/verifier only.
+  assert.equal(exported.has("runDeletion"), false, "a deletion executor is exported from a read-only Phase A");
 });
 
 test("a multi-phase issue is not closed by the phase that has run", async () => {

@@ -2255,24 +2255,94 @@ export const GUARDS = [
     name: "a pull request history read as a bounded slice supports no claim about it"
   },
   {
-    guard: "the prerequisite snapshot is read from the repository being operated on",
+    guard: "nothing is eligible without a live observation",
     reason:
-      "reading this module's own copy answers for the wrong repository whenever the two are not the same one, and a Phase B that deletes in one repository while clearing its blockers from another has checked nothing",
+      "the stored audit is written by the party proposing the deletion; naming anything eligible from it alone lets one record supply both the evidence and the verdict",
     file: "scripts/branch-audit.mjs",
-    from: "    completion = loadCompletionSnapshot(join(cwd, \"fixtures\", \"execution-plan\", \"github-state.json\"));",
-    to: "    completion = loadCompletionSnapshot();",
+    from: "  if (!pre) return { eligible: [], refused, findings: [\"no live observation was supplied, so nothing can be found eligible\"] };",
+    to: "  if (false) return { eligible: [], refused, findings: [] };",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the gate collects both boundary observations itself, around a real deletion"
+    name: "nothing is found eligible without a live observation"
   },
   {
-    guard: "a prerequisite snapshot that cannot be read authorizes nothing",
+    guard: "live eligibility re-checks the commit the audit judged",
     reason:
-      "an unreadable snapshot is not a snapshot with nothing to object; swallowing it would let a repository with no governance record delete branches",
+      "a branch that moved since the audit is a different branch; carrying the old verdict onto it would authorize removing work nobody looked at",
     file: "scripts/branch-audit.mjs",
-    from: "    return { authorized: false, deleted: [], findings: [`the canonical issue-state snapshot could not be read, so nothing is authorized: ${error.message}`], log: null };",
-    to: "    completion = { issues: [] };",
+    from: "    else if (live !== entry.head_sha) refused.push({ name: entry.name, reason: `the audit judged it at ${entry.head_sha} but live it points at ${live}` });",
+    to: "",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "a repository with no governance record authorizes nothing"
+    name: "a branch that moved since the audit is refused at the commit the audit judged"
+  },
+  {
+    guard: "an open pull request is looked for in every source that would know",
+    reason:
+      "the observation collects the open-PR list and the per-branch history separately; reading only the first let an OPEN row in the history pass, and an empty list read as nothing open",
+    file: "scripts/branch-audit.mjs",
+    from: "  const listed = (observation?.open_prs ?? []).find((pr) => pr.state === \"OPEN\" && pr.head_branch === branch);",
+    to: "  const listed = null;",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a pull request opened after the audit was written blocks the deletion, whatever the audit says"
+  },
+  {
+    guard: "the per-branch history is consulted for an open pull request",
+    reason:
+      "an open pull request the open-PR list did not mention is still an open pull request, and its head branch is still one this issue forbids deleting",
+    file: "scripts/branch-audit.mjs",
+    from: "  return history.find((pr) => pr.state === \"OPEN\") ?? null;",
+    to: "  return null;",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "an open pull request visible only in the collected history still refuses the branch"
+  },
+  {
+    guard: "protection is re-checked live, not read from the stored flag",
+    reason:
+      "eligibility read the audit's stored flag and nothing re-checked it, so protection turned on after the snapshot did not stop anything",
+    file: "scripts/branch-audit.mjs",
+    from: "    else if (guarded !== false) refused.push({ name: entry.name, reason: guarded === null ? \"the observation reports no protection state for it\" : \"the observation reports it as protected\" });",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "protection turned on after the audit refuses the branch"
+  },
+  {
+    guard: "an unknown protection state is not an unprotected branch",
+    reason:
+      "null is not false: a branch the observation says nothing about is not a branch known to be safe to remove",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!head || typeof head.protected !== \"boolean\") return null;",
+    to: "  if (!head) return false;",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "an unreadable protection state refuses the branch rather than passing it"
+  },
+  {
+    guard: "a command that returned nothing is not an empty list",
+    reason:
+      "a successful gh api always emits JSON; reading empty stdout as an empty list is how 'no pull request is open on this branch' gets manufactured out of silence, and it authorized a real deletion",
+    file: "scripts/collect-branch-state.mjs",
+    from: "  if (body === \"\") throw new Error(`${source}: the request succeeded but returned nothing, which is not an empty list`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a list endpoint that succeeds and returns nothing is not an empty list"
+  },
+  {
+    guard: "tag containment is the repository's tags, not the checkout's",
+    reason:
+      "git tag --contains reads whatever this checkout carries; a locally deleted tag would drop a release the branch is in, and a locally invented one would add one it is not",
+    file: "scripts/collect-branch-state.mjs",
+    from: "      tags_containing: { value: receipted(receipts, `tags-containing-${name}`, \"git\", [\"tag\", \"--contains\", sha], { cwd }).text.split(\"\\n\").filter(Boolean).filter((tag) => originTags.has(tag)).sort(), source: `tags-containing-${name}` },",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "tag containment reports the repository's tags, not whatever this checkout carries"
+  },
+  {
+    guard: "the tree scan reads the integration line",
+    reason:
+      "'nothing in the tree refers to this branch' is a claim about the repository; grepping whatever branch the collector happens to be on misses a reference that is on dev",
+    file: "scripts/collect-branch-state.mjs",
+    from: "    const grep = receipted(receipts, `git-grep-${name}`, \"git\", [\"grep\", \"-n\", \"--fixed-strings\", name, devSha, \"--\", \":!docs/STALE_BRANCH_AUDIT.md\", \":!fixtures/stale-branches/\"], { cwd, allowExit: [0, 1] });",
+    to: "    const grep = receipted(receipts, `git-grep-${name}`, \"git\", [\"grep\", \"-n\", \"--fixed-strings\", name, \"HEAD\", \"--\", \":!docs/STALE_BRANCH_AUDIT.md\", \":!fixtures/stale-branches/\"], { cwd, allowExit: [0, 1] });",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "the tree scan reads the integration line, not the branch the collector happens to be on"
   },
   {
     guard: "the pull request history is read to the end",
@@ -2282,17 +2352,7 @@ export const GUARDS = [
     from: "    const prs = apiList(receipts, `pr-history-${name}`, `repos/${repository}/pulls?state=all&head=${owner}:${name}&per_page=100`);",
     to: "    const prs = { items: [], complete: false };",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the gate collects both boundary observations itself, around a real deletion"
-  },
-  {
-    guard: "a list read reports whether it reached the end",
-    reason:
-      "a caller that stops early has not established that what it did not see is not there, and the difference has to survive into the record for a consumer to refuse it",
-    file: "scripts/collect-branch-state.mjs",
-    from: "  return { items: pages.flat(), complete: true };",
-    to: "  return { items: pages.flat(), complete: false };",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the gate collects both boundary observations itself, around a real deletion"
+    name: "a live observation of a real repository finds exactly the eligible branch"
   },
   {
     guard: "the observation digest is recursive over its content",
@@ -2443,76 +2503,6 @@ export const GUARDS = [
     to: "",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a pull request opened after the audit was written blocks the deletion, whatever the audit says"
-  },
-  {
-    guard: "the gate collects the pre-deletion observation itself",
-    reason:
-      "a gate handed an observation decides on whatever the caller chose to hand it; collecting inside the run is what stops the observation being a composable parameter",
-    file: "scripts/branch-audit.mjs",
-    from: "    pre = collect(target);",
-    to: "    pre = arguments[0].pre;",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the gate has no parameter through which composed state reaches the decision"
-  },
-  {
-    guard: "the gate recollects the state after the deletion",
-    reason:
-      "recollecting one side and accepting the other closes nothing: the invariants are a comparison, and a comparison is only as trustworthy as its worse operand",
-    file: "scripts/branch-audit.mjs",
-    from: "    post = collect(target);",
-    to: "    post = arguments[0].post;",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the gate has no parameter through which composed state reaches the decision"
-  },
-  {
-    guard: "a failed pre-deletion collection authorizes nothing",
-    reason:
-      "an unreachable repository is not a repository with nothing to object; swallowing the error would turn a failed look into a clean one",
-    file: "scripts/branch-audit.mjs",
-    from: "    return { authorized: false, deleted: [], findings: [`the pre-deletion observation could not be collected, so nothing is authorized: ${error.message}`], log: null };",
-    to: "    return { authorized: true, deleted: [], findings: [], log: null };",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "a collector that cannot reach the repository authorizes nothing"
-  },
-  {
-    guard: "a deletion with no witness emits no record",
-    reason:
-      "a deletion whose after-state could not be read has still changed the repository, and a record claiming completion without that reading would be the self-supplied post-state again",
-    file: "scripts/branch-audit.mjs",
-    from: "    return {\n      authorized: false,\n      deleted,\n      findings: [`the deletion ran but the post-deletion observation could not be collected, so its effect is unrecorded: ${error.message}`],\n      log: null\n    };",
-    to: "    return { authorized: true, deleted, findings: [], log: null };",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "a deletion whose after-state cannot be read emits no record"
-  },
-  {
-    guard: "the prerequisites are checked before anything is collected or deleted",
-    reason:
-      "checking after the act makes the check a report rather than a gate, and the act is not reversible",
-    file: "scripts/branch-audit.mjs",
-    from: "  if (blocked.length > 0) return { authorized: false, deleted: [], findings: blocked, log: null };",
-    to: "",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the prerequisites are read from the operated repository, before anything is collected or deleted"
-  },
-  {
-    guard: "a deletion action that throws is reported",
-    reason:
-      "a push --delete that failed halfway leaves a repository nobody described; swallowing the error would record a clean completion over it",
-    file: "scripts/branch-audit.mjs",
-    from: "    ...(performError ? [`the deletion did not complete: ${performError.message}`] : []),",
-    to: "",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "a deletion action that throws is still witnessed and reported"
-  },
-  {
-    guard: "the gate acts on exactly the branches it found eligible live",
-    reason:
-      "an eligible set taken from the stored audit rather than from the fresh observation would delete a branch that moved or picked up a pull request after the audit was written",
-    file: "scripts/branch-audit.mjs",
-    from: "    .filter((entry) => liveHeads.get(entry.name) === entry.head_sha && !openPrByBranch.has(entry.name))",
-    to: "    .filter(() => true)",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "the gate does not act on a branch the live repository no longer agrees about"
   },
   {
     guard: "a deletion outside the audit is refused",
@@ -2767,9 +2757,9 @@ export const GUARDS = [
   {
     guard: "the published contract names an entry point that exists",
     reason:
-      "the contract told a consumer to call authorizeDeletion after the export had been replaced by runDeletion; a document naming an API that is not there is a defect in the contract, not a typo",
+      "the contract told a consumer to call authorizeDeletion after the export was gone; a document naming an API that is not there is a defect in the contract, not a typo",
     file: "fixtures/stale-branches/audit.json",
-    from: "\"entry_point\": \"runDeletion(",
+    from: "\"entry_point\": \"liveEligibility(",
     to: "\"entry_point\": \"authorizeDeletion(",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "every gate function the contract and the document name is actually exported"
@@ -3782,24 +3772,21 @@ export const ACCOUNTED_GUARDS = [
   "a calendar-impossible instant is refused before any arithmetic",
   "a capped pull request history is refused when the observation is verified",
   "a capped pull request history supports no claim in the record",
+  "a command that returned nothing is not an empty list",
   "a completed deletion requires the observation that witnessed it",
   "a completed log cites both boundary observation digests",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
-  "a deletion action that throws is reported",
   "a deletion names the commit the audit judged",
   "a deletion outside the audit is refused",
   "a deletion recommendation carries a reason",
-  "a deletion with no witness emits no record",
   "a deletion-blocking unknown blocks the deletion",
   "a derivation cites a receipt the observation carries",
   "a facet is not normalised into a digest",
-  "a failed pre-deletion collection authorizes nothing",
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
   "a forged structural set is revalidated like the rest",
-  "a list read reports whether it reached the end",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
   "a metric's status and its value are one state",
@@ -3811,7 +3798,6 @@ export const ACCOUNTED_GUARDS = [
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
-  "a prerequisite snapshot that cannot be read authorizes nothing",
   "a protected branch is never deletion-eligible",
   "a pull request opened after the audit blocks the deletion",
   "a refused file fails the check",
@@ -3855,7 +3841,9 @@ export const ACCOUNTED_GUARDS = [
   "an issue owns a surface",
   "an open PR head survives the deletion",
   "an open PR makes the branch ACTIVE, whatever it is labelled",
+  "an open pull request is looked for in every source that would know",
   "an out-of-range month, day, hour, minute or second is refused",
+  "an unknown protection state is not an unprotected branch",
   "an unknown's bearing is one of two values, not free text",
   "artifact top-level mode",
   "artifact type in the envelope",
@@ -3938,6 +3926,7 @@ export const ACCOUNTED_GUARDS = [
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",
+  "live eligibility re-checks the commit the audit judged",
   "local reference redirection",
   "locked cycle seed",
   "main and dev are compared across the deletion itself",
@@ -3948,6 +3937,7 @@ export const ACCOUNTED_GUARDS = [
   "no deletion is authorized without a pre-deletion observation",
   "no eligible evidence is said to be none",
   "nothing claimed as deleted is still there",
+  "nothing is eligible without a live observation",
   "nothing vanished that the log did not claim",
   "observation channel size bound",
   "observation line size bound",
@@ -3989,6 +3979,7 @@ export const ACCOUNTED_GUARDS = [
   "profile undeclared run fields are digested",
   "profile unknown result schema is refused",
   "protection is compared as content, not as a projection",
+  "protection is re-checked live, not read from the stored flag",
   "provider credential formats are recognised",
   "pull request produced the commit",
   "quoted keys are keys",
@@ -4028,6 +4019,7 @@ export const ACCOUNTED_GUARDS = [
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
+  "tag containment is the repository's tags, not the checkout's",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the after-snapshot exception is bound to the branch the audit was submitted from",
@@ -4054,19 +4046,15 @@ export const ACCOUNTED_GUARDS = [
   "the evidence contract is pinned outside the plan",
   "the exception needs a submission branch to be about",
   "the floor follows the worst severity observed",
-  "the gate acts on exactly the branches it found eligible live",
-  "the gate collects the pre-deletion observation itself",
-  "the gate recollects the state after the deletion",
   "the invariant baseline agrees with the snapshot it was taken from",
   "the observation digest is recursive over its content",
+  "the per-branch history is consulted for an open pull request",
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
   "the post-deletion observation follows the deletion",
   "the post-deletion observation is taken promptly",
   "the pre-deletion observation is fresh",
   "the pre-deletion observation predates the deletion",
-  "the prerequisite snapshot is read from the repository being operated on",
-  "the prerequisites are checked before anything is collected or deleted",
   "the printed shape is named",
   "the published contract names an entry point that exists",
   "the pull request history is read to the end",
@@ -4084,6 +4072,7 @@ export const ACCOUNTED_GUARDS = [
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
   "the stable plugin/install source is compared",
+  "the tree scan reads the integration line",
   "the two head transports are cross-checked",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",

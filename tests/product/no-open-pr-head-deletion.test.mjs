@@ -5,15 +5,15 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, deletionLogFindings, loadCompletionSnapshot, openPrHeadDeletionFindings, runDeletion } from "../../scripts/branch-audit.mjs";
+import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, liveEligibility, loadCompletionSnapshot, openPrHeadDeletionFindings } from "../../scripts/branch-audit.mjs";
 import { collect, observationDigest } from "../../scripts/collect-branch-state.mjs";
 import { auditFor, buildFixtureRepository, withFakeGitHub } from "./branch-state-fixture.mjs";
 
 // The prohibition in #572 that cannot be walked back: deleting the head branch of an open pull
 // request destroys its diff. It has to hold in three directions -- an open PR head may never be
-// eligible in the audit, the deletion record may never name one, and neither may a pull request
-// opened *after* the audit was written. Only the third can be checked against something other than
-// the author's own record, which is why the gate collects its own observation rather than taking one.
+// eligible in the committed audit, a proposed deletion may never name one, and neither may a pull
+// request opened *after* the audit was written. The third is why `liveEligibility` exists and why the
+// tests below collect from a real repository rather than composing an observation.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const audit = JSON.parse(readFileSync(join(root, "fixtures", "stale-branches", "audit.json"), "utf8"));
@@ -28,6 +28,7 @@ const clearedCompletion = () => ({
   )
 });
 
+/** A well-formed observation, shaped as the collector emits one. */
 const observation = (overrides = {}) => {
   const base = structuredClone(audit.live_observation);
   Object.assign(base, overrides);
@@ -42,23 +43,6 @@ const boundaryPair = () => {
   const gone = deletedNames();
   const post = observation({
     collected_at: "2026-09-10T00:01:00Z",
-    heads: pre.heads.filter((head) => !gone.has(head.name)),
-    rest_heads: pre.rest_heads.filter((head) => !gone.has(head.name))
-  });
-  return { pre, post };
-};
-
-/**
- * The same pair, stamped around the real clock. The runner takes `completed_at` from the wall clock
- * between its two collections, so a pair fixed at some other date fails the freshness window for a
- * reason that has nothing to do with what is being tested.
- */
-const iso = (offsetSeconds) => new Date(Date.now() + offsetSeconds * 1000).toISOString().replace(/\.\d{3}Z$/u, "Z");
-const livePair = () => {
-  const pre = observation({ collected_at: iso(-5) });
-  const gone = deletedNames();
-  const post = observation({
-    collected_at: iso(5),
     heads: pre.heads.filter((head) => !gone.has(head.name)),
     rest_heads: pre.rest_heads.filter((head) => !gone.has(head.name))
   });
@@ -257,12 +241,12 @@ test("the deletion is refused while the canonical snapshot still shows a blocker
   assert.ok(authorize({ completion }).some((f) => f.includes("still blocked")), "a deletion ran while a blocker was open");
 });
 
-// --- the gate, driven against a real repository ---------------------------------------------------
+// --- driven against a real repository -------------------------------------------------------------
 //
-// These do not inject anything. The module exposes no collector, no observation and no factory that
-// takes them, so the only way to drive `runDeletion` is to give it a repository to look at:
-// `branch-state-fixture.mjs` builds one, with a `gh` on PATH that answers from a table built after
-// the commits exist. Slower than a seam, and it leaves nothing to step through.
+// These do not hand the verifier a hand-written observation. `branch-state-fixture.mjs` builds a bare
+// origin with branches, an annotated tag and commits, and puts a `gh` on PATH that answers from a
+// table built after the commits exist, so the collector runs for real and `liveEligibility` is asked
+// about a repository rather than about a literal.
 
 const drive = (options, body) => {
   const fixture = buildFixtureRepository(options);
@@ -277,164 +261,148 @@ const drive = (options, body) => {
   }
 };
 
-const liveHeads = (fixture) =>
-  execFileSync("git", ["ls-remote", "--heads", "origin"], { cwd: fixture.work, encoding: "utf8" })
-    .split("\n").filter(Boolean).map((line) => line.split(/\s+/u)[1].replace("refs/heads/", ""));
+/** Re-collect after changing what the fake GitHub says, which is what Phase B would see. */
+const recollect = (fixture) => {
+  const observation = collect({ repository: fixture.repository, cwd: fixture.work });
+  observation.digest = observationDigest(observation);
+  return observation;
+};
 
-test("the gate collects both boundary observations itself, around a real deletion", () => {
-  drive({}, (fixture, audit) => {
-    let performedWith = null;
-    const run = runDeletion({
-      audit,
-      repository: fixture.repository,
-      cwd: fixture.work,
-      perform: (list) => {
-        performedWith = list;
-        for (const entry of list) fixture.deleteBranch(entry.name);
-      }
-    });
-    assert.deepEqual(performedWith.map((entry) => entry.name), ["tmp/merged-thing"], "the gate did not act on exactly the eligible set");
-    assert.deepEqual(run.findings, [], `a correct deletion was refused: ${run.findings.join(" | ")}`);
-    assert.equal(run.authorized, true);
-    assert.equal(run.log.status, "COMPLETED");
-    assert.match(run.log.pre_observation.digest, /^sha256:[0-9a-f]{64}$/u);
-    assert.match(run.log.post_observation.digest, /^sha256:[0-9a-f]{64}$/u);
-    assert.notEqual(run.log.pre_observation.digest, run.log.post_observation.digest, "the two boundary observations are the same record, so one of them was not collected");
-    // The branch is really gone, and the one with a pull request on it really is not.
-    const remaining = liveHeads(fixture);
-    assert.equal(remaining.includes("tmp/merged-thing"), false, "the eligible branch was not actually deleted");
-    assert.ok(remaining.includes("task/active-work"), "the open PR's head branch was deleted");
-    assert.ok(remaining.includes("main") && remaining.includes("dev"));
-    assert.deepEqual(deletionLogFindings(run.log, { completion: loadCompletionSnapshot(join(fixture.work, "fixtures", "execution-plan", "github-state.json")) }), [], "the emitted log does not hold its own shape");
-  });
-});
+const setResponses = (fixture, mutate) => {
+  const responses = JSON.parse(readFileSync(fixture.responses, "utf8"));
+  mutate(responses);
+  writeFileSync(fixture.responses, JSON.stringify(responses));
+};
 
-// The reviewer's reproduction, and the reason the factory is gone: composed observations and a
-// composed prerequisite snapshot used to authorize a deletion. There is no longer an argument for
-// any of them, which is asserted rather than described.
-test("the gate has no parameter through which composed state reaches the decision", () => {
+test("a live observation of a real repository finds exactly the eligible branch", () => {
   drive({}, (fixture, audit, observation) => {
-    const forged = structuredClone(observation);
-    forged.heads = forged.heads.filter((head) => head.name !== "task/active-work");
-    forged.open_prs = [];
-    let performedWith = null;
-    const run = runDeletion({
-      audit,
-      repository: fixture.repository,
-      cwd: fixture.work,
-      perform: (list) => { performedWith = list; for (const entry of list) fixture.deleteBranch(entry.name); },
-      // Every input the previous entry point and its factory accepted.
-      collect: () => structuredClone(forged),
-      loadCompletion: () => ({ issues: [] }),
-      pre: structuredClone(forged),
-      post: structuredClone(forged),
-      completion: { issues: [] },
-      maxAgeSeconds: 10 ** 9
+    const { eligible, refused, findings } = liveEligibility(audit, observation);
+    assert.deepEqual(findings, [], `the audit did not hold against its own repository: ${findings.join(" | ")}`);
+    assert.deepEqual(eligible.map((entry) => entry.name), ["tmp/merged-thing"]);
+    assert.deepEqual(refused, []);
+  });
+});
+
+test("nothing is found eligible without a live observation", () => {
+  drive({}, (_fixture, audit) => {
+    const { eligible, findings } = liveEligibility(audit, null);
+    assert.deepEqual(eligible, []);
+    assert.ok(findings.some((f) => f.includes("no live observation")), `stored facts alone produced an eligible set: ${findings.join(" | ")}`);
+  });
+});
+
+// --- absence is not an empty list, and one source agreeing is not every source --------------------
+//
+// Each of these produced an eligible open-PR head before the fix.
+
+test("a list endpoint that succeeds and returns nothing is not an empty list", () => {
+  drive({}, (fixture) => {
+    setResponses(fixture, (responses) => {
+      responses[`repos/${fixture.repository}/pulls?state=all&head=fixture-owner:tmp/merged-thing&per_page=100`]
+        .push({ number: 2, state: "open", merged_at: null, base: { ref: "dev" }, head: { ref: "tmp/merged-thing", sha: fixture.shas.main } });
+      responses[`repos/${fixture.repository}/pulls?state=open&per_page=100`] = "__EMPTY__";
     });
-    assert.deepEqual(performedWith.map((entry) => entry.name), ["tmp/merged-thing"], "a supplied observation displaced the one the gate collected");
-    assert.equal(run.authorized, true, `the gate's own collection was not used: ${run.findings.join(" | ")}`);
-    assert.ok(liveHeads(fixture).includes("task/active-work"), "the forged observation reached the decision and the open PR's head was deleted");
+    assert.throws(() => recollect(fixture), /returned nothing/u, "a command that returned nothing was read as an empty list");
   });
 });
 
-test("the gate does not act on a branch the live repository no longer agrees about", () => {
+test("an open pull request visible only in the collected history still refuses the branch", () => {
   drive({}, (fixture, audit) => {
-    // A pull request opens on the eligible branch between the audit and the deletion.
-    const responses = JSON.parse(readFileSync(fixture.responses, "utf8"));
-    const late = { number: 2, state: "open", merged_at: null, base: { ref: "dev" }, head: { ref: "tmp/merged-thing", sha: fixture.shas.main } };
-    responses[`repos/${fixture.repository}/pulls?state=open&per_page=100`].push(late);
-    responses[`repos/${fixture.repository}/pulls?state=all&head=fixture-owner:tmp/merged-thing&per_page=100`].push(late);
-    writeFileSync(fixture.responses, JSON.stringify(responses));
-
-    let performedWith = null;
-    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: (list) => { performedWith = list; } });
-    assert.deepEqual(performedWith, [], "the gate deleted a branch that had a pull request opened on it after the audit");
-    assert.deepEqual(run.deleted, []);
-    assert.ok(liveHeads(fixture).includes("tmp/merged-thing"));
+    setResponses(fixture, (responses) => {
+      responses[`repos/${fixture.repository}/pulls?state=all&head=fixture-owner:tmp/merged-thing&per_page=100`]
+        .push({ number: 2, state: "open", merged_at: null, base: { ref: "dev" }, head: { ref: "tmp/merged-thing", sha: fixture.shas.main } });
+    });
+    const { eligible, refused } = liveEligibility(audit, recollect(fixture));
+    assert.deepEqual(eligible, [], "an open PR the open-list did not mention left the branch eligible");
+    assert.ok(refused.some((one) => one.name === "tmp/merged-thing" && one.reason.includes("#2")), `the refusal does not name the pull request: ${JSON.stringify(refused)}`);
   });
 });
 
-test("the prerequisites are read from the operated repository, before anything is collected or deleted", () => {
-  drive({ blockersCleared: false }, (fixture, audit) => {
-    let performed = false;
-    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: () => { performed = true; } });
-    assert.equal(performed, false, "the gate deleted before checking whether Phase B may start");
-    assert.equal(run.log, null);
-    assert.ok(run.findings.some((f) => f.includes("still blocked")), `the refusal does not name the open blocker: ${run.findings.join(" | ")}`);
-  });
-});
-
-test("a repository with no governance record authorizes nothing", () => {
+test("protection turned on after the audit refuses the branch", () => {
   drive({}, (fixture, audit) => {
-    rmSync(join(fixture.work, "fixtures", "execution-plan", "github-state.json"));
-    let performed = false;
-    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: () => { performed = true; } });
-    assert.equal(performed, false, "the gate deleted from a repository whose prerequisite snapshot it could not read");
-    assert.equal(run.log, null);
-    assert.ok(run.findings.some((f) => f.includes("could not be read")), `an unreadable snapshot did not block: ${run.findings.join(" | ")}`);
-  });
-});
-
-// The second collection is the witness. Losing it after the refs are gone is the one moment where a
-// self-reported after-state would be most tempting and least checkable.
-test("a deletion whose after-state cannot be read emits no record", () => {
-  drive({}, (fixture, audit) => {
-    const run = runDeletion({
-      audit,
-      repository: fixture.repository,
-      cwd: fixture.work,
-      perform: (list) => {
-        for (const entry of list) fixture.deleteBranch(entry.name);
-        writeFileSync(fixture.responses, "{}");
+    setResponses(fixture, (responses) => {
+      for (const branch of responses[`repos/${fixture.repository}/branches?per_page=100`]) {
+        if (branch.name === "tmp/merged-thing") branch.protected = true;
       }
     });
-    assert.ok(run.findings.some((f) => f.includes("post-deletion observation could not be collected")), `a deletion with no witness passed: ${run.findings.join(" | ")}`);
-    assert.equal(run.log, null, "a deletion with no witness still emitted a record");
-    assert.equal(run.authorized, false);
-    assert.deepEqual(run.deleted.map((entry) => entry.name), ["tmp/merged-thing"], "the record does not say what was deleted before the witness was lost");
+    const { eligible, refused } = liveEligibility(audit, recollect(fixture));
+    assert.deepEqual(eligible, [], "a branch protected since the audit stayed eligible on the stored flag");
+    assert.ok(refused.some((one) => one.reason.includes("protected")), `the protection change was not the reason: ${JSON.stringify(refused)}`);
   });
 });
 
-test("a collector that cannot reach the repository authorizes nothing", () => {
+// `null` is not `false`. A branch the observation says nothing usable about is not a branch known to
+// be unprotected, and treating the two the same is the absence-as-success shape on the last check
+// standing between an audit and a deletion.
+test("an unreadable protection state refuses the branch rather than passing it", () => {
   drive({}, (fixture, audit) => {
-    // Take the fake GitHub away: the collector's first API call fails.
-    writeFileSync(fixture.responses, "{}");
-    let performed = false;
-    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: () => { performed = true; } });
-    assert.equal(performed, false, "the gate deleted without a usable observation");
-    assert.equal(run.log, null);
-    assert.ok(run.findings.some((f) => f.includes("could not be collected")), `a failed collection did not block: ${run.findings.join(" | ")}`);
-  });
-});
-
-test("a deletion action that throws is still witnessed and reported", () => {
-  drive({}, (fixture, audit) => {
-    const run = runDeletion({
-      audit,
-      repository: fixture.repository,
-      cwd: fixture.work,
-      perform: () => { throw new Error("push --delete refused"); }
-    });
-    assert.ok(run.findings.some((f) => f.includes("did not complete")), `a failed deletion was not reported: ${run.findings.join(" | ")}`);
-    assert.equal(run.authorized, false);
-    // It was still witnessed: the branch is still there, and the boundary says so.
-    assert.ok(liveHeads(fixture).includes("tmp/merged-thing"));
-    assert.ok(run.findings.some((f) => f.includes("still on the repository afterwards")), "the boundary did not notice the claimed deletion had not happened");
-  });
-});
-
-test("a deletion that takes an extra ref with it is refused", () => {
-  drive({}, (fixture, audit) => {
-    const run = runDeletion({
-      audit,
-      repository: fixture.repository,
-      cwd: fixture.work,
-      perform: (list) => {
-        for (const entry of list) fixture.deleteBranch(entry.name);
-        fixture.deleteBranch("task/active-work");
+    setResponses(fixture, (responses) => {
+      for (const branch of responses[`repos/${fixture.repository}/branches?per_page=100`]) {
+        if (branch.name === "tmp/merged-thing") branch.protected = "false";
       }
     });
-    assert.ok(run.findings.some((f) => f.includes("task/active-work") && f.includes("does not say it was deleted")), `an extra ref taken by the deletion passed: ${run.findings.join(" | ")}`);
-    assert.equal(run.authorized, false);
+    const { eligible, refused } = liveEligibility(audit, recollect(fixture));
+    assert.deepEqual(eligible, [], "a branch whose protection state was not a boolean stayed eligible");
+    assert.ok(refused.some((one) => one.reason.includes("no protection state")), `the unreadable state was not the reason: ${JSON.stringify(refused)}`);
+  });
+});
+
+test("a branch that moved since the audit is refused at the commit the audit judged", () => {
+  drive({}, (fixture, audit) => {
+    execFileSync("git", ["checkout", "-q", "tmp/merged-thing"], { cwd: fixture.work });
+    writeFileSync(join(fixture.work, "late.txt"), "after the audit\n");
+    execFileSync("git", ["add", "-A"], { cwd: fixture.work });
+    execFileSync("git", ["commit", "-qm", "late work"], { cwd: fixture.work });
+    execFileSync("git", ["push", "-q", "origin", "tmp/merged-thing"], { cwd: fixture.work });
+    setResponses(fixture, (responses) => {
+      const moved = execFileSync("git", ["rev-parse", "HEAD"], { cwd: fixture.work, encoding: "utf8" }).trim();
+      for (const branch of responses[`repos/${fixture.repository}/branches?per_page=100`]) {
+        if (branch.name === "tmp/merged-thing") branch.commit.sha = moved;
+      }
+    });
+    const { eligible, refused } = liveEligibility(audit, recollect(fixture));
+    assert.deepEqual(eligible, [], "a branch that moved after the audit stayed eligible");
+    assert.ok(refused.some((one) => one.reason.includes("live it points at")), `the refusal does not name the moved commit: ${JSON.stringify(refused)}`);
+  });
+});
+
+// --- the derivations answer about the repository, not about this checkout ------------------------
+
+test("tag containment reports the repository's tags, not whatever this checkout carries", () => {
+  drive({}, (fixture, _audit, observation) => {
+    assert.deepEqual(observation.derivations["tmp/merged-thing"].tags_containing.value, ["v0.1.0"], "the fixture's annotated tag was not derived");
+    execFileSync("git", ["tag", "local-only", fixture.shas.main], { cwd: fixture.work });
+    execFileSync("git", ["tag", "-d", "v0.1.0"], { cwd: fixture.work });
+    assert.deepEqual(recollect(fixture).derivations["tmp/merged-thing"].tags_containing.value, ["v0.1.0"], "tag containment followed the local tag set rather than the repository's");
+  });
+});
+
+test("the tree scan reads the integration line, not the branch the collector happens to be on", () => {
+  drive({}, (fixture) => {
+    execFileSync("git", ["checkout", "-q", "dev"], { cwd: fixture.work });
+    writeFileSync(join(fixture.work, "notes.md"), "see tmp/merged-thing before deleting\n");
+    execFileSync("git", ["add", "-A"], { cwd: fixture.work });
+    execFileSync("git", ["commit", "-qm", "reference the branch"], { cwd: fixture.work });
+    execFileSync("git", ["push", "-q", "origin", "dev"], { cwd: fixture.work });
+    execFileSync("git", ["checkout", "-q", "task/active-work"], { cwd: fixture.work });
+    const again = recollect(fixture);
+    assert.ok(
+      again.derivations["tmp/merged-thing"].tree_scan.value.some((hit) => hit.includes("notes.md")),
+      `the tree scan missed a reference that is on dev: ${JSON.stringify(again.derivations["tmp/merged-thing"].tree_scan.value)}`
+    );
+  });
+});
+
+// A finding is committed and rendered, and a raw read error carries the absolute path it tried.
+test("a finding carries no absolute filesystem path", () => {
+  drive({}, (fixture, audit) => {
+    setResponses(fixture, (responses) => { delete responses[`repos/${fixture.repository}/rulesets?per_page=100`]; });
+    let message = null;
+    try { recollect(fixture); } catch (error) { message = error.message; }
+    assert.ok(message, "the collector did not fail when the fake GitHub lost a response");
+    const { findings } = liveEligibility(audit, null);
+    for (const finding of findings) {
+      assert.ok(!/(?:\/[\w.@%+-]+){3,}/u.test(finding), `a finding carries an absolute path: ${finding}`);
+    }
   });
 });

@@ -2,8 +2,8 @@
 
 > **This is a snapshot, not a deletion list. Do not act on this file.** Phase B (blocked on #578 and
 > #588) collects its own observations -- one immediately before the deletion and one immediately
-> after -- and authorizes against those. `runDeletion` performs both collections itself rather
-> than accepting either. The invariants are compared between the two fresh observations, never against
+> after -- and decides against those. `liveEligibility` refuses outright without a freshly collected
+> observation. The invariants are compared between the two fresh observations, never against
 > this file: the repository goes on moving, and a Phase B measured against a Phase A snapshot would
 > report ordinary progress as damage. Four heads have turned over across the versions of this
 > document, one of them while a snapshot was being taken.
@@ -58,8 +58,7 @@ prove nothing.
 What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
 offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
 recursive over the whole record, so no nested value can change under the same identity. And Phase B
-does not accept an observation at all -- `runDeletion` calls the collector itself, and exposes no
-factory or parameter that would let a caller hand it one. What is
+rests on an observation collected immediately beforehand, never on this file. What is
 left outside the boundary is the trustworthiness of the machine that runs it, which is stated here
 rather than hidden.
 
@@ -374,32 +373,32 @@ The branch policy this issue asks to be written down. Descriptive of the reposit
 
 ## What Phase B must do, once #578 and #588 have cleared
 
-**Call `runDeletion({ audit, perform })`.** That is the whole interface. It has no parameter
-through which state reaches a decision -- no collector, no observation, no prerequisite snapshot, no
-freshness window -- because a gate handed its evidence decides on whatever it was handed, and
-recollecting one side of a comparison while accepting the other closes nothing.
+**Phase A ships no executor.** Performing a deletion, witnessing it and recording completion is
+Phase B's work; what this PR provides is the evidence and the verifiers Phase B has to satisfy. The
+sequence below is what Phase B does, and every step of it is checkable by something in this
+repository today.
 
-What it does, in order:
-
-1. **Reads the canonical prerequisite snapshot itself** and stops there if #578 or #588 is not closed
-   with close evidence. Nothing is collected and nothing is deleted first: a check that runs after
-   the act is a report, and the act is not reversible.
-2. **Collects the observation before the deletion**, and re-runs the whole audit against it --
-   coverage, derivations, classification, unestablished facts, and the observation's own shape.
-3. **Narrows the eligible set to what is still true.** A branch is deleted only if the fresh
-   observation shows it at the exact commit the audit judged with no pull request open on it. As of
-   this snapshot the audit's eligible set is
+1. **Read the canonical prerequisite snapshot** for the repository being operated on --
+   `prerequisiteFindings` -- and stop if #578 or #588 is not closed with close evidence. Before
+   anything else: a check that runs after the act is a report, and the act is not reversible.
+2. **Collect an observation** with `node scripts/collect-branch-state.mjs`, and re-run the audit
+   against it: coverage, derivations, classification, unestablished facts, and the observation's own
+   shape. `liveEligibility` does all of that and refuses outright without an observation.
+3. **Take only what is still true.** A branch is eligible only if the fresh observation shows it at
+   the exact commit the audit judged, with no pull request open on it according to *either* source
+   that would know -- the open-PR list and the branch's own collected history -- and with the
+   observation reporting it unprotected. As of this snapshot the audit's eligible set is
    `fix/a-fixture-backed-agent-is-not-a-runtime` (`e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1`) and
    `tmp/read-claude-artifact` (`2d6392f578dd2667d5f1f6ba5073a2c4311430eb`); what survives the narrowing is decided then, not now.
    Nothing surviving it is a legitimate completion, not a failure -- auto-delete makes that ordinary.
-4. **Calls `perform` with exactly that list.** The caller supplies the action and nothing else.
-5. **Collects the observation after**, whether or not the action succeeded -- a deletion that failed
-   halfway has still changed the repository, and what it changed is the same question.
-6. **Compares the two observations** -- `main`, `dev`, tag ref and commit identity, the complete
+4. **Delete exactly that list**, and nothing else.
+5. **Collect a second observation**, whether or not the deletion succeeded -- one that failed halfway
+   has still changed the repository, and what it changed is the same question.
+6. **Compare the two observations** -- `boundaryInvariantFindings` -- `main`, `dev`, tag ref and commit identity, the complete
    protection objects, the rulesets, the install source, the repository settings, and every open pull
    request head. The set of heads that vanished between them must equal exactly the set being
    claimed: a deletion that took one extra ref with it, and a claim of a deletion that did not
    happen, are both findings.
-7. **Emits `fixtures/stale-branches/deletion-log.json`** citing both observation digests. The log is
-   produced, not authored: it carries no state of its own, and the two records it names were
-   collected by the gate rather than supplied to it.
+7. **Write `fixtures/stale-branches/deletion-log.json`** citing both observation digests, and check it
+   with `deletionLogFindings`. The log carries no state of its own: the state lives in the two
+   observations, and the log names them.

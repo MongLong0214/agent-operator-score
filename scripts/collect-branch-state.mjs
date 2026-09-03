@@ -27,9 +27,10 @@
 // the same digest as any other. `canonicalize` below is the real thing.
 //
 // What none of this can do is prove the observation came from GitHub rather than a text editor. An
-// offline checker cannot authenticate a transcript. That is why `runDeletion` in
-// scripts/branch-audit.mjs calls `collect` itself rather than accepting one, and why the receipts
-// exist -- so a human or a credentialed job can re-run any line and compare digests.
+// offline checker cannot authenticate a transcript. That is why `liveEligibility` in
+// scripts/branch-audit.mjs refuses to name anything eligible without a freshly collected observation,
+// and why the receipts exist -- so a human or a credentialed job can re-run any line and compare
+// digests before acting on one.
 //
 // Read-only by construction. Every command below reads; none creates, deletes or updates a ref.
 
@@ -118,11 +119,21 @@ const receipted = (receipts, source, command, args, { allowExit = [0], ...option
  * that found nothing.
  */
 const apiList = (receipts, source, path) => {
-  const pages = JSON.parse(receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", path]).text || "[]");
+  // A successful `gh api` always emits JSON. Empty stdout is a command that produced nothing, and
+  // reading it as an empty list is how "no pull request is open on this branch" gets manufactured
+  // out of silence -- which authorized a real deletion of an open PR's head.
+  const body = receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", path]).text.trim();
+  if (body === "") throw new Error(`${source}: the request succeeded but returned nothing, which is not an empty list`);
+  const pages = JSON.parse(body);
+  if (!Array.isArray(pages)) throw new Error(`${source}: expected one array element per page`);
   return { items: pages.flat(), complete: true };
 };
 
-const apiOne = (receipts, source, path) => JSON.parse(receipted(receipts, source, "gh", ["api", path]).text || "null");
+const apiOne = (receipts, source, path) => {
+  const body = receipted(receipts, source, "gh", ["api", path]).text.trim();
+  if (body === "") throw new Error(`${source}: the request succeeded but returned nothing`);
+  return JSON.parse(body);
+};
 
 /**
  * The GitHub search endpoint, with its own completeness proof.
@@ -132,7 +143,9 @@ const apiOne = (receipts, source, path) => JSON.parse(receipted(receipts, source
  * a sweep that did not establish "nothing refers to this branch".
  */
 const apiSearch = (receipts, source, query) => {
-  const pages = JSON.parse(receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", `search/issues?q=${encodeURIComponent(query)}&per_page=100`]).text || "[]");
+  const body = receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", `search/issues?q=${encodeURIComponent(query)}&per_page=100`]).text.trim();
+  if (body === "") throw new Error(`${source}: the search succeeded but returned nothing, which is not "no results"`);
+  const pages = JSON.parse(body);
   const items = pages.flatMap((page) => page.items ?? []);
   const totalCount = pages.length > 0 ? pages[0].total_count : 0;
   return {
@@ -209,11 +222,25 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
   // Fetching first, because a fact about a commit the checkout does not have is not a fact.
   const auditable = heads.filter((head) => head.name !== "main" && head.name !== "dev");
   if (auditable.length > 0) receipted(receipts, "git-fetch-observed", "git", ["fetch", "-q", "origin", ...heads.map((head) => head.sha)], { cwd });
+  receipted(receipts, "git-fetch-tags", "git", ["fetch", "-q", "--tags", "--force", "origin"], { cwd });
+  const originTags = new Set(tags.map((tag) => tag.name));
 
-  const count = (source, args) => Number(receipted(receipts, source, "git", ["rev-list", "--count", ...args], { cwd }).text.trim());
+  // `Number("")` is 0, so empty stdout would read as "no commits unique to this branch" -- the same
+  // absence-as-success shape, on the count the deletion decision turns on.
+  const count = (source, args) => {
+    const text = receipted(receipts, source, "git", ["rev-list", "--count", ...args], { cwd }).text.trim();
+    // Not claimed as a mutation guard: git cannot be made to exit 0 with empty stdout here from an
+    // offline test, so a mutant survives for want of a way to reach it rather than for want of a
+    // rule. `Number("")` is 0, which would read as no commits unique to the branch.
+    if (!/^\d+$/u.test(text)) throw new Error(`${source}: rev-list --count returned ${JSON.stringify(text)}, not a count`);
+    return Number(text);
+  };
   const derivations = Object.fromEntries(auditable.map(({ name, sha }) => {
     const log = receipted(receipts, `git-log-${name}`, "git", ["log", "-1", "--format=%cI%x09%an%x09%ae", sha], { cwd }).text.trim().split("\t");
-    const grep = receipted(receipts, `git-grep-${name}`, "git", ["grep", "-n", "--fixed-strings", name, "HEAD", "--", ":!docs/STALE_BRANCH_AUDIT.md", ":!fixtures/stale-branches/"], { cwd, allowExit: [0, 1] });
+    // Against the integration line, not this checkout's HEAD: "nothing in the tree refers to this
+    // branch" is a claim about the repository, and a collector run from some other branch would
+    // otherwise miss a reference that is on dev.
+    const grep = receipted(receipts, `git-grep-${name}`, "git", ["grep", "-n", "--fixed-strings", name, devSha, "--", ":!docs/STALE_BRANCH_AUDIT.md", ":!fixtures/stale-branches/"], { cwd, allowExit: [0, 1] });
     const prs = apiList(receipts, `pr-history-${name}`, `repos/${repository}/pulls?state=all&head=${owner}:${name}&per_page=100`);
     return [name, {
       last_commit: { date: log[0], author_name: log[1], author_email: log[2], source: `git-log-${name}` },
@@ -226,7 +253,9 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
       // Neither difference alone answers "what would be lost": a commit on dev but not main is still
       // elsewhere. This is the count deletion turns on.
       unique_vs_dev_and_main: { value: count(`rev-list-neither-${name}`, [sha, "--not", devSha, mainSha]), source: `rev-list-neither-${name}` },
-      tags_containing: { value: receipted(receipts, `tags-containing-${name}`, "git", ["tag", "--contains", sha], { cwd }).text.split("\n").filter(Boolean).sort(), source: `tags-containing-${name}` },
+      // Intersected with the tag list `git ls-remote --tags origin` returned, so the answer is about
+      // the tags the repository has and not about whatever this checkout happens to carry.
+      tags_containing: { value: receipted(receipts, `tags-containing-${name}`, "git", ["tag", "--contains", sha], { cwd }).text.split("\n").filter(Boolean).filter((tag) => originTags.has(tag)).sort(), source: `tags-containing-${name}` },
       tree_scan: { value: grep.text.split("\n").filter(Boolean).map((line) => line.split(":").slice(0, 2).join(":")), source: `git-grep-${name}` },
       pr_history: {
         value: prs.items.map((pr) => ({ number: pr.number, state: pr.state.toUpperCase(), merged_at: pr.merged_at, base: pr.base.ref, head_sha: pr.head.sha })),

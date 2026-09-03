@@ -134,6 +134,9 @@ const path = argv.filter((one) => one !== "api" && !one.startsWith("--")).at(-1)
 const table = JSON.parse(readFileSync(${JSON.stringify(table)}, "utf8"));
 if (!(path in table)) { process.stderr.write("fixture gh: no canned response for " + path + "\\n"); process.exit(3); }
 const answer = table[path];
+// The sentinel reproduces a command that exits 0 and prints nothing, which is what turned an
+// unreachable list into "there is nothing there".
+if (answer === "__EMPTY__") process.exit(0);
 process.stdout.write(JSON.stringify(slurp ? [answer] : answer));
 `);
   chmodSync(join(binDir, "gh"), 0o755);

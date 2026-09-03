@@ -51,6 +51,15 @@ export const DELETION_BLOCKED_BY = Object.freeze([578, 588]);
 export const OBSERVATION_MAX_AGE_SECONDS = 900;
 
 const SHA = /^[0-9a-f]{40}$/u;
+
+/**
+ * An error's text with filesystem paths reduced to their last two segments.
+ *
+ * Findings are written into a record that gets committed and rendered, and `error.message` from a
+ * failed read carries the absolute path it tried -- which on a real checkout is somebody's home
+ * directory. The reason survives; the path does not.
+ */
+const withoutPaths = (message) => String(message).replace(/(?:\/[\w.@%+-]+){2,}/gu, (path) => `…/${path.split("/").slice(-2).join("/")}`);
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/u;
 
@@ -659,6 +668,34 @@ export const openPrHeadDeletionFindings = (audit, deletionLog) => {
 };
 
 /**
+ * Whether a pull request is open on a branch, according to every source that would know.
+ *
+ * The observation collects the open-PR list and, separately, the all-state history per branch. The
+ * gate read only the first, so an OPEN row in the history could not block a deletion -- and an
+ * open-PR list that came back empty was read as "nothing is open". Both sources are consulted, and
+ * either one saying OPEN is enough.
+ */
+const liveOpenPr = (observation, branch) => {
+  const listed = (observation?.open_prs ?? []).find((pr) => pr.state === "OPEN" && pr.head_branch === branch);
+  if (listed) return listed;
+  const history = observation?.derivations?.[branch]?.pr_history?.value ?? [];
+  return history.find((pr) => pr.state === "OPEN") ?? null;
+};
+
+/**
+ * Protection as the observation reports it, or `null` when it reports nothing.
+ *
+ * Eligibility read the audit's stored flag and nothing re-checked it, so protection turned on after
+ * the snapshot did not stop a deletion. `null` is not `false`: a branch the observation says nothing
+ * about is not a branch known to be unprotected.
+ */
+const liveProtected = (observation, branch) => {
+  const head = (observation?.rest_heads ?? []).find((one) => one.name === branch);
+  if (!head || typeof head.protected !== "boolean") return null;
+  return head.protected;
+};
+
+/**
  * The destructive gate. Everything above is necessary; this is what authorizes.
  *
  * It takes the two observations that bracket the deletion. `pre` is collected immediately before and
@@ -712,138 +749,62 @@ export const deletionAuthorizationFindings = ({ audit, log, pre = null, post = n
   }
 
   const liveHeads = new Map((pre.heads ?? []).map((head) => [head.name, head.sha]));
-  const openPrByBranch = new Map((pre.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
   for (const deleted of log?.deleted ?? []) {
     if (!liveHeads.has(deleted.name)) findings.push(`${deleted.name} was deleted but the pre-deletion observation does not show it on the repository`);
     if (liveHeads.has(deleted.name) && liveHeads.get(deleted.name) !== deleted.sha) findings.push(`${deleted.name} was deleted at ${deleted.sha} but live it points at ${liveHeads.get(deleted.name)}`);
-    const pr = openPrByBranch.get(deleted.name);
+    const pr = liveOpenPr(pre, deleted.name);
     if (pr) findings.push(`${deleted.name} was deleted while PR #${pr.number} was open on it live, whatever the stored audit says`);
+    if (liveProtected(pre, deleted.name) !== false) findings.push(`${deleted.name} was deleted but the pre-deletion observation does not show it as unprotected`);
   }
 
-  // A pull request opened on an eligible branch after the audit was written makes it ineligible now.
+  // A pull request opened on an eligible branch after the audit was written makes it ineligible now,
+  // and so does protection turned on after it.
   for (const entry of deletionEligibility(audit).eligible) {
-    const pr = openPrByBranch.get(entry.name);
+    const pr = liveOpenPr(pre, entry.name);
     if (pr) findings.push(`${entry.name} reads as eligible in the audit but PR #${pr.number} is open on it live`);
+    const live = liveProtected(pre, entry.name);
+    if (live !== entry.branch_protected) findings.push(`${entry.name} is recorded as ${entry.branch_protected ? "protected" : "unprotected"} but the observation reports ${live === null ? "no protection state at all" : live ? "protected" : "unprotected"}`);
   }
   return findings;
 };
 
 /**
- * The entry point Phase B calls, and the reason it takes neither an observation nor a collector.
+ * Which branches a deletion could take right now, and why each of the others could not.
  *
- * The previous version accepted `collect` and `post`, which meant the trusted-collection boundary
- * could be stepped around from outside: an injected collector supplied the pre-observation and a
- * parameter supplied the post-observation, and a deletion authorized itself with two records the
- * deleting party had composed. Recollecting one side and accepting the other closes nothing, because
- * the invariants are a comparison and a comparison is only as trustworthy as its worse operand.
+ * This is a report, not an act. #572's Phase A permits inventory, classification, evidence and
+ * verifiers; an executor that performs deletions, witnesses them and emits a completion log is Phase
+ * B's, and shipping one before Phase B exists is shipping the half of the issue that is blocked. So
+ * the question this answers is "what would be eligible against this observation", and the answering
+ * is where every live re-check lives: the ref is still at the commit the audit judged, no pull
+ * request is open on it according to either source that would know, and the observation reports it
+ * unprotected.
  *
- * So this function has no parameter through which state reaches a decision. It loads the canonical
- * prerequisite snapshot, collects the observation before the deletion, decides what may be deleted,
- * calls `perform` with exactly that list, collects the observation after, and emits the record. The
- * caller supplies the action, never the evidence, and never the account of what the action did.
- *
- * `perform` is called only if nothing is outstanding. If it throws, the post-observation is still
- * collected and the boundary still checked, because a deletion that failed halfway has still changed
- * the repository and the question of what it changed is the same question.
+ * Phase B calls this with a freshly collected observation, deletes exactly what comes back, collects
+ * again, and runs `boundaryInvariantFindings` over the pair.
  */
-const runDeletionAgainst = ({ audit, perform, repository, cwd = process.cwd() } = {}) => {
-  const collect = collectLive;
-  const target = { repository: repository ?? audit?.repository, cwd };
-  // The prerequisite snapshot belongs to the repository being operated on, and is read from the same
-  // checkout the observation is collected from. Reading this module's own copy would answer for the
-  // wrong repository whenever the two are not the same one, and pointing `cwd` somewhere else to get
-  // a friendlier snapshot does not help: the observation comes from there too, and an observation of
-  // a different repository does not match the audit.
-  let completion;
-  try {
-    completion = loadCompletionSnapshot(join(cwd, "fixtures", "execution-plan", "github-state.json"));
-  } catch (error) {
-    return { authorized: false, deleted: [], findings: [`the canonical issue-state snapshot could not be read, so nothing is authorized: ${error.message}`], log: null };
-  }
-
-  const blocked = prerequisiteFindings(completion);
-  if (blocked.length > 0) return { authorized: false, deleted: [], findings: blocked, log: null };
-
-  let pre;
-  try {
-    pre = collect(target);
-  } catch (error) {
-    return { authorized: false, deleted: [], findings: [`the pre-deletion observation could not be collected, so nothing is authorized: ${error.message}`], log: null };
-  }
-  pre.digest = observationDigest(pre);
-
-  const before = [
-    ...verifyObservation(pre).map((finding) => `pre-deletion observation: ${finding}`),
+export const liveEligibility = (audit, pre) => {
+  const refused = [];
+  if (!pre) return { eligible: [], refused, findings: ["no live observation was supplied, so nothing can be found eligible"] };
+  const findings = [
+    ...verifyObservation(pre).map((finding) => `observation: ${finding}`),
     ...auditCoverageFindings(audit, pre),
     ...derivationFindings(audit),
     ...classificationFindings(audit),
     ...unestablishedFindings(audit)
   ];
-  if (before.length > 0) return { authorized: false, deleted: [], findings: before, log: null };
+  if (findings.length > 0) return { eligible: [], refused, findings };
 
-  // What may go: eligible in the audit, and still true of the repository as it is right now.
   const liveHeads = new Map((pre.heads ?? []).map((head) => [head.name, head.sha]));
-  const openPrByBranch = new Map((pre.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
-  const deleted = deletionEligibility(audit).eligible
-    .filter((entry) => liveHeads.get(entry.name) === entry.head_sha && !openPrByBranch.has(entry.name))
-    .map((entry) => ({ name: entry.name, sha: entry.head_sha }));
-
-  let performError = null;
-  try {
-    if (perform) perform(deleted);
-  } catch (error) {
-    performError = error;
+  const eligible = [];
+  for (const entry of deletionEligibility(audit).eligible) {
+    const live = liveHeads.get(entry.name);
+    const pr = liveOpenPr(pre, entry.name);
+    const guarded = liveProtected(pre, entry.name);
+    if (live === undefined) refused.push({ name: entry.name, reason: "the observation does not show it on the repository" });
+    else if (live !== entry.head_sha) refused.push({ name: entry.name, reason: `the audit judged it at ${entry.head_sha} but live it points at ${live}` });
+    else if (pr) refused.push({ name: entry.name, reason: `PR #${pr.number} is open on it live, whatever the stored audit says` });
+    else if (guarded !== false) refused.push({ name: entry.name, reason: guarded === null ? "the observation reports no protection state for it" : "the observation reports it as protected" });
+    else eligible.push({ name: entry.name, sha: entry.head_sha });
   }
-  const completedAt = new Date().toISOString().replace(/\.\d{3}Z$/u, "Z");
-
-  let post;
-  try {
-    post = collect(target);
-  } catch (error) {
-    return {
-      authorized: false,
-      deleted,
-      findings: [`the deletion ran but the post-deletion observation could not be collected, so its effect is unrecorded: ${error.message}`],
-      log: null
-    };
-  }
-  post.digest = observationDigest(post);
-
-  const log = {
-    schema: "aos-branch-deletion-log.v1",
-    status: "COMPLETED",
-    completed_at: completedAt,
-    blocked_by: [...DELETION_BLOCKED_BY],
-    blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed" })),
-    deleted,
-    ...(deleted.length === 0
-      ? { no_op_reason: "a fresh audit found no ref eligible for deletion at the commit it judged, with no pull request open on it" }
-      : {}),
-    pre_observation: { digest: pre.digest, collected_at: pre.collected_at },
-    post_observation: { digest: post.digest, collected_at: post.collected_at },
-    note: "Emitted by scripts/branch-audit.mjs runDeletion; both observations were collected by the gate, not supplied to it."
-  };
-
-  const findings = [
-    ...(performError ? [`the deletion did not complete: ${performError.message}`] : []),
-    ...deletionAuthorizationFindings({ audit, log, pre, post, completion })
-  ];
-  return { authorized: findings.length === 0, deleted, findings, log };
+  return { eligible, refused, findings: [] };
 };
-
-/**
- * The gate, and the whole of it. No `collect`, no `pre`, no `post`, no `completion`, no
- * `maxAgeSeconds`, and no factory that takes them either.
- *
- * A previous version exported a runner factory so the tests could substitute the collector and the
- * prerequisite loader. That was the same parameter list this entry point had already been faulted
- * for, wearing a factory: a door in the gate, reachable by any caller in this repository including
- * one written by somebody who never learned why the door was there. The tests drive this function
- * against a real fixture repository instead (`tests/product/branch-state-fixture.mjs`), which is
- * slower to set up and leaves nothing to step through.
- *
- * What remains outside the boundary is the machine: nothing here can attest that the host running it
- * is the host anyone believes it is. That is a real residual and it is recorded as one -- but it is
- * a property of the environment, not an argument this function accepts.
- */
-export const runDeletion = runDeletionAgainst;
