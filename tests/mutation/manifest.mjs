@@ -62,12 +62,12 @@ export const GUARDS = [
   },
   {
     guard: "routing capability rests on a source AOS may score",
-    reason: "an owner whose abilities AOS only has the owner's word for is not an owner a route may be judged against, and admitting one would put a self-report in the seat the whole cell excludes it from",
+    reason: "without it an owner AOS holds no scorable record for is judged as one that lacks every capability, so \"we do not know what this agent can do\" is reported as \"the operator routed the work wrongly\" -- the withholding one line up depends on this branch naming the case",
     file: "lib/routing-oracle.mjs",
     from: "    if (record === null || !SCORABLE_CAPABILITY_SOURCES.includes(record.source)) {",
     to: "    if (false) {",
-    test: "tests/product/minimal-route-oracle.test.mjs",
-    name: "an owner AOS knows nothing about is not a candidate for the minimum route"
+    test: "tests/product/routing-counterfactual.test.mjs",
+    name: "an actual route whose owner AOS knows nothing about is not observed"
   },
   {
     guard: "routing minimality withholds on an owner AOS cannot judge",
