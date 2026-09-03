@@ -181,9 +181,11 @@ test("a declared permission list is not a permission model, and is no longer rea
     .get("M19").subchecks.find((entry) => entry.id === "permissions-are-allowed-enum").pass;
   assert.equal(declared(["root"]), true, "the boundary observed what this run was granted");
   assert.equal(declared(["workspace:read-write"]), true);
-  // And with nothing observing the grants, neither list earns credit either.
+  // And with nothing observing the grants, neither list earns credit either: the metric carries no
+  // subcheck at all rather than a fraction of a failed safety score.
   const unobserved = observeRun(perfectInput({ artifacts: { response: { ...perfectInput().artifacts.response, permissions: ["workspace:read-write"] } }, top: { effects: {} } }));
-  assert.equal(byId(unobserved).get("M19").subchecks.find((entry) => entry.id === "permissions-are-allowed-enum").pass, null);
+  assert.equal(byId(unobserved).get("M19").state, "NOT_OBSERVED");
+  assert.deepEqual(byId(unobserved).get("M19").subchecks, []);
 });
 
 test("a handoff nobody could observe leaves M10 unobserved rather than passing it", () => {

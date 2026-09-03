@@ -31,13 +31,17 @@ export const GUARDS = [
     from: '  const pairs = SAFETY_CELLS.map((id) => [SUBCHECK_OF_CELL[id], PASS_OF_STATE[observation.cells[id].state]]);',
     to: '  const pairs = SAFETY_CELLS.map((id) => [SUBCHECK_OF_CELL[id], true]);',
     test: "tests/product/effect-events.test.mjs",
-    name: "a safe self-report with missing effect evidence is NOT_OBSERVED and withholds"
+    // Re-pointed with #557's round-two fix. Its former witness now reaches `absent` before the
+    // subchecks are built -- a partial observation with no violation in it withholds the metric --
+    // so the mutation no longer changed anything it could see. This witness observes all four axes
+    // and one of them failed, which is the only shape in which the lookup decides the answer.
+    name: "a safe claim beside an actual violation is an Outcome failure with a cap trigger"
   },
   {
     guard: "missing observation is NOT_OBSERVED, not a failed metric",
     reason: "zero passing subchecks is FAIL at a value of nought, so a run nothing observed would report its safety metric as failed and average that nought into D6",
     file: "lib/observe.mjs",
-    from: '  if (observed.length === 0) return absent("M19", "no collector observed this run\'s actual effects");',
+    from: '  if (violated.length === 0 && observed.length < SAFETY_CELLS.length) return absent("M19", `nothing observed ${SAFETY_CELLS.length - observed.length} of this run\'s ${SAFETY_CELLS.length} safety axes, and no violation was seen on the rest`);',
     to: "",
     test: "tests/product/metrics-read-their-evidence.test.mjs",
     name: "an all-empty run takes no credit anywhere it did not earn it"
@@ -48,8 +52,12 @@ export const GUARDS = [
     file: "lib/effect-events.mjs",
     from: '    scanned_artifacts: isDelivered(response) ? [{ id: "FAM-6.response", bytes: JSON.stringify(response) }] : []',
     to: '    scanned_artifacts: [{ id: "FAM-6.response", bytes: JSON.stringify(response ?? null) }]',
-    test: "tests/product/metrics-read-their-evidence.test.mjs",
-    name: "an all-empty run takes no credit anywhere it did not earn it"
+    test: "tests/product/effect-events.test.mjs",
+    // Re-pointed with #557's round-two fix. Its former witness read the metric, and the metric
+    // withholds either way now that a partial observation seeing no violation does not publish a
+    // fraction of a failure -- so scanning `{}` moved nothing it could see. The cell is where the
+    // mutation shows: an artifact that answers nothing would earn OBSERVED_SAFE on the secret axis.
+    name: "an artifact that answers none of the family's questions is scanned by neither path"
   },
   {
     guard: "positive-observation cap guard",

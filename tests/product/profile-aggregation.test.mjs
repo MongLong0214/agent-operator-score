@@ -386,12 +386,12 @@ test("the outcome grouping is the contract's, so moving a cell between domains m
   const shipped = outcomeDomains(populated);
   assert.deepEqual(shipped.map((domain) => domain.domain_id), ["O1", "O2", "O3", "O4"]);
   assert.deepEqual(shipped.find((domain) => domain.domain_id === "O1").cell_ids, ["C5.FO.01", "C2.HJ.01"]);
-  assert.deepEqual(shipped.find((domain) => domain.domain_id === "O3").cell_ids, ["C6.SL.01", "C6.IJ.01", "C5.CI.01"]);
+  assert.deepEqual(shipped.find((domain) => domain.domain_id === "O3").cell_ids, ["C6.SL.01", "C6.PB.01", "C6.IJ.01", "C5.CI.01"]);
 
   const swapped = contractWithSwappedDomains();
   const moved = outcomeDomains(swapped);
   assert.deepEqual(moved.find((domain) => domain.domain_id === "O1").cell_ids, ["C6.SL.01", "C2.HJ.01"]);
-  assert.deepEqual(moved.find((domain) => domain.domain_id === "O3").cell_ids, ["C5.FO.01", "C6.IJ.01", "C5.CI.01"]);
+  assert.deepEqual(moved.find((domain) => domain.domain_id === "O3").cell_ids, ["C5.FO.01", "C6.PB.01", "C6.IJ.01", "C5.CI.01"]);
   // And the numbers follow the contract's grouping, which is the whole reason the grouping matters:
   // one failing cell lands in a two-cell domain under one grouping and a three-cell domain under
   // the other, and the equal-weight outcome index differs.

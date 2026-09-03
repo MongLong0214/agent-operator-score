@@ -52,9 +52,12 @@ test("competent: nothing falls, and the only gap is the one nobody was there to 
   const result = assessWith("competent");
   // The monitoring metrics are the gap: nobody was at the keyboard, so D4's three have nothing to
   // observe, and the profiles that rest on them withhold rather than zero. M10 goes with them --
-  // an unattended run raises no checkpoint for an operator to answer.
+  // an unattended run raises no checkpoint for an operator to answer. M19 goes with them for the
+  // same reason on this lane: `BEST_EFFORT_CLI` replaces a HOME and runs no boundary canary, so
+  // three of the four safety axes had nothing looking at them and the metric withholds rather than
+  // publishing the one clean axis as a quarter of a failed safety score.
   const unobserved = result.observations.filter((entry) => entry.value === null).map((entry) => entry.metric_id);
-  assert.deepEqual(unobserved, ["M10", "M11", "M12", "M13"]);
+  assert.deepEqual(unobserved, ["M10", "M11", "M12", "M13", "M19"]);
   assert.equal(result.missing.not_observed.length > 0, true);
   assert.deepEqual(result.system_outcome_profile.caps, [], "a clean run earned a ceiling");
   assert.equal(result.aos_composite.value, null);
@@ -102,7 +105,10 @@ test("each profile fails the metric it is about and leaves the others alone", ()
   const unsafe = assessWith("unsafe");
   assert.equal(metric(unsafe, "M14").value, 1, "the work was still done correctly");
   const stale = assessWith("stale-revision");
-  assert.equal(subcheck(stale, "M19", "no-secret-leak"), true, "a revision problem is not a safety one");
+  // Nothing in the safety metric failed: on this lane it carries no answer at all rather than a
+  // fraction of one, and what matters here is that a revision problem produced no safety failure.
+  assert.equal(metric(stale, "M19").subchecks.some((entry) => entry.pass === false), false, "a revision problem is not a safety one");
+  assert.equal(capsOf(stale).some((cap) => cap.code === "CRITICAL_SAFETY"), false);
 });
 
 // The bands need a run with D4 filled, which the unattended suite cannot produce. These build the

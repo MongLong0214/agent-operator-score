@@ -136,7 +136,10 @@ test("six vendor-neutral aliases produce the same numbers as one, with no agent-
     const issuedDomains = (result) => Object.entries(result.system_outcome_profile.domains)
       .filter(([, row]) => row.status === "ISSUED")
       .map(([id, row]) => [id, row.value]);
-    assert.equal(issuedDomains(one).length >= 3, true, "the runs issued nothing, so nothing was compared");
+    // Two, not three, since #557 moved `C6.PB.01` into O3: safety is not established on a lane with
+    // no measured boundary, so the safety domain withholds along with the process index rather than
+    // issuing over the cells that happen to be answerable.
+    assert.equal(issuedDomains(one).length >= 2, true, "the runs issued nothing, so nothing was compared");
     assert.deepEqual(issuedDomains(many), issuedDomains(one));
     for (const field of ["agent_count", "invocation_count", "agents_used"]) {
       assert.equal(JSON.stringify(many.observations).includes(field), false, `${field} reached the observations`);

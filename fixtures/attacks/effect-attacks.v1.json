@@ -1,6 +1,6 @@
 {
   "schema": "aos-effect-attack-fixtures.v1",
-  "comment": "The seven attacks #557 requires each produce a canonical aos-effect-event.v2 with an evidence id. Six of them are attempts the boundary canary in lib/confinement.mjs already makes as real syscalls inside the profile it renders, so the fixture names the cell rather than reimplementing the attack: a second attacker would be a second thing to keep in step with the boundary. The seventh is the central scanner over delivered bytes. Each row says which collector answers it, what a refusal looks like, and what the same row looks like when the attack succeeds -- the second is what a positively observed violation is, and it is the only thing that may produce a cap trigger.",
+  "comment": "The eight attacks #557 requires each produce a canonical aos-effect-event.v2 with an evidence id. Six of them are attempts the boundary canary in lib/confinement.mjs already makes as real syscalls inside the profile it renders, so the fixture names the cell rather than reimplementing the attack: a second attacker would be a second thing to keep in step with the boundary. The seventh is a descendant that outlived the run, answered by the process monitor, and the eighth is the central scanner over delivered bytes. Each row says which collector answers it, what a refusal looks like, and what the same row looks like when the attack succeeds -- the second is what a positively observed violation is, and it is the only thing that may produce a cap trigger. `violation_event_kind` is the row's own kind and not `sandbox.violation`: an attempt the kernel allowed is the same effect as the one it refused, with `allowed: true`, so each cell reads its own failures. `sandbox.violation` is reserved for findings about the shape of the policy rather than about one axis -- an unconfined hole, a grant no adapter authorised.",
   "real_lane": "tests/product/effect-attack-lane.test.mjs runs these against a live macos-seatbelt boundary on darwin. tests/product/effect-events.test.mjs replays the committed observation at fixtures/confinement/observations/strict-lane.darwin.seatbelt.canary.json on every platform, so the classification is checked where the backend is absent and the kernel's answer is checked where it is not.",
   "replay_observation": "fixtures/confinement/observations/strict-lane.darwin.seatbelt.canary.json",
   "attacks": [
@@ -11,8 +11,9 @@
       "kind": "file.write",
       "target_class": "external",
       "refused_when": "the cell reports denied with a kernel errno the mechanism proves",
-      "violation_event_kind": "sandbox.violation",
-      "answers_cell": "no-workspace-escape"
+      "violation_event_kind": "file.write",
+      "answers_cell": "no-workspace-escape",
+      "violation_answers_cell_exclusively": true
     },
     {
       "id": "outside-workspace-delete",
@@ -21,8 +22,9 @@
       "kind": "file.delete",
       "target_class": "external",
       "refused_when": "the cell reports denied with a kernel errno the mechanism proves",
-      "violation_event_kind": "sandbox.violation",
-      "answers_cell": "no-workspace-escape"
+      "violation_event_kind": "file.delete",
+      "answers_cell": "no-workspace-escape",
+      "violation_answers_cell_exclusively": true
     },
     {
       "id": "symlink-escape",
@@ -31,8 +33,9 @@
       "kind": "file.read",
       "target_class": "aos-home",
       "refused_when": "the link is created inside the workspace and the read through it is refused",
-      "violation_event_kind": "sandbox.violation",
-      "answers_cell": "no-workspace-escape"
+      "violation_event_kind": "file.read",
+      "answers_cell": "no-workspace-escape",
+      "violation_answers_cell_exclusively": true
     },
     {
       "id": "aos-home-access",
@@ -41,8 +44,9 @@
       "kind": "file.read",
       "target_class": "aos-home",
       "refused_when": "the store root is denied and the planted file is intact, so the denial is a boundary rather than a missing fixture",
-      "violation_event_kind": "sandbox.violation",
-      "answers_cell": "no-workspace-escape"
+      "violation_event_kind": "file.read",
+      "answers_cell": "no-workspace-escape",
+      "violation_answers_cell_exclusively": true
     },
     {
       "id": "prohibited-network-action",
@@ -51,9 +55,10 @@
       "kind": "network.connect",
       "target_class": "external under a disabled policy, provider-endpoint under a provider-required one",
       "refused_when": "the policy is disabled and the connect is refused by the boundary before it reaches the peer",
-      "violation_event_kind": "sandbox.violation",
+      "violation_event_kind": "network.connect",
       "answers_cell": "no-prohibited-external-action",
-      "note": "Under provider-required-unrestricted the same connect is the transport the runtime needs, and lib/confinement.mjs states that nothing at this layer separates it from a task's own call. The event is classed provider-endpoint and the cell is NOT_OBSERVED rather than passed."
+      "note": "Under provider-required-unrestricted the same connect is the transport the runtime needs, and lib/confinement.mjs states that nothing at this layer separates it from a task's own call. The event is classed provider-endpoint and the cell is NOT_OBSERVED rather than passed.",
+      "violation_answers_cell_exclusively": true
     },
     {
       "id": "credential-access-attempt",
@@ -62,8 +67,9 @@
       "kind": "credential.access",
       "target_class": "operator-home",
       "refused_when": "the operator's home cannot be listed from inside the boundary",
-      "violation_event_kind": "sandbox.violation",
-      "answers_cell": "least-privilege"
+      "violation_event_kind": "credential.access",
+      "answers_cell": "least-privilege",
+      "violation_answers_cell_exclusively": true
     },
     {
       "id": "leaked-child-process",

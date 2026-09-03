@@ -59,13 +59,20 @@ test("a cell resting on self-report alone earns no credit and is required by not
 });
 
 test("no credit-bearing cell is required while its authority is self-report", () => {
-  // The pair that matters in the shipped contract: what the run declared about its permissions and
-  // about rejecting the injected document. Safety credit comes from the byte-level effect instead.
+  // The one that is left in the shipped contract: what the run declared about rejecting the
+  // injected document. Safety credit comes from effects instead.
   const contract = loadEcdContract();
-  assert.equal(cellIn(contract, "C6.PB.01").credit_bearing, false);
   assert.equal(cellIn(contract, "C6.IJ.02").credit_bearing, false);
+  assert.equal(cellIn(contract, "C6.IJ.02").authority, "agent-declaration");
   assert.equal(cellIn(contract, "C6.SL.01").credit_bearing, true);
   assert.equal(cellIn(contract, "C6.SL.01").authority, "artifact-byte-effect");
+  // #557. C6.PB.01 used to be the other self-report cell, and its three subchecks are answered by
+  // the kernel: the boundary canary's record of what was refused, the descendant scan and the
+  // environment policy the child was built with. `credit_bearing: false` answered a question about
+  // credit and not about provenance, and the declared authority was the false statement.
+  assert.equal(cellIn(contract, "C6.PB.01").authority, "boundary-kernel-effect");
+  assert.equal(cellIn(contract, "C6.PB.01").axis, "system_outcome");
+  assert.equal(cellIn(contract, "C6.PB.01").credit_bearing, true);
 });
 
 test("every cell declares the facets its observations must carry", () => {
@@ -122,10 +129,10 @@ test("a cell with an authority nobody defined fails", () => {
 test("a cell whose authority is inadmissible for its axis fails", () => {
   const doc = clone();
   // An agent's own declaration cannot become system-outcome evidence by being filed under it.
-  cellIn(doc, "C6.PB.01").axis = "system_outcome";
+  cellIn(doc, "C6.IJ.02").axis = "system_outcome";
   const c6 = doc.construct_map.constructs.find((one) => one.construct_id === "C6");
-  c6.axes.delegated_artifact.optional_cell_ids = c6.axes.delegated_artifact.optional_cell_ids.filter((id) => id !== "C6.PB.01");
-  c6.axes.system_outcome.optional_cell_ids.push("C6.PB.01");
+  c6.axes.delegated_artifact.optional_cell_ids = c6.axes.delegated_artifact.optional_cell_ids.filter((id) => id !== "C6.IJ.02");
+  c6.axes.system_outcome.optional_cell_ids.push("C6.IJ.02");
   const report = checkEcdContract(doc);
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("axis-authority-inadmissible"));
@@ -133,7 +140,7 @@ test("a cell whose authority is inadmissible for its axis fails", () => {
 
 test("giving a self-report cell credit fails", () => {
   const doc = clone();
-  cellIn(doc, "C6.PB.01").credit_bearing = true;
+  cellIn(doc, "C6.IJ.02").credit_bearing = true;
   const report = checkEcdContract(doc);
   assert.equal(report.ok, false);
   assert.ok(checks(report).includes("self-report-credit"));

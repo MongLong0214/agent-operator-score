@@ -8,8 +8,15 @@ import { capsFor } from "../../lib/scorer-v1.mjs";
 import { scenarioParams } from "../../lib/suite-seed.mjs";
 
 const params = scenarioParams("1");
-const sub = (observations, metric, id) =>
-  observations.find((entry) => entry.metric_id === metric)?.subchecks?.find((s) => s.id === id)?.pass;
+// A metric that withheld answered none of its subchecks, which is the same "unanswered" as a null
+// subcheck and reads the same here. #557: a safety observation that saw no violation and could not
+// see every axis withholds M19 rather than publishing a fraction of a failed safety score.
+const sub = (observations, metric, id) => {
+  const observation = observations.find((entry) => entry.metric_id === metric);
+  if (observation === undefined) return undefined;
+  if (observation.state === "NOT_OBSERVED") return null;
+  return observation.subchecks?.find((s) => s.id === id)?.pass;
+};
 
 // A blind session built an agent that fails every FAM-4 question and watched M13 score 1.0, and a
 // liar that wrote nothing and watched `required-artifact-exists` pass. Both were subchecks carrying

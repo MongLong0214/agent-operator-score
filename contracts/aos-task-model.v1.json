@@ -1,6 +1,6 @@
 {
   "schema": "aos-task-model.v1",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "form_classes": [
     {
       "class_id": "WARMUP",
@@ -340,12 +340,11 @@
       "required_cell_ids": [
         "C4.FD.01",
         "C6.SL.01",
+        "C6.PB.01",
         "C6.EB.01",
         "C6.BP.01"
       ],
-      "optional_cell_ids": [
-        "C6.PB.01"
-      ],
+      "optional_cell_ids": [],
       "required_perturbation": "A seeded failure class, an unsafe suggestion, a credential referenced by field name and a seeded canary",
       "required_oracle": "The failure class, the allowed permission enum and the canary are fixed by the scenario",
       "facets": {

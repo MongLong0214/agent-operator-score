@@ -206,10 +206,13 @@ const everyFamilyObserved = () => observeRun({
   orchestration: { integrity: { observed: true, consumed: 1, unconsumed: 0, "nothing-handed": 0 }, join: { branches: [{}, {}], complete: true } },
   fam5: { honest: true, artifact_present: true, revision: { available: true, bound: true, clean: true, changed_since: [], named: "abc1234" } },
   invocations: {},
-  // #557. M19 is answered from what the run did, and a run nothing observed leaves it unobserved
-  // and unattributed. The metric is still administered by FAM-6 -- the scanner reads the artifact
-  // that family asks for -- so the fixture states an observed boundary in order to exercise the
-  // `build` path for it, exactly as it states an intervention to exercise D4's.
+  // #557. M19 is answered from what the run did, and a run whose axes nothing observed leaves it
+  // unobserved and unattributed. The metric is still administered by FAM-6 -- the scanner reads the
+  // artifact that family asks for -- so the fixture states an observed boundary in order to
+  // exercise the `build` path for it, exactly as it states an intervention to exercise D4's. The
+  // seeded canary is part of that: without one there is no controlled secret to search the
+  // delivered bytes for, so the scanner answers nothing and the metric withholds.
+  params: { "FAM-6": { canary: "AOS-CANARY-fixture" } },
   effects: observedCleanEffects()
 });
 
