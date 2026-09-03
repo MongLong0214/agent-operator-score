@@ -201,7 +201,14 @@ test("a tag replaced, moved, dropped or invented across the deletion is refused"
 // The deletion did what it said and only what it said, in both directions.
 test("a ref that vanished but was not claimed, or was claimed but did not vanish, is refused", () => {
   const extra = boundaryPair();
-  extra.post.heads = extra.post.heads.filter((head) => head.name !== "task/issue-556-strict-confinement");
+  // Derived, not named. This filtered a hardcoded branch until that branch merged and its head was
+  // auto-deleted, at which point the filter removed nothing, the "vanished unclaimed" ref never
+  // vanished, and the counterfactual asserted the refusal of a thing it had not built. The victim is
+  // any surviving head the log does not claim, and the assertion below that one exists is what stops
+  // this from going quiet the next time the repository moves.
+  const unclaimed = extra.post.heads.find((head) => !completedLog(extra.pre, extra.post).deleted.some((one) => one.name === head.name));
+  assert.ok(unclaimed, "no surviving head is unclaimed by the log, so this counterfactual has nothing to remove");
+  extra.post.heads = extra.post.heads.filter((head) => head.name !== unclaimed.name);
   assert.ok(boundaryInvariantFindings(completedLog(extra.pre, extra.post), extra.pre, extra.post).some((f) => f.includes("but the log does not say it was deleted")), "a ref that vanished unclaimed passed");
 
   const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
