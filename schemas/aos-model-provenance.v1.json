@@ -1,0 +1,42 @@
+{
+  "schema_id": "aos-model-provenance.v1",
+  "issue": "#561",
+  "purpose": "The model a run actually used, as a record with a source and a confidence, bound into the profile digest so that runs under different models never form one cohort.",
+  "fields": {
+    "provider": "string|null. The provider the model belongs to: from an explicit `provider/` prefix, from the runtime event, or from the adapter's declared provider. Null when nothing named one.",
+    "family": "string|null. The leading alphabetic run of the model name (`gpt`, `claude`). Descriptive only; never used for comparison.",
+    "id": "string|null. `provider/model` when the provider is known, else the model name alone. Null when the model is unknown or when detected and declared disagree.",
+    "source": "runtime-event | runtime-config | declared | unknown. The highest-precedence source that named the model.",
+    "confidence": "HIGH | MEDIUM | LOW | NONE. Fixed by source: runtime-event HIGH, runtime-config MEDIUM, declared LOW, unknown NONE.",
+    "evidence_digest": "sha256:<hex>|null. Digest over the bytes of the canonical claim that produced the record: schema id, source, provider, id and runtime. The transcript row's own digest is deliberately not in it -- this digest is a profile-digest input, and a cohort key carrying the row would make every repeat of one measurement its own profile. The row is recorded beside the claim in `evidence.row_digest` and in the verification's observations. Null when unknown.",
+    "mutable_alias": "true | false | null. True for `latest`, `default`, `gpt`, `sonnet` and every provider-managed name without a snapshot marker; false for an exact snapshot; null when no model was identified."
+  },
+  "source_precedence": [
+    "runtime-event",
+    "runtime-config",
+    "declared",
+    "unknown"
+  ],
+  "mismatch": "When two present sources name different models the record has status MISMATCH, id null, source unknown, confidence NONE and `mismatch: { code: \"AOS_MODEL_IDENTITY_MISMATCH\", detected, declared }`. It is never resolved to either side.",
+  "alias_policy": {
+    "bare_aliases": [
+      "latest",
+      "default",
+      "gpt",
+      "sonnet",
+      "opus",
+      "haiku"
+    ],
+    "exact_snapshot_marker": "a YYYYMMDD or YYYY-MM-DD segment delimited by `-`, `_`, `.`, `:`, `@` or the ends of the name",
+    "otherwise": "provider-managed-alias, mutable"
+  },
+  "record": {
+    "provider": "openai",
+    "family": "gpt",
+    "id": "openai/gpt-4o-2024-08-06",
+    "source": "declared",
+    "confidence": "LOW",
+    "evidence_digest": "sha256:59c6b48d25906d78a0537779f6b09443cb0d5c7ddf23b9393f315f3044a58e97",
+    "mutable_alias": false
+  }
+}

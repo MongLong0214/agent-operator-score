@@ -899,6 +899,7 @@
     "run",
     "contract",
     "profile_digest",
+    "model_identity",
     "claim_stage",
     "generalizability_status",
     "uncertainty",
@@ -959,6 +960,7 @@
         "profile_digest": {
           "$ref": "#/$defs/nullable_digest"
         },
+
         "isolation_level": {
           "$ref": "#/$defs/token"
         },
@@ -1128,6 +1130,13 @@
     },
     "profile_digest": {
       "$ref": "#/$defs/nullable_digest"
+    },
+    "model_identity": {
+      "description": "Which model and which executable produced this result, and what that entitles it to claim (#561). Null for a result written before the record existed.",
+      "type": [
+        "object",
+        "null"
+      ]
     },
     "claim_stage": {
       "enum": [
