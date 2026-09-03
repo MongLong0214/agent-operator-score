@@ -641,7 +641,7 @@ const observationBindingFindings = (log, { pre = null, post = null, maxAgeSecond
   if (completed === null) findings.push("the deletion log claims completion without a well-formed instant saying when");
 
   if (!pre) findings.push("the deletion log claims completion but no pre-deletion observation was supplied, so nothing checks the digest it cites");
-  else {
+  if (pre) {
     if (observationDigest(pre) !== log?.pre_observation?.digest) {
       findings.push("the deletion record does not cite the digest of the pre-deletion observation it was checked against");
     }
@@ -654,7 +654,7 @@ const observationBindingFindings = (log, { pre = null, post = null, maxAgeSecond
   }
 
   if (!post) findings.push("the deletion log claims completion but no post-deletion observation was supplied, so the invariants cannot be checked");
-  else {
+  if (post) {
     if (observationDigest(post) !== log?.post_observation?.digest) {
       findings.push("the deletion record does not cite the digest of the post-deletion observation");
     }
