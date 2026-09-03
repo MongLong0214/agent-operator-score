@@ -2236,6 +2236,60 @@ export const GUARDS = [
     name: "blocks_official_when_boundary_canary_fails"
   },
   {
+    guard: "the spawn judge reads the gate's expectation table",
+    reason: "`evaluateCanary` decides whether the agent is spawned at all and kept its own rule: anything that was not the word `disabled` expected the connect to succeed, so `restricted`, `WITHHELD`, null and undefined were judged against the most permissive expectation there is",
+    file: "lib/confinement.mjs",
+    from: "    const expected = canonicalExpectation(name, networkPolicy);\n    const observed = cell && typeof cell === \"object\" && typeof cell.outcome === \"string\" ? cell.outcome : \"not_reported\";\n    // The errno the cell reported, read only where a denial has to be proved.",
+    to: "    const expected = name === \"network_outbound_connect\" ? (networkPolicy === \"disabled\" ? \"denied\" : \"allowed\") : EXPECTED_CELL[name];\n    const observed = cell && typeof cell === \"object\" && typeof cell.outcome === \"string\" ? cell.outcome : \"not_reported\";\n    // The errno the cell reported, read only where a denial has to be proved.",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
+  },
+  {
+    guard: "a deny the kernel refused, not a file that was not there",
+    reason: "the canary plants the files it then tries to read, so ENOENT is a plant that never landed; counting it as a deny made a missing fixture read as a boundary holding",
+    file: "lib/confinement.mjs",
+    from: "    const denialUnproven = expected === \"denied\" && observed === \"denied\" && errno !== null && !DENIAL_ERRNOS.has(errno);",
+    to: "    const denialUnproven = false;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
+  },
+  {
+    guard: "the network enforcement name is the gate's own vocabulary",
+    reason: "the backend's mechanism is `namespace` and the gate accepts kernel|mount-namespace|none, so a live linux STRICT record could never authenticate -- one thing spelled two ways across the policy and the gate",
+    file: "lib/confinement.mjs",
+    from: "      enforcement: NETWORK_ENFORCEMENT.includes(mechanism) ? mechanism : mechanism === \"namespace\" ? \"mount-namespace\" : \"none\",",
+    to: "      enforcement: mechanism,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
+  },
+  {
+    guard: "no raw confinement evidence is a verification failure",
+    reason: "falling back to the stored summary made deleting the per-invocation confinement objects a way of passing: the record kept an agreeing summary and nothing was left to disagree with it",
+    file: "lib/cli.mjs",
+    from: "  if (invocations.length === 0) return null;",
+    to: "  if (invocations.length === 0) return record?.isolation?.official_issuance ?? null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "the whole gate decision has to agree, not its headline",
+    reason: "comparing `official` and the reason list alone let an edit to the raw evidence that did not move those two -- a cleanup failure deleted on a lane already withheld -- rewrite the evidence under an agreeing summary",
+    file: "lib/cli.mjs",
+    from: "      : comparable(storedVerdict) === comparable(recomputed);",
+    to: "      : storedVerdict.official === recomputed.official;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "verification re-gates the invocations the record carries",
+    reason: "the stored issuance summary is a derived field in a file; reading it made the record its own witness one level down, and rewriting it to an official verdict while the confinement objects still said BEST_EFFORT_CLI passed both checks",
+    file: "lib/cli.mjs",
+    from: "  const verdict = issuanceGateForRun(invocations);",
+    to: "  const verdict = record?.isolation?.official_issuance;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
     guard: "an open handle is corroboration, not a warrant",
     reason: "every caller SIGKILLs what the sweep returns as a survivor, so promoting an open-path hit to a survivor killed an unrelated `sleep` whose cwd was the operator's project directory and reported it as this run's descendant",
     file: "lib/confinement.mjs",
@@ -2686,6 +2740,24 @@ export const GUARDS = [
     name: "an_assessment_records_what_each_family_was_graded_from"
   },
   {
+    guard: "a copy taken while the tree moved is not a snapshot",
+    reason: "a digest taken only after the copy describes the tree as the copy left it and says nothing about whether it held still; a process writing during the walk produced a copy of a state that never existed and the digest matched it",
+    file: "lib/confinement.mjs",
+    from: "    consistent: unreadable !== null ? null : before !== null && after !== null && before === after,",
+    to: "    consistent: true,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_copy_taken_while_the_tree_moved_is_not_a_snapshot"
+  },
+  {
+    guard: "an inconsistent snapshot withholds",
+    reason: "recording `consistent: false` and gating nothing on it is a fact in a file: grading read the mixture and the run stayed official",
+    file: "lib/confinement.mjs",
+    from: "    if (entry !== null && entry.consistent !== true) inconsistent.push(family);",
+    to: "    if (entry !== null && entry.consistent === false && false) inconsistent.push(family);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_copy_taken_while_the_tree_moved_is_not_a_snapshot"
+  },
+  {
     guard: "the freeze copies no link",
     reason: "a link's own bytes are in the tree digest and its target's are not, so a survivor could point response.json outside the workspace, rewrite the target after settlement, and be graded on the new bytes with changed_after_settlement false beside them",
     file: "lib/confinement.mjs",
@@ -2698,8 +2770,8 @@ export const GUARDS = [
     guard: "the settlement digest is over the tree the comparison recomputes",
     reason: "taking it over the copy instead made a workspace holding a link digest differently from the tree it was copied from, so every later comparison reported a write that never happened and the run withheld for a phantom",
     file: "lib/confinement.mjs",
-    from: "    digest: digest(workspace),\n    // And the copy's own digest",
-    to: "    digest: digest(into),\n    // And the copy's own digest",
+    from: "    digest: after,",
+    to: "    digest: copyDigest,",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
   },
@@ -2905,8 +2977,8 @@ export const GUARDS = [
     guard: "the canary expectation is this module's, not the record's",
     reason: "reading `expected` from the record gives it a second authority over what the boundary was supposed to do: the review set outside_read to expected allowed, observed allowed, and the gate agreed",
     file: "lib/confinement.mjs",
-    from: "    const expected = canonicalExpectation(name, networkPolicy);",
-    to: "    const expected = typeof cell?.expected === \"string\" ? cell.expected : canonicalExpectation(name, networkPolicy);",
+    from: "    const expected = canonicalExpectation(name, networkPolicy);\n    const claimed = typeof cell?.expected === \"string\" ? cell.expected : null;",
+    to: "    const expected = typeof cell?.expected === \"string\" ? cell.expected : canonicalExpectation(name, networkPolicy);\n    const claimed = typeof cell?.expected === \"string\" ? cell.expected : null;",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
   },
@@ -4920,6 +4992,7 @@ export const ACCOUNTED_GUARDS = [
   "a committed observation carries no transcript",
   "a complete cycle is not an issued cycle",
   "a contradicting transcript still leaves the cohort",
+  "a copy taken while the tree moved is not a snapshot",
   "a credential is not a model id",
   "a credential is staged for the runtime, not for the label",
   "a credential is what it is filed under, at any length",
@@ -4934,6 +5007,7 @@ export const ACCOUNTED_GUARDS = [
   "a decision binds to the construct it is evidence about",
   "a decision names the dimension it belongs to",
   "a declared route is published as digests",
+  "a deny the kernel refused, not a file that was not there",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
   "a facet is not normalised into a digest",
@@ -5031,6 +5105,7 @@ export const ACCOUNTED_GUARDS = [
   "an imported run is written down",
   "an imported run names the producer of its evidence",
   "an incomplete result's terminal names it",
+  "an inconsistent snapshot withholds",
   "an initial judgment after the reveal is refused",
   "an initial judgment is not committed with a post-advice response",
   "an initial judgment names its evidence",
@@ -5152,6 +5227,7 @@ export const ACCOUNTED_GUARDS = [
   "missing invariance evidence withholds",
   "missing-result refusal",
   "no eligible evidence is said to be none",
+  "no raw confinement evidence is a verification failure",
   "no variable may carry the store path",
   "observation channel size bound",
   "observation line size bound",
@@ -5302,6 +5378,7 @@ export const ACCOUNTED_GUARDS = [
   "the matrix decides the process axis with the run's own helper",
   "the matrix reads what the teardown could not remove",
   "the network axis is enumerated, not typed",
+  "the network enforcement name is the gate's own vocabulary",
   "the observations carry the operator events they rest on",
   "the operator event projection is an allowlist",
   "the operator-typed event set is what the gate covers",
@@ -5343,6 +5420,7 @@ export const ACCOUNTED_GUARDS = [
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
   "the settlement digest is over the tree the comparison recomputes",
+  "the spawn judge reads the gate's expectation table",
   "the spawn refuses a workspace inside the store",
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
@@ -5356,6 +5434,7 @@ export const ACCOUNTED_GUARDS = [
   "the transcript scan spends a bounded budget",
   "the verified executable must be the adapter's runtime",
   "the weakest run decides the cycle",
+  "the whole gate decision has to agree, not its headline",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the withheld reason travels with the surface",
@@ -5373,6 +5452,7 @@ export const ACCOUNTED_GUARDS = [
   "unreadable uses: fails closed",
   "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
+  "verification re-gates the invocations the record carries",
   "verification result check",
   "version comment after a flow mapping",
   "version comment is a version",

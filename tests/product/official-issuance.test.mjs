@@ -404,6 +404,72 @@ test("what_grading_reads_is_frozen_when_execution_is_declared_settled", async ()
   }
 });
 
+test("a_copy_taken_while_the_tree_moved_is_not_a_snapshot", async () => {
+  // The baseline digest used to be taken after the copy, so it described the tree as the copy left
+  // it and said nothing about whether the tree held still while the copy ran. A process writing
+  // during the walk produced a copy holding the old bytes of one file and the new bytes of another
+  // -- a state that never existed -- and the digest matched the live tree, so every later
+  // comparison read clean and grading scored the mixture.
+  const { freezeWorkspace, settlementProblems, ISSUANCE_REASONS, issuanceGate } = await import("../../lib/confinement.mjs");
+  const { treeByteDigest: treeDigestOf } = await import("../../lib/digest.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-freeze-race-"));
+  try {
+    const workspace = join(base, "FAM-1");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "a.json"), "1");
+    writeFileSync(join(workspace, "b.json"), "1");
+
+    // Deterministic adversary: the digest seam is called before and after the copy, and the writer
+    // runs between them -- which is exactly the window a process writing during the walk occupies.
+    let reads = 0;
+    const writingDigest = (path) => {
+      reads += 1;
+      if (reads === 1) {
+        const seen = treeDigestOf(path);
+        writeFileSync(join(workspace, "b.json"), "2");
+        return seen;
+      }
+      return treeDigestOf(path);
+    };
+    const raced = freezeWorkspace(workspace, join(base, "settled-raced"), { digest: writingDigest });
+    assert.equal(raced.consistent, false, "a tree that moved during the copy was called a snapshot");
+    assert.notEqual(raced.digest_before_copy, raced.digest, "the two live digests are the same question asked twice");
+    assert.deepEqual(settlementProblems({ "FAM-1": { ...raced, changed_after_settlement: false } }, ["FAM-1"]).inconsistent, ["FAM-1"]);
+
+    // A quiet tree: consistent, and the copy is what grading reads.
+    writeFileSync(join(workspace, "b.json"), "1");
+    const quiet = freezeWorkspace(workspace, join(base, "settled-quiet"));
+    assert.equal(quiet.consistent, true, JSON.stringify(quiet));
+    assert.equal(quiet.digest_before_copy, quiet.digest);
+    assert.match(String(quiet.copy_digest), /^sha256:[0-9a-f]{64}$/u);
+    assert.equal(readFileSync(join(quiet.path, "b.json"), "utf8"), "1");
+    assert.deepEqual(settlementProblems({ "FAM-1": { ...quiet, changed_after_settlement: false } }, ["FAM-1"]), { written: [], unverified: [], inconsistent: [] });
+
+    // A source that cannot be read is not an empty tree, and it does not answer the question.
+    const broken = freezeWorkspace(workspace, join(base, "settled-broken"), {
+      digest: () => { throw Object.assign(new Error("io"), { code: "EIO" }); }
+    });
+    assert.equal(broken.consistent, null, "an unreadable source answered the question");
+    assert.equal(broken.unreadable, "EIO");
+    assert.deepEqual(settlementProblems({ "FAM-1": { ...broken, changed_after_settlement: false } }, ["FAM-1"]).inconsistent, ["FAM-1"]);
+
+    // A live change after a good freeze is a different fact with a different name: the frozen
+    // evidence is unchanged and the change is its own blocker.
+    writeFileSync(join(workspace, "a.json"), "3");
+    assert.equal(readFileSync(join(quiet.path, "a.json"), "utf8"), "1", "the frozen copy followed the live tree");
+    const late = settlementProblems({ "FAM-1": { ...quiet, changed_after_settlement: true } }, ["FAM-1"]);
+    assert.deepEqual(late, { written: ["FAM-1"], unverified: [], inconsistent: [] });
+    assert.notEqual(ISSUANCE_REASONS.WORKSPACE_WRITTEN_AFTER_SETTLEMENT, ISSUANCE_REASONS.SNAPSHOT_INCONSISTENT);
+
+    // And each state withholds by name rather than by a blank: the gate is fed the problems.
+    const cli = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
+    assert.match(cli, /ISSUANCE_REASONS\.SNAPSHOT_INCONSISTENT/u, "an inconsistent snapshot has no reason on the gate");
+    assert.equal(issuanceGate(measured()).official, true, "the fixture record is not the official one this case needs");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test("a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze", async () => {
   // The freeze's claim is that what grading reads cannot change after settlement. A symlink is the
   // way that claim was still false: the copy reproduced the link, the tree digest covers a link's
@@ -468,24 +534,26 @@ test("a_settlement_nobody_could_check_withholds_like_one_that_moved", async () =
     assert.equal(workspaceChangedAfterSettlement(null, workspace), null, "a family with no frozen digest answered the question");
 
     // And what the gate makes of them. `null` and `undefined` are not `false`.
-    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: false } }), { written: [], unverified: [] });
-    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: true } }), { written: ["FAM-1"], unverified: [] });
-    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: null } }), { written: [], unverified: ["FAM-1"] });
-    assert.deepEqual(settlementProblems({ "FAM-1": {} }), { written: [], unverified: ["FAM-1"] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: false, consistent: true } }), { written: [], unverified: [], inconsistent: [] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: true, consistent: true } }), { written: ["FAM-1"], unverified: [], inconsistent: [] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: null, consistent: true } }), { written: [], unverified: ["FAM-1"], inconsistent: [] });
+    // A family with no consistency claim is a copy nobody proved was a snapshot, as well as one
+    // whose live comparison never answered.
+    assert.deepEqual(settlementProblems({ "FAM-1": {} }), { written: [], unverified: ["FAM-1"], inconsistent: ["FAM-1"] });
     // A settlement that carries nothing is not a settlement that found nothing wrong. Reading the
     // object's own keys made an empty one clean -- no family recorded, no complaint raised, gate
     // open -- so the families the run was supposed to settle are handed in, and a family whose
     // freeze never ran is a missing answer.
-    assert.deepEqual(settlementProblems({}, ["FAM-1", "FAM-2"]), { written: [], unverified: ["FAM-1", "FAM-2"] });
-    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: false } }, ["FAM-1", "FAM-2"]), { written: [], unverified: ["FAM-2"] });
-    assert.deepEqual(settlementProblems({}), { written: [], unverified: ["*"] });
-    assert.deepEqual(settlementProblems([]), { written: [], unverified: ["*"] });
-    assert.deepEqual(settlementProblems(null), { written: [], unverified: ["*"] });
+    assert.deepEqual(settlementProblems({}, ["FAM-1", "FAM-2"]), { written: [], unverified: ["FAM-1", "FAM-2"], inconsistent: [] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: false, consistent: true } }, ["FAM-1", "FAM-2"]), { written: [], unverified: ["FAM-2"], inconsistent: [] });
+    assert.deepEqual(settlementProblems({}), { written: [], unverified: ["*"], inconsistent: [] });
+    assert.deepEqual(settlementProblems([]), { written: [], unverified: ["*"], inconsistent: [] });
+    assert.deepEqual(settlementProblems(null), { written: [], unverified: ["*"], inconsistent: [] });
     // A key the caller did not expect is still read, so an extra family cannot hide a write.
-    assert.deepEqual(settlementProblems({ "FAM-9": { changed_after_settlement: true } }, ["FAM-1"]), { written: ["FAM-9"], unverified: ["FAM-1"] });
+    assert.deepEqual(settlementProblems({ "FAM-9": { changed_after_settlement: true, consistent: true } }, ["FAM-1"]), { written: ["FAM-9"], unverified: ["FAM-1"], inconsistent: [] });
     assert.deepEqual(
-      settlementProblems({ "FAM-2": { changed_after_settlement: null }, "FAM-1": { changed_after_settlement: true } }),
-      { written: ["FAM-1"], unverified: ["FAM-2"] }
+      settlementProblems({ "FAM-2": { changed_after_settlement: null, consistent: true }, "FAM-1": { changed_after_settlement: true, consistent: true } }),
+      { written: ["FAM-1"], unverified: ["FAM-2"], inconsistent: [] }
     );
     // Each condition has its own name, because "we could not check" and "it moved" are different
     // runs and an operator fixing one is not fixing the other.
@@ -506,12 +574,13 @@ test("a_settlement_nobody_could_check_withholds_like_one_that_moved", async () =
     assert.equal(gated.official, true, "the fixture record is not the official one this case needs");
     for (const [label, state] of [
       ["nothing settled", settlementProblems({}, ["FAM-1"])],
-      ["a family missing", settlementProblems({ "FAM-1": { changed_after_settlement: false } }, ["FAM-1", "FAM-2"])],
-      ["a family that moved", settlementProblems({ "FAM-1": { changed_after_settlement: true } }, ["FAM-1"])]
+      ["a family missing", settlementProblems({ "FAM-1": { changed_after_settlement: false, consistent: true } }, ["FAM-1", "FAM-2"])],
+      ["a family that moved", settlementProblems({ "FAM-1": { changed_after_settlement: true, consistent: true } }, ["FAM-1"])]
     ]) {
       const reasons = [
         ...(state.written.length > 0 ? [ISSUANCE_REASONS.WORKSPACE_WRITTEN_AFTER_SETTLEMENT] : []),
-        ...(state.unverified.length > 0 ? [ISSUANCE_REASONS.SETTLEMENT_UNVERIFIED] : [])
+        ...(state.unverified.length > 0 ? [ISSUANCE_REASONS.SETTLEMENT_UNVERIFIED] : []),
+        ...(state.inconsistent.length > 0 ? [ISSUANCE_REASONS.SNAPSHOT_INCONSISTENT] : [])
       ];
       assert.ok(reasons.length > 0, `${label}: the gate was given nothing to withhold on`);
       const withheld = { ...gated, official: false, reasons: [...new Set([...gated.reasons, ...reasons])] };
@@ -708,6 +777,52 @@ test("a_credential_is_staged_for_the_package_that_publishes_the_runtime_not_for_
     }
   } finally {
     rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("the_spawn_judge_and_the_gate_read_one_expectation_table", async () => {
+  // Two judges of one question. `canonicalExpectation` enumerates -- a policy nobody has measured
+  // has no expectation -- and `evaluateCanary`, which decides whether the agent is spawned at all,
+  // kept its own rule: anything that was not the word "disabled" expected the connect to succeed.
+  // So `restricted`, `WITHHELD`, `null` and `undefined` were all judged against the most permissive
+  // expectation there is, on the judge that runs first.
+  const { evaluateCanary, canonicalExpectation, CANARY_CELLS } = await import("../../lib/confinement.mjs");
+  const outOfBand = {
+    planted_intact: { outside: true, store_root: true, run_store: true },
+    descendant: { observed_by_scan: true, dead_after_cleanup: true, escapee_confined: true },
+    orphan: { found_by_sweep: true, dead_after_cleanup: true },
+    stripped: { ran: true, confined: true, dead_after_cleanup: true }
+  };
+  const cellsFor = (policy) => Object.fromEntries(CANARY_CELLS.map((name) => {
+    const expected = canonicalExpectation(name, policy === "disabled" ? "disabled" : "provider-required-unrestricted");
+    return [name, { outcome: expected, errno: expected === "denied" ? "EPERM" : null }];
+  }));
+  for (const policy of ["provider-required-unrestricted", "disabled"]) {
+    assert.equal(evaluateCanary({ cells: cellsFor(policy), networkPolicy: policy, outOfBand, exitCode: 0 }).result, "PASS", policy);
+  }
+  for (const policy of [undefined, null, "restricted", "WITHHELD", ""]) {
+    const verdict = evaluateCanary({ cells: cellsFor(policy), networkPolicy: policy, outOfBand, exitCode: 0 });
+    assert.equal(verdict.result, "FAIL", `${String(policy)} was judged against a default expectation`);
+    assert.ok(verdict.failed.includes("network_outbound_connect"), verdict.failed.join(","));
+    assert.equal(canonicalExpectation("network_outbound_connect", policy), null, String(policy));
+  }
+
+  // And a deny the kernel refused, not a file that was not there. The canary plants the files it
+  // then tries to read, so `ENOENT` means the plant never landed -- counting it as a deny made a
+  // missing fixture read as a boundary holding.
+  const missing = cellsFor("provider-required-unrestricted");
+  missing.outside_read = { outcome: "denied", errno: "ENOENT" };
+  const enoent = evaluateCanary({ cells: missing, networkPolicy: "provider-required-unrestricted", outOfBand, exitCode: 0 });
+  assert.equal(enoent.result, "FAIL", "a plant that never landed was counted as a kernel deny");
+  assert.ok(enoent.failed.includes("outside_read"), enoent.failed.join(","));
+
+  // The gate's own vocabulary is the policy's: a linux STRICT record spelled its enforcement
+  // `namespace` while the gate accepts `kernel | mount-namespace | none`, so that record could
+  // never authenticate however perfect the boundary was.
+  const { isolationPolicyFor, NETWORK_ENFORCEMENT } = await import("../../lib/confinement.mjs");
+  for (const [platform, backend] of [["linux", "linux-bubblewrap"], ["darwin", "macos-seatbelt"]]) {
+    const policy = isolationPolicyFor({ level: "STRICT", platform, backend, adapter: { id: "codex-cli.v1", provider: "openai" } });
+    assert.ok(NETWORK_ENFORCEMENT.includes(policy.network.enforcement), `${platform}: ${policy.network.enforcement}`);
   }
 });
 
@@ -2013,7 +2128,74 @@ test("a_withheld_result_verifies_as_the_result_it_is", () => {
 
     // And with no record at all there is nothing behind the claim: the run says so rather than
     // falling back on what the result says about itself.
-    rmSync(join(cwd, ".aos", "runs", runId, "record.json"), { force: true });
+    // The forgery one level down: the record's own summary rewritten to an official verdict while
+    // the per-invocation confinement objects beside it still say BEST_EFFORT_CLI. Reading the
+    // summary made the record its own witness, and a review reproduced exactly this -- rebuilt
+    // result, `PASS confinement-record`, `PASS recompute`. The gate is run again over the
+    // invocations, and the summary has to follow from them.
+    const recordPath = join(cwd, ".aos", "runs", runId, "record.json");
+    const honestRecord = JSON.parse(readFileSync(recordPath, "utf8"));
+    const forgedRecord = JSON.parse(canonicalJson(honestRecord));
+    forgedRecord.isolation.official_issuance = { ...forgedRecord.isolation.official_issuance, official: true, reasons: [], claim_stage_ceiling: "PROFILE_BOUND" };
+    writeFileSync(recordPath, `${canonicalJson(forgedRecord)}\n`);
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
+    const caughtRecord = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(caughtRecord.stdout, /FAIL\tconfinement-record/u, caughtRecord.stdout);
+    assert.match(caughtRecord.stdout, /does not follow from this run's own confinement records/u, caughtRecord.stdout);
+    writeFileSync(recordPath, `${canonicalJson(honestRecord)}\n`);
+
+    // Every forgery the directive names, one at a time, each on an otherwise untouched pair. The
+    // bar is not "editing one derived field fails" but "no internally consistent rewrite passes":
+    // the gate is run again over the raw per-invocation confinement, so a summary, an isolation
+    // block or a result reshaped to agree with itself still contradicts the evidence beside it.
+    const invocationsOf = (one) => Object.values(one.family_results ?? {}).flatMap((family) => family.invocations ?? []);
+    const tampers = [
+      ["official_issuance false to true", (rec) => { rec.isolation.official_issuance.official = true; rec.isolation.official_issuance.reasons = []; }],
+      ["boundary_withheld removed", (rec, res) => { res.boundary_withheld = []; }],
+      ["isolation backend changed", (rec, res) => { res.isolation.backend = "macos-seatbelt"; }],
+      ["network NOT_OBSERVED to denied", (rec, res) => { res.isolation.network.task_external = "denied"; }],
+      ["policy digest changed", (rec, res) => { res.isolation.policy_digest = `sha256:${"9".repeat(64)}`; }],
+      ["a cleanup failure removed", (rec) => { for (const one of invocationsOf(rec)) if (one.confinement) { one.confinement.cleanup_verified = true; one.confinement.scratch_not_removed = []; } }],
+      ["the whole record made official", (rec) => {
+        rec.isolation.official_issuance = { ...rec.isolation.official_issuance, official: true, reasons: [], claim_stage_ceiling: "PROFILE_BOUND" };
+        rec.isolation.level = "STRICT";
+        for (const one of invocationsOf(rec)) if (one.confinement) one.confinement.level = "STRICT";
+      }]
+    ];
+    for (const [label, edit] of tampers) {
+      const rec = JSON.parse(canonicalJson(honestRecord));
+      const res = JSON.parse(canonicalJson(honest));
+      edit(rec, res);
+      writeFileSync(recordPath, `${canonicalJson(rec)}\n`);
+      writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(res)}\n`);
+      const rejected = run(cwd, ["verify", "--run", runId], 5);
+      assert.match(rejected.stdout, /FAIL\t(?:confinement-record|recompute)/u, `${label} verified: ${rejected.stdout}`);
+    }
+    // The canary's self-reported `result` is the one edit that buys nothing rather than failing:
+    // the gate derives the verdict from the cells and never reads that field, so rewriting it
+    // leaves the recomputed decision identical. The run is still withheld, which is the property --
+    // a forgery that changes no verdict is not a forgery that passes.
+    const canaryLie = JSON.parse(canonicalJson(honestRecord));
+    for (const one of invocationsOf(canaryLie)) if (one.confinement?.boundary_canary) one.confinement.boundary_canary.result = "PASS";
+    writeFileSync(recordPath, `${canonicalJson(canaryLie)}\n`);
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
+    const inert = run(cwd, ["verify", "--run", runId]);
+    assert.match(inert.stdout, /PASS\trecompute/u, inert.stdout);
+    assert.ok(newestResult(cwd).boundary_withheld.length > 0, "a rewritten canary result bought an issued claim");
+
+    // Raw evidence that is absent or incomplete is a failure, not a pass.
+    const hollow = JSON.parse(canonicalJson(honestRecord));
+    for (const one of invocationsOf(hollow)) delete one.confinement;
+    writeFileSync(recordPath, `${canonicalJson(hollow)}\n`);
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
+    const hollowRun = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(hollowRun.stdout, /FAIL\tconfinement-record/u, hollowRun.stdout);
+    // And the untouched pair still verifies, so the eight above are not a blanket refusal.
+    writeFileSync(recordPath, `${canonicalJson(honestRecord)}\n`);
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
+    assert.match(run(cwd, ["verify", "--run", runId]).stdout, /PASS\trecompute/u);
+
+    rmSync(recordPath, { force: true });
     const unwitnessed = run(cwd, ["verify", "--run", runId], 5);
     assert.match(unwitnessed.stdout, /FAIL\tconfinement-record/u, unwitnessed.stdout);
   } finally {
