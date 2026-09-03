@@ -1548,7 +1548,11 @@ test("an observation whose agent cannot be run leaves no Run without a record", 
       // The refusal names the file it refused, and this artefact is one an operator publishes:
       // what it keeps is the code and the redacted remainder, never the path (#561 round 10).
       const published = readFileSync(join(paths, "result.json"), "utf8");
-      assert.equal(/\/(Users|home|private|var)\//u.test(published), false, `${runId}: an absolute path reached a stored result`);
+      // Any absolute path, not the shapes one operating system happens to use: written as
+      // `/Users/...` this passed on a machine whose temporary directory is `/tmp`, and the guard
+      // survived the mutation lane there while dying here (#561 round 12). The redacted form keeps
+      // a basename after `<path>/`, so a second separator is what an unredacted path looks like.
+      assert.equal(/\/[^\s"']+\//u.test(published), false, `${runId}: an absolute path reached a stored result`);
       assert.match(stored.error, /AOS_RUNTIME_IDENTITY/u, runId);
     }
   } finally {
