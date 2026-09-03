@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { ACCOUNTED_GUARDS, GUARDS, REQUIRED_GUARDS } from "../mutation/manifest.mjs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
@@ -102,14 +103,35 @@ test("no guard's witness can skip in the environment that measures it", () => {
   }
 });
 
+// The runner's own fingerprint, recomputed here so the ledger is held to the code rather than to a
+// shape. Kept in step with `tests/mutation/run.mjs` by the assertion below, which fails if the
+// runner's definition moves away from this one.
+const ledgerFingerprint = (guard) => sha256Bytes(Buffer.from(JSON.stringify([
+  guard.guard,
+  guard.file,
+  guard.from,
+  guard.to,
+  guard.test,
+  guard.name,
+  sha256Bytes(readFileSync(new URL(`../../${guard.file}`, import.meta.url)))
+]), "utf8"));
+
 test("a guard deferred on this platform has been measured on the one that owns it", () => {
   // The runner defers a platform-specific guard and used to exit zero on the rest, so a guard could
   // be deferred on every lane the release gates on and counted as fine -- the "unsupported lane
   // produces a green result" rule, this time inside the runner. The lane that can measure a guard
   // writes what it measured into `tests/mutation/measured.json`, keyed by a fingerprint of the
   // guard and the bytes of the file it mutates; the lane that cannot requires that record to still
-  // describe the code in front of it. This test holds the ledger to the manifest so a stale or
-  // missing entry is visible in `npm test` rather than only in the mutation job.
+  // describe the code in front of it.
+  //
+  // The fingerprint is recomputed here, not shape-checked. The comment used to claim a stale entry
+  // was visible in `npm test` while the body only asserted the digest was 64 hex characters, so
+  // zeroing a fingerprint gave `pass 8, fail 0` and the claim was true only of the mutation job.
+  // Recomputing is eight lines and makes the sentence true on every lane.
+  //
+  // What it proves is freshness, not measurement: every input is public repository content, so a
+  // matching entry can be computed without running anything. That is stated in `run.mjs` beside the
+  // ledger and is why a deferred guard's real evidence is the platform's own mutation job.
   const ledger = JSON.parse(readFileSync(new URL("../mutation/measured.json", import.meta.url), "utf8"));
   assert.equal(ledger.schema, "aos-mutation-measurement-ledger.v1");
   const platformGuards = GUARDS.filter((guard) => typeof guard.platform === "string");
@@ -119,6 +141,7 @@ test("a guard deferred on this platform has been measured on the one that owns i
     assert.notEqual(record, null, `${guard.guard}: no lane has recorded measuring it`);
     assert.equal(record.platform, guard.platform, `${guard.guard}: measured on ${record.platform}, which is not the platform it needs`);
     assert.match(String(record.fingerprint), /^sha256:[0-9a-f]{64}$/u);
+    assert.equal(record.fingerprint, ledgerFingerprint(guard), `${guard.guard}: the recorded measurement describes different code`);
   }
   // Every name in the ledger is a guard the manifest still declares: a record for a guard nobody
   // runs any more is a measurement of nothing.

@@ -2311,7 +2311,7 @@ export const GUARDS = [
     guard: "verification re-gates the invocations the record carries",
     reason: "the stored issuance summary is a derived field in a file; reading it made the record its own witness one level down, and rewriting it to an official verdict while the confinement objects still said BEST_EFFORT_CLI passed both checks",
     file: "lib/cli.mjs",
-    from: "  const verdict = issuanceGateForRun(invocations);",
+    from: "  const verdict = officialIssuanceFor(invocations, record?.settlement ?? null, FAMILIES);",
     to: "  const verdict = record?.isolation?.official_issuance;",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_withheld_result_verifies_as_the_result_it_is"
@@ -2467,8 +2467,8 @@ export const GUARDS = [
     guard: "the assessment is scored under the gate it reports",
     reason: "computing the verdict for the record but not for the scoring context is the same defect one line later: the result would name the withheld gate and carry the number anyway",
     file: "lib/cli.mjs",
-    from: "    const gated = issuanceGateForRun(confinementRecords);",
-    to: "    const gated = { official: true, reasons: [], claim_stage_ceiling: \"PROFILE_BOUND\" };",
+    from: "    const officialIssuance = officialIssuanceFor(confinementRecords, settlement, FAMILIES);",
+    to: "    const officialIssuance = { official: true, reasons: [], claim_stage_ceiling: \"PROFILE_BOUND\" };",
     test: "tests/product/official-issuance.test.mjs",
     name: "an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_would_be"
   },
@@ -2776,10 +2776,55 @@ export const GUARDS = [
     name: "an_assessment_records_what_each_family_was_graded_from"
   },
   {
+    guard: "the freeze certificate is over the copy",
+    reason: "no pair of digests over the source can certify the copy: a writer that mutated a file before the walk reached it and restored it before the second digest left before===after while the copy held bytes that appeared in neither digest, were handed to grading, and were scored",
+    file: "lib/confinement.mjs",
+    from: "    && copied.digest === before.digest",
+    to: "    && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_write_reverted_while_the_copy_ran_is_caught_by_the_copys_own_digest"
+  },
+  {
+    guard: "the copy carries the modes it copied",
+    reason: "treeByteDigest puts an entry's mode in its manifest row, so a copy written with writeFileSync defaults can never digest as its source and the certificate that reads it would be dead on arrival",
+    file: "lib/confinement.mjs",
+    from: "      chmodSync(target, stats.mode & 0o7777);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_write_reverted_while_the_copy_ran_is_caught_by_the_copys_own_digest"
+  },
+  {
+    guard: "a tree the digest cannot cover is not certified",
+    reason: "the manifest refuses an entry too large, a tree too large, one too deep or one unreadable and keeps a row without the bytes, so above those limits two different artifacts of the same size are the same row -- which is how a 220 MiB workspace's forged response.json digested identically on both sides",
+    file: "lib/confinement.mjs",
+    from: "    && notCovered.length === 0",
+    to: "    && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_tree_the_digest_cannot_cover_is_never_certified"
+  },
+  {
+    guard: "verification re-derives the settlement half too",
+    reason: "assess composed the confinement gate and the settlement together while verification re-derived only the first, so an honest snapshot-inconsistent run failed under a false accusation and deleting the settlement reasons verified as PROFILE_BOUND with the contradicting evidence still in the record",
+    file: "lib/cli.mjs",
+    from: "  const verdict = officialIssuanceFor(invocations, record?.settlement ?? null, FAMILIES);",
+    to: "  const verdict = issuanceGateForRun(invocations);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "an older schema generation is named, not accused",
+    reason: "#556 added two required properties while the version stayed 2.0.0, so every pre-#556 stored run failed verification with a message accusing the record of contradicting its own evidence when its only fault was predating the gate",
+    file: "lib/cli.mjs",
+    from: "    if (generation !== RESULT_SCHEMA_VERSION) {",
+    to: "    if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_result_from_an_older_schema_generation_is_named_not_accused"
+  },
+  {
     guard: "a copy taken while the tree moved is not a snapshot",
     reason: "a digest taken only after the copy describes the tree as the copy left it and says nothing about whether it held still; a process writing during the walk produced a copy of a state that never existed and the digest matched it",
     file: "lib/confinement.mjs",
-    from: "    consistent: unreadable !== null ? null : before !== null && after !== null && before === after,",
+    from: "    consistent: unreadable !== null ? null : certified,",
     to: "    consistent: true,",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_copy_taken_while_the_tree_moved_is_not_a_snapshot"
@@ -2806,8 +2851,8 @@ export const GUARDS = [
     guard: "the settlement digest is over the tree the comparison recomputes",
     reason: "taking it over the copy instead made a workspace holding a link digest differently from the tree it was copied from, so every later comparison reported a write that never happened and the run withheld for a phantom",
     file: "lib/confinement.mjs",
-    from: "    digest: after,",
-    to: "    digest: copyDigest,",
+    from: "    digest: after?.digest ?? null,",
+    to: "    digest: copied?.digest ?? null,",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
   },
@@ -5114,6 +5159,7 @@ export const ACCOUNTED_GUARDS = [
   "a transcript is never sufficient on its own",
   "a transcript that names another model contradicts the binding",
   "a transcript value is never printed unless it is a model name",
+  "a tree the digest cannot cover is not certified",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a value and its digest are not both accepted",
@@ -5155,6 +5201,7 @@ export const ACCOUNTED_GUARDS = [
   "an observation run carries a provenance record too",
   "an observation that could not run still leaves its record",
   "an observation's markers are read, not only its exit code",
+  "an older schema generation is named, not accused",
   "an open handle is corroboration, not a warrant",
   "an operator decision binds only to an operator_process cell",
   "an operator event is assembled from named fields",
@@ -5396,6 +5443,7 @@ export const ACCOUNTED_GUARDS = [
   "the composite has to agree with its own inputs",
   "the contract digest covers the contract's bytes",
   "the contract states the cells each row averages",
+  "the copy carries the modes it copied",
   "the cycle command quotes the stored decision",
   "the dashboard quotes the stored cycle decision",
   "the derived verdict ignores the reported one",
@@ -5408,6 +5456,7 @@ export const ACCOUNTED_GUARDS = [
   "the evidence digest is over the claim, not the transcript row",
   "the executable identity digest is recomputed, not read",
   "the floor follows the worst severity observed",
+  "the freeze certificate is over the copy",
   "the freeze copies no link",
   "the group sweep is recorded from the group",
   "the identity aggregation is recomputed from its agents",
@@ -5492,6 +5541,7 @@ export const ACCOUNTED_GUARDS = [
   "unreadable uses: fails closed",
   "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
+  "verification re-derives the settlement half too",
   "verification re-gates the invocations the record carries",
   "verification result check",
   "version comment after a flow mapping",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -12,6 +12,7 @@ import {
   ISSUANCE_REASONS,
   STRICT_EVIDENCE_KINDS,
   issuanceGate,
+  officialIssuanceFor,
   redactCleanupFailure,
   renderSupportMatrix,
   settleConfinement,
@@ -25,7 +26,7 @@ import { createRun, writeResult } from "../../lib/store.mjs";
 import { METRIC_IDS, METRICS, observationOf } from "../../lib/metrics.mjs";
 import { newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 import { UNUSABLE_BOUNDARY_REASONS, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
-import { buildResult } from "../../lib/result-schema.mjs";
+import { RESULT_SCHEMA_VERSION, buildResult } from "../../lib/result-schema.mjs";
 import { canonicalJson } from "../../lib/core.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
@@ -463,8 +464,108 @@ test("a_copy_taken_while_the_tree_moved_is_not_a_snapshot", async () => {
 
     // And each state withholds by name rather than by a blank: the gate is fed the problems.
     const cli = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
-    assert.match(cli, /ISSUANCE_REASONS\.SNAPSHOT_INCONSISTENT/u, "an inconsistent snapshot has no reason on the gate");
+    // The composition lives in `officialIssuanceFor` now, because `verify --run` re-derives it with
+    // the same function: two composition sites had two answers and only the producer's was checked.
+    const composition = readFileSync(join(root, "lib", "confinement.mjs"), "utf8");
+    assert.match(composition, /ISSUANCE_REASONS\.SNAPSHOT_INCONSISTENT/u, "an inconsistent snapshot has no reason on the gate");
+    assert.match(cli, /officialIssuanceFor\(confinementRecords, settlement, FAMILIES\)/u, "the CLI composes the verdict somewhere other than the one function");
     assert.equal(issuanceGate(measured()).official, true, "the fixture record is not the official one this case needs");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("a_write_reverted_while_the_copy_ran_is_caught_by_the_copys_own_digest", async () => {
+  // The half the previous test could not fail on. Its adversary let the write persist, so it only
+  // ever distinguished `before !== after` -- and the reverted write is the one that reaches the
+  // grader: mutate a file before the walk reaches it, restore it before the second digest, and both
+  // live digests agree while the copy holds the intermediate bytes. Those bytes appeared in no
+  // recorded digest, were handed to grading, and nothing withheld.
+  //
+  // No pair of digests over the *source* can certify the copy. The certificate has to be over the
+  // copy, which is why `copy_digest` is compared and not merely recorded.
+  const { freezeWorkspace, settlementProblems } = await import("../../lib/confinement.mjs");
+  const { treeByteDigest } = await import("../../lib/digest.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-freeze-revert-"));
+  try {
+    const workspace = join(base, "FAM-1");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "response.json"), JSON.stringify({ answer: "HONEST" }));
+
+    // The adversary writes and reverts entirely between the two live digests, so `before === after`
+    // and only the copy holds the forged bytes. Driven through the digest seam so it is exact.
+    let reads = 0;
+    const revertingDigest = (path) => {
+      reads += 1;
+      if (reads === 1) {
+        // The digest the honest tree has, taken first -- then the file is forged and left forged,
+        // so the walk that follows takes the forged bytes. This is a real racing writer's timing
+        // exactly: the source read honest a moment before the walk reached the file.
+        const honest = treeByteDigest(path);
+        writeFileSync(join(workspace, "response.json"), JSON.stringify({ answer: "FORGED" }));
+        return honest;
+      }
+      if (reads === 2) {
+        // Restored before the second live digest, so `before === after` and only the copy differs.
+        writeFileSync(join(workspace, "response.json"), JSON.stringify({ answer: "HONEST" }));
+        return treeByteDigest(path);
+      }
+      return treeByteDigest(path);
+    };
+    const raced = freezeWorkspace(workspace, join(base, "settled-reverted"), { digest: revertingDigest });
+    assert.equal(raced.digest_before_copy, raced.digest, "the two live digests must agree for this to be the case under test");
+    assert.notEqual(raced.copy_digest, raced.digest_before_copy, "the copy's digest is what makes the reverted write visible");
+    assert.equal(raced.consistent, false, "a copy of a state that never existed was certified");
+    assert.deepEqual(settlementProblems({ "FAM-1": { ...raced, changed_after_settlement: false } }, ["FAM-1"]).inconsistent, ["FAM-1"]);
+
+    // And the honest case still certifies, including file modes: the copy is written with
+    // `writeFileSync` defaults, and `treeByteDigest` puts an entry's mode in its manifest row, so
+    // without carrying modes across the copy the certificate could never match and the comparison
+    // that reads it would be dead on arrival.
+    chmodSync(join(workspace, "response.json"), 0o755);
+    mkdirSync(join(workspace, "sub"));
+    writeFileSync(join(workspace, "sub", "b.json"), "{}");
+    const quiet = freezeWorkspace(workspace, join(base, "settled-quiet"));
+    assert.equal(quiet.consistent, true, JSON.stringify({ refused: quiet.refused, notCovered: quiet.not_covered }));
+    assert.equal(quiet.copy_digest, quiet.digest_before_copy, "an honest copy does not digest as its own source");
+    assert.equal(lstatSync(join(quiet.path, "response.json")).mode & 0o777, 0o755, "the copy did not carry the file's mode");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("a_tree_the_digest_cannot_cover_is_never_certified", async () => {
+  // The mechanism behind the reviewer's reproduction, and the reason the mode fix alone did not
+  // close it. `canonicalTreeManifest` refuses an entry that is too large, a tree too large in
+  // total, one too deep, or one it could not read, and keeps a row carrying path, type, mode, size
+  // and reason -- but not the bytes. Two files of the same size refused for the same reason are the
+  // same row. So above those limits the digest is blind to content: a 220 MiB workspace whose
+  // `zz-response.json` sat past the 16 MiB total was forged in the copy and identical in every
+  // digest, and the run was scored. Coverage is part of the certificate now.
+  const { freezeWorkspace, settlementProblems, ISSUANCE_REASONS } = await import("../../lib/confinement.mjs");
+  const { TREE_LIMITS } = await import("../../lib/digest.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-freeze-cover-"));
+  try {
+    const workspace = join(base, "FAM-1");
+    mkdirSync(workspace, { recursive: true });
+    // One artifact past the per-file limit: its bytes are not in any digest here.
+    writeFileSync(join(workspace, "response.json"), Buffer.alloc(TREE_LIMITS.maxFileBytes + 1, 7));
+    const frozen = freezeWorkspace(workspace, join(base, "settled-big"));
+    assert.equal(frozen.consistent, false, "a tree the digest cannot cover was certified");
+    assert.ok(frozen.not_covered.length > 0, JSON.stringify(frozen));
+    for (const entry of frozen.not_covered) {
+      assert.equal(typeof entry.path, "string");
+      assert.match(entry.reason, /^(?:source|copy):/u, JSON.stringify(entry));
+    }
+    assert.deepEqual(settlementProblems({ "FAM-1": { ...frozen, changed_after_settlement: false } }, ["FAM-1"]).inconsistent, ["FAM-1"]);
+    assert.equal(typeof ISSUANCE_REASONS.SNAPSHOT_INCONSISTENT, "string");
+
+    // Under the limits, the same workspace certifies -- so the rule is about coverage rather than
+    // about refusing everything.
+    writeFileSync(join(workspace, "response.json"), Buffer.alloc(16, 7));
+    const small = freezeWorkspace(workspace, join(base, "settled-small"));
+    assert.equal(small.consistent, true, JSON.stringify(small.not_covered));
+    assert.deepEqual(small.not_covered, []);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
@@ -563,9 +664,11 @@ test("a_settlement_nobody_could_check_withholds_like_one_that_moved", async () =
     // The CLI reads both, at the site the review reproduced: the gate is fed the problems, not the
     // `=== true` test that let the unreadable case through.
     const cli = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
-    assert.match(cli, /const settlementState = settlementProblems\(settlement, FAMILIES\);/u, "the CLI does not ask what the settlement says about every family");
+    const composed = readFileSync(join(root, "lib", "confinement.mjs"), "utf8");
+    assert.match(composed, /settlementProblems\(settlement, families\)/u, "the verdict does not ask what the settlement says about every family");
+    assert.match(cli, /officialIssuanceFor\(confinementRecords, settlement, FAMILIES\)/u, "the CLI composes the verdict somewhere other than the one function");
     assert.equal(/changedAfterSettlement === true/u.test(cli), false, "the CLI still blocks on exactly true");
-    assert.match(cli, /ISSUANCE_REASONS\.SETTLEMENT_UNVERIFIED/u, "an unverifiable settlement has no reason on the gate");
+    assert.match(composed, /ISSUANCE_REASONS\.SETTLEMENT_UNVERIFIED/u, "an unverifiable settlement has no reason on the gate");
 
     // And what issuance makes of it, rather than only what the helper returns: a run whose families
     // were never settled cannot be official, and says which condition stopped it.
@@ -905,6 +1008,49 @@ test("a_provider_refusal_is_not_a_failed_boundary", async () => {
     () => realStrictLaneStatus({ env: { AOS_REAL_STRICT_REQUIRED: "1" }, backendAvailable: false, reason: why }).assertRan(),
     /AOS_REAL_STRICT_NOT_RUN/u
   );
+});
+
+test("a_result_from_an_older_schema_generation_is_named_not_accused", () => {
+  // #556 added two required properties to the result schema while the version stayed 2.0.0, so
+  // every pre-#556 run in an operator's store failed `aos verify --run` at `confinement-record`
+  // with "the stored issuance summary does not follow from this run's own confinement records" --
+  // an accusation against a record whose only fault is predating the gate, while the version field
+  // asserted the two builds were interchangeable. The version is what carries a generation.
+  const cwd = mkdtempSync(join(tmpdir(), "aos-schema-generation-"));
+  try {
+    const agent = join(cwd, "agent.mjs");
+    writeFileSync(agent, "process.stdout.write('done\\n');\n");
+    run(cwd, ["agent", "add", "solo", "--command", process.execPath, "--arg", agent]);
+    run(cwd, ["assess", "--json", "--timeout-ms", "30000"], 3);
+    const runId = newestRunId(cwd);
+    const resultPath = join(cwd, ".aos", "runs", runId, "result.json");
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    assert.equal(stored.schema_version, RESULT_SCHEMA_VERSION, "this build no longer writes the version it checks");
+
+    // A record as the previous generation wrote it: the older version, and neither field the
+    // boundary gate added.
+    const older = JSON.parse(canonicalJson(stored));
+    older.schema_version = "2.0.0";
+    delete older.boundary_withheld;
+    delete older.isolation;
+    writeFileSync(resultPath, `${canonicalJson(older)}\n`);
+    const named = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(named.stdout, /FAIL\tresult-schema/u, named.stdout);
+    assert.match(named.stdout, /2\.0\.0 predates this build's 2\.1\.0/u, named.stdout);
+    assert.match(named.stdout, /carries no isolation evidence to recompute/u, named.stdout);
+    // And it says nothing else: an older record is not accused of contradicting its own evidence.
+    assert.equal(/does not follow from this run's own confinement records/u.test(named.stdout), false, named.stdout);
+    assert.equal(/FAIL\trecompute/u.test(named.stdout), false, named.stdout);
+
+    // A version this build has never heard of is refused too, and reads as the mismatch it is.
+    const unknown = JSON.parse(canonicalJson(older));
+    unknown.schema_version = "9.9.9";
+    writeFileSync(resultPath, `${canonicalJson(unknown)}\n`);
+    const strange = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(strange.stdout, /FAIL\tresult-schema\t9\.9\.9 vs 2\.1\.0/u, strange.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 });
 
 test("an_empty_isolation_lane_is_refused_like_a_misspelled_one", async () => {
@@ -2295,6 +2441,55 @@ test("a_withheld_result_verifies_as_the_result_it_is", () => {
     writeFileSync(recordPath, `${canonicalJson(honestRecord)}\n`);
     writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
     assert.match(run(cwd, ["verify", "--run", runId]).stdout, /PASS\trecompute/u);
+
+    // The settlement half of the verdict, re-derived rather than taken on the summary's word.
+    // `assess` composed two terms -- the confinement gate and the settlement of every workspace
+    // grading read -- and verification re-derived only the first, so an honest run withheld for a
+    // snapshot inconsistency failed its own verification under a false accusation, and deleting the
+    // three settlement reasons from the summary (the obvious reaction to that failure) verified as
+    // PROFILE_BOUND while `record.settlement` still recorded the inconsistency.
+    const settlementRecord = JSON.parse(canonicalJson(honestRecord));
+    const families = Object.keys(settlementRecord.settlement ?? {});
+    assert.ok(families.length > 0, "this run recorded no settlement, so the case is not exercised");
+    settlementRecord.settlement[families[0]].consistent = false;
+    const withSettlementReasons = officialIssuanceFor(
+      Object.values(settlementRecord.family_results).flatMap((family) => family.invocations.map((one) => one.confinement)).filter(Boolean),
+      settlementRecord.settlement,
+      families
+    );
+    settlementRecord.isolation.official_issuance = withSettlementReasons;
+    assert.ok(withSettlementReasons.reasons.includes(ISSUANCE_REASONS.SNAPSHOT_INCONSISTENT), JSON.stringify(withSettlementReasons.reasons));
+    const settlementResult = buildResult({
+      evaluation: evaluate(honest.observations, {
+        facets: Object.fromEntries(Object.entries(honest.facet_identity).filter(([key]) => key !== "contract_digest" && key !== "profile_digest")),
+        profile_digest: honest.profile_digest,
+        forms_completed: honest.run.forms_completed,
+        boundary: withSettlementReasons
+      }, shippedEcdContract()),
+      contract: shippedEcdContract(),
+      observations: honest.observations,
+      run: honest.run,
+      caps: honest.system_outcome_profile.caps,
+      uncertainty: honest.uncertainty,
+      generalizability_status: honest.generalizability_status
+    });
+    writeFileSync(recordPath, `${canonicalJson(settlementRecord)}\n`);
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(settlementResult)}\n`);
+    // The honest settlement-withheld pair verifies: the accusation was false and is gone.
+    const honestSettlement = run(cwd, ["verify", "--run", runId]);
+    assert.match(honestSettlement.stdout, /PASS\tconfinement-record/u, honestSettlement.stdout);
+    assert.match(honestSettlement.stdout, /PASS\trecompute/u, honestSettlement.stdout);
+    // And the forgery it used to invite: the three settlement reasons deleted from the summary
+    // while `record.settlement` still records the inconsistency.
+    const strippedRecord = JSON.parse(canonicalJson(settlementRecord));
+    strippedRecord.isolation.official_issuance = { ...withSettlementReasons, official: true, reasons: [], claim_stage_ceiling: "PROFILE_BOUND" };
+    delete strippedRecord.isolation.official_issuance.snapshot_inconsistent;
+    writeFileSync(recordPath, `${canonicalJson(strippedRecord)}\n`);
+    const caughtSettlement = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(caughtSettlement.stdout, /FAIL\tconfinement-record/u, caughtSettlement.stdout);
+    assert.equal(strippedRecord.settlement[families[0]].consistent, false, "the raw evidence that contradicts the summary is still in the record");
+    writeFileSync(recordPath, `${canonicalJson(honestRecord)}\n`);
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
 
     rmSync(recordPath, { force: true });
     const unwitnessed = run(cwd, ["verify", "--run", runId], 5);

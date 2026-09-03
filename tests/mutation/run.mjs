@@ -122,6 +122,15 @@ console.log(`\n${killed.length}/${results.length} guards are load-bearing.`);
 // mutation, and a digest of the file it mutates -- and the lane that cannot requires a record that
 // still describes the code in front of it. Change the guard or that file and the record goes
 // stale, and the gate fails until the platform that owns it has run again.
+//
+// What this ledger proves, exactly: **freshness, not measurement.** Every input to the fingerprint
+// is public repository content, so anyone who can edit the repo can compute a matching entry
+// without running anything -- a review recomputed all 536 from repo bytes alone. It is a staleness
+// detector, and its whole value is that it goes red when the code moves under a deferred guard. It
+// is not evidence that a mutation was ever applied, and the honest way to make a deferred guard's
+// measurement real is to run the mutation job on the platform that owns it. `measured_on` records
+// which lane wrote the entry and when, for a reader tracing a record back; it is provenance for
+// people, not a credential -- it is as mintable as the fingerprint is.
 const ledgerPath = fileURLToPath(new URL("./measured.json", import.meta.url));
 const fingerprint = (entry) => sha256Bytes(Buffer.from(JSON.stringify([
   entry.guard,
@@ -136,7 +145,12 @@ const fingerprint = (entry) => sha256Bytes(Buffer.from(JSON.stringify([
 ]), "utf8"));
 const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { schema: LEDGER_SCHEMA, measured: {} };
 for (const entry of results.filter((one) => one.outcome === "killed")) {
-  ledger.measured[entry.guard] = { platform: process.platform, fingerprint: fingerprint(entry) };
+  ledger.measured[entry.guard] = {
+    platform: process.platform,
+    fingerprint: fingerprint(entry),
+    // Provenance for a reader, not a credential: see the note above.
+    measured_on: { arch: process.arch, node: process.version, at: new Date().toISOString() }
+  };
 }
 const unmeasured = [];
 for (const entry of only === null ? deferred : []) {
