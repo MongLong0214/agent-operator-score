@@ -73,6 +73,7 @@ const event = (overrides = {}) => ({
   handoff_ids: [],
   capability_digest: null,
   operator_decision_event_id: null,
+  operator_opportunity_id: null,
   ...overrides
 });
 
@@ -314,4 +315,34 @@ test("a task two different agents invoked has no owner rather than the first of 
   const retried = [...ledger, event({ task_id: "verification", agent_id: "two", invocation_id: "invocation-retry", purpose_id: "verification", artifact_ids: ["artifact-retry"] })];
   const plain = routeOracle({ requirements, capabilities, actual_route_events: retried });
   assert.equal(plain.assignment.find((entry) => entry.task_id === "verification").owner_id, "two");
+});
+
+test("an opportunity id cannot pass for the operator event id that recorded the decision", () => {
+  // Two references that answer different questions: which chance to decide this invocation
+  // followed, and which decision was recorded. `lib/cli.mjs` holds the first -- a checkpoint hands
+  // back `opp-FAM-3-stage-1-1` -- and #560 mints the second as `operator-<uuid>`. A field named for
+  // one holding the other is an identifier's shape standing in for its provenance, so the shapes
+  // are what keep them apart.
+  const opportunity = "opp-FAM-3-stage-1-1";
+  const operatorEvent = "operator-2f1c4d0e-9b7a-4c31-8f52-0a6d3b8e1c47";
+
+  assert.deepEqual(validateActualRouteEvent(event({ operator_opportunity_id: opportunity })), []);
+  assert.deepEqual(validateActualRouteEvent(event({ operator_decision_event_id: operatorEvent })), []);
+
+  // The swap, in both directions.
+  assert.equal(validateActualRouteEvent(event({ operator_decision_event_id: opportunity })).length, 1);
+  assert.equal(validateActualRouteEvent(event({ operator_opportunity_id: operatorEvent })).length, 1);
+  // And neither accepts an arbitrary string that is neither.
+  for (const value of ["", "1", "opportunity", "operator-", `operator-${"x".repeat(36)}`]) {
+    assert.equal(validateActualRouteEvent(event({ operator_decision_event_id: value })).length, 1, `${value} passed as an operator event id`);
+  }
+
+  // Both survive admission with their own field.
+  const admitted = routeOracle({
+    requirements: requirementsFromWork(WORK).requirements,
+    capabilities: twoKnown(),
+    actual_route_events: [event({ operator_opportunity_id: opportunity, operator_decision_event_id: operatorEvent })]
+  }).actual_route_events;
+  assert.equal(admitted[0].operator_opportunity_id, opportunity);
+  assert.equal(admitted[0].operator_decision_event_id, operatorEvent);
 });

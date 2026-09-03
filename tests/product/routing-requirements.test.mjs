@@ -73,6 +73,7 @@ const event = (overrides = {}) => ({
   handoff_ids: [],
   capability_digest: null,
   operator_decision_event_id: null,
+  operator_opportunity_id: null,
   ...overrides
 });
 

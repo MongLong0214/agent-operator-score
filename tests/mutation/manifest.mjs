@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "an opportunity id cannot pass for the operator event id",
+    reason: "an opportunity id and an operator event id answer different questions, and a field named for one holding the other is an identifier's shape standing in for its provenance -- the shapes are the only thing keeping the swap out",
+    file: "lib/routing-oracle.mjs",
+    from: "      (typeof event.operator_decision_event_id !== \"string\" || !OPERATOR_EVENT_ID_TEXT.test(event.operator_decision_event_id))) {",
+    to: "      (typeof event.operator_decision_event_id !== \"string\")) {",
+    test: "tests/product/actual-route-authority.test.mjs",
+    name: "an opportunity id cannot pass for the operator event id that recorded the decision"
+  },
+  {
     guard: "a partly attributed ledger is not the cost basis",
     reason: "counting a ledger that speaks about some tasks gives the rest nought invocations each, and the route then costs less than the cheapest possible one -- a run nobody finished observing, reported as one that beat the oracle",
     file: "lib/routing-oracle.mjs",
@@ -3635,6 +3644,7 @@ export const ACCOUNTED_GUARDS = [
   "an operator decision binds only to an operator_process cell",
   "an operator event is assembled from named fields",
   "an operator event states its challenge and its value",
+  "an opportunity id cannot pass for the operator event id",
   "an overlap in the ledger is a collision whatever the schedule said",
   "an owner AOS cannot judge is not delegation the operator got wrong",
   "an unanswered checkpoint mints nothing",
