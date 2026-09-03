@@ -1,42 +1,860 @@
 {
-  "schema": "aos-stale-branch-audit.v3",
+  "schema": "aos-stale-branch-audit.v4",
   "repository": "MongLong0214/agent-operator-score",
   "issue": 572,
   "phase": "read-only-audit",
-  "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B (blocked on #578 and #588) must collect a fresh live observation with scripts/collect-branch-state.mjs and authorize every deletion against that observation, not against this file -- deletionAuthorizationFindings refuses outright when no observation is supplied. The previous version of this fixture is the proof that snapshots go stale: it recorded seven heads, three of which had been merged and auto-deleted before the next snapshot was taken, while three that did not exist then had appeared.",
-  "generated_at": "2026-09-03T00:37:58Z",
-  "method": "Read-only. Every external fact in this file came from scripts/collect-branch-state.mjs, which runs each command and records the command line, exit code, byte count and a SHA-256 of its raw stdout beside the answer; those receipts are in live_observation.receipts and the observation's own digest is in live_observation.digest. Branch heads were taken over two independent transports (`git ls-remote --heads origin` and the REST branch list) and cross-checked. Containment came from `git merge-base --is-ancestor` and `git rev-list --count` in both directions; release-tag containment from `git tag --contains`; the whole protection object, the rulesets, the repository settings and the open pull requests from the REST API; the install source from digests of .claude-plugin/marketplace.json, .claude-plugin/plugin.json and the package identity. The reference scan is two receipted sweeps per branch: a GitHub-wide issue/PR search and a `git grep` over the whole tree excluding this audit's own files. No ref was created, deleted, renamed or force-pushed to produce this file; the one branch this work adds to origin is the branch it is submitted from, recorded in heads_created_after_this_snapshot.",
+  "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B must collect its own observations -- one immediately before the deletion and one immediately after -- with scripts/collect-branch-state.mjs, and authorize against those. authorizeDeletion performs that collection itself rather than accepting one, and the invariants are compared between the two fresh observations, never against this file. This baseline is historical context: the repository goes on moving, and a Phase B compared against a Phase A snapshot would report ordinary progress as damage.",
+  "generated_at": "2026-09-03T01:46:38Z",
+  "method": "Read-only, and every asserted derivation is a command run by scripts/collect-branch-state.mjs with its command line, exit code, byte count and a SHA-256 of its raw stdout recorded beside the answer. That includes the graph facts, not only the repository queries around them: `git merge-base --is-ancestor` against dev and main, `git rev-list --count` in both directions and for commits reaching neither line, `git tag --contains`, `git grep` over the whole tree, `git log -1`, and an all-state `gh pr list --head` per branch. Head lists are taken over two independent transports and cross-checked. Every list endpoint is paginated to the end, and each GitHub-wide search records whether it retrieved every result the API reported -- a truncated sweep establishes nothing and says so. No ref was created, deleted, renamed or force-pushed to produce this file.",
   "excluded_refs": [
     "main",
     "dev"
   ],
   "live_observation": {
-    "schema": "aos-branch-live-observation.v1",
-    "digest": "sha256:27c4f210eb41eaf2aed2fb36d3078e0850c4891027a4022f56edbe7c48fdd04f",
-    "collected_at": "2026-09-03T00:37:58Z",
+    "schema": "aos-branch-live-observation.v2",
+    "repository": "MongLong0214/agent-operator-score",
+    "collected_at": "2026-09-03T01:46:38Z",
     "collector": "scripts/collect-branch-state.mjs",
-    "note": "The receipts below let a reader with credentials re-run each command and compare digests. What they cannot do is prove the observation came from GitHub rather than from a text editor -- an offline checker cannot authenticate a transcript. That boundary is stated rather than hidden, and it is why Phase B's authorization takes a freshly collected observation as a parameter instead of reading this one.",
+    "heads": [
+      {
+        "name": "dev",
+        "sha": "52536444e3aacba9db82d27df5dce22d84826db5"
+      },
+      {
+        "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1"
+      },
+      {
+        "name": "main",
+        "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+      },
+      {
+        "name": "task/issue-556-strict-confinement",
+        "sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f"
+      },
+      {
+        "name": "task/issue-558-routing-oracle",
+        "sha": "49adbee8073ae6e9f67367614199e005c6982a54"
+      },
+      {
+        "name": "task/issue-561-model-identity",
+        "sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb"
+      },
+      {
+        "name": "task/issue-572-branch-audit",
+        "sha": "fcd666fa938103559849b26a260fe9b6c381e580"
+      },
+      {
+        "name": "tmp/read-claude-artifact",
+        "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb"
+      }
+    ],
+    "rest_heads": [
+      {
+        "name": "dev",
+        "sha": "52536444e3aacba9db82d27df5dce22d84826db5",
+        "protected": true
+      },
+      {
+        "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "protected": false
+      },
+      {
+        "name": "main",
+        "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "protected": true
+      },
+      {
+        "name": "task/issue-556-strict-confinement",
+        "sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f",
+        "protected": false
+      },
+      {
+        "name": "task/issue-558-routing-oracle",
+        "sha": "49adbee8073ae6e9f67367614199e005c6982a54",
+        "protected": false
+      },
+      {
+        "name": "task/issue-561-model-identity",
+        "sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+        "protected": false
+      },
+      {
+        "name": "task/issue-572-branch-audit",
+        "sha": "fcd666fa938103559849b26a260fe9b6c381e580",
+        "protected": false
+      },
+      {
+        "name": "tmp/read-claude-artifact",
+        "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "protected": false
+      }
+    ],
+    "open_prs": [
+      {
+        "number": 607,
+        "head_branch": "task/issue-561-model-identity",
+        "head_sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+        "base": "dev",
+        "state": "OPEN"
+      },
+      {
+        "number": 609,
+        "head_branch": "task/issue-556-strict-confinement",
+        "head_sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f",
+        "base": "dev",
+        "state": "OPEN"
+      },
+      {
+        "number": 612,
+        "head_branch": "task/issue-572-branch-audit",
+        "head_sha": "fcd666fa938103559849b26a260fe9b6c381e580",
+        "base": "dev",
+        "state": "OPEN"
+      },
+      {
+        "number": 614,
+        "head_branch": "task/issue-558-routing-oracle",
+        "head_sha": "49adbee8073ae6e9f67367614199e005c6982a54",
+        "base": "dev",
+        "state": "OPEN"
+      }
+    ],
+    "tags": [
+      {
+        "name": "archive/pre-v0.1.0-governance",
+        "ref_sha": "332c6ab016a9a77a9c2625b03e5a6ecd2b6c817f",
+        "commit_sha": "36b823f22217e9d8be011318e295231c62a3f813"
+      },
+      {
+        "name": "v0.1.0",
+        "ref_sha": "0c482e24d2ad2c35955ffd7dafe9e4b66980890a",
+        "commit_sha": "fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3"
+      },
+      {
+        "name": "v0.1.1",
+        "ref_sha": "1ae539d02ed89134b496cb227a6a5b764172c442",
+        "commit_sha": "efe351c991797a8cde88c23b8e8933d9a90db11d"
+      },
+      {
+        "name": "v0.1.10",
+        "ref_sha": "c6dca1ca26683cdd53e6eeedbf1f813da4444bbf",
+        "commit_sha": "98353d24fdd6b932c717bd8b9a0971c22986f7b7"
+      },
+      {
+        "name": "v0.1.11",
+        "ref_sha": "f9dd920c091aca85765680dc5b346ef088ac4029",
+        "commit_sha": "4566b33143155b91981d07308bd113ad8fad9b35"
+      },
+      {
+        "name": "v0.1.12",
+        "ref_sha": "19eebfea5a6b9eae1ad8da296fba156dbc6de904",
+        "commit_sha": "c371ac93d49a592925b24de5013bc9b3b303dd7d"
+      },
+      {
+        "name": "v0.1.13",
+        "ref_sha": "d1a5602d049928de0bc356d1609f38665067ab3d",
+        "commit_sha": "1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea"
+      },
+      {
+        "name": "v0.1.14",
+        "ref_sha": "6ef289a2213d5f2110ed9809c9e1093013351898",
+        "commit_sha": "d89a4b22a0e8de14fff316edcae18c3e6caadf9a"
+      },
+      {
+        "name": "v0.1.15",
+        "ref_sha": "32705b97f71367a4b2dceeb47990eed091210e57",
+        "commit_sha": "426c23d0f62fa2666135f978db0f5802ace7c8cc"
+      },
+      {
+        "name": "v0.1.16",
+        "ref_sha": "ccdad531f3c02459a40306ec95e9a062cd215b12",
+        "commit_sha": "120ce7c96feb961ee7c4599c2946f059b8d9b7c6"
+      },
+      {
+        "name": "v0.1.17",
+        "ref_sha": "4bdc072b9cb7f60d1b2ce87c575450100c6169ac",
+        "commit_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+      },
+      {
+        "name": "v0.1.2",
+        "ref_sha": "0cd9f8aba4f7ad9bb01144b15b6c78102e03b577",
+        "commit_sha": "43bae4bf460939a743c837b8e0a05d8f9e044026"
+      },
+      {
+        "name": "v0.1.3",
+        "ref_sha": "8b33ae3cb13bb20ad0fa60e2b6e1fc5c51fad470",
+        "commit_sha": "dc7f6563ec0d6e951fe984fa026eea8c5efc3aed"
+      },
+      {
+        "name": "v0.1.4",
+        "ref_sha": "1ec11902ae3edaaf63560c4e9b5804296b430de4",
+        "commit_sha": "ae648b7dca5574c6af938dc44b6802f1bf732929"
+      },
+      {
+        "name": "v0.1.5",
+        "ref_sha": "268945956e99d24d9cf796eed2fb8dc62226042b",
+        "commit_sha": "bbfae658e87ac2de7c6326739704a877fb118301"
+      },
+      {
+        "name": "v0.1.6",
+        "ref_sha": "425fa1a8b24a87e83c588fb805f5a9e529cb7676",
+        "commit_sha": "aebcbd8b7105da88ae71d0e5a80be59b99e8cc53"
+      },
+      {
+        "name": "v0.1.7",
+        "ref_sha": "7349872a98c83e577d8193184aa6f16cb3a97011",
+        "commit_sha": "8e84fbcb42f79d86263aab42a1291ecf09ddba7f"
+      },
+      {
+        "name": "v0.1.8",
+        "ref_sha": "64f3ad0ccf46008e40a2a446a8df2f8de43131b4",
+        "commit_sha": "30d30485f4ade54238cba5aa1a8bc85452df7d39"
+      },
+      {
+        "name": "v0.1.9",
+        "ref_sha": "ac7fc44cafee09cc9765254ca6248efd1ddfc508",
+        "commit_sha": "3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0"
+      }
+    ],
+    "protection": {
+      "main": {
+        "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection",
+        "required_status_checks": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_status_checks",
+          "strict": true,
+          "contexts": [
+            "test (ubuntu-latest, node 22)",
+            "test (ubuntu-latest, node 24)",
+            "test (macos-latest, node 24)",
+            "verify-mvp",
+            "package-smoke (ubuntu-latest)",
+            "package-smoke (macos-latest)",
+            "mutation"
+          ],
+          "contexts_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_status_checks/contexts",
+          "checks": [
+            {
+              "context": "test (ubuntu-latest, node 22)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (ubuntu-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (macos-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "verify-mvp",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (ubuntu-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (macos-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "mutation",
+              "app_id": 15368
+            }
+          ]
+        },
+        "required_pull_request_reviews": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_pull_request_reviews",
+          "dismiss_stale_reviews": true,
+          "require_code_owner_reviews": false,
+          "require_last_push_approval": false,
+          "required_approving_review_count": 0
+        },
+        "required_signatures": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_signatures",
+          "enabled": false
+        },
+        "enforce_admins": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/enforce_admins",
+          "enabled": true
+        },
+        "required_linear_history": {
+          "enabled": false
+        },
+        "allow_force_pushes": {
+          "enabled": false
+        },
+        "allow_deletions": {
+          "enabled": false
+        },
+        "block_creations": {
+          "enabled": false
+        },
+        "required_conversation_resolution": {
+          "enabled": true
+        },
+        "lock_branch": {
+          "enabled": false
+        },
+        "allow_fork_syncing": {
+          "enabled": false
+        }
+      },
+      "dev": {
+        "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection",
+        "required_status_checks": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_status_checks",
+          "strict": true,
+          "contexts": [
+            "test (ubuntu-latest, node 22)",
+            "test (ubuntu-latest, node 24)",
+            "test (macos-latest, node 24)",
+            "verify-mvp",
+            "package-smoke (ubuntu-latest)",
+            "package-smoke (macos-latest)",
+            "mutation"
+          ],
+          "contexts_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_status_checks/contexts",
+          "checks": [
+            {
+              "context": "test (ubuntu-latest, node 22)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (ubuntu-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (macos-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "verify-mvp",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (ubuntu-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (macos-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "mutation",
+              "app_id": 15368
+            }
+          ]
+        },
+        "required_pull_request_reviews": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_pull_request_reviews",
+          "dismiss_stale_reviews": true,
+          "require_code_owner_reviews": false,
+          "require_last_push_approval": false,
+          "required_approving_review_count": 0
+        },
+        "required_signatures": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_signatures",
+          "enabled": false
+        },
+        "enforce_admins": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/enforce_admins",
+          "enabled": true
+        },
+        "required_linear_history": {
+          "enabled": false
+        },
+        "allow_force_pushes": {
+          "enabled": false
+        },
+        "allow_deletions": {
+          "enabled": false
+        },
+        "block_creations": {
+          "enabled": false
+        },
+        "required_conversation_resolution": {
+          "enabled": true
+        },
+        "lock_branch": {
+          "enabled": false
+        },
+        "allow_fork_syncing": {
+          "enabled": false
+        }
+      }
+    },
+    "rulesets": [],
+    "settings": {
+      "default_branch": "dev",
+      "delete_branch_on_merge": true
+    },
+    "install_source": {
+      "files": [
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "digest": "sha256:fbe00f610b6acf50d03baf59d474ded48aaa0badb0f3f8d1546b71adb2539713"
+        },
+        {
+          "path": ".claude-plugin/plugin.json",
+          "digest": "sha256:4e37598b3a12d1122b2dd2b8b091994faa04ca19c53e84108b98a6242e8fc64d"
+        }
+      ],
+      "package": {
+        "name": "agent-operator-score",
+        "bin": {
+          "aos": "./bin/aos.mjs"
+        },
+        "files": [
+          "bin/",
+          "contracts/",
+          "lib/",
+          "fixtures/known-incidents/",
+          "fixtures/scoring/",
+          "docs/",
+          "governance/",
+          "schemas/",
+          "scripts/",
+          "fixtures/execution-plan/",
+          "README.md",
+          "README.ko.md",
+          "README.ja.md",
+          "README.zh-CN.md",
+          "LICENSE",
+          "SECURITY.md",
+          "THIRD_PARTY_NOTICES.md",
+          "fixtures/attacks/"
+        ]
+      }
+    },
+    "derivations": {
+      "fix/a-fixture-backed-agent-is-not-a-runtime": {
+        "last_commit": {
+          "date": "2026-08-28T20:37:31+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "97578200+MongLong0214@users.noreply.github.com",
+          "source": "git-log-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "ancestor_of_dev": {
+          "value": true,
+          "source": "is-ancestor-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "ancestor_of_main": {
+          "value": true,
+          "source": "is-ancestor-main-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_vs_dev": {
+          "value": 0,
+          "source": "rev-list-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_vs_main": {
+          "value": 0,
+          "source": "rev-list-main-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "behind_dev": {
+          "value": 277,
+          "source": "rev-list-behind-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "behind_main": {
+          "value": 85,
+          "source": "rev-list-behind-main-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 0,
+          "source": "rev-list-neither-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "tags_containing": {
+          "value": [
+            "v0.1.11",
+            "v0.1.12",
+            "v0.1.13",
+            "v0.1.14",
+            "v0.1.15",
+            "v0.1.16",
+            "v0.1.17"
+          ],
+          "source": "tags-containing-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "pr_history": {
+          "value": [],
+          "source": "pr-history-fix/a-fixture-backed-agent-is-not-a-runtime"
+        }
+      },
+      "task/issue-556-strict-confinement": {
+        "last_commit": {
+          "date": "2026-09-03T10:28:47+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-556-strict-confinement"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-556-strict-confinement"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-556-strict-confinement"
+        },
+        "unique_vs_dev": {
+          "value": 46,
+          "source": "rev-list-dev-task/issue-556-strict-confinement"
+        },
+        "unique_vs_main": {
+          "value": 217,
+          "source": "rev-list-main-task/issue-556-strict-confinement"
+        },
+        "behind_dev": {
+          "value": 21,
+          "source": "rev-list-behind-dev-task/issue-556-strict-confinement"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-556-strict-confinement"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 46,
+          "source": "rev-list-neither-task/issue-556-strict-confinement"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": "tags-containing-task/issue-556-strict-confinement"
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-556-strict-confinement"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 609,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f"
+            }
+          ],
+          "source": "pr-history-task/issue-556-strict-confinement"
+        }
+      },
+      "task/issue-558-routing-oracle": {
+        "last_commit": {
+          "date": "2026-09-03T10:46:21+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-558-routing-oracle"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-558-routing-oracle"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-558-routing-oracle"
+        },
+        "unique_vs_dev": {
+          "value": 8,
+          "source": "rev-list-dev-task/issue-558-routing-oracle"
+        },
+        "unique_vs_main": {
+          "value": 200,
+          "source": "rev-list-main-task/issue-558-routing-oracle"
+        },
+        "behind_dev": {
+          "value": 0,
+          "source": "rev-list-behind-dev-task/issue-558-routing-oracle"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-558-routing-oracle"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 8,
+          "source": "rev-list-neither-task/issue-558-routing-oracle"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": "tags-containing-task/issue-558-routing-oracle"
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-558-routing-oracle"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 614,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "49adbee8073ae6e9f67367614199e005c6982a54"
+            }
+          ],
+          "source": "pr-history-task/issue-558-routing-oracle"
+        }
+      },
+      "task/issue-561-model-identity": {
+        "last_commit": {
+          "date": "2026-09-03T10:34:15+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-561-model-identity"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-561-model-identity"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-561-model-identity"
+        },
+        "unique_vs_dev": {
+          "value": 26,
+          "source": "rev-list-dev-task/issue-561-model-identity"
+        },
+        "unique_vs_main": {
+          "value": 216,
+          "source": "rev-list-main-task/issue-561-model-identity"
+        },
+        "behind_dev": {
+          "value": 2,
+          "source": "rev-list-behind-dev-task/issue-561-model-identity"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-561-model-identity"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 26,
+          "source": "rev-list-neither-task/issue-561-model-identity"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": "tags-containing-task/issue-561-model-identity"
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-561-model-identity"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 607,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb"
+            }
+          ],
+          "source": "pr-history-task/issue-561-model-identity"
+        }
+      },
+      "task/issue-572-branch-audit": {
+        "last_commit": {
+          "date": "2026-09-03T09:51:10+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-572-branch-audit"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-572-branch-audit"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-572-branch-audit"
+        },
+        "unique_vs_dev": {
+          "value": 6,
+          "source": "rev-list-dev-task/issue-572-branch-audit"
+        },
+        "unique_vs_main": {
+          "value": 180,
+          "source": "rev-list-main-task/issue-572-branch-audit"
+        },
+        "behind_dev": {
+          "value": 18,
+          "source": "rev-list-behind-dev-task/issue-572-branch-audit"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-572-branch-audit"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 6,
+          "source": "rev-list-neither-task/issue-572-branch-audit"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": "tags-containing-task/issue-572-branch-audit"
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-572-branch-audit"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 612,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "fcd666fa938103559849b26a260fe9b6c381e580"
+            }
+          ],
+          "source": "pr-history-task/issue-572-branch-audit"
+        }
+      },
+      "tmp/read-claude-artifact": {
+        "last_commit": {
+          "date": "2026-08-29T11:33:54+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "97578200+MongLong0214@users.noreply.github.com",
+          "source": "git-log-tmp/read-claude-artifact"
+        },
+        "ancestor_of_dev": {
+          "value": true,
+          "source": "is-ancestor-dev-tmp/read-claude-artifact"
+        },
+        "ancestor_of_main": {
+          "value": true,
+          "source": "is-ancestor-main-tmp/read-claude-artifact"
+        },
+        "unique_vs_dev": {
+          "value": 0,
+          "source": "rev-list-dev-tmp/read-claude-artifact"
+        },
+        "unique_vs_main": {
+          "value": 0,
+          "source": "rev-list-main-tmp/read-claude-artifact"
+        },
+        "behind_dev": {
+          "value": 225,
+          "source": "rev-list-behind-dev-tmp/read-claude-artifact"
+        },
+        "behind_main": {
+          "value": 33,
+          "source": "rev-list-behind-main-tmp/read-claude-artifact"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 0,
+          "source": "rev-list-neither-tmp/read-claude-artifact"
+        },
+        "tags_containing": {
+          "value": [
+            "v0.1.16",
+            "v0.1.17"
+          ],
+          "source": "tags-containing-tmp/read-claude-artifact"
+        },
+        "tree_scan": {
+          "value": [
+            "HEAD:tests/product/branch-cleanup-invariants.test.mjs"
+          ],
+          "source": "git-grep-tmp/read-claude-artifact"
+        },
+        "pr_history": {
+          "value": [],
+          "source": "pr-history-tmp/read-claude-artifact"
+        }
+      }
+    },
+    "reference_sweep": [
+      {
+        "branch": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "query": "repo:MongLong0214/agent-operator-score \"fix/a-fixture-backed-agent-is-not-a-runtime\"",
+        "complete": true,
+        "total_count": 2,
+        "hits": [
+          {
+            "number": 572,
+            "is_pull_request": false,
+            "state": "open",
+            "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
+          },
+          {
+            "number": 592,
+            "is_pull_request": true,
+            "state": "closed",
+            "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
+          }
+        ]
+      },
+      {
+        "branch": "task/issue-556-strict-confinement",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-556-strict-confinement\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "task/issue-558-routing-oracle",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-558-routing-oracle\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "task/issue-561-model-identity",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-561-model-identity\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "task/issue-572-branch-audit",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-572-branch-audit\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "tmp/read-claude-artifact",
+        "query": "repo:MongLong0214/agent-operator-score \"tmp/read-claude-artifact\"",
+        "complete": true,
+        "total_count": 2,
+        "hits": [
+          {
+            "number": 572,
+            "is_pull_request": false,
+            "state": "open",
+            "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
+          },
+          {
+            "number": 592,
+            "is_pull_request": true,
+            "state": "closed",
+            "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
+          }
+        ]
+      }
+    ],
     "receipts": [
       {
         "source": "git-ls-remote",
         "command": "git ls-remote --heads origin",
         "exit_code": 0,
-        "bytes": 534,
-        "digest": "sha256:d6285487507ae4c8858ebfda66c89e3b075501e506cd44fdcc3d53b7c240a692"
+        "bytes": 616,
+        "digest": "sha256:aca7fdf53495e7308ecd16d2dc7dcf26a4e1935269b791e725241a2b84c32d7c"
       },
       {
         "source": "rest-branches",
-        "command": "gh api repos/MongLong0214/agent-operator-score/branches?per_page=100 --jq [.[]|{name:.name,sha:.commit.sha,protected:.protected}]",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100",
         "exit_code": 0,
-        "bytes": 716,
-        "digest": "sha256:1b2d8743729a4f5e082400e3e43dc8dc6a6007839aec29c0741bc22e977546e1"
+        "bytes": 4879,
+        "digest": "sha256:b8258f12c7e98757295714c41d7d7944ffb8f78f24c2bf6d7602f3681ac0338b"
       },
       {
         "source": "rest-open-prs",
-        "command": "gh api repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100 --jq [.[]|{number:.number,head_branch:.head.ref,head_sha:.head.sha,base:.base.ref,state:\"OPEN\"}]",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100",
         "exit_code": 0,
-        "bytes": 433,
-        "digest": "sha256:b6c18d80a8ea1eab52d8d64be2d1e77623531801d9667c080c3980ec036b4838"
+        "bytes": 223315,
+        "digest": "sha256:4fa4bdd300ceafb2bc63a46d5f69263be7cc8d46c149272b716cad3642e8998b"
       },
       {
         "source": "git-ls-remote-tags",
@@ -61,138 +879,536 @@
       },
       {
         "source": "rest-rulesets",
-        "command": "gh api repos/MongLong0214/agent-operator-score/rulesets",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100",
         "exit_code": 0,
-        "bytes": 2,
-        "digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        "bytes": 4,
+        "digest": "sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05"
       },
       {
         "source": "rest-repo",
-        "command": "gh api repos/MongLong0214/agent-operator-score --jq {default_branch:.default_branch,delete_branch_on_merge:.delete_branch_on_merge}",
+        "command": "gh api repos/MongLong0214/agent-operator-score",
         "exit_code": 0,
-        "bytes": 55,
-        "digest": "sha256:04b3744dbdb6b9e806fd4889e9265d060b44b5aea20f8fd84fec0c0525076020"
+        "bytes": 6760,
+        "digest": "sha256:f6aa81975a94b33967c7716064fe218958ce70b9864f9e19d3db799f70b05d90"
       },
       {
-        "source": "search-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "gh api search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22fix%2Fa-fixture-backed-agent-is-not-a-runtime%22&per_page=100 --jq [.items[]|{number:.number,is_pull_request:(.pull_request!=null),state:.state,title:.title}]",
+        "source": "git-fetch-observed",
+        "command": "git fetch -q origin 52536444e3aacba9db82d27df5dce22d84826db5 e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 87b133b6ba7a13d821b28617460d6c3e6848a45f 49adbee8073ae6e9f67367614199e005c6982a54 cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb fcd666fa938103559849b26a260fe9b6c381e580 2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
         "exit_code": 0,
-        "bytes": 463,
-        "digest": "sha256:8c6b86bd27b63da3e081c83356983305a1e45460a353af0561e33c4cc95a945a"
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
-        "source": "search-task/issue-556-strict-confinement",
-        "command": "gh api search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-556-strict-confinement%22&per_page=100 --jq [.items[]|{number:.number,is_pull_request:(.pull_request!=null),state:.state,title:.title}]",
+        "source": "git-log-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
         "exit_code": 0,
-        "bytes": 169,
-        "digest": "sha256:a08a5fcc7a9c1e701a7cff43cea17923420dd7992336b32c0d0bd06ee7ed8660"
+        "bytes": 86,
+        "digest": "sha256:e7c84e8675d0fd07ebd7e555f8012acbbad816cbd2363059d3f2b8a4227df053"
       },
       {
-        "source": "search-task/issue-561-model-identity",
-        "command": "gh api search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-561-model-identity%22&per_page=100 --jq [.items[]|{number:.number,is_pull_request:(.pull_request!=null),state:.state,title:.title}]",
-        "exit_code": 0,
-        "bytes": 169,
-        "digest": "sha256:a08a5fcc7a9c1e701a7cff43cea17923420dd7992336b32c0d0bd06ee7ed8660"
+        "source": "git-grep-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
-        "source": "search-task/issue-572-branch-audit",
-        "command": "gh api search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-572-branch-audit%22&per_page=100 --jq [.items[]|{number:.number,is_pull_request:(.pull_request!=null),state:.state,title:.title}]",
+        "source": "pr-history-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "gh pr list --repo MongLong0214/agent-operator-score --state all --head fix/a-fixture-backed-agent-is-not-a-runtime --limit 200 --json number,state,mergedAt,baseRefName,headRefOid",
         "exit_code": 0,
         "bytes": 3,
         "digest": "sha256:37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
       },
       {
-        "source": "search-tmp/read-claude-artifact",
-        "command": "gh api search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22tmp%2Fread-claude-artifact%22&per_page=100 --jq [.items[]|{number:.number,is_pull_request:(.pull_request!=null),state:.state,title:.title}]",
+        "source": "is-ancestor-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 52536444e3aacba9db82d27df5dce22d84826db5",
         "exit_code": 0,
-        "bytes": 463,
-        "digest": "sha256:8c6b86bd27b63da3e081c83356983305a1e45460a353af0561e33c4cc95a945a"
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count 52536444e3aacba9db82d27df5dce22d84826db5..e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-main-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-behind-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1..52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:ce16e9dea9b0c470e088bc121136ee735118e474eafbf78a69828bf6f51490df"
+      },
+      {
+        "source": "rev-list-behind-main-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:ff393127b5a059b172af9b9eed820368071cf24d46df1b8326623c8e79178379"
+      },
+      {
+        "source": "rev-list-neither-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not 52536444e3aacba9db82d27df5dce22d84826db5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "tags-containing-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git tag --contains e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "exit_code": 0,
+        "bytes": 56,
+        "digest": "sha256:4832d175f4256b02451934a4297915f021c46a48737bc4693a79891d381988ad"
+      },
+      {
+        "source": "git-log-task/issue-556-strict-confinement",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae 87b133b6ba7a13d821b28617460d6c3e6848a45f",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:8f3862f22176458e64c1df560e6b14daa9ec7f619a9e4b185e90e056496ab002"
+      },
+      {
+        "source": "git-grep-task/issue-556-strict-confinement",
+        "command": "git grep -n --fixed-strings task/issue-556-strict-confinement HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-556-strict-confinement",
+        "command": "gh pr list --repo MongLong0214/agent-operator-score --state all --head task/issue-556-strict-confinement --limit 200 --json number,state,mergedAt,baseRefName,headRefOid",
+        "exit_code": 0,
+        "bytes": 124,
+        "digest": "sha256:56c9f2b4b5139ab411e857d1a91de9a343524a9bbe5c38f33ca5c62544a99a72"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-556-strict-confinement",
+        "command": "git merge-base --is-ancestor 87b133b6ba7a13d821b28617460d6c3e6848a45f 52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-556-strict-confinement",
+        "command": "git merge-base --is-ancestor 87b133b6ba7a13d821b28617460d6c3e6848a45f d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-556-strict-confinement",
+        "command": "git rev-list --count 52536444e3aacba9db82d27df5dce22d84826db5..87b133b6ba7a13d821b28617460d6c3e6848a45f",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:a5331f18877e9e1543361e44b4cb0a1f5f0ed5f8297d850bf1fcc68bd7a3ab5f"
+      },
+      {
+        "source": "rev-list-main-task/issue-556-strict-confinement",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..87b133b6ba7a13d821b28617460d6c3e6848a45f",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:2fa7660fa51eaa80d3212ae92ef3e870b6d246404eb81efabda68d5319c7d07b"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-556-strict-confinement",
+        "command": "git rev-list --count 87b133b6ba7a13d821b28617460d6c3e6848a45f..52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:6e2ae11dad0616f66bbb2b6e6556f580bb987fd911d7132aa6bee2bfc7cc7b52"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-556-strict-confinement",
+        "command": "git rev-list --count 87b133b6ba7a13d821b28617460d6c3e6848a45f..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-556-strict-confinement",
+        "command": "git rev-list --count 87b133b6ba7a13d821b28617460d6c3e6848a45f --not 52536444e3aacba9db82d27df5dce22d84826db5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:a5331f18877e9e1543361e44b4cb0a1f5f0ed5f8297d850bf1fcc68bd7a3ab5f"
+      },
+      {
+        "source": "tags-containing-task/issue-556-strict-confinement",
+        "command": "git tag --contains 87b133b6ba7a13d821b28617460d6c3e6848a45f",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-task/issue-558-routing-oracle",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae 49adbee8073ae6e9f67367614199e005c6982a54",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:2a5eaf89e64cfabf7b72d59b3bbaa3c7ae37b162dff586c88bfb50be60aa6e25"
+      },
+      {
+        "source": "git-grep-task/issue-558-routing-oracle",
+        "command": "git grep -n --fixed-strings task/issue-558-routing-oracle HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-558-routing-oracle",
+        "command": "gh pr list --repo MongLong0214/agent-operator-score --state all --head task/issue-558-routing-oracle --limit 200 --json number,state,mergedAt,baseRefName,headRefOid",
+        "exit_code": 0,
+        "bytes": 124,
+        "digest": "sha256:2a04bf28f95a5f5afebffdb9e1009b9372b5c7c68ef5c8284f2cd58a5f1d9ff3"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-558-routing-oracle",
+        "command": "git merge-base --is-ancestor 49adbee8073ae6e9f67367614199e005c6982a54 52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-558-routing-oracle",
+        "command": "git merge-base --is-ancestor 49adbee8073ae6e9f67367614199e005c6982a54 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-558-routing-oracle",
+        "command": "git rev-list --count 52536444e3aacba9db82d27df5dce22d84826db5..49adbee8073ae6e9f67367614199e005c6982a54",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:aa67a169b0bba217aa0aa88a65346920c84c42447c36ba5f7ea65f422c1fe5d8"
+      },
+      {
+        "source": "rev-list-main-task/issue-558-routing-oracle",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..49adbee8073ae6e9f67367614199e005c6982a54",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:c11e3f4837efde2441e23a7b9da02131f53bf59fddeb7147c4ab81afe400460f"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-558-routing-oracle",
+        "command": "git rev-list --count 49adbee8073ae6e9f67367614199e005c6982a54..52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-558-routing-oracle",
+        "command": "git rev-list --count 49adbee8073ae6e9f67367614199e005c6982a54..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-558-routing-oracle",
+        "command": "git rev-list --count 49adbee8073ae6e9f67367614199e005c6982a54 --not 52536444e3aacba9db82d27df5dce22d84826db5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:aa67a169b0bba217aa0aa88a65346920c84c42447c36ba5f7ea65f422c1fe5d8"
+      },
+      {
+        "source": "tags-containing-task/issue-558-routing-oracle",
+        "command": "git tag --contains 49adbee8073ae6e9f67367614199e005c6982a54",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-task/issue-561-model-identity",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:062746e29beffb6ce05af23367a22a71e4cee1377c81a398f123a2a8b7451251"
+      },
+      {
+        "source": "git-grep-task/issue-561-model-identity",
+        "command": "git grep -n --fixed-strings task/issue-561-model-identity HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-561-model-identity",
+        "command": "gh pr list --repo MongLong0214/agent-operator-score --state all --head task/issue-561-model-identity --limit 200 --json number,state,mergedAt,baseRefName,headRefOid",
+        "exit_code": 0,
+        "bytes": 124,
+        "digest": "sha256:d1bfd14a55adb611ba3467edbb09b1b6f4460cafe483a77679480fdfbda7ab5f"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-561-model-identity",
+        "command": "git merge-base --is-ancestor cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb 52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-561-model-identity",
+        "command": "git merge-base --is-ancestor cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-561-model-identity",
+        "command": "git rev-list --count 52536444e3aacba9db82d27df5dce22d84826db5..cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:20d2add851bf39edcc6b5e830930f962db7e19dffa2cab8610eed551eda6c302"
+      },
+      {
+        "source": "rev-list-main-task/issue-561-model-identity",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:e595be81bf15aa95763adb4fc0ba525bbed1971cf5fccdf3a946cd37025fb2c9"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-561-model-identity",
+        "command": "git rev-list --count cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb..52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-561-model-identity",
+        "command": "git rev-list --count cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-561-model-identity",
+        "command": "git rev-list --count cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb --not 52536444e3aacba9db82d27df5dce22d84826db5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:20d2add851bf39edcc6b5e830930f962db7e19dffa2cab8610eed551eda6c302"
+      },
+      {
+        "source": "tags-containing-task/issue-561-model-identity",
+        "command": "git tag --contains cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-task/issue-572-branch-audit",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae fcd666fa938103559849b26a260fe9b6c381e580",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:3f6866319863758585b00bf601367781a77404b879f1d47dd4f6b84dbf35223c"
+      },
+      {
+        "source": "git-grep-task/issue-572-branch-audit",
+        "command": "git grep -n --fixed-strings task/issue-572-branch-audit HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-572-branch-audit",
+        "command": "gh pr list --repo MongLong0214/agent-operator-score --state all --head task/issue-572-branch-audit --limit 200 --json number,state,mergedAt,baseRefName,headRefOid",
+        "exit_code": 0,
+        "bytes": 124,
+        "digest": "sha256:78d6e4d2ab77e30fec2fe88c0504bdfd5a96ad964183eaa1925d878899f682d2"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fcd666fa938103559849b26a260fe9b6c381e580 52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fcd666fa938103559849b26a260fe9b6c381e580 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-572-branch-audit",
+        "command": "git rev-list --count 52536444e3aacba9db82d27df5dce22d84826db5..fcd666fa938103559849b26a260fe9b6c381e580",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:06e9d52c1720fca412803e3b07c4b228ff113e303f4c7ab94665319d832bbfb7"
+      },
+      {
+        "source": "rev-list-main-task/issue-572-branch-audit",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..fcd666fa938103559849b26a260fe9b6c381e580",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:cbd91cdba3348178fa87e56abd4e1d96506db346eb2288be4284b9014a52fd94"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-572-branch-audit",
+        "command": "git rev-list --count fcd666fa938103559849b26a260fe9b6c381e580..52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:7ee29791fc17e986b97128845622b077fb45e349fdb80523fac9dba879b4ad60"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-572-branch-audit",
+        "command": "git rev-list --count fcd666fa938103559849b26a260fe9b6c381e580..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-572-branch-audit",
+        "command": "git rev-list --count fcd666fa938103559849b26a260fe9b6c381e580 --not 52536444e3aacba9db82d27df5dce22d84826db5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:06e9d52c1720fca412803e3b07c4b228ff113e303f4c7ab94665319d832bbfb7"
+      },
+      {
+        "source": "tags-containing-task/issue-572-branch-audit",
+        "command": "git tag --contains fcd666fa938103559849b26a260fe9b6c381e580",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-tmp/read-claude-artifact",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae 2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 86,
+        "digest": "sha256:d8c2f5d56283e67f81f06a76d251da95d22bfcdd88664ac30b9cbb4eeb418b5b"
+      },
+      {
+        "source": "git-grep-tmp/read-claude-artifact",
+        "command": "git grep -n --fixed-strings tmp/read-claude-artifact HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 0,
+        "bytes": 281,
+        "digest": "sha256:59f86f184d430e9e25aedaf52682bb9c82b57e06bf6b33784475b9b76f55f6d6"
+      },
+      {
+        "source": "pr-history-tmp/read-claude-artifact",
+        "command": "gh pr list --repo MongLong0214/agent-operator-score --state all --head tmp/read-claude-artifact --limit 200 --json number,state,mergedAt,baseRefName,headRefOid",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "source": "is-ancestor-dev-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-tmp/read-claude-artifact",
+        "command": "git rev-list --count 52536444e3aacba9db82d27df5dce22d84826db5..2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-main-tmp/read-claude-artifact",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-behind-dev-tmp/read-claude-artifact",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb..52536444e3aacba9db82d27df5dce22d84826db5",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:e675d6284d97cda6201b109e88e0315a3a6d1993f5bc16b0b241782a5f89a297"
+      },
+      {
+        "source": "rev-list-behind-main-tmp/read-claude-artifact",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:19b8d5c59e421f037fe563007c7254eb8d98bc221b278c3db3e5fdbbfd52e273"
+      },
+      {
+        "source": "rev-list-neither-tmp/read-claude-artifact",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not 52536444e3aacba9db82d27df5dce22d84826db5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "tags-containing-tmp/read-claude-artifact",
+        "command": "git tag --contains 2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 16,
+        "digest": "sha256:5e0242222d6aa3708354552da02e57df48a0c2a253d41b1028f8eec3b5b7adf3"
+      },
+      {
+        "source": "search-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22fix%2Fa-fixture-backed-agent-is-not-a-runtime%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 27252,
+        "digest": "sha256:a13df6f4cf47dc64a50115050af68b84c1c45ea013eb8cd011dd5263b85fb5f3"
+      },
+      {
+        "source": "search-task/issue-556-strict-confinement",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-556-strict-confinement%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-task/issue-558-routing-oracle",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-558-routing-oracle%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-task/issue-561-model-identity",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-561-model-identity%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-task/issue-572-branch-audit",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-572-branch-audit%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-tmp/read-claude-artifact",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22tmp%2Fread-claude-artifact%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 27252,
+        "digest": "sha256:a13df6f4cf47dc64a50115050af68b84c1c45ea013eb8cd011dd5263b85fb5f3"
       }
     ],
-    "reference_sweep": [
-      {
-        "branch": "fix/a-fixture-backed-agent-is-not-a-runtime",
-        "query": "repo:MongLong0214/agent-operator-score \"fix/a-fixture-backed-agent-is-not-a-runtime\"",
-        "hits": [
-          {
-            "is_pull_request": true,
-            "number": 612,
-            "state": "open",
-            "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-          },
-          {
-            "is_pull_request": false,
-            "number": 572,
-            "state": "open",
-            "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
-          },
-          {
-            "is_pull_request": true,
-            "number": 592,
-            "state": "closed",
-            "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
-          }
-        ]
-      },
-      {
-        "branch": "task/issue-556-strict-confinement",
-        "query": "repo:MongLong0214/agent-operator-score \"task/issue-556-strict-confinement\"",
-        "hits": [
-          {
-            "is_pull_request": true,
-            "number": 612,
-            "state": "open",
-            "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-          }
-        ]
-      },
-      {
-        "branch": "task/issue-561-model-identity",
-        "query": "repo:MongLong0214/agent-operator-score \"task/issue-561-model-identity\"",
-        "hits": [
-          {
-            "is_pull_request": true,
-            "number": 612,
-            "state": "open",
-            "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-          }
-        ]
-      },
-      {
-        "branch": "task/issue-572-branch-audit",
-        "query": "repo:MongLong0214/agent-operator-score \"task/issue-572-branch-audit\"",
-        "hits": []
-      },
-      {
-        "branch": "tmp/read-claude-artifact",
-        "query": "repo:MongLong0214/agent-operator-score \"tmp/read-claude-artifact\"",
-        "hits": [
-          {
-            "is_pull_request": true,
-            "number": 612,
-            "state": "open",
-            "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-          },
-          {
-            "is_pull_request": false,
-            "number": 572,
-            "state": "open",
-            "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
-          },
-          {
-            "is_pull_request": true,
-            "number": 592,
-            "state": "closed",
-            "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
-          }
-        ]
-      }
-    ]
+    "digest": "sha256:7a3f463420fff835eb5de5febec133acadd7a396ec415ea35947386ce0fe62dd"
   },
   "ls_remote_snapshot": [
     {
       "name": "dev",
-      "sha": "38c32f751f7e242ec20e891e9e6478ffc66145de"
+      "sha": "52536444e3aacba9db82d27df5dce22d84826db5"
     },
     {
       "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
@@ -204,11 +1420,15 @@
     },
     {
       "name": "task/issue-556-strict-confinement",
-      "sha": "b731f527c487a49a1585d8420a196dec8c1327ec"
+      "sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f"
+    },
+    {
+      "name": "task/issue-558-routing-oracle",
+      "sha": "49adbee8073ae6e9f67367614199e005c6982a54"
     },
     {
       "name": "task/issue-561-model-identity",
-      "sha": "78ed2b4c0a4ee882ef48d98d274103c98d3ce920"
+      "sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb"
     },
     {
       "name": "tmp/read-claude-artifact",
@@ -216,9 +1436,9 @@
     }
   ],
   "invariant_baseline": {
-    "note": "The state Phase B must find unchanged after it deletes anything, recorded before any deletion. Protection and rulesets are stored as the complete objects the API returned, not a projection: three booleans out of twelve fields cannot report that a fourth changed, and two rulesets of equal length are not the same two rulesets.",
+    "note": "Historical context, not the deletion comparison. What must not change across a deletion is compared between two observations collected either side of it (boundaryInvariantFindings); this baseline records what Phase A saw so a later reader can see how far the repository has moved since.",
     "main_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846",
-    "dev_sha": "38c32f751f7e242ec20e891e9e6478ffc66145de",
+    "dev_sha": "52536444e3aacba9db82d27df5dce22d84826db5",
     "tags": [
       {
         "name": "archive/pre-v0.1.0-governance",
@@ -533,19 +1753,25 @@
       {
         "pr": 607,
         "branch": "task/issue-561-model-identity",
-        "sha": "78ed2b4c0a4ee882ef48d98d274103c98d3ce920",
+        "sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
         "base": "dev"
       },
       {
         "pr": 609,
         "branch": "task/issue-556-strict-confinement",
-        "sha": "b731f527c487a49a1585d8420a196dec8c1327ec",
+        "sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f",
         "base": "dev"
       },
       {
         "pr": 612,
         "branch": "task/issue-572-branch-audit",
-        "sha": "1146e104978448e01b65ae0a274054bc4287b619",
+        "sha": "fcd666fa938103559849b26a260fe9b6c381e580",
+        "base": "dev"
+      },
+      {
+        "pr": 614,
+        "branch": "task/issue-558-routing-oracle",
+        "sha": "49adbee8073ae6e9f67367614199e005c6982a54",
         "base": "dev"
       }
     ]
@@ -553,19 +1779,19 @@
   "revision_history": [
     {
       "generated_at": "2026-09-02T00:18:26Z",
-      "note": "First snapshot (PR #592). Classified task/issue-588-mark-done as must_be_preserved because its PR-list query found no PR referencing it; PR #591 had in fact been opened five minutes earlier. The query was stale before the document was produced."
-    },
-    {
-      "generated_at": "2026-09-02T00:29:41Z",
-      "note": "Correction within PR #592: moved task/issue-588-mark-done into the open-PR-head table and recorded seven branches the coordinator reported that were not yet on origin."
+      "note": "First snapshot (PR #592)."
     },
     {
       "generated_at": "2026-09-02T22:56:22Z",
-      "note": "Full re-collection at schema v2 after the previous snapshot's seven heads turned over. Added the six-value classification, release-tag containment, superseding evidence, the reference scan, protection status and a named list of what could not be established."
+      "note": "Schema v2: the six-value classification, release-tag containment, superseding evidence, the reference scan, protection status, and a named list of what could not be established."
     },
     {
       "generated_at": "2026-09-03T00:37:58Z",
-      "note": "Schema v3. The external facts are no longer the audit author's transcript: they come from scripts/collect-branch-state.mjs with per-command receipts, over two independent transports for the head list, and the destructive decision now takes a freshly collected observation as a parameter and refuses without one. The invariant baseline stores the complete protection objects, the ruleset contents and the stable plugin/install source rather than a three-boolean projection. The Phase B deletion log is no longer emitted here -- it is the blocked phase's output, and this file records only the contract it must satisfy."
+      "note": "Schema v3: external facts moved behind a receipted collector, the destructive decision took a live observation, and the Phase B deletion log stopped being emitted in Phase A."
+    },
+    {
+      "generated_at": "2026-09-03T01:46:38Z",
+      "note": "Schema v4, closing the second enumerated review. The observation digest is now recursive: the previous one passed an array replacer to JSON.stringify, which is a key allowlist applied at every level, so every nested head, pull request and receipt hashed to the same value and the digest bound nothing. Every graph derivation a branch record asserts is now collected here with its own receipt -- previously the record asserted merge-base, rev-list, tag-contains, grep and PR-history results the collector never ran. List endpoints paginate to the end and searches prove completeness, so an open pull request on a second page can no longer read as absent. Calendar-impossible instants are rejected before any freshness arithmetic. The invariant comparison is now between two freshly collected observations bracketing the deletion instead of against this snapshot. And the after-snapshot head exception has to be earned by an open pull request rather than by appearing in a list."
     }
   ],
   "previously_recorded_heads_now_absent": [
@@ -578,7 +1804,7 @@
         "merged_at": "2026-09-02T07:10:00Z",
         "merge_commit": "8e87da05e2233d00a5a65ba008a00dfafc2d1d97"
       },
-      "note": "Merged into dev and removed by the repository's delete_branch_on_merge setting, not by this audit. Its content is on dev."
+      "note": "Merged into dev and removed by delete_branch_on_merge, not by this audit."
     },
     {
       "name": "task/issue-572-work",
@@ -589,7 +1815,7 @@
         "merged_at": "2026-09-02T02:47:36Z",
         "merge_commit": "ea1fe9ec6e7efe360da5ab7ceaa316a7cbfa65d9"
       },
-      "note": "The first version of this audit. Merged into dev and auto-deleted; its content remains readable at that merge commit."
+      "note": "The first version of this audit."
     },
     {
       "name": "task/issue-588-mark-done",
@@ -600,7 +1826,7 @@
         "merged_at": "2026-09-02T05:10:28Z",
         "merge_commit": "50c4ddb9643ec170e469f26f47f99a7df4a24802"
       },
-      "note": "The branch the first snapshot could not classify. Merged into dev and auto-deleted; the work it worried about losing is on dev."
+      "note": "Merged into dev and auto-deleted."
     },
     {
       "name": "task/issue-560-operator-events",
@@ -611,7 +1837,7 @@
         "merged_at": "2026-09-03T00:35:57Z",
         "merge_commit": "38c32f751f7e242ec20e891e9e6478ffc66145de"
       },
-      "note": "Audited as ACTIVE in the v2 snapshot and gone from this one: PR #611 merged 121 seconds before this observation was collected, and delete_branch_on_merge removed the branch. Recorded rather than quietly dropped, because a branch that disappears between two snapshots is precisely the state a stored audit cannot see and a fresh observation can."
+      "note": "Audited as ACTIVE two snapshots ago and gone from this one: PR #611 merged while the previous observation was being collected."
     }
   ],
   "heads_created_after_this_snapshot": [
@@ -619,7 +1845,8 @@
       "name": "task/issue-572-branch-audit",
       "sha": null,
       "classification": "ACTIVE",
-      "note": "The branch this audit is submitted from. Its head SHA cannot be recorded here, because the commit that carries this file is the commit whose SHA it would be. It is named rather than omitted so a reader comparing this snapshot against a live ls-remote can account for the difference, and so auditCoverageFindings can tell it apart from a live head nobody audited. It is the head of an open PR while that PR is open and is covered by the same rule as every other open PR head."
+      "open_pr": 612,
+      "note": "The branch this audit is submitted from. Its head SHA cannot be recorded here, because the commit that carries this file is the commit whose SHA it would be. The exception is not the name being on this list: auditCoverageFindings excuses it only while the observation shows an open pull request with it as a head, so a branch that is merely written here does not become accounted for."
     }
   ],
   "branches": [
@@ -636,7 +1863,7 @@
       "unique_commits_vs_dev": 0,
       "unique_commits_vs_main": 0,
       "unique_commits_vs_dev_and_main": 0,
-      "behind_dev": 275,
+      "behind_dev": 277,
       "behind_main": 85,
       "release_tags_containing": [
         "v0.1.11",
@@ -652,12 +1879,14 @@
       "preserve": [],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime HEAD -- ':!docs/STALE_BRANCH_AUDIT.md' ':!fixtures/stale-branches/'",
+          "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "hits": []
         },
         "github_search": {
           "query": "repo:MongLong0214/agent-operator-score \"fix/a-fixture-backed-agent-is-not-a-runtime\"",
+          "complete": true,
+          "total_count": 2,
           "issues": [
             {
               "number": 572,
@@ -667,17 +1896,13 @@
           ],
           "prs": [
             {
-              "number": 612,
-              "state": "open",
-              "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-            },
-            {
               "number": 592,
               "state": "closed",
               "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
             }
           ]
         },
+        "pr_history": [],
         "workflows": [],
         "skills": [],
         "commands": [],
@@ -690,28 +1915,28 @@
       "unestablished": [
         {
           "fact": "why this branch was created, and what change its name ('a fixture-backed agent is not a runtime') was meant to carry",
-          "searched": "The receipted sweep in live_observation.reference_sweep (GitHub-wide issue and PR search) plus a receipted `git grep` over the whole tree and `git log --all --grep` over the full history. Every hit is this audit's own PR (#612), issue #572's candidate list, or the previous audit PR (#592). The branch itself carries no commit of its own.",
+          "searched": "The receipted GitHub-wide sweep in live_observation.reference_sweep (complete: every result the API reported was retrieved) and a receipted `git grep` over the whole tree. Every hit is this audit's own PR, issue #572's candidate list, or the previous audit PR. The receipted all-state PR history for this branch is empty: no pull request has ever used it as a head.",
           "bearing_on_deletion": "none",
-          "why_it_does_not_bear": "Intent is a question about the past; data loss is a question about the present, and the present is fully established here. The tip is an ancestor of both origin/dev and origin/main, `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0, and the commit is contained in seven release tags. There is no object on this ref that deleting the ref would remove from the repository, whatever it was created for."
+          "why_it_does_not_bear": "Intent is a question about the past; data loss is a question about the present, and the present is established by receipted commands. The tip is an ancestor of both dev and main by `git merge-base --is-ancestor`, `git rev-list --count <tip> --not <dev> <main>` returns 0, and the commit is contained in seven release tags. There is no object on this ref that deleting the ref would remove, whatever it was created for."
         }
       ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "The tip commit e75d232 is an ancestor of both origin/dev and origin/main; git rev-list returns 0 commits unique to the branch against either, and git tag --contains places the commit in v0.1.11 through v0.1.17. The branch never carried a commit of its own -- it points at the merge commit of PR #511 (the chore/back-merge-0.1.10 chain) and never advanced from it. The receipted GitHub-wide search and tree scan find no reference to it outside this audit, issue #572's own candidate list, and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh live observation still shows it at this commit with no PR open, removes a name and no content."
+      "reason": "Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, `git tag --contains` places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content."
     },
     {
       "name": "task/issue-556-strict-confinement",
-      "head_sha": "b731f527c487a49a1585d8420a196dec8c1327ec",
+      "head_sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f",
       "author_name": "MongLong0214",
       "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-03T08:53:39+09:00",
+      "last_commit_date": "2026-09-03T10:28:47+09:00",
       "age_days": 0,
       "classification": "ACTIVE",
       "merged_into_dev": false,
       "merged_into_main": false,
-      "unique_commits_vs_dev": 43,
-      "unique_commits_vs_main": 214,
-      "unique_commits_vs_dev_and_main": 43,
-      "behind_dev": 19,
+      "unique_commits_vs_dev": 46,
+      "unique_commits_vs_main": 217,
+      "unique_commits_vs_dev_and_main": 46,
+      "behind_dev": 21,
       "behind_main": 0,
       "release_tags_containing": [],
       "open_pr": {
@@ -719,32 +1944,37 @@
         "url": "https://github.com/MongLong0214/agent-operator-score/pull/609",
         "state": "OPEN",
         "base": "dev",
-        "head_sha": "b731f527c487a49a1585d8420a196dec8c1327ec"
+        "head_sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f"
       },
       "superseding": null,
       "preserve": [
-        "43 commits implementing #556 STRICT workspace confinement and the official issuance gate, reachable from no other ref",
+        "46 commits implementing #556 STRICT workspace confinement and the official issuance gate, reachable from no other ref",
         "confinement adapters and gate wiring across lib/core.mjs, lib/profile.mjs, lib/store.mjs, lib/result-schema.mjs, lib/scorer-v1.mjs, lib/redact.mjs, lib/ecd-contract.mjs, lib/session.mjs",
-        "tests/product/confinement.test.mjs, confinement-real-lane.test.mjs and official-issuance.test.mjs, plus the mutation ledger tests/mutation/measured.json",
+        "tests/product/confinement.test.mjs, confinement-real-lane.test.mjs and official-issuance.test.mjs, plus the mutation ledger",
         "schemas/aos-result.v2.schema.json additions and the rendered confinement support matrix"
       ],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings task/issue-556-strict-confinement HEAD -- ':!docs/STALE_BRANCH_AUDIT.md' ':!fixtures/stale-branches/'",
+          "command": "git grep -n --fixed-strings task/issue-556-strict-confinement HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "hits": []
         },
         "github_search": {
           "query": "repo:MongLong0214/agent-operator-score \"task/issue-556-strict-confinement\"",
+          "complete": true,
+          "total_count": 0,
           "issues": [],
-          "prs": [
-            {
-              "number": 612,
-              "state": "open",
-              "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-            }
-          ]
+          "prs": []
         },
+        "pr_history": [
+          {
+            "number": 609,
+            "state": "OPEN",
+            "merged_at": null,
+            "base": "dev",
+            "head_sha": "87b133b6ba7a13d821b28617460d6c3e6848a45f"
+          }
+        ],
         "workflows": [],
         "skills": [],
         "commands": [],
@@ -756,22 +1986,86 @@
       "branch_protected": false,
       "unestablished": [],
       "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #609 ('feat(confinement): STRICT workspace confinement and official issuance gate (#556)') targeting dev, under active review. It carries 43 commits that reach neither dev nor main and is in no release tag; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state at the moment of deletion rather than trusting this record."
+      "reason": "Head of open PR #609 targeting dev, under active review. Receipted derivations show 46 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record."
     },
     {
-      "name": "task/issue-561-model-identity",
-      "head_sha": "78ed2b4c0a4ee882ef48d98d274103c98d3ce920",
+      "name": "task/issue-558-routing-oracle",
+      "head_sha": "49adbee8073ae6e9f67367614199e005c6982a54",
       "author_name": "MongLong0214",
       "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-03T09:31:56+09:00",
+      "last_commit_date": "2026-09-03T10:46:21+09:00",
       "age_days": 0,
       "classification": "ACTIVE",
       "merged_into_dev": false,
       "merged_into_main": false,
-      "unique_commits_vs_dev": 21,
-      "unique_commits_vs_main": 195,
-      "unique_commits_vs_dev_and_main": 21,
-      "behind_dev": 16,
+      "unique_commits_vs_dev": 8,
+      "unique_commits_vs_main": 200,
+      "unique_commits_vs_dev_and_main": 8,
+      "behind_dev": 0,
+      "behind_main": 0,
+      "release_tags_containing": [],
+      "open_pr": {
+        "number": 614,
+        "url": "https://github.com/MongLong0214/agent-operator-score/pull/614",
+        "state": "OPEN",
+        "base": "dev",
+        "head_sha": "49adbee8073ae6e9f67367614199e005c6982a54"
+      },
+      "superseding": null,
+      "preserve": [
+        "8 commits implementing #558 the #558 routing oracle, reachable from no other ref",
+        "its library, schema and fixture surface, reachable from no other ref",
+        "its product tests and mutation guards"
+      ],
+      "references": {
+        "tree_scan": {
+          "command": "git grep -n --fixed-strings task/issue-558-routing-oracle HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "hits": []
+        },
+        "github_search": {
+          "query": "repo:MongLong0214/agent-operator-score \"task/issue-558-routing-oracle\"",
+          "complete": true,
+          "total_count": 0,
+          "issues": [],
+          "prs": []
+        },
+        "pr_history": [
+          {
+            "number": 614,
+            "state": "OPEN",
+            "merged_at": null,
+            "base": "dev",
+            "head_sha": "49adbee8073ae6e9f67367614199e005c6982a54"
+          }
+        ],
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": []
+      },
+      "branch_protected": false,
+      "unestablished": [],
+      "recommendation": "must_be_preserved",
+      "reason": "Head of open PR #614 targeting dev, under active review. Receipted derivations show 8 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record."
+    },
+    {
+      "name": "task/issue-561-model-identity",
+      "head_sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-03T10:34:15+09:00",
+      "age_days": 0,
+      "classification": "ACTIVE",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unique_commits_vs_dev": 26,
+      "unique_commits_vs_main": 216,
+      "unique_commits_vs_dev_and_main": 26,
+      "behind_dev": 2,
       "behind_main": 0,
       "release_tags_containing": [],
       "open_pr": {
@@ -779,32 +2073,37 @@
         "url": "https://github.com/MongLong0214/agent-operator-score/pull/607",
         "state": "OPEN",
         "base": "dev",
-        "head_sha": "78ed2b4c0a4ee882ef48d98d274103c98d3ce920"
+        "head_sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb"
       },
       "superseding": null,
       "preserve": [
-        "21 commits implementing #561 model and runtime identity binding, reachable from no other ref",
+        "26 commits implementing #561 model and runtime identity binding, reachable from no other ref",
         "lib/model-identity.mjs, the profile digest binding and the cycle comparability wiring",
         "schemas/aos-model-provenance.v1.json, fixtures/model-identity/runtime-canary.json, scripts/capture-model-canary.mjs",
         "tests/product/model-identity.test.mjs and model-canary.test.mjs"
       ],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings task/issue-561-model-identity HEAD -- ':!docs/STALE_BRANCH_AUDIT.md' ':!fixtures/stale-branches/'",
+          "command": "git grep -n --fixed-strings task/issue-561-model-identity HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "hits": []
         },
         "github_search": {
           "query": "repo:MongLong0214/agent-operator-score \"task/issue-561-model-identity\"",
+          "complete": true,
+          "total_count": 0,
           "issues": [],
-          "prs": [
-            {
-              "number": 612,
-              "state": "open",
-              "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-            }
-          ]
+          "prs": []
         },
+        "pr_history": [
+          {
+            "number": 607,
+            "state": "OPEN",
+            "merged_at": null,
+            "base": "dev",
+            "head_sha": "cd2ad2bc9fbc78702f21ccdece4efaec1d0a4ccb"
+          }
+        ],
         "workflows": [],
         "skills": [],
         "commands": [],
@@ -816,7 +2115,7 @@
       "branch_protected": false,
       "unestablished": [],
       "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #607 ('feat(model-identity): bind exact model and runtime identity to the profile and cycle comparability (#561)') targeting dev, under active review. It carries 21 commits that reach neither dev nor main and is in no release tag; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state at the moment of deletion rather than trusting this record."
+      "reason": "Head of open PR #607 targeting dev, under active review. Receipted derivations show 26 commits reaching neither dev nor main and no release tag containing it; the work exists on no other ref. Deleting the head branch of an open PR is on this issue's own prohibited-actions list, and the deletion gate re-checks the live PR state against a freshly collected observation rather than trusting this record."
     },
     {
       "name": "tmp/read-claude-artifact",
@@ -831,7 +2130,7 @@
       "unique_commits_vs_dev": 0,
       "unique_commits_vs_main": 0,
       "unique_commits_vs_dev_and_main": 0,
-      "behind_dev": 223,
+      "behind_dev": 225,
       "behind_main": 33,
       "release_tags_containing": [
         "v0.1.16",
@@ -842,7 +2141,7 @@
       "preserve": [],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings tmp/read-claude-artifact HEAD -- ':!docs/STALE_BRANCH_AUDIT.md' ':!fixtures/stale-branches/'",
+          "command": "git grep -n --fixed-strings tmp/read-claude-artifact HEAD -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:59f86f184d430e9e25aedaf52682bb9c82b57e06bf6b33784475b9b76f55f6d6",
           "hits": [
             "HEAD:tests/product/branch-cleanup-invariants.test.mjs"
@@ -850,6 +2149,8 @@
         },
         "github_search": {
           "query": "repo:MongLong0214/agent-operator-score \"tmp/read-claude-artifact\"",
+          "complete": true,
+          "total_count": 2,
           "issues": [
             {
               "number": 572,
@@ -859,17 +2160,13 @@
           ],
           "prs": [
             {
-              "number": 612,
-              "state": "open",
-              "title": "docs(governance): re-collect the stale remote branch audit and gate its deletion recommendations (#572)"
-            },
-            {
               "number": 592,
               "state": "closed",
               "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
             }
           ]
         },
+        "pr_history": [],
         "workflows": [],
         "skills": [],
         "commands": [],
@@ -884,13 +2181,13 @@
       "unestablished": [
         {
           "fact": "what the branch was used to read, and whether anything was ever committed to it and later discarded",
-          "searched": "The receipted GitHub-wide sweep, a receipted `git grep` over the tree, and `git log --all --grep='claude artifact'` over the full history: nothing names it outside this audit, #572 and #592. A remote branch has no reflog readable from a clone, so a commit pushed and then force-replaced before this audit would leave no trace any command here can reach.",
+          "searched": "The receipted complete GitHub-wide sweep, a receipted `git grep` over the tree, and the receipted all-state PR history: nothing names it outside this audit, #572 and the previous audit's PR, and no pull request ever used it as a head. A remote branch has no reflog readable from a clone, so a commit pushed and force-replaced before this audit would leave no trace any command here can reach.",
           "bearing_on_deletion": "none",
-          "why_it_does_not_bear": "The question is about objects that are not on the ref now. The ref as it stands is an ancestor of both origin/dev and origin/main with 0 unique commits against either, so deleting it removes no reachable object. An object already unreachable from this ref is not preserved by keeping the ref either, which is precisely why #572 routes evidence into committed fixtures and issue records rather than leaving it on a branch."
+          "why_it_does_not_bear": "The question is about objects that are not on the ref now. The ref as it stands is an ancestor of both dev and main with 0 commits reaching neither, so deleting it removes no reachable object. An object already unreachable from this ref is not preserved by keeping the ref either, which is why #572 routes evidence into committed fixtures and issue records rather than leaving it on a branch."
         }
       ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "The tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique against either) and in release tags v0.1.16 and v0.1.17; it is the merge commit of PR #538, the chore/back-merge-0.1.15 chain, and the branch never advanced past it. It is a tmp/* branch, which repository policy caps at seven days or task end; it is past that. The receipted searches find no reference outside this audit, issue #572 and the previous audit's PR."
+      "reason": "Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16 and v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it. It is a tmp/* branch, which repository policy caps at seven days or task end; it is past that. The all-state PR history is empty and the complete reference sweep finds nothing outside this audit."
     }
   ],
   "closes_issue": false,
@@ -900,40 +2197,42 @@
     "note": "The PR carrying this audit must not use a closing keyword for #572. It completes the read-only-audit phase; final-deletion is blocked on #578 and #588 and is the phase that produces the deletion log."
   },
   "phase_b_contract": {
-    "note": "The Phase B output is `branch-deletion-log`, which the canonical execution plan reserves for the final-deletion phase. That phase is blocked on #578 and #588, so no deletion log is emitted by this PR -- an audit that shipped the blocked phase's artifact would be doing Phase B's work in Phase A. What is recorded here is the contract that artifact has to satisfy, which is Phase A's job.",
+    "note": "The Phase B output is `branch-deletion-log`, which the canonical execution plan reserves for the blocked final-deletion phase. No deletion log is emitted by this PR; what is recorded here is the contract that artifact has to satisfy.",
     "deletion_log_status": "NOT_YET",
     "deletion_log_path": "fixtures/stale-branches/deletion-log.json",
     "blocked_by": [
       578,
       588
     ],
-    "prerequisite_authority": "fixtures/execution-plan/github-state.json -- #578 and #588 must be closed there with close evidence. The deletion log does not get to clear its own prerequisites; scripts/branch-audit.mjs cross-checks its claims against that snapshot and treats a disagreement as a finding.",
+    "prerequisite_authority": "fixtures/execution-plan/github-state.json -- #578 and #588 must be closed there with close evidence. The deletion log does not clear its own prerequisites; scripts/branch-audit.mjs cross-checks its claims against that snapshot and treats a disagreement as a finding.",
+    "entry_point": "authorizeDeletion({ audit, log, completion }) in scripts/branch-audit.mjs. It collects the pre-deletion observation itself rather than accepting one, so the observation is not a value the deleting party composes.",
     "required_shape": {
       "schema": "aos-branch-deletion-log.v1",
       "status": "COMPLETED",
-      "completed_at": "<instant>",
+      "completed_at": "<instant, between the two observations>",
       "deleted": "[{name, sha}] -- exactly the branches a fresh audit finds eligible, each at the commit that audit judged. An empty list is legitimate when nothing is eligible, and then no_op_reason must say why.",
       "blockers_cleared": "[{issue, canonical_state}] -- cross-checked against the canonical snapshot, not believed",
-      "live_observation": "{digest} -- the digest of the observation the deletion was authorized against",
-      "post_delete_state": "{main_sha, dev_sha, tags [{name, ref_sha, commit_sha}], protection (complete objects), rulesets (complete), install_source, open_pr_heads}"
+      "pre_observation": "{digest} -- the recursive digest of the observation collected immediately before the deletion",
+      "post_observation": "{digest} -- the recursive digest of the observation collected immediately after it"
     },
+    "invariant_comparison": "boundaryInvariantFindings(log, pre, post): main, dev, tag ref and commit identity, the complete protection objects, the rulesets, the install source, the repository settings, and every open pull request head -- compared between the two fresh observations. The set of heads that vanished between them must equal exactly the set the log says it deleted.",
     "eligible_at_this_snapshot": [
       {
         "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
         "sha_at_audit": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
-        "note": "Eligible as of this snapshot only. Phase B must re-verify against a fresh live observation before deleting; a snapshot is not permission."
+        "note": "Eligible as of this snapshot only. Phase B re-verifies against its own observation before deleting; a snapshot is not permission."
       },
       {
         "name": "tmp/read-claude-artifact",
         "sha_at_audit": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
-        "note": "Eligible as of this snapshot only. Phase B must re-verify against a fresh live observation before deleting; a snapshot is not permission."
+        "note": "Eligible as of this snapshot only. Phase B re-verifies against its own observation before deleting; a snapshot is not permission."
       }
     ]
   },
   "repository_policy": {
     "note": "The branch policy this issue asks to be written down. Descriptive of the repository's current settings where a setting exists, prescriptive where none does.",
     "rules": [
-      "feature/, task/ and fix/ branches are deleted once their PR merges. delete_branch_on_merge is enabled, so this happens automatically; the two branches in this audit that were not removed are the two that never had a PR.",
+      "feature/, task/ and fix/ branches are deleted once their PR merges. delete_branch_on_merge is enabled, so this happens automatically; the branches in this audit that were not removed are the ones that never had a PR.",
       "tmp/* branches live at most seven days or until their task ends, whichever comes first. No setting enforces this; it is checked by re-running this audit.",
       "release/ and hotfix/ branches are deleted after the release ships and the back-merge into dev lands.",
       "main and dev are protected: no deletion, no force push, enforced for admins. No repository rulesets are configured.",

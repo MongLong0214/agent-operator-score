@@ -4,20 +4,17 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, loadCompletionSnapshot, openPrHeadDeletionFindings } from "../../scripts/branch-audit.mjs";
+import { DELETION_BLOCKED_BY, authorizeDeletion, deletionAuthorizationFindings, deletionEligibility, loadCompletionSnapshot, openPrHeadDeletionFindings } from "../../scripts/branch-audit.mjs";
 import { observationDigest } from "../../scripts/collect-branch-state.mjs";
 
 // The prohibition in #572 that cannot be walked back: deleting the head branch of an open pull
-// request destroys its diff. This file is the check standing between the audit and that outcome, and
-// it has to hold in three directions -- an open PR head may never be eligible in the audit, the
-// deletion record may never name one, and neither may a pull request that was opened *after* the
-// audit was written. Only the third of those can be checked against something other than the
-// author's own record, which is why `deletionAuthorizationFindings` takes a live observation and
-// refuses without one.
+// request destroys its diff. It has to hold in three directions -- an open PR head may never be
+// eligible in the audit, the deletion record may never name one, and neither may a pull request
+// opened *after* the audit was written. Only the third can be checked against something other than
+// the author's own record, which is why the gate collects its own observation rather than taking one.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const audit = JSON.parse(readFileSync(join(root, "fixtures", "stale-branches", "audit.json"), "utf8"));
-const baseline = audit.invariant_baseline;
 const completion = loadCompletionSnapshot();
 
 const clearedCompletion = () => ({
@@ -29,48 +26,50 @@ const clearedCompletion = () => ({
   )
 });
 
-/** An observation shaped exactly as the collector emits one, agreeing with the audit. */
 const observation = (overrides = {}) => {
-  const heads = audit.ls_remote_snapshot.map((entry) => ({ ...entry }));
-  const base = {
-    schema: "aos-branch-live-observation.v1",
-    repository: audit.repository,
-    collected_at: "2026-09-10T00:00:00Z",
-    collector: "scripts/collect-branch-state.mjs",
-    heads,
-    rest_heads: heads,
-    open_prs: baseline.open_pr_heads.map((entry) => ({ number: entry.pr, head_branch: entry.branch, head_sha: entry.sha, base: entry.base, state: "OPEN" })),
-    receipts: [{ source: "git-ls-remote", command: "git ls-remote --heads origin", exit_code: 0, bytes: 1, digest: `sha256:${"c".repeat(64)}` }],
-    ...overrides
-  };
+  const base = structuredClone(audit.live_observation);
+  Object.assign(base, overrides);
+  base.digest = observationDigest(base);
   return base;
 };
 
-const completedLog = (live, overrides = {}) => ({
+const deletedNames = () => new Set(deletionEligibility(audit).eligible.map((entry) => entry.name));
+
+const boundaryPair = () => {
+  const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
+  const gone = deletedNames();
+  const post = observation({
+    collected_at: "2026-09-10T00:01:00Z",
+    heads: pre.heads.filter((head) => !gone.has(head.name)),
+    rest_heads: pre.rest_heads.filter((head) => !gone.has(head.name))
+  });
+  return { pre, post };
+};
+
+const completedLog = (pre, post, overrides = {}) => ({
   schema: "aos-branch-deletion-log.v1",
   status: "COMPLETED",
-  completed_at: "2026-09-10T00:01:00Z",
+  completed_at: "2026-09-10T00:00:30Z",
   blocked_by: [...DELETION_BLOCKED_BY],
   blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed" })),
   deleted: deletionEligibility(audit).eligible.map((entry) => ({ name: entry.name, sha: entry.head_sha })),
-  live_observation: { digest: observationDigest(live) },
-  post_delete_state: {
-    main_sha: baseline.main_sha,
-    dev_sha: baseline.dev_sha,
-    tags: baseline.tags,
-    protection: baseline.protection,
-    rulesets: baseline.rulesets,
-    install_source: baseline.install_source,
-    open_pr_heads: baseline.open_pr_heads
-  },
+  pre_observation: { digest: observationDigest(pre) },
+  post_observation: { digest: observationDigest(post) },
   note: "Phase B.",
   ...overrides
 });
 
-const authorize = (extra = {}) => {
-  const live = extra.live === undefined ? observation() : extra.live;
-  const log = extra.log ?? completedLog(live ?? observation());
-  return deletionAuthorizationFindings({ audit, log, live, completion: extra.completion ?? clearedCompletion() });
+const authorize = ({ pre, post, log, completion: snapshot } = {}) => {
+  const pair = pre && post ? { pre, post } : boundaryPair();
+  const usePre = pre ?? pair.pre;
+  const usePost = post === null ? null : post ?? pair.post;
+  return deletionAuthorizationFindings({
+    audit,
+    log: log ?? completedLog(usePre, usePost ?? pair.post),
+    pre: usePre,
+    post: usePost,
+    completion: snapshot ?? clearedCompletion()
+  });
 };
 
 test("no branch with an open PR on it is deletion-eligible", () => {
@@ -97,22 +96,19 @@ test("an open PR's recorded head SHA is the branch head the audit recorded", () 
 });
 
 test("a deletion log entry for a branch outside the audit is refused", () => {
-  const forged = { deleted: [{ name: "task/issue-999-never-audited", sha: "0".repeat(40) }] };
-  assert.notDeepEqual(openPrHeadDeletionFindings(audit, forged), [], "a deletion of a branch this audit never covered passed the check");
+  assert.notDeepEqual(openPrHeadDeletionFindings(audit, { deleted: [{ name: "task/issue-999-never-audited", sha: "0".repeat(40) }] }), [], "a deletion of a branch this audit never covered passed");
 });
 
 test("a deletion log entry for a branch the audit records as an open PR head is refused", () => {
   const active = audit.branches.find((entry) => entry.open_pr);
   const findings = openPrHeadDeletionFindings(audit, { deleted: [{ name: active.name, sha: active.head_sha }] });
-  assert.notDeepEqual(findings, [], `deleting open PR head ${active.name} passed the check`);
   assert.ok(findings.some((f) => f.includes("was open on it")), `the refusal does not say the branch had a PR open on it: ${findings.join(" | ")}`);
 });
 
 test("a deletion log that names an eligible branch at a commit the audit did not judge is refused", () => {
   const eligible = deletionEligibility(audit).eligible[0];
   assert.ok(eligible, "nothing is eligible, so this test would check nothing");
-  const findings = openPrHeadDeletionFindings(audit, { deleted: [{ name: eligible.name, sha: "f".repeat(40) }] });
-  assert.ok(findings.some((f) => f.includes("this audit judged it at")), `deleting at an unaudited commit passed: ${findings.join(" | ")}`);
+  assert.ok(openPrHeadDeletionFindings(audit, { deleted: [{ name: eligible.name, sha: "f".repeat(40) }] }).some((f) => f.includes("this audit judged it at")), "deleting at an unaudited commit passed");
 });
 
 test("a deletion log that names an eligible branch at the commit the audit judged is accepted", () => {
@@ -120,80 +116,133 @@ test("a deletion log that names an eligible branch at the commit the audit judge
   assert.deepEqual(openPrHeadDeletionFindings(audit, { deleted: [{ name: eligible.name, sha: eligible.head_sha }] }), [], "the deletion Phase B is supposed to be able to make was refused");
 });
 
-// --- the live boundary --------------------------------------------------------------------------
-//
-// Everything above reads only the stored audit, which is written by the party proposing the
-// deletion. These are the checks that ask the repository instead.
+// --- the live boundary ---------------------------------------------------------------------------
 
 test("a deletion authorized only from stored facts is refused outright", () => {
-  const findings = authorize({ live: null });
-  assert.ok(findings.some((f) => f.includes("no live observation was supplied")), `a deletion with no live observation was authorized: ${findings.join(" | ")}`);
+  const { pre, post } = boundaryPair();
+  const findings = deletionAuthorizationFindings({ audit, log: completedLog(pre, post), pre: null, post, completion: clearedCompletion() });
+  assert.ok(findings.some((f) => f.includes("no pre-deletion observation was supplied")), `a deletion with no observation was authorized: ${findings.join(" | ")}`);
 });
 
-test("a complete record with a matching live observation authorizes the deletion", () => {
+test("a completed deletion with no post-deletion observation is refused", () => {
+  const { pre, post } = boundaryPair();
+  const findings = deletionAuthorizationFindings({ audit, log: completedLog(pre, post), pre, post: null, completion: clearedCompletion() });
+  assert.ok(findings.some((f) => f.includes("no post-deletion observation was supplied")), `a completed deletion with no witness was authorized: ${findings.join(" | ")}`);
+});
+
+test("a complete record with both boundary observations authorizes the deletion", () => {
   assert.deepEqual(authorize(), [], "the deletion Phase B is supposed to be able to make was refused");
 });
 
 test("a pull request opened after the audit was written blocks the deletion, whatever the audit says", () => {
   const eligible = deletionEligibility(audit).eligible[0];
-  const live = observation();
-  live.open_prs = [...live.open_prs, { number: 999, head_branch: eligible.name, head_sha: eligible.head_sha, base: "dev", state: "OPEN" }];
-  const findings = deletionAuthorizationFindings({ audit, log: completedLog(live), live, completion: clearedCompletion() });
-  assert.ok(findings.some((f) => f.includes("reads as eligible in the audit but PR #999")), `the audit's eligible set was not re-checked against the live PR list: ${findings.join(" | ")}`);
-  // And the stored-only check cannot see it, which is the whole reason the live parameter exists.
-  assert.deepEqual(openPrHeadDeletionFindings(audit, completedLog(live)), [], "the stored check unexpectedly saw the live PR, making this test measure nothing");
+  const { post } = boundaryPair();
+  const pre = observation({
+    collected_at: "2026-09-10T00:00:00Z",
+    open_prs: [...audit.live_observation.open_prs, { number: 999, head_branch: eligible.name, head_sha: eligible.head_sha, base: "dev", state: "OPEN" }]
+  });
+  const findings = deletionAuthorizationFindings({ audit, log: completedLog(pre, post), pre, post, completion: clearedCompletion() });
+  assert.ok(findings.some((f) => f.includes("reads as eligible in the audit but PR #999")), `the eligible set was not re-checked against the live PR list: ${findings.join(" | ")}`);
+  // The stored-only check cannot see it, which is the whole reason the observation exists.
+  assert.deepEqual(openPrHeadDeletionFindings(audit, completedLog(pre, post)), [], "the stored check saw the live PR, so this test measures nothing");
 });
 
-test("a deletion at a commit the branch no longer points at is refused", () => {
+test("a deletion at a commit the branch no longer points at, or of a branch that is gone, is refused", () => {
   const eligible = deletionEligibility(audit).eligible[0];
-  const live = observation();
-  live.heads = live.heads.map((head) => (head.name === eligible.name ? { ...head, sha: "e".repeat(40) } : head));
-  live.rest_heads = live.heads;
-  const findings = deletionAuthorizationFindings({ audit, log: completedLog(live), live, completion: clearedCompletion() });
-  assert.ok(findings.some((f) => f.includes("but live it points at")), `deleting a moved branch was authorized: ${findings.join(" | ")}`);
+  const moved = observation({ collected_at: "2026-09-10T00:00:00Z", heads: audit.live_observation.heads.map((h) => (h.name === eligible.name ? { ...h, sha: "e".repeat(40) } : h)) });
+  assert.ok(authorize({ pre: moved, post: boundaryPair().post }).some((f) => f.includes("but live it points at")), "deleting a moved branch was authorized");
+  const absent = observation({ collected_at: "2026-09-10T00:00:00Z", heads: audit.live_observation.heads.filter((h) => h.name !== eligible.name) });
+  assert.ok(authorize({ pre: absent, post: boundaryPair().post }).some((f) => f.includes("does not show it on the repository")), "deleting an absent branch was authorized");
 });
 
-test("a deletion of a branch the live repository does not have is refused", () => {
-  const eligible = deletionEligibility(audit).eligible[0];
-  const live = observation();
-  live.heads = live.heads.filter((head) => head.name !== eligible.name);
-  live.rest_heads = live.heads;
-  const findings = deletionAuthorizationFindings({ audit, log: completedLog(live), live, completion: clearedCompletion() });
-  assert.ok(findings.some((f) => f.includes("does not show it on the repository")), `deleting an absent branch was authorized: ${findings.join(" | ")}`);
+test("a deletion record that does not cite both observation digests is refused", () => {
+  const { pre, post } = boundaryPair();
+  const wrongPre = completedLog(pre, post, { pre_observation: { digest: `sha256:${"9".repeat(64)}` } });
+  assert.ok(authorize({ pre, post, log: wrongPre }).some((f) => f.includes("does not cite the digest of the pre-deletion observation")), "a record citing a different pre-observation was authorized");
+  const wrongPost = completedLog(pre, post, { post_observation: { digest: `sha256:${"9".repeat(64)}` } });
+  assert.ok(authorize({ pre, post, log: wrongPost }).some((f) => f.includes("does not cite the digest of the post-deletion observation")), "a record citing a different post-observation was authorized");
 });
 
-// The record has to cite the observation it was actually checked against, or "we looked" is a claim
-// about a different look.
-test("a deletion record that does not cite the digest of the observation it was checked against is refused", () => {
-  const live = observation();
-  const log = completedLog(live, { live_observation: { digest: `sha256:${"9".repeat(64)}` } });
-  const findings = deletionAuthorizationFindings({ audit, log, live, completion: clearedCompletion() });
-  assert.ok(findings.some((f) => f.includes("does not cite the digest")), `a record citing a different observation was authorized: ${findings.join(" | ")}`);
-});
-
-test("an observation collected after the deletion, or too long before it, is refused", () => {
+test("observations collected on the wrong side of the deletion, or too far from it, are refused", () => {
+  const { post } = boundaryPair();
   const late = observation({ collected_at: "2026-09-10T00:02:00Z" });
-  assert.ok(deletionAuthorizationFindings({ audit, log: completedLog(late), live: late, completion: clearedCompletion() }).some((f) => f.includes("collected after the deletion")), "an observation from after the deletion was accepted");
+  assert.ok(authorize({ pre: late, post }).some((f) => f.includes("collected after the deletion")), "a pre-observation from after the deletion was accepted");
   const stale = observation({ collected_at: "2026-09-09T00:00:00Z" });
-  assert.ok(deletionAuthorizationFindings({ audit, log: completedLog(stale), live: stale, completion: clearedCompletion() }).some((f) => f.includes("past the")), "a day-old observation was accepted");
+  assert.ok(authorize({ pre: stale, post }).some((f) => f.includes("past the")), "a day-old pre-observation was accepted");
+  const { pre } = boundaryPair();
+  const early = observation({ collected_at: "2026-09-10T00:00:10Z", heads: post.heads, rest_heads: post.rest_heads });
+  assert.ok(authorize({ pre, post: early }).some((f) => f.includes("collected before the deletion")), "a post-observation from before the deletion was accepted");
+  const veryLate = observation({ collected_at: "2026-09-11T00:00:00Z", heads: post.heads, rest_heads: post.rest_heads });
+  assert.ok(authorize({ pre, post: veryLate }).some((f) => f.includes("past the")), "a post-observation taken a day later was accepted");
 });
 
-test("an observation with no command receipts, or of the wrong schema, is refused", () => {
-  const bare = observation({ receipts: [] });
-  assert.ok(deletionAuthorizationFindings({ audit, log: completedLog(bare), live: bare, completion: clearedCompletion() }).some((f) => f.includes("no command receipts")), "an observation with no receipts was accepted");
-  const wrong = observation({ schema: "something-else" });
-  assert.ok(deletionAuthorizationFindings({ audit, log: completedLog(wrong), live: wrong, completion: clearedCompletion() }).some((f) => f.includes("not aos-branch-live-observation.v1")), "an observation of the wrong schema was accepted");
+// A syntactically shaped instant that no calendar has is not an instant. `Date.UTC` rolls
+// 2026-02-30 forward into March rather than refusing it, so the freshness window would be measured
+// against a day that never happened.
+test("a calendar-impossible instant is refused rather than normalized", () => {
+  const { post } = boundaryPair();
+  for (const impossible of ["2026-02-30T00:00:00Z", "2026-13-01T00:00:00Z", "2026-04-31T00:00:00Z", "2026-01-01T24:00:00Z", "2026-01-01T00:60:00Z", "2026-01-01T00:00:60Z"]) {
+    const pre = observation({ collected_at: impossible });
+    const findings = authorize({ pre, post });
+    assert.ok(findings.some((f) => f.includes("no well-formed collection instant")), `${impossible} was accepted as a collection instant: ${findings.join(" | ")}`);
+  }
+  const { pre } = boundaryPair();
+  assert.ok(authorize({ pre, post, log: completedLog(pre, post, { completed_at: "2026-02-30T00:00:00Z" }) }).some((f) => f.includes("without a well-formed instant")), "a calendar-impossible completion instant was accepted");
+  // A real leap day still works.
+  const leap = observation({ collected_at: "2028-02-29T00:00:00Z" });
+  assert.ok(!authorize({ pre: leap, post }).some((f) => f.includes("no well-formed collection instant")), "a real leap day was refused");
 });
 
-test("a live head that the audit never covered blocks the deletion", () => {
-  const live = observation();
-  live.heads = [...live.heads, { name: "task/issue-000-unaudited", sha: "a".repeat(40) }];
-  live.rest_heads = live.heads;
-  const findings = deletionAuthorizationFindings({ audit, log: completedLog(live), live, completion: clearedCompletion() });
-  assert.ok(findings.some((f) => f.includes("appears nowhere in this audit")), `an unaudited live head did not block the deletion: ${findings.join(" | ")}`);
+test("an observation with no receipts, or whose derivations cite receipts it does not carry, is refused", () => {
+  const { post } = boundaryPair();
+  const bare = observation({ collected_at: "2026-09-10T00:00:00Z", receipts: [] });
+  assert.ok(authorize({ pre: bare, post }).some((f) => f.includes("no command receipts")), "an observation with no receipts was accepted");
+  const unsourced = observation({ collected_at: "2026-09-10T00:00:00Z", receipts: audit.live_observation.receipts.slice(0, 2) });
+  assert.ok(authorize({ pre: unsourced, post }).some((f) => f.includes("which the observation does not carry")), "an observation whose derivations cite absent receipts was accepted");
+  const wrongSchema = observation({ collected_at: "2026-09-10T00:00:00Z", schema: "something-else" });
+  assert.ok(authorize({ pre: wrongSchema, post }).some((f) => f.includes("not aos-branch-live-observation.v2")), "an observation of the wrong schema was accepted");
+});
+
+// An unpaginated list turns a pull request on the second page into an absent pull request, and the
+// gate reads absence as "no PR open". The completeness flag is what makes a truncated sweep visible.
+test("a truncated reference sweep is refused rather than read as nothing found", () => {
+  const { post } = boundaryPair();
+  const truncated = observation({
+    collected_at: "2026-09-10T00:00:00Z",
+    reference_sweep: audit.live_observation.reference_sweep.map((sweep, index) => (index === 0 ? { ...sweep, complete: false, total_count: 250 } : sweep))
+  });
+  const findings = authorize({ pre: truncated, post });
+  assert.ok(findings.some((f) => f.includes("was not established")), `a truncated sweep passed as a complete one: ${findings.join(" | ")}`);
+});
+
+test("a live head the audit never covered blocks the deletion", () => {
+  const { post } = boundaryPair();
+  const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
+  pre.heads = [...pre.heads, { name: "task/issue-000-unaudited", sha: "a".repeat(40) }];
+  pre.rest_heads = pre.heads;
+  pre.digest = observationDigest(pre);
+  assert.ok(authorize({ pre, post }).some((f) => f.includes("appears nowhere in this audit")), "an unaudited live head did not block the deletion");
 });
 
 test("the deletion is refused while the canonical snapshot still shows a blocker open", () => {
-  const findings = authorize({ completion });
-  assert.ok(findings.some((f) => f.includes("still blocked")), `a deletion ran while a blocker was open: ${findings.join(" | ")}`);
+  assert.ok(authorize({ completion }).some((f) => f.includes("still blocked")), "a deletion ran while a blocker was open");
+});
+
+// The gate collects the observation rather than accepting one, so it is not a value the deleting
+// party composes. `collect` is injectable only to drive both sides of the boundary from a test.
+test("the authorization entry point collects its own observation", () => {
+  const { pre, post } = boundaryPair();
+  let called = 0;
+  const collect = () => { called += 1; return structuredClone(pre); };
+  const findings = authorizeDeletion({ audit, log: completedLog(pre, post), completion: clearedCompletion(), post, collect });
+  assert.equal(called, 1, "the gate did not collect an observation of its own");
+  assert.deepEqual(findings, [], `a correct deletion was refused: ${findings.join(" | ")}`);
+});
+
+test("a collector that fails authorizes nothing", () => {
+  const { pre, post } = boundaryPair();
+  const collect = () => { throw new Error("github unreachable"); };
+  const findings = authorizeDeletion({ audit, log: completedLog(pre, post), completion: clearedCompletion(), post, collect });
+  assert.ok(findings.some((f) => f.includes("could not be collected")), `a failed collection did not block the deletion: ${findings.join(" | ")}`);
+  assert.notDeepEqual(findings, [], "a failed collection authorized the deletion");
 });

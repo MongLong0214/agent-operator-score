@@ -10,8 +10,10 @@ import {
   auditCoverageFindings,
   classificationFindings,
   deletionEligibility,
+  derivationFindings,
   unestablishedFindings
 } from "../../scripts/branch-audit.mjs";
+import { REQUIRED_DERIVATIONS, observationDigest, verifyObservation } from "../../scripts/collect-branch-state.mjs";
 
 // #572 phase one is a read-only audit: no branch may be deleted, renamed or force-pushed until #578
 // and #588 have preserved the evidence. An audit is only worth having if it is checkable rather than
@@ -50,7 +52,7 @@ test("the audit doc exists and is not a stub", () => {
 
 test("the audit declares the read-only phase, a method, and an ls-remote snapshot that excludes main and dev by name", () => {
   const audit = loadAudit();
-  assert.equal(audit.schema, "aos-stale-branch-audit.v3");
+  assert.equal(audit.schema, "aos-stale-branch-audit.v4");
   assert.equal(audit.phase, "read-only-audit");
   assert.ok(audit.method.length > 20, "no method recorded");
   assert.ok(Array.isArray(audit.ls_remote_snapshot) && audit.ls_remote_snapshot.length > 0);
@@ -59,25 +61,112 @@ test("the audit declares the read-only phase, a method, and an ls-remote snapsho
 
 // The external facts have to come from somewhere a reader can re-run. A method sentence is a claim
 // about collection; the receipts are the collection.
-test("every external fact is backed by a receipted command, and the observation is bound by digest", () => {
+test("the observation holds its own shape, over two transports, with a receipt behind every derivation", () => {
   const audit = loadAudit();
   const observation = audit.live_observation;
-  assert.equal(observation.schema, "aos-branch-live-observation.v1");
-  assert.match(observation.digest, /^sha256:[0-9a-f]{64}$/u, "the observation is not bound by a digest");
+  assert.equal(observation.schema, "aos-branch-live-observation.v2");
+  assert.deepEqual(verifyObservation(observation), [], "the committed observation does not hold its own shape");
+  assert.equal(observation.digest, observationDigest(observation), "the observation's digest does not name its own content");
   assert.equal(observation.collected_at, audit.generated_at, "the observation was not collected when the audit says it was generated");
-  assert.ok(observation.receipts.length >= 10, `only ${observation.receipts.length} command receipts`);
-  for (const receipt of observation.receipts) {
-    assert.ok(receipt.command.length > 5, "a receipt does not say what was run");
-    assert.equal(receipt.exit_code, 0, `${receipt.command} did not succeed`);
-    assert.match(receipt.digest, /^sha256:[0-9a-f]{64}$/u, `${receipt.command}: no digest of what it returned`);
-  }
-  // Two transports for the head list. One transport read twice would prove nothing.
   assert.ok(observation.receipts.some((r) => r.source === "git-ls-remote"), "no git transport receipt");
   assert.ok(observation.receipts.some((r) => r.source === "rest-branches"), "no REST branch-list receipt");
-  for (const entry of audit.branches) {
-    assert.ok(observation.reference_sweep.some((sweep) => sweep.branch === entry.name), `${entry.name}: no GitHub-wide reference sweep`);
-    assert.match(entry.references.tree_scan.digest, /^sha256:[0-9a-f]{64}$/u, `${entry.name}: the tree scan records no digest, so a search that never ran is indistinguishable from one that found nothing`);
+  for (const sweep of observation.reference_sweep) {
+    assert.equal(sweep.complete, true, `${sweep.branch}: the reference sweep was truncated, so it establishes nothing`);
   }
+});
+
+// The failure this replaces: a record asserting merge-base, rev-list, tag-contains, grep and
+// PR-history results beside a receipt table that only ever listed the branch. A receipt for a
+// neighbouring query is not evidence for a derivation nobody ran.
+test("every graph fact a branch record asserts was derived by a command the observation receipts", () => {
+  const audit = loadAudit();
+  assert.deepEqual(derivationFindings(audit), []);
+  for (const entry of audit.branches) {
+    const derived = audit.live_observation.derivations[entry.name];
+    for (const field of REQUIRED_DERIVATIONS) {
+      assert.ok(derived[field], `${entry.name}: no ${field} derivation`);
+      assert.ok(audit.live_observation.receipts.some((r) => r.source === derived[field].source), `${entry.name}: ${field} cites a receipt that is not there`);
+    }
+  }
+});
+
+test("a branch record whose number disagrees with its derivation is refused, field by field", () => {
+  const audit = loadAudit();
+  const entry = merged(audit);
+  for (const [field, wrong] of [
+    ["merged_into_dev", false],
+    ["merged_into_main", false],
+    ["unique_commits_vs_dev", 7],
+    ["unique_commits_vs_main", 7],
+    ["unique_commits_vs_dev_and_main", 7],
+    ["behind_dev", 0],
+    ["behind_main", 0],
+    ["last_commit_date", "2020-01-01T00:00:00+00:00"],
+    ["release_tags_containing", []]
+  ]) {
+    const findings = derivationFindings(withBranch(audit, entry.name, { [field]: wrong }));
+    assert.notDeepEqual(findings, [], `a record whose ${field} disagrees with the collector passed`);
+  }
+});
+
+test("a branch record whose reference or PR claims were never collected is refused", () => {
+  const audit = loadAudit();
+  const entry = merged(audit);
+  const active = audit.branches.find((one) => one.open_pr);
+  assert.notDeepEqual(derivationFindings(withBranch(audit, entry.name, { references: { ...entry.references, tree_scan: { ...entry.references.tree_scan, hits: ["lib/somewhere.mjs:1"] } } })), [], "an invented tree scan passed");
+  assert.notDeepEqual(derivationFindings(withBranch(audit, entry.name, { open_pr: { number: 999, url: "x", state: "OPEN", base: "dev", head_sha: entry.head_sha } })), [], "an open PR the collected history does not show passed");
+  assert.notDeepEqual(derivationFindings(withBranch(audit, active.name, { open_pr: null })), [], "dropping an open PR the collected history shows passed");
+  const truncated = { ...audit, live_observation: { ...audit.live_observation, reference_sweep: audit.live_observation.reference_sweep.map((s) => ({ ...s, complete: false })) } };
+  assert.notDeepEqual(derivationFindings(truncated), [], "a truncated reference sweep still supported the reference claims");
+  const unsourced = { ...audit, live_observation: { ...audit.live_observation, derivations: {} } };
+  assert.notDeepEqual(derivationFindings(unsourced), [], "a record with no derivations at all passed");
+  // The derivations are all present here; what is missing is the receipts they cite. A citation to a
+  // command that left no trace is indistinguishable from one that never ran.
+  const receiptless = { ...audit, live_observation: { ...audit.live_observation, receipts: audit.live_observation.receipts.slice(0, 2) } };
+  const findings = derivationFindings(receiptless);
+  assert.ok(findings.some((f) => f.includes("which the observation does not carry")), `derivations citing absent receipts passed: ${findings.slice(0, 3).join(" | ")}`);
+  // And one derivation missing while the rest are present, which is the shape a record gets when a
+  // fact was asserted that the collector was never asked to produce.
+  for (const field of REQUIRED_DERIVATIONS) {
+    const derivations = structuredClone(audit.live_observation.derivations);
+    delete derivations[entry.name][field];
+    const missing = derivationFindings({ ...audit, live_observation: { ...audit.live_observation, derivations } });
+    assert.ok(missing.some((f) => f.includes(`no ${field} derivation`)), `a record asserting ${field} with no derivation behind it passed`);
+  }
+});
+
+// The digest that binds a record to an observation has to change when any part of the observation
+// does. The previous implementation passed an array replacer to JSON.stringify, which is a key
+// allowlist applied at every level -- so every nested object serialised as `{}` and the digest was
+// the same for every observation with the same top-level keys.
+test("the observation digest changes when any nested value changes, in every family", () => {
+  const audit = loadAudit();
+  const base = audit.live_observation;
+  const before = observationDigest(base);
+  const mutations = {
+    heads: (o) => { o.heads[0].sha = "0".repeat(40); },
+    rest_heads: (o) => { o.rest_heads[0].sha = "0".repeat(40); },
+    open_prs: (o) => { o.open_prs[0].head_branch = "task/attacker"; },
+    tags: (o) => { o.tags[0].ref_sha = "0".repeat(40); },
+    protection: (o) => { o.protection.main.allow_deletions = { enabled: true }; },
+    settings: (o) => { o.settings.delete_branch_on_merge = false; },
+    install_source: (o) => { o.install_source.files[0].digest = `sha256:${"0".repeat(64)}`; },
+    receipts: (o) => { o.receipts[0].command = "rm -rf /"; },
+    derivations: (o) => { o.derivations[Object.keys(o.derivations)[0]].unique_vs_dev.value = 99; },
+    reference_sweep: (o) => { o.reference_sweep[0].total_count = 999; }
+  };
+  for (const [family, mutate] of Object.entries(mutations)) {
+    const forged = structuredClone(base);
+    mutate(forged);
+    assert.notEqual(observationDigest(forged), before, `changing ${family} left the observation digest unchanged`);
+  }
+});
+
+test("the observation digest ignores key order but not content", () => {
+  const audit = loadAudit();
+  const base = audit.live_observation;
+  const reordered = Object.fromEntries(Object.keys(base).reverse().map((key) => [key, base[key]]));
+  assert.equal(observationDigest(reordered), observationDigest(base), "reordering the top-level keys changed the identity");
 });
 
 test("the audit is explicit that it is a point-in-time snapshot, and states the dev SHA it was taken at", () => {
@@ -117,11 +206,20 @@ test("every branch in the snapshot other than main and dev is audited exactly on
 test("a live head that appears nowhere in the audit is refused, and the two transports must agree", () => {
   const audit = loadAudit();
   const heads = [...audit.ls_remote_snapshot, { name: "task/issue-000-unaudited", sha: "a".repeat(40) }];
-  const live = { schema: "aos-branch-live-observation.v1", heads, rest_heads: heads };
+  const live = { schema: "aos-branch-live-observation.v2", heads, rest_heads: heads, open_prs: [] };
   const findings = auditCoverageFindings(audit, live);
   assert.ok(findings.some((f) => f.includes("task/issue-000-unaudited") && f.includes("appears nowhere in this audit")), `an unaudited live head passed coverage: ${findings.join(" | ")}`);
+  assert.ok(findings.some((f) => f.includes("no open pull request")), "the audit's own after-snapshot branch was excused without a PR in this observation");
 
-  const consistent = { schema: "aos-branch-live-observation.v1", heads: audit.ls_remote_snapshot, rest_heads: audit.ls_remote_snapshot };
+  // The audit's own branch is claimed under the after-snapshot exception, so a clean observation has
+  // to show its pull request open -- that is what earns the exception.
+  const self = audit.heads_created_after_this_snapshot[0];
+  const consistent = {
+    schema: "aos-branch-live-observation.v2",
+    heads: audit.ls_remote_snapshot,
+    rest_heads: audit.ls_remote_snapshot,
+    open_prs: [{ number: self.open_pr, head_branch: self.name, head_sha: "1".repeat(40), base: "dev", state: "OPEN" }]
+  };
   assert.deepEqual(auditCoverageFindings(audit, consistent), [], "an observation matching the snapshot reported findings");
 
   const divergent = { ...consistent, rest_heads: audit.ls_remote_snapshot.map((h, i) => (i === 0 ? { ...h, sha: "b".repeat(40) } : h)) };
@@ -191,6 +289,28 @@ test("every audited entry names the commit the ls-remote snapshot observed", () 
   for (const entry of audit.branches) assert.equal(entry.head_sha, observed.get(entry.name), `${entry.name}: audited at ${entry.head_sha}, observed at ${observed.get(entry.name)}`);
 });
 
+// The exception is not the name being on a list. An earlier version excused any name written into
+// `heads_created_after_this_snapshot`, so an orphan branch created after the snapshot could be
+// covered by asserting it. It is now excused only while an open pull request has it as a head.
+test("an after-snapshot head is excused only while an open PR has it as a head", () => {
+  const audit = loadAudit();
+  const self = audit.heads_created_after_this_snapshot[0].name;
+  const heads = [...audit.ls_remote_snapshot, { name: self, sha: "1".repeat(40) }];
+  const withPr = { schema: "aos-branch-live-observation.v2", heads, rest_heads: heads, open_prs: [{ number: 612, head_branch: self, head_sha: "1".repeat(40), base: "dev", state: "OPEN" }] };
+  assert.deepEqual(auditCoverageFindings(audit, withPr), [], "the audit's own branch was not excused while its PR was open");
+
+  const withoutPr = { ...withPr, open_prs: [] };
+  const findings = auditCoverageFindings(audit, withoutPr);
+  assert.ok(findings.some((f) => f.includes(self) && f.includes("no open pull request")), `an unbacked after-snapshot head was excused: ${findings.join(" | ")}`);
+
+  // The reviewer's reproduction: an arbitrary orphan written into the list and present live.
+  const orphan = "task/later-orphan";
+  const forged = { ...audit, heads_created_after_this_snapshot: [...audit.heads_created_after_this_snapshot, { name: orphan, sha: null, classification: "ACTIVE", note: "x".repeat(50) }] };
+  const orphanHeads = [...audit.ls_remote_snapshot, { name: orphan, sha: "2".repeat(40) }];
+  const orphanLive = { schema: "aos-branch-live-observation.v2", heads: orphanHeads, rest_heads: orphanHeads, open_prs: [] };
+  assert.notDeepEqual(auditCoverageFindings(forged, orphanLive), [], "an arbitrary after-snapshot orphan was silently considered covered");
+});
+
 test("the branch this audit is submitted from is named, even though its SHA cannot be recorded here", () => {
   const audit = loadAudit();
   const later = audit.heads_created_after_this_snapshot;
@@ -213,8 +333,13 @@ test("Phase A records the Phase B contract and does not emit the Phase B artifac
   assert.equal(contract.deletion_log_status, "NOT_YET");
   assert.deepEqual([...contract.blocked_by].sort((a, b) => a - b), [578, 588]);
   assert.match(contract.prerequisite_authority, /github-state\.json/u, "the contract does not name the canonical authority that decides whether the blockers cleared");
-  assert.ok(contract.required_shape.post_delete_state.includes("protection"), "the required post-delete shape does not include protection");
-  assert.ok(contract.required_shape.post_delete_state.includes("install_source"), "the required post-delete shape does not include the stable install source");
+  assert.match(contract.required_shape.pre_observation, /digest/u, "the contract does not require the pre-deletion observation digest");
+  assert.match(contract.required_shape.post_observation, /digest/u, "the contract does not require the post-deletion observation digest");
+  assert.match(contract.entry_point, /authorizeDeletion/u, "the contract does not name the entry point that collects its own observation");
+  for (const family of ["protection", "install source", "open pull request head"]) {
+    assert.ok(contract.invariant_comparison.includes(family), `the invariant comparison does not name ${family}`);
+  }
+  assert.match(contract.invariant_comparison, /between the two fresh observations/u, "the contract still compares against a stored baseline");
   for (const entry of contract.eligible_at_this_snapshot) assert.match(entry.sha_at_audit, /^[0-9a-f]{40}$/u);
 });
 

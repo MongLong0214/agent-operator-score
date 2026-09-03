@@ -4,64 +4,74 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, canonicalize, cleanupInvariantFindings, deletionEligibility, deletionLogFindings, loadCompletionSnapshot } from "../../scripts/branch-audit.mjs";
+import { DELETION_BLOCKED_BY, boundaryInvariantFindings, canonicalize, cleanupInvariantFindings, deletionEligibility, deletionLogFindings, loadCompletionSnapshot } from "../../scripts/branch-audit.mjs";
+import { observationDigest } from "../../scripts/collect-branch-state.mjs";
 
 // Phase B of #572 deletes refs. The issue names what must hold across that deletion -- main, dev,
 // the release tags, branch protection, the rulesets, the open PR heads and the stable plugin/install
-// source -- and the only way to check any of it afterwards is to have written down what it was
-// before. This file checks the baseline now, and checks that a well-formed COMPLETED log can pass,
-// because a verifier Phase B cannot satisfy is a verifier Phase B deletes.
+// source. The comparison is between two observations collected either side of the deletion, not
+// against the Phase A snapshot: the repository goes on moving, and measuring Phase B against a
+// Phase A baseline reports every legitimate advance of `dev` as damage. That is checked here in both
+// directions -- an intervening advance must not fail, and a real change must.
 //
-// The deletion log itself is not committed: it is the blocked phase's output. Every log below is
-// constructed here, which is also the point -- a stored artifact that authorizes itself is the
-// failure this gate exists to prevent, and there is no stored artifact to do it.
+// No deletion log is committed; it is the blocked phase's output. Every log below is constructed
+// here, which is also the point: a stored artifact cannot authorize itself when there is none.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const audit = JSON.parse(readFileSync(join(root, "fixtures", "stale-branches", "audit.json"), "utf8"));
 const baseline = audit.invariant_baseline;
 const completion = loadCompletionSnapshot();
 
+const clearedCompletion = () => ({
+  ...completion,
+  issues: completion.issues.map((issue) =>
+    DELETION_BLOCKED_BY.includes(issue.number)
+      ? { ...issue, state: "closed", close_evidence: { audit_report_digest: `sha256:${"a".repeat(64)}` } }
+      : issue
+  )
+});
+
+/** A well-formed observation, shaped as the collector emits one. */
+const observation = (overrides = {}) => {
+  const base = structuredClone(audit.live_observation);
+  Object.assign(base, overrides);
+  base.digest = observationDigest(base);
+  return base;
+};
+
 const notYetLog = () => ({
   schema: "aos-branch-deletion-log.v1",
   status: "NOT_YET",
   blocked_by: [...DELETION_BLOCKED_BY],
   deleted: [],
-  post_delete_state: null,
   note: "Phase B is blocked on #578 and #588; nothing has been deleted, renamed or force-pushed."
 });
 
-/** A canonical snapshot in which both blockers have genuinely cleared. */
-const clearedCompletion = () => ({
-  ...completion,
-  issues: completion.issues.map((issue) =>
-    DELETION_BLOCKED_BY.includes(issue.number)
-      ? { ...issue, state: "closed", close_evidence: { audit_report_digest: "sha256:" + "a".repeat(64) } }
-      : issue
-  )
-});
-
-/** The log Phase B is supposed to be able to write: everything deleted was eligible, nothing moved. */
-const completedLog = (overrides = {}, stateOverrides = {}) => ({
+const completedLog = (pre, post, overrides = {}) => ({
   ...notYetLog(),
   status: "COMPLETED",
-  completed_at: "2026-09-10T00:00:00Z",
+  completed_at: "2026-09-10T00:00:30Z",
   deleted: deletionEligibility(audit).eligible.map((entry) => ({ name: entry.name, sha: entry.head_sha })),
   blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed" })),
-  live_observation: { digest: "sha256:" + "b".repeat(64) },
-  post_delete_state: {
-    main_sha: baseline.main_sha,
-    dev_sha: baseline.dev_sha,
-    tags: baseline.tags,
-    protection: baseline.protection,
-    rulesets: baseline.rulesets,
-    install_source: baseline.install_source,
-    open_pr_heads: baseline.open_pr_heads,
-    ...stateOverrides
-  },
+  pre_observation: { digest: observationDigest(pre) },
+  post_observation: { digest: observationDigest(post) },
   ...overrides
 });
 
-test("the audit records a pre-deletion baseline for every invariant the issue names", () => {
+/** Pre/post pair for a deletion that removed exactly the eligible branches and nothing else. */
+const boundaryPair = (postOverrides = {}) => {
+  const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
+  const deletedNames = new Set(deletionEligibility(audit).eligible.map((entry) => entry.name));
+  const post = observation({
+    collected_at: "2026-09-10T00:01:00Z",
+    heads: pre.heads.filter((head) => !deletedNames.has(head.name)),
+    rest_heads: pre.rest_heads.filter((head) => !deletedNames.has(head.name)),
+    ...postOverrides
+  });
+  return { pre, post };
+};
+
+test("the audit records a historical baseline for every invariant family the issue names", () => {
   assert.match(baseline.main_sha, /^[0-9a-f]{40}$/u, "no baseline main SHA");
   assert.match(baseline.dev_sha, /^[0-9a-f]{40}$/u, "no baseline dev SHA");
   assert.ok(Array.isArray(baseline.tags) && baseline.tags.length > 0, "no baseline tag list");
@@ -75,14 +85,11 @@ test("the audit records a pre-deletion baseline for every invariant the issue na
   }
   assert.ok(Array.isArray(baseline.rulesets), "no baseline ruleset list");
   assert.ok(Array.isArray(baseline.open_pr_heads) && baseline.open_pr_heads.length > 0, "no baseline list of open PR heads");
-  for (const entry of baseline.open_pr_heads) assert.match(entry.sha, /^[0-9a-f]{40}$/u, `PR #${entry.pr}: no head SHA to compare after the deletion`);
   assert.ok(baseline.install_source.files.length >= 2, "the stable plugin/install source is not in the baseline");
-  for (const file of baseline.install_source.files) assert.match(file.digest, /^sha256:[0-9a-f]{64}$/u, `${file.path}: no digest`);
   assert.equal(typeof baseline.install_source.package.name, "string", "the package identity is not in the baseline");
+  assert.deepEqual(cleanupInvariantFindings(audit, notYetLog()), [], "the baseline disagrees with its own snapshot");
 });
 
-// The protection object GitHub returns has a dozen fields. A three-boolean projection cannot report
-// that a fourth changed, so the whole object is stored and compared.
 test("the baseline stores the whole protection object, not a three-boolean projection", () => {
   for (const ref of ["main", "dev"]) {
     const keys = Object.keys(baseline.protection[ref]);
@@ -97,10 +104,6 @@ test("the baseline records both halves of each tag's identity, not only the comm
   assert.ok(baseline.tags.some((tag) => tag.ref_sha !== tag.commit_sha), "no annotated tag in the baseline, so this distinction would go unexercised");
 });
 
-test("the baseline main and dev SHAs are the ones in the ls-remote snapshot", () => {
-  assert.deepEqual(cleanupInvariantFindings(audit, notYetLog()), [], "the baseline disagrees with its own snapshot");
-});
-
 test("a baseline whose main SHA disagrees with the snapshot is refused", () => {
   const forged = { ...audit, invariant_baseline: { ...baseline, main_sha: "0".repeat(40) } };
   assert.notDeepEqual(cleanupInvariantFindings(forged, notYetLog()), [], "a baseline that disagrees with its own snapshot passed the check");
@@ -111,82 +114,31 @@ test("a baseline with no stable plugin/install source is refused", () => {
   assert.notDeepEqual(cleanupInvariantFindings({ ...audit, invariant_baseline: without }, notYetLog()), [], "a baseline with no install source passed the check");
 });
 
-test("the deletion log is NOT_YET, records that it is blocked on both issues, and lists no deletion", () => {
-  const log = notYetLog();
-  assert.deepEqual(deletionLogFindings(log), [], "a well-formed NOT_YET log was refused");
-  assert.deepEqual(log.deleted, []);
-  assert.deepEqual([...log.blocked_by].sort((a, b) => a - b), [578, 588]);
+// --- the deletion boundary ----------------------------------------------------------------------
+
+test("a deletion that removed exactly the eligible branches and changed nothing else passes", () => {
+  const { pre, post } = boundaryPair();
+  assert.deepEqual(boundaryInvariantFindings(completedLog(pre, post), pre, post), [], "the deletion Phase B is supposed to be able to make was refused");
 });
 
-test("Phase A does not ship the deletion log, and the audit records the contract instead", () => {
-  assert.equal(audit.phase_b_contract.deletion_log_status, "NOT_YET");
-  assert.match(audit.phase_b_contract.prerequisite_authority, /github-state\.json/u);
+// The failure the previous version had: `dev` legitimately advancing between Phase A and Phase B
+// made a no-damage deletion report "dev moved across the deletion". The baseline is history now.
+test("the repository legitimately advancing since Phase A does not fail the boundary", () => {
+  const advanced = { collected_at: "2026-09-10T00:00:00Z", heads: audit.live_observation.heads.map((head) => (head.name === "dev" ? { ...head, sha: "d".repeat(40) } : head)) };
+  const pre = observation(advanced);
+  const deletedNames = new Set(deletionEligibility(audit).eligible.map((entry) => entry.name));
+  const post = observation({ ...advanced, collected_at: "2026-09-10T00:01:00Z", heads: pre.heads.filter((head) => !deletedNames.has(head.name)) });
+  assert.notEqual(pre.heads.find((h) => h.name === "dev").sha, baseline.dev_sha, "the counterexample did not actually advance dev past the baseline");
+  assert.deepEqual(boundaryInvariantFindings(completedLog(pre, post), pre, post), [], "a deletion after a normal dev advance was reported as damage");
 });
 
-// A verifier Phase B cannot satisfy is a verifier Phase B deletes. This is the positive case.
-test("a completed deletion log filled in as the contract prescribes passes both checks", () => {
-  const log = completedLog();
-  assert.ok(log.deleted.length > 0, "nothing was eligible, so this test would check nothing");
-  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "a correctly completed log was refused");
-  assert.deepEqual(cleanupInvariantFindings(audit, log), [], "a deletion that moved nothing reported invariant findings");
-});
-
-// Auto-delete is on in this repository, so a fresh audit finding nothing eligible is ordinary.
-// Requiring at least one deletion would make an honest no-op impossible to record.
-test("a completed deletion log that deleted nothing because nothing was eligible is accepted", () => {
-  const log = completedLog({ deleted: [], no_op_reason: "the fresh audit found no eligible stale ref: both candidates had already been removed by delete_branch_on_merge" });
-  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "an honest no-op completion was refused");
-});
-
-test("a completed deletion log that deleted nothing and does not say why is refused", () => {
-  assert.notDeepEqual(deletionLogFindings(completedLog({ deleted: [] }), { completion: clearedCompletion() }), [], "an unexplained empty completion passed the check");
-  assert.notDeepEqual(deletionLogFindings(completedLog({ deleted: [], no_op_reason: "none" }), { completion: clearedCompletion() }), [], "an empty completion with a token reason passed the check");
-});
-
-test("a COMPLETED deletion log with no post-delete state read back is refused", () => {
-  assert.notDeepEqual(deletionLogFindings(completedLog({ post_delete_state: null }), { completion: clearedCompletion() }), [], "a COMPLETED log with no post-delete state passed the check");
-});
-
-test("a NOT_YET deletion log that nevertheless lists a deleted branch is refused", () => {
-  assert.notDeepEqual(deletionLogFindings({ ...notYetLog(), deleted: [{ name: "tmp/read-claude-artifact", sha: "2d6392f578dd2667d5f1f6ba5073a2c4311430eb" }] }), [], "a NOT_YET log that claims a deletion passed the check");
-});
-
-test("a deletion log that drops one of the blocking issues is refused while NOT_YET", () => {
-  assert.notDeepEqual(deletionLogFindings({ ...notYetLog(), blocked_by: [578] }), [], "a NOT_YET log that forgot #588 passed the check");
-});
-
-// The prerequisite is not the log's to clear. Free text saying #578 passed used to be accepted,
-// which made "only after #578" a sentence rather than a condition.
-test("a COMPLETED deletion log cannot clear its own prerequisites: the canonical snapshot decides", () => {
-  const log = completedLog();
-  // The real snapshot has both issues open.
-  const open = completion.issues.filter((issue) => DELETION_BLOCKED_BY.includes(issue.number) && issue.state !== "closed");
-  assert.ok(open.length > 0, "no blocker is open in the canonical snapshot, so this test would check nothing");
-  const findings = deletionLogFindings(log, { completion });
-  assert.notDeepEqual(findings, [], "a completed log passed while a blocker is still open in the canonical snapshot");
-  for (const issue of open) {
-    assert.ok(findings.some((f) => f.includes(`#${issue.number}`) && f.includes("still blocked")), `the refusal does not name #${issue.number} as still blocking: ${findings.join(" | ")}`);
+test("dev or main moving across the deletion itself is refused", () => {
+  for (const ref of ["main", "dev"]) {
+    const { pre, post } = boundaryPair();
+    post.heads = post.heads.map((head) => (head.name === ref ? { ...head, sha: "e".repeat(40) } : head));
+    const findings = boundaryInvariantFindings(completedLog(pre, post), pre, post);
+    assert.ok(findings.some((f) => f.startsWith(`${ref} moved across the deletion`)), `${ref} moving across the deletion passed: ${findings.join(" | ")}`);
   }
-
-  // No amount of text inside the log changes that.
-  const insistent = completedLog({ blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed", evidence: "this definitely cleared, trust me" })) });
-  assert.notDeepEqual(deletionLogFindings(insistent, { completion }), [], "a log asserting its own clearance passed the check");
-});
-
-test("a COMPLETED deletion log with no canonical snapshot to check against is refused", () => {
-  const findings = deletionLogFindings(completedLog(), { completion: null });
-  assert.ok(findings.some((f) => f.includes("no canonical issue-state snapshot")), `a completed log with no authority to check against passed: ${findings.join(" | ")}`);
-});
-
-test("a blocker closed without close evidence does not clear it", () => {
-  const half = { ...completion, issues: completion.issues.map((issue) => (DELETION_BLOCKED_BY.includes(issue.number) ? { ...issue, state: "closed", close_evidence: null } : issue)) };
-  const findings = deletionLogFindings(completedLog(), { completion: half });
-  assert.ok(findings.some((f) => f.includes("no close evidence")), `a blocker closed with no evidence cleared: ${findings.join(" | ")}`);
-});
-
-test("a deletion log whose account of a blocker disagrees with the canonical snapshot is refused", () => {
-  const log = completedLog({ blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "open" })) });
-  assert.notDeepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "a log disagreeing with the canonical snapshot passed the check");
 });
 
 test("branch protection changed across the deletion is refused, in any field the API returns", () => {
@@ -196,54 +148,152 @@ test("branch protection changed across the deletion is refused, in any field the
     ["required_conversation_resolution", { enabled: false }],
     ["required_status_checks", { strict: true, contexts: ["something-new"] }]
   ]) {
-    const forged = completedLog({}, { protection: { ...baseline.protection, main: { ...baseline.protection.main, [field]: value } } });
-    const findings = cleanupInvariantFindings(audit, forged);
+    const { pre, post } = boundaryPair();
+    post.protection = { ...post.protection, main: { ...post.protection.main, [field]: value } };
+    const findings = boundaryInvariantFindings(completedLog(pre, post), pre, post);
     assert.ok(findings.some((f) => f.includes("main protection changed")), `changing main's ${field} across the deletion passed the check`);
   }
 });
 
 test("a ruleset replaced by a different one of the same count is refused", () => {
-  const before = { ...audit, invariant_baseline: { ...baseline, rulesets: [{ id: 1, name: "protect-main", enforcement: "active" }] } };
-  const same = completedLog({}, { rulesets: [{ id: 2, name: "allow-everything", enforcement: "disabled" }] });
-  const findings = cleanupInvariantFindings(before, same);
-  assert.ok(findings.some((f) => f.includes("ruleset configuration changed")), `a same-count ruleset replacement passed the check: ${findings.join(" | ")}`);
-  assert.equal(before.invariant_baseline.rulesets.length, same.post_delete_state.rulesets.length, "the counterexample did not actually keep the count equal");
+  const { pre, post } = boundaryPair();
+  pre.rulesets = [{ id: 1, name: "protect-main", enforcement: "active" }];
+  post.rulesets = [{ id: 2, name: "allow-everything", enforcement: "disabled" }];
+  assert.equal(pre.rulesets.length, post.rulesets.length, "the counterexample did not keep the count equal");
+  const findings = boundaryInvariantFindings(completedLog(pre, post), pre, post);
+  assert.ok(findings.some((f) => f.includes("ruleset configuration changed")), `a same-count ruleset replacement passed: ${findings.join(" | ")}`);
 });
 
-test("the stable plugin/install source changed across the deletion is refused", () => {
-  const forged = completedLog({}, { install_source: { ...baseline.install_source, files: baseline.install_source.files.map((f, i) => (i === 0 ? { ...f, digest: "sha256:" + "0".repeat(64) } : f)) } });
-  assert.ok(cleanupInvariantFindings(audit, forged).some((f) => f.includes("install source changed")), "a changed install source passed the check");
-  const dropped = completedLog({}, { install_source: undefined });
-  assert.notDeepEqual(cleanupInvariantFindings(audit, dropped), [], "a post-delete state with no install source passed the check");
-});
-
-test("a post-delete state that simply omits protection, rulesets or the open PR heads is refused", () => {
-  for (const field of ["protection", "rulesets", "open_pr_heads"]) {
-    assert.notDeepEqual(cleanupInvariantFindings(audit, completedLog({}, { [field]: undefined })), [], `a post-delete state with no ${field} passed the check`);
-  }
+test("the stable plugin/install source or the repository settings changing across the deletion is refused", () => {
+  const { pre, post } = boundaryPair();
+  post.install_source = { ...post.install_source, files: post.install_source.files.map((f, i) => (i === 0 ? { ...f, digest: `sha256:${"0".repeat(64)}` } : f)) };
+  assert.ok(boundaryInvariantFindings(completedLog(pre, post), pre, post).some((f) => f.includes("install source changed")), "a changed install source passed");
+  const two = boundaryPair();
+  two.post.settings = { ...two.post.settings, delete_branch_on_merge: false };
+  assert.ok(boundaryInvariantFindings(completedLog(two.pre, two.post), two.pre, two.post).some((f) => f.includes("settings changed")), "a changed repository setting passed");
 });
 
 test("an open PR head that is gone or moved across the deletion is refused", () => {
-  assert.notDeepEqual(cleanupInvariantFindings(audit, completedLog({}, { open_pr_heads: baseline.open_pr_heads.slice(1) })), [], "an open PR head disappearing passed the check");
-  const moved = completedLog({}, { open_pr_heads: baseline.open_pr_heads.map((e, i) => (i === 0 ? { ...e, sha: "0".repeat(40) } : e)) });
-  assert.notDeepEqual(cleanupInvariantFindings(audit, moved), [], "an open PR head moving passed the check");
+  const gone = boundaryPair();
+  gone.post.open_prs = gone.post.open_prs.slice(1);
+  assert.ok(boundaryInvariantFindings(completedLog(gone.pre, gone.post), gone.pre, gone.post).some((f) => f.includes("is gone after the deletion")), "an open PR disappearing passed");
+  const moved = boundaryPair();
+  moved.post.open_prs = moved.post.open_prs.map((pr, i) => (i === 0 ? { ...pr, head_sha: "0".repeat(40) } : pr));
+  assert.ok(boundaryInvariantFindings(completedLog(moved.pre, moved.post), moved.pre, moved.post).some((f) => f.includes("moved across the deletion")), "an open PR head moving passed");
 });
 
-test("a tag replaced by another tag object over the same commit is refused", () => {
+test("a tag replaced, moved, dropped or invented across the deletion is refused", () => {
   const annotated = baseline.tags.find((tag) => tag.ref_sha !== tag.commit_sha);
-  const forged = completedLog({}, { tags: baseline.tags.map((tag) => (tag.name === annotated.name ? { ...tag, ref_sha: "0".repeat(40) } : tag)) });
-  const findings = cleanupInvariantFindings(audit, forged);
-  assert.ok(findings.some((f) => f.includes("was replaced")), `a tag re-pointed at a different tag object over the same commit passed: ${findings.join(" | ")}`);
+  const replaced = boundaryPair();
+  replaced.post.tags = replaced.post.tags.map((tag) => (tag.name === annotated.name ? { ...tag, ref_sha: "0".repeat(40) } : tag));
+  assert.ok(boundaryInvariantFindings(completedLog(replaced.pre, replaced.post), replaced.pre, replaced.post).some((f) => f.includes("was replaced")), "a tag re-pointed at a different tag object over the same commit passed");
+  for (const [name, mutate] of [
+    ["moved", (o) => { o.post.tags = o.post.tags.map((t, i) => (i === 0 ? { ...t, commit_sha: "0".repeat(40) } : t)); }],
+    ["dropped", (o) => { o.post.tags = o.post.tags.slice(1); }],
+    ["invented", (o) => { o.post.tags = [...o.post.tags, { name: "v9.9.9", ref_sha: "0".repeat(40), commit_sha: "0".repeat(40) }]; }]
+  ]) {
+    const pair = boundaryPair();
+    mutate(pair);
+    assert.notDeepEqual(boundaryInvariantFindings(completedLog(pair.pre, pair.post), pair.pre, pair.post), [], `a ${name} tag passed the check`);
+  }
 });
 
-test("a tag whose commit moved, or which disappeared or appeared, across the deletion is refused", () => {
-  assert.notDeepEqual(cleanupInvariantFindings(audit, completedLog({}, { tags: baseline.tags.map((t, i) => (i === 0 ? { ...t, commit_sha: "0".repeat(40) } : t)) })), [], "a moved tag passed the check");
-  assert.notDeepEqual(cleanupInvariantFindings(audit, completedLog({}, { tags: baseline.tags.slice(1) })), [], "a deleted tag passed the check");
-  assert.notDeepEqual(cleanupInvariantFindings(audit, completedLog({}, { tags: [...baseline.tags, { name: "v9.9.9", ref_sha: "0".repeat(40), commit_sha: "0".repeat(40) }] })), [], "an invented tag passed the check");
+// The deletion did what it said and only what it said, in both directions.
+test("a ref that vanished but was not claimed, or was claimed but did not vanish, is refused", () => {
+  const extra = boundaryPair();
+  extra.post.heads = extra.post.heads.filter((head) => head.name !== "task/issue-556-strict-confinement");
+  assert.ok(boundaryInvariantFindings(completedLog(extra.pre, extra.post), extra.pre, extra.post).some((f) => f.includes("but the log does not say it was deleted")), "a ref that vanished unclaimed passed");
+
+  const pre = observation({ collected_at: "2026-09-10T00:00:00Z" });
+  const post = observation({ collected_at: "2026-09-10T00:01:00Z" });
+  assert.ok(boundaryInvariantFindings(completedLog(pre, post), pre, post).some((f) => f.includes("is still on the repository afterwards")), "a claimed deletion that did not happen passed");
 });
 
-// Content, not key order: two objects that differ only in how they were assembled are the same
-// configuration, and two that differ in a value are not.
+test("a boundary with only one observation is refused", () => {
+  const { pre, post } = boundaryPair();
+  assert.notDeepEqual(boundaryInvariantFindings(completedLog(pre, post), pre, null), [], "a boundary with no post-deletion observation passed");
+  assert.notDeepEqual(boundaryInvariantFindings(completedLog(pre, post), null, post), [], "a boundary with no pre-deletion observation passed");
+});
+
+// --- the deletion log ---------------------------------------------------------------------------
+
+test("the deletion log is NOT_YET, records that it is blocked on both issues, and lists no deletion", () => {
+  const log = notYetLog();
+  assert.deepEqual(deletionLogFindings(log), [], "a well-formed NOT_YET log was refused");
+  assert.deepEqual([...log.blocked_by].sort((a, b) => a - b), [578, 588]);
+  assert.notDeepEqual(deletionLogFindings({ ...log, pre_observation: { digest: "x" } }), [], "a NOT_YET log citing boundary observations passed");
+});
+
+test("Phase A does not ship the deletion log, and the audit records the contract instead", () => {
+  assert.equal(audit.phase_b_contract.deletion_log_status, "NOT_YET");
+  assert.match(audit.phase_b_contract.prerequisite_authority, /github-state\.json/u);
+});
+
+test("a completed deletion log filled in as the contract prescribes passes", () => {
+  const { pre, post } = boundaryPair();
+  const log = completedLog(pre, post);
+  assert.ok(log.deleted.length > 0, "nothing was eligible, so this test would check nothing");
+  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "a correctly completed log was refused");
+});
+
+test("a completed deletion log that deleted nothing because nothing was eligible is accepted", () => {
+  const { pre, post } = boundaryPair();
+  const log = completedLog(pre, post, { deleted: [], no_op_reason: "the fresh audit found no eligible stale ref: both candidates had already been removed by delete_branch_on_merge" });
+  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "an honest no-op completion was refused");
+});
+
+test("a completed deletion log that deleted nothing and does not say why is refused", () => {
+  const { pre, post } = boundaryPair();
+  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { deleted: [] }), { completion: clearedCompletion() }), [], "an unexplained empty completion passed");
+  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { deleted: [], no_op_reason: "none" }), { completion: clearedCompletion() }), [], "an empty completion with a token reason passed");
+});
+
+test("a COMPLETED deletion log that cites no boundary observation digests is refused", () => {
+  const { pre, post } = boundaryPair();
+  for (const field of ["pre_observation", "post_observation"]) {
+    const findings = deletionLogFindings(completedLog(pre, post, { [field]: undefined }), { completion: clearedCompletion() });
+    assert.ok(findings.some((f) => f.includes(field.replace("_", "-"))), `a COMPLETED log with no ${field} digest passed: ${findings.join(" | ")}`);
+  }
+  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { completed_at: "whenever" }), { completion: clearedCompletion() }), [], "a COMPLETED log with a malformed instant passed");
+});
+
+test("a NOT_YET deletion log that nevertheless lists a deleted branch is refused", () => {
+  assert.notDeepEqual(deletionLogFindings({ ...notYetLog(), deleted: [{ name: "tmp/read-claude-artifact", sha: "2d6392f578dd2667d5f1f6ba5073a2c4311430eb" }] }), [], "a NOT_YET log that claims a deletion passed");
+});
+
+test("a deletion log that drops one of the blocking issues is refused while NOT_YET", () => {
+  assert.notDeepEqual(deletionLogFindings({ ...notYetLog(), blocked_by: [578] }), [], "a NOT_YET log that forgot #588 passed");
+});
+
+test("a COMPLETED deletion log cannot clear its own prerequisites: the canonical snapshot decides", () => {
+  const { pre, post } = boundaryPair();
+  const open = completion.issues.filter((issue) => DELETION_BLOCKED_BY.includes(issue.number) && issue.state !== "closed");
+  assert.ok(open.length > 0, "no blocker is open in the canonical snapshot, so this test would check nothing");
+  const findings = deletionLogFindings(completedLog(pre, post), { completion });
+  for (const issue of open) {
+    assert.ok(findings.some((f) => f.includes(`#${issue.number}`) && f.includes("still blocked")), `the refusal does not name #${issue.number}: ${findings.join(" | ")}`);
+  }
+  const insistent = completedLog(pre, post, { blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed", evidence: "this definitely cleared, trust me" })) });
+  assert.notDeepEqual(deletionLogFindings(insistent, { completion }), [], "a log asserting its own clearance passed");
+});
+
+test("a COMPLETED deletion log with no canonical snapshot to check against is refused", () => {
+  const { pre, post } = boundaryPair();
+  assert.ok(deletionLogFindings(completedLog(pre, post), { completion: null }).some((f) => f.includes("no canonical issue-state snapshot")), "a completed log with no authority passed");
+});
+
+test("a blocker closed without close evidence does not clear it", () => {
+  const { pre, post } = boundaryPair();
+  const half = { ...completion, issues: completion.issues.map((issue) => (DELETION_BLOCKED_BY.includes(issue.number) ? { ...issue, state: "closed", close_evidence: null } : issue)) };
+  assert.ok(deletionLogFindings(completedLog(pre, post), { completion: half }).some((f) => f.includes("no close evidence")), "a blocker closed with no evidence cleared");
+});
+
+test("a deletion log whose account of a blocker disagrees with the canonical snapshot is refused", () => {
+  const { pre, post } = boundaryPair();
+  const log = completedLog(pre, post, { blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "open" })) });
+  assert.notDeepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "a log disagreeing with the canonical snapshot passed");
+});
+
 test("canonicalization compares content rather than key order or cardinality", () => {
   assert.equal(canonicalize({ b: 1, a: [2, { d: 4, c: 3 }] }), canonicalize({ a: [2, { c: 3, d: 4 }], b: 1 }));
   assert.notEqual(canonicalize({ a: 1 }), canonicalize({ a: 2 }));

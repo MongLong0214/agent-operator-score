@@ -24,8 +24,18 @@
 
 import { readFileSync } from "node:fs";
 
-import { sha256Bytes } from "../lib/digest.mjs";
-import { observationDigest, INSTALL_SOURCE_FILES, OBSERVATION_SCHEMA } from "./collect-branch-state.mjs";
+import {
+  INSTALL_SOURCE_FILES,
+  OBSERVATION_SCHEMA,
+  REQUIRED_DERIVATIONS,
+  canonicalize,
+  collect as collectLive,
+  contentDigest,
+  observationDigest,
+  verifyObservation
+} from "./collect-branch-state.mjs";
+
+export { canonicalize };
 
 /** The six states #572 classifies a branch into. Anything else is not a classification. */
 export const CLASSIFICATIONS = new Set(["MERGED", "SUPERSEDED", "UNIQUE_WORK", "EVIDENCE_ONLY", "ACTIVE", "UNKNOWN_HOLD"]);
@@ -46,24 +56,20 @@ const INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/u;
 const isNonEmptyString = (value, min = 1) => typeof value === "string" && value.trim().length >= min;
 const isList = (value) => Array.isArray(value) && value.length > 0;
 
-/** Key-ordered JSON, so two structurally equal objects compare equal whatever order they were built in. */
-export const canonicalize = (value) => {
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`).join(",")}}`;
-  }
-  return JSON.stringify(value ?? null);
-};
-
-const contentDigest = (value) => sha256Bytes(Buffer.from(canonicalize(value), "utf8"));
-
 // Epoch seconds from the shape the regex already accepted, computed rather than parsed: a lenient
 // parser would quietly accept instants this gate's freshness window is not written for.
 const instantSeconds = (value) => {
   const parts = INSTANT.exec(value ?? "");
   if (!parts) return null;
-  const [year, month, day, hour, minute, second] = value.split(/[-T:Z]/u).map(Number);
-  return Date.UTC(year, month - 1, day, hour, minute, second) / 1000;
+  const [year, month, day, hour, minute, second] = parts.slice(1).map(Number);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (hour > 23 || minute > 59 || second > 59) return null;
+  const epoch = Date.UTC(year, month - 1, day, hour, minute, second);
+  // Date.UTC rolls a day that does not exist forward into the next month rather than refusing it,
+  // so the only way to reject 2026-02-30 is to ask what came back.
+  const back = new Date(epoch);
+  if (back.getUTCFullYear() !== year || back.getUTCMonth() !== month - 1 || back.getUTCDate() !== day) return null;
+  return epoch / 1000;
 };
 
 /**
@@ -183,7 +189,17 @@ export const auditCoverageFindings = (audit, live = null) => {
   }
 
   if (live) {
-    const known = new Set([...target, ...excluded, ...(audit.heads_created_after_this_snapshot ?? []).map((entry) => entry.name)]);
+    // A branch may legitimately appear after the snapshot -- this audit is submitted from one. What
+    // it may not do is appear by being written into a list. The exception is earned by being the
+    // head of an open pull request in the observation: that is in-flight work someone is watching,
+    // and it is the only reading of "created after the snapshot" that a later orphan cannot claim.
+    const openPrHeads = new Set((live.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => pr.head_branch));
+    const excused = new Set();
+    for (const entry of audit.heads_created_after_this_snapshot ?? []) {
+      if (openPrHeads.has(entry.name)) excused.add(entry.name);
+      if (!openPrHeads.has(entry.name)) findings.push(`${entry.name} is claimed as created after the snapshot but no open pull request has it as a head, so nothing accounts for it`);
+    }
+    const known = new Set([...target, ...excluded, ...excused]);
     for (const head of live.heads ?? []) {
       if (!known.has(head.name)) findings.push(`${head.name} exists on the live repository but appears nowhere in this audit`);
     }
@@ -237,6 +253,66 @@ export const classificationFindings = (audit) => {
     if (typeof entry.unique_commits_vs_dev_and_main !== "number") push("does not record how many commits reach neither dev nor main, which is the count deletion actually turns on");
     if (!entry.references || typeof entry.references !== "object") push('records no reference scan, so "nothing refers to it" was never established');
     if (entry.open_pr && entry.classification !== "ACTIVE") push(`has open PR #${entry.open_pr.number} but is classified ${entry.classification}`);
+  }
+  return findings;
+};
+
+/**
+ * Every graph fact a branch record asserts has to be one the collector actually ran.
+ *
+ * The failure this refuses is a record that says "0 commits unique against dev" beside a receipt
+ * table that only ever listed the branch. A neighbouring query is not evidence for a derivation
+ * nobody performed, so the numbers in the record are compared against the collector's own answers,
+ * and each answer has to name a receipt the observation carries.
+ */
+export const derivationFindings = (audit, observation = audit?.live_observation) => {
+  const findings = [];
+  if (!observation) return ["the audit cites no observation, so nothing says where its branch facts came from"];
+  const receiptSources = new Set((observation.receipts ?? []).map((receipt) => receipt.source));
+  const derivations = observation.derivations ?? {};
+
+  for (const entry of audit.branches ?? []) {
+    const derived = derivations[entry.name];
+    if (!derived) {
+      findings.push(`${entry.name}: the observation derives nothing about it, so every fact recorded for it is unsourced`);
+      continue;
+    }
+    for (const field of REQUIRED_DERIVATIONS) {
+      const one = derived[field];
+      if (!one) findings.push(`${entry.name}: no ${field} derivation`);
+      if (one && !receiptSources.has(one.source)) findings.push(`${entry.name}: ${field} cites receipt "${one.source}", which the observation does not carry`);
+    }
+    const asserted = [
+      ["merged_into_dev", entry.merged_into_dev, derived.ancestor_of_dev?.value],
+      ["merged_into_main", entry.merged_into_main, derived.ancestor_of_main?.value],
+      ["unique_commits_vs_dev", entry.unique_commits_vs_dev, derived.unique_vs_dev?.value],
+      ["unique_commits_vs_main", entry.unique_commits_vs_main, derived.unique_vs_main?.value],
+      ["unique_commits_vs_dev_and_main", entry.unique_commits_vs_dev_and_main, derived.unique_vs_dev_and_main?.value],
+      ["behind_dev", entry.behind_dev, derived.behind_dev?.value],
+      ["behind_main", entry.behind_main, derived.behind_main?.value],
+      ["last_commit_date", entry.last_commit_date, derived.last_commit?.date]
+    ];
+    for (const [field, claimed, observed] of asserted) {
+      if (claimed !== observed) findings.push(`${entry.name}: records ${field} as ${JSON.stringify(claimed)} but the collector derived ${JSON.stringify(observed)}`);
+    }
+    if (canonicalize(entry.release_tags_containing) !== canonicalize(derived.tags_containing?.value)) {
+      findings.push(`${entry.name}: records release-tag containment the collector did not derive`);
+    }
+    if (canonicalize(entry.references?.tree_scan?.hits) !== canonicalize(derived.tree_scan?.value)) {
+      findings.push(`${entry.name}: records a tree scan the collector did not run`);
+    }
+    // "No pull request ever used this branch as a head" is a claim about closed and merged pull
+    // requests too, so it needs the all-state query rather than the open list.
+    const openInHistory = (derived.pr_history?.value ?? []).filter((pr) => pr.state === "OPEN");
+    if (entry.open_pr && !openInHistory.some((pr) => pr.number === entry.open_pr.number)) {
+      findings.push(`${entry.name}: records open PR #${entry.open_pr.number}, which the collected PR history does not show`);
+    }
+    if (!entry.open_pr && openInHistory.length > 0) {
+      findings.push(`${entry.name}: records no open PR, but the collected history shows #${openInHistory[0].number} open on it`);
+    }
+    const sweep = (observation.reference_sweep ?? []).find((one) => one.branch === entry.name);
+    if (!sweep) findings.push(`${entry.name}: no GitHub-wide reference sweep`);
+    else if (sweep.complete !== true) findings.push(`${entry.name}: the reference sweep was truncated, so no reference claim rests on it`);
   }
   return findings;
 };
@@ -309,11 +385,14 @@ export const deletionEligibility = (audit) => {
 };
 
 /**
- * The invariants #572 lists across a deletion.
+ * The Phase A baseline's own consistency: does it record every invariant family the issue names, at
+ * the state the snapshot it was taken from observed?
  *
- * Compared as canonicalized content, not as a projection or a count: three booleans out of a twelve
- * field protection object cannot report that a fourth changed, and two rulesets of equal length are
- * not the same two rulesets.
+ * This is deliberately not the deletion comparison. A baseline collected in Phase A describes a
+ * repository that keeps moving, so comparing a Phase B result against it would report ordinary
+ * progress as damage. `boundaryInvariantFindings` compares the two observations that actually
+ * bracket the deletion; this function only establishes that the historical record is complete
+ * enough to be worth keeping, and that its own numbers agree with its own snapshot.
  */
 export const cleanupInvariantFindings = (audit, deletionLog) => {
   const findings = [];
@@ -362,48 +441,74 @@ export const cleanupInvariantFindings = (audit, deletionLog) => {
     if (entry.open_pr && !recordedOpenHeads.has(entry.name)) findings.push(`${entry.name} is the head of open PR #${entry.open_pr.number} but is not in the baseline list of open PR heads`);
   }
 
-  const after = deletionLog?.post_delete_state;
-  if (after) {
-    if (after.main_sha !== baseline.main_sha) findings.push("main moved across the deletion");
-    if (after.dev_sha !== baseline.dev_sha) findings.push("dev moved across the deletion");
+  return findings;
+};
 
-    const before = new Map((baseline.tags ?? []).map((tag) => [tag.name, tag]));
-    for (const tag of after.tags ?? []) {
-      const was = before.get(tag.name);
-      if (!was) {
-        findings.push(`tag ${tag.name} appeared across the deletion`);
-        continue;
-      }
-      if (was.ref_sha !== tag.ref_sha) findings.push(`tag ${tag.name} was replaced across the deletion: its ref pointed at ${was.ref_sha} and now points at ${tag.ref_sha}`);
-      if (was.commit_sha !== tag.commit_sha) findings.push(`tag ${tag.name} moved across the deletion`);
-    }
-    for (const name of before.keys()) {
-      if (!(after.tags ?? []).some((tag) => tag.name === name)) findings.push(`tag ${name} disappeared across the deletion`);
-    }
+/**
+ * The invariants #572 lists, compared across the deletion itself.
+ *
+ * The comparison pair is two independently collected observations -- one taken immediately before
+ * the deletion and one immediately after -- and not the Phase A baseline. That baseline is a
+ * snapshot of a repository that goes on moving: comparing a Phase B post-state against it reports
+ * every legitimate advance of `dev` as "dev moved across the deletion", which is both a false alarm
+ * and, worse, an invariant nobody can satisfy honestly. The baseline stays in the audit as
+ * historical context; the boundary pair is what decides.
+ *
+ * It also decides the other direction. The set of heads that disappeared between the two
+ * observations has to be exactly the set the log says it deleted -- so a deletion that took one
+ * extra ref with it is a finding, and a log that claims a deletion which did not happen is too.
+ */
+export const boundaryInvariantFindings = (deletionLog, pre, post) => {
+  const findings = [];
+  if (!pre) findings.push("no pre-deletion observation was collected, so nothing records the state the deletion started from");
+  if (!post) findings.push("no post-deletion observation was collected, so the log's account of the state afterwards is its own");
+  if (!pre || !post) return findings;
 
-    if (!after.protection) findings.push("the post-delete state does not report branch protection, so nothing can say it is unchanged");
-    else {
-      for (const ref of ["main", "dev"]) {
-        const was = contentDigest(baseline.protection?.[ref] ?? null);
-        const now = contentDigest(after.protection?.[ref] ?? null);
-        if (was !== now) findings.push(`${ref} protection changed across the deletion`);
-      }
-    }
-    if (!Array.isArray(after.rulesets)) findings.push("the post-delete state does not report rulesets");
-    else if (contentDigest(after.rulesets) !== contentDigest(baseline.rulesets ?? [])) findings.push("the repository's ruleset configuration changed across the deletion");
+  findings.push(...verifyObservation(pre).map((finding) => `pre-deletion observation: ${finding}`));
+  findings.push(...verifyObservation(post).map((finding) => `post-deletion observation: ${finding}`));
 
-    if (!after.install_source) findings.push("the post-delete state does not report the stable plugin/install source");
-    else if (contentDigest(after.install_source) !== contentDigest(baseline.install_source)) findings.push("the stable plugin/install source changed across the deletion");
-
-    if (!Array.isArray(after.open_pr_heads)) findings.push("the post-delete state does not report the open PR heads, which is the one thing a deletion must not touch");
-    else {
-      const still = new Map(after.open_pr_heads.map((entry) => [entry.branch, entry.sha]));
-      for (const entry of baseline.open_pr_heads ?? []) {
-        if (!still.has(entry.branch)) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) is gone after the deletion`);
-        else if (still.get(entry.branch) !== entry.sha) findings.push(`the head of open PR #${entry.pr} (${entry.branch}) moved across the deletion`);
-      }
-    }
+  const head = (observation, name) => (observation.heads ?? []).find((one) => one.name === name)?.sha;
+  for (const ref of ["main", "dev"]) {
+    if (head(pre, ref) !== head(post, ref)) findings.push(`${ref} moved across the deletion: ${head(pre, ref)} -> ${head(post, ref)}`);
   }
+
+  const before = new Map((pre.tags ?? []).map((tag) => [tag.name, tag]));
+  for (const tag of post.tags ?? []) {
+    const was = before.get(tag.name);
+    if (!was) {
+      findings.push(`tag ${tag.name} appeared across the deletion`);
+      continue;
+    }
+    if (was.ref_sha !== tag.ref_sha) findings.push(`tag ${tag.name} was replaced across the deletion: its ref pointed at ${was.ref_sha} and now points at ${tag.ref_sha}`);
+    if (was.commit_sha !== tag.commit_sha) findings.push(`tag ${tag.name} moved across the deletion`);
+  }
+  for (const name of before.keys()) {
+    if (!(post.tags ?? []).some((tag) => tag.name === name)) findings.push(`tag ${name} disappeared across the deletion`);
+  }
+
+  for (const ref of ["main", "dev"]) {
+    if (contentDigest(pre.protection?.[ref] ?? null) !== contentDigest(post.protection?.[ref] ?? null)) findings.push(`${ref} protection changed across the deletion`);
+  }
+  if (contentDigest(pre.rulesets ?? []) !== contentDigest(post.rulesets ?? [])) findings.push("the repository's ruleset configuration changed across the deletion");
+  if (contentDigest(pre.install_source) !== contentDigest(post.install_source)) findings.push("the stable plugin/install source changed across the deletion");
+  if (contentDigest(pre.settings) !== contentDigest(post.settings)) findings.push("the repository settings changed across the deletion");
+
+  const stillOpen = new Map((post.open_prs ?? []).map((pr) => [pr.number, pr]));
+  for (const pr of pre.open_prs ?? []) {
+    const after = stillOpen.get(pr.number);
+    if (!after) findings.push(`open PR #${pr.number} (${pr.head_branch}) is gone after the deletion`);
+    if (after && after.head_sha !== pr.head_sha) findings.push(`the head of open PR #${pr.number} (${pr.head_branch}) moved across the deletion`);
+  }
+  const postHeads = new Set((post.heads ?? []).map((one) => one.name));
+  for (const pr of post.open_prs ?? []) {
+    if (!postHeads.has(pr.head_branch)) findings.push(`open PR #${pr.number} has no head branch after the deletion: ${pr.head_branch} is gone`);
+  }
+
+  // Exactly what the log says was deleted, and nothing else.
+  const vanished = new Set((pre.heads ?? []).map((one) => one.name).filter((name) => !postHeads.has(name)));
+  const claimed = new Set((deletionLog?.deleted ?? []).map((one) => one.name));
+  for (const name of vanished) if (!claimed.has(name)) findings.push(`${name} disappeared across the deletion but the log does not say it was deleted`);
+  for (const name of claimed) if (!vanished.has(name)) findings.push(`the log says ${name} was deleted but it is still on the repository afterwards`);
   return findings;
 };
 
@@ -428,7 +533,7 @@ export const deletionLogFindings = (log, { completion = null } = {}) => {
 
   if (log.status === "NOT_YET") {
     if (log.deleted.length > 0) findings.push("the deletion log says NOT_YET but lists deletions");
-    if (log.post_delete_state !== null && log.post_delete_state !== undefined) findings.push("the deletion log says NOT_YET but carries a post-delete state");
+    if (log.pre_observation || log.post_observation) findings.push("the deletion log says NOT_YET but cites deletion-boundary observations");
     const blockers = new Set(log.blocked_by ?? []);
     for (const issue of DELETION_BLOCKED_BY) if (!blockers.has(issue)) findings.push(`the deletion log is NOT_YET but does not record #${issue} as blocking it`);
     if (!isNonEmptyString(log.note, 21)) findings.push("the deletion log is NOT_YET but does not say why nothing was deleted");
@@ -437,7 +542,12 @@ export const deletionLogFindings = (log, { completion = null } = {}) => {
 
   if (log.status !== "COMPLETED") return [...findings, `unrecognized deletion log status "${log.status}"`];
 
-  if (!log.post_delete_state) findings.push("the deletion log says COMPLETED without reading the post-delete state back");
+  // Not "did you write down a post-state" -- that was the log vouching for itself. The log names the
+  // digests of two observations collected outside it, and the gate is handed those observations.
+  for (const field of ["pre_observation", "post_observation"]) {
+    if (!DIGEST.test(log[field]?.digest ?? "")) findings.push(`the deletion log says COMPLETED without citing a ${field.replace("_", "-")} digest`);
+  }
+  if (!INSTANT.test(log.completed_at ?? "")) findings.push("the deletion log says COMPLETED without a well-formed instant saying when");
   for (const entry of log.deleted) if (!SHA.test(entry.sha ?? "")) findings.push(`${entry.name}: deleted without recording the SHA it pointed at`);
   if (log.deleted.length === 0 && log.no_op_reason === undefined) findings.push("the deletion log says COMPLETED and deleted nothing without saying why nothing was eligible");
   if (log.deleted.length === 0 && log.no_op_reason !== undefined && !isNonEmptyString(log.no_op_reason, 21)) {
@@ -498,42 +608,60 @@ export const openPrHeadDeletionFindings = (audit, deletionLog) => {
 /**
  * The destructive gate. Everything above is necessary; this is what authorizes.
  *
- * It refuses without a live observation, and every fact it decides on comes from that observation
- * rather than from the audit: the ref still exists at the commit being deleted, no pull request is
- * open on it *now*, and the observation is recent enough and bound by digest to the record citing
- * it. A pull request opened five minutes after the audit was written is invisible to a stored
- * snapshot and visible here, which is the entire reason the parameter exists.
+ * It takes the two observations that bracket the deletion. `pre` is collected immediately before and
+ * decides every fact the deletion turns on -- the ref still exists at the commit being deleted, no
+ * pull request is open on it *now* -- because a stored snapshot cannot see a pull request opened
+ * five minutes after it was written. `post` is collected immediately after and is what makes the
+ * invariants checkable at all; without it, "nothing else changed" is the deleting party's own word.
+ *
+ * Both are refused when absent. Both must be bound by digest to the record citing them, and the
+ * record's instant must fall between them.
  */
-export const deletionAuthorizationFindings = ({ audit, log, live = null, completion = null, maxAgeSeconds = OBSERVATION_MAX_AGE_SECONDS } = {}) => {
+export const deletionAuthorizationFindings = ({ audit, log, pre = null, post = null, completion = null, maxAgeSeconds = OBSERVATION_MAX_AGE_SECONDS } = {}) => {
   const findings = [
-    ...auditCoverageFindings(audit, live),
+    ...auditCoverageFindings(audit, pre),
+    ...derivationFindings(audit),
     ...deletionLogFindings(log, { completion }),
     ...cleanupInvariantFindings(audit, log),
     ...openPrHeadDeletionFindings(audit, log)
   ];
 
-  if (!live) return [...findings, "no live observation was supplied, so no deletion can be authorized from stored facts alone"];
-  if (live.schema !== OBSERVATION_SCHEMA) findings.push(`the supplied observation is "${live.schema}", not ${OBSERVATION_SCHEMA}`);
-  if (!isList(live.receipts)) findings.push("the live observation carries no command receipts, so nothing says where its facts came from");
-  if (observationDigest(live) !== log?.live_observation?.digest) {
-    findings.push("the deletion record does not cite the digest of the observation it was checked against");
+  if (!pre) return [...findings, "no pre-deletion observation was supplied, so no deletion can be authorized from stored facts alone"];
+  findings.push(...verifyObservation(pre).map((finding) => `pre-deletion observation: ${finding}`));
+  if (observationDigest(pre) !== log?.pre_observation?.digest) {
+    findings.push("the deletion record does not cite the digest of the pre-deletion observation it was checked against");
   }
 
-  const collected = instantSeconds(live.collected_at);
+  const collected = instantSeconds(pre.collected_at);
   const completed = instantSeconds(log?.completed_at);
-  if (collected === null) findings.push("the live observation records no collection instant");
+  if (collected === null) findings.push("the pre-deletion observation records no well-formed collection instant");
+
   if (log?.status === "COMPLETED") {
-    if (completed === null) findings.push("the deletion log claims completion without recording when");
+    if (completed === null) findings.push("the deletion log claims completion without a well-formed instant saying when");
     else if (collected !== null) {
-      if (collected > completed) findings.push("the live observation was collected after the deletion it is supposed to authorize");
-      if (collected <= completed && completed - collected > maxAgeSeconds) findings.push(`the live observation was ${Math.round(completed - collected)}s old when the deletion ran, past the ${maxAgeSeconds}s this gate allows`);
+      if (collected > completed) findings.push("the pre-deletion observation was collected after the deletion it is supposed to authorize");
+      if (collected <= completed && completed - collected > maxAgeSeconds) findings.push(`the pre-deletion observation was ${Math.round(completed - collected)}s old when the deletion ran, past the ${maxAgeSeconds}s this gate allows`);
+    }
+
+    if (!post) findings.push("the deletion log claims completion but no post-deletion observation was supplied, so the invariants cannot be checked");
+    else {
+      if (observationDigest(post) !== log?.post_observation?.digest) {
+        findings.push("the deletion record does not cite the digest of the post-deletion observation");
+      }
+      const recollected = instantSeconds(post.collected_at);
+      if (recollected === null) findings.push("the post-deletion observation records no well-formed collection instant");
+      if (recollected !== null && completed !== null) {
+        if (recollected < completed) findings.push("the post-deletion observation was collected before the deletion it is supposed to witness");
+        if (recollected >= completed && recollected - completed > maxAgeSeconds) findings.push(`the post-deletion observation was taken ${Math.round(recollected - completed)}s after the deletion, past the ${maxAgeSeconds}s this gate allows`);
+      }
+      findings.push(...boundaryInvariantFindings(log, pre, post));
     }
   }
 
-  const liveHeads = new Map((live.heads ?? []).map((head) => [head.name, head.sha]));
-  const openPrByBranch = new Map((live.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
+  const liveHeads = new Map((pre.heads ?? []).map((head) => [head.name, head.sha]));
+  const openPrByBranch = new Map((pre.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
   for (const deleted of log?.deleted ?? []) {
-    if (!liveHeads.has(deleted.name)) findings.push(`${deleted.name} was deleted but the live observation does not show it on the repository`);
+    if (!liveHeads.has(deleted.name)) findings.push(`${deleted.name} was deleted but the pre-deletion observation does not show it on the repository`);
     if (liveHeads.has(deleted.name) && liveHeads.get(deleted.name) !== deleted.sha) findings.push(`${deleted.name} was deleted at ${deleted.sha} but live it points at ${liveHeads.get(deleted.name)}`);
     const pr = openPrByBranch.get(deleted.name);
     if (pr) findings.push(`${deleted.name} was deleted while PR #${pr.number} was open on it live, whatever the stored audit says`);
@@ -545,4 +673,28 @@ export const deletionAuthorizationFindings = ({ audit, log, live = null, complet
     if (pr) findings.push(`${entry.name} reads as eligible in the audit but PR #${pr.number} is open on it live`);
   }
   return findings;
+};
+
+/**
+ * The entry point Phase B is meant to call, and the reason it takes a collector rather than data.
+ *
+ * A gate handed an observation is a gate deciding on whatever the caller chose to hand it. Here the
+ * runner performs the collection inside the authorization, so the observation is not a parameter
+ * anyone can compose. `collect` is injectable only so the tests can drive both sides of the
+ * boundary; in the real path it is the collector module's own function, and the default is exactly
+ * that.
+ *
+ * What remains outside this boundary, and is stated rather than papered over: nothing here can
+ * attest that the machine running it is the machine anyone thinks it is. Offline verification ends
+ * at internal consistency plus re-runnable receipts.
+ */
+export const authorizeDeletion = ({ audit, log, completion = null, repository, cwd, collect = collectLive, post = null } = {}) => {
+  let pre;
+  try {
+    pre = collect({ repository: repository ?? audit?.repository, cwd });
+  } catch (error) {
+    return [`the pre-deletion observation could not be collected, so nothing is authorized: ${error.message}`];
+  }
+  pre.digest = observationDigest(pre);
+  return deletionAuthorizationFindings({ audit, log, pre, post, completion });
 };

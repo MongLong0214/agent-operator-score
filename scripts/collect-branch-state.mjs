@@ -2,19 +2,34 @@
 // The live half of #572's cleanup gate.
 //
 // The audit is a document, and a document cannot observe anything. Everything a deletion decision
-// turns on -- which refs exist, which pull requests are open, what protection and rulesets say, what
-// the published install source is -- is mutable state on GitHub that moves while the document sits
-// still. So this collector, and not the audit, is where those facts enter: it runs the read-only
-// commands, records the exact command and a digest of its raw bytes beside each answer, and emits
-// one observation record.
+// turns on -- which refs exist, which pull requests are open, what protection and the rulesets say,
+// what the published install source is, and every graph fact asserted about a branch -- is state
+// that moves while the document sits still. So this collector, and not the audit, is where those
+// facts enter: it runs each read-only command and records the command line, exit code, byte count
+// and a SHA-256 of its raw stdout beside the answer.
 //
-// The point of separating it is narrow and worth stating plainly. `scripts/branch-audit.mjs`
-// authorizes a deletion only against an observation, never against the audit's own copy of these
-// facts -- otherwise the party proposing the deletion supplies both the evidence and the verdict.
-// What this cannot do is prove that the observation itself came from GitHub rather than from a text
-// editor: an offline checker has no way to authenticate a transcript. The receipts are there so a
-// human or a CI job with credentials can re-run each command and compare, which is the honest
-// boundary rather than a pretended one.
+// Three properties are load-bearing, and each was absent in an earlier version of this file.
+//
+// *Every asserted derivation is collected here.* It is not enough to receipt a neighbouring query.
+// If a branch record claims it is contained in dev, the `git merge-base --is-ancestor` that decides
+// it runs here with its exit code recorded; if it claims nothing in the tree refers to it, the
+// `git grep` that establishes that runs here too. A claim whose command was never run is a claim
+// nobody made.
+//
+// *Every list is enumerated to the end.* `per_page=100` without pagination turns a pull request on
+// the second page into an absent pull request, and the deletion gate reads absence as "no PR open".
+// So the list endpoints paginate, and the search endpoint compares what it received against the
+// count the API reports and refuses to pretend otherwise.
+//
+// *The digest covers the content, recursively.* `JSON.stringify(value, Object.keys(value))` looks
+// like a canonicaliser and is not: an array replacer is a key allowlist applied at every level, so
+// nested objects come back as `{}` and every head, pull request and receipt in the record hashes to
+// the same digest as any other. `canonicalize` below is the real thing.
+//
+// What none of this can do is prove the observation came from GitHub rather than a text editor. An
+// offline checker cannot authenticate a transcript. That is why `authorizeDeletion` in
+// scripts/branch-audit.mjs calls `collect` itself rather than accepting one, and why the receipts
+// exist -- so a human or a credentialed job can re-run any line and compare digests.
 //
 // Read-only by construction. Every command below reads; none creates, deletes or updates a ref.
 
@@ -23,15 +38,56 @@ import { writeFileSync, readFileSync } from "node:fs";
 
 import { sha256Bytes } from "../lib/digest.mjs";
 
-export const OBSERVATION_SCHEMA = "aos-branch-live-observation.v1";
+export const OBSERVATION_SCHEMA = "aos-branch-live-observation.v2";
 
 /** The files that decide how someone installs this project. A cleanup may not change them. */
 export const INSTALL_SOURCE_FILES = Object.freeze([".claude-plugin/marketplace.json", ".claude-plugin/plugin.json"]);
 
+/** The derivations a branch record is allowed to assert. Each one is a command run here. */
+export const REQUIRED_DERIVATIONS = Object.freeze([
+  "last_commit",
+  "ancestor_of_dev",
+  "ancestor_of_main",
+  "unique_vs_dev",
+  "unique_vs_main",
+  "behind_dev",
+  "behind_main",
+  "unique_vs_dev_and_main",
+  "tags_containing",
+  "tree_scan",
+  "pr_history"
+]);
+
 const nowIso = () => new Date().toISOString().replace(/\.\d{3}Z$/u, "Z");
 
-/** Runs one read-only command and keeps the bytes it produced, not only what we parsed out of them. */
-const receipted = (receipts, source, command, args, options = {}) => {
+/**
+ * Key-ordered, recursive JSON. Two structurally equal values canonicalize identically whatever order
+ * they were assembled in, and any difference anywhere changes the output.
+ */
+export const canonicalize = (value) => {
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+};
+
+export const contentDigest = (value) => sha256Bytes(Buffer.from(canonicalize(value), "utf8"));
+
+/** Stable identity for an observation: everything in it except the digest field naming it. */
+export const observationDigest = (observation) => {
+  const { digest: _named, ...rest } = observation;
+  return contentDigest(rest);
+};
+
+/**
+ * Runs one read-only command and keeps the bytes it produced, not only what was parsed out of them.
+ *
+ * `allowExit` exists because some of these commands answer with their exit status:
+ * `git merge-base --is-ancestor` returns 1 for "no", and `git grep` returns 1 for "no matches". A
+ * non-zero exit that is the answer is recorded; any other non-zero exit throws.
+ */
+const receipted = (receipts, source, command, args, { allowExit = [0], ...options } = {}) => {
   const result = spawnSync(command, args, { encoding: "buffer", ...options });
   const stdout = result.stdout ?? Buffer.alloc(0);
   receipts.push({
@@ -41,64 +97,95 @@ const receipted = (receipts, source, command, args, options = {}) => {
     bytes: stdout.length,
     digest: sha256Bytes(stdout)
   });
-  if (result.status !== 0) {
+  if (!allowExit.includes(result.status)) {
     const stderr = (result.stderr ?? Buffer.alloc(0)).toString("utf8").trim().split("\n").slice(-3).join(" ");
     throw new Error(`${source}: \`${[command, ...args].join(" ")}\` exited ${result.status}: ${stderr}`);
   }
-  return stdout.toString("utf8");
+  return { text: stdout.toString("utf8"), status: result.status, source };
 };
 
-const api = (receipts, source, path, jq) =>
-  JSON.parse(receipted(receipts, source, "gh", ["api", path, ...(jq ? ["--jq", jq] : [])]).trim() || "null");
+/**
+ * A list endpoint read to the end.
+ *
+ * `--paginate --slurp` returns one array element per page; flattening it is the complete list. The
+ * receipt covers the raw bytes of every page together, so a truncated read cannot digest the same
+ * as a complete one.
+ */
+const apiList = (receipts, source, path) => {
+  const pages = JSON.parse(receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", path]).text || "[]");
+  return pages.flat();
+};
+
+const apiOne = (receipts, source, path) => JSON.parse(receipted(receipts, source, "gh", ["api", path]).text || "null");
 
 /**
- * Collect everything a deletion decision reads, from the live repository, once.
+ * The GitHub search endpoint, with its own completeness proof.
  *
- * `repository` is only used to build API paths; the git transport half uses the checkout's `origin`,
- * so the two halves are independent sources for the same head list rather than one source read twice.
+ * Search pages report `total_count` and `incomplete_results`, so unlike an ordinary list this one
+ * can say whether it returned everything. It is recorded either way: a sweep that was truncated is
+ * a sweep that did not establish "nothing refers to this branch".
  */
-export const collect = ({ repository, cwd = process.cwd(), branchNames = [] } = {}) => {
+const apiSearch = (receipts, source, query) => {
+  const pages = JSON.parse(receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", `search/issues?q=${encodeURIComponent(query)}&per_page=100`]).text || "[]");
+  const items = pages.flatMap((page) => page.items ?? []);
+  const totalCount = pages.length > 0 ? pages[0].total_count : 0;
+  return {
+    query,
+    complete: items.length === totalCount && !pages.some((page) => page.incomplete_results),
+    total_count: totalCount,
+    hits: items.map((item) => ({ number: item.number, is_pull_request: item.pull_request != null, state: item.state, title: item.title }))
+  };
+};
+
+/**
+ * Collect everything a deletion decision reads, from the live repository, in one pass.
+ *
+ * One pass matters: an earlier version collected the head list, then collected again to sweep the
+ * names it had found, so a branch created between the two passes was swept by neither. The branch
+ * names come from the head list this same call took.
+ *
+ * `repository` builds the API paths; the git half uses the checkout's `origin`, so the two head
+ * lists are independent sources for the same question rather than one source read twice.
+ */
+export const collect = ({ repository, cwd = process.cwd() } = {}) => {
   const receipts = [];
   const collectedAt = nowIso();
 
-  const heads = receipted(receipts, "git-ls-remote", "git", ["ls-remote", "--heads", "origin"], { cwd })
-    .split("\n")
-    .filter(Boolean)
+  const heads = receipted(receipts, "git-ls-remote", "git", ["ls-remote", "--heads", "origin"], { cwd }).text
+    .split("\n").filter(Boolean)
     .map((line) => {
       const [sha, ref] = line.split(/\s+/u);
       return { name: ref.replace("refs/heads/", ""), sha };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // The same list again, over REST rather than the git protocol. Two transports disagreeing is
-  // information; one transport read twice is not.
-  const restHeads = api(receipts, "rest-branches", `repos/${repository}/branches?per_page=100`, "[.[]|{name:.name,sha:.commit.sha,protected:.protected}]")
+  const restHeads = apiList(receipts, "rest-branches", `repos/${repository}/branches?per_page=100`)
+    .map((branch) => ({ name: branch.name, sha: branch.commit.sha, protected: branch.protected }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const openPrs = api(receipts, "rest-open-prs", `repos/${repository}/pulls?state=open&per_page=100`,
-    "[.[]|{number:.number,head_branch:.head.ref,head_sha:.head.sha,base:.base.ref,state:\"OPEN\"}]")
+  const openPrs = apiList(receipts, "rest-open-prs", `repos/${repository}/pulls?state=open&per_page=100`)
+    .map((pr) => ({ number: pr.number, head_branch: pr.head.ref, head_sha: pr.head.sha, base: pr.base.ref, state: "OPEN" }))
     .sort((a, b) => a.number - b.number);
 
-  const tags = receipted(receipts, "git-ls-remote-tags", "git", ["ls-remote", "--tags", "origin"], { cwd })
-    .split("\n")
-    .filter(Boolean)
+  const tags = [...receipted(receipts, "git-ls-remote-tags", "git", ["ls-remote", "--tags", "origin"], { cwd }).text
+    .split("\n").filter(Boolean)
     .reduce((map, line) => {
       const [sha, ref] = line.split(/\s+/u);
       const name = ref.replace("refs/tags/", "");
       if (name.endsWith("^{}")) map.get(name.slice(0, -3)).commit_sha = sha;
       else map.set(name, { name, ref_sha: sha, commit_sha: sha });
       return map;
-    }, new Map());
+    }, new Map()).values()].sort((a, b) => a.name.localeCompare(b.name));
 
   // The whole protection object, not three booleans out of it. A projection cannot report that a
   // field it never carried has changed.
   const protection = Object.fromEntries(
-    ["main", "dev"].map((ref) => [ref, api(receipts, `rest-protection-${ref}`, `repos/${repository}/branches/${ref}/protection`)])
+    ["main", "dev"].map((ref) => [ref, apiOne(receipts, `rest-protection-${ref}`, `repos/${repository}/branches/${ref}/protection`)])
   );
 
-  const rulesets = api(receipts, "rest-rulesets", `repos/${repository}/rulesets`);
-  const settings = api(receipts, "rest-repo", `repos/${repository}`,
-    "{default_branch:.default_branch,delete_branch_on_merge:.delete_branch_on_merge}");
+  const rulesets = apiList(receipts, "rest-rulesets", `repos/${repository}/rulesets?per_page=100`);
+  const repo = apiOne(receipts, "rest-repo", `repos/${repository}`);
+  const settings = { default_branch: repo.default_branch, delete_branch_on_merge: repo.delete_branch_on_merge };
 
   const installSource = {
     files: INSTALL_SOURCE_FILES.map((path) => ({ path, digest: sha256Bytes(readFileSync(`${cwd}/${path}`)) })),
@@ -108,15 +195,38 @@ export const collect = ({ repository, cwd = process.cwd(), branchNames = [] } = 
     })()
   };
 
-  // "Nothing refers to this branch" is a claim about the whole repository, so it needs a search over
-  // the whole repository -- recorded per branch name, with the receipt, so a later reader can tell a
-  // search that found nothing from a search that never ran.
-  const referenceSweep = branchNames.map((name) => ({
-    branch: name,
-    query: `repo:${repository} "${name}"`,
-    hits: api(receipts, `search-${name}`, `search/issues?q=${encodeURIComponent(`repo:${repository} "${name}"`)}&per_page=100`,
-      "[.items[]|{number:.number,is_pull_request:(.pull_request!=null),state:.state,title:.title}]")
+  const devSha = heads.find((head) => head.name === "dev")?.sha;
+  const mainSha = heads.find((head) => head.name === "main")?.sha;
+
+  // Every graph fact a branch record is allowed to assert, derived here, each with its own receipt.
+  // Fetching first, because a fact about a commit the checkout does not have is not a fact.
+  const auditable = heads.filter((head) => head.name !== "main" && head.name !== "dev");
+  if (auditable.length > 0) receipted(receipts, "git-fetch-observed", "git", ["fetch", "-q", "origin", ...heads.map((head) => head.sha)], { cwd });
+
+  const count = (source, args) => Number(receipted(receipts, source, "git", ["rev-list", "--count", ...args], { cwd }).text.trim());
+  const derivations = Object.fromEntries(auditable.map(({ name, sha }) => {
+    const log = receipted(receipts, `git-log-${name}`, "git", ["log", "-1", "--format=%cI%x09%an%x09%ae", sha], { cwd }).text.trim().split("\t");
+    const grep = receipted(receipts, `git-grep-${name}`, "git", ["grep", "-n", "--fixed-strings", name, "HEAD", "--", ":!docs/STALE_BRANCH_AUDIT.md", ":!fixtures/stale-branches/"], { cwd, allowExit: [0, 1] });
+    const prs = JSON.parse(receipted(receipts, `pr-history-${name}`, "gh",
+      ["pr", "list", "--repo", repository, "--state", "all", "--head", name, "--limit", "200", "--json", "number,state,mergedAt,baseRefName,headRefOid"], { cwd }).text || "[]");
+    return [name, {
+      last_commit: { date: log[0], author_name: log[1], author_email: log[2], source: `git-log-${name}` },
+      ancestor_of_dev: { value: receipted(receipts, `is-ancestor-dev-${name}`, "git", ["merge-base", "--is-ancestor", sha, devSha], { cwd, allowExit: [0, 1] }).status === 0, source: `is-ancestor-dev-${name}` },
+      ancestor_of_main: { value: receipted(receipts, `is-ancestor-main-${name}`, "git", ["merge-base", "--is-ancestor", sha, mainSha], { cwd, allowExit: [0, 1] }).status === 0, source: `is-ancestor-main-${name}` },
+      unique_vs_dev: { value: count(`rev-list-dev-${name}`, [`${devSha}..${sha}`]), source: `rev-list-dev-${name}` },
+      unique_vs_main: { value: count(`rev-list-main-${name}`, [`${mainSha}..${sha}`]), source: `rev-list-main-${name}` },
+      behind_dev: { value: count(`rev-list-behind-dev-${name}`, [`${sha}..${devSha}`]), source: `rev-list-behind-dev-${name}` },
+      behind_main: { value: count(`rev-list-behind-main-${name}`, [`${sha}..${mainSha}`]), source: `rev-list-behind-main-${name}` },
+      // Neither difference alone answers "what would be lost": a commit on dev but not main is still
+      // elsewhere. This is the count deletion turns on.
+      unique_vs_dev_and_main: { value: count(`rev-list-neither-${name}`, [sha, "--not", devSha, mainSha]), source: `rev-list-neither-${name}` },
+      tags_containing: { value: receipted(receipts, `tags-containing-${name}`, "git", ["tag", "--contains", sha], { cwd }).text.split("\n").filter(Boolean).sort(), source: `tags-containing-${name}` },
+      tree_scan: { value: grep.text.split("\n").filter(Boolean).map((line) => line.split(":").slice(0, 2).join(":")), source: `git-grep-${name}` },
+      pr_history: { value: prs.map((pr) => ({ number: pr.number, state: pr.state, merged_at: pr.mergedAt, base: pr.baseRefName, head_sha: pr.headRefOid })), source: `pr-history-${name}` }
+    }];
   }));
+
+  const referenceSweep = auditable.map(({ name }) => ({ branch: name, ...apiSearch(receipts, `search-${name}`, `repo:${repository} "${name}"`) }));
 
   return {
     schema: OBSERVATION_SCHEMA,
@@ -126,29 +236,68 @@ export const collect = ({ repository, cwd = process.cwd(), branchNames = [] } = 
     heads,
     rest_heads: restHeads,
     open_prs: openPrs,
-    tags: [...tags.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    tags,
     protection,
     rulesets,
     settings,
     install_source: installSource,
+    derivations,
     reference_sweep: referenceSweep,
     receipts
   };
 };
 
-/** Stable bytes for the observation, so its digest can be bound into a record that cites it. */
-export const observationDigest = (observation) => {
-  const { digest: _ignored, ...rest } = observation;
-  return sha256Bytes(Buffer.from(JSON.stringify(rest, Object.keys(rest).sort()), "utf8"));
+/**
+ * What an observation has to look like before anything is decided on it.
+ *
+ * Shape only -- this cannot tell a collected transcript from a written one, and says so. What it
+ * does establish is that the record is internally consistent: the digest names its own content, the
+ * receipts exist and succeeded, every derivation cites a receipt that is actually present, and no
+ * reference sweep silently returned a truncated page.
+ */
+export const verifyObservation = (observation) => {
+  const findings = [];
+  if (!observation) return ["there is no observation"];
+  if (observation.schema !== OBSERVATION_SCHEMA) findings.push(`the observation is "${observation.schema}", not ${OBSERVATION_SCHEMA}`);
+  if (!Array.isArray(observation.receipts) || observation.receipts.length === 0) return [...findings, "the observation carries no command receipts, so nothing says where its facts came from"];
+
+  const sources = new Set();
+  for (const receipt of observation.receipts) {
+    if (typeof receipt.command !== "string" || receipt.command.length < 5) findings.push("a receipt does not say what was run");
+    if (!/^sha256:[0-9a-f]{64}$/u.test(receipt.digest ?? "")) findings.push(`${receipt.command}: no digest of what it returned`);
+    if (typeof receipt.exit_code !== "number") findings.push(`${receipt.command}: no exit code`);
+    sources.add(receipt.source);
+  }
+  for (const [branch, derivation] of Object.entries(observation.derivations ?? {})) {
+    for (const field of REQUIRED_DERIVATIONS) {
+      const one = derivation[field];
+      if (!one) {
+        findings.push(`${branch}: the observation derives no ${field}`);
+        continue;
+      }
+      if (!sources.has(one.source)) findings.push(`${branch}: ${field} cites receipt "${one.source}", which the observation does not carry`);
+    }
+  }
+  for (const sweep of observation.reference_sweep ?? []) {
+    if (sweep.complete !== true) findings.push(`${sweep.branch}: the reference sweep returned ${sweep.hits.length} of ${sweep.total_count} results, so "nothing refers to it" was not established`);
+  }
+  for (const branch of (observation.heads ?? []).map((head) => head.name)) {
+    if (branch === "main" || branch === "dev") continue;
+    if (!observation.derivations?.[branch]) findings.push(`${branch} is on the repository but the observation derives nothing about it`);
+  }
+  return findings;
 };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const repository = process.argv[2] ?? "MongLong0214/agent-operator-score";
   const out = process.argv[3];
-  const first = collect({ repository });
-  const named = first.heads.map((head) => head.name).filter((name) => name !== "main" && name !== "dev");
-  const observation = collect({ repository, branchNames: named });
+  const observation = collect({ repository });
   observation.digest = observationDigest(observation);
+  const findings = verifyObservation(observation);
+  if (findings.length > 0) {
+    console.error(`the observation does not hold its own shape:\n  ${findings.join("\n  ")}`);
+    process.exit(1);
+  }
   const text = `${JSON.stringify(observation, null, 2)}\n`;
   if (out) writeFileSync(out, text);
   else process.stdout.write(text);
