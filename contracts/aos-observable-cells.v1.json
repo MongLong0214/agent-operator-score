@@ -1,6 +1,6 @@
 {
   "schema": "aos-observable-cell.v1",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "declared_subcheck_count": 80,
   "cells": [
     {
@@ -767,11 +767,11 @@
     {
       "cell_id": "C2.RF.01",
       "construct_id": "C2",
-      "axis": "delegated_artifact",
+      "axis": "system_outcome",
       "title": "Routing fitness and minimality",
       "claim": "Each task is routed to a capability that matches it, without a redundant invocation.",
       "deferred_claim": null,
-      "observable": "plan.json tasks[].route -> a route per task, distinct routes for implementation and verification, and the distinctness of the declared route set",
+      "observable": "the route the operator declared for the form, read from the operator plan before anything runs -> one requirement per stage; the capability record AOS holds for each registered agent's adapter; the run's invocation ledger -> which agent AOS invoked for each stage, what it produced and what was carried into it -> whether every stage's owner holds the capabilities the requirement names, and whether the route taken is the cheapest one satisfying every constraint at once",
       "task_opportunity": {
         "form_ids": [
           "FAM-3"
@@ -786,19 +786,25 @@
           "turn_count"
         ]
       },
-      "authority": "agent-artifact+deterministic-grader",
+      "authority": "runtime-invocation-ledger",
       "rival_explanations": [
         {
-          "id": "tautological-subcheck",
-          "statement": "simplest-adequate-route is a predicate that cannot fail. lib/observe.mjs records this as a known defect and states why it was not replaced with a guess.",
+          "id": "capability-registry-is-coarse",
+          "statement": "AOS states one capability set per adapter it ships, so every agent registered under a known adapter holds every capability any stage requires. A capability shortfall is therefore reachable only from a narrower record than AOS itself produces.",
           "status": "OPEN",
-          "mitigation": "The defect is carried into the contract so the cell is not read as fully evidenced. One of the three opportunities in this cell is known to be uninformative."
+          "mitigation": "An agent registered under an adapter AOS does not ship is `unknown` and withholds the cell rather than passing it, so the coarseness never becomes credit for an agent AOS knows nothing about."
         },
         {
-          "id": "model-capability",
-          "statement": "A model that writes well produces this artifact from a weak operator instruction, so the observation is a property of the operator-agent pair rather than of the operator alone.",
+          "id": "route-breadth-as-value",
+          "statement": "A route with more stages is not a better route. Paying credit for breadth would make the number rise with spend.",
+          "status": "PARTIALLY_MITIGATED",
+          "mitigation": "PARTIAL, AND THE UNMITIGATED HALF IS NAMED. Two things are prohibited outright and hold on every path: agent count is not a cost term, and tool_count, autonomy_level and turn_count are prohibited value sources in this contract, so breadth can never be paid for directly. What is NOT controlled is the converse -- breadth is not priced against, either. The production requirement is built by `requirementsFromRoute` from the operator's own declared route, so the requirement's tasks ARE that route's stages: adding a stage adds a task, and the minimum rises by exactly what the actual route rises by. Measured through the binary at four breadths with one invocation per stage -- alpha>beta 3/3, alpha>beta>gamma 5/5, alpha>beta>gamma>delta 7/7, and alpha|beta>gamma 5/5 -- actual_cost equals minimum_cost every time, so `simplest-adequate-route` is true of every adequate route whatever its breadth and over_delegation_reference is structurally zero. The earlier text here claimed the handoff term made a needless stage cost more than the minimum; that is true only of `requirementsFromWork`, which builds a requirement from a work graph and is called by no production path. The one production path that can raise actual_cost above the minimum is a repeated invocation of the same task after a checkpoint, so an OVER_DELEGATED class on this path means a retry, not over-delegation -- stated here and in `delegationOracle` so #583 does not read it as the latter. What this cell does judge on the production path is unaffected: whether each stage's owner holds the capabilities the requirement names, whether the required artifact and handoff evidence exists, whether an invocation repeated a purpose and produced nothing, and whether the invocation budget held. The condition for closing this is the same one C2.RF.01's `reported-not-gating` rival names: an attested route.assign at plan approval, which makes the requirement independent of the route under measurement. Owner: issue 558."
+        },
+        {
+          "id": "reported-not-gating",
+          "statement": "This cell is optional for its construct, so its estimate is not averaged into the outcome axis and routing fitness moves no index. On this axis optional and unreported are the same condition: the system-outcome profile is built per domain, a domain admits only cells that are required and credit-bearing, and so an optional outcome cell reaches no profile row, no coverage count and no rendered surface in any state. A reader cannot tell it exists.",
           "status": "OPEN",
-          "mitigation": "The cell sits on the delegated_artifact axis and is excluded from the operator process index, which is computed from operator_process cells only."
+          "mitigation": "TEMPORARY, WITH A NAMED CONDITION, AND THE FIX IS THE SAME ACT. The rule this release rests on is that absence is never a default: an unknown model withholds, an unverified executable withholds, an unmeasured boundary withholds. A cell that is optional because it is hard to measure applies a different rule to one axis, which is index protection and is refused. C2.RF.01 is optional in this release only because the attested route.assign at plan approval does not yet exist, so requiring it would make every run NOT_OBSERVED and withhold every composite -- an instrument that only refuses is not a measurement system. It becomes required when that producer lands. Owner: issue 558, which stays open for it. Requiring it also ends the invisibility, and the contract will not let it be required without that: `outcomeDomains` refuses a contract whose required credit-bearing outcome cell no domain names, so the flip forces the cell into a domain, into the coverage count, and into the report's withheld-for column when it withholds. Measured. The flip touches four declarations that must agree: this cell's required_for_construct, the construct map's axis group lists, an outcome domain naming it, and the task model's form lists."
         }
       ],
       "minimum_opportunities": 3,
@@ -837,7 +843,7 @@
           "form_id": "FAM-3"
         }
       ],
-      "required_for_construct": true,
+      "required_for_construct": false,
       "credit_bearing": true,
       "population_status": "SUBCHECK_BACKED"
     },
@@ -848,7 +854,7 @@
       "title": "Planned invocation budget held",
       "claim": "The number of invocations the run actually spent stayed inside the bound the plan implies.",
       "deferred_claim": null,
-      "observable": "invocation ledger for the family -> count, compared against the declared task count plus a fixed allowance",
+      "observable": "invocation ledger for the form -> count, compared against the invocation bound the requirement built from the operator's declared route states, per stage and in total",
       "task_opportunity": {
         "form_ids": [
           "FAM-3"
@@ -863,19 +869,19 @@
           "turn_count"
         ]
       },
-      "authority": "runtime-invocation-ledger+agent-artifact",
+      "authority": "runtime-invocation-ledger",
       "rival_explanations": [
         {
           "id": "bound-set-by-the-graded-party",
-          "statement": "The bound is derived from the task count the agent itself declared, so declaring more tasks raises the agent's own ceiling.",
-          "status": "OPEN",
-          "mitigation": "None. The operator's planned budget exists in the operator plan but is not the bound compared against."
+          "statement": "The bound used to be derived from the task count the agent itself declared, so declaring more tasks raised the agent's own ceiling.",
+          "status": "CONTROLLED",
+          "mitigation": "Since #558 the bound comes from the work AOS seeds before the agent runs, not from the plan the agent writes afterwards. The operator's own planned budget still exists in the operator plan and is still not the bound compared against."
         },
         {
           "id": "count-not-cost",
           "statement": "Invocation count is not cost. Token spend and wall-clock cost are not observed here and must not be inferred from it.",
           "status": "OPEN",
-          "mitigation": "Cost belongs to the System Outcome profile and requires opportunity normalisation before any comparison."
+          "mitigation": "Cost belongs to the System Outcome profile and requires opportunity normalisation before any comparison. This used to add that the routing oracle's route cost 'is null until per-task attribution exists' -- per-task attribution landed with #558, so that cost is now a number on every judged run (three for a two-stage route, five for three) and the sentence read as a safeguard that had quietly stopped applying. What holds instead, and is checkable: it is a count of invocations plus the handoffs a split was carried across, not spend -- it has no token, wall-clock or money term in it -- and nothing consumes it as an outcome number. It reaches one place, `delegationOracle`'s reference for issue 583, which is a counterfactual beside the run and not an index; no cell estimate, no domain and no profile row reads it. Inferring cost from it remains prohibited, and this cell's own subcheck compares the invocation count against the bound the seeded requirement states, which is not the same quantity."
         }
       ],
       "minimum_opportunities": 1,
