@@ -185,6 +185,20 @@ test("this tool's own assessment workspaces are not the operator's sessions", ()
   assert.equal(isAosWorkspaceTranscript(`/h/.aos/runs/${run083}/workspaces/FAM-2/y.jsonl`), true);
   assert.equal(isAosWorkspaceTranscript("/h/.claude/projects/-Users-i-projects-myapp/x.jsonl"), false);
   assert.equal(isAosWorkspaceTranscript("/h/.codex/sessions/2026/08/28/rollout-x.jsonl"), false);
+
+  // #556 made the workspaces root configurable, and `AOS_WORKSPACES` accepts any absolute path
+  // while this recogniser knew only roots whose name ends in `-workspaces`. Under that supported
+  // knob AOS stopped recognising its own suite transcripts, and a family that is *designed* to end
+  // without verification came back to the operator as their own session -- the inversion this
+  // function exists to prevent, reached through a documented option.
+  const configured = { AOS_WORKSPACES: "/tmp/ws" };
+  assert.equal(isAosWorkspaceTranscript(`/tmp/ws/${run083}/FAM-1/.codex/sessions/x.jsonl`), false, "the default env is not supposed to know this root");
+  assert.equal(isAosWorkspaceTranscript(`/tmp/ws/${run083}/FAM-1/.codex/sessions/x.jsonl`, configured), true);
+  assert.equal(isAosWorkspaceTranscript(`/h/.claude/projects/-tmp-ws-${run083}-FAM-1/x.jsonl`, configured), true);
+  // A configured root is not a licence to skip everything under it: without a run id it is just a
+  // directory, and the operator's own sessions elsewhere are untouched.
+  assert.equal(isAosWorkspaceTranscript("/tmp/ws/notes/x.jsonl", configured), false);
+  assert.equal(isAosWorkspaceTranscript("/h/.codex/sessions/2026/08/28/rollout-x.jsonl", configured), false);
 });
 
 // #471

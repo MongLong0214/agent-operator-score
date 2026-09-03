@@ -412,7 +412,15 @@ test("stages_only_the_declared_runtime_config_files_into_the_agent_home", () => 
     // The identity that earns the staging: #556 round 4 binds the copy to the verified executable
     // rather than to the adapter label, so every call here supplies one and the refusal has a test
     // of its own below.
-    const identity = { identity_status: "VERIFIED", identity_digest: "sha256:aa", resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js", interpreter_chain: [] };
+    // A real package tree, because membership is now the name the package publishes rather than the
+    // shape of its path: a directory called `@openai/codex` is something anyone can create, and the
+    // review that found that had `/tmp/x/@openai/codex/evil.mjs` handed the operator's credential.
+    const runtimePackage = join(base, "node_modules", "@openai", "codex");
+    mkdirSync(join(runtimePackage, "bin"), { recursive: true });
+    writeFileSync(join(runtimePackage, "package.json"), JSON.stringify({ name: "@openai/codex", version: "0.0.0" }));
+    writeFileSync(join(runtimePackage, "bin", "codex.js"), "//\n");
+    const runtimeExecutable = join(runtimePackage, "bin", "codex.js");
+    const identity = { identity_status: "VERIFIED", identity_digest: "sha256:aa", resolved_realpath: runtimeExecutable, interpreter_chain: [] };
     const byDefault = stageRuntimeConfig(codex, { PATH: "/usr/bin" }, agentHome, operatorHome, identity);
     assert.equal(byDefault.source, "default_dir");
     assert.deepEqual(byDefault.staged, ["auth.json", "config.toml"]);
@@ -437,8 +445,11 @@ test("stages_only_the_declared_runtime_config_files_into_the_agent_home", () => 
     // a file -- gets no copy of the operator's credential and no configuration variable at all.
     for (const wrong of [
       null,
-      { identity_status: "UNTRUSTED", resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js" },
-      { identity_status: "VERIFIED", resolved_realpath: "/usr/local/bin/node", interpreter_chain: [] }
+      { identity_status: "UNTRUSTED", resolved_realpath: runtimeExecutable },
+      { identity_status: "VERIFIED", resolved_realpath: "/usr/local/bin/node", interpreter_chain: [] },
+      // Verified as a file, sitting in a directory named like the package, and not the package: no
+      // manifest publishes the name, so it is not this adapter's runtime.
+      { identity_status: "VERIFIED", resolved_realpath: join(base, "x", "@openai", "codex", "evil.mjs"), interpreter_chain: [] }
     ]) {
       const refused = stageRuntimeConfig(codex, { PATH: "/usr/bin" }, agentHome, operatorHome, wrong);
       assert.equal(refused.source, "refused", JSON.stringify(wrong));

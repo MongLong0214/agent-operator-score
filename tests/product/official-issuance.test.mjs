@@ -656,6 +656,141 @@ test("the_open_path_scan_answers_the_same_question_on_both_platforms", async () 
   }
 });
 
+test("a_credential_is_staged_for_the_package_that_publishes_the_runtime_not_for_a_path_that_looks_like_it", async () => {
+  // Round 5 bound staging to the executable #554 verified, and the rule was implemented as a test
+  // on the shape of that executable's path: `/(?:^|\/)@openai\/codex\//`. A directory is something
+  // anyone can create. `/tmp/x/@openai/codex/evil.mjs` is an operator-owned file with safe modes,
+  // so #554 calls it VERIFIED, the path matched, and the program was handed the operator's live
+  // `~/.codex/auth.json` -- and accepted by the gate as the one lane the release has proven.
+  //
+  // Membership is the name the package publishes now, read from the manifest through the same
+  // no-symlink rule staging uses.
+  const { runtimeIdentityMatches, RUNTIME_CONFIG_STAGING } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-adapter-identity-"));
+  try {
+    const codex = { id: "codex-cli.v1", config_env: "CODEX_HOME" };
+    const verified = (path) => ({ identity_status: "VERIFIED", resolved_realpath: path, interpreter_chain: [] });
+
+    // The reviewer's reproduction: a path that looks like the package and is not it.
+    const lookalike = join(base, "x", "@openai", "codex");
+    mkdirSync(lookalike, { recursive: true });
+    writeFileSync(join(lookalike, "evil.mjs"), "//\n");
+    const refused = runtimeIdentityMatches(verified(join(lookalike, "evil.mjs")), codex);
+    assert.equal(refused.ok, false, "a path shaped like the package was staged");
+    assert.match(refused.reason, /is not codex-cli\.v1/u);
+
+    // A real install: the manifest at the package root publishes the name, and the binary lives
+    // under it. Including the layout Codex actually ships, where the executable is inside a nested
+    // platform package and the ancestor that names itself `@openai/codex` is two levels up.
+    const pkg = join(base, "node_modules", "@openai", "codex");
+    mkdirSync(join(pkg, "node_modules", "@openai", "codex-darwin-arm64", "vendor"), { recursive: true });
+    writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@openai/codex", version: "1.0.0" }));
+    writeFileSync(join(pkg, "node_modules", "@openai", "codex-darwin-arm64", "package.json"), JSON.stringify({ name: "@openai/codex-darwin-arm64" }));
+    mkdirSync(join(pkg, "bin"), { recursive: true });
+    writeFileSync(join(pkg, "bin", "codex.js"), "//\n");
+    writeFileSync(join(pkg, "node_modules", "@openai", "codex-darwin-arm64", "vendor", "codex"), "//\n");
+    assert.equal(runtimeIdentityMatches(verified(join(pkg, "bin", "codex.js")), codex).ok, true, "a real install was refused");
+    assert.equal(runtimeIdentityMatches(verified(join(pkg, "node_modules", "@openai", "codex-darwin-arm64", "vendor", "codex")), codex).ok, true, "the shipped platform-package layout was refused");
+
+    // A manifest that publishes a different name does not lend its directory to this adapter.
+    const other = join(base, "other", "@openai", "codex");
+    mkdirSync(other, { recursive: true });
+    writeFileSync(join(other, "package.json"), JSON.stringify({ name: "@openai/codex-lookalike" }));
+    writeFileSync(join(other, "index.js"), "//\n");
+    assert.equal(runtimeIdentityMatches(verified(join(other, "index.js")), codex).ok, false, "a manifest with another name was accepted");
+
+    // An unverified identity is refused whatever it sits next to, and the spec no longer carries a
+    // path pattern for anything to test against.
+    assert.equal(runtimeIdentityMatches({ identity_status: "UNVERIFIED", resolved_realpath: join(pkg, "bin", "codex.js") }, codex).ok, false);
+    for (const spec of RUNTIME_CONFIG_STAGING.values()) {
+      assert.equal(Object.hasOwn(spec, "runtime_path"), false, "a path pattern is still the membership test");
+      assert.equal(typeof spec.runtime_package, "string");
+    }
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("a_process_is_this_runs_because_it_was_tracked_not_because_it_holds_a_path", async () => {
+  // An identification channel used as a termination trigger. The open-path scan says a process
+  // *might* be this run's; the sweep put what it found straight into `survivors`, and every caller
+  // SIGKILLs survivors. `aos agent run` defaults `--workspace` to the operator's current directory,
+  // so an unrelated `sleep` with its cwd there was reported as `descendant_pids: [76999]`, set
+  // `leaked_descendants: true`, and was killed -- an editor, a language server, another session.
+  //
+  // A handle is now corroboration. A pid the marker or the group also names is a survivor and is
+  // signalled; a pid only the handles name is a `path_holder`: recorded, blocking issuance, never
+  // signalled. And the scan no longer looks at the workspace the operator handed in at all.
+  const { survivorSweep, authenticityProblems } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-sweep-scope-"));
+  try {
+    const procRoot = join(base, "proc");
+    const agentHome = join(base, "agent-home");
+    mkdirSync(agentHome, { recursive: true });
+    // A fake /proc: 300 holds the agent HOME open and is otherwise unknown; 301 holds it too and is
+    // in the run's process group, which is what makes it ours.
+    for (const [pid, cwdPath] of [["300", agentHome], ["301", agentHome], ["302", base]]) {
+      mkdirSync(join(procRoot, pid, "fd"), { recursive: true });
+      symlinkSync(cwdPath, join(procRoot, pid, "cwd"));
+    }
+    const table = () => [
+      { pid: 300, ppid: 1, pgid: 300, start: "a" },
+      { pid: 301, ppid: 1, pgid: 900, start: "a" },
+      { pid: 900, ppid: 1, pgid: 900, start: "a" }
+    ];
+    const sweep = survivorSweep({
+      marker: "run-marker",
+      groupId: 900,
+      paths: [agentHome],
+      platform: "linux",
+      procRoot,
+      self: 200,
+      exclude: () => [],
+      table,
+      run: () => ({ error: null, stdout: "" })
+    });
+    // 301 is in the group, so the handles only confirm what the group already said.
+    assert.deepEqual(sweep.survivors, [301], "a process the group names is not a survivor");
+    // 300 is named by nothing but its handle. It is reported and it is not a survivor, so no caller
+    // can signal it: the kill loops iterate `survivors`.
+    assert.deepEqual(sweep.path_holders, [300], "a process named only by its handle is still a survivor");
+    assert.equal(sweep.survivors.includes(300), false, "an unidentified path holder would be killed");
+
+    // And it still withholds: unexplained is not clean. The record is otherwise the official one.
+    const held = measured({
+      descendants: {
+        ...measured().descendants,
+        survivor_sweep: { scanned: true, scanners: ["environment-marker", "process-group", "open-path"], marker_used: true, paths: 2, group_enumerated: 3, survivors: [], path_holders: [300] }
+      }
+    });
+    const problems = authenticityProblems(held);
+    assert.ok(problems.some((one) => /hold this run's directories open/u.test(one)), problems.join(" | "));
+    assert.equal(issuanceGate(held).official, false);
+    // With nothing holding them, the same record is official -- so the rule above is not simply
+    // refusing every run.
+    const clean = measured({
+      descendants: {
+        ...measured().descendants,
+        survivor_sweep: { scanned: true, scanners: ["environment-marker", "process-group", "open-path"], marker_used: true, paths: 2, group_enumerated: 3, survivors: [], path_holders: [] }
+      }
+    });
+    assert.equal(issuanceGate(clean).official, true, JSON.stringify(issuanceGate(clean).reasons));
+
+    // The operator's own directory is not scanned at all. Both sweeps are given the directories AOS
+    // created for this run; the workspace the operator handed in is not one of them.
+    const core = readFileSync(join(root, "lib", "core.mjs"), "utf8");
+    assert.match(core, /const sweepPaths = \[agentHome, internalDir\]/u, "the teardown sweep still scans the operator's workspace");
+    const confinement = readFileSync(join(root, "lib", "confinement.mjs"), "utf8");
+    // The canary does scan the workspace -- it plants its own orphan there -- and that is safe only
+    // because a handle names nothing: what it finds without corroboration is a `path_holder`, which
+    // no kill loop touches and no cell reads for emptiness.
+    assert.match(confinement, /const sweepPaths = \[workspace, agentHome, runScratch\];/u);
+    assert.match(confinement, /found\.path_holders\.includes\(orphanPid\)/u, "the canary asks the sweep for a pid it did not spawn");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test("a_cleanup_failure_is_redacted_on_every_surface_that_publishes_it", () => {
   // The confinement record is redacted; the run result carried the same failures as raw strings,
   // and that is the object `assess` stores and renders. Found by CI on linux, where the cleanup
@@ -1321,6 +1456,10 @@ test("a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_resul
     // the staged copy, reads it, and prints it. What reaches the public result is the redaction.
     const runtime = join(base, "runtime", "node_modules", "@openai", "codex", "bin", "codex.js");
     mkdirSync(join(base, "runtime", "node_modules", "@openai", "codex", "bin"), { recursive: true });
+    // The manifest is what makes this the runtime rather than a path that resembles it: membership
+    // is the name the package publishes, since a directory called `@openai/codex` is something
+    // anyone can create.
+    writeFileSync(join(base, "runtime", "node_modules", "@openai", "codex", "package.json"), JSON.stringify({ name: "@openai/codex", version: "0.0.0" }));
     // It prints the *values*, not the file: a bare `shortsecret` with no key beside it is a string
     // no shape rule can recognise, so what removes it is the exact-value scrubber built from what
     // staging copied -- which is the binding under test. Printing the JSON would have let the
@@ -1435,6 +1574,17 @@ test("a_network_policy_no_backend_implements_cannot_be_official", async () => {
   assert.equal(canonicalExpectation("network_outbound_connect", "restricted"), null);
 });
 
+// #556. The verified executable a staging fixture stands on. Membership is the name the package
+// publishes, so a fixture needs a real manifest rather than a path that looks like one: the review
+// that found the path test had `/tmp/x/@openai/codex/evil.mjs` handed the operator's credential.
+const codexRuntimeAt = (base) => {
+  const pkg = join(base, "node_modules", "@openai", "codex");
+  mkdirSync(join(pkg, "bin"), { recursive: true });
+  writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@openai/codex", version: "0.0.0" }));
+  writeFileSync(join(pkg, "bin", "codex.js"), "//\n");
+  return join(pkg, "bin", "codex.js");
+};
+
 test("a_symlinked_runtime_config_is_refused_rather_than_copied", async () => {
   // `statSync` follows the last component, so `~/.codex/config.toml -> /somewhere/else` was a
   // regular file by that test and its bytes were copied into the agent's private HOME. What comes
@@ -1453,7 +1603,7 @@ test("a_symlinked_runtime_config_is_refused_rather_than_copied", async () => {
     writeFileSync(outside, "PRIVATE HOST DATA WITH SPACES\n");
     writeFileSync(join(operator, ".codex", "auth.json"), JSON.stringify({ tokens: { refresh_token: "aaaaaaaaaaaaaaaa" } }));
     symlinkSync(outside, join(operator, ".codex", "config.toml"));
-    const identity = { identity_status: "VERIFIED", identity_digest: `sha256:${"5".repeat(64)}`, resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js", interpreter_chain: [] };
+    const identity = { identity_status: "VERIFIED", identity_digest: `sha256:${"5".repeat(64)}`, resolved_realpath: codexRuntimeAt(base), interpreter_chain: [] };
 
     const staged = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], {}, agentHome, operator, identity);
     assert.deepEqual(staged.staged, ["auth.json"], "a symlinked source was copied into the agent's HOME");
@@ -1524,7 +1674,7 @@ test("a_staged_credential_never_reaches_a_public_surface", async () => {
     const staged = stageRuntimeConfig(ADAPTERS["codex-cli.v1"], {}, agentHome, operator, {
       identity_status: "VERIFIED",
       identity_digest: `sha256:${"2".repeat(64)}`,
-      resolved_realpath: "/opt/node_modules/@openai/codex/bin/codex.js",
+      resolved_realpath: codexRuntimeAt(agentHome),
       interpreter_chain: []
     });
     assert.deepEqual(staged.staged, ["auth.json", "config.toml"]);

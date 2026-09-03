@@ -2236,6 +2236,24 @@ export const GUARDS = [
     name: "blocks_official_when_boundary_canary_fails"
   },
   {
+    guard: "an open handle is corroboration, not a warrant",
+    reason: "every caller SIGKILLs what the sweep returns as a survivor, so promoting an open-path hit to a survivor killed an unrelated `sleep` whose cwd was the operator's project directory and reported it as this run's descendant",
+    file: "lib/confinement.mjs",
+    from: "        if (found.has(pid)) continue;\n        holders.add(pid);",
+    to: "        found.add(pid);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_process_is_this_runs_because_it_was_tracked_not_because_it_holds_a_path"
+  },
+  {
+    guard: "an unexplained holder of the run's directories withholds",
+    reason: "not killing what nothing identifies is only half of it; a process holding the agent HOME open at teardown that no marker and no group explains is an unexplained process around this run's private state, and an official run has none",
+    file: "lib/confinement.mjs",
+    from: "    } else if (Array.isArray(survivorScan.path_holders) && survivorScan.path_holders.length > 0) {",
+    to: "    } else if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_process_is_this_runs_because_it_was_tracked_not_because_it_holds_a_path"
+  },
+  {
     guard: "a leaked descendant blocks issuance",
     reason: "a process the agent left behind is the process axis not holding, whether or not the teardown later caught it; a gate that only looked for survivors would issue over the leak Phase 0 measured",
     file: "lib/confinement.mjs",
@@ -2320,8 +2338,8 @@ export const GUARDS = [
     guard: "only the declared runtime files are staged",
     reason: "the staged copy exists so the operator's config directory is never in the profile; staging the whole directory would carry session logs and history into the agent's reach and back out in its evidence",
     file: "lib/confinement.mjs",
-    from: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\"]), runtime_path: /(?:^|\\/)@openai\\/codex\\//u })],",
-    to: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\", \"history.jsonl\"]), runtime_path: /(?:^|\\/)@openai\\/codex\\//u })],",
+    from: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\"]), runtime_package: \"@openai/codex\" })],",
+    to: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\", \"history.jsonl\"]), runtime_package: \"@openai/codex\" })],",
     test: "tests/product/confinement.test.mjs",
     name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
   },
@@ -2614,6 +2632,24 @@ export const GUARDS = [
     name: "what cleanup could not remove is reported by class and digest, never by path"
   },
   {
+    guard: "the transcript recogniser knows the configured workspaces root",
+    reason: "`AOS_WORKSPACES` accepts any absolute path while the recogniser knew only roots named `*-workspaces`, so under a documented option AOS reported its own suite transcripts back to the operator as their sessions",
+    file: "lib/session.mjs",
+    from: "export const isAosWorkspaceTranscript = (path, env = process.env) => AOS_WORKSPACE.test(path) || underConfiguredRoot(path, configuredWorkspaceRoot(env));",
+    to: "export const isAosWorkspaceTranscript = (path) => AOS_WORKSPACE.test(path);",
+    test: "tests/product/operator-reported.test.mjs",
+    name: "this tool's own assessment workspaces are not the operator's sessions"
+  },
+  {
+    guard: "adapter membership is a published name, not a path shape",
+    reason: "a directory is something anyone can create: `/tmp/x/@openai/codex/evil.mjs` passed #554 as an operator-owned file, matched the path pattern, and was handed the operator's live auth.json -- SSOT S9's rule with `name` replaced by `path`",
+    file: "lib/confinement.mjs",
+    from: "  const declaring = [real, ...chain].map((path) => declaringPackage(path, spec.runtime_package)).find((one) => one !== null) ?? null;",
+    to: "  const declaring = [real, ...chain].some((path) => path.includes(`/${spec.runtime_package}/`)) ? \"/\" : null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_credential_is_staged_for_the_package_that_publishes_the_runtime_not_for_a_path_that_looks_like_it"
+  },
+  {
     guard: "a credential is staged for the runtime, not for the label",
     reason: "the adapter id is a string a registration chooses; without binding staging to the verified executable, `aos agent add evil --command node --adapter codex-cli.v1` was handed the operator's Codex token",
     file: "lib/confinement.mjs",
@@ -2624,9 +2660,9 @@ export const GUARDS = [
   },
   {
     guard: "the verified executable must be the adapter's runtime",
-    reason: "a VERIFIED identity for /usr/bin/node is a true statement about node and says nothing about Codex; without the path check any verified file could claim any adapter",
+    reason: "a VERIFIED identity for /usr/bin/node is a true statement about node and says nothing about Codex; without the membership check any verified file could claim any adapter",
     file: "lib/confinement.mjs",
-    from: '  if (![real, ...chain].some((path) => spec.runtime_path.test(path))) {',
+    from: "  if (declaring === null) {",
     to: "  if (false) {",
     test: "tests/product/confinement.test.mjs",
     name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
@@ -4264,6 +4300,7 @@ export const ACCOUNTED_GUARDS = [
   "a workspace that resolves into the store is refused",
   "a write after settlement is visible",
   "abstention cannot outweigh decision",
+  "adapter membership is a published name, not a path shape",
   "advice is answered once",
   "agent-relay event needs its attestation",
   "allowlist-only child environment",
@@ -4277,10 +4314,12 @@ export const ACCOUNTED_GUARDS = [
   "an issue owns a surface",
   "an issued legacy number needs a declared STRICT level",
   "an observation's markers are read, not only its exit code",
+  "an open handle is corroboration, not a warrant",
   "an operator decision binds only to an operator_process cell",
   "an operator event is assembled from named fields",
   "an operator event states its challenge and its value",
   "an unanswered checkpoint mints nothing",
+  "an unexplained holder of the run's directories withholds",
   "an unidentified runtime cannot carry the lane",
   "an unknown isolation lane is refused, not defaulted",
   "an unmeasured network axis is not NOT_OBSERVED",
@@ -4551,6 +4590,7 @@ export const ACCOUNTED_GUARDS = [
   "the stored record is bound, not only the event on it",
   "the table shows the decision and not the label",
   "the teardown observation reports what cleanup returned",
+  "the transcript recogniser knows the configured workspaces root",
   "the verified executable must be the adapter's runtime",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",

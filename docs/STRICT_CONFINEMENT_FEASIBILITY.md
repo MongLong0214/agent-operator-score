@@ -357,7 +357,20 @@ unsheddable -- no cgroup, no jail this tool can enter, and `ps` exposes no sessi
 process -- so this is stated as a limitation of the lane rather than enforced away, and it is one of
 the reasons the lane is `SUPPORTED_WITH_CONSTRAINTS`.
 
-That sweep is what closes the double-fork-plus-`setsid` case. It looks for this run's marker
+That sweep is what closes the double-fork-plus-`setsid` case -- and what it may *do* with what it
+finds is now separated from what it finds. The open-path scan identifies candidates, not
+descendants: a process is this run's because it was tracked from the spawn, carries the run's
+marker, or is in the run's group. A pid named only by an open handle is recorded as a
+`path_holder`, blocks issuance, and is never signalled. The version that put it straight into
+`survivors` killed an unrelated `sleep` whose working directory was the operator's project -- `aos
+agent run` defaults `--workspace` to the operator's current directory -- and reported it as this
+run's leaked descendant. For the same reason neither sweep looks at the operator-supplied workspace
+at all any more: they scan the agent HOME and the run scratch, which AOS created for this run.
+
+The claim is weaker than it was and it is the claim that is true: a descendant that clears its
+environment *and* leaves its group *and* closes every inherited handle is not caught; one that keeps
+a handle is *reported and blocks the run*, but is not killed unless something else identifies it as
+ours. Termination follows identity, and an open file is not identity. It looks for this run's marker
 (`AOS_SESSION_ID=<session>`, unique to the run) in every process environment, and for the run's own
 workspace, agent HOME and scratch among every process's open files and working directories: both
 handles survive a reparent and a regroup, which is exactly what the process table does not. It runs
@@ -583,6 +596,19 @@ descendant is dead after teardown; the installed Codex runtime, run through the 
 0, answers `OK`, and its record is `official: true` with an empty reason list. On a machine
 without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
 reason and does not pass on nothing.
+
+Adapter membership is the name a package publishes, not the shape of a path. The rule that binds
+staging to the executable #554 verified was first written as a test on that executable's realpath
+(`/(?:^|\/)@openai\/codex\//`), and a directory is something anyone can create:
+`/tmp/x/@openai/codex/evil.mjs` is an operator-owned file with safe modes, so #554 called it
+VERIFIED and it was handed the operator's live `auth.json` -- and accepted by the gate as the one
+lane the release has proven. `declaringPackage` walks up from the verified executable, reads each
+`package.json` through the same no-symlink rule staging uses, and requires one of them to publish
+the adapter's package name; the shipped Codex layout, where the binary sits inside a nested platform
+package, resolves at the ancestor that names itself `@openai/codex`. The residual is stated rather
+than implied: an operator who plants a complete package tree naming itself `@openai/codex` is still
+staged, because nothing offline distinguishes that from an install -- the closure is an
+operator-pinned identity digest on the agent registration, which is #554's surface.
 
 A staged file must be the file it claims to be: `lstat`, not `stat`, so a `config.toml` that is a
 link to anywhere on the host is refused by name rather than copied into the agent's private HOME.
