@@ -641,6 +641,28 @@ test("a store this product cannot read is said, not presented as a machine with 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("the platform a caller describes never decides how this machine's filesystem is read", () => {
+  const root = scratch();
+  const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
+  const operatorHome = operatorHomeWith(root, { codexConfig: true });
+  const home = homeWith(root);
+  const asked = [];
+  // Describing darwin from wherever this runs. The lane, the backend and the profile are darwin's;
+  // the executable identity is this machine's, because that is the only machine whose ACLs, owners
+  // and modes exist. A described platform handed to #554 skips the ACL walk on a host that has
+  // ACLs, and an executable anybody could replace comes back VERIFIED.
+  discover({
+    ...baseOptions(root, { home, pathDirs: [pathDir], operatorHome, platform: "darwin" }),
+    identify: (command, options) => {
+      asked.push(options.platform);
+      return describeExecutable(command, options);
+    }
+  });
+  assert.ok(asked.length > 0);
+  for (const platform of asked) assert.equal(platform, process.platform);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("the runtime is invoked with nothing but --version, so discovery spends no provider quota", () => {
   const root = scratch();
   const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
