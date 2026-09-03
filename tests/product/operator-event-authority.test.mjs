@@ -201,9 +201,13 @@ test("an operator event with no state revision is refused rather than defaulted 
     run_id: RUN, source: "interactive-tty", decision_type: "spec.goal",
     construct_cell_id: "C1.OF.01", opportunity_id: "opp-rev", challenge: { asked: "x" }, value: { goal: "y" }
   };
-  assert.throws(() => mint({ ...base, state_revision: undefined }), /state_revision/u);
-  assert.throws(() => mint({ ...base, state_revision: 0 }), /state_revision/u);
-  assert.throws(() => mint({ ...base, state_revision: 1.5 }), /state_revision/u);
-  assert.throws(() => mint({ ...base, state_revision: "1" }), /state_revision/u);
+  // Refused by this module, in its own words. Matching "state_revision" alone would also match the
+  // schema's own "missing required property", so the check would pass with the module's rule deleted
+  // -- which is a guard that reports the schema and calls it this rule.
+  const refusal = /is which revision of its opportunity this decision is/u;
+  assert.throws(() => mint({ ...base, state_revision: undefined }), refusal);
+  assert.throws(() => mint({ ...base, state_revision: 0 }), refusal);
+  assert.throws(() => mint({ ...base, state_revision: 1.5 }), refusal);
+  assert.throws(() => mint({ ...base, state_revision: "1" }), refusal);
   assert.equal(mint({ ...base, state_revision: 1 }).state_revision, 1);
 });

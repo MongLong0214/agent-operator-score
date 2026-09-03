@@ -3217,7 +3217,7 @@ export const GUARDS = [
     from: "      journal.record(opportunity, \"initial-committed\", event);",
     to: "      journal.record(opportunity, \"initial-committed\", null);",
     test: "tests/product/initial-before-advice.test.mjs",
-    name: "a reconstructed trace hands #583 the evidence the first one committed, not an empty list"
+    name: "a reconstructed trace hands the reliance consumer the evidence the first one committed, not an empty list"
   },
   {
     guard: "a process with no key for a run says so",
@@ -3241,8 +3241,8 @@ export const GUARDS = [
     guard: "what runs after a reroute belongs to the decision that caused it",
     reason: "an invocation nobody can attribute decides nothing in D3, so leaving them all unattributed left the comparison permanently undecided",
     file: "lib/cli.mjs",
-    from: "        routeOpportunity = decision.opportunity_id ?? null;\n      }\n      if (decision.choice === \"instruct\") instruction = decision.instruction;",
-    to: "        routeOpportunity = null;\n      }\n      if (decision.choice === \"instruct\") instruction = decision.instruction;",
+    from: "  return { ...decision, opportunity_id: opportunity };",
+    to: "  return { ...decision, opportunity_id: null };",
     test: "tests/product/operator-channel-authority.test.mjs",
     name: "an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it"
   },

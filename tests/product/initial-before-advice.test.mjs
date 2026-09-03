@@ -141,7 +141,7 @@ test("a reliance trace with no journal is refused, because a reveal nobody recor
   assert.throws(() => createRelianceTrace({ run_id: RUN, secret: SECRET, journal: {} }), /journal/u);
 });
 
-test("a reconstructed trace hands #583 the evidence the first one committed, not an empty list", () => {
+test("a reconstructed trace hands the reliance consumer the evidence the first one committed, not an empty list", () => {
   // Round 2: the journal recorded stage names and the events stayed in an in-memory map, so
   // `opportunities()` on a rebuilt trace returned []. #583 reads a run that has already happened, so
   // the rebuilt trace is the normal case and the one that carried nothing.
