@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "an owner AOS cannot judge is not delegation the operator got wrong",
+    reason: "the reference #583 consumes must not turn AOS not knowing what an agent can do into a judgement that the operator under-delegated; the same distinction is made in the minimality verdict and fixing it on one side only is how the class survives",
+    file: "lib/routing-oracle.mjs",
+    from: "  const expected = !solved || actual === null || undecided",
+    to: "  const expected = !solved || actual === null",
+    test: "tests/product/minimal-route-oracle.test.mjs",
+    name: "an owner AOS cannot judge is not delegation the operator got wrong"
+  },
+  {
     guard: "a subcheck verdict is one of three states, never rounded",
     reason: "coercing an unrecognised answer to false is how a verifier's withheld state becomes the operator getting it wrong, which is the defect this release spent forty rounds on in other shapes",
     file: "lib/metrics.mjs",
@@ -3607,6 +3616,7 @@ export const ACCOUNTED_GUARDS = [
   "an operator event is assembled from named fields",
   "an operator event states its challenge and its value",
   "an overlap in the ledger is a collision whatever the schedule said",
+  "an owner AOS cannot judge is not delegation the operator got wrong",
   "an unanswered checkpoint mints nothing",
   "an unknown capability source keeps no abilities",
   "artifact top-level mode",
