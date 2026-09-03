@@ -2657,6 +2657,15 @@ export const GUARDS = [
     name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
   },
   {
+    guard: "a family that never settled is a missing answer",
+    reason: "reading the settlement object's own keys made an empty one clean -- no family recorded, no complaint raised, gate open -- so a family whose freeze never ran opened the gate it should have closed",
+    file: "lib/confinement.mjs",
+    from: "  const expected = Array.isArray(expectedFamilies) ? expectedFamilies.map(String) : seen;",
+    to: "  const expected = seen;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_settlement_nobody_could_check_withholds_like_one_that_moved"
+  },
+  {
     guard: "a settlement nobody could check is not a clean one",
     reason: "the comparison answers true, false or 'could not ask', and blocking on exactly true read a digest that raised as a workspace that had not moved -- absent evidence opening the gate, inside the isolation verdict itself",
     file: "lib/confinement.mjs",
@@ -3696,6 +3705,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential-shaped name is refused at the carry as well",
   "a cycle of profiles withholds its aggregate by name",
   "a facet is not normalised into a digest",
+  "a family that never settled is a missing answer",
   "a filesystem location is one however it is spelled",
   "a forged structural set is revalidated like the rest",
   "a leaked descendant blocks issuance",

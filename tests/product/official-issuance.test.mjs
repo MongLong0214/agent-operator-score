@@ -472,8 +472,17 @@ test("a_settlement_nobody_could_check_withholds_like_one_that_moved", async () =
     assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: true } }), { written: ["FAM-1"], unverified: [] });
     assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: null } }), { written: [], unverified: ["FAM-1"] });
     assert.deepEqual(settlementProblems({ "FAM-1": {} }), { written: [], unverified: ["FAM-1"] });
-    assert.deepEqual(settlementProblems({}), { written: [], unverified: [] });
+    // A settlement that carries nothing is not a settlement that found nothing wrong. Reading the
+    // object's own keys made an empty one clean -- no family recorded, no complaint raised, gate
+    // open -- so the families the run was supposed to settle are handed in, and a family whose
+    // freeze never ran is a missing answer.
+    assert.deepEqual(settlementProblems({}, ["FAM-1", "FAM-2"]), { written: [], unverified: ["FAM-1", "FAM-2"] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: false } }, ["FAM-1", "FAM-2"]), { written: [], unverified: ["FAM-2"] });
+    assert.deepEqual(settlementProblems({}), { written: [], unverified: ["*"] });
+    assert.deepEqual(settlementProblems([]), { written: [], unverified: ["*"] });
     assert.deepEqual(settlementProblems(null), { written: [], unverified: ["*"] });
+    // A key the caller did not expect is still read, so an extra family cannot hide a write.
+    assert.deepEqual(settlementProblems({ "FAM-9": { changed_after_settlement: true } }, ["FAM-1"]), { written: ["FAM-9"], unverified: ["FAM-1"] });
     assert.deepEqual(
       settlementProblems({ "FAM-2": { changed_after_settlement: null }, "FAM-1": { changed_after_settlement: true } }),
       { written: ["FAM-1"], unverified: ["FAM-2"] }
@@ -486,9 +495,29 @@ test("a_settlement_nobody_could_check_withholds_like_one_that_moved", async () =
     // The CLI reads both, at the site the review reproduced: the gate is fed the problems, not the
     // `=== true` test that let the unreadable case through.
     const cli = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
-    assert.match(cli, /const settlementState = settlementProblems\(settlement\);/u, "the CLI does not ask what the settlement says");
+    assert.match(cli, /const settlementState = settlementProblems\(settlement, FAMILIES\);/u, "the CLI does not ask what the settlement says about every family");
     assert.equal(/changedAfterSettlement === true/u.test(cli), false, "the CLI still blocks on exactly true");
     assert.match(cli, /ISSUANCE_REASONS\.SETTLEMENT_UNVERIFIED/u, "an unverifiable settlement has no reason on the gate");
+
+    // And what issuance makes of it, rather than only what the helper returns: a run whose families
+    // were never settled cannot be official, and says which condition stopped it.
+    const { issuanceGateForRun } = await import("../../lib/confinement.mjs");
+    const gated = issuanceGateForRun([measured()]);
+    assert.equal(gated.official, true, "the fixture record is not the official one this case needs");
+    for (const [label, state] of [
+      ["nothing settled", settlementProblems({}, ["FAM-1"])],
+      ["a family missing", settlementProblems({ "FAM-1": { changed_after_settlement: false } }, ["FAM-1", "FAM-2"])],
+      ["a family that moved", settlementProblems({ "FAM-1": { changed_after_settlement: true } }, ["FAM-1"])]
+    ]) {
+      const reasons = [
+        ...(state.written.length > 0 ? [ISSUANCE_REASONS.WORKSPACE_WRITTEN_AFTER_SETTLEMENT] : []),
+        ...(state.unverified.length > 0 ? [ISSUANCE_REASONS.SETTLEMENT_UNVERIFIED] : [])
+      ];
+      assert.ok(reasons.length > 0, `${label}: the gate was given nothing to withhold on`);
+      const withheld = { ...gated, official: false, reasons: [...new Set([...gated.reasons, ...reasons])] };
+      assert.equal(withheld.official, false, label);
+      assert.ok(withheld.reasons.some((one) => one.startsWith("AOS_ISOLATION_")), label);
+    }
   } finally {
     rmSync(base, { recursive: true, force: true });
   }

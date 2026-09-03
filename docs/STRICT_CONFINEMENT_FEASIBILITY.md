@@ -383,8 +383,12 @@ measurement. `freezeWorkspace` copies each family's workspace at the moment exec
 settled, grading and every artifact read run against that copy, and the live tree is digested again
 afterwards: a difference is `AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT` and the run is not
 official. A comparison that could not answer at all -- a digest that raised, a family whose freeze
-recorded none -- is `AOS_ISOLATION_SETTLEMENT_UNVERIFIED` and is equally not official: "we could not
-check" and "we checked and it was fine" are different runs, and only one of them may carry a claim. The copy holds regular files and directories and nothing else. A symlink is refused by
+recorded none, a family that never settled and so left no entry -- is
+`AOS_ISOLATION_SETTLEMENT_UNVERIFIED` and is equally not official: "we could not check" and "we
+checked and it was fine" are different runs, and only one of them may carry a claim. The check is
+made against the families the run was supposed to settle rather than against the keys the record
+happens to carry, because an empty settlement raises no complaint and that is not the same as
+having nothing to complain about. The copy holds regular files and directories and nothing else. A symlink is refused by
 name, because a link's own bytes are in the tree digest and its target's are not: reproduced in the
 copy, it would have let a survivor point `response.json` outside the workspace, rewrite that file
 after settlement, and be graded on the new bytes with `changed_after_settlement: false` beside them.
