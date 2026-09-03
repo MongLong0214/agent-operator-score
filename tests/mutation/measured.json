@@ -1515,7 +1515,7 @@
     },
     "support is read from the lane table, not restated": {
       "platform": "darwin",
-      "fingerprint": "sha256:190682fba40fd5f15aefe0bc9cc206dad8872b3c2ae6b8594cf8eafc13bf675f"
+      "fingerprint": "sha256:ae41e9cd48294d7580d1c09617bf75759811ca24c534a029013eb569aa687a2d"
     },
     "symlink chain audit": {
       "platform": "darwin",
@@ -1647,7 +1647,7 @@
     },
     "the cohort key describes the policy that was applied": {
       "platform": "darwin",
-      "fingerprint": "sha256:d477075cfe257d07c4645e6853c2cd87500d21954341a385e88cd0aa4c33b725"
+      "fingerprint": "sha256:c3646ebfc318263a0070a12fb1e37f95f72623b4e0b27b876a6ad8fbcfa7d6d8"
     },
     "the cohort key is the operator's binding, never the child's transcript": {
       "platform": "darwin",
@@ -1743,7 +1743,7 @@
     },
     "the lane is bound into the cohort": {
       "platform": "darwin",
-      "fingerprint": "sha256:1ca3bdc0984bb2265939ef5395e5390f765789dd0c069b1ca343628a4c99ec63"
+      "fingerprint": "sha256:fd59a6e76deebf512a3a3f358d0fdd535b74ae98e343fe991f7d9ef588be10cc"
     },
     "the lane's identity comes from the runtime that authenticated": {
       "platform": "darwin",
@@ -1799,19 +1799,23 @@
     },
     "the profile digest binds the boundary and the runtime configuration": {
       "platform": "darwin",
-      "fingerprint": "sha256:25e707035e82dbb3ae7d06a99b5ef4a9adc4eb79d119c7a51e0af5db4314631a"
+      "fingerprint": "sha256:0d63b57d3c42999b4d6aa4aa9d4e423a34028ef03ab0baaa2a324309f03c135a"
     },
     "the profile digest covers the executable identity": {
       "platform": "darwin",
-      "fingerprint": "sha256:aa23eabf8a1ca2cacdf3a21b4832492ce012060e37b58d179f2401da22bcd482"
+      "fingerprint": "sha256:47d599263950e2956874cf851583c4bb4f0f7eb0adff1b163b3b204f10124de1"
+    },
+    "the profile digest covers the isolation policy": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c252d9602c5de5c7287ada7ba2da36bb68e00f198d3ed798f7ac5b5749fabf70"
     },
     "the profile digest covers the mutable alias state": {
       "platform": "darwin",
-      "fingerprint": "sha256:672dfe8f08e68c6846eec5dfbc6c85d65fd96b915e407b10adc466afc801e91a"
+      "fingerprint": "sha256:c7787b37a3e8cff054baad93030b8863936eacf6705a302bee20fa02f0b4cd26"
     },
     "the profile digest covers the provenance record": {
       "platform": "darwin",
-      "fingerprint": "sha256:1fb3e0be48080e1c37ba695c7716d3ac4bf13e5d7044c540df5199c80c73ecd2"
+      "fingerprint": "sha256:8b82671e1af2a2e62ae8c2bd5a7d476fa1226644407ab8309cd304e6a85bb1f2"
     },
     "the profile is rendered from the policy that is digested": {
       "platform": "darwin",
