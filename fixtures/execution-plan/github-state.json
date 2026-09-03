@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-03T03:03:16.257Z",
+  "captured_at": "2026-09-03T08:53:27.293Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -168,18 +168,97 @@
     {
       "number": 556,
       "title": "[P0][security] actual runtime/platform official lane의 STRICT workspace confinement를 증명한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 556,
+        "final_sha": "a00d0b588de0b37b5cb15d87c4782e2404d0baec",
+        "pr": 609,
+        "ci_run_ids": [
+          33729398955
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "isolation_backend": "macos-seatbelt",
+          "boundary_canary": "committed observation sha256:227e00818e75fcfd7c6c84272dd18ea57e70197f9d42a41122dc77f1be450914, canary program sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807, darwin STRICT policy sha256:640abcfb0c5bcce628b70a814bc258bfa87c15730a6781eb9f12162e5880dff5; 8/8 deny cells EPERM with planted_intact true, re-judged at this head by denialProved",
+          "platform_lane": "darwin/macos-seatbelt/codex-cli.v1 official; linux NOT_OBSERVED (unmeasured, not unprovable)",
+          "mutation": "CI mutation job green on the merge head a00d0b58; 540/540 unqualified on darwin at a00d0b58; CI mutation job green on the same head"
+        },
+        "known_residue": [
+          {
+            "id": "codex-lane-not-executed-at-this-head",
+            "source": "provider quota",
+            "detail": "The codex-cli.v1 lane was not executed at 345b052f — the provider refused with a usage limit that resets Sep 8. Its committed evidence is digest-verified and re-judged official by this build's code; the citation-judging functions are byte-identical to base (git diff on unmetMarkers/everyCitedRan/missingEvidence/logged_in/answered_expected_word/exit_status returns empty), and the one judgement this round changed (canary deny cells, via denialProved) was applied to those preserved bytes at this head. Live re-run and fixture re-record owed after Sep 8.",
+            "severity": "limitation"
+          },
+          {
+            "id": "linux-lanes-unmeasured",
+            "source": "no linux host",
+            "detail": "All linux STRICT rows are NOT_OBSERVED — unmeasured, not unprovable. Under mount-namespace the denial is the absence, ENOENT is the correct result, and planted_intact checked outside the namespace separates it from a missing plant. Owner: Phase 0 item 3, a linux host with bwrap.",
+            "severity": "limitation"
+          },
+          {
+            "id": "review-model-note",
+            "source": "process",
+            "detail": "External review models (gpt-5.6-sol, gpt-5.6-terra, grok) were out of quota at this head. Rounds 1 and 2 of the grok merge-gate review ran against earlier heads (345b052f's predecessors) and their findings are closed or recorded above; the merge-gate review of this exact head was performed by a Claude reviewer.",
+            "severity": "note"
+          },
+          {
+            "id": "descendant-residual-bound-narrowed",
+            "source": "round-1 inventory O-11/G-09",
+            "detail": "The descendant residual was originally accepted on the claim that the settlement freeze stops a survivor reaching what grading reads. That claim was false and is now rewritten to what the code does: the copy is certified against the source, a write made and reverted during the copy changes the copy's digest and withholds, and a tree the digest cannot cover (entries over 1 MiB, trees over 16 MiB) is withheld rather than scored. Narrower than the original bound, and true.",
+            "severity": "limitation"
+          },
+          {
+            "id": "R-01-frozen-copy-undeletable",
+            "source": "round-2 closure",
+            "detail": "Mode preservation makes a frozen copy undeletable with EACCES when the workspace holds a directory without owner-write. Not reachable inside a run — nothing in lib/ removes <run>/settled — so it is an operator `rm -rf` annoyance, not correctness, security or data loss. Non-blocking regression introduced by the O-11 fix.",
+            "severity": "defect"
+          },
+          {
+            "id": "settlement-consistent-is-a-stored-boolean",
+            "source": "round-2, recorded not opened",
+            "detail": "record.settlement[*].consistent is a stored derived boolean; a flip contradicted by its own sibling digests still passes. The round-1 inventory names that field as raw evidence, so the stronger form was dismissed there rather than opened in round 2.",
+            "severity": "defect"
+          },
+          {
+            "id": "two-round-claim-does-not-hold",
+            "source": "protocol",
+            "detail": "Round-1 enumeration was INCOMPLETE: fixtures/confinement/probes/strict-lane.mjs NOT_READ and seven large artifacts read in part. Round 2 therefore establishes that the four blockers are closed and that the remediation introduced nothing blocking — not that the round-1 surface was bounded. Closing it is small: read that 348-line probe in full and reconcile the feasibility doc.",
+            "severity": "note"
+          },
+          {
+            "id": "mutation-job-is-ubuntu-only",
+            "source": "round-1 G-08",
+            "detail": "tests/mutation/measured.json authorises platform-deferred guards with a fingerprint whose inputs are all public repo content, and the mutation CI job runs only on ubuntu, so for five darwin-deferred guards that ledger is the sole gate. The ledger note now states it proves freshness, not measurement, and the meta-test recomputes rather than shape-checks. The real closure is a darwin mutation lane in .github/workflows/, which is outside this PR's permitted paths and belongs to the CI owner.",
+            "severity": "defect"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#556",
         "#574",
@@ -202,7 +281,7 @@
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -948,7 +1027,7 @@
         "area:ux",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",

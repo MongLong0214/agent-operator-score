@@ -829,6 +829,15 @@
         "at": "2026-09-03T08:43:02.467Z"
       }
     },
+    "a declared schedule never certifies collision safety": {
+      "platform": "darwin",
+      "fingerprint": "sha256:fd2e853ca951d24b11a3b80e674bb4ee1ba084c5b7783c6a4957f8a1cb92cb12",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
+      }
+    },
     "a deletion names the commit the audit judged": {
       "platform": "darwin",
       "fingerprint": "sha256:e9a66362d7d4bb69854a7e8412b1b44ef56023bacb6c9a539d9bae8cdb28308a",
@@ -962,6 +971,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.439Z"
+      }
+    },
+    "a handoff is recorded only where something was handed": {
+      "platform": "darwin",
+      "fingerprint": "sha256:5b4bcd54094cb72f2d028a9de92b7995179e5f4cd8a71513f8de979c9fa264e0",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "a leaked descendant blocks issuance": {
@@ -1117,6 +1135,15 @@
         "at": "2026-09-03T08:43:02.463Z"
       }
     },
+    "a partly attributed ledger is not the cost basis": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4d6d77f3cacb77cc947bfe445a05981a3a05f9f12333c92c7548b5a29a6e619c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
     "a phase's predecessors must be in the plan": {
       "platform": "darwin",
       "fingerprint": "sha256:75bbfea4225f64f67932571aa6090d10e0f625f08cfeee3b616c822592a995d5",
@@ -1225,6 +1252,15 @@
         "at": "2026-09-03T08:43:02.451Z"
       }
     },
+    "a redundant invocation is one that added nothing": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a21b4e4d27d5f8bfb9cd2d33c95443f281c833c7b5e25d8fdcea5a85bd83d6e0",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
+      }
+    },
     "a refused file fails the check": {
       "platform": "darwin",
       "fingerprint": "sha256:0548e647f5b7f627369c2dc3462b5906ae9e4e52e9e21ef5416fc7eec82b3bc1",
@@ -1250,6 +1286,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.466Z"
+      }
+    },
+    "a required artifact or handoff is checked against the ledger": {
+      "platform": "darwin",
+      "fingerprint": "sha256:32f2868bcd5da0b513b5bd88918efdfcf8cf014364d76368d78f1782dcc62212",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
       }
     },
     "a required metric with an unanswered subcheck is not present": {
@@ -1304,6 +1349,24 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.465Z"
+      }
+    },
+    "a route event names the agent that ran": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6eec0f6b719ec6b5c4de7bba09235c74cdd51aef0f92f78b721379fbee2363de",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
+    "a route label that is not an identifier assigns nobody": {
+      "platform": "darwin",
+      "fingerprint": "sha256:7767989d28060bae485c2d1a8df099ac288494806f6a7719de1d24abb5134da3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "a row is held to the cells its contract declared": {
@@ -1522,6 +1585,15 @@
         "at": "2026-09-03T08:43:02.464Z"
       }
     },
+    "a subcheck verdict is one of three states, never rounded": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9c93fac70cb04fbfef9a5ab1e4b5adabd6385515ce2bfb5c2bffa09cdc618f23",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
     "a surface carries the rows it says it averaged": {
       "platform": "darwin",
       "fingerprint": "sha256:ba47f809ff2badd1a14dace384432a95d65fad4605c0458acb0495feed6f3d73",
@@ -1547,6 +1619,33 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.447Z"
+      }
+    },
+    "a task id is a reference to a task this run holds": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a57fe279134847d9caac3fef7655ef8509e4be952f9ada987596e3efdff9e961",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
+      }
+    },
+    "a task re-entering an ancestor's resource is the one that checks it": {
+      "platform": "darwin",
+      "fingerprint": "sha256:553111f7afc3e875c66558a2953d46127580e130d73eccd78c05e3af08794f1a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
+      }
+    },
+    "a task two agents invoked has no owner": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4b49fc77a0e5f127ef8ba5021deb43293947eec012f196446776d1cd576828be",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "a transcript is never sufficient on its own": {
@@ -1718,6 +1817,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.465Z"
+      }
+    },
+    "a work graph that refers to itself has no order to route": {
+      "platform": "darwin",
+      "fingerprint": "sha256:80ba034147d876c7f99a5f94c8b41ae2f9b3b0ab3221bdbe11bd13557dcfeb7c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
       }
     },
     "a workspace that contains the store is refused": {
@@ -1900,6 +2008,15 @@
         "at": "2026-09-03T08:43:02.445Z"
       }
     },
+    "an event's capability digest is recomputed and compared": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6246a7c1419d0c225c84c41043aa79c2e463461cf487a8f7bc39147fb8d6b19a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
     "an excused head is classified as the in-flight work it claims to be": {
       "platform": "darwin",
       "fingerprint": "sha256:808f4370fa63ed2efbcf4034fbc240ed4d701d31600fd23b351845337d5b6705",
@@ -1997,6 +2114,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.466Z"
+      }
+    },
+    "an invalid routing contract withholds every routing observable": {
+      "platform": "darwin",
+      "fingerprint": "sha256:b5b2182245c8706068ba7861503d02529f1d94f72860e86fa1efd87a80fb0140",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
       }
     },
     "an invocation nobody can attribute decides nothing": {
@@ -2125,6 +2251,15 @@
         "at": "2026-09-03T08:43:02.466Z"
       }
     },
+    "an operator decision is lined up with the stage it was about": {
+      "platform": "darwin",
+      "fingerprint": "sha256:0d36a22b3840c453fe761c9efe2e4df28c1fa5b7765dd4353f73c9815600162f",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
+      }
+    },
     "an operator event is assembled from named fields": {
       "platform": "darwin",
       "fingerprint": "sha256:d2232616277e46e4728c0fe1c5727cf3e820bf5c07c6afa93203c37bf4f88851",
@@ -2143,6 +2278,15 @@
         "at": "2026-09-03T08:43:02.466Z"
       }
     },
+    "an opportunity id cannot pass for the operator event id": {
+      "platform": "darwin",
+      "fingerprint": "sha256:31e70d4e126008a6a3a672f5f9fd893b8c2ba7b096720ba8fd4293243b3c9252",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
     "an out-of-range month, day, hour, minute or second is refused": {
       "platform": "darwin",
       "fingerprint": "sha256:38b1b4761d9ae44610442643d6c426f2516df626bcaad7cb3daa921ed12005b9",
@@ -2150,6 +2294,33 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.446Z"
+      }
+    },
+    "an overlap in the ledger is a collision whatever the schedule said": {
+      "platform": "darwin",
+      "fingerprint": "sha256:197683c00a40d5ada7fc022aa8caec9d4be4ed084cbb11dc042c59358f665f2a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
+      }
+    },
+    "an overlap the requirement does not permit is not an adequate route": {
+      "platform": "darwin",
+      "fingerprint": "sha256:7edf9defc6211e6c444f1422a71747c9bf72f784611bd24f8a48d6290f26570e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
+      }
+    },
+    "an owner AOS cannot judge is not delegation the operator got wrong": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2f3f47ec4ae27411196036ae320b5d8755a1f735f023f23d83fcae800e9ba724",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "an unanswered checkpoint mints nothing": {
@@ -2177,6 +2348,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.454Z"
+      }
+    },
+    "an unknown capability source keeps no abilities": {
+      "platform": "darwin",
+      "fingerprint": "sha256:26308d00b6400ce84a52db4ae2dc23c13bf7987f15d3b871247f2bd70cb25160",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "an unknown isolation lane is refused, not defaulted": {
@@ -2879,6 +3059,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.444Z"
+      }
+    },
+    "evidence failures decide the route's adequacy": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1a90fa4247270165182a98f04b51940ee542f2f2612aee809fab79d73c7acc7a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
       }
     },
     "exact revision binding": {
@@ -3884,6 +4073,33 @@
         "at": "2026-09-03T08:43:02.436Z"
       }
     },
+    "route cost counts the handoffs a split buys": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ceea491e70f914656e29309563df9dfe1a9042a11f0a8b18710db933625c6429",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
+    "routing capability rests on a source AOS may score": {
+      "platform": "darwin",
+      "fingerprint": "sha256:763c97329f6e700fabd47a3a2fbcefea0244e3bac8828629a9c45014da11da4b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
+    "routing minimality withholds on an owner AOS cannot judge": {
+      "platform": "darwin",
+      "fingerprint": "sha256:cd0b9cd6e13c8db54923ab0a3d515ac6b9174ee36c21acaac133a1a58f05055c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
+      }
+    },
     "rulesets are compared by content, not by cardinality": {
       "platform": "darwin",
       "fingerprint": "sha256:3fa69cb76f81d4baddffbc55d761f55c85026f803df66bcbde65fb4c0f7eba99",
@@ -4161,6 +4377,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.445Z"
+      }
+    },
+    "the artifact obligation is checked by opening the file": {
+      "platform": "darwin",
+      "fingerprint": "sha256:f447027792aa57e1fc5330714d1c06efed57f81730d8762ecb12c46a51286051",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "the assessed process does not decide issuance": {
@@ -4577,6 +4802,15 @@
         "at": "2026-09-03T08:43:02.439Z"
       }
     },
+    "the emitter attributes an invocation to the stage AOS invoked it for": {
+      "platform": "darwin",
+      "fingerprint": "sha256:28421d993882c96b23ded8a38fc64fc9d8c701acf8dc9d9207088a2cb87547f4",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
+      }
+    },
     "the escaped descendant is proved confined": {
       "platform": "darwin",
       "fingerprint": "sha256:27bd20ac0d2f3025624641fa7c8c90a041341b7edbf63371efed1345d4e045e3",
@@ -4730,6 +4964,15 @@
         "at": "2026-09-03T08:43:02.456Z"
       }
     },
+    "the ledger's owner replaces the declaration": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ae7d62463cbc0735c151dccbc6eb9611c24ac359a1b33266fb58ade9343b3992",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
+      }
+    },
     "the matrix decides the process axis with the run's own helper": {
       "platform": "darwin",
       "fingerprint": "sha256:63094306e4b9a2dd51ce5a19ad5f008f96cf10c7c71ff184d363fde67abe919b",
@@ -4746,6 +4989,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.456Z"
+      }
+    },
+    "the minimum route is the cheapest and its tie-break is canonical": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1057adf06083d93213142def21ecd211e4ab509d68aa8962aebfb24422675c9c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "the network axis is enumerated, not typed": {
@@ -4800,6 +5052,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.466Z"
+      }
+    },
+    "the per-task invocation bound is compared": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c673eaa5ec8095cd7018df0d22525d1e7a22f82fd5e44019c97818d87559fe3a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
       }
     },
     "the phrase list names the artifact rows it is supposed to check": {
@@ -4973,6 +5234,15 @@
         "at": "2026-09-03T08:43:02.462Z"
       }
     },
+    "the proposal comes from an admitted operator decision": {
+      "platform": "darwin",
+      "fingerprint": "sha256:36a5f477b657eeb38ececae118a18d9ef94d79acf21c8ed13b1c7560f94ce422",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.259Z"
+      }
+    },
     "the published contract names an entry point that exists": {
       "platform": "darwin",
       "fingerprint": "sha256:15f494db21cd488b1df01d19712fa47cf2b20832b134ac383369f3fc3fbe7892",
@@ -5090,6 +5360,15 @@
         "at": "2026-09-03T08:43:02.465Z"
       }
     },
+    "the requirement's tasks are the stages the route declared": {
+      "platform": "darwin",
+      "fingerprint": "sha256:5be4e78ae61675ba864d19ceb5d417094bfa2fdb0a59f7c2960c754a22a6fcbc",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.260Z"
+      }
+    },
     "the result publishes redacted cleanup failures": {
       "platform": "darwin",
       "fingerprint": "sha256:65e8a9129b2b45f8b5023b77972a1af377c1463f79b6f2f3f2fe5a00eb87ac7a",
@@ -5124,6 +5403,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.466Z"
+      }
+    },
+    "the routing evidence id is one a published result keeps": {
+      "platform": "darwin",
+      "fingerprint": "sha256:b3edb5c0b03fdee77ab18bacf3177f10d2257a67ceb0316680a2464c2f9e6b9c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
       }
     },
     "the rows a result must carry come from its contract": {
@@ -5214,6 +5502,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.440Z"
+      }
+    },
+    "the search bound refusal is named as one": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4ce86580d297e79202ddd2bea63ef5d65ec3eac7f2ba0c0266ed5ba068f449cb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.261Z"
       }
     },
     "the settlement digest is over the tree the comparison recomputes": {
@@ -5313,6 +5610,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-03T08:43:02.456Z"
+      }
+    },
+    "the total invocation bound is compared": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4dca9b7dd549db7d2ef61e9e81e59857a31081bf1631d087c68fe681281feae6",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-03T08:37:57.262Z"
       }
     },
     "the transcript recogniser knows the configured workspaces root": {
