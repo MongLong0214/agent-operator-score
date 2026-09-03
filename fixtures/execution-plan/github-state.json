@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-03T00:38:09.423Z",
+  "captured_at": "2026-09-03T03:03:16.257Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -434,18 +434,78 @@
     {
       "number": 561,
       "title": "[P0][measurement] exact model/runtime identity를 Profile facet과 Cycle comparability에 결박한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 561,
+        "final_sha": "5e209bb6f1e02a4c02389c4883ab9712cab7d5a0",
+        "pr": 607,
+        "ci_run_ids": [
+          33707506315
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "model_identity_digest": "sha256:0f866c57e54009aef081b5b59e5eec32cd87d11239945cf07d6394b10228ff13",
+          "comparability_rule": "cohortProvenance takes the cohort key over what the operator bound; a transcript may only contradict it, never establish it. Runtime identity binds via aos-runtime-identity.v2 with identity_status inside the digest; a v1 record binds under UNVERIFIED_LEGACY_SCHEMA with its real digest rather than being silently excluded (lib/model-identity.mjs, lib/profile.mjs)",
+          "mutation": "mutation lane green on the merge head with every guard load-bearing; 431 guards measured on the preceding head"
+        },
+        "known_residue": [
+          {
+            "id": "undefined-model-identity-exempt-from-cap",
+            "source": "gpt-5.6-terra rounds 11-15",
+            "detail": "model_identity === undefined is exempt from the claim cap, so buildResult({contract, evaluation}) with no provenance record yields PROFILE_BOUND plus a composite. Closing it means rewriting ~71 buildResult call sites in #559's fixtures, which is a change to another issue's owned surface. lib/result-schema.mjs:891",
+            "severity": "defect"
+          },
+          {
+            "id": "cohort-ignores-provenance-strength",
+            "source": "deliberate round-6 trade",
+            "detail": "cohortProvenance ignores provenance source/confidence/evidence, so a run whose transcript said nothing shares a cohort with one that confirmed. Taken deliberately in round 6: with the evidence digest in the key, every repeat of one measurement becomes its own profile and no cycle can complete. lib/model-identity.mjs:360",
+            "severity": "limitation"
+          },
+          {
+            "id": "minimal-env-uncovered",
+            "source": "gpt-5.6-terra",
+            "detail": "MINIMAL_ENV in the canary capture script has no automated coverage because the script executes at import, so no test can call it. scripts/capture-model-canary.mjs:116",
+            "severity": "limitation"
+          },
+          {
+            "id": "hmac-key-test-weak-inherited-from-560",
+            "source": "gpt-5.6-terra",
+            "detail": "NOT introduced by this PR — arrived with #560's merge. The test tries each whole readable file as the HMAC key rather than values extractable from it, so a regression writing operator-key=<secret> into a readable file would pass. tests/product/no-agent-artifact-process-credit.test.mjs:545. Belongs to #560's surface.",
+            "severity": "defect"
+          },
+          {
+            "id": "run-diagnostic-beside-issued-aggregation",
+            "source": "gpt-5.6-terra",
+            "detail": "RUN_DIAGNOSTIC printed beside an issued profile-bound aggregation in one artefact; this is the surface #609's isolation gate settles and resolves when that PR lands.",
+            "severity": "limitation"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#561",
         "#574",
@@ -454,7 +514,10 @@
         "#576",
         "#562",
         "#584",
-        "#585"
+        "#585",
+        "#559",
+        "#560",
+        "#609"
       ]
     },
     {
