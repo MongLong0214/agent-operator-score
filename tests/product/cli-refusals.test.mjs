@@ -113,10 +113,11 @@ test("the isolation lane is the operator's to name, and a name that is neither l
   // BEST_EFFORT_CLI would be indistinguishable from choosing BEST_EFFORT_CLI.
   const { isolationLaneOf } = await import("../../lib/cli.mjs");
   assert.equal(isolationLaneOf({}), "BEST_EFFORT_CLI");
-  assert.equal(isolationLaneOf({ AOS_ISOLATION: "" }), "BEST_EFFORT_CLI");
   assert.equal(isolationLaneOf({ AOS_ISOLATION: "BEST_EFFORT_CLI" }), "BEST_EFFORT_CLI");
   assert.equal(isolationLaneOf({ AOS_ISOLATION: "STRICT" }), "STRICT");
-  for (const wrong of ["strict", "NONE", "Strict ", "1"]) {
+  // Empty joins the refused values: unset is the default lane, but set to nothing is a variable a
+  // script meant to fill and did not, and it read as a deliberate choice of the weak lane.
+  for (const wrong of ["", "strict", "NONE", "Strict ", "1"]) {
     assert.throws(() => isolationLaneOf({ AOS_ISOLATION: wrong }), { message: /^AOS_ISOLATION_LEVEL_UNKNOWN/u }, wrong);
   }
 

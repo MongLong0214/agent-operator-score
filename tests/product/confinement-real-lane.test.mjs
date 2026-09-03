@@ -30,6 +30,11 @@ test("the_real_strict_lane_ran_here_or_this_verification_did_not_pass", () => {
   laneStatus().assertRan();
 });
 
+// What a provider refusal looks like on the way out. Deliberately narrow: a usage limit or an
+// explicit rate-limit refusal, not any non-zero exit -- a runtime that fails *inside* the boundary
+// is exactly what this lane exists to catch, and must stay a failure.
+const PROVIDER_REFUSAL = /usage limit|rate limit|rate_limit|quota exceeded|429/iu;
+
 const codexOnPath = () => {
   const found = spawnSync("/bin/sh", ["-c", "command -v codex"], { encoding: "utf8" });
   return found.status === 0 ? found.stdout.trim() : null;
@@ -257,6 +262,18 @@ test("strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane
       workspace: store.workspace, family: "FAM-1", stage: "answer", prompt: "Reply with exactly the single word OK and nothing else.", promptFile: join(store.workspace, "task.md"),
       session: "real-lane-codex", timeoutMs: 180000, isolation: "STRICT", aosHome: store.aosHome
     });
+    // A provider that refuses to serve is not a boundary that failed. `codex` installed and
+    // authenticated but out of quota exits non-zero having never run inside the sandbox, and
+    // treating that as a failed lane is the mirror image of the bug this round closed in
+    // `denialProved`: both come from not separating "the instrument answered no" from "the
+    // instrument could not answer". The refusal is named and the lane reads NOT_OBSERVED --
+    // except under `AOS_REAL_STRICT_REQUIRED=1`, where the whole point of the script is that a
+    // measurement happened, so an unobtainable one is a failure of what was asked for.
+    if (result.exit_code !== 0 && PROVIDER_REFUSAL.test(`${result.stdout_excerpt ?? ""}${result.stderr_excerpt ?? ""}`)) {
+      const why = "NOT_OBSERVED: the provider refused to serve (usage limit); the codex-cli.v1 lane was not re-measured";
+      laneStatus(why).assertRan();
+      return t.skip(why);
+    }
     assert.equal(result.exit_code, 0, `codex exited ${result.exit_code}: ${result.stderr_excerpt}`);
     assert.match(result.stdout_excerpt, /\bOK\b/u);
     assert.equal(result.leaked_descendants, false);

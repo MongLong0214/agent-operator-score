@@ -2245,10 +2245,37 @@ export const GUARDS = [
     name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
   },
   {
+    guard: "both canary judges share one denial predicate",
+    reason: "the spawn judge rejected `denied` + ENOENT while the issuance judge read no errno at all, so the committed observation with ENOENT on every deny cell failed one and passed the other with official:true",
+    file: "lib/confinement.mjs",
+    from: "        || (expected === \"denied\" && observed === \"denied\" && !denialProved({ errno: typeof cell?.errno === \"string\" ? cell.errno : null, mechanism, plantedIntact: plantedAll }))",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "both_canary_judges_ask_one_question_of_a_deny_cell"
+  },
+  {
+    guard: "a namespace deny needs a plant behind it",
+    reason: "under a mount namespace the denial is the absence, so ENOENT is what a working boundary returns -- and what separates it from a plant that never landed is the parent's own check, made from outside the namespace",
+    file: "lib/confinement.mjs",
+    from: "  return errno === \"ENOENT\" && mechanism === \"mount-namespace\" && plantedIntact === true;",
+    to: "  return errno === \"ENOENT\" && mechanism === \"mount-namespace\";",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "both_canary_judges_ask_one_question_of_a_deny_cell"
+  },
+  {
+    guard: "an empty isolation lane is not a chosen one",
+    reason: "`AOS_ISOLATION=` is an unset variable in a script that meant to set one; a misspelling was refused and an empty string silently chose the weak lane",
+    file: "lib/cli.mjs",
+    from: "  if (chosen === undefined) return \"BEST_EFFORT_CLI\";",
+    to: "  if (chosen === undefined || chosen === \"\") return \"BEST_EFFORT_CLI\";",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_empty_isolation_lane_is_refused_like_a_misspelled_one"
+  },
+  {
     guard: "a deny the kernel refused, not a file that was not there",
     reason: "the canary plants the files it then tries to read, so ENOENT is a plant that never landed; counting it as a deny made a missing fixture read as a boundary holding",
     file: "lib/confinement.mjs",
-    from: "    const denialUnproven = expected === \"denied\" && observed === \"denied\" && errno !== null && !DENIAL_ERRNOS.has(errno);",
+    from: "    const denialUnproven = expected === \"denied\" && observed === \"denied\" && !denialProved({ errno, mechanism, plantedIntact: plantedAll });",
     to: "    const denialUnproven = false;",
     test: "tests/product/official-issuance.test.mjs",
     name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
@@ -2507,6 +2534,15 @@ export const GUARDS = [
     to: "  record.scratch_not_removed = Array.isArray(cleanupFailures) ? cleanupFailures.slice() : null;",
     test: "tests/product/official-issuance.test.mjs",
     name: "cleanup_failures_are_recorded_by_class_and_digest_and_never_by_path"
+  },
+  {
+    guard: "a provider refusal is narrow, not any non-zero exit",
+    reason: "a runtime that fails *inside* the boundary is what this lane exists to catch; widening the refusal pattern to every failure would turn a broken boundary into NOT_OBSERVED, which is the absence-as-success shape the other way round",
+    file: "tests/product/confinement-real-lane.test.mjs",
+    from: "const PROVIDER_REFUSAL = /usage limit|rate limit|rate_limit|quota exceeded|429/iu;",
+    to: "const PROVIDER_REFUSAL = /./u;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_provider_refusal_is_not_a_failed_boundary"
   },
   {
     guard: "a skipped real lane is not a verified one",
@@ -5028,12 +5064,14 @@ export const ACCOUNTED_GUARDS = [
   "a named evidence id is published as a digest",
   "a named secret assigned a value is a secret at any length",
   "a named secret is a secret without a digit in it",
+  "a namespace deny needs a plant behind it",
   "a new run is never scored by the old scorer",
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
   "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a process with no key for a run says so",
+  "a provider refusal is narrow, not any non-zero exit",
   "a raw value is hashed because it was supplied raw",
   "a recomputation compares the boundary facts it published",
   "a recomputation runs under the run's own boundary",
@@ -5101,6 +5139,7 @@ export const ACCOUNTED_GUARDS = [
   "an UNTRUSTED identity is not a verified one",
   "an absent boundary is not a passing one",
   "an alias is the node it names",
+  "an empty isolation lane is not a chosen one",
   "an import reads every event before it creates a Run",
   "an imported run is written down",
   "an imported run names the producer of its evidence",
@@ -5135,6 +5174,7 @@ export const ACCOUNTED_GUARDS = [
   "artifact type in the envelope",
   "binary handling",
   "block scalar measured from its key",
+  "both canary judges share one denial predicate",
   "bubblewrap mounts what the policy declares",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",

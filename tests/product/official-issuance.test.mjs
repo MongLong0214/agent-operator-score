@@ -826,6 +826,99 @@ test("the_spawn_judge_and_the_gate_read_one_expectation_table", async () => {
   }
 });
 
+test("both_canary_judges_ask_one_question_of_a_deny_cell", async () => {
+  // Two judges of one question, again: `evaluateCanary` decides whether the agent is spawned and
+  // `derivedCanaryVerdict` decides whether the run may be issued, and each had its own idea of what
+  // a denial looks like. Setting `errno: "ENOENT"` on every deny cell of the committed observation
+  // failed the first and left the second returning PASS with `official: true` -- the fix is one
+  // predicate both call, not the same check written twice.
+  const { derivedCanaryVerdict, denialProved, issuanceGate } = await import("../../lib/confinement.mjs");
+  const captured = JSON.parse(readFileSync(join(root, "fixtures", "confinement", "observations", "strict-lane.darwin.seatbelt.canary.json"), "utf8")).captured;
+  const canary = { cells: captured.cells, out_of_band: captured.out_of_band, evidence_digest: captured.evidence_digest };
+  const policy = captured.network_policy;
+  assert.equal(derivedCanaryVerdict(canary, policy, "kernel"), "PASS", "the committed observation no longer passes its own judge");
+
+  const enoent = JSON.parse(JSON.stringify(canary));
+  for (const cell of Object.values(enoent.cells)) if (cell.observed === "denied") cell.errno = "ENOENT";
+  assert.equal(derivedCanaryVerdict(enoent, policy, "kernel"), "FAIL", "a missing plant was counted as a kernel deny");
+  const silent = JSON.parse(JSON.stringify(canary));
+  for (const cell of Object.values(silent.cells)) if (cell.observed === "denied") delete cell.errno;
+  assert.equal(derivedCanaryVerdict(silent, policy, "kernel"), "FAIL", "a cell that showed nothing proved a denial");
+
+  // And the mechanism decides what proof looks like. Under a mount namespace the denial *is* the
+  // absence -- the tree was never mounted -- so `ENOENT` is what a working boundary returns there,
+  // and the parent's `planted_intact` check, made from outside the namespace, is what separates it
+  // from a plant that never landed. Without that separation the linux canary could not return a
+  // pass by construction, which is a different sentence from "nobody has run it".
+  assert.equal(derivedCanaryVerdict(enoent, policy, "mount-namespace"), "PASS");
+  const unplanted = JSON.parse(JSON.stringify(enoent));
+  unplanted.out_of_band.planted_intact.outside = false;
+  assert.equal(derivedCanaryVerdict(unplanted, policy, "mount-namespace"), "FAIL", "a namespace deny passed with no plant behind it");
+
+  // The predicate itself, since both judges are only as good as it is.
+  assert.equal(denialProved({ errno: "EPERM", mechanism: "kernel", plantedIntact: true }), true);
+  assert.equal(denialProved({ errno: "ENOENT", mechanism: "kernel", plantedIntact: true }), false);
+  assert.equal(denialProved({ errno: null, mechanism: "mount-namespace", plantedIntact: true }), false);
+  assert.equal(denialProved({ errno: "ENOENT", mechanism: "mount-namespace", plantedIntact: false }), false);
+
+  // The gate reads the derived verdict, so the tamper reaches issuance too.
+  const forged = measured({ boundary_canary: { ...measured().boundary_canary, cells: enoent.cells } });
+  assert.equal(issuanceGate(forged).official, false, JSON.stringify(issuanceGate(forged).reasons));
+  assert.ok(issuanceGate(forged).reasons.includes("AOS_ISOLATION_CANARY_NOT_PASS"));
+});
+
+test("a_provider_refusal_is_not_a_failed_boundary", async () => {
+  // `codex` installed and authenticated but out of quota exits non-zero having never run inside the
+  // sandbox. Treating that as a failed lane is the mirror image of the ENOENT bug closed above:
+  // both come from not separating "the instrument answered no" from "the instrument could not
+  // answer". The refusal is named and the lane reads NOT_OBSERVED -- but only for a refusal, since
+  // a runtime that fails *inside* the boundary is exactly what this lane exists to catch.
+  const source = readFileSync(join(root, "tests", "product", "confinement-real-lane.test.mjs"), "utf8");
+  const pattern = /const PROVIDER_REFUSAL = (\/[^\n]+\/[a-z]*);/u.exec(source);
+  assert.ok(pattern, "the real lane no longer names what a provider refusal looks like");
+  const refusal = new RegExp(pattern[1].slice(1, pattern[1].lastIndexOf("/")), "iu");
+  for (const refused of [
+    "ERROR: You've hit your usage limit. Visit https://example.test/usage or try again at Sep 8th.",
+    "429 Too Many Requests",
+    "rate limit exceeded for this account",
+    "quota exceeded"
+  ]) {
+    assert.equal(refusal.test(refused), true, refused);
+  }
+  // What must stay a failure: the boundary refusing the runtime, the runtime crashing inside it,
+  // and an empty stream. A pattern that matched these would turn a broken lane into NOT_OBSERVED.
+  for (const real of [
+    "sandbox-exec: execvp() of 'codex' failed: Operation not permitted",
+    "Error: EACCES: permission denied, open '/Users/o/.codex/auth.json'",
+    "TypeError: Cannot read properties of undefined",
+    "codex exited with signal SIGSEGV",
+    ""
+  ]) {
+    assert.equal(refusal.test(real), false, real || "(empty output)");
+  }
+  // And the gate around it: `AOS_REAL_STRICT_REQUIRED=1` still refuses an unobtainable
+  // measurement, because that script exists to answer whether a measurement happened.
+  const { realStrictLaneStatus } = await import("../../lib/confinement.mjs");
+  const why = "NOT_OBSERVED: the provider refused to serve (usage limit)";
+  assert.equal(realStrictLaneStatus({ env: {}, backendAvailable: false, reason: why }).assertRan(), false);
+  assert.throws(
+    () => realStrictLaneStatus({ env: { AOS_REAL_STRICT_REQUIRED: "1" }, backendAvailable: false, reason: why }).assertRan(),
+    /AOS_REAL_STRICT_NOT_RUN/u
+  );
+});
+
+test("an_empty_isolation_lane_is_refused_like_a_misspelled_one", async () => {
+  // `AOS_ISOLATION=` is an unset variable in a script that meant to set one. A misspelling was
+  // refused and an empty string silently chose the weak lane, so the two failures a shell produces
+  // read differently: one said so and one did not.
+  const { isolationLaneOf } = await import("../../lib/cli.mjs");
+  assert.equal(isolationLaneOf({}), "BEST_EFFORT_CLI");
+  assert.equal(isolationLaneOf({ AOS_ISOLATION: "STRICT" }), "STRICT");
+  for (const value of ["", " ", "strict", "NONE"]) {
+    assert.throws(() => isolationLaneOf({ AOS_ISOLATION: value }), /AOS_ISOLATION_LEVEL_UNKNOWN/u, JSON.stringify(value));
+  }
+});
+
 test("a_process_is_this_runs_because_it_was_tracked_not_because_it_holds_a_path", async () => {
   // An identification channel used as a termination trigger. The open-path scan says a process
   // *might* be this run's; the sweep put what it found straight into `survivors`, and every caller
