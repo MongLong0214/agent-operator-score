@@ -726,9 +726,12 @@ test("a cycle is judged over the agents that ran, whether or not their runs earn
   const cycle = cycleModelIdentity({ binding, runs: [unissued, unissued, unissued] });
   assert.deepEqual(Object.keys(cycle.by_agent), ["solo"], "an agent that never ran was judged");
   assert.equal(cycle.profile_bound_aggregation.status, "issued");
-  // A run the cycle recorded with no identity record at all still closes the cycle: absence of the
-  // record is not absence of the run.
-  assert.equal(cycleModelIdentity({ binding, runs: [unissued, { valid: false, model_identity: null }] }), null);
+  // A run that counts towards the aggregate and carries no record at all still closes the cycle:
+  // absence of the record is not absence of the run. A run the cycle already excluded carries no
+  // weight either way and does not, which is how a cycle from before this record existed reads.
+  const counted = { ...unissued, valid: true };
+  assert.equal(cycleModelIdentity({ binding, runs: [counted, { valid: true, model_identity: null }] }), null);
+  assert.equal(cycleModelIdentity({ binding, runs: [unissued, { valid: false, invalid_reason: "NOT_ISSUED" }] })?.profile_bound_aggregation.status, "issued");
 });
 
 test("one contradicted run withholds the whole cycle, however many others agreed", () => {

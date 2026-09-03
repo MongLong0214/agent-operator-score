@@ -2550,8 +2550,8 @@ export const GUARDS = [
     guard: "a cycle is judged over the runs that ran",
     reason: "judging only the runs whose composite issued narrowed the cohort to nothing, so a healthy cycle was judged over agents the plan never used and reported MODEL_UNKNOWN",
     file: "lib/model-identity.mjs",
-    from: "  const ran = runs.filter((run) => run && typeof run === \"object\");",
-    to: "  const ran = runs.filter((run) => run && typeof run === \"object\" && run.valid === true);",
+    from: "  const valid = ran.filter((run) => run.model_identity?.by_agent && typeof run.model_identity.by_agent === \"object\");",
+    to: "  const valid = ran.filter((run) => run.valid === true);",
     test: "tests/product/model-identity.test.mjs",
     name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
   },
