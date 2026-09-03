@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-02T20:03:47.545Z",
+  "captured_at": "2026-09-03T00:38:09.423Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -225,7 +225,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -348,18 +348,78 @@
     {
       "number": 560,
       "title": "[P0][measurement] D1–D3를 actual operator event와 construct opportunity에 재결박한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 560,
+        "final_sha": "5a697b290f2b6c320c79852f9be8e892b5fe28a5",
+        "pr": 611,
+        "ci_run_ids": [
+          33698829451
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "operator_event_schema_digest": "sha256:0f866c57e54009aef081b5b59e5eec32cd87d11239945cf07d6394b10228ff13",
+          "opportunity_binding": "bindOperatorDecisions at lib/operator-plan.mjs:320, called from assess; processEvidence at :447 turns bound rows into the evidence ids the scored observations carry and withholds any scorable cell with no bound decision",
+          "mutation": "355/355 load-bearing unqualified on Darwin at 5a697b29, 1 deferred by name (raw filename bytes, linux)"
+        },
+        "known_residue": [
+          {
+            "id": "d1-d3-rows-not-scored",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "Valid D1/D2/D3 operator events bind and produce Process rows, but C1.OF.01/C2.OD.01/C5.VD.01/C6.OG.01 are DECLARED_UNPOPULATED in the shipped contract so evidence_ids is empty. Scoring them needs new subchecks (lib/metrics.mjs, #558) and a contract change (contracts/, #582) — neither is this issue's owned path. lib/operator-plan.mjs:448. The binding reports the contract's reason per cell, never as operator silence.",
+            "severity": "limitation"
+          },
+          {
+            "id": "bad-route-cannot-lower-process",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "Declared route [\"weak-agent\"] against an invocation by strong-agent returns diverged:true while C2.OD.01 stays scorable:false — same root cause as the item above. lib/operator-plan.mjs:550",
+            "severity": "limitation"
+          },
+          {
+            "id": "process-not-invariant-to-stronger-agent",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "With checkpoint/instruction/decision records identical, flipping the following agent.ended from failure to success moves effective false->true and M11/M12 from 0.75 to 1. Pre-existing D4 rule on dev; changing it is #576's measurement semantics. lib/checkpoint.mjs:247",
+            "severity": "defect"
+          },
+          {
+            "id": "projection-publishes-caller-ids-verbatim",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "run_id and opportunity_id are published as supplied, so run_id \"sk-live-...\" appears unchanged. run_id is already on every aos-result.v2 on dev so this PR does not create the exposure; opportunity_id is new but AOS generates it on every production path. Digesting both changes the published evidence-id format. lib/operator-events.mjs:533",
+            "severity": "defect"
+          },
+          {
+            "id": "round4-no-verdict",
+            "source": "process",
+            "detail": "Review round 4 (13d016f->48bbf57) ran 49 commands and ended without emitting a structured answer, so that delta carries no verdict of its own; round 5 is authoritative on the merged head and covers 48bbf57->5a697b2 only. The last full-PR verdict was round 3.",
+            "severity": "note"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#560",
         "#576",
