@@ -23,6 +23,11 @@
     "verify:process-outcome-counterfactual": "node --test tests/product/process-outcome-counterfactual.test.mjs",
     "verify:projection-consistency": "node --test tests/product/projection-consistency.test.mjs",
     "verify:no-operator-score-hero": "node --test tests/product/no-operator-score-hero.test.mjs",
+    "verify:operator-event-authority": "node --test tests/product/operator-event-authority.test.mjs",
+    "verify:no-agent-artifact-process-credit": "node --test tests/product/no-agent-artifact-process-credit.test.mjs",
+    "verify:initial-before-advice-interface": "node --test tests/product/initial-before-advice.test.mjs",
+    "verify:operator-event-projection": "node --test tests/product/operator-event-projection.test.mjs",
+    "verify:operator-channel-authority": "node --test tests/product/operator-channel-authority.test.mjs",
     "check:defect-classes": "node scripts/check-defect-classes.mjs"
   },
   "bin": {
