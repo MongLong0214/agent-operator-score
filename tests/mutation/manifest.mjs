@@ -5099,7 +5099,7 @@ export const GUARDS = [
     from: "  if (created && write && ledger.unreadable !== true) {",
     to: "  if (write && ledger.unreadable !== true) {",
     test: "tests/product/discovery.test.mjs",
-    name: "repeated discovery re-reads the machine and creates no second profile"
+    name: "repeated discovery creates no second profile and writes nothing"
   },
   {
     guard: "the credential is reduced to a name and a source where it is resolved",
@@ -5136,6 +5136,33 @@ export const GUARDS = [
     to: "  const missing = [];",
     test: "tests/product/discovery-official-support.test.mjs",
     name: "the credential term alone missing takes OFFICIAL away and asks the runtime, not the operator"
+  },
+  {
+    guard: "a borrowed explanation loses the paths it named",
+    reason: "every refusal on this record is quoted from a module written for a terminal, and #554's reasons and remedies are absolute paths on the operator's own machine -- this record is printed, pasted and committed as a fixture",
+    file: "lib/discovery.mjs",
+    from: "    status, reason, detail: withoutPaths(detail), credential: null, credential_withheld: true, local_config: null",
+    to: "    status, reason, detail, credential: null, credential_withheld: true, local_config: null",
+    test: "tests/product/discovery.test.mjs",
+    name: "an explanation borrowed from another module reaches the record without the paths it named"
+  },
+  {
+    guard: "a backend refusal loses the path it named",
+    reason: "the other side of the same class one field over: a spawn error from the isolation probe quotes a path just as readily as an identity refusal does",
+    file: "lib/discovery.mjs",
+    from: "    probe_reason: withoutPaths(probed.reason ?? null)",
+    to: "    probe_reason: probed.reason ?? null",
+    test: "tests/product/discovery.test.mjs",
+    name: "an explanation borrowed from another module reaches the record without the paths it named"
+  },
+  {
+    guard: "an unreadable store is reported and not read as an empty one",
+    reason: "a damaged store and a fresh machine would otherwise produce the same document, and the operator whose registrations went missing would be told nothing",
+    file: "lib/discovery.mjs",
+    from: "    registered = {};\n    unreadable = true;",
+    to: "    registered = {};\n    unreadable = false;",
+    test: "tests/product/discovery.test.mjs",
+    name: "a store this product cannot read is said, not presented as a machine with no history"
   },
 ];
 
@@ -5236,8 +5263,10 @@ export const ACCOUNTED_GUARDS = [
   "a .NET startup hook is a pre-main hook like the rest",
   "a /proc listing is not a list of survivors",
   "a URL carrying userinfo is a credential",
+  "a backend refusal loses the path it named",
   "a bare alias is never an exact identity",
   "a blocked candidate is not selectable",
+  "a borrowed explanation loses the paths it named",
   "a bound claim names the profile it is bound to",
   "a cancel typed at a shell is not an operator turn",
   "a candidate source version is published as a digest",
@@ -5399,6 +5428,7 @@ export const ACCOUNTED_GUARDS = [
   "an unmeasured network policy has no expectation",
   "an unnameable transcript row withholds the aggregate",
   "an unproven lane blocks issuance",
+  "an unreadable store is reported and not read as an empty one",
   "an untrusted executable blocks the candidate outright",
   "an untrusted reason travels without the path it names",
   "an unverified executable gets no credential lookup",

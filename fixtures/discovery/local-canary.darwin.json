@@ -10,6 +10,7 @@
       "note": "A machine where nothing has been configured. Every term of the official conjunction is true except the model: nothing on the command line names one and nothing was declared, so the model is unknown and the honest ceiling is diagnostic. This is what a bare host reaches, and it is the reason the release cannot promise OFFICIAL_READY with no registration at all.",
       "record": {
         "schema_id": "aos-discovery.v2",
+        "status": "DIAGNOSTIC_ONLY",
         "states_visited": [
           "DISCOVERING",
           "IDENTITY_CHECKING",
@@ -50,8 +51,10 @@
               "status": "PRESENT",
               "reason": null,
               "detail": "codex-cli.v1 keeps its login in its own configuration directory and every file it stages is there",
-              "credential_env_name": "CODEX_HOME",
-              "source": "runtime-config-directory",
+              "credential": {
+                "name": "CODEX_HOME",
+                "source": "runtime-config-directory"
+              },
               "credential_withheld": false,
               "local_config": {
                 "source": "operator-home",
@@ -137,8 +140,7 @@
               "status": "ACTION_REQUIRED",
               "reason": "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
               "detail": "the verified executable is not claude-code.v1, so AOS resolves no credential for it",
-              "credential_env_name": null,
-              "source": null,
+              "credential": null,
               "credential_withheld": true,
               "local_config": null
             },
@@ -503,12 +505,13 @@
           "ledger_unreadable": false,
           "profile_digest": "e86551d26f6d5318984b260887dc0f5356eb617686021ab2e4cb107300eafd92",
           "active_cycle_profile_digest": null,
+          "active_cycle_unreadable": false,
           "active_cycle_matches": null
         },
         "reason_code": "AOS_DISCOVERY_MODEL_WITHHELD",
-        "next_action": null,
+        "store_unreadable": false,
         "tie_break": null,
-        "status": "DIAGNOSTIC_ONLY",
+        "next_action": null,
         "zero_input": {
           "terminal_commands": 0,
           "config_edits": 0,
@@ -522,6 +525,7 @@
       "note": "The same machine after one registration carrying the exact model the operator runs codex on. Identity verified by #554, confirmed to be @openai/codex by #556, the runtime's own login present in its configuration directory, an exact-snapshot model, the allowlist environment granted, and the darwin/macos-seatbelt/codex-cli.v1 STRICT lane the release proved. That is the official pairing this issue requires evidence of.",
       "record": {
         "schema_id": "aos-discovery.v2",
+        "status": "OFFICIAL_READY",
         "states_visited": [
           "DISCOVERING",
           "IDENTITY_CHECKING",
@@ -560,8 +564,10 @@
               "status": "PRESENT",
               "reason": null,
               "detail": "codex-cli.v1 keeps its login in its own configuration directory and every file it stages is there",
-              "credential_env_name": "CODEX_HOME",
-              "source": "runtime-config-directory",
+              "credential": {
+                "name": "CODEX_HOME",
+                "source": "runtime-config-directory"
+              },
               "credential_withheld": false,
               "local_config": {
                 "source": "operator-home",
@@ -650,8 +656,7 @@
               "status": "ACTION_REQUIRED",
               "reason": "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
               "detail": "the verified executable is not claude-code.v1, so AOS resolves no credential for it",
-              "credential_env_name": null,
-              "source": null,
+              "credential": null,
               "credential_withheld": true,
               "local_config": null
             },
@@ -1028,12 +1033,13 @@
           "ledger_unreadable": false,
           "profile_digest": "565c6eceeed9e72819032b634f6cab5edaa00c3ee153ffda3b8b69810bd591ce",
           "active_cycle_profile_digest": null,
+          "active_cycle_unreadable": false,
           "active_cycle_matches": null
         },
         "reason_code": null,
-        "next_action": null,
+        "store_unreadable": false,
         "tie_break": null,
-        "status": "OFFICIAL_READY",
+        "next_action": null,
         "zero_input": {
           "terminal_commands": 0,
           "config_edits": 0,

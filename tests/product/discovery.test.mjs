@@ -240,7 +240,7 @@ test("both runtimes installed produces one deterministic winner and no question"
   rmSync(root, { recursive: true, force: true });
 });
 
-test("an existing exact healthy profile outranks a runtime with better official support", () => {
+test("an existing profile for this exact configuration outranks a runtime with better official support", () => {
   const root = scratch();
   const codex = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
   const claude = installRuntime(root, { package_name: "@anthropic-ai/claude-code", binary: "claude" });
@@ -422,7 +422,7 @@ test("an exact tie asks once, with a typed request and no answer of its own", ()
   rmSync(root, { recursive: true, force: true });
 });
 
-test("repeated discovery re-reads the machine and creates no second profile", () => {
+test("repeated discovery creates no second profile and writes nothing", () => {
   const root = scratch();
   const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
   const operatorHome = operatorHomeWith(root, { codexConfig: true });
@@ -512,7 +512,7 @@ test("a ledger entry that claims a status does not supply one: every fact is re-
 // ------------------------------------------------------------------------------------------- //
 // What must never reach the operator's terminal or a pasted record.
 
-test("no credential value, private path or session content reaches the discovery record", () => {
+test("no credential value and no path from this machine reaches the discovery record", () => {
   const root = scratch();
   const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
   const operatorHome = operatorHomeWith(root, { codexConfig: true });
@@ -569,7 +569,79 @@ test("a resolved credential reaches the record as a name and a source, never as 
   rmSync(root, { recursive: true, force: true });
 });
 
-test("discovery makes no provider call: the only runtime invocation is the version probe", () => {
+test("an explanation borrowed from another module reaches the record without the paths it named", () => {
+  const root = scratch();
+  // Claude Code, because its adapter has a credential resolver: that is what takes the identity
+  // gate past its early exit and produces #554's own refusal, which quotes the configured command
+  // and the remedy -- two absolute paths, in prose written for a terminal.
+  const { pathDir, file } = installRuntime(root, { package_name: "@anthropic-ai/claude-code", binary: "claude" });
+  const operatorHome = operatorHomeWith(root);
+  const registered = describeExecutable(file, { env: { PATH: pathDir, HOME: operatorHome }, adapterId: "claude-code.v1" });
+  const home = homeWith(root, { claude: agent("claude", file, "claude-code.v1", { runtime_identity: registered }) });
+  writeFileSync(file, "#!/bin/sh\necho replaced\n");
+  chmodSync(file, 0o755);
+
+  const record = discover({
+    ...baseOptions(root, { home, pathDirs: [pathDir], operatorHome }),
+    // A backend whose refusal quotes a path as well, which is the other side of the same class.
+    backendFor: () => ({ id: "macos-seatbelt", platform: "test", probe: () => ({ available: false, backend: "macos-seatbelt", level_ceiling: "BEST_EFFORT_CLI", reason: `AOS_ISOLATION_BACKEND_ABSENT ${join(root, "nowhere", "sandbox-exec")} did not apply` }) }),
+    resolveCredential: () => null
+  });
+
+  const candidate = record.candidates.find((one) => one.id === "claude");
+  assert.deepEqual(candidate.identity.drift, ["file_fingerprint"]);
+  assert.equal(candidate.auth.reason, "AOS_RUNTIME_IDENTITY_DRIFT");
+  assert.ok(candidate.auth.detail.includes("<path>"), `the borrowed refusal kept its paths: ${candidate.auth.detail}`);
+  assert.ok(candidate.isolation.probe_reason.includes("<path>"));
+  assert.ok(!JSON.stringify(record).includes(root), "no path on this machine may reach the record");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("the login this product asks for names the runtime it belongs to", () => {
+  const root = scratch();
+  const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
+  // No configuration directory: the runtime has never been signed in to on this machine.
+  const operatorHome = operatorHomeWith(root);
+  const home = homeWith(root, { codex: agent("codex", "codex", "codex-cli.v1", { model_id: "openai/gpt-4o-2024-08-06" }) });
+  const record = discover(baseOptions(root, { home, pathDirs: [pathDir], operatorHome }));
+
+  assert.equal(record.status, "ACTION_REQUIRED");
+  assert.equal(record.next_action.kind, "provider_login");
+  assert.equal(record.next_action.runtime, "codex");
+  assert.ok(record.next_action.detail.includes("codex-cli.v1"), record.next_action.detail);
+  assert.ok(!record.next_action.detail.includes("undefined"));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a cycle file this product cannot read is not reported as no cycle at all", () => {
+  const root = scratch();
+  const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
+  const operatorHome = operatorHomeWith(root, { codexConfig: true });
+  const home = homeWith(root);
+  writeFileSync(join(home, "cycle.json"), "{ not json");
+
+  const record = discover(baseOptions(root, { home, pathDirs: [pathDir], operatorHome }));
+  assert.equal(record.profile_reuse.active_cycle_unreadable, true);
+  assert.equal(record.profile_reuse.active_cycle_profile_digest, null);
+  assert.equal(record.profile_reuse.active_cycle_matches, null);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a store this product cannot read is said, not presented as a machine with no history", () => {
+  const root = scratch();
+  const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
+  const operatorHome = operatorHomeWith(root, { codexConfig: true });
+  const home = homeWith(root);
+  writeFileSync(join(home, "agents.json"), "{ not json");
+
+  const record = discover(baseOptions(root, { home, pathDirs: [pathDir], operatorHome }));
+  assert.equal(record.store_unreadable, true);
+  // And the answer is still an answer: the runtime on PATH is measured either way.
+  assert.equal(record.selected_runtime, "codex");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("the runtime is invoked with nothing but --version, so discovery spends no provider quota", () => {
   const root = scratch();
   const { pathDir } = installRuntime(root, { package_name: "@openai/codex", binary: "codex" });
   const operatorHome = operatorHomeWith(root, { codexConfig: true });

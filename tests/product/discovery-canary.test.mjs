@@ -75,7 +75,7 @@ test("the zero-config lane reached DIAGNOSTIC_ONLY on a host with an unknown mod
   assert.equal(selected.isolation.lane_official, true, "the host reached the release's one proven lane");
 });
 
-test("the official lane recorded a real profile-bound pairing on the named machine", () => {
+test("the official lane recorded a host entitled to issue, on the machine the fixture names", () => {
   const lane = canary.lanes.find((one) => one.lane === "official-pairing");
   assert.equal(lane.record.status, "OFFICIAL_READY");
   assert.equal(lane.record.reason_code, null);
