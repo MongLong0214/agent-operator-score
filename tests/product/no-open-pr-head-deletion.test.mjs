@@ -442,3 +442,32 @@ test("a branch whose live graph facts disagree with the audit is refused", () =>
     assert.ok(findings.some((one) => one.includes("the collector derived")), `the disagreement with the fresh derivations was not reported: ${findings.join(" | ")}`);
   });
 });
+
+// GitHub's own value is "open"; the collector normalises to "OPEN". A gate matching one spelling
+// exactly is a gate an unnormalised observation walks straight through.
+test("a pull request state in either spelling blocks the branch", () => {
+  drive({}, (fixture, audit, observation) => {
+    for (const spelling of ["open", "OPEN", "Open"]) {
+      const pre = structuredClone(observation);
+      pre.open_prs = [...pre.open_prs, { number: 999, head_branch: "tmp/merged-thing", head_sha: fixture.shas.main, base: "dev", state: spelling }];
+      const { eligible } = liveEligibility(audit, pre);
+      assert.deepEqual(eligible, [], `a pull request whose state reads "${spelling}" did not block the branch`);
+    }
+  });
+});
+
+// Omission is not observation: a gate reading `open_prs ?? []` treats a missing family as an empty one.
+test("an observation that omits a family it is read for is refused", () => {
+  drive({}, (_fixture, audit, observation) => {
+    for (const family of ["open_prs", "rest_heads", "tags", "rulesets"]) {
+      const pre = structuredClone(observation);
+      delete pre[family];
+      const { eligible, findings } = liveEligibility(audit, pre);
+      assert.deepEqual(eligible, [], `an observation with no ${family} still produced an eligible branch`);
+      assert.ok(findings.some((one) => one.includes(family)), `an observation with no ${family} was not refused for it: ${findings.join(" | ")}`);
+    }
+    const noProtection = structuredClone(observation);
+    delete noProtection.protection;
+    assert.ok(liveEligibility(audit, noProtection).findings.some((one) => one.includes("protection")), "an observation with no protection was not refused");
+  });
+});
