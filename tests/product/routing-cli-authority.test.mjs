@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
+import { Readable } from "node:stream";
 
 import { ACTUAL_ROUTE_EVENT_SCHEMA, routeOracleEvidenceId, validateActualRouteEvent } from "../../lib/routing-oracle.mjs";
 import { cli, fakeAgent, initBare, makePlan, newestRecord, newestResult, run as runCli } from "./helpers.mjs";
@@ -217,4 +218,60 @@ test("the oracle record the run stores is the one the scored row names", async (
   const serialized = JSON.stringify(record.routing_oracle.requirements);
   assert.equal(serialized.includes("plan.json"), true, "the artifact obligation is not on the requirement");
   assert.equal(spawnSync(process.execPath, [cli, "--version"], { encoding: "utf8" }).status, 0);
+});
+
+test("an operator who reroutes at a checkpoint supplies the proposal the oracle reads", async (t) => {
+  // The whole path, end to end: the operator answers a checkpoint with a reroute, #560 mints an
+  // attested `route.assign` through the store's authority gate, `bindOperatorDecisions` turns it
+  // into a row, `operatorAssignment` lines it up with the stage its opportunity was about, and the
+  // oracle records it as the proposed owner beside the one the ledger says actually ran.
+  //
+  // In process, through `runCli`, because the descriptor is what decides whether an answer can be
+  // recorded as an operator's at all -- answers on a pipe are somebody relaying, which is #576's.
+  // The same reasoning and the same helper as `operator-channel-authority.test.mjs`.
+  const cwd = workspaceOr(t);
+  if (cwd === null) return;
+  initBare(cwd);
+  addAdaptedAgent(cwd, "solo", "codex-cli.v1");
+  addAdaptedAgent(cwd, "spare", "codex-cli.v1");
+  const plan = makePlan(cwd, { default: "solo" });
+
+  const { runCli } = await import("../../lib/cli.mjs");
+  const stdin = Readable.from(Array.from({ length: 12 }, () => ["", "y", "spare"]).flat().map((line) => `${line}\n`));
+  stdin.isTTY = true;
+  const sink = { write: () => true };
+  const previous = process.env.FAKE_AGENT_PROFILE;
+  process.env.FAKE_AGENT_PROFILE = "needs-instruction";
+  try {
+    await runCli(["assess", "--plan", plan, "--seed", "11", "--checkpoints", "--data-dir", join(cwd, ".aos")],
+      { cwd, stdin, stdout: sink, stderr: sink });
+  } finally {
+    if (previous === undefined) delete process.env.FAKE_AGENT_PROFILE;
+    else process.env.FAKE_AGENT_PROFILE = previous;
+  }
+
+  const record = newestRecord(cwd);
+  const assigned = record.operator_process_binding.rows.filter((row) => row.decision_type === "route.assign");
+  assert.equal(assigned.length > 0, true, "the reroute recorded no attested routing decision");
+  assert.equal(assigned.every((row) => row.authority !== undefined && row.operator_event_id.startsWith("operator-")), true);
+
+  // What the oracle did with it: the proposal is the operator's, and it is not the ledger's.
+  const proposed = record.routing_oracle.assignment.filter((row) => row.proposed_owner_id !== null);
+  assert.equal(proposed.length > 0, true, `no operator decision reached the oracle: ${JSON.stringify(record.routing_oracle.assignment)}`);
+  for (const row of proposed) {
+    assert.equal(row.proposed_owner_id, "spare", "the proposal is not the agent the operator rerouted to");
+    // And it stayed a proposal. A reroute runs the stage twice, once per agent, so the ledger
+    // reports two owners for one task and the oracle calls that `ambiguous` rather than picking
+    // one -- least of all the one the operator asked for, which is the whole point of the
+    // separation. Ownership is null; the operator's decision is beside it, not instead of it.
+    assert.equal(row.provenance, "ambiguous", `a rerouted stage resolved to a single owner: ${JSON.stringify(row)}`);
+    assert.equal(row.owner_id, null, "the proposal became the owner");
+  }
+  // The questions that need an owner therefore withhold, which is the correct answer for a stage
+  // two agents ran and nothing says which one owned it.
+  const capability = record.routing_oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
+  assert.equal(capability.pass, null);
+  // And the FAM-3 opportunity the decision was made at names the stage the requirement holds.
+  const tasks = new Set(record.routing_oracle.requirements.map((entry) => entry.task_id));
+  for (const row of proposed) assert.equal(tasks.has(row.task_id), true, `${row.task_id} is not a task of this run`);
 });
