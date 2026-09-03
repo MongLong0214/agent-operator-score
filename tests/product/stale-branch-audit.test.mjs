@@ -39,6 +39,8 @@ const withBranch = (audit, name, patch) => ({
   branches: audit.branches.map((entry) => (entry.name === name ? { ...entry, ...patch } : entry))
 });
 const merged = (audit) => audit.branches.find((entry) => entry.classification === "MERGED");
+/** The commits the collector derived as reaching neither dev nor main, for one audited branch. */
+const outstandingIds = (audit, name) => audit.live_observation.derivations[name].unique_commit_ids_vs_dev_and_main.value;
 
 test("the audit file exists and parses", () => {
   assert.equal(existsSync(auditPath), true, `${auditPath} is missing`);
@@ -52,7 +54,7 @@ test("the audit doc exists and is not a stub", () => {
 
 test("the audit declares the read-only phase, a method, and an ls-remote snapshot that excludes main and dev by name", () => {
   const audit = loadAudit();
-  assert.equal(audit.schema, "aos-stale-branch-audit.v4");
+  assert.equal(audit.schema, "aos-stale-branch-audit.v5");
   assert.equal(audit.phase, "read-only-audit");
   assert.ok(audit.method.length > 20, "no method recorded");
   assert.ok(Array.isArray(audit.ls_remote_snapshot) && audit.ls_remote_snapshot.length > 0);
@@ -64,7 +66,7 @@ test("the audit declares the read-only phase, a method, and an ls-remote snapsho
 test("the observation holds its own shape, over two transports, with a receipt behind every derivation", () => {
   const audit = loadAudit();
   const observation = audit.live_observation;
-  assert.equal(observation.schema, "aos-branch-live-observation.v2");
+  assert.equal(observation.schema, "aos-branch-live-observation.v3");
   assert.deepEqual(verifyObservation(observation), [], "the committed observation does not hold its own shape");
   assert.equal(observation.digest, observationDigest(observation), "the observation's digest does not name its own content");
   assert.equal(observation.collected_at, audit.generated_at, "the observation was not collected when the audit says it was generated");
@@ -227,7 +229,7 @@ test("every branch in the snapshot other than main and dev is audited exactly on
 test("a live head that appears nowhere in the audit is refused, and the two transports must agree", () => {
   const audit = loadAudit();
   const heads = [...audit.ls_remote_snapshot, { name: "task/issue-000-unaudited", sha: "a".repeat(40) }];
-  const live = { schema: "aos-branch-live-observation.v2", heads, rest_heads: heads, open_prs: [] };
+  const live = { schema: "aos-branch-live-observation.v3", heads, rest_heads: heads, open_prs: [] };
   const findings = auditCoverageFindings(audit, live);
   assert.ok(findings.some((f) => f.includes("task/issue-000-unaudited") && f.includes("appears nowhere in this audit")), `an unaudited live head passed coverage: ${findings.join(" | ")}`);
   assert.ok(findings.some((f) => f.includes("no open pull request")), "the audit's own after-snapshot branch was excused without a PR in this observation");
@@ -236,7 +238,7 @@ test("a live head that appears nowhere in the audit is refused, and the two tran
   // to show its pull request open -- that is what earns the exception.
   const self = audit.heads_created_after_this_snapshot[0];
   const consistent = {
-    schema: "aos-branch-live-observation.v2",
+    schema: "aos-branch-live-observation.v3",
     heads: audit.ls_remote_snapshot,
     rest_heads: audit.ls_remote_snapshot,
     open_prs: [{ number: self.open_pr, head_branch: self.name, head_sha: "1".repeat(40), base: "dev", state: "OPEN" }]
@@ -319,7 +321,7 @@ test("the after-snapshot exception is bound to the submission branch and validat
   const self = audit.heads_created_after_this_snapshot[0];
   assert.equal(self.name, audit.submission_branch, "the audit does not name the branch its exception is for");
   const heads = [...audit.ls_remote_snapshot, { name: self.name, sha: "1".repeat(40) }];
-  const observe = (prs) => ({ schema: "aos-branch-live-observation.v2", heads, rest_heads: heads, open_prs: prs });
+  const observe = (prs) => ({ schema: "aos-branch-live-observation.v3", heads, rest_heads: heads, open_prs: prs });
   const itsPr = [{ number: self.open_pr, head_branch: self.name, head_sha: "1".repeat(40), base: "dev", state: "OPEN" }];
 
   assert.deepEqual(auditCoverageFindings(audit, observe(itsPr)), [], "the submission branch was not excused while its PR was open");
@@ -344,7 +346,7 @@ test("the after-snapshot exception is bound to the submission branch and validat
   const orphanHeads = [...heads, { name: orphan, sha: "3".repeat(40) }];
   const forged = { ...audit, heads_created_after_this_snapshot: [...audit.heads_created_after_this_snapshot, { name: orphan, sha: null, classification: "MERGED", open_pr: 77, note: "x".repeat(60) }] };
   const orphanLive = {
-    schema: "aos-branch-live-observation.v2",
+    schema: "aos-branch-live-observation.v3",
     heads: orphanHeads,
     rest_heads: orphanHeads,
     open_prs: [...itsPr, { number: 77, head_branch: orphan, head_sha: "3".repeat(40), base: "dev", state: "OPEN" }]
@@ -528,6 +530,69 @@ test("EVIDENCE_ONLY requires a concrete destination for the evidence before anyt
   assert.ok(!deletionEligibility(withBranch(audit, entry.name, complete)).eligible.some((e) => e.name === entry.name), "an EVIDENCE_ONLY branch was deletion-eligible");
 });
 
+// --- a citation is not evidence unless the cited command answered the recorded answer -------------
+//
+// `tags_containing` is decided by one `git merge-base --is-ancestor` per tag, and it cited a single
+// receipt -- whichever tag sorted first -- whose recorded exit status was 1, "not contained", beside
+// a value listing seven tags the branch is contained in. Neither checker could see it: one asked
+// only whether the named receipt existed, the other compared the record against the same record.
+
+test("every list-valued derivation cites a receipt per candidate, and each cited command answered what it is cited for", () => {
+  const audit = loadAudit();
+  const observation = audit.live_observation;
+  const receipts = new Map(observation.receipts.map((receipt) => [receipt.source, receipt]));
+  let checked = 0;
+  for (const [branch, derivation] of Object.entries(observation.derivations)) {
+    const cited = derivation.tags_containing.source;
+    assert.ok(Array.isArray(cited), `${branch}: tag containment cites one receipt for a question decided by one command per tag`);
+    assert.equal(cited.length, observation.tags.length, `${branch}: ${cited.length} ancestry test(s) cited for ${observation.tags.length} tag(s)`);
+    const listed = new Set(derivation.tags_containing.value);
+    for (const source of cited) {
+      const receipt = receipts.get(source);
+      assert.ok(receipt, `${branch}: cites ${source}, which the observation does not carry`);
+      const tag = source.slice("tag-contains-".length, source.length - branch.length - 1);
+      checked += 1;
+      assert.equal(receipt.exit_code === 0, listed.has(tag), `${branch}: containment ${listed.has(tag) ? "lists" : "omits"} ${tag} while the receipt it cites for it exited ${receipt.exit_code}`);
+    }
+    // The booleans too, since the same comparison is available to them.
+    for (const field of ["ancestor_of_dev", "ancestor_of_main"]) {
+      const receipt = receipts.get(derivation[field].source);
+      assert.ok(receipt, `${branch}: ${field} cites a receipt the observation does not carry`);
+      checked += 1;
+      assert.equal(receipt.exit_code === 0, derivation[field].value, `${branch}: ${field} records ${derivation[field].value} while the command it cites exited ${receipt.exit_code}`);
+    }
+  }
+  assert.ok(checked > 20, `only ${checked} citation(s) were checked, so this test is not covering the observation`);
+});
+
+test("a derivation whose cited command answered the other way is refused", () => {
+  const audit = loadAudit();
+  const branch = Object.keys(audit.live_observation.derivations).find((name) => audit.live_observation.derivations[name].tags_containing.value.length > 0);
+  assert.ok(branch, "no branch is contained in a release tag, so this test would check nothing");
+  const forge = (mutate) => {
+    const observation = structuredClone(audit.live_observation);
+    mutate(observation.derivations[branch], observation);
+    observation.digest = observationDigest(observation);
+    return observation;
+  };
+  // A tag listed as containing the branch whose ancestry test said no.
+  const invented = forge((derivation) => derivation.tags_containing.value.push("v9.9.9-not-tested"));
+  assert.ok(verifyObservation(invented).some((f) => f.includes("without citing the ancestry test")), "a tag listed with no ancestry test behind it passed");
+  // A tag dropped from the value whose ancestry test said yes.
+  const dropped = forge((derivation) => { derivation.tags_containing.value = derivation.tags_containing.value.slice(1); });
+  assert.ok(verifyObservation(dropped).some((f) => f.includes("omits")), "a tag whose ancestry test said contained was dropped from the value and passed");
+  // The shape the defect had: one receipt, for a neighbouring question, cited for the whole answer.
+  const neighbouring = forge((derivation, observation) => { derivation.tags_containing.source = `tag-contains-${observation.tags[0].name}-${branch}`; });
+  assert.notDeepEqual(verifyObservation(neighbouring), [], "a list-valued derivation citing one neighbouring receipt passed");
+  // And a containment claim whose cited ancestry test exited 1.
+  const flipped = forge((derivation, observation) => {
+    const first = derivation.tags_containing.value[0];
+    const source = `tag-contains-${first}-${branch}`;
+    observation.receipts = observation.receipts.map((receipt) => (receipt.source === source ? { ...receipt, exit_code: 1 } : receipt));
+  });
+  assert.ok(verifyObservation(flipped).some((f) => f.includes("exited 1")), "a containment claim whose cited command answered 'not contained' passed");
+});
+
 // SUPERSEDED is a distinct route, not a synonym for MERGED. Its whole premise is that the original
 // commits were reimplemented rather than merged, so requiring containment of it deletes the route.
 test("SUPERSEDED work that was reimplemented rather than merged is deletable on its own evidence", () => {
@@ -543,12 +608,42 @@ test("SUPERSEDED work that was reimplemented rather than merged is deletable on 
       issue: 559,
       sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49",
       note: "reimplemented on latest dev and merged there; the commits below are the ones this branch held that were not merged verbatim",
-      supersedes_commits: Array.from({ length: active.unique_commits_vs_dev_and_main }, (_unused, index) => String(index).padStart(40, "0"))
+      // The commits the collector derived, not eighteen zero-padded strings of the right length.
+      // This test asserted deletion-eligibility off a fabricated list, which made the one route by
+      // which unmerged work becomes deletable satisfiable by counting.
+      supersedes_commits: [...outstandingIds(audit, active.name)]
     },
     reason: "The work was reimplemented on dev under PR #610 and this branch's commits are individually accounted for by that replacement."
   });
+  assert.ok(active.unique_commits_vs_dev_and_main > 0, "the branch holds nothing unmerged, so this test would not exercise the SUPERSEDED route");
   assert.deepEqual(classificationFindings(forged), [], `a reimplemented SUPERSEDED branch was refused: ${classificationFindings(forged).join(" | ")}`);
   assert.ok(deletionEligibility(forged).eligible.some((e) => e.name === active.name), "a SUPERSEDED branch with full replacement evidence was not deletion-eligible");
+  // And on the path that has the evidence: the ids it accounts for are the ids the collector derived.
+  assert.deepEqual(derivationFindings(forged).filter((f) => f.includes("accounts for commit ids")), [], "an honest SUPERSEDED accounting was refused");
+});
+
+// An id list that accounts for work has to be derived, not declared. The classification contract
+// compares a length, and a length is satisfied by any 40-hex strings at all -- which is the whole
+// route by which a branch holding unmerged commits becomes deletion-eligible.
+test("a SUPERSEDED record accounting for commit ids the collector did not derive is refused", () => {
+  const audit = loadAudit();
+  const active = audit.branches.find((entry) => entry.open_pr);
+  const real = outstandingIds(audit, active.name);
+  assert.ok(real.length > 0, "no branch holds a commit reaching neither line, so this test would check nothing");
+  const supersede = (ids) => withBranch(audit, active.name, {
+    classification: "SUPERSEDED",
+    recommendation: "safe_to_delete_after_578",
+    open_pr: null,
+    preserve: [],
+    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: ids }
+  });
+  const fabricated = real.map((_unused, index) => String(index).padStart(40, "0"));
+  assert.equal(classificationFindings(supersede(fabricated)).length, 0, "the counting check refused it, so this test is not measuring the id comparison");
+  assert.ok(derivationFindings(supersede(fabricated)).some((f) => f.includes("accounts for commit ids")), "a fabricated accounting of unmerged commits passed");
+  // One valid-but-wrong id, so the refusal is about which commits rather than about how many.
+  const swapped = [...real.slice(1), "0".repeat(40)];
+  assert.ok(derivationFindings(supersede(swapped)).some((f) => f.includes("accounts for commit ids")), "an accounting that swapped one commit for another passed");
+  assert.deepEqual(derivationFindings(supersede([...real])).filter((f) => f.includes("accounts for commit ids")), [], "the derived accounting was refused");
 });
 
 test("SUPERSEDED without a complete superseding record is refused, component by component", () => {
@@ -694,6 +789,55 @@ test("the count that deletion turns on is commits reaching neither line, recorde
 // by `runDeletion` and no longer existed. A document naming an API that is not there is a defect in
 // the contract, not a typo, so the check is structural: every module function these documents tell a
 // reader to call has to be exported by the module they say it lives in.
+/**
+ * Everywhere a name for this change's API, or for a command it retired, can survive a rename.
+ *
+ * The document and the fixture publish the contract; the two scripts are the contract's subject; the
+ * three suites and the fixture harness are where a retired name goes on being true-looking prose
+ * long after the thing it names is gone.
+ */
+const DRIFT_SOURCES = [
+  "docs/STALE_BRANCH_AUDIT.md",
+  "fixtures/stale-branches/audit.json",
+  "scripts/collect-branch-state.mjs",
+  "scripts/branch-audit.mjs",
+  "tests/product/branch-state-fixture.mjs",
+  "tests/product/branch-cleanup-invariants.test.mjs",
+  "tests/product/no-open-pr-head-deletion.test.mjs",
+  "tests/product/stale-branch-audit.test.mjs"
+];
+
+/** Helpers a suite defines for itself. Not the modules' API, and not what drifts. */
+const LOCAL_TEST_HELPERS = new Set([
+  "auditFor",
+  "boundaryPair",
+  "clearedCompletion",
+  "collectedFindings",
+  "completedLog",
+  "contractNamedComposition",
+  "loadAudit",
+  "notYetLog",
+  "recollect",
+  "setResponses",
+  "withBranch",
+  "withFakeGitHub"
+]);
+
+/**
+ * Commands this change removed from the collector, and the reason each had to go.
+ *
+ * `git tag --contains` answers from the local tag set rather than the repository's; `gh pr list`
+ * takes a `--limit` that is a maximum, so an omitted pull request is indistinguishable from a branch
+ * that never had one; `git fetch --tags` rewrites local tags, which is a write inside a read-only
+ * instrument. The identifier pass above cannot see any of them: they are command lines, not
+ * JavaScript names, and that is exactly how five prose sites went on describing a collector that had
+ * stopped running them.
+ */
+const RETIRED_COMMANDS = ["git tag --contains", "gh pr list", "git fetch --tags"];
+
+/** Function names this change removed. Mentioned only where their absence is asserted. */
+const RETIRED_API = new Set(["authorizeDeletion", "makeDeletionRunner", "runDeletion"]);
+
 test("every gate function the contract and the document name is actually exported", async () => {
   const audit = loadAudit();
   const gate = await import("../../scripts/branch-audit.mjs");
@@ -707,17 +851,21 @@ test("every gate function the contract and the document name is actually exporte
   // Anything API-shaped, wherever it is mentioned. This is what would have caught the drift: the
   // retired name survived in three files after the export was gone.
   const apiShaped = /\b((?:run|authorize|make|collect|verify)[A-Z]\w*|\w+(?:Findings|Digest|Snapshot|Observation|Eligibility))\b/gu;
-  const sources = {
-    "docs/STALE_BRANCH_AUDIT.md": readFileSync(docPath, "utf8"),
-    "fixtures/stale-branches/audit.json": readFileSync(auditPath, "utf8"),
-    "scripts/collect-branch-state.mjs": readFileSync(join(root, "scripts", "collect-branch-state.mjs"), "utf8"),
-    "scripts/branch-audit.mjs": readFileSync(join(root, "scripts", "branch-audit.mjs"), "utf8")
-  };
-  const internal = new Set(["afterSnapshotComplaint", "collectLive", "liveOpenPr", "liveProtected", "withoutPaths"]);
+  // Every file the drift can survive in, not only the ones that publish the contract. The scope was
+  // the four below minus the tests, and `runDeletion` -- removed in this change -- went on describing
+  // the fixture harness's purpose three files away from the assertion that it no longer exists. A
+  // guard whose scope is narrower than the tree reports on the part of the tree it can see.
+  const sources = Object.fromEntries(DRIFT_SOURCES.map((path) => [path, readFileSync(join(root, path), "utf8")]));
+  const internal = new Set(["afterSnapshotComplaint", "collectLive", "derivationAnswerFindings", "liveOpenPr", "liveProtected", "observationBindingFindings", "withoutPaths"]);
   let checked = 0;
   for (const [where, text] of Object.entries(sources)) {
     for (const [, name] of text.matchAll(apiShaped)) {
-      if (internal.has(name) && where.startsWith("scripts/")) continue;
+      if (internal.has(name) && !where.startsWith("docs/") && !where.startsWith("fixtures/")) continue;
+      // A test names its own local helpers, which are not the modules' API and are not what drifts.
+      if (where.startsWith("tests/") && !exported.has(name) && LOCAL_TEST_HELPERS.has(name)) continue;
+      // The retired names appear in exactly one place on purpose: the assertions below, which exist
+      // to fail if any of them is exported again. Naming a thing in order to forbid it is not drift.
+      if (where === "tests/product/stale-branch-audit.test.mjs" && RETIRED_API.has(name)) continue;
       checked += 1;
       assert.ok(exported.has(name), `${where} names ${name}, which neither script exports`);
     }
@@ -729,6 +877,75 @@ test("every gate function the contract and the document name is actually exporte
   // Phase A ships verifiers, not an executor. A function that performs the deletion belongs to the
   // blocked phase, and the issue's own phase boundary allows 조회/분류/evidence/verifier only.
   assert.equal(exported.has("runDeletion"), false, "a deletion executor is exported from a read-only Phase A");
+});
+
+// The other direction of R-01. The forward check catches a document naming a gate that does not
+// exist; it cannot catch a contract that fails to name the gate that enforces the rule -- which is
+// how the whole evidence binding came to live in a function no contract, document or verifier list
+// mentioned, while six assertions rested on it.
+test("every gate the modules export is one the contract or the document tells a reader to call", async () => {
+  const audit = loadAudit();
+  const gate = await import("../../scripts/branch-audit.mjs");
+  const contract = audit.phase_b_contract;
+  const published = [contract.entry_point, contract.verifiers, contract.invariant_comparison, contract.prerequisite_authority, JSON.stringify(contract.required_shape), readFileSync(docPath, "utf8")].join("\n");
+
+  // Gates: the exported functions that decide something about a deletion. Helpers that only compute
+  // a value are declared here rather than left to a regex, so adding one is a decision.
+  const notAGate = new Set(["CLASSIFICATIONS", "RECOMMENDATIONS", "DELETION_BLOCKED_BY", "OBSERVATION_MAX_AGE_SECONDS", "canonicalize", "loadCompletionSnapshot"]);
+  const gates = Object.keys(gate).filter((name) => !notAGate.has(name));
+  assert.ok(gates.length > 5, `only ${gates.length} gate(s) were found, so this test is not covering the module`);
+
+  // Named, or called by something named -- a gate composed by a gate the contract names is reachable
+  // from the documented sequence, which is what "the contract names the gate that is actually run"
+  // means. A gate in neither set is one nothing tells anyone to run, which is where the whole
+  // evidence binding lived while six assertions rested on it.
+  const source = readFileSync(join(root, "scripts", "branch-audit.mjs"), "utf8");
+  const bodyOf = (name) => {
+    const start = source.indexOf(`export const ${name} =`);
+    if (start < 0) return "";
+    const next = source.indexOf("\nexport const ", start + 1);
+    return source.slice(start, next < 0 ? source.length : next);
+  };
+  const reachable = new Set(gates.filter((name) => published.includes(name)));
+  for (let pass = 0; pass < gates.length; pass += 1) {
+    const before = reachable.size;
+    for (const from of [...reachable]) {
+      for (const name of gates) if (bodyOf(from).includes(name)) reachable.add(name);
+    }
+    if (reachable.size === before) break;
+  }
+  for (const name of gates) {
+    assert.ok(reachable.has(name), `${name} decides something about a deletion, and neither the Phase B contract nor the document reaches it`);
+  }
+  // And the composed gate specifically, since it is the one that went unnamed.
+  assert.ok(contract.verifiers.includes("deletionAuthorizationFindings"), "the contract's verifier list does not name the gate that binds the record to its evidence");
+  assert.ok(readFileSync(docPath, "utf8").includes("deletionAuthorizationFindings"), "the document's Phase B sequence does not name the gate that binds the record to its evidence");
+});
+
+// The identifier pass cannot see a command name. Five prose sites described the collector as running
+// `git tag --contains` and `gh pr list --head` after this change removed both as unsafe, while zero
+// receipts matched either -- a drift guard that covers one kind of name and not the other.
+test("no document, fixture or suite describes the collector as running a command it retired", () => {
+  const audit = loadAudit();
+  // The surfaces that describe how these facts were collected: the rendered report and the record.
+  // Not the scripts, where the retirement is decided and explained, and not the suites, which are
+  // covered by the identifier pass above and have to be able to say what they refuse.
+  for (const path of ["docs/STALE_BRANCH_AUDIT.md", "fixtures/stale-branches/audit.json"]) {
+    const text = path === "fixtures/stale-branches/audit.json"
+      // `revision_history` is the one place a superseded method belongs: it exists to say what an
+      // earlier revision did and why it stopped. Everything else in the file describes what ran.
+      ? JSON.stringify({ ...audit, revision_history: [] })
+      : readFileSync(join(root, path), "utf8");
+    for (const command of RETIRED_COMMANDS) {
+      assert.ok(!text.includes(command), `${path} describes the collector as running \`${command}\`, which it does not`);
+    }
+  }
+  // And against the receipts rather than against prose: what ran is what the observation recorded.
+  const commands = audit.live_observation.receipts.map((receipt) => receipt.command);
+  for (const command of RETIRED_COMMANDS) {
+    assert.equal(commands.filter((one) => one.includes(command)).length, 0, `the observation carries a receipt for \`${command}\``);
+  }
+  assert.ok(commands.some((one) => one.includes("merge-base --is-ancestor")), "no ancestry receipt at all, so this test is not measuring the collector that ran");
 });
 
 test("a multi-phase issue is not closed by the phase that has run", async () => {

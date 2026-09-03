@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, boundaryInvariantFindings, canonicalize, cleanupInvariantFindings, deletionEligibility, deletionLogFindings, loadCompletionSnapshot } from "../../scripts/branch-audit.mjs";
+import { DELETION_BLOCKED_BY, boundaryInvariantFindings, canonicalize, cleanupInvariantFindings, deletionAuthorizationFindings, deletionEligibility, deletionLogFindings, liveEligibility, loadCompletionSnapshot, prerequisiteFindings } from "../../scripts/branch-audit.mjs";
 import { observationDigest } from "../../scripts/collect-branch-state.mjs";
 
 // Phase B of #572 deletes refs. The issue names what must hold across that deletion -- main, dev,
@@ -240,28 +240,28 @@ test("a completed deletion log filled in as the contract prescribes passes", () 
   const { pre, post } = boundaryPair();
   const log = completedLog(pre, post);
   assert.ok(log.deleted.length > 0, "nothing was eligible, so this test would check nothing");
-  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "a correctly completed log was refused");
+  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion(), pre, post }), [], "a correctly completed log was refused");
 });
 
 test("a completed deletion log that deleted nothing because nothing was eligible is accepted", () => {
   const { pre, post } = boundaryPair();
   const log = completedLog(pre, post, { deleted: [], no_op_reason: "the fresh audit found no eligible stale ref: both candidates had already been removed by delete_branch_on_merge" });
-  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "an honest no-op completion was refused");
+  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion(), pre, post }), [], "an honest no-op completion was refused");
 });
 
 test("a completed deletion log that deleted nothing and does not say why is refused", () => {
   const { pre, post } = boundaryPair();
-  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { deleted: [] }), { completion: clearedCompletion() }), [], "an unexplained empty completion passed");
-  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { deleted: [], no_op_reason: "none" }), { completion: clearedCompletion() }), [], "an empty completion with a token reason passed");
+  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { deleted: [] }), { completion: clearedCompletion(), pre, post }), [], "an unexplained empty completion passed");
+  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { deleted: [], no_op_reason: "none" }), { completion: clearedCompletion(), pre, post }), [], "an empty completion with a token reason passed");
 });
 
 test("a COMPLETED deletion log that cites no boundary observation digests is refused", () => {
   const { pre, post } = boundaryPair();
   for (const field of ["pre_observation", "post_observation"]) {
-    const findings = deletionLogFindings(completedLog(pre, post, { [field]: undefined }), { completion: clearedCompletion() });
+    const findings = deletionLogFindings(completedLog(pre, post, { [field]: undefined }), { completion: clearedCompletion(), pre, post });
     assert.ok(findings.some((f) => f.includes(field.replace("_", "-"))), `a COMPLETED log with no ${field} digest passed: ${findings.join(" | ")}`);
   }
-  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { completed_at: "whenever" }), { completion: clearedCompletion() }), [], "a COMPLETED log with a malformed instant passed");
+  assert.notDeepEqual(deletionLogFindings(completedLog(pre, post, { completed_at: "whenever" }), { completion: clearedCompletion(), pre, post }), [], "a COMPLETED log with a malformed instant passed");
 });
 
 test("a NOT_YET deletion log that nevertheless lists a deleted branch is refused", () => {
@@ -276,17 +276,17 @@ test("a COMPLETED deletion log cannot clear its own prerequisites: the canonical
   const { pre, post } = boundaryPair();
   const open = completion.issues.filter((issue) => DELETION_BLOCKED_BY.includes(issue.number) && issue.state !== "closed");
   assert.ok(open.length > 0, "no blocker is open in the canonical snapshot, so this test would check nothing");
-  const findings = deletionLogFindings(completedLog(pre, post), { completion });
+  const findings = deletionLogFindings(completedLog(pre, post), { completion, pre, post });
   for (const issue of open) {
     assert.ok(findings.some((f) => f.includes(`#${issue.number}`) && f.includes("still blocked")), `the refusal does not name #${issue.number}: ${findings.join(" | ")}`);
   }
   const insistent = completedLog(pre, post, { blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "closed", evidence: "this definitely cleared, trust me" })) });
-  assert.notDeepEqual(deletionLogFindings(insistent, { completion }), [], "a log asserting its own clearance passed");
+  assert.notDeepEqual(deletionLogFindings(insistent, { completion, pre, post }), [], "a log asserting its own clearance passed");
 });
 
 test("a COMPLETED deletion log with no canonical snapshot to check against is refused", () => {
   const { pre, post } = boundaryPair();
-  assert.ok(deletionLogFindings(completedLog(pre, post), { completion: null }).some((f) => f.includes("no canonical issue-state snapshot")), "a completed log with no authority passed");
+  assert.ok(deletionLogFindings(completedLog(pre, post), { completion: null, pre, post }).some((f) => f.includes("no canonical issue-state snapshot")), "a completed log with no authority passed");
 });
 
 test("a blocker closed without close evidence does not clear it", () => {
@@ -298,7 +298,82 @@ test("a blocker closed without close evidence does not clear it", () => {
 test("a deletion log whose account of a blocker disagrees with the canonical snapshot is refused", () => {
   const { pre, post } = boundaryPair();
   const log = completedLog(pre, post, { blockers_cleared: DELETION_BLOCKED_BY.map((issue) => ({ issue, canonical_state: "open" })) });
-  assert.notDeepEqual(deletionLogFindings(log, { completion: clearedCompletion() }), [], "a log disagreeing with the canonical snapshot passed");
+  assert.notDeepEqual(deletionLogFindings(log, { completion: clearedCompletion(), pre, post }), [], "a log disagreeing with the canonical snapshot passed");
+});
+
+// --- the record is bound to the evidence it cites -------------------------------------------------
+//
+// A `sha256:` followed by 64 hex characters is a well-formed citation of nothing. The bindings that
+// make a citation evidence -- recomputing each observation's digest, and the 900-second window that
+// makes "immediately beforehand" a condition -- lived only in `deletionAuthorizationFindings`, which
+// no contract, document or verifier list named. Every check below therefore ran, and none of them
+// had been handed the thing it was supposed to compare against.
+
+/** The exact composition `audit.phase_b_contract.verifiers` and the document's steps 1-7 name. */
+const contractNamedComposition = ({ audit: subject, log, pre, post, completion: snapshot }) => [
+  ...prerequisiteFindings(snapshot),
+  ...liveEligibility(subject, pre).findings,
+  ...boundaryInvariantFindings(log, pre, post),
+  ...deletionLogFindings(log, { completion: snapshot, pre, post })
+];
+
+test("the composition the Phase B contract names refuses a record citing evidence it was never checked against", () => {
+  const { pre, post } = boundaryPair();
+  const forged = completedLog(pre, post, {
+    // Well-formed and matching nothing, stamped forty days after the observation the record calls
+    // the one collected immediately beforehand.
+    completed_at: "2026-10-20T00:00:00Z",
+    pre_observation: { digest: `sha256:${"a".repeat(64)}` },
+    post_observation: { digest: `sha256:${"b".repeat(64)}` }
+  });
+  const findings = contractNamedComposition({ audit, log: forged, pre, post, completion: clearedCompletion() });
+  assert.ok(findings.some((f) => f.includes("does not cite the digest of the pre-deletion observation")), `the documented path accepted a fabricated pre-observation digest: ${findings.join(" | ")}`);
+  assert.ok(findings.some((f) => f.includes("does not cite the digest of the post-deletion observation")), `the documented path accepted a fabricated post-observation digest: ${findings.join(" | ")}`);
+  assert.ok(findings.some((f) => f.includes("this gate allows")), `the freshness window was never applied on the documented path: ${findings.join(" | ")}`);
+  // And the gate the contract now names refuses it too, so the two paths do not diverge again.
+  assert.notDeepEqual(deletionAuthorizationFindings({ audit, log: forged, pre, post, completion: clearedCompletion() }), [], "the composed gate accepted the forged record");
+});
+
+test("the composition the Phase B contract names accepts the record Phase B is supposed to be able to write", () => {
+  const { pre, post } = boundaryPair();
+  const log = completedLog(pre, post);
+  assert.ok(log.deleted.length > 0, "nothing was eligible, so this test would check nothing");
+  const findings = contractNamedComposition({ audit, log, pre, post, completion: clearedCompletion() });
+  // liveEligibility is measured against the committed observation, which is a snapshot of a moving
+  // repository, so it is allowed to disagree about heads that appeared since. What may not happen is
+  // the binding refusing an honest record.
+  const bindings = findings.filter((f) => f.includes("observation") && (f.includes("cite the digest") || f.includes("this gate allows") || f.includes("no pre-deletion observation") || f.includes("no post-deletion observation")));
+  assert.deepEqual(bindings, [], `an honest completed record was refused by the evidence binding: ${bindings.join(" | ")}`);
+});
+
+test("a deletion log citing a well-formed digest of no observation is refused by the function the contract names", () => {
+  const { pre, post } = boundaryPair();
+  for (const field of ["pre_observation", "post_observation"]) {
+    const log = completedLog(pre, post, { [field]: { digest: `sha256:${"9".repeat(64)}` } });
+    const findings = deletionLogFindings(log, { completion: clearedCompletion(), pre, post });
+    assert.ok(findings.some((f) => f.includes(`does not cite the digest of the ${field.replace("_observation", "")}-deletion observation`)), `a log citing a wrong ${field} digest passed: ${findings.join(" | ")}`);
+  }
+});
+
+test("a deletion log checked without the observations it cites reports that rather than passing", () => {
+  const { pre, post } = boundaryPair();
+  const log = completedLog(pre, post);
+  for (const [supplied, missing] of [[{ post }, "pre-deletion"], [{ pre }, "post-deletion"]]) {
+    const findings = deletionLogFindings(log, { completion: clearedCompletion(), ...supplied });
+    assert.ok(findings.some((f) => f.includes(`no ${missing} observation was supplied`)), `a record whose ${missing} evidence was never supplied passed: ${findings.join(" | ")}`);
+  }
+});
+
+test("an observation stale past the window, or from the wrong side of the deletion, is refused by the function the contract names", () => {
+  const { pre, post } = boundaryPair();
+  const log = completedLog(pre, post);
+  const stale = observation({ collected_at: "2026-09-09T00:00:00Z" });
+  const staleLog = completedLog(stale, post);
+  assert.ok(deletionLogFindings(staleLog, { completion: clearedCompletion(), pre: stale, post }).some((f) => f.includes("this gate allows")), "a day-old pre-observation passed the log check");
+  const early = observation({ collected_at: "2026-09-10T00:00:10Z", heads: post.heads, rest_heads: post.rest_heads });
+  const earlyLog = completedLog(pre, early);
+  assert.ok(deletionLogFindings(earlyLog, { completion: clearedCompletion(), pre, post: early }).some((f) => f.includes("collected before the deletion")), "a post-observation from before the deletion passed the log check");
+  assert.deepEqual(deletionLogFindings(log, { completion: clearedCompletion(), pre, post }), [], "the honest pair was refused");
 });
 
 test("canonicalization compares content rather than key order or cardinality", () => {

@@ -203,7 +203,7 @@ test("an observation with no receipts, or whose derivations cite receipts it doe
   const unsourced = observation({ collected_at: "2026-09-10T00:00:00Z", receipts: audit.live_observation.receipts.slice(0, 2) });
   assert.ok(authorize({ pre: unsourced, post }).some((f) => f.includes("which the observation does not carry")), "an observation whose derivations cite absent receipts was accepted");
   const wrongSchema = observation({ collected_at: "2026-09-10T00:00:00Z", schema: "something-else" });
-  assert.ok(authorize({ pre: wrongSchema, post }).some((f) => f.includes("not aos-branch-live-observation.v2")), "an observation of the wrong schema was accepted");
+  assert.ok(authorize({ pre: wrongSchema, post }).some((f) => f.includes("not aos-branch-live-observation.v3")), "an observation of the wrong schema was accepted");
 });
 
 // An unpaginated list turns a pull request on the second page into an absent pull request, and the
@@ -306,6 +306,19 @@ test("a list endpoint that succeeds and returns nothing is not an empty list", (
   });
 });
 
+// The same shape one function further on. `apiSearch` resolved an empty page array to
+// `{complete: true, total_count: 0, hits: []}` -- "nothing on GitHub refers to this branch, and the
+// sweep was complete" -- in the one function whose own docstring says a truncated sweep did not
+// establish that. Judged unreachable through the real `gh`; the fixture reaches it in one line.
+test("a search that returns no page at all is not a complete sweep with no results", () => {
+  drive({}, (fixture) => {
+    setResponses(fixture, (responses) => {
+      responses[`search/issues?q=${encodeURIComponent(`repo:${fixture.repository} "tmp/merged-thing"`)}&per_page=100`] = "__NO_PAGES__";
+    });
+    assert.throws(() => recollect(fixture), /no page at all/u, "a search that returned no page was read as a complete sweep finding nothing");
+  });
+});
+
 test("an open pull request visible only in the collected history still refuses the branch", () => {
   drive({}, (fixture, audit) => {
     setResponses(fixture, (responses) => {
@@ -374,21 +387,28 @@ test("a branch that moved since the audit is refused at the commit the audit jud
 
 test("tag containment reports the repository's tags, not whatever this checkout carries", () => {
   drive({}, (fixture, _audit, observation) => {
-    assert.deepEqual(observation.derivations["tmp/merged-thing"].tags_containing.value, ["v0.1.0"], "the fixture's annotated tag was not derived");
-    // Both directions of the ancestry test, because the fixture has exactly one tag and "contained"
-    // alone cannot tell a derivation from a list. `task/active-work` descends from the tagged commit
-    // rather than being reachable from it, so a collector that stopped deriving and simply reported
-    // every tag would claim this branch is in v0.1.0 too.
-    assert.deepEqual(observation.derivations["task/active-work"].tags_containing.value, [], "a branch that descends from the tagged commit was reported as contained in the tag");
+    assert.deepEqual(observation.derivations["tmp/merged-thing"].tags_containing.value, ["v0.1.0", "v0.2.0"], "the fixture's annotated tags were not derived");
+    // Both directions of the ancestry test, because "contained" alone cannot tell a derivation from a
+    // list. `task/active-work` descends from both tagged commits rather than being reachable from
+    // either, so a collector that stopped deriving and simply reported every tag would claim this
+    // branch is in them too.
+    assert.deepEqual(observation.derivations["task/active-work"].tags_containing.value, [], "a branch that descends from the tagged commits was reported as contained in them");
+    // And the citation is per tag: one receipt for a question decided by one command per tag names
+    // whichever tag sorted first, whose answer is not the answer the value records.
+    assert.deepEqual(
+      observation.derivations["tmp/merged-thing"].tags_containing.source,
+      ["tag-contains-v0.1.0-tmp/merged-thing", "tag-contains-v0.2.0-tmp/merged-thing"],
+      "tag containment does not cite the ancestry test for each tag it answered about"
+    );
     execFileSync("git", ["tag", "local-only", fixture.shas.main], { cwd: fixture.work });
     execFileSync("git", ["tag", "-d", "v0.1.0"], { cwd: fixture.work });
     const again = recollect(fixture);
-    assert.deepEqual(again.derivations["tmp/merged-thing"].tags_containing.value, ["v0.1.0"], "tag containment followed the local tag set rather than the repository's");
+    assert.deepEqual(again.derivations["tmp/merged-thing"].tags_containing.value, ["v0.1.0", "v0.2.0"], "tag containment followed the local tag set rather than the repository's");
     // The other half of the same claim: reading the repository's tags may not be done by writing this
     // checkout's. `git fetch --tags --force` would answer correctly and restore the deleted v0.1.0
     // while doing it, which is a write in a collector whose whole claim is that it only reads.
     const localTags = execFileSync("git", ["tag", "--list"], { cwd: fixture.work, encoding: "utf8" }).split("\n").filter(Boolean).sort();
-    assert.deepEqual(localTags, ["local-only"], `the collector changed this checkout's tags: ${JSON.stringify(localTags)}`);
+    assert.deepEqual(localTags, ["local-only", "v0.2.0"], `the collector changed this checkout's tags: ${JSON.stringify(localTags)}`);
   });
 });
 

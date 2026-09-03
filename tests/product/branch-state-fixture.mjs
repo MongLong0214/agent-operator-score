@@ -5,14 +5,15 @@ import { join } from "node:path";
 
 // A real repository and a real GitHub, small enough to build in a test.
 //
-// This exists so that `runDeletion` can be exercised without the module exposing a way to hand it a
-// collector or an observation. An earlier version exported a runner factory for the tests to inject
-// through, which is the same parameter list the previous entry point was faulted for, wearing a
-// factory: a door in the gate reachable by any caller in this repository. There is no seam now, so
-// the only way to drive the gate is to give it a repository to look at.
+// This exists so that the gate can be exercised without the module exposing a way to hand it a
+// collector or an observation. An earlier version exported a deletion runner and a factory for the
+// tests to inject through, which is the same parameter list the previous entry point was faulted
+// for, wearing a factory: a door in the gate reachable by any caller in this repository. Both are
+// gone, and so is the seam: the only way to drive the gate is to give it a repository to look at,
+// which is what this builds.
 //
 // `origin` is a real bare repository with real branches, tags and commits, so every git derivation in
-// the collector -- merge-base, rev-list, tag --contains, grep, ls-remote -- runs for real against it.
+// the collector -- merge-base, rev-list, grep, ls-remote -- runs for real against it.
 // The GitHub half is a `gh` executable placed first on PATH that answers from a table built after the
 // repository exists, so the SHAs it reports are the SHAs the repository actually has.
 
@@ -76,6 +77,11 @@ export const buildFixtureRepository = ({ repository = "fixture-owner/fixture-rep
   git("commit", "-qam", "dev moves on");
   const devSha = git("rev-parse", "HEAD");
 
+  // A second tag, at a different commit from the first. One tag cannot distinguish a derivation that
+  // cites the command deciding it from one citing whichever tag sorted first: with a single tag those
+  // are the same receipt, and the citation defect is invisible to every test driven from here.
+  git("tag", "-a", "v0.2.0", "-m", "second release");
+
   // A branch with work on it and a pull request open: must never be touched.
   git("checkout", "-q", "-b", "task/active-work");
   writeFileSync(join(work, "feature.txt"), "in progress\n");
@@ -137,6 +143,10 @@ const answer = table[path];
 // The sentinel reproduces a command that exits 0 and prints nothing, which is what turned an
 // unreachable list into "there is nothing there".
 if (answer === "__EMPTY__") process.exit(0);
+// A slurped read that produced no page at all. The real gh emits one element per HTTP page and a
+// search matching nothing still returns one page saying total_count: 0, so an empty array is a read
+// that did not happen rather than a complete sweep with no results.
+if (answer === "__NO_PAGES__") { process.stdout.write("[]"); process.exit(0); }
 process.stdout.write(JSON.stringify(slurp ? [answer] : answer));
 `);
   chmodSync(join(binDir, "gh"), 0o755);
@@ -164,7 +174,7 @@ export const auditFor = (observation, { repository }) => {
   const audited = snapshot.filter((head) => head.name !== "main" && head.name !== "dev");
   const prByBranch = new Map(observation.open_prs.map((pr) => [pr.head_branch, pr]));
   return {
-    schema: "aos-stale-branch-audit.v4",
+    schema: "aos-stale-branch-audit.v5",
     repository,
     issue: 572,
     phase: "read-only-audit",

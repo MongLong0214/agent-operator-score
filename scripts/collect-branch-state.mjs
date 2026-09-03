@@ -39,7 +39,7 @@ import { writeFileSync, readFileSync } from "node:fs";
 
 import { sha256Bytes } from "../lib/digest.mjs";
 
-export const OBSERVATION_SCHEMA = "aos-branch-live-observation.v2";
+export const OBSERVATION_SCHEMA = "aos-branch-live-observation.v3";
 
 /** The files that decide how someone installs this project. A cleanup may not change them. */
 export const INSTALL_SOURCE_FILES = Object.freeze([".claude-plugin/marketplace.json", ".claude-plugin/plugin.json"]);
@@ -54,6 +54,10 @@ export const REQUIRED_DERIVATIONS = Object.freeze([
   "behind_dev",
   "behind_main",
   "unique_vs_dev_and_main",
+  // The commits themselves, not only how many. A SUPERSEDED record accounts for every commit that
+  // reaches neither integration line, and a count cannot say whether the ids it lists are those
+  // commits: eighteen zero-padded strings satisfy a count of eighteen.
+  "unique_commit_ids_vs_dev_and_main",
   "tags_containing",
   "tree_scan",
   "pr_history"
@@ -146,8 +150,14 @@ const apiSearch = (receipts, source, query) => {
   const body = receipted(receipts, source, "gh", ["api", "--paginate", "--slurp", `search/issues?q=${encodeURIComponent(query)}&per_page=100`]).text.trim();
   if (body === "") throw new Error(`${source}: the search succeeded but returned nothing, which is not "no results"`);
   const pages = JSON.parse(body);
+  // No page at all is not "no results". `--paginate --slurp` emits one element per HTTP page and a
+  // search that matched nothing still returns one page saying `total_count: 0`, so an empty array
+  // is a read that did not happen -- and resolving it to `{complete: true, total_count: 0}` would
+  // manufacture "nothing on GitHub refers to this branch" out of silence, in the one function whose
+  // job is to say whether the sweep established anything.
+  if (!Array.isArray(pages) || pages.length === 0) throw new Error(`${source}: the search returned no page at all, which is not a complete sweep with no results`);
   const items = pages.flatMap((page) => page.items ?? []);
-  const totalCount = pages.length > 0 ? pages[0].total_count : 0;
+  const totalCount = pages[0].total_count;
   return {
     query,
     complete: items.length === totalCount && !pages.some((page) => page.incomplete_results),
@@ -265,15 +275,28 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
       // Neither difference alone answers "what would be lost": a commit on dev but not main is still
       // elsewhere. This is the count deletion turns on.
       unique_vs_dev_and_main: { value: count(`rev-list-neither-${name}`, [sha, "--not", devSha, mainSha]), source: `rev-list-neither-${name}` },
+      // The same question asked for its answer rather than its size, so a record that claims to
+      // account for these commits can be compared against them. `git rev-list` exits 0 with empty
+      // stdout when nothing reaches neither line, which is the honest empty rather than a silence:
+      // the receipt records the exit status beside it.
+      unique_commit_ids_vs_dev_and_main: {
+        value: receipted(receipts, `rev-list-ids-neither-${name}`, "git", ["rev-list", sha, "--not", devSha, mainSha], { cwd }).text.split("\n").filter(Boolean),
+        source: `rev-list-ids-neither-${name}`
+      },
       // Derived against the tag commits `git ls-remote --tags origin` reported, one ancestry test per
       // tag. `git tag --contains` would answer from the local tag set instead, which is neither the
       // repository's nor stable across checkouts.
+      // One ancestry test per tag decides this, so one receipt cannot be its source. It cited the
+      // receipt for whichever tag sorted first -- a command that had answered "not contained" while
+      // the value it was cited for listed seven tags it is contained in. The citation is the whole
+      // comparison now: every tag's receipt, including the ones that answered no, because the tags
+      // that are absent from the value are established by exactly those.
       tags_containing: {
         value: tags
           .filter((tag) => receipted(receipts, `tag-contains-${tag.name}-${name}`, "git", ["merge-base", "--is-ancestor", sha, tag.commit_sha], { cwd, allowExit: [0, 1] }).status === 0)
           .map((tag) => tag.name)
           .sort(),
-        source: `tag-contains-${tags[0]?.name}-${name}`
+        source: tags.map((tag) => `tag-contains-${tag.name}-${name}`)
       },
       tree_scan: { value: grep.text.split("\n").filter(Boolean).map((line) => line.split(":").slice(0, 2).join(":")), source: `git-grep-${name}` },
       pr_history: {
@@ -306,12 +329,77 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
 };
 
 /**
+ * The receipts a derivation names as its source.
+ *
+ * A derivation decided by one command cites a string; one decided by a command per candidate -- tag
+ * containment is the only such derivation today -- cites the list. Both spellings normalise here so
+ * that no consumer has to know which is which, and an unusable citation normalises to nothing rather
+ * than to something that happens to be present.
+ */
+export const citedSources = (derivation) => {
+  const source = derivation?.source;
+  if (typeof source === "string") return [source];
+  if (Array.isArray(source)) return source.filter((one) => typeof one === "string");
+  return [];
+};
+
+/** The tag a per-tag containment receipt answered about, recovered from the name it was given. */
+const tagOfContainmentSource = (source, branch) => {
+  const prefix = "tag-contains-";
+  const suffix = `-${branch}`;
+  if (!source.startsWith(prefix) || !source.endsWith(suffix)) return null;
+  return source.slice(prefix.length, source.length - suffix.length);
+};
+
+/**
+ * Whether the commands a derivation cites actually answered what the derivation records.
+ *
+ * A receipt that exists is not a receipt that agrees. `tags_containing` cited a `merge-base
+ * --is-ancestor` whose recorded exit status was 1 -- "not contained" -- for a value listing seven
+ * tags the branch *is* contained in, and every check passed, because one of them asked only whether
+ * the named receipt was present and the other compared the record against the same record. So the
+ * exit status of each cited command is compared against the answer it is cited for, in both
+ * directions: a listed tag whose receipt said no, and an omitted tag whose receipt said yes.
+ */
+const derivationAnswerFindings = (branch, derivation, receiptBySource) => {
+  const findings = [];
+  for (const [field, line] of [["ancestor_of_dev", "dev"], ["ancestor_of_main", "main"]]) {
+    const one = derivation[field];
+    const receipt = receiptBySource.get(citedSources(one)[0]);
+    if (!one || !receipt || typeof receipt.exit_code !== "number") continue;
+    if ((receipt.exit_code === 0) !== (one.value === true)) {
+      findings.push(`${branch}: ${field} records ${JSON.stringify(one.value)} but the ancestry test it cites exited ${receipt.exit_code}`);
+    }
+  }
+
+  const containment = derivation.tags_containing;
+  if (!containment || !Array.isArray(containment.value)) return findings;
+  const listed = new Set(containment.value);
+  const answered = new Set();
+  for (const source of citedSources(containment)) {
+    const receipt = receiptBySource.get(source);
+    const tag = tagOfContainmentSource(source, branch);
+    if (!receipt || tag === null || typeof receipt.exit_code !== "number") continue;
+    answered.add(tag);
+    const contained = receipt.exit_code === 0;
+    if (contained !== listed.has(tag)) {
+      findings.push(`${branch}: release-tag containment ${listed.has(tag) ? "lists" : "omits"} ${tag} but the ancestry test it cites for it exited ${receipt.exit_code}`);
+    }
+  }
+  for (const tag of listed) {
+    if (!answered.has(tag)) findings.push(`${branch}: release-tag containment lists ${tag} without citing the ancestry test that established it`);
+  }
+  return findings;
+};
+
+/**
  * What an observation has to look like before anything is decided on it.
  *
  * Shape only -- this cannot tell a collected transcript from a written one, and says so. What it
  * does establish is that the record is internally consistent: the digest names its own content, the
- * receipts exist and succeeded, every derivation cites a receipt that is actually present, and no
- * reference sweep silently returned a truncated page.
+ * receipts exist and succeeded, every derivation cites a receipt that is actually present, that
+ * cited receipt's own answer is the one the derivation records, and no reference sweep silently
+ * returned a truncated page.
  */
 export const verifyObservation = (observation) => {
   const findings = [];
@@ -320,11 +408,13 @@ export const verifyObservation = (observation) => {
   if (!Array.isArray(observation.receipts) || observation.receipts.length === 0) return [...findings, "the observation carries no command receipts, so nothing says where its facts came from"];
 
   const sources = new Set();
+  const receiptBySource = new Map();
   for (const receipt of observation.receipts) {
     if (typeof receipt.command !== "string" || receipt.command.length < 5) findings.push("a receipt does not say what was run");
     if (!/^sha256:[0-9a-f]{64}$/u.test(receipt.digest ?? "")) findings.push(`${receipt.command}: no digest of what it returned`);
     if (typeof receipt.exit_code !== "number") findings.push(`${receipt.command}: no exit code`);
     sources.add(receipt.source);
+    receiptBySource.set(receipt.source, receipt);
   }
   for (const [branch, derivation] of Object.entries(observation.derivations ?? {})) {
     for (const field of REQUIRED_DERIVATIONS) {
@@ -333,8 +423,15 @@ export const verifyObservation = (observation) => {
         findings.push(`${branch}: the observation derives no ${field}`);
         continue;
       }
-      if (!sources.has(one.source)) findings.push(`${branch}: ${field} cites receipt "${one.source}", which the observation does not carry`);
+      const cited = citedSources(one);
+      // A derivation citing nothing is the shape the receipts exist to refuse, and `sources.has`
+      // over an absent field would have looked like a single missing receipt rather than none.
+      if (cited.length === 0) findings.push(`${branch}: ${field} names no receipt at all, so nothing says where it came from`);
+      for (const source of cited) {
+        if (!sources.has(source)) findings.push(`${branch}: ${field} cites receipt "${source}", which the observation does not carry`);
+      }
     }
+    findings.push(...derivationAnswerFindings(branch, derivation, receiptBySource));
   }
   for (const sweep of observation.reference_sweep ?? []) {
     if (sweep.complete !== true) findings.push(`${sweep.branch}: the reference sweep returned ${sweep.hits.length} of ${sweep.total_count} results, so "nothing refers to it" was not established`);

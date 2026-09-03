@@ -30,6 +30,7 @@ import {
   OBSERVATION_SCHEMA,
   REQUIRED_DERIVATIONS,
   canonicalize,
+  citedSources,
   collect as collectLive,
   contentDigest,
   observationDigest,
@@ -311,7 +312,13 @@ export const derivationFindings = (audit, observation = audit?.live_observation)
     for (const field of REQUIRED_DERIVATIONS) {
       const one = derived[field];
       if (!one) findings.push(`${entry.name}: no ${field} derivation`);
-      if (one && !receiptSources.has(one.source)) findings.push(`${entry.name}: ${field} cites receipt "${one.source}", which the observation does not carry`);
+      // A derivation decided by one command per candidate cites the list of them, so the citation is
+      // normalised before it is checked; citing nothing is refused rather than read as citing a
+      // receipt named `undefined`.
+      if (one && citedSources(one).length === 0) findings.push(`${entry.name}: ${field} names no receipt at all, so nothing says where it came from`);
+      for (const source of one ? citedSources(one) : []) {
+        if (!receiptSources.has(source)) findings.push(`${entry.name}: ${field} cites receipt "${source}", which the observation does not carry`);
+      }
     }
     const asserted = [
       ["merged_into_dev", entry.merged_into_dev, derived.ancestor_of_dev?.value],
@@ -325,6 +332,22 @@ export const derivationFindings = (audit, observation = audit?.live_observation)
     ];
     for (const [field, claimed, observed] of asserted) {
       if (claimed !== observed) findings.push(`${entry.name}: records ${field} as ${JSON.stringify(claimed)} but the collector derived ${JSON.stringify(observed)}`);
+    }
+    // The count and the list are two answers to one question and have to be the same answer: a list
+    // read short would otherwise sit beside a correct count and nothing would notice.
+    const outstandingIds = derived.unique_commit_ids_vs_dev_and_main?.value;
+    if (Array.isArray(outstandingIds) && outstandingIds.length !== derived.unique_vs_dev_and_main?.value) {
+      findings.push(`${entry.name}: the collector counted ${JSON.stringify(derived.unique_vs_dev_and_main?.value)} commit(s) reaching neither dev nor main but listed ${outstandingIds.length}`);
+    }
+    // An id list that accounts for work has to be derived, not declared. SUPERSEDED is the one route
+    // by which a branch holding unmerged commits becomes deletion-eligible, and the contract was
+    // satisfied by any list of 40-hex strings of the right length -- eighteen zero-padded strings
+    // accounted for eighteen real commits.
+    if (entry.classification === "SUPERSEDED" && Array.isArray(outstandingIds)) {
+      const accounted = [...(entry.superseding?.supersedes_commits ?? [])].sort();
+      if (canonicalize(accounted) !== canonicalize([...outstandingIds].sort())) {
+        findings.push(`${entry.name}: the superseding record accounts for commit ids the collector did not derive as reaching neither dev nor main`);
+      }
     }
     if (canonicalize(entry.release_tags_containing) !== canonicalize(derived.tags_containing?.value)) {
       findings.push(`${entry.name}: records release-tag containment the collector did not derive`);
@@ -600,15 +623,69 @@ export const loadCompletionSnapshot = (url = new URL("../fixtures/execution-plan
   JSON.parse(readFileSync(url, "utf8"));
 
 /**
- * The deletion log's own shape, and the prerequisite it may not clear for itself.
+ * The binding between a completed deletion record and the two observations it cites.
+ *
+ * A `sha256:` followed by 64 hex characters is a well-formed citation of nothing. What makes the
+ * citation evidence is recomputing the digest of the observation in hand and finding the record
+ * naming that one -- and finding the record's instant inside the window that makes "immediately
+ * beforehand" a condition rather than a word. Both observations are required: a record whose
+ * evidence was not supplied has not been checked against evidence, and the absence of the check is
+ * a finding rather than a pass.
+ */
+const observationBindingFindings = (log, { pre = null, post = null, maxAgeSeconds = OBSERVATION_MAX_AGE_SECONDS } = {}) => {
+  const findings = [];
+  // Shape is not a calendar. `INSTANT` accepts 2026-02-30, and `Date.UTC` rolls it forward into
+  // March rather than refusing it, so the window below would be measured against a day that never
+  // happened. `instantSeconds` returns null for those, and null is a finding rather than a skip.
+  const completed = instantSeconds(log?.completed_at);
+  if (completed === null) findings.push("the deletion log claims completion without a well-formed instant saying when");
+
+  if (!pre) findings.push("the deletion log claims completion but no pre-deletion observation was supplied, so nothing checks the digest it cites");
+  else {
+    if (observationDigest(pre) !== log?.pre_observation?.digest) {
+      findings.push("the deletion record does not cite the digest of the pre-deletion observation it was checked against");
+    }
+    const collected = instantSeconds(pre.collected_at);
+    if (collected === null) findings.push("the pre-deletion observation records no well-formed collection instant");
+    else if (completed !== null) {
+      if (collected > completed) findings.push("the pre-deletion observation was collected after the deletion it is supposed to authorize");
+      if (collected <= completed && completed - collected > maxAgeSeconds) findings.push(`the pre-deletion observation was ${Math.round(completed - collected)}s old when the deletion ran, past the ${maxAgeSeconds}s this gate allows`);
+    }
+  }
+
+  if (!post) findings.push("the deletion log claims completion but no post-deletion observation was supplied, so the invariants cannot be checked");
+  else {
+    if (observationDigest(post) !== log?.post_observation?.digest) {
+      findings.push("the deletion record does not cite the digest of the post-deletion observation");
+    }
+    const recollected = instantSeconds(post.collected_at);
+    if (recollected === null) findings.push("the post-deletion observation records no well-formed collection instant");
+    else if (completed !== null) {
+      if (recollected < completed) findings.push("the post-deletion observation was collected before the deletion it is supposed to witness");
+      if (recollected >= completed && recollected - completed > maxAgeSeconds) findings.push(`the post-deletion observation was taken ${Math.round(recollected - completed)}s after the deletion, past the ${maxAgeSeconds}s this gate allows`);
+    }
+  }
+  return findings;
+};
+
+/**
+ * The deletion log's own shape, the prerequisite it may not clear for itself, and the evidence it
+ * may not vouch for.
  *
  * While Phase B is blocked the log says so and lists nothing. Once it claims completion, #578 and
  * #588 have to be closed in the canonical execution-plan snapshot -- the log's own account of them
  * is cross-checked against that authority rather than believed. A completed log with an empty
  * deletion list is legitimate: "delete only what a fresh audit finds eligible" is satisfied by a
  * fresh audit that finds nothing, which this repository's auto-delete setting makes ordinary.
+ *
+ * `pre` and `post` are the two observations that bracket the deletion, and this function is handed
+ * them rather than the log's account of them. Checking only that the cited digests are digest-shaped
+ * left the record certifying its own evidence: any two well-formed strings passed, a stale pair
+ * passed, and `OBSERVATION_MAX_AGE_SECONDS` was never applied on the path the contract names. A
+ * caller that omits them gets a finding, not a pass -- the check that was not run is not a check
+ * that succeeded.
  */
-export const deletionLogFindings = (log, { completion = null } = {}) => {
+export const deletionLogFindings = (log, { completion = null, pre = null, post = null, maxAgeSeconds = OBSERVATION_MAX_AGE_SECONDS } = {}) => {
   const findings = [];
   if (!log) return ["there is no deletion log"];
   if (log.schema !== "aos-branch-deletion-log.v1") findings.push(`unrecognized deletion log schema "${log.schema}"`);
@@ -631,6 +708,7 @@ export const deletionLogFindings = (log, { completion = null } = {}) => {
     if (!DIGEST.test(log[field]?.digest ?? "")) findings.push(`the deletion log says COMPLETED without citing a ${field.replace("_", "-")} digest`);
   }
   if (!INSTANT.test(log.completed_at ?? "")) findings.push("the deletion log says COMPLETED without a well-formed instant saying when");
+  findings.push(...observationBindingFindings(log, { pre, post, maxAgeSeconds }));
   for (const entry of log.deleted) if (!SHA.test(entry.sha ?? "")) findings.push(`${entry.name}: deleted without recording the SHA it pointed at`);
   if (log.deleted.length === 0 && log.no_op_reason === undefined) findings.push("the deletion log says COMPLETED and deleted nothing without saying why nothing was eligible");
   if (log.deleted.length === 0 && log.no_op_reason !== undefined && !isNonEmptyString(log.no_op_reason, 21)) {
@@ -734,42 +812,19 @@ export const deletionAuthorizationFindings = ({ audit, log, pre = null, post = n
     // Against the fresh observation, not the audit's stored copy of it. Collecting the derivations
     // and then checking the record against its own transcript is the lie the receipts exist to stop.
     ...derivationFindings(audit, pre),
-    ...deletionLogFindings(log, { completion }),
+    // The bindings between the record and the observations it cites live in `deletionLogFindings`
+    // now, and are reached by handing it the observations. They used to live only here, which meant
+    // the composition the audit's own contract names -- prerequisites, live eligibility, the
+    // boundary comparison and the log check -- accepted a record citing two fabricated digests.
+    ...deletionLogFindings(log, { completion, pre, post, maxAgeSeconds }),
     ...cleanupInvariantFindings(audit, log),
     ...openPrHeadDeletionFindings(audit, log)
   ];
 
   if (!pre) return [...findings, "no pre-deletion observation was supplied, so no deletion can be authorized from stored facts alone"];
   findings.push(...verifyObservation(pre).map((finding) => `pre-deletion observation: ${finding}`));
-  if (observationDigest(pre) !== log?.pre_observation?.digest) {
-    findings.push("the deletion record does not cite the digest of the pre-deletion observation it was checked against");
-  }
 
-  const collected = instantSeconds(pre.collected_at);
-  const completed = instantSeconds(log?.completed_at);
-  if (collected === null) findings.push("the pre-deletion observation records no well-formed collection instant");
-
-  if (log?.status === "COMPLETED") {
-    if (completed === null) findings.push("the deletion log claims completion without a well-formed instant saying when");
-    else if (collected !== null) {
-      if (collected > completed) findings.push("the pre-deletion observation was collected after the deletion it is supposed to authorize");
-      if (collected <= completed && completed - collected > maxAgeSeconds) findings.push(`the pre-deletion observation was ${Math.round(completed - collected)}s old when the deletion ran, past the ${maxAgeSeconds}s this gate allows`);
-    }
-
-    if (!post) findings.push("the deletion log claims completion but no post-deletion observation was supplied, so the invariants cannot be checked");
-    else {
-      if (observationDigest(post) !== log?.post_observation?.digest) {
-        findings.push("the deletion record does not cite the digest of the post-deletion observation");
-      }
-      const recollected = instantSeconds(post.collected_at);
-      if (recollected === null) findings.push("the post-deletion observation records no well-formed collection instant");
-      if (recollected !== null && completed !== null) {
-        if (recollected < completed) findings.push("the post-deletion observation was collected before the deletion it is supposed to witness");
-        if (recollected >= completed && recollected - completed > maxAgeSeconds) findings.push(`the post-deletion observation was taken ${Math.round(recollected - completed)}s after the deletion, past the ${maxAgeSeconds}s this gate allows`);
-      }
-      findings.push(...boundaryInvariantFindings(log, pre, post));
-    }
-  }
+  if (log?.status === "COMPLETED" && post) findings.push(...boundaryInvariantFindings(log, pre, post));
 
   const liveHeads = new Map((pre.heads ?? []).map((head) => [head.name, head.sha]));
   for (const deleted of log?.deleted ?? []) {

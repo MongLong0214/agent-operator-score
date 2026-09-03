@@ -28,8 +28,10 @@ total: 9 repository-wide, listed below, and 120 per-branch derivations.
 
 That includes the graph facts, not only the queries around them. When a branch record below says it
 is contained in `dev`, the `git merge-base --is-ancestor` that decides it is a receipt; so are the
-`git rev-list --count` in each direction and for commits reaching neither line, the
-`git tag --contains`, the `git grep` over the tree, and the all-state `gh pr list --head` behind
+`git rev-list --count` in each direction and for commits reaching neither line, the `git rev-list`
+for the ids of those commits, the one `git merge-base --is-ancestor` per tag reported by
+`git ls-remote --tags origin`, the `git grep` over the tree, and the all-state paginated
+`gh api repos/<owner>/<repo>/pulls?state=all&head=<owner>:<branch>` behind
 "no pull request ever used this branch as a head". A receipt for a neighbouring query is not
 evidence for a derivation nobody ran, and `derivationFindings` fails when a record asserts a number
 the collector did not produce.
@@ -131,7 +133,7 @@ None was deleted by this audit; each was merged and removed by `delete_branch_on
 | sweep completeness | complete -- all 2 result(s) the API reported were retrieved |
 | repository tree (`git-grep-fix/a-fixture-backed-agent-is-not-a-runtime`) | none found |
 
-Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, `git tag --contains` places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content.
+Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, one `git merge-base --is-ancestor` per tag places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content.
 
 **Could not establish: why this branch was created, and what change its name ('a fixture-backed agent is not a runtime') was meant to carry**
 
@@ -233,7 +235,8 @@ question deletion turns on is about the present -- and the present is establishe
 commands, at zero commits reaching neither line.
 
 Neither branch is recommended for deletion *because* nothing could be found against it. Each is
-recommended because `git merge-base --is-ancestor`, `git rev-list` and `git tag --contains`
+recommended because `git merge-base --is-ancestor` -- against `dev`, against `main`, and once per
+tag reported by `git ls-remote --tags origin` -- together with `git rev-list`
 positively establish that its content lives on both integration lines and in released tags. Absence
 of evidence is not the evidence.
 
@@ -317,6 +320,14 @@ Phase B's work; what this PR provides is the evidence and the verifiers Phase B 
 sequence below is what Phase B does, and every step of it is checkable by something in this
 repository today.
 
+**The gate is `deletionAuthorizationFindings({audit, log, pre, post, completion})`**, and running it
+is the step that cannot be skipped. It composes every check below and is the only caller that hands
+each of them the evidence it is supposed to compare against — the two observations, recomputed and
+matched against the digests the record cites. Running the parts individually and reading four empty
+results as authorization is how a record citing two fabricated digests, stamped forty days after the
+observation it calls "immediately beforehand", once drew no finding at all: each part was asked a
+question it had not been given the evidence to answer.
+
 1. **Read the canonical prerequisite snapshot** for the repository being operated on --
    `prerequisiteFindings` -- and stop if #578 or #588 is not closed with close evidence. Before
    anything else: a check that runs after the act is a report, and the act is not reversible.
@@ -338,6 +349,10 @@ repository today.
    request head. The set of heads that vanished between them must equal exactly the set being
    claimed: a deletion that took one extra ref with it, and a claim of a deletion that did not
    happen, are both findings.
-7. **Write `fixtures/stale-branches/deletion-log.json`** citing both observation digests, and check it
-   with `deletionLogFindings`. The log carries no state of its own: the state lives in the two
-   observations, and the log names them.
+7. **Write `fixtures/stale-branches/deletion-log.json`** citing both observation digests, and check
+   the whole thing with `deletionAuthorizationFindings({audit, log, pre, post, completion})`. The log
+   carries no state of its own: the state lives in the two observations, and the log names them —
+   which is why the check is handed those observations rather than the log's account of them.
+   `deletionLogFindings(log, {completion, pre, post})` is the part of it that recomputes both digests
+   and applies the 900-second window; called without the observations it reports that it could not
+   check the citation, because a check that was not run is not a check that passed.

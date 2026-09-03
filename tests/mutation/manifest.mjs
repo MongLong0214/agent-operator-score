@@ -2194,7 +2194,7 @@ export const GUARDS = [
     reason:
       "a source name pointing at nothing is a citation to a command that left no trace, which is indistinguishable from one that never ran",
     file: "scripts/branch-audit.mjs",
-    from: "      if (one && !receiptSources.has(one.source)) findings.push(`${entry.name}: ${field} cites receipt \"${one.source}\", which the observation does not carry`);",
+    from: "        if (!receiptSources.has(source)) findings.push(`${entry.name}: ${field} cites receipt \"${source}\", which the observation does not carry`);",
     to: "",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "a branch record whose reference or PR claims were never collected is refused"
@@ -2502,7 +2502,7 @@ export const GUARDS = [
     reason:
       "without a second collection, 'nothing else changed' is the deleting party's own word about the state it left behind",
     file: "scripts/branch-audit.mjs",
-    from: "    if (!post) findings.push(\"the deletion log claims completion but no post-deletion observation was supplied, so the invariants cannot be checked\");",
+    from: "  if (!post) findings.push(\"the deletion log claims completion but no post-deletion observation was supplied, so the invariants cannot be checked\");",
     to: "",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a completed deletion with no post-deletion observation is refused"
@@ -2512,8 +2512,8 @@ export const GUARDS = [
     reason:
       "without the digest binding, 'we looked' is a claim about some other look, and any observation could be swapped for one that happened to pass",
     file: "scripts/branch-audit.mjs",
-    from: "  if (observationDigest(pre) !== log?.pre_observation?.digest) {",
-    to: "  if (false) {",
+    from: "    if (observationDigest(pre) !== log?.pre_observation?.digest) {",
+    to: "    if (false) {",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a deletion record that does not cite both observation digests is refused"
   },
@@ -2522,8 +2522,8 @@ export const GUARDS = [
     reason:
       "the witness has to be the witness the log names, or the invariants were checked against something else",
     file: "scripts/branch-audit.mjs",
-    from: "      if (observationDigest(post) !== log?.post_observation?.digest) {",
-    to: "      if (false) {",
+    from: "    if (observationDigest(post) !== log?.post_observation?.digest) {",
+    to: "    if (false) {",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a deletion record that does not cite both observation digests is refused"
   },
@@ -2552,7 +2552,7 @@ export const GUARDS = [
     reason:
       "a witness collected before the act witnessed the state before it, and comparing that pair reports nothing about what the deletion did",
     file: "scripts/branch-audit.mjs",
-    from: "        if (recollected < completed) findings.push(\"the post-deletion observation was collected before the deletion it is supposed to witness\");",
+    from: "      if (recollected < completed) findings.push(\"the post-deletion observation was collected before the deletion it is supposed to witness\");",
     to: "",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "observations collected on the wrong side of the deletion, or too far from it, are refused"
@@ -2562,7 +2562,7 @@ export const GUARDS = [
     reason:
       "a witness collected a day later has absorbed every other change in between, and would report them as the deletion's doing",
     file: "scripts/branch-audit.mjs",
-    from: "        if (recollected >= completed && recollected - completed > maxAgeSeconds) findings.push(`the post-deletion observation was taken ${Math.round(recollected - completed)}s after the deletion, past the ${maxAgeSeconds}s this gate allows`);",
+    from: "      if (recollected >= completed && recollected - completed > maxAgeSeconds) findings.push(`the post-deletion observation was taken ${Math.round(recollected - completed)}s after the deletion, past the ${maxAgeSeconds}s this gate allows`);",
     to: "",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "observations collected on the wrong side of the deletion, or too far from it, are refused"
@@ -2812,7 +2812,7 @@ export const GUARDS = [
     reason:
       "a deletion recommendation with no stated reason is unreviewable in the committed record, not only in the validator",
     file: "fixtures/stale-branches/audit.json",
-    from: "\"reason\": \"Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, `git tag --contains` places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content.\"",
+    from: "\"reason\": \"Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, one `git merge-base --is-ancestor` per tag places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content.\"",
     to: "\"reason\": \"\"",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "no entry recommends deletion without a substantive reason"
@@ -2832,7 +2832,7 @@ export const GUARDS = [
     reason:
       "the contract told a consumer to call authorizeDeletion after the export was gone; a document naming an API that is not there is a defect in the contract, not a typo",
     file: "fixtures/stale-branches/audit.json",
-    from: "\"entry_point\": \"liveEligibility(",
+    from: "\"entry_point\": \"deletionAuthorizationFindings(",
     to: "\"entry_point\": \"authorizeDeletion(",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "every gate function the contract and the document name is actually exported"
@@ -5903,6 +5903,86 @@ export const GUARDS = [
     test: "tests/product/no-agent-artifact-process-credit.test.mjs",
     name: "every decision type the schema admits binds to the construct and the dimension it is evidence about"
   },
+  {
+    guard: "the deletion log is checked against the observations it cites",
+    reason:
+      "checking that the cited digests are digest-shaped left the record certifying its own evidence: any two well-formed strings passed, and the freshness window was never applied on the path the contract names",
+    file: "scripts/branch-audit.mjs",
+    from: "  findings.push(...observationBindingFindings(log, { pre, post, maxAgeSeconds }));",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "the composition the Phase B contract names refuses a record citing evidence it was never checked against"
+  },
+  {
+    guard: "a log checked without its observations is not a log that passed",
+    reason:
+      "a caller that omits the evidence has not checked the record against evidence, and reading that as no findings is the absence-as-success shape on the destructive path",
+    file: "scripts/branch-audit.mjs",
+    from: "  if (!pre) findings.push(\"the deletion log claims completion but no pre-deletion observation was supplied, so nothing checks the digest it cites\");",
+    to: "  if (!pre) return findings;",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a deletion log checked without the observations it cites reports that rather than passing"
+  },
+  {
+    guard: "a SUPERSEDED accounting is compared against the commits the collector derived",
+    reason:
+      "the classification contract compares a length, and a length is satisfied by any 40-hex strings at all -- which is the one route by which a branch holding unmerged commits becomes deletion-eligible",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (canonicalize(accounted) !== canonicalize([...outstandingIds].sort())) {",
+    to: "      if (false) {",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a SUPERSEDED record accounting for commit ids the collector did not derive is refused"
+  },
+  {
+    guard: "a search that returned no page is not a complete sweep",
+    reason:
+      "resolving an empty page array to total_count 0 manufactures 'nothing on GitHub refers to this branch, and the sweep was complete' out of silence, in the function whose job is to say whether the sweep established anything",
+    file: "scripts/collect-branch-state.mjs",
+    from: "  if (!Array.isArray(pages) || pages.length === 0) throw new Error(`${source}: the search returned no page at all, which is not a complete sweep with no results`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a search that returns no page at all is not a complete sweep with no results"
+  },
+  {
+    guard: "tag containment cites the ancestry test for each tag it answered about",
+    reason:
+      "a question decided by one command per tag cannot be sourced to one receipt: it cited whichever tag sorted first, whose recorded answer was 'not contained' while the value listed seven tags it is contained in",
+    file: "scripts/collect-branch-state.mjs",
+    from: "        source: tags.map((tag) => `tag-contains-${tag.name}-${name}`)",
+    to: "        source: [`tag-contains-${tags[0]?.name}-${name}`]",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "tag containment reports the repository's tags, not whatever this checkout carries"
+  },
+  {
+    guard: "a citation is checked against the answer the cited command gave",
+    reason:
+      "a receipt that exists is not a receipt that agrees, and asking only whether the named receipt is present is how a citation came to point at a command that answered the other way",
+    file: "scripts/collect-branch-state.mjs",
+    from: "    findings.push(...derivationAnswerFindings(branch, derivation, receiptBySource));",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a derivation whose cited command answered the other way is refused"
+  },
+  {
+    guard: "the contract names the gate that binds the record to its evidence",
+    reason:
+      "a gate no contract, document or verifier list names is a gate nobody runs, and six assertions rested on one",
+    file: "fixtures/stale-branches/audit.json",
+    from: "\"verifiers\": \"deletionAuthorizationFindings(",
+    to: "\"verifiers\": \"liveEligibility(",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "every gate the modules export is one the contract or the document tells a reader to call"
+  },
+  {
+    guard: "the rendered audit does not describe a command the collector retired",
+    reason:
+      "five prose sites described the collector as running commands this change removed as unsafe, while zero of its receipts matched either, and the identifier-shaped drift guard cannot see a command name",
+    file: "docs/STALE_BRANCH_AUDIT.md",
+    from: "one `git merge-base --is-ancestor` per tag places it in seven release tags",
+    to: "`git tag --contains` places it in seven release tags",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "no document, fixture or suite describes the collector as running a command it retired"
+  }
 ];
 
 /**
@@ -6011,6 +6091,7 @@ export const ACCOUNTED_GUARDS = [
   "a /proc listing is not a list of survivors",
   "a NOT_YET deletion log cites no boundary observations",
   "a NOT_YET deletion log may not list deletions",
+  "a SUPERSEDED accounting is compared against the commits the collector derived",
   "a URL carrying userinfo is a credential",
   "a bare alias is never an exact identity",
   "a blocker closed without close evidence has not cleared",
@@ -6021,6 +6102,7 @@ export const ACCOUNTED_GUARDS = [
   "a candidate source version is published as a digest",
   "a capped pull request history is refused when the observation is verified",
   "a capped pull request history supports no claim in the record",
+  "a citation is checked against the answer the cited command gave",
   "a cleanup failure is published by class and digest",
   "a collector read error names a relative path",
   "a command that returned nothing is not an empty list",
@@ -6062,6 +6144,7 @@ export const ACCOUNTED_GUARDS = [
   "a leaked descendant blocks issuance",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
+  "a log checked without its observations is not a log that passed",
   "a metric's status and its value are one state",
   "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
@@ -6109,6 +6192,7 @@ export const ACCOUNTED_GUARDS = [
   "a scan that ran out of budget says so",
   "a scorable cell with no bound decision withholds",
   "a scored Process row carries its five references",
+  "a search that returned no page is not a complete sweep",
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
   "a settlement nobody could check is not a clean one",
@@ -6412,6 +6496,7 @@ export const ACCOUNTED_GUARDS = [
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
+  "tag containment cites the ancestry test for each tag it answered about",
   "tag containment is derived against the repository's tags",
   "task-initiated network is NOT_OBSERVED",
   "the PATH rule is part of the digest",
@@ -6453,6 +6538,7 @@ export const ACCOUNTED_GUARDS = [
   "the comparison projection is read from the contract",
   "the composite has to agree with its own inputs",
   "the contract digest covers the contract's bytes",
+  "the contract names the gate that binds the record to its evidence",
   "the contract states the cells each row averages",
   "the copy carries the modes it copied",
   "the count deletion turns on is recorded",
@@ -6460,6 +6546,7 @@ export const ACCOUNTED_GUARDS = [
   "the dashboard quotes the stored cycle decision",
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
+  "the deletion log is checked against the observations it cites",
   "the derived verdict ignores the reported one",
   "the device nodes are the policy's, not the renderer's",
   "the digest covers the rules applied outside the allowlist",
@@ -6518,6 +6605,7 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
   "the reliance evidence survives its trace",
+  "the rendered audit does not describe a command the collector retired",
   "the renderer refuses a workspace inside the store",
   "the renderers quote the stored identity lines",
   "the report command serves what the result projects to",
