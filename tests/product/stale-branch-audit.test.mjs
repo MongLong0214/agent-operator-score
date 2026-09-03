@@ -13,7 +13,7 @@ import {
   derivationFindings,
   unestablishedFindings
 } from "../../scripts/branch-audit.mjs";
-import { REQUIRED_DERIVATIONS, observationDigest, verifyObservation } from "../../scripts/collect-branch-state.mjs";
+import { REQUIRED_DERIVATIONS, citedSources, observationDigest, verifyObservation } from "../../scripts/collect-branch-state.mjs";
 
 // #572 phase one is a read-only audit: no branch may be deleted, renamed or force-pushed until #578
 // and #588 have preserved the evidence. An audit is only worth having if it is checkable rather than
@@ -87,7 +87,13 @@ test("every graph fact a branch record asserts was derived by a command the obse
     const derived = audit.live_observation.derivations[entry.name];
     for (const field of REQUIRED_DERIVATIONS) {
       assert.ok(derived[field], `${entry.name}: no ${field} derivation`);
-      assert.ok(audit.live_observation.receipts.some((r) => r.source === derived[field].source), `${entry.name}: ${field} cites a receipt that is not there`);
+      // A derivation decided by one command per candidate cites the list of them, so the citation is
+      // normalised before it is looked up rather than assumed to be a single name.
+      const cited = citedSources(derived[field]);
+      assert.ok(cited.length > 0, `${entry.name}: ${field} cites no receipt at all`);
+      for (const source of cited) {
+        assert.ok(audit.live_observation.receipts.some((r) => r.source === source), `${entry.name}: ${field} cites a receipt that is not there`);
+      }
     }
   }
 });

@@ -3116,8 +3116,8 @@ export const GUARDS = [
     reason:
       "a branch whose only copy of real work sits nowhere else must never read as safe to delete: that is the loss #578's evidence-preservation gate exists to prevent",
     file: "fixtures/stale-branches/audit.json",
-    from: "\"recommendation\": \"must_be_preserved\",\n      \"reason\": \"Head of open PR #614",
-    to: "\"recommendation\": \"safe_to_delete_after_578\",\n      \"reason\": \"Head of open PR #614",
+    from: "\"recommendation\": \"must_be_preserved\",\n      \"reason\": \"Head of open PR #618",
+    to: "\"recommendation\": \"safe_to_delete_after_578\",\n      \"reason\": \"Head of open PR #618",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "every branch with an open PR is classified ACTIVE and recommended for preservation"
   },
