@@ -36,8 +36,11 @@ const routingInput = () => ({
     route_id: "r1>r2",
     invocation_id: `invocation-${index + 1}`,
     purpose_id: taskId,
-    started_at: null,
-    completed_at: null,
+    // Timed, and apart. Two tasks that own the same resource and that nothing timed leave the
+    // collision unresolved, which withholds the route's adequacy -- so a fixture describing a
+    // perfect run has to say when its stages ran.
+    started_at: `2026-09-01T10:${String(index * 2).padStart(2, "0")}:00Z`,
+    completed_at: `2026-09-01T10:${String(index * 2 + 1).padStart(2, "0")}:00Z`,
     artifact_ids: [`artifact-${index + 1}`],
     handoff_ids: [...handoffsInto(taskId)],
     capability_digest: null,

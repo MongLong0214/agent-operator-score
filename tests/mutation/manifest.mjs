@@ -31,7 +31,7 @@ export const GUARDS = [
     from: "      const missing = requirement[field].filter((id) => !(held.get(requirement.task_id) ?? new Set()).has(id));",
     to: "      const missing = [];",
     test: "tests/product/minimal-route-oracle.test.mjs",
-    name: "a required artifact or handoff the ledger does not show is an inadequate route"
+    name: "a required artifact the ledger does not show is inadequate, and a silent handoff withholds"
   },
   {
     guard: "an overlap the requirement does not permit is not an adequate route",
@@ -49,7 +49,7 @@ export const GUARDS = [
     from: "    ? [...routeConstraintFailures(requirements, ownerOf, ownerCapabilities), ...routeEvidenceFailures(requirements, admitted)]",
     to: "    ? [...routeConstraintFailures(requirements, ownerOf, ownerCapabilities)]",
     test: "tests/product/minimal-route-oracle.test.mjs",
-    name: "a required artifact or handoff the ledger does not show is an inadequate route"
+    name: "a required artifact the ledger does not show is inadequate, and a silent handoff withholds"
   },
   {
     guard: "a declared schedule never certifies collision safety",
@@ -172,8 +172,8 @@ export const GUARDS = [
     guard: "routing minimality withholds on an owner AOS cannot judge",
     reason: "not knowing what an agent can do is not the operator routing badly, and failing there reports a silence as a fault",
     file: "lib/routing-oracle.mjs",
-    from: "  const unknown = failures.filter((entry) => entry.basis === \"unknown-owner\");",
-    to: "  const unknown = [];",
+    from: "  const undecided = failures.filter((entry) =>\n    entry.basis === \"unknown-owner\" ||\n    (entry.constraint === \"handoff\" && entry.basis === \"missing-evidence\") ||\n    entry.basis === \"unresolved-overlap\");",
+    to: "  const undecided = [];",
     test: "tests/product/routing-counterfactual.test.mjs",
     name: "an actual route whose owner AOS knows nothing about is not observed"
   },

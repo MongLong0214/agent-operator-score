@@ -175,7 +175,9 @@ test("the delegation reference tells over-delegation from inadequacy and owns no
   const handoffsInto = (taskId) => requirements.find((entry) => entry.task_id === taskId).required_handoffs;
   const assign = (owners) => Object.keys(owners).sort().map((taskId, index) => event({
     task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId,
-    artifact_ids: [`artifact-${index + 1}`], handoff_ids: [...handoffsInto(taskId)]
+    artifact_ids: [`artifact-${index + 1}`], handoff_ids: [...handoffsInto(taskId)],
+    started_at: `2026-09-01T10:${String(index * 2).padStart(2, "0")}:00Z`,
+    completed_at: `2026-09-01T10:${String(index * 2 + 1).padStart(2, "0")}:00Z`
   }));
   const minimal = { contract: "one", implementation: "one", docs: "one", verification: "two", release: "one" };
   const split = { contract: "one", implementation: "one", docs: "two", verification: "two", release: "one" };
@@ -211,7 +213,9 @@ test("an owner AOS cannot judge is not delegation the operator got wrong", () =>
   const handoffsInto = (taskId) => requirements.find((entry) => entry.task_id === taskId).required_handoffs;
   const assign = (owners) => Object.keys(owners).sort().map((taskId, index) => event({
     task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId,
-    artifact_ids: [`artifact-${index + 1}`], handoff_ids: [...handoffsInto(taskId)]
+    artifact_ids: [`artifact-${index + 1}`], handoff_ids: [...handoffsInto(taskId)],
+    started_at: `2026-09-01T10:${String(index * 2).padStart(2, "0")}:00Z`,
+    completed_at: `2026-09-01T10:${String(index * 2 + 1).padStart(2, "0")}:00Z`
   }));
   const unknownOwners = { contract: "a1", implementation: "a1", docs: "a1", verification: "a2", release: "a1" };
   const undecided = delegationOracle(routeOracle({ requirements, capabilities, actual_route_events: assign(unknownOwners) }));
@@ -229,13 +233,13 @@ test("an owner AOS cannot judge is not delegation the operator got wrong", () =>
   assert.equal(shortfall.expected_value_class, "UNDER_DELEGATED");
 });
 
-test("a required artifact or handoff the ledger does not show is an inadequate route", () => {
+test("a required artifact the ledger does not show is inadequate, and a silent handoff withholds", () => {
   // Both lists were validated at construction and read by nothing. A route whose every event
   // carried `artifact_ids: []` took full credit for work with nothing to show for it, and a handoff
   // that was named and never made cost the route a point of cost and proved nothing.
   const [solo] = requirementsFromWork({ tasks: [{ id: "a", resource: "r", depends_on: [] }] }).requirements;
   const withArtifact = { ...solo, required_artifacts: Object.freeze(["artifact:out.json"]) };
-  const ran = (overrides) => event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-1", ...overrides });
+  const ran = (overrides) => event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-1", started_at: "2026-09-01T10:00:00Z", completed_at: "2026-09-01T10:01:00Z", ...overrides });
   const capabilities = twoKnown();
   const observableOf = (requirements, events, id) =>
     routeOracle({ requirements, capabilities, actual_route_events: events }).observables.find((entry) => entry.observable_id === id);
@@ -249,13 +253,17 @@ test("a required artifact or handoff the ledger does not show is an inadequate r
   const pair = requirementsFromWork({ tasks: [{ id: "a", resource: "r1", depends_on: [] }, { id: "b", resource: "r2", depends_on: ["a"] }] }).requirements;
   assert.deepEqual(pair.find((entry) => entry.task_id === "b").required_handoffs, ["a->b"]);
   const both = (handoffs) => [
-    event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-a", artifact_ids: ["artifact-a"] }),
-    event({ task_id: "b", agent_id: "one", purpose_id: "b", invocation_id: "invocation-b", artifact_ids: ["artifact-b"], handoff_ids: handoffs })
+    event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-a", artifact_ids: ["artifact-a"], started_at: "2026-09-01T10:00:00Z", completed_at: "2026-09-01T10:01:00Z" }),
+    event({ task_id: "b", agent_id: "one", purpose_id: "b", invocation_id: "invocation-b", artifact_ids: ["artifact-b"], handoff_ids: handoffs, started_at: "2026-09-01T10:02:00Z", completed_at: "2026-09-01T10:03:00Z" })
   ];
   assert.equal(observableOf(pair, both(["a->b"]), "simplest-adequate-route").pass, true);
-  assert.equal(observableOf(pair, both([]), "simplest-adequate-route").pass, false, "a handoff that never happened satisfied a requirement that asks for it");
+  // Withheld, not failed. ISSUE.md's missing policy puts "handoff incomplete" with the states that
+  // are NOT_OBSERVED: a ledger that is silent about an edge is missing evidence, and the artifact
+  // above is different because AOS opened the workspace and looked.
+  assert.equal(observableOf(pair, both([]), "simplest-adequate-route").pass, null, "a silent ledger decided the route was inadequate");
   assert.equal(routeOracle({ requirements: pair, capabilities, actual_route_events: both([]) })
-    .constraint_failures.some((entry) => entry.constraint === "handoff" && entry.basis === "missing-evidence"), true);
+    .constraint_failures.some((entry) => entry.constraint === "handoff" && entry.basis === "missing-evidence"), true,
+    "the missing edge is still on the record, it just does not decide adequacy");
 });
 
 test("two tasks the requirement does not allow in parallel are not adequate when the ledger shows them together", () => {

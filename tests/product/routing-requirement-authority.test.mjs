@@ -51,8 +51,8 @@ const event = (taskId, agentId, overrides = {}) => ({
 });
 
 const LEDGER = () => [
-  event("FAM-3/stage-1", "alpha", { artifact_ids: ["artifact-1"] }),
-  event("FAM-3/stage-2", "beta", { artifact_ids: ["artifact:plan.json"], handoff_ids: ["FAM-3/stage-1->FAM-3/stage-2"] })
+  event("FAM-3/stage-1", "alpha", { artifact_ids: ["artifact-1"], started_at: "2026-09-01T10:00:00Z", completed_at: "2026-09-01T10:01:00Z" }),
+  event("FAM-3/stage-2", "beta", { artifact_ids: ["artifact:plan.json"], handoff_ids: ["FAM-3/stage-1->FAM-3/stage-2"], started_at: "2026-09-01T10:02:00Z", completed_at: "2026-09-01T10:03:00Z" })
 ];
 
 const oracleFor = (plan, ledger = LEDGER()) => routingObservables({

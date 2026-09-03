@@ -46,6 +46,8 @@ const PLAN = (routes) => ({
 
 const MINIMAL = { contract: "other", implementation: "other", docs: "other", verification: "strong", release: "other" };
 
+const minute = (index) => `2026-09-01T10:${String(index).padStart(2, "0")}:00Z`;
+
 const event = (taskId, agentId, index) => ({
   schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
   task_id: taskId,
@@ -53,8 +55,8 @@ const event = (taskId, agentId, index) => ({
   route_id: "strong>other",
   invocation_id: `invocation-${index}`,
   purpose_id: taskId,
-  started_at: null,
-  completed_at: null,
+  started_at: minute(index * 2),
+  completed_at: minute(index * 2 + 1),
   artifact_ids: [`artifact-${index}`],
   handoff_ids: [...handoffsInto(taskId)],
   capability_digest: null,
@@ -260,7 +262,9 @@ test("removing only the artifact lowers only adequacy, and removing only the han
   // The handoff half, on the seeded requirement, which does declare handoffs.
   const emptied = complete.map((entry) => ({ ...entry, handoff_ids: [] }));
   const withoutHandoff = verdicts(emptied);
-  assert.equal(withoutHandoff["simplest-adequate-route"], false);
+  // Withheld rather than failed, per ISSUE.md's missing policy for an incomplete handoff. The
+  // isolation is the point either way: one verdict moved and the rest did not.
+  assert.equal(withoutHandoff["simplest-adequate-route"], null);
   for (const id of ["capability-matches-task", "no-redundant-invocation", "invocation-budget-respected", "verification-independence"]) {
     assert.equal(withoutHandoff[id], base[id], `${id} moved when only the handoff payload was removed`);
   }
