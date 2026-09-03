@@ -1605,10 +1605,10 @@ export const GUARDS = [
     guard: "a started phase cannot integrate code on a blocked issue",
     reason: "checking only `ready` left the permission reachable by moving the phase forward",
     file: "lib/execution-plan.mjs",
-    from: "      if (STARTED.has(phase.status) && one.status !== \"ready\" && phase.code_integration_allowed) {",
-    to: '      if (phase.status === "ready" && one.status !== "ready" && phase.code_integration_allowed) { } if (false) {',
+    from: "      if (STARTED.has(phase.status) && one.status !== \"ready\" && !phaseSettled && phase.code_integration_allowed) {",
+    to: '      if (phase.status === "ready" && one.status !== "ready" && !phaseSettled && phase.code_integration_allowed) { } if (false) {',
     test: "tests/product/execution-plan.test.mjs",
-    name: "a phase-ready phase that claims final integration exceeds its scope and fails"
+    name: "a phase that has begun on a blocked issue cannot integrate code either"
   },
   {
     guard: "an issue owns a surface",
