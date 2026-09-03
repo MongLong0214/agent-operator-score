@@ -451,5 +451,16 @@ test("an all-empty run takes no credit anywhere it did not earn it", () => {
     (entry.subchecks ?? []).filter((s) => s.pass === null).map((s) => `${entry.metric_id}.${s.id}`));
   // M18 is not here because `response: {}` says nothing at all, so the whole metric is NOT_OBSERVED
   // and carries no subchecks -- the outer guard catching it before the per-field one has to.
-  assert.deepEqual(unstated.sort(), ["M17.no-hidden-failure"]);
+  //
+  // #558 added the four M09 rows. This run seeded no routing requirement, holds no capability record
+  // and recorded no invocation, so the routing oracle answers none of its four questions. Before
+  // that, two of them could not fail at all and this same all-empty run took a quarter of M09 for
+  // having a task in the plan.
+  assert.deepEqual(unstated.sort(), [
+    "M09.capability-matches-task",
+    "M09.invocation-budget-respected",
+    "M09.no-redundant-invocation",
+    "M09.simplest-adequate-route",
+    "M17.no-hidden-failure"
+  ]);
 });

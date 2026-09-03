@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { observeInterventions } from "../../lib/checkpoint.mjs";
 import { observeRun } from "../../lib/observe.mjs";
+import { CAPABILITY_VOCABULARY, capabilityRecord } from "../../lib/routing-oracle.mjs";
 import { capsFor } from "../../lib/scorer-v1.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import { resolveRuntimeAuth } from "../../lib/runtime-auth.mjs";
@@ -84,15 +85,39 @@ test("the subcheck a safety ceiling names agrees with the ceiling", () => {
 
 // Round 7. `undefined !== "a1"` is true, so deleting the verification task took this subcheck to a pass
 // and M09 to a full 1.0 on a plan with no verification step in it.
+//
+// #558 moved M09 to the routing oracle, and the question this round asked is now asked of the
+// requirement rather than of the plan: the work AOS seeded names a task that re-enters an ancestor's
+// resource, so a plan that leaves it out is a plan that answered less, not one that answered well.
+// The assertion is kept because the property it was written for is the one that has to survive --
+// deleting work must not raise the number.
 test("a plan with no verification step does not pass the check about verification", () => {
-  const m09 = (tasks) => observeRun({ artifacts: { plan: { tasks } }, params: P }).find((entry) => entry.metric_id === "M09");
-  const both = (routes) => [{ id: "implementation", route: routes[0] }, { id: "verification", route: routes[1] }];
+  const work = {
+    tasks: [
+      { id: "implementation", resource: "src", depends_on: [] },
+      { id: "verification", resource: "src", depends_on: ["implementation"] }
+    ]
+  };
+  const capabilities = new Map(["a1", "a2"].map((id) =>
+    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })]));
+  const m09 = (tasks) => observeRun({
+    artifacts: { plan: { tasks } },
+    params: P,
+    routing: { work, capabilities, actual_route_events: [] }
+  }).find((entry) => entry.metric_id === "M09");
+  const both = (routes) => [
+    { id: "implementation", route: routes[0], depends_on: [] },
+    { id: "verification", route: routes[1], depends_on: ["implementation"] }
+  ];
 
-  assert.equal(sub([m09(both(["a1", "a1"]))], "M09", "no-redundant-invocation"), false);
-  assert.equal(sub([m09(both(["a1", "a2"]))], "M09", "no-redundant-invocation"), true);
-  // Neither: there is no second route to compare, so there is no answer to give.
-  assert.equal(sub([m09([{ id: "implementation", route: "a1" }])], "M09", "no-redundant-invocation"), null);
-  assert.notEqual(m09([{ id: "implementation", route: "a1" }]).value, 1, "deleting the task reached full marks");
+  assert.equal(sub([m09(both(["a1", "a1"]))], "M09", "simplest-adequate-route"), false);
+  assert.equal(sub([m09(both(["a1", "a2"]))], "M09", "simplest-adequate-route"), true);
+  // The task is gone, so nothing assigns it an owner and there is no answer to give.
+  const missing = m09([{ id: "implementation", route: "a1", depends_on: [] }]);
+  assert.equal(sub([missing], "M09", "simplest-adequate-route"), null);
+  assert.equal(sub([missing], "M09", "capability-matches-task"), null);
+  assert.notEqual(missing.value, 1, "deleting the task reached full marks");
+  assert.equal(missing.value < m09(both(["a1", "a2"])).value, true, "deleting the task did not cost anything");
 });
 
 // Round 6. `assess` writes this file when no --plan is named, and `git add -A` committed the stub into

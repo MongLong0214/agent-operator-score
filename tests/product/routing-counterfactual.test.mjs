@@ -1,0 +1,177 @@
+// #558. The counterfactuals the issue names, asked of the observation layer rather than of the
+// oracle module, because a subcheck is only replaced when the thing that computes M09 has changed.
+//
+// M09 answered `capability-matches-task` with "did the agent write a word in the route field" and
+// `simplest-adequate-route` with `new Set(n).size <= n`, which is true of every set that has ever
+// existed. Both are gone. What is here is the run: a seeded requirement AOS wrote before the agent
+// started, capability records AOS holds for the runtimes it ships an adapter for, and the
+// invocation ledger.
+
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { observeRun } from "../../lib/observe.mjs";
+import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord } from "../../lib/routing-oracle.mjs";
+
+const WORK = {
+  tasks: [
+    { id: "contract", resource: "spec", depends_on: [] },
+    { id: "implementation", resource: "src", depends_on: ["contract"] },
+    { id: "docs", resource: "docs", depends_on: ["contract"] },
+    { id: "verification", resource: "src", depends_on: ["implementation"] },
+    { id: "release", resource: "join", depends_on: ["docs", "verification"] }
+  ],
+  collision: "implementation and verification both own src and must be serial"
+};
+
+const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] });
+const CAPABILITIES = () => new Map([["strong", known("strong")], ["other", known("other")]]);
+
+const PLAN = (routes) => ({
+  tasks: WORK.tasks.map((task) => ({
+    id: task.id,
+    objective: `do ${task.id}`,
+    acceptance: `${task.id} is checkable`,
+    route: routes[task.id],
+    depends_on: [...task.depends_on]
+  })),
+  handoffs: [{ from: "implementation", to: "verification", artifacts: ["src"] }],
+  join: { requires: ["docs", "verification"] }
+});
+
+const MINIMAL = { contract: "other", implementation: "other", docs: "other", verification: "strong", release: "other" };
+
+const event = (taskId, agentId, index) => ({
+  schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
+  task_id: taskId,
+  agent_id: agentId,
+  route_id: "strong>other",
+  invocation_id: `invocation-${index}`,
+  purpose_id: taskId,
+  started_at: null,
+  completed_at: null,
+  artifact_ids: [`artifact-${index}`],
+  handoff_ids: [],
+  capability_digest: null,
+  operator_decision_event_id: null
+});
+
+const ledgerFor = (assignment) => Object.keys(assignment).sort().map((taskId, index) => event(taskId, assignment[taskId], index + 1));
+
+const m09 = ({ routes = MINIMAL, ledger = null, work = WORK, capabilities = CAPABILITIES() } = {}) =>
+  observeRun({
+    artifacts: { plan: PLAN(routes) },
+    params: { "FAM-3": {} },
+    routing: { work, capabilities, actual_route_events: ledger ?? ledgerFor(routes) }
+  }).find((entry) => entry.metric_id === "M09");
+
+const sub = (observation, id) => observation.subchecks.find((entry) => entry.id === id).pass;
+
+test("M09 carries no subcheck whose expression is true of every input", () => {
+  // The two that were. `simplest-adequate-route` distinguished nothing at all; this asks it a run
+  // it must fail, which is the only thing that shows it can.
+  const spread = { contract: "strong", implementation: "other", docs: "strong", verification: "other", release: "strong" };
+  assert.equal(sub(m09({ routes: MINIMAL }), "simplest-adequate-route"), true);
+  assert.equal(sub(m09({ routes: spread }), "simplest-adequate-route"), false);
+
+  // `capability-matches-task` was satisfied by any non-empty string. An owner AOS holds no record
+  // for is now not an owner that matched.
+  assert.equal(sub(m09({ routes: MINIMAL }), "capability-matches-task"), true);
+  const unregistered = { ...MINIMAL, docs: "someone-else" };
+  assert.equal(sub(m09({ routes: unregistered }), "capability-matches-task"), null);
+});
+
+test("one redundant agent lowers routing minimality and nothing else", () => {
+  const minimal = m09({ routes: MINIMAL });
+  // The same five tasks and the same five invocations, with one task moved to a second owner that
+  // the work did not need -- which buys two handoffs.
+  const extra = { ...MINIMAL, docs: "strong" };
+  const spread = m09({ routes: extra });
+
+  assert.equal(sub(minimal, "simplest-adequate-route"), true);
+  assert.equal(sub(spread, "simplest-adequate-route"), false);
+  for (const id of ["capability-matches-task", "no-redundant-invocation", "invocation-budget-respected"]) {
+    assert.equal(sub(spread, id), sub(minimal, id), `${id} moved when only routing minimality should have`);
+  }
+});
+
+test("the same plan text with a different actual route is judged by the actual route", () => {
+  const plan = PLAN(MINIMAL);
+  const followed = observeRun({
+    artifacts: { plan },
+    params: { "FAM-3": {} },
+    routing: { work: WORK, capabilities: CAPABILITIES(), actual_route_events: ledgerFor(MINIMAL) }
+  }).find((entry) => entry.metric_id === "M09");
+  // Identical plan bytes. The ledger says verification went to the agent that wrote the code.
+  const diverged = observeRun({
+    artifacts: { plan },
+    params: { "FAM-3": {} },
+    routing: { work: WORK, capabilities: CAPABILITIES(), actual_route_events: ledgerFor({ ...MINIMAL, verification: "other" }) }
+  }).find((entry) => entry.metric_id === "M09");
+
+  assert.equal(sub(followed, "simplest-adequate-route"), true);
+  assert.equal(sub(diverged, "simplest-adequate-route"), false);
+  assert.match(diverged.subchecks.length > 0 ? followed.verifier_id : "", /aos-route-oracle/u);
+});
+
+test("a perfect declaration with no invocation event cannot reach full credit", () => {
+  const declared = m09({ routes: MINIMAL, ledger: [] });
+  assert.equal(sub(declared, "no-redundant-invocation"), null);
+  assert.equal(sub(declared, "invocation-budget-respected"), null);
+  assert.notEqual(declared.value, 1, "a declaration alone reached full marks");
+  assert.equal(declared.value, 0.5);
+});
+
+test("an actual route whose owner AOS knows nothing about is not observed", () => {
+  const unknown = m09({ routes: { contract: "a1", implementation: "a1", docs: "a1", verification: "a2", release: "a1" } });
+  assert.equal(sub(unknown, "capability-matches-task"), null);
+  assert.equal(sub(unknown, "simplest-adequate-route"), null);
+  // The ledger half is still answerable: five invocations happened whoever made them.
+  assert.equal(sub(unknown, "invocation-budget-respected"), true);
+});
+
+test("routing the independent verifier to the owner of the work it checks fails independence", () => {
+  const sameOwner = { contract: "strong", implementation: "strong", docs: "strong", verification: "strong", release: "strong" };
+  const observation = m09({ routes: sameOwner });
+  assert.equal(sub(observation, "simplest-adequate-route"), false);
+  // Named on the record rather than only folded into the minimality verdict.
+  assert.equal(sub(m09({ routes: MINIMAL }), "simplest-adequate-route"), true);
+  assert.notEqual(observation.value, 1);
+});
+
+test("an invocation that repeats a purpose and produces nothing new is redundant", () => {
+  const ledger = ledgerFor(MINIMAL);
+  const repeat = { ...ledger[0], invocation_id: "invocation-repeat" };
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: [...ledger, repeat] }), "no-redundant-invocation"), false);
+  // A second invocation of the same purpose that did produce something new is not redundant.
+  const productive = { ...ledger[0], invocation_id: "invocation-new", artifact_ids: ["artifact-new"] };
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: [...ledger, productive] }), "no-redundant-invocation"), true);
+});
+
+test("more invocations than the requirement allows breaks the invocation budget", () => {
+  const ledger = ledgerFor(MINIMAL);
+  assert.equal(sub(m09({ routes: MINIMAL, ledger }), "invocation-budget-respected"), true);
+
+  // The per-task bound, on its own. Five invocations against a total allowance of five, with one
+  // task invoked twice and another not at all -- the retry nobody counted, which a total cannot see.
+  const twice = ledger
+    .filter((entry) => entry.task_id !== "release")
+    .concat([{ ...ledger[0], invocation_id: "invocation-again", artifact_ids: ["artifact-again"] }]);
+  assert.equal(twice.length, 5);
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: twice }), "invocation-budget-respected"), false);
+
+  // The total, on its own. Six invocations the ledger could not attribute to any task, which the
+  // per-task bound never sees because it never counts them.
+  const unattributed = Array.from({ length: 6 }, (_, index) => ({
+    ...ledger[0], task_id: null, invocation_id: `invocation-loose-${index}`, purpose_id: `purpose-${index}`, artifact_ids: [`artifact-loose-${index}`]
+  }));
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: unattributed }), "invocation-budget-respected"), false);
+  // Five of the same shape is inside the bound, so the count is what decided it.
+  assert.equal(sub(m09({ routes: MINIMAL, ledger: unattributed.slice(0, 5) }), "invocation-budget-respected"), true);
+});
+
+test("no seeded requirement leaves every routing question unanswered rather than passed", () => {
+  const nothing = observeRun({ artifacts: { plan: PLAN(MINIMAL) }, params: { "FAM-3": {} } }).find((entry) => entry.metric_id === "M09");
+  for (const entry of nothing.subchecks) assert.equal(entry.pass, null, `${entry.id} answered without a requirement`);
+  assert.equal(nothing.value, 0);
+});
