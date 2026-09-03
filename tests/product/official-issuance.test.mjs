@@ -2149,27 +2149,35 @@ test("a_withheld_result_verifies_as_the_result_it_is", () => {
     // the gate is run again over the raw per-invocation confinement, so a summary, an isolation
     // block or a result reshaped to agree with itself still contradicts the evidence beside it.
     const invocationsOf = (one) => Object.values(one.family_results ?? {}).flatMap((family) => family.invocations ?? []);
+    // Each tamper names the check that must catch it, not "something failed". An edit to the raw
+    // record is the recomputation's to catch (`confinement-record`); an edit to the published result
+    // is the surface comparison's (`recompute`). Accepting either let a weaker recomputation --
+    // comparing only `official` and the reasons -- pass on the strength of the other check, which
+    // is how the guard on that comparison survived a full mutation run.
     const tampers = [
-      ["official_issuance false to true", (rec) => { rec.isolation.official_issuance.official = true; rec.isolation.official_issuance.reasons = []; }],
-      ["boundary_withheld removed", (rec, res) => { res.boundary_withheld = []; }],
-      ["isolation backend changed", (rec, res) => { res.isolation.backend = "macos-seatbelt"; }],
-      ["network NOT_OBSERVED to denied", (rec, res) => { res.isolation.network.task_external = "denied"; }],
-      ["policy digest changed", (rec, res) => { res.isolation.policy_digest = `sha256:${"9".repeat(64)}`; }],
-      ["a cleanup failure removed", (rec) => { for (const one of invocationsOf(rec)) if (one.confinement) { one.confinement.cleanup_verified = true; one.confinement.scratch_not_removed = []; } }],
-      ["the whole record made official", (rec) => {
+      ["official_issuance false to true", "confinement-record", (rec) => { rec.isolation.official_issuance.official = true; rec.isolation.official_issuance.reasons = []; }],
+      ["boundary_withheld removed", "recompute", (rec, res) => { res.boundary_withheld = []; }],
+      ["isolation backend changed", "recompute", (rec, res) => { res.isolation.backend = "macos-seatbelt"; }],
+      ["network NOT_OBSERVED to denied", "recompute", (rec, res) => { res.isolation.network.task_external = "denied"; }],
+      ["policy digest changed", "recompute", (rec, res) => { res.isolation.policy_digest = `sha256:${"9".repeat(64)}`; }],
+      // The one the whole-decision comparison exists for: on a lane already withheld for other
+      // reasons, deleting an invocation's cleanup failure moves neither `official` nor the reason
+      // list, and only the rest of the recomputed verdict disagrees.
+      ["a cleanup failure removed", "confinement-record", (rec) => { for (const one of invocationsOf(rec)) if (one.confinement) { one.confinement.cleanup_verified = true; one.confinement.scratch_not_removed = []; } }],
+      ["the whole record made official", "confinement-record", (rec) => {
         rec.isolation.official_issuance = { ...rec.isolation.official_issuance, official: true, reasons: [], claim_stage_ceiling: "PROFILE_BOUND" };
         rec.isolation.level = "STRICT";
         for (const one of invocationsOf(rec)) if (one.confinement) one.confinement.level = "STRICT";
       }]
     ];
-    for (const [label, edit] of tampers) {
+    for (const [label, check, edit] of tampers) {
       const rec = JSON.parse(canonicalJson(honestRecord));
       const res = JSON.parse(canonicalJson(honest));
       edit(rec, res);
       writeFileSync(recordPath, `${canonicalJson(rec)}\n`);
       writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(res)}\n`);
       const rejected = run(cwd, ["verify", "--run", runId], 5);
-      assert.match(rejected.stdout, /FAIL\t(?:confinement-record|recompute)/u, `${label} verified: ${rejected.stdout}`);
+      assert.match(rejected.stdout, new RegExp(`FAIL\\t${check}`, "u"), `${label} was not caught by ${check}: ${rejected.stdout}`);
     }
     // The canary's self-reported `result` is the one edit that buys nothing rather than failing:
     // the gate derives the verdict from the cells and never reads that field, so rewriting it
