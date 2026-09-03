@@ -8,9 +8,9 @@
 > report ordinary progress as damage. Five heads have turned over across the versions of this
 > document, one of them while a snapshot was being taken.
 
-- **Generated:** 2026-09-03T21:52:46Z
+- **Generated:** 2026-09-03T22:40:04Z
 - **Repository:** `MongLong0214/agent-operator-score`
-- **Observation digest:** `sha256:fca61a81c8788a8a6378775412b9011fb658d006a7bc982c82cceca7860c17b8` (recursive over the whole record)
+- **Observation digest:** `sha256:79ca16e340b1ce753cdd136bc86033a90b0685a5bdfb8f6c0378cc5af53509b8` (recursive over the whole record)
 - **`dev` at snapshot:** `0616cfa47353c201c790bda0e3a802387e6e321c`
 - **`main` at snapshot:** `d2c68036ebf9f9fd7287258fd3cec252133ef846`
 - **Machine-readable source of truth:** [`fixtures/stale-branches/audit.json`](../fixtures/stale-branches/audit.json)
@@ -47,15 +47,15 @@ prove nothing.
 
 | command | exit | bytes | digest |
 |---|---|---|---|
-| `git ls-remote --heads origin` | 0 | 525 | `sha256:281caee83375ea128229e98b6313126e168552a5d8ea7f34f4e5ab760ba85b16` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4380 | `sha256:55c20313ed51d740ba637b23415f40e82bb57103e389f47b5712f07a9e14519f` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 89799 | `sha256:275dfdef3a65bd1f17b914cdd1268cf5aa5bcb8a46ee9dadaa97d8431c19530e` |
+| `git ls-remote --heads origin` | 0 | 525 | `sha256:40337b11ac0464d8ef2b0f4fcc8f10c585991920338fd21f58a1fb5a9b2e555b` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4380 | `sha256:a408d082a9dfa49c53a6cb0b377b86c6f7f3937918cc9407d7865a1047ffcf1d` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 93314 | `sha256:abbaf86fba061f0c630b74b85a5715ebf554b71eddcd575d4684179d3ff13532` |
 | `git ls-remote --tags origin` | 0 | 2323 | `sha256:e4110333eb2096c906041412784a350fe30b478de0af6caf9f24d61a5b2012db` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/main/protection` | 0 | 1845 | `sha256:a61f822cb0c04a82978c62885dcf4f79608597db586540bd95de31ed00573aba` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/dev/protection` | 0 | 1839 | `sha256:23df58f6a5b41ffe54474d6561826e50b771c36dca772c62c4031869f67648a0` |
 | `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100` | 0 | 4 | `sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05` |
-| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6760 | `sha256:bceae3c35da5e70641d1c7ce79f7af032423dfbe442c5407a24f979a2c583356` |
-| `git fetch -q origin 0616cfa47353c201c790bda0e3a802387e6e321c e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 b740e4823be5f0d6fa8c047f32e8fa06399c78cb c67867ca749e6235dce295c6558efe93ca164d0c 307efe945ad8ab5425661c9b2fcf1c2d1670764e 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6760 | `sha256:a2492716a6ca9d905ef1c0fac93f55e09d6f20ab19395f62bdbd287e3992c595` |
+| `git fetch -q origin 0616cfa47353c201c790bda0e3a802387e6e321c e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 d4cbc108ebb827aad49eb6ba7673029e757efbd2 fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 f41d8402ee3120cb43e957bb4c7093adbe10af7c 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 
 What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
 offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
@@ -87,8 +87,8 @@ itself.
 | branch | head SHA | classification | in dev / main | commits reaching neither | release tags | open PR | recommendation |
 |---|---|---|---|---|---|---|---|
 | `fix/a-fixture-backed-agent-is-not-a-runtime` | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` | MERGED | yes / yes | 0 | v0.1.11, v0.1.12, v0.1.13, v0.1.14, v0.1.15, v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
-| `task/issue-557-actual-effects` | `b740e4823be5f0d6fa8c047f32e8fa06399c78cb` | ACTIVE | no / no | 4 | none | [#618](https://github.com/MongLong0214/agent-operator-score/pull/618) | **must_be_preserved** |
-| `task/issue-574-discovery` | `307efe945ad8ab5425661c9b2fcf1c2d1670764e` | ACTIVE | no / no | 5 | none | [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) | **must_be_preserved** |
+| `task/issue-557-actual-effects` | `d4cbc108ebb827aad49eb6ba7673029e757efbd2` | ACTIVE | no / no | 5 | none | [#618](https://github.com/MongLong0214/agent-operator-score/pull/618) | **must_be_preserved** |
+| `task/issue-574-discovery` | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | ACTIVE | no / no | 6 | none | [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) | **must_be_preserved** |
 | `tmp/read-claude-artifact` | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | MERGED | yes / yes | 0 | v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
 
 `main` (`d2c68036ebf9f9fd7287258fd3cec252133ef846`) and `dev` (`0616cfa47353c201c790bda0e3a802387e6e321c`) are excluded
@@ -147,17 +147,17 @@ Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev
 
 | field | value | derived by |
 |---|---|---|
-| current SHA | `b740e4823be5f0d6fa8c047f32e8fa06399c78cb` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
-| last update | 2026-09-03T19:10:21+09:00 (0 days before this snapshot) | `git-log-task/issue-557-actual-effects` |
-| owner (last committer) | AOS <aos@localhost> | `git-log-task/issue-557-actual-effects` |
+| current SHA | `d4cbc108ebb827aad49eb6ba7673029e757efbd2` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-04T07:31:10+09:00 (0 days before this snapshot) | `git-log-task/issue-557-actual-effects` |
+| owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-task/issue-557-actual-effects` |
 | classification | **ACTIVE** | — |
 | PR history (all states) | #618 (OPEN) | `pr-history-task/issue-557-actual-effects` |
 | contained in `dev` / `main` | no / no | `is-ancestor-dev-task/issue-557-actual-effects`, `is-ancestor-main-task/issue-557-actual-effects` |
-| unique commits vs `dev` / `main` | 4 / 292 | `rev-list-dev-task/issue-557-actual-effects`, `rev-list-main-task/issue-557-actual-effects` |
-| **commits reaching neither line** | **4** | `rev-list-neither-task/issue-557-actual-effects` for the count, `rev-list-ids-neither-task/issue-557-actual-effects` for the ids |
+| unique commits vs `dev` / `main` | 5 / 293 | `rev-list-dev-task/issue-557-actual-effects`, `rev-list-main-task/issue-557-actual-effects` |
+| **commits reaching neither line** | **5** | `rev-list-neither-task/issue-557-actual-effects` for the count, `rev-list-ids-neither-task/issue-557-actual-effects` for the ids |
 | release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-task/issue-557-actual-effects`, 19 of them |
 | superseding PR/issue/SHA | none recorded | — |
-| to preserve | 4 commits implementing #557, reachable from no other ref; the library and test surface those commits add, reachable from no other ref; the mutation guards those tests carry | — |
+| to preserve | 5 commits implementing #557, reachable from no other ref; the effect-recording surface those commits add, reachable from no other ref; the product tests and mutation guards those commits carry | — |
 | protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
 | **recommendation** | **must_be_preserved** | — |
 
@@ -168,7 +168,7 @@ Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev
 | sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
 | repository tree (`git-grep-task/issue-557-actual-effects`) | none found |
 
-Head of open PR #618 targeting dev, under review. Receipted derivations show 4 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
+Head of open PR #618 targeting dev, under review. Receipted derivations show 5 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
 
 Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
@@ -176,17 +176,17 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 
 | field | value | derived by |
 |---|---|---|
-| current SHA | `307efe945ad8ab5425661c9b2fcf1c2d1670764e` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
-| last update | 2026-09-04T06:36:48+09:00 (0 days before this snapshot) | `git-log-task/issue-574-discovery` |
+| current SHA | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-04T07:27:32+09:00 (0 days before this snapshot) | `git-log-task/issue-574-discovery` |
 | owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-task/issue-574-discovery` |
 | classification | **ACTIVE** | — |
 | PR history (all states) | #617 (OPEN) | `pr-history-task/issue-574-discovery` |
 | contained in `dev` / `main` | no / no | `is-ancestor-dev-task/issue-574-discovery`, `is-ancestor-main-task/issue-574-discovery` |
-| unique commits vs `dev` / `main` | 5 / 293 | `rev-list-dev-task/issue-574-discovery`, `rev-list-main-task/issue-574-discovery` |
-| **commits reaching neither line** | **5** | `rev-list-neither-task/issue-574-discovery` for the count, `rev-list-ids-neither-task/issue-574-discovery` for the ids |
+| unique commits vs `dev` / `main` | 6 / 294 | `rev-list-dev-task/issue-574-discovery`, `rev-list-main-task/issue-574-discovery` |
+| **commits reaching neither line** | **6** | `rev-list-neither-task/issue-574-discovery` for the count, `rev-list-ids-neither-task/issue-574-discovery` for the ids |
 | release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-task/issue-574-discovery`, 19 of them |
 | superseding PR/issue/SHA | none recorded | — |
-| to preserve | 5 commits implementing #574, reachable from no other ref; the discovery surface those commits add, reachable from no other ref; the mutation guards those tests carry | — |
+| to preserve | 6 commits implementing #574, reachable from no other ref; the discovery surface those commits add, reachable from no other ref; the product tests and mutation guards those commits carry | — |
 | protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
 | **recommendation** | **must_be_preserved** | — |
 
@@ -197,7 +197,7 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
 | repository tree (`git-grep-task/issue-574-discovery`) | none found |
 
-Head of open PR #617 targeting dev, under review. Receipted derivations show 5 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
+Head of open PR #617 targeting dev, under review. Receipted derivations show 6 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
 
 Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
@@ -330,9 +330,9 @@ commit, and nothing would notice.
 
 | PR | head branch | head SHA | base |
 |---|---|---|---|
-| [#612](https://github.com/MongLong0214/agent-operator-score/pull/612) | `task/issue-572-branch-audit` | `c67867ca749e6235dce295c6558efe93ca164d0c` | dev |
-| [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) | `task/issue-574-discovery` | `307efe945ad8ab5425661c9b2fcf1c2d1670764e` | dev |
-| [#618](https://github.com/MongLong0214/agent-operator-score/pull/618) | `task/issue-557-actual-effects` | `b740e4823be5f0d6fa8c047f32e8fa06399c78cb` | dev |
+| [#612](https://github.com/MongLong0214/agent-operator-score/pull/612) | `task/issue-572-branch-audit` | `fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5` | dev |
+| [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) | `task/issue-574-discovery` | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | dev |
+| [#618](https://github.com/MongLong0214/agent-operator-score/pull/618) | `task/issue-557-actual-effects` | `d4cbc108ebb827aad49eb6ba7673029e757efbd2` | dev |
 
 ## Repository branch policy
 

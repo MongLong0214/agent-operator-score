@@ -4,7 +4,7 @@
   "issue": 572,
   "phase": "read-only-audit",
   "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B must collect its own observations -- one immediately before the deletion and one immediately after -- with scripts/collect-branch-state.mjs, and authorize against those. liveEligibility refuses outright without a freshly collected observation, and the invariants are compared between the two fresh observations, never against this file. This baseline is historical context: the repository goes on moving, and a Phase B compared against a Phase A snapshot would report ordinary progress as damage.",
-  "generated_at": "2026-09-03T21:52:46Z",
+  "generated_at": "2026-09-03T22:40:04Z",
   "method": "Read-only, and every asserted derivation is a command run by scripts/collect-branch-state.mjs with its command line, exit code, byte count and a SHA-256 of its raw stdout recorded beside the answer. That includes the graph facts, not only the repository queries around them: `git merge-base --is-ancestor` against dev and main, `git rev-list --count` in both directions and for commits reaching neither line, `git rev-list` for the ids of the commits reaching neither line, one `git merge-base --is-ancestor` per tag reported by `git ls-remote --tags origin`, `git grep` over the whole tree, `git log -1`, and an all-state paginated `gh api repos/<owner>/<repo>/pulls?state=all&head=<owner>:<branch>` per branch. Head lists are taken over two independent transports and cross-checked. Every list endpoint is paginated to the end, and each GitHub-wide search records whether it retrieved every result the API reported -- a truncated sweep establishes nothing and says so. No ref was created, deleted, renamed or force-pushed to produce this file.",
   "excluded_refs": [
     "main",
@@ -13,7 +13,7 @@
   "live_observation": {
     "schema": "aos-branch-live-observation.v3",
     "repository": "MongLong0214/agent-operator-score",
-    "collected_at": "2026-09-03T21:52:46Z",
+    "collected_at": "2026-09-03T22:40:04Z",
     "collector": "scripts/collect-branch-state.mjs",
     "heads": [
       {
@@ -30,15 +30,15 @@
       },
       {
         "name": "task/issue-557-actual-effects",
-        "sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb"
+        "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
       },
       {
         "name": "task/issue-572-branch-audit",
-        "sha": "c67867ca749e6235dce295c6558efe93ca164d0c"
+        "sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5"
       },
       {
         "name": "task/issue-574-discovery",
-        "sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e"
+        "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
       },
       {
         "name": "tmp/read-claude-artifact",
@@ -63,17 +63,17 @@
       },
       {
         "name": "task/issue-557-actual-effects",
-        "sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+        "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
         "protected": false
       },
       {
         "name": "task/issue-572-branch-audit",
-        "sha": "c67867ca749e6235dce295c6558efe93ca164d0c",
+        "sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
         "protected": false
       },
       {
         "name": "task/issue-574-discovery",
-        "sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+        "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
         "protected": false
       },
       {
@@ -86,21 +86,21 @@
       {
         "number": 612,
         "head_branch": "task/issue-572-branch-audit",
-        "head_sha": "c67867ca749e6235dce295c6558efe93ca164d0c",
+        "head_sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
         "base": "dev",
         "state": "OPEN"
       },
       {
         "number": 617,
         "head_branch": "task/issue-574-discovery",
-        "head_sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+        "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
         "base": "dev",
         "state": "OPEN"
       },
       {
         "number": 618,
         "head_branch": "task/issue-557-actual-effects",
-        "head_sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+        "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
         "base": "dev",
         "state": "OPEN"
       }
@@ -498,9 +498,9 @@
       },
       "task/issue-557-actual-effects": {
         "last_commit": {
-          "date": "2026-09-03T19:10:21+09:00",
-          "author_name": "AOS",
-          "author_email": "aos@localhost",
+          "date": "2026-09-04T07:31:10+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
           "source": "git-log-task/issue-557-actual-effects"
         },
         "ancestor_of_dev": {
@@ -512,11 +512,11 @@
           "source": "is-ancestor-main-task/issue-557-actual-effects"
         },
         "unique_vs_dev": {
-          "value": 4,
+          "value": 5,
           "source": "rev-list-dev-task/issue-557-actual-effects"
         },
         "unique_vs_main": {
-          "value": 292,
+          "value": 293,
           "source": "rev-list-main-task/issue-557-actual-effects"
         },
         "behind_dev": {
@@ -528,11 +528,12 @@
           "source": "rev-list-behind-main-task/issue-557-actual-effects"
         },
         "unique_vs_dev_and_main": {
-          "value": 4,
+          "value": 5,
           "source": "rev-list-neither-task/issue-557-actual-effects"
         },
         "unique_commit_ids_vs_dev_and_main": {
           "value": [
+            "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
             "b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
             "288f1a2dcdf194920b6dc61a2e475222a84cf26a",
             "81e2b47c7bbf9a9e8a1c1991504f047e7c0de3d4",
@@ -575,7 +576,7 @@
               "state": "OPEN",
               "merged_at": null,
               "base": "dev",
-              "head_sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb"
+              "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
             }
           ],
           "complete": true,
@@ -584,7 +585,7 @@
       },
       "task/issue-572-branch-audit": {
         "last_commit": {
-          "date": "2026-09-04T06:52:24+09:00",
+          "date": "2026-09-04T07:30:20+09:00",
           "author_name": "MongLong0214",
           "author_email": "weplay0628@gmail.com",
           "source": "git-log-task/issue-572-branch-audit"
@@ -598,11 +599,11 @@
           "source": "is-ancestor-main-task/issue-572-branch-audit"
         },
         "unique_vs_dev": {
-          "value": 19,
+          "value": 22,
           "source": "rev-list-dev-task/issue-572-branch-audit"
         },
         "unique_vs_main": {
-          "value": 330,
+          "value": 333,
           "source": "rev-list-main-task/issue-572-branch-audit"
         },
         "behind_dev": {
@@ -614,11 +615,14 @@
           "source": "rev-list-behind-main-task/issue-572-branch-audit"
         },
         "unique_vs_dev_and_main": {
-          "value": 19,
+          "value": 22,
           "source": "rev-list-neither-task/issue-572-branch-audit"
         },
         "unique_commit_ids_vs_dev_and_main": {
           "value": [
+            "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+            "577fc0762bec873f3f856c6afca924d5e4dea0ff",
+            "0a0b47b14edc6e5023771470db564f6456ffda15",
             "c67867ca749e6235dce295c6558efe93ca164d0c",
             "f3fb852ce1a2b01948fb118513d5512a941e4f12",
             "f095999721f2f17a541ebaba00d45100b0d11867",
@@ -676,7 +680,7 @@
               "state": "OPEN",
               "merged_at": null,
               "base": "dev",
-              "head_sha": "c67867ca749e6235dce295c6558efe93ca164d0c"
+              "head_sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5"
             }
           ],
           "complete": true,
@@ -685,7 +689,7 @@
       },
       "task/issue-574-discovery": {
         "last_commit": {
-          "date": "2026-09-04T06:36:48+09:00",
+          "date": "2026-09-04T07:27:32+09:00",
           "author_name": "MongLong0214",
           "author_email": "weplay0628@gmail.com",
           "source": "git-log-task/issue-574-discovery"
@@ -699,11 +703,11 @@
           "source": "is-ancestor-main-task/issue-574-discovery"
         },
         "unique_vs_dev": {
-          "value": 5,
+          "value": 6,
           "source": "rev-list-dev-task/issue-574-discovery"
         },
         "unique_vs_main": {
-          "value": 293,
+          "value": 294,
           "source": "rev-list-main-task/issue-574-discovery"
         },
         "behind_dev": {
@@ -715,11 +719,12 @@
           "source": "rev-list-behind-main-task/issue-574-discovery"
         },
         "unique_vs_dev_and_main": {
-          "value": 5,
+          "value": 6,
           "source": "rev-list-neither-task/issue-574-discovery"
         },
         "unique_commit_ids_vs_dev_and_main": {
           "value": [
+            "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
             "307efe945ad8ab5425661c9b2fcf1c2d1670764e",
             "a66b91670c52e659824a09e5b13f7501bf405e86",
             "c6aeed44adbea67bcf48ba370ecca9cd4024da23",
@@ -763,7 +768,7 @@
               "state": "OPEN",
               "merged_at": null,
               "base": "dev",
-              "head_sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e"
+              "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
             }
           ],
           "complete": true,
@@ -916,21 +921,21 @@
         "command": "git ls-remote --heads origin",
         "exit_code": 0,
         "bytes": 525,
-        "digest": "sha256:281caee83375ea128229e98b6313126e168552a5d8ea7f34f4e5ab760ba85b16"
+        "digest": "sha256:40337b11ac0464d8ef2b0f4fcc8f10c585991920338fd21f58a1fb5a9b2e555b"
       },
       {
         "source": "rest-branches",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100",
         "exit_code": 0,
         "bytes": 4380,
-        "digest": "sha256:55c20313ed51d740ba637b23415f40e82bb57103e389f47b5712f07a9e14519f"
+        "digest": "sha256:a408d082a9dfa49c53a6cb0b377b86c6f7f3937918cc9407d7865a1047ffcf1d"
       },
       {
         "source": "rest-open-prs",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100",
         "exit_code": 0,
-        "bytes": 89799,
-        "digest": "sha256:275dfdef3a65bd1f17b914cdd1268cf5aa5bcb8a46ee9dadaa97d8431c19530e"
+        "bytes": 93314,
+        "digest": "sha256:abbaf86fba061f0c630b74b85a5715ebf554b71eddcd575d4684179d3ff13532"
       },
       {
         "source": "git-ls-remote-tags",
@@ -965,11 +970,11 @@
         "command": "gh api repos/MongLong0214/agent-operator-score",
         "exit_code": 0,
         "bytes": 6760,
-        "digest": "sha256:bceae3c35da5e70641d1c7ce79f7af032423dfbe442c5407a24f979a2c583356"
+        "digest": "sha256:a2492716a6ca9d905ef1c0fac93f55e09d6f20ab19395f62bdbd287e3992c595"
       },
       {
         "source": "git-fetch-observed",
-        "command": "git fetch -q origin 0616cfa47353c201c790bda0e3a802387e6e321c e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 b740e4823be5f0d6fa8c047f32e8fa06399c78cb c67867ca749e6235dce295c6558efe93ca164d0c 307efe945ad8ab5425661c9b2fcf1c2d1670764e 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "command": "git fetch -q origin 0616cfa47353c201c790bda0e3a802387e6e321c e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 d4cbc108ebb827aad49eb6ba7673029e757efbd2 fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 f41d8402ee3120cb43e957bb4c7093adbe10af7c 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
         "exit_code": 0,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1186,10 +1191,10 @@
       },
       {
         "source": "git-log-task/issue-557-actual-effects",
-        "command": "git log -1 --format=%cI%x09%an%x09%ae b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae d4cbc108ebb827aad49eb6ba7673029e757efbd2",
         "exit_code": 0,
-        "bytes": 44,
-        "digest": "sha256:4d145e12b2172f28da905a1ea5585907b56370838e1a447c57ce7fc8a73b5e7e"
+        "bytes": 60,
+        "digest": "sha256:056899331c416d794a1f1fc0cfa9ea065f5ffa1a6509d241aed924b0f4e7e26e"
       },
       {
         "source": "git-grep-task/issue-557-actual-effects",
@@ -1202,204 +1207,204 @@
         "source": "pr-history-task/issue-557-actual-effects",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-557-actual-effects&per_page=100",
         "exit_code": 0,
-        "bytes": 30681,
-        "digest": "sha256:b0032bad2fee136f3616f9edb6d2187e7b5e7e0d96a948ad6120f8ce4a1ae0c3"
+        "bytes": 30643,
+        "digest": "sha256:368edbdfb41924b63ab15291742387884c0cccf540aa2f29db6a99eeab74fe37"
       },
       {
         "source": "is-ancestor-dev-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 0616cfa47353c201c790bda0e3a802387e6e321c",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "is-ancestor-main-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "rev-list-dev-task/issue-557-actual-effects",
-        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..d4cbc108ebb827aad49eb6ba7673029e757efbd2",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
       },
       {
         "source": "rev-list-main-task/issue-557-actual-effects",
-        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..d4cbc108ebb827aad49eb6ba7673029e757efbd2",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:af1fc8a3216d04f9fda156fcadebe89fbfff7c61e112eaa3f7a3a72d03ba0550"
+        "digest": "sha256:20b7863224b7cb6edbc009c2ef30a14a585fca79b285595a11f066bbd8b54bc6"
       },
       {
         "source": "rev-list-behind-dev-task/issue-557-actual-effects",
-        "command": "git rev-list --count b740e4823be5f0d6fa8c047f32e8fa06399c78cb..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "command": "git rev-list --count d4cbc108ebb827aad49eb6ba7673029e757efbd2..0616cfa47353c201c790bda0e3a802387e6e321c",
         "exit_code": 0,
         "bytes": 3,
         "digest": "sha256:076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3"
       },
       {
         "source": "rev-list-behind-main-task/issue-557-actual-effects",
-        "command": "git rev-list --count b740e4823be5f0d6fa8c047f32e8fa06399c78cb..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count d4cbc108ebb827aad49eb6ba7673029e757efbd2..d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-neither-task/issue-557-actual-effects",
-        "command": "git rev-list --count b740e4823be5f0d6fa8c047f32e8fa06399c78cb --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count d4cbc108ebb827aad49eb6ba7673029e757efbd2 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
       },
       {
         "source": "rev-list-ids-neither-task/issue-557-actual-effects",
-        "command": "git rev-list b740e4823be5f0d6fa8c047f32e8fa06399c78cb --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list d4cbc108ebb827aad49eb6ba7673029e757efbd2 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
-        "bytes": 164,
-        "digest": "sha256:3de5f1466f0c026182c600d639f6625f7f34b40df194c7a79cf8b3cb0fc03405"
+        "bytes": 205,
+        "digest": "sha256:1bba069251d381bd37c04e32fe25a9e24e0a4ebb9418f7a51d3518760d8416bc"
       },
       {
         "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 36b823f22217e9d8be011318e295231c62a3f813",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 36b823f22217e9d8be011318e295231c62a3f813",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.0-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.1-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 efe351c991797a8cde88c23b8e8933d9a90db11d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.10-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.11-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 4566b33143155b91981d07308bd113ad8fad9b35",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 4566b33143155b91981d07308bd113ad8fad9b35",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.12-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 c371ac93d49a592925b24de5013bc9b3b303dd7d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.13-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.14-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.15-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 426c23d0f62fa2666135f978db0f5802ace7c8cc",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.16-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.17-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.2-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 43bae4bf460939a743c837b8e0a05d8f9e044026",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.3-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.4-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 ae648b7dca5574c6af938dc44b6802f1bf732929",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.5-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb bbfae658e87ac2de7c6326739704a877fb118301",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 bbfae658e87ac2de7c6326739704a877fb118301",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.6-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.7-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.8-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 30d30485f4ade54238cba5aa1a8bc85452df7d39",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.9-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor b740e4823be5f0d6fa8c047f32e8fa06399c78cb 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "git-log-task/issue-572-branch-audit",
-        "command": "git log -1 --format=%cI%x09%an%x09%ae c67867ca749e6235dce295c6558efe93ca164d0c",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
         "exit_code": 0,
         "bytes": 60,
-        "digest": "sha256:23eb73d47d9e90d871c23d67aec6fcd950c30b3a21ba772b301ea5a516d7b32f"
+        "digest": "sha256:98e277290c1b3e373b571371ecc1bd0bd8b2866b325c736ede4ab87279271dee"
       },
       {
         "source": "git-grep-task/issue-572-branch-audit",
@@ -1412,204 +1417,204 @@
         "source": "pr-history-task/issue-572-branch-audit",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-572-branch-audit&per_page=100",
         "exit_code": 0,
-        "bytes": 29543,
-        "digest": "sha256:d3470c8194272e64470093e6fd65903a84b81cb4b83349841f7bda1bf4fe9373"
+        "bytes": 33134,
+        "digest": "sha256:8c767db78d4555f2412273fcdc2849b1841b05b723acaafbd9ad3f9dec2fcf3d"
       },
       {
         "source": "is-ancestor-dev-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 0616cfa47353c201c790bda0e3a802387e6e321c",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "is-ancestor-main-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "rev-list-dev-task/issue-572-branch-audit",
-        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..c67867ca749e6235dce295c6558efe93ca164d0c",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
         "exit_code": 0,
         "bytes": 3,
-        "digest": "sha256:a9742eb8ee320e006666aef25ae9aeed948247f3125c9cafa7cf97b7e7467dd5"
+        "digest": "sha256:f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
       },
       {
         "source": "rev-list-main-task/issue-572-branch-audit",
-        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..c67867ca749e6235dce295c6558efe93ca164d0c",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:07384138e2db8aa6ce4821e3b972b3295aa7ea85154db4a4b3f6e37abe083800"
+        "digest": "sha256:78b9041431a47c113011bf6056a6f48baded875b6845f59bc7f110bbd02d5ba6"
       },
       {
         "source": "rev-list-behind-dev-task/issue-572-branch-audit",
-        "command": "git rev-list --count c67867ca749e6235dce295c6558efe93ca164d0c..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "command": "git rev-list --count fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5..0616cfa47353c201c790bda0e3a802387e6e321c",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-behind-main-task/issue-572-branch-audit",
-        "command": "git rev-list --count c67867ca749e6235dce295c6558efe93ca164d0c..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5..d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-neither-task/issue-572-branch-audit",
-        "command": "git rev-list --count c67867ca749e6235dce295c6558efe93ca164d0c --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 3,
-        "digest": "sha256:a9742eb8ee320e006666aef25ae9aeed948247f3125c9cafa7cf97b7e7467dd5"
+        "digest": "sha256:f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
       },
       {
         "source": "rev-list-ids-neither-task/issue-572-branch-audit",
-        "command": "git rev-list c67867ca749e6235dce295c6558efe93ca164d0c --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
-        "bytes": 779,
-        "digest": "sha256:f3b12be6122bbe7faf5bd61daf97643bea34866dd42d4cba821e06155d11475e"
+        "bytes": 902,
+        "digest": "sha256:7582e1164ccfc404087c825ce892c4be0cb81dea5eaf005514de08ad26fbc39e"
       },
       {
         "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 36b823f22217e9d8be011318e295231c62a3f813",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 36b823f22217e9d8be011318e295231c62a3f813",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.0-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.1-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 efe351c991797a8cde88c23b8e8933d9a90db11d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.10-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.11-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 4566b33143155b91981d07308bd113ad8fad9b35",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 4566b33143155b91981d07308bd113ad8fad9b35",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.12-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 c371ac93d49a592925b24de5013bc9b3b303dd7d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.13-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.14-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.15-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 426c23d0f62fa2666135f978db0f5802ace7c8cc",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.16-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.17-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.2-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 43bae4bf460939a743c837b8e0a05d8f9e044026",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.3-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.4-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 ae648b7dca5574c6af938dc44b6802f1bf732929",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.5-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c bbfae658e87ac2de7c6326739704a877fb118301",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 bbfae658e87ac2de7c6326739704a877fb118301",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.6-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.7-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.8-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 30d30485f4ade54238cba5aa1a8bc85452df7d39",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.9-task/issue-572-branch-audit",
-        "command": "git merge-base --is-ancestor c67867ca749e6235dce295c6558efe93ca164d0c 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "git-log-task/issue-574-discovery",
-        "command": "git log -1 --format=%cI%x09%an%x09%ae 307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae f41d8402ee3120cb43e957bb4c7093adbe10af7c",
         "exit_code": 0,
         "bytes": 60,
-        "digest": "sha256:2f7b807387972d14ef96504d0ab34e61c36e6aefab5b97ce35ece9303d6a8629"
+        "digest": "sha256:b3293ceba2ac2c031a4267616afbfac891c907498cd86d62f63bb44dafe4896c"
       },
       {
         "source": "git-grep-task/issue-574-discovery",
@@ -1622,194 +1627,194 @@
         "source": "pr-history-task/issue-574-discovery",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-574-discovery&per_page=100",
         "exit_code": 0,
-        "bytes": 29581,
-        "digest": "sha256:ce585a0b1871cd09425697e4a21882e21defc3a3d2f030b3730bdf661b6bf444"
+        "bytes": 29543,
+        "digest": "sha256:69e5a8a5e2ee5be745681768a89d8ad40271efe2429b8c70f46e8ecbe82804dc"
       },
       {
         "source": "is-ancestor-dev-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 0616cfa47353c201c790bda0e3a802387e6e321c",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "is-ancestor-main-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "rev-list-dev-task/issue-574-discovery",
-        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..f41d8402ee3120cb43e957bb4c7093adbe10af7c",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
+        "digest": "sha256:06e9d52c1720fca412803e3b07c4b228ff113e303f4c7ab94665319d832bbfb7"
       },
       {
         "source": "rev-list-main-task/issue-574-discovery",
-        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..f41d8402ee3120cb43e957bb4c7093adbe10af7c",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:20b7863224b7cb6edbc009c2ef30a14a585fca79b285595a11f066bbd8b54bc6"
+        "digest": "sha256:e3bc05312d04ecb2b6c64135ab59d2e63c5dc53640a7a4971fe17b5f5447d0a9"
       },
       {
         "source": "rev-list-behind-dev-task/issue-574-discovery",
-        "command": "git rev-list --count 307efe945ad8ab5425661c9b2fcf1c2d1670764e..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "command": "git rev-list --count f41d8402ee3120cb43e957bb4c7093adbe10af7c..0616cfa47353c201c790bda0e3a802387e6e321c",
         "exit_code": 0,
         "bytes": 3,
         "digest": "sha256:076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3"
       },
       {
         "source": "rev-list-behind-main-task/issue-574-discovery",
-        "command": "git rev-list --count 307efe945ad8ab5425661c9b2fcf1c2d1670764e..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count f41d8402ee3120cb43e957bb4c7093adbe10af7c..d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-neither-task/issue-574-discovery",
-        "command": "git rev-list --count 307efe945ad8ab5425661c9b2fcf1c2d1670764e --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count f41d8402ee3120cb43e957bb4c7093adbe10af7c --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
+        "digest": "sha256:06e9d52c1720fca412803e3b07c4b228ff113e303f4c7ab94665319d832bbfb7"
       },
       {
         "source": "rev-list-ids-neither-task/issue-574-discovery",
-        "command": "git rev-list 307efe945ad8ab5425661c9b2fcf1c2d1670764e --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list f41d8402ee3120cb43e957bb4c7093adbe10af7c --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
-        "bytes": 205,
-        "digest": "sha256:2bac9616d0d370f3812597185f39d26d4ecad89ed6aa9948e5ace92d32007811"
+        "bytes": 246,
+        "digest": "sha256:8a680aa8eaec63c36afa24a27958dcbca8118c967e99e8233bdfe83acb9d5b14"
       },
       {
         "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 36b823f22217e9d8be011318e295231c62a3f813",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 36b823f22217e9d8be011318e295231c62a3f813",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.0-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.1-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c efe351c991797a8cde88c23b8e8933d9a90db11d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.10-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.11-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 4566b33143155b91981d07308bd113ad8fad9b35",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 4566b33143155b91981d07308bd113ad8fad9b35",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.12-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c c371ac93d49a592925b24de5013bc9b3b303dd7d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.13-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.14-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.15-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 426c23d0f62fa2666135f978db0f5802ace7c8cc",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.16-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.17-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.2-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 43bae4bf460939a743c837b8e0a05d8f9e044026",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.3-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.4-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c ae648b7dca5574c6af938dc44b6802f1bf732929",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.5-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e bbfae658e87ac2de7c6326739704a877fb118301",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c bbfae658e87ac2de7c6326739704a877fb118301",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.6-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.7-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.8-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 30d30485f4ade54238cba5aa1a8bc85452df7d39",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.9-task/issue-574-discovery",
-        "command": "git merge-base --is-ancestor 307efe945ad8ab5425661c9b2fcf1c2d1670764e 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -2060,7 +2065,7 @@
         "digest": "sha256:49c7b64852a58a21c284994f52ab79e50367af7f8cb55136169b5e49cff00ac1"
       }
     ],
-    "digest": "sha256:fca61a81c8788a8a6378775412b9011fb658d006a7bc982c82cceca7860c17b8"
+    "digest": "sha256:79ca16e340b1ce753cdd136bc86033a90b0685a5bdfb8f6c0378cc5af53509b8"
   },
   "ls_remote_snapshot": [
     {
@@ -2077,11 +2082,11 @@
     },
     {
       "name": "task/issue-557-actual-effects",
-      "sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb"
+      "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
     },
     {
       "name": "task/issue-574-discovery",
-      "sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e"
+      "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
     },
     {
       "name": "tmp/read-claude-artifact",
@@ -2408,19 +2413,19 @@
       {
         "pr": 612,
         "branch": "task/issue-572-branch-audit",
-        "sha": "c67867ca749e6235dce295c6558efe93ca164d0c",
+        "sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
         "base": "dev"
       },
       {
         "pr": 617,
         "branch": "task/issue-574-discovery",
-        "sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+        "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
         "base": "dev"
       },
       {
         "pr": 618,
         "branch": "task/issue-557-actual-effects",
-        "sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+        "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
         "base": "dev"
       }
     ]
@@ -2447,7 +2452,7 @@
       "note": "Re-collected after PR #609 (#556) merged. A branch-audit snapshot is the fastest-staling artifact in this release, and this one was two merges old: taken against dev at fa0749959fffb8ccfabe7a8a0d6f5882a45b4dcf, it is now taken against 93179cf53757e0755efc1936c7d96c0779feedf1. The drift from 2026-09-03T05:41:47Z is one head and one number. task/issue-556-strict-confinement, audited ACTIVE as the head of open PR #609, merged and was removed by delete_branch_on_merge; it moves to previously_recorded_heads_now_absent and the audited set falls from four branches to three. dev advanced 63 commits, so behind_dev rises by 63 on all three survivors -- 307 to 370, 30 to 93, 255 to 318. Every other derived fact is unchanged: no survivor's ancestry, unique-commit count, release-tag containment, tree scan or reference sweep moved, and no recommendation changed. No schema change."
     },
     {
-      "generated_at": "2026-09-03T21:52:46Z",
+      "generated_at": "2026-09-03T22:40:04Z",
       "note": "Schema v5, third remediation, re-collected at the head that merges after #609 and #614 are both in dev. Two changes move what the digest covers, which is why the observation is v3 and this file is v5. Tag containment is decided by one `git merge-base --is-ancestor` per tag and now cites the receipt for each of them: it cited whichever tag sorted first, whose recorded exit status was 1 -- 'not contained' -- beside a value listing seven tags the branch is contained in, and neither checker could see it, because one asked only whether the named receipt existed and the other compared the record against the same record. verifyObservation compares each cited command's exit status against the answer it is cited for now, in both directions. And the commits that reach neither dev nor main are collected as ids rather than only counted, because the SUPERSEDED route accepted any list of 40-hex strings of the right length as an accounting of them, which is the one route by which a branch holding unmerged work becomes deletion-eligible. Also in this revision: the Phase B contract names deletionAuthorizationFindings, and deletionLogFindings is handed the two observations it was previously asked to trust a record's citation of -- the composition this contract used to name returned no finding at all for a COMPLETED record citing two well-formed digests that named nothing, stamped forty days after the observation it calls the one collected immediately beforehand. And five prose sites here and in the rendered report described the collector as running `git tag --contains` and an all-state `gh pr list --head`, both of which this issue's work removed as unsafe and neither of which matches any receipt in this record."
     }
   ],
@@ -2604,17 +2609,17 @@
     },
     {
       "name": "task/issue-557-actual-effects",
-      "head_sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
-      "author_name": "AOS",
-      "author_email": "aos@localhost",
-      "last_commit_date": "2026-09-03T19:10:21+09:00",
+      "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-04T07:31:10+09:00",
       "age_days": 0,
       "classification": "ACTIVE",
       "merged_into_dev": false,
       "merged_into_main": false,
-      "unique_commits_vs_dev": 4,
-      "unique_commits_vs_main": 292,
-      "unique_commits_vs_dev_and_main": 4,
+      "unique_commits_vs_dev": 5,
+      "unique_commits_vs_main": 293,
+      "unique_commits_vs_dev_and_main": 5,
       "behind_dev": 23,
       "behind_main": 0,
       "release_tags_containing": [],
@@ -2623,13 +2628,13 @@
         "url": "https://github.com/MongLong0214/agent-operator-score/pull/618",
         "state": "OPEN",
         "base": "dev",
-        "head_sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb"
+        "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
       },
       "superseding": null,
       "preserve": [
-        "4 commits implementing #557, reachable from no other ref",
-        "the library and test surface those commits add, reachable from no other ref",
-        "the mutation guards those tests carry"
+        "5 commits implementing #557, reachable from no other ref",
+        "the effect-recording surface those commits add, reachable from no other ref",
+        "the product tests and mutation guards those commits carry"
       ],
       "references": {
         "tree_scan": {
@@ -2650,7 +2655,7 @@
             "state": "OPEN",
             "merged_at": null,
             "base": "dev",
-            "head_sha": "b740e4823be5f0d6fa8c047f32e8fa06399c78cb"
+            "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
           }
         ],
         "workflows": [],
@@ -2664,21 +2669,21 @@
       "branch_protected": false,
       "unestablished": [],
       "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #618 targeting dev, under review. Receipted derivations show 4 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
+      "reason": "Head of open PR #618 targeting dev, under review. Receipted derivations show 5 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
     },
     {
       "name": "task/issue-574-discovery",
-      "head_sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+      "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
       "author_name": "MongLong0214",
       "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-04T06:36:48+09:00",
+      "last_commit_date": "2026-09-04T07:27:32+09:00",
       "age_days": 0,
       "classification": "ACTIVE",
       "merged_into_dev": false,
       "merged_into_main": false,
-      "unique_commits_vs_dev": 5,
-      "unique_commits_vs_main": 293,
-      "unique_commits_vs_dev_and_main": 5,
+      "unique_commits_vs_dev": 6,
+      "unique_commits_vs_main": 294,
+      "unique_commits_vs_dev_and_main": 6,
       "behind_dev": 23,
       "behind_main": 0,
       "release_tags_containing": [],
@@ -2687,13 +2692,13 @@
         "url": "https://github.com/MongLong0214/agent-operator-score/pull/617",
         "state": "OPEN",
         "base": "dev",
-        "head_sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e"
+        "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
       },
       "superseding": null,
       "preserve": [
-        "5 commits implementing #574, reachable from no other ref",
+        "6 commits implementing #574, reachable from no other ref",
         "the discovery surface those commits add, reachable from no other ref",
-        "the mutation guards those tests carry"
+        "the product tests and mutation guards those commits carry"
       ],
       "references": {
         "tree_scan": {
@@ -2714,7 +2719,7 @@
             "state": "OPEN",
             "merged_at": null,
             "base": "dev",
-            "head_sha": "307efe945ad8ab5425661c9b2fcf1c2d1670764e"
+            "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
           }
         ],
         "workflows": [],
@@ -2728,7 +2733,7 @@
       "branch_protected": false,
       "unestablished": [],
       "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #617 targeting dev, under review. Receipted derivations show 5 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
+      "reason": "Head of open PR #617 targeting dev, under review. Receipted derivations show 6 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
     },
     {
       "name": "tmp/read-claude-artifact",
