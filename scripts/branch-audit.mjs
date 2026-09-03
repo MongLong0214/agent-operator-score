@@ -23,6 +23,7 @@
 // a governance report and is not part of the product the package ships.
 
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   INSTALL_SOURCE_FILES,
@@ -153,6 +154,27 @@ const CLASSIFICATION_CONTRACT = {
 };
 
 /**
+ * Why an after-snapshot head is not accounted for, or `null` if it is.
+ *
+ * Split out because the rule has four parts and a single boolean hid three of them: the entry has to
+ * be the branch this audit says it was submitted from, it has to be in flight rather than merely
+ * named, its own claims about itself have to match the observation, and it has to be recorded in the
+ * one shape a branch whose SHA cannot be known can be recorded in.
+ */
+const afterSnapshotComplaint = (audit, entry, livePr) => {
+  if (!isNonEmptyString(audit.submission_branch)) return "is claimed as created after the snapshot, but the audit does not say which branch it was submitted from, so the exception has no subject";
+  if (entry.name !== audit.submission_branch) return `is claimed as created after the snapshot, but this audit was submitted from ${audit.submission_branch}; the exception covers that branch and no other`;
+  if (!livePr) return "is claimed as created after the snapshot but no open pull request has it as a head, so nothing accounts for it";
+  if (entry.classification !== "ACTIVE") return `is claimed as created after the snapshot but is classified ${entry.classification}; in-flight work is ACTIVE`;
+  if (entry.open_pr !== livePr.number) return `claims pull request #${entry.open_pr}, but the open pull request on it is #${livePr.number}`;
+  // A recorded SHA would be a claim the audit cannot make: the commit that carries the file is the
+  // commit whose SHA it would be. Recording one anyway means it is describing some other commit.
+  if (entry.sha !== null) return "records a head SHA, which the branch carrying this audit cannot have at the time the audit is written";
+  if (!isNonEmptyString(entry.note, 41)) return "is claimed as created after the snapshot without saying why it is recorded outside the snapshot";
+  return null;
+};
+
+/**
  * Every remote head other than the excluded refs must be audited exactly once, at the commit that
  * was observed.
  *
@@ -189,15 +211,21 @@ export const auditCoverageFindings = (audit, live = null) => {
   }
 
   if (live) {
-    // A branch may legitimately appear after the snapshot -- this audit is submitted from one. What
-    // it may not do is appear by being written into a list. The exception is earned by being the
-    // head of an open pull request in the observation: that is in-flight work someone is watching,
-    // and it is the only reading of "created after the snapshot" that a later orphan cannot claim.
-    const openPrHeads = new Set((live.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => pr.head_branch));
+    // A branch may legitimately appear after the snapshot: this audit is submitted from one, whose
+    // SHA is the SHA of the commit carrying this file and so cannot be in a snapshot taken before it
+    // existed. That is the only branch the exception is for, and it has to earn it three times over.
+    //
+    // Requiring an open pull request alone was not enough. It read the branch name and the live
+    // PR-head name and nothing else, so any name with a pull request on it could take the exception,
+    // carrying whatever classification and metadata it liked. The exception now applies only to the
+    // branch the audit names as its own submission, and every claim that entry makes is checked
+    // against the observation rather than accepted.
+    const openPrByBranch = new Map((live.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
     const excused = new Set();
     for (const entry of audit.heads_created_after_this_snapshot ?? []) {
-      if (openPrHeads.has(entry.name)) excused.add(entry.name);
-      if (!openPrHeads.has(entry.name)) findings.push(`${entry.name} is claimed as created after the snapshot but no open pull request has it as a head, so nothing accounts for it`);
+      const complaint = afterSnapshotComplaint(audit, entry, openPrByBranch.get(entry.name));
+      if (complaint) findings.push(`${entry.name} ${complaint}`);
+      else excused.add(entry.name);
     }
     const known = new Set([...target, ...excluded, ...excused]);
     for (const head of live.heads ?? []) {
@@ -718,9 +746,20 @@ export const deletionAuthorizationFindings = ({ audit, log, pre = null, post = n
  * collected and the boundary still checked, because a deletion that failed halfway has still changed
  * the repository and the question of what it changed is the same question.
  */
-const runner = (collect, loadCompletion = loadCompletionSnapshot) => ({ audit, perform, repository, cwd } = {}) => {
-  const completion = loadCompletion();
+const runDeletionAgainst = ({ audit, perform, repository, cwd = process.cwd() } = {}) => {
+  const collect = collectLive;
   const target = { repository: repository ?? audit?.repository, cwd };
+  // The prerequisite snapshot belongs to the repository being operated on, and is read from the same
+  // checkout the observation is collected from. Reading this module's own copy would answer for the
+  // wrong repository whenever the two are not the same one, and pointing `cwd` somewhere else to get
+  // a friendlier snapshot does not help: the observation comes from there too, and an observation of
+  // a different repository does not match the audit.
+  let completion;
+  try {
+    completion = loadCompletionSnapshot(join(cwd, "fixtures", "execution-plan", "github-state.json"));
+  } catch (error) {
+    return { authorized: false, deleted: [], findings: [`the canonical issue-state snapshot could not be read, so nothing is authorized: ${error.message}`], log: null };
+  }
 
   const blocked = prerequisiteFindings(completion);
   if (blocked.length > 0) return { authorized: false, deleted: [], findings: blocked, log: null };
@@ -793,20 +832,18 @@ const runner = (collect, loadCompletion = loadCompletionSnapshot) => ({ audit, p
 };
 
 /**
- * The gate. No `collect`, no `pre`, no `post`, no `completion`, no `maxAgeSeconds` -- passing any of
- * them has no effect, which is the property the tests assert rather than describe.
- */
-export const runDeletion = runner(collectLive);
-
-/**
- * The seam, and the only thing that can substitute the two sources the gate reads: the collector and
- * the canonical prerequisite snapshot.
+ * The gate, and the whole of it. No `collect`, no `pre`, no `post`, no `completion`, no
+ * `maxAgeSeconds`, and no factory that takes them either.
  *
- * It exists because the orchestration above -- check, collect, decide, act, recollect, compare --
- * has to be exercised offline, and there is no honest way to do that against a live repository from
- * a test suite. Both substitutions are made once, when a runner is built, and neither is reachable
- * from a call to one. A caller who builds their own runner is not stepping around the gate; they are
- * declining to use it, which is a different thing and visible in the code that does it. What the
- * gate itself exposes is nothing.
+ * A previous version exported a runner factory so the tests could substitute the collector and the
+ * prerequisite loader. That was the same parameter list this entry point had already been faulted
+ * for, wearing a factory: a door in the gate, reachable by any caller in this repository including
+ * one written by somebody who never learned why the door was there. The tests drive this function
+ * against a real fixture repository instead (`tests/product/branch-state-fixture.mjs`), which is
+ * slower to set up and leaves nothing to step through.
+ *
+ * What remains outside the boundary is the machine: nothing here can attest that the host running it
+ * is the host anyone believes it is. That is a real residual and it is recorded as one -- but it is
+ * a property of the environment, not an argument this function accepts.
  */
-export const makeDeletionRunner = runner;
+export const runDeletion = runDeletionAgainst;

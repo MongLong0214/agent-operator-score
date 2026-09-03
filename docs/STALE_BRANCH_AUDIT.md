@@ -2,8 +2,8 @@
 
 > **This is a snapshot, not a deletion list. Do not act on this file.** Phase B (blocked on #578 and
 > #588) collects its own observations -- one immediately before the deletion and one immediately
-> after -- and authorizes against those. `authorizeDeletion` performs that collection itself rather
-> than accepting one. The invariants are compared between the two fresh observations, never against
+> after -- and authorizes against those. `runDeletion` performs both collections itself rather
+> than accepting either. The invariants are compared between the two fresh observations, never against
 > this file: the repository goes on moving, and a Phase B measured against a Phase A snapshot would
 > report ordinary progress as damage. Four heads have turned over across the versions of this
 > document, one of them while a snapshot was being taken.
@@ -58,7 +58,8 @@ prove nothing.
 What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
 offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
 recursive over the whole record, so no nested value can change under the same identity. And Phase B
-does not accept an observation at all -- `authorizeDeletion` calls the collector itself. What is
+does not accept an observation at all -- `runDeletion` calls the collector itself, and exposes no
+factory or parameter that would let a caller hand it one. What is
 left outside the boundary is the trustworthiness of the machine that runs it, which is stated here
 rather than hidden.
 
@@ -68,9 +69,12 @@ Phase A is inventory, classification and a preservation plan. Nothing here autho
 ref was deleted, renamed or force-pushed to produce this document, and none was created or deleted
 for audit purposes. The one branch this work adds to `origin` is the branch it is submitted from
 (`task/issue-572-branch-audit`), recorded under `heads_created_after_this_snapshot` because its SHA is the
-SHA of the commit carrying this file. That exception is earned rather than declared: coverage
-excuses such a branch only while the observation shows an open pull request with it as a head, so a
-name merely written into the list does not become accounted for.
+SHA of the commit carrying this file. That exception is earned rather than declared, and it is for
+that branch alone: coverage excuses an entry only when the audit names it as the branch it was
+submitted from, the observation shows an open pull request with it as a head, the entry is classified
+`ACTIVE`, the pull request number it claims is the one that is actually open, it records no head SHA
+-- which the branch carrying this audit cannot have -- and it says why it sits outside the snapshot.
+A name merely written into the list does not become accounted for.
 
 **No deletion log is emitted by this PR.** The canonical execution plan reserves the
 `branch-deletion-log` output for the blocked `final-deletion` phase. Whether that phase may start is

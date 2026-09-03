@@ -27,7 +27,7 @@
 // the same digest as any other. `canonicalize` below is the real thing.
 //
 // What none of this can do is prove the observation came from GitHub rather than a text editor. An
-// offline checker cannot authenticate a transcript. That is why `authorizeDeletion` in
+// offline checker cannot authenticate a transcript. That is why `runDeletion` in
 // scripts/branch-audit.mjs calls `collect` itself rather than accepting one, and why the receipts
 // exist -- so a human or a credentialed job can re-run any line and compare digests.
 //

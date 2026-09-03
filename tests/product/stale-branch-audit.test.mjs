@@ -310,26 +310,47 @@ test("every audited entry names the commit the ls-remote snapshot observed", () 
   for (const entry of audit.branches) assert.equal(entry.head_sha, observed.get(entry.name), `${entry.name}: audited at ${entry.head_sha}, observed at ${observed.get(entry.name)}`);
 });
 
-// The exception is not the name being on a list. An earlier version excused any name written into
-// `heads_created_after_this_snapshot`, so an orphan branch created after the snapshot could be
-// covered by asserting it. It is now excused only while an open pull request has it as a head.
-test("an after-snapshot head is excused only while an open PR has it as a head", () => {
+// The exception is not the name being on a list, and it is not "any name with a pull request on it"
+// either -- that version read the branch name and the live PR-head name and nothing else, so an
+// arbitrary orphan could take the exception carrying whatever metadata it liked. It is now bound to
+// the one branch the audit says it was submitted from, and every claim that entry makes is checked.
+test("the after-snapshot exception is bound to the submission branch and validates its claims", () => {
   const audit = loadAudit();
-  const self = audit.heads_created_after_this_snapshot[0].name;
-  const heads = [...audit.ls_remote_snapshot, { name: self, sha: "1".repeat(40) }];
-  const withPr = { schema: "aos-branch-live-observation.v2", heads, rest_heads: heads, open_prs: [{ number: 612, head_branch: self, head_sha: "1".repeat(40), base: "dev", state: "OPEN" }] };
-  assert.deepEqual(auditCoverageFindings(audit, withPr), [], "the audit's own branch was not excused while its PR was open");
+  const self = audit.heads_created_after_this_snapshot[0];
+  assert.equal(self.name, audit.submission_branch, "the audit does not name the branch its exception is for");
+  const heads = [...audit.ls_remote_snapshot, { name: self.name, sha: "1".repeat(40) }];
+  const observe = (prs) => ({ schema: "aos-branch-live-observation.v2", heads, rest_heads: heads, open_prs: prs });
+  const itsPr = [{ number: self.open_pr, head_branch: self.name, head_sha: "1".repeat(40), base: "dev", state: "OPEN" }];
 
-  const withoutPr = { ...withPr, open_prs: [] };
-  const findings = auditCoverageFindings(audit, withoutPr);
-  assert.ok(findings.some((f) => f.includes(self) && f.includes("no open pull request")), `an unbacked after-snapshot head was excused: ${findings.join(" | ")}`);
+  assert.deepEqual(auditCoverageFindings(audit, observe(itsPr)), [], "the submission branch was not excused while its PR was open");
 
-  // The reviewer's reproduction: an arbitrary orphan written into the list and present live.
+  const refusals = [
+    ["no open PR", audit, observe([]), "no open pull request"],
+    ["a different branch claiming it", { ...audit, submission_branch: "task/somebody-else" }, observe(itsPr), "submitted from task/somebody-else"],
+    ["no submission branch named at all", { ...audit, submission_branch: null }, observe(itsPr), "does not say which branch it was submitted from"],
+    ["a classification other than ACTIVE", { ...audit, heads_created_after_this_snapshot: [{ ...self, classification: "MERGED" }] }, observe(itsPr), "is classified MERGED"],
+    ["a PR number that is not the open one", { ...audit, heads_created_after_this_snapshot: [{ ...self, open_pr: 4242 }] }, observe(itsPr), "claims pull request #4242"],
+    ["a head SHA it cannot have", { ...audit, heads_created_after_this_snapshot: [{ ...self, sha: "2".repeat(40) }] }, observe(itsPr), "records a head SHA"],
+    ["no explanation", { ...audit, heads_created_after_this_snapshot: [{ ...self, note: "later" }] }, observe(itsPr), "without saying why"]
+  ];
+  for (const [what, forged, live, expected] of refusals) {
+    const findings = auditCoverageFindings(forged, live);
+    assert.ok(findings.some((f) => f.includes(expected)), `${what}: expected a refusal mentioning "${expected}", got ${findings.join(" | ") || "[]"}`);
+  }
+
+  // The reviewer's reproduction: an arbitrary orphan, with a pull request open on it and metadata of
+  // its own choosing, present live.
   const orphan = "task/later-orphan";
-  const forged = { ...audit, heads_created_after_this_snapshot: [...audit.heads_created_after_this_snapshot, { name: orphan, sha: null, classification: "ACTIVE", note: "x".repeat(50) }] };
-  const orphanHeads = [...audit.ls_remote_snapshot, { name: orphan, sha: "2".repeat(40) }];
-  const orphanLive = { schema: "aos-branch-live-observation.v2", heads: orphanHeads, rest_heads: orphanHeads, open_prs: [] };
-  assert.notDeepEqual(auditCoverageFindings(forged, orphanLive), [], "an arbitrary after-snapshot orphan was silently considered covered");
+  const orphanHeads = [...heads, { name: orphan, sha: "3".repeat(40) }];
+  const forged = { ...audit, heads_created_after_this_snapshot: [...audit.heads_created_after_this_snapshot, { name: orphan, sha: null, classification: "MERGED", open_pr: 77, note: "x".repeat(60) }] };
+  const orphanLive = {
+    schema: "aos-branch-live-observation.v2",
+    heads: orphanHeads,
+    rest_heads: orphanHeads,
+    open_prs: [...itsPr, { number: 77, head_branch: orphan, head_sha: "3".repeat(40), base: "dev", state: "OPEN" }]
+  };
+  const findings = auditCoverageFindings(forged, orphanLive);
+  assert.ok(findings.some((f) => f.includes(orphan)), `an arbitrary after-snapshot orphan with a PR was silently considered covered: ${findings.join(" | ") || "[]"}`);
 });
 
 test("the branch this audit is submitted from is named, even though its SHA cannot be recorded here", () => {
@@ -341,6 +362,8 @@ test("the branch this audit is submitted from is named, even though its SHA cann
     assert.equal(entry.sha, null, `${entry.name}: a head created after the snapshot cannot carry a SHA the snapshot observed`);
     assert.equal(entry.classification, "ACTIVE", `${entry.name}: a branch created after the snapshot is in flight, not stale`);
     assert.ok(entry.note.length > 40, `${entry.name}: no explanation of why it is recorded outside the snapshot`);
+    assert.equal(entry.name, audit.submission_branch, `${entry.name}: the exception is not bound to the branch the audit was submitted from`);
+    assert.equal(typeof entry.open_pr, "number", `${entry.name}: records no pull request to be checked against`);
   }
   assert.ok(later.every((entry) => !audit.ls_remote_snapshot.some((head) => head.name === entry.name)), "a head recorded as created after the snapshot is also in the snapshot");
 });
@@ -667,6 +690,44 @@ test("the count that deletion turns on is commits reaching neither line, recorde
 // #572 has two phases and only one has run. GitHub's closing keywords do not know about phases, so a
 // PR that closed the issue here would take the blocked final-deletion phase with it. The canonical
 // plan is the authority on which phases exist and which are blocked; the audit has to agree with it.
+// R-01: the published contract told a consumer to call `authorizeDeletion`, which had been replaced
+// by `runDeletion` and no longer existed. A document naming an API that is not there is a defect in
+// the contract, not a typo, so the check is structural: every module function these documents tell a
+// reader to call has to be exported by the module they say it lives in.
+test("every gate function the contract and the document name is actually exported", async () => {
+  const audit = loadAudit();
+  const gate = await import("../../scripts/branch-audit.mjs");
+  const collector = await import("../../scripts/collect-branch-state.mjs");
+  const exported = new Set([...Object.keys(gate), ...Object.keys(collector)]);
+
+  const entry = /\b(\w+)\(/u.exec(audit.phase_b_contract.entry_point);
+  assert.ok(entry, "the Phase B contract does not name an entry point to call");
+  assert.ok(exported.has(entry[1]), `the contract names ${entry[1]}(), which the gate does not export`);
+
+  // Anything API-shaped, wherever it is mentioned. This is what would have caught the drift: the
+  // retired name survived in three files after the export was gone.
+  const apiShaped = /\b((?:run|authorize|make|collect|verify)[A-Z]\w*|\w+(?:Findings|Digest|Snapshot|Observation|Eligibility))\b/gu;
+  const sources = {
+    "docs/STALE_BRANCH_AUDIT.md": readFileSync(docPath, "utf8"),
+    "fixtures/stale-branches/audit.json": readFileSync(auditPath, "utf8"),
+    "scripts/collect-branch-state.mjs": readFileSync(join(root, "scripts", "collect-branch-state.mjs"), "utf8"),
+    "scripts/branch-audit.mjs": readFileSync(join(root, "scripts", "branch-audit.mjs"), "utf8")
+  };
+  const internal = new Set(["runDeletionAgainst", "afterSnapshotComplaint", "collectLive", "loadCompletion", "makeDeletionRunner"]);
+  let checked = 0;
+  for (const [where, text] of Object.entries(sources)) {
+    for (const [, name] of text.matchAll(apiShaped)) {
+      if (internal.has(name) && where.startsWith("scripts/")) continue;
+      checked += 1;
+      assert.ok(exported.has(name), `${where} names ${name}, which neither script exports`);
+    }
+  }
+  assert.ok(checked > 20, `only ${checked} API references were checked, so this test is not covering the documents`);
+  // The retired name specifically, since it is the one that drifted.
+  assert.equal(exported.has("authorizeDeletion"), false, "authorizeDeletion is exported again; the contract text and the export must be changed together");
+  assert.equal(exported.has("makeDeletionRunner"), false, "the runner factory is exported again, which is a door in the gate");
+});
+
 test("a multi-phase issue is not closed by the phase that has run", async () => {
   const audit = loadAudit();
   const { PHASED_ISSUES } = await import("../../lib/execution-plan.mjs");

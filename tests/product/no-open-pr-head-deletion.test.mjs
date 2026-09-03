@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, loadCompletionSnapshot, makeDeletionRunner, openPrHeadDeletionFindings, runDeletion } from "../../scripts/branch-audit.mjs";
-import { observationDigest } from "../../scripts/collect-branch-state.mjs";
+import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, deletionLogFindings, loadCompletionSnapshot, openPrHeadDeletionFindings, runDeletion } from "../../scripts/branch-audit.mjs";
+import { collect, observationDigest } from "../../scripts/collect-branch-state.mjs";
+import { auditFor, buildFixtureRepository, withFakeGitHub } from "./branch-state-fixture.mjs";
 
 // The prohibition in #572 that cannot be walked back: deleting the head branch of an open pull
 // request destroys its diff. It has to hold in three directions -- an open PR head may never be
@@ -255,115 +257,184 @@ test("the deletion is refused while the canonical snapshot still shows a blocker
   assert.ok(authorize({ completion }).some((f) => f.includes("still blocked")), "a deletion ran while a blocker was open");
 });
 
-// The gate collects both observations around the caller's action. Recollecting one side and
-// accepting the other closes nothing: the invariants are a comparison, and a comparison is only as
-// trustworthy as its worse operand.
-test("the gate collects both boundary observations itself, around the deletion", () => {
-  const { pre, post } = livePair();
-  const collected = [];
-  const gone = deletedNames();
-  let performedWith = null;
-  // The first call is before the deletion and the second after it, so the fake collector returns the
-  // state that actually corresponds to each moment.
-  const collect = () => { collected.push(1); return structuredClone(collected.length === 1 ? pre : post); };
-  const run = makeDeletionRunner(collect, clearedCompletion)({ audit, perform: (list) => { performedWith = list; } });
-  assert.equal(collected.length, 2, "the gate did not collect on both sides of the deletion");
-  assert.deepEqual(performedWith.map((entry) => entry.name).sort(), [...gone].sort(), "the gate did not act on exactly the eligible set");
-  assert.equal(run.authorized, true, `a correct deletion was refused: ${run.findings.join(" | ")}`);
-  assert.equal(run.log.status, "COMPLETED");
-  assert.equal(run.log.pre_observation.digest, observationDigest(pre), "the emitted log does not cite the observation the gate collected first");
-  assert.equal(run.log.post_observation.digest, observationDigest(post), "the emitted log does not cite the observation the gate collected last");
+// --- the gate, driven against a real repository ---------------------------------------------------
+//
+// These do not inject anything. The module exposes no collector, no observation and no factory that
+// takes them, so the only way to drive `runDeletion` is to give it a repository to look at:
+// `branch-state-fixture.mjs` builds one, with a `gh` on PATH that answers from a table built after
+// the commits exist. Slower than a seam, and it leaves nothing to step through.
+
+const drive = (options, body) => {
+  const fixture = buildFixtureRepository(options);
+  try {
+    return withFakeGitHub(fixture, () => {
+      const observation = collect({ repository: fixture.repository, cwd: fixture.work });
+      observation.digest = observationDigest(observation);
+      return body(fixture, auditFor(observation, { repository: fixture.repository }), observation);
+    });
+  } finally {
+    fixture.cleanup();
+  }
+};
+
+const liveHeads = (fixture) =>
+  execFileSync("git", ["ls-remote", "--heads", "origin"], { cwd: fixture.work, encoding: "utf8" })
+    .split("\n").filter(Boolean).map((line) => line.split(/\s+/u)[1].replace("refs/heads/", ""));
+
+test("the gate collects both boundary observations itself, around a real deletion", () => {
+  drive({}, (fixture, audit) => {
+    let performedWith = null;
+    const run = runDeletion({
+      audit,
+      repository: fixture.repository,
+      cwd: fixture.work,
+      perform: (list) => {
+        performedWith = list;
+        for (const entry of list) fixture.deleteBranch(entry.name);
+      }
+    });
+    assert.deepEqual(performedWith.map((entry) => entry.name), ["tmp/merged-thing"], "the gate did not act on exactly the eligible set");
+    assert.deepEqual(run.findings, [], `a correct deletion was refused: ${run.findings.join(" | ")}`);
+    assert.equal(run.authorized, true);
+    assert.equal(run.log.status, "COMPLETED");
+    assert.match(run.log.pre_observation.digest, /^sha256:[0-9a-f]{64}$/u);
+    assert.match(run.log.post_observation.digest, /^sha256:[0-9a-f]{64}$/u);
+    assert.notEqual(run.log.pre_observation.digest, run.log.post_observation.digest, "the two boundary observations are the same record, so one of them was not collected");
+    // The branch is really gone, and the one with a pull request on it really is not.
+    const remaining = liveHeads(fixture);
+    assert.equal(remaining.includes("tmp/merged-thing"), false, "the eligible branch was not actually deleted");
+    assert.ok(remaining.includes("task/active-work"), "the open PR's head branch was deleted");
+    assert.ok(remaining.includes("main") && remaining.includes("dev"));
+    assert.deepEqual(deletionLogFindings(run.log, { completion: loadCompletionSnapshot(join(fixture.work, "fixtures", "execution-plan", "github-state.json")) }), [], "the emitted log does not hold its own shape");
+  });
 });
 
-// The reviewer's reproduction: a caller-composed pre observation from an injected collector plus a
-// caller-composed post observation used to authorize with no findings. Neither is a parameter now,
-// so passing them has no effect at all.
-// The set the gate acts on is the audit's eligible set narrowed by what is true right now. A branch
-// that moved, or picked up a pull request, after the audit was written is eligible on paper and must
-// not be touched.
+// The reviewer's reproduction, and the reason the factory is gone: composed observations and a
+// composed prerequisite snapshot used to authorize a deletion. There is no longer an argument for
+// any of them, which is asserted rather than described.
+test("the gate has no parameter through which composed state reaches the decision", () => {
+  drive({}, (fixture, audit, observation) => {
+    const forged = structuredClone(observation);
+    forged.heads = forged.heads.filter((head) => head.name !== "task/active-work");
+    forged.open_prs = [];
+    let performedWith = null;
+    const run = runDeletion({
+      audit,
+      repository: fixture.repository,
+      cwd: fixture.work,
+      perform: (list) => { performedWith = list; for (const entry of list) fixture.deleteBranch(entry.name); },
+      // Every input the previous entry point and its factory accepted.
+      collect: () => structuredClone(forged),
+      loadCompletion: () => ({ issues: [] }),
+      pre: structuredClone(forged),
+      post: structuredClone(forged),
+      completion: { issues: [] },
+      maxAgeSeconds: 10 ** 9
+    });
+    assert.deepEqual(performedWith.map((entry) => entry.name), ["tmp/merged-thing"], "a supplied observation displaced the one the gate collected");
+    assert.equal(run.authorized, true, `the gate's own collection was not used: ${run.findings.join(" | ")}`);
+    assert.ok(liveHeads(fixture).includes("task/active-work"), "the forged observation reached the decision and the open PR's head was deleted");
+  });
+});
+
 test("the gate does not act on a branch the live repository no longer agrees about", () => {
-  const eligible = deletionEligibility(audit).eligible;
-  assert.ok(eligible.length >= 2, "fewer than two eligible branches, so this test could not tell narrowing from refusal");
-  const moved = eligible[0].name;
-  const claimed = eligible[1].name;
-  const pre = observation({
-    collected_at: iso(-5),
-    heads: audit.live_observation.heads.map((head) => (head.name === moved ? { ...head, sha: "c".repeat(40) } : head)),
-    open_prs: [...audit.live_observation.open_prs, { number: 999, head_branch: claimed, head_sha: eligible[1].head_sha, base: "dev", state: "OPEN" }]
+  drive({}, (fixture, audit) => {
+    // A pull request opens on the eligible branch between the audit and the deletion.
+    const responses = JSON.parse(readFileSync(fixture.responses, "utf8"));
+    const late = { number: 2, state: "open", merged_at: null, base: { ref: "dev" }, head: { ref: "tmp/merged-thing", sha: fixture.shas.main } };
+    responses[`repos/${fixture.repository}/pulls?state=open&per_page=100`].push(late);
+    responses[`repos/${fixture.repository}/pulls?state=all&head=fixture-owner:tmp/merged-thing&per_page=100`].push(late);
+    writeFileSync(fixture.responses, JSON.stringify(responses));
+
+    let performedWith = null;
+    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: (list) => { performedWith = list; } });
+    assert.deepEqual(performedWith, [], "the gate deleted a branch that had a pull request opened on it after the audit");
+    assert.deepEqual(run.deleted, []);
+    assert.ok(liveHeads(fixture).includes("tmp/merged-thing"));
   });
-  pre.rest_heads = pre.heads;
-  pre.digest = observationDigest(pre);
-  const post = observation({ collected_at: iso(5), heads: pre.heads, rest_heads: pre.heads });
-  let performedWith = null;
-  let calls = 0;
-  const collect = () => { calls += 1; return structuredClone(calls === 1 ? pre : post); };
-  const run = makeDeletionRunner(collect, clearedCompletion)({ audit, perform: (list) => { performedWith = list; } });
-  assert.deepEqual(performedWith, [], `the gate acted on a branch the live repository disagreed about: ${JSON.stringify(performedWith)}`);
-  assert.deepEqual(run.deleted, [], "the record claims deletions the gate did not make");
 });
 
-test("the gate has no parameter through which a composed observation reaches the decision", () => {
-  const { pre, post } = livePair();
-  const forgedPost = structuredClone(post);
-  forgedPost.protection = { main: { allow_deletions: { enabled: true } }, dev: post.protection.dev };
-  let calls = 0;
-  const honest = () => { calls += 1; return structuredClone(calls === 1 ? pre : forgedPost); };
-  // Every one of these keys was accepted by the previous entry point.
-  const run = makeDeletionRunner(honest, clearedCompletion)({
-    audit,
-    perform: () => {},
-    collect: () => structuredClone(pre),
-    pre: structuredClone(pre),
-    post: structuredClone(post),
-    completion: clearedCompletion(),
-    maxAgeSeconds: 10 ** 9
+test("the prerequisites are read from the operated repository, before anything is collected or deleted", () => {
+  drive({ blockersCleared: false }, (fixture, audit) => {
+    let performed = false;
+    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: () => { performed = true; } });
+    assert.equal(performed, false, "the gate deleted before checking whether Phase B may start");
+    assert.equal(run.log, null);
+    assert.ok(run.findings.some((f) => f.includes("still blocked")), `the refusal does not name the open blocker: ${run.findings.join(" | ")}`);
   });
-  assert.equal(calls, 2, "an injected collect/pre/post parameter displaced the gate's own collection");
-  assert.ok(run.findings.some((f) => f.includes("main protection changed")), `the supplied post observation was used instead of the collected one: ${run.findings.join(" | ")}`);
-  assert.equal(run.authorized, false, "a deletion that loosened main's protection was authorized");
 });
 
-test("the exported gate exposes no collector at all", () => {
-  const { pre } = boundaryPair();
-  let injected = 0;
-  // `runDeletion` is bound to the real collector; passing one is inert. Offline it fails to collect,
-  // which is itself the assertion: the parameter did not take.
-  const run = runDeletion({ audit, perform: () => {}, collect: () => { injected += 1; return structuredClone(pre); } });
-  assert.equal(injected, 0, "runDeletion used a collector handed to it");
-  assert.equal(run.authorized, false, "runDeletion authorized a deletion without reaching the repository");
+test("a repository with no governance record authorizes nothing", () => {
+  drive({}, (fixture, audit) => {
+    rmSync(join(fixture.work, "fixtures", "execution-plan", "github-state.json"));
+    let performed = false;
+    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: () => { performed = true; } });
+    assert.equal(performed, false, "the gate deleted from a repository whose prerequisite snapshot it could not read");
+    assert.equal(run.log, null);
+    assert.ok(run.findings.some((f) => f.includes("could not be read")), `an unreadable snapshot did not block: ${run.findings.join(" | ")}`);
+  });
 });
 
-test("the prerequisites are read before anything is deleted, not after", () => {
-  const { pre, post } = boundaryPair();
-  let performed = false;
-  let collected = 0;
-  const collect = () => { collected += 1; return structuredClone(collected === 1 ? pre : post); };
-  // The real canonical snapshot still has a blocker open.
-  const run = makeDeletionRunner(collect)({ audit, perform: () => { performed = true; } });
-  assert.equal(performed, false, "the gate deleted before checking whether Phase B may start");
-  assert.equal(collected, 0, "the gate collected before checking whether Phase B may start");
-  assert.ok(run.findings.some((f) => f.includes("still blocked")), `the refusal does not name the open blocker: ${run.findings.join(" | ")}`);
+// The second collection is the witness. Losing it after the refs are gone is the one moment where a
+// self-reported after-state would be most tempting and least checkable.
+test("a deletion whose after-state cannot be read emits no record", () => {
+  drive({}, (fixture, audit) => {
+    const run = runDeletion({
+      audit,
+      repository: fixture.repository,
+      cwd: fixture.work,
+      perform: (list) => {
+        for (const entry of list) fixture.deleteBranch(entry.name);
+        writeFileSync(fixture.responses, "{}");
+      }
+    });
+    assert.ok(run.findings.some((f) => f.includes("post-deletion observation could not be collected")), `a deletion with no witness passed: ${run.findings.join(" | ")}`);
+    assert.equal(run.log, null, "a deletion with no witness still emitted a record");
+    assert.equal(run.authorized, false);
+    assert.deepEqual(run.deleted.map((entry) => entry.name), ["tmp/merged-thing"], "the record does not say what was deleted before the witness was lost");
+  });
 });
 
-test("a collector that fails authorizes nothing, on either side of the deletion", () => {
-  const { pre, post } = boundaryPair();
-  const before = makeDeletionRunner(() => { throw new Error("github unreachable"); }, clearedCompletion)({ audit, perform: () => {} });
-  assert.ok(before.findings.some((f) => f.includes("pre-deletion observation could not be collected")), `a failed first collection did not block: ${before.findings.join(" | ")}`);
-  assert.equal(before.log, null);
-
-  let calls = 0;
-  const failsAfter = () => { calls += 1; if (calls === 2) throw new Error("github unreachable"); return structuredClone(pre); };
-  const after = makeDeletionRunner(failsAfter, clearedCompletion)({ audit, perform: () => {} });
-  assert.ok(after.findings.some((f) => f.includes("post-deletion observation could not be collected")), `a failed second collection did not block: ${after.findings.join(" | ")}`);
-  assert.equal(after.log, null, "a deletion with no witness still emitted a record");
+test("a collector that cannot reach the repository authorizes nothing", () => {
+  drive({}, (fixture, audit) => {
+    // Take the fake GitHub away: the collector's first API call fails.
+    writeFileSync(fixture.responses, "{}");
+    let performed = false;
+    const run = runDeletion({ audit, repository: fixture.repository, cwd: fixture.work, perform: () => { performed = true; } });
+    assert.equal(performed, false, "the gate deleted without a usable observation");
+    assert.equal(run.log, null);
+    assert.ok(run.findings.some((f) => f.includes("could not be collected")), `a failed collection did not block: ${run.findings.join(" | ")}`);
+  });
 });
 
 test("a deletion action that throws is still witnessed and reported", () => {
-  const { pre, post } = livePair();
-  let calls = 0;
-  const collect = () => { calls += 1; return structuredClone(calls === 1 ? pre : post); };
-  const run = makeDeletionRunner(collect, clearedCompletion)({ audit, perform: () => { throw new Error("push --delete refused"); } });
-  assert.equal(calls, 2, "a failed deletion was not witnessed");
-  assert.ok(run.findings.some((f) => f.includes("did not complete")), `a failed deletion was not reported: ${run.findings.join(" | ")}`);
-  assert.equal(run.authorized, false);
+  drive({}, (fixture, audit) => {
+    const run = runDeletion({
+      audit,
+      repository: fixture.repository,
+      cwd: fixture.work,
+      perform: () => { throw new Error("push --delete refused"); }
+    });
+    assert.ok(run.findings.some((f) => f.includes("did not complete")), `a failed deletion was not reported: ${run.findings.join(" | ")}`);
+    assert.equal(run.authorized, false);
+    // It was still witnessed: the branch is still there, and the boundary says so.
+    assert.ok(liveHeads(fixture).includes("tmp/merged-thing"));
+    assert.ok(run.findings.some((f) => f.includes("still on the repository afterwards")), "the boundary did not notice the claimed deletion had not happened");
+  });
+});
+
+test("a deletion that takes an extra ref with it is refused", () => {
+  drive({}, (fixture, audit) => {
+    const run = runDeletion({
+      audit,
+      repository: fixture.repository,
+      cwd: fixture.work,
+      perform: (list) => {
+        for (const entry of list) fixture.deleteBranch(entry.name);
+        fixture.deleteBranch("task/active-work");
+      }
+    });
+    assert.ok(run.findings.some((f) => f.includes("task/active-work") && f.includes("does not say it was deleted")), `an extra ref taken by the deletion passed: ${run.findings.join(" | ")}`);
+    assert.equal(run.authorized, false);
+  });
 });
