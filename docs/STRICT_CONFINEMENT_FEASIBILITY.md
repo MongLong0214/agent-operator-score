@@ -382,7 +382,9 @@ could see could write an artifact between the last invocation and the grader and
 measurement. `freezeWorkspace` copies each family's workspace at the moment execution is declared
 settled, grading and every artifact read run against that copy, and the live tree is digested again
 afterwards: a difference is `AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT` and the run is not
-official. The copy holds regular files and directories and nothing else. A symlink is refused by
+official. A comparison that could not answer at all -- a digest that raised, a family whose freeze
+recorded none -- is `AOS_ISOLATION_SETTLEMENT_UNVERIFIED` and is equally not official: "we could not
+check" and "we checked and it was fine" are different runs, and only one of them may carry a claim. The copy holds regular files and directories and nothing else. A symlink is refused by
 name, because a link's own bytes are in the tree digest and its target's are not: reproduced in the
 copy, it would have let a survivor point `response.json` outside the workspace, rewrite that file
 after settlement, and be graded on the new bytes with `changed_after_settlement: false` beside them.
@@ -500,12 +502,22 @@ composite -- the surface labelled *PROFILE-BOUND OPERATOR-AGENT SYSTEM PERFORMAN
 `issued: false`, `value: null`, and a `withheld_reason` naming the isolation conditions, so `aos
 assess` exits non-zero and prints the reasons where the number would have been. The codes travel on
 the result as `boundary_withheld`, beside the other three lists that say why a claim stage fell, and
-`aos verify --run` recomputes the result under them: without that input every withheld result
-recomputed as an issued one, so an untampered artifact failed its own verification and the check
-meant to catch a forged number produced the number a forger would want. The two indices are
-not withheld by the gate: what happened in the run happened, and the indices say so. It is the
-claim about the profile that the boundary decides, and a headline number whose own label says
-"profile-bound" is that claim. This is what the level table above means in practice --
+`aos verify --run` recomputes the result under them -- reading the verdict from the run's own
+confinement record rather than from the artifact, and comparing the published `isolation` block as
+well as the codes. Without that input every withheld result recomputed as an issued one, so an
+untampered artifact failed its own verification; taking the verdict off the artifact instead let a
+withheld result edited to a consistent set of official surfaces recompute to exactly the forged
+version and verify; and leaving the `isolation` block out of the comparison let level, backend,
+both axes, the policy digest and `network.task_external` be rewritten -- `NOT_OBSERVED` to `denied`
+-- with `PASS recompute` beside them.
+
+All three PROFILE-BOUND surfaces withhold together. Both index labels begin with PROFILE-BOUND, so
+an index published under a boundary that did not hold is the same claim the composite would have
+made one line down the page, and SSOT's completion condition is that BEST_EFFORT and NONE issue
+none of the three. Nothing measured is lost: every construct and every domain row keeps the
+estimate it was issued, and the outcome and composite keep their raw values. What the boundary
+decides is the claim about the profile, and a headline number whose own label says "profile-bound"
+is that claim. This is what the level table above means in practice --
 `BEST_EFFORT_CLI` is diagnostic only (SSOT §24), which the legacy scorer now enforces on its own
 side too: `issuanceCheck` issues under a declared `STRICT` level and nothing else, where its default
 of `BEST_EFFORT_CLI` used to hand a caller who declared no level at all the permissive answer -- and it is a behaviour change for every host

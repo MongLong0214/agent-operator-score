@@ -448,6 +448,52 @@ test("a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze", async () => {
   }
 });
 
+test("a_settlement_nobody_could_check_withholds_like_one_that_moved", async () => {
+  // Three answers, and only one of them is clean. `workspaceChangedAfterSettlement` returns `true`
+  // for a write, `false` for a tree that did not move, and `null` when the question could not be
+  // asked -- a digest that raised, a freeze that recorded none. The gate blocked on exactly `true`,
+  // so a run whose live workspace could not be read at all stayed `official: true`: absent evidence
+  // opening a gate, in the isolation verdict this issue exists to build.
+  const { settlementProblems, workspaceChangedAfterSettlement, ISSUANCE_REASONS } = await import("../../lib/confinement.mjs");
+  const base = mkdtempSync(join(tmpdir(), "aos-settle-unverified-"));
+  try {
+    const workspace = join(base, "FAM-1");
+    mkdirSync(workspace, { recursive: true });
+    writeFileSync(join(workspace, "response.json"), "{}");
+    const frozen = { digest: "sha256:" + "a".repeat(64) };
+    // The three shapes the comparison itself can produce, from the outside.
+    assert.equal(workspaceChangedAfterSettlement(frozen, workspace, { digest: () => frozen.digest }), false);
+    assert.equal(workspaceChangedAfterSettlement(frozen, workspace, { digest: () => "sha256:" + "b".repeat(64) }), true);
+    assert.equal(workspaceChangedAfterSettlement(frozen, workspace, { digest: () => { throw Object.assign(new Error("io"), { code: "EIO" }); } }), null, "an unreadable tree answered the question");
+    assert.equal(workspaceChangedAfterSettlement(null, workspace), null, "a family with no frozen digest answered the question");
+
+    // And what the gate makes of them. `null` and `undefined` are not `false`.
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: false } }), { written: [], unverified: [] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: true } }), { written: ["FAM-1"], unverified: [] });
+    assert.deepEqual(settlementProblems({ "FAM-1": { changed_after_settlement: null } }), { written: [], unverified: ["FAM-1"] });
+    assert.deepEqual(settlementProblems({ "FAM-1": {} }), { written: [], unverified: ["FAM-1"] });
+    assert.deepEqual(settlementProblems({}), { written: [], unverified: [] });
+    assert.deepEqual(settlementProblems(null), { written: [], unverified: ["*"] });
+    assert.deepEqual(
+      settlementProblems({ "FAM-2": { changed_after_settlement: null }, "FAM-1": { changed_after_settlement: true } }),
+      { written: ["FAM-1"], unverified: ["FAM-2"] }
+    );
+    // Each condition has its own name, because "we could not check" and "it moved" are different
+    // runs and an operator fixing one is not fixing the other.
+    assert.equal(ISSUANCE_REASONS.SETTLEMENT_UNVERIFIED, "AOS_ISOLATION_SETTLEMENT_UNVERIFIED");
+    assert.notEqual(ISSUANCE_REASONS.SETTLEMENT_UNVERIFIED, ISSUANCE_REASONS.WORKSPACE_WRITTEN_AFTER_SETTLEMENT);
+
+    // The CLI reads both, at the site the review reproduced: the gate is fed the problems, not the
+    // `=== true` test that let the unreadable case through.
+    const cli = readFileSync(join(root, "lib", "cli.mjs"), "utf8");
+    assert.match(cli, /const settlementState = settlementProblems\(settlement\);/u, "the CLI does not ask what the settlement says");
+    assert.equal(/changedAfterSettlement === true/u.test(cli), false, "the CLI still blocks on exactly true");
+    assert.match(cli, /ISSUANCE_REASONS\.SETTLEMENT_UNVERIFIED/u, "an unverifiable settlement has no reason on the gate");
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test("an_assessment_records_what_each_family_was_graded_from", () => {
   // Through the CLI, which is where the two halves meet: the result carries the digest of what each
   // family was graded from, and whether the live tree moved afterwards. A tree that moved is a
@@ -1757,6 +1803,34 @@ test("a_withheld_result_verifies_as_the_result_it_is", () => {
     writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(forged)}\n`);
     const caught = run(cwd, ["verify", "--run", runId], 5);
     assert.match(caught.stdout, /FAIL\trecompute/u, caught.stdout);
+
+    // And the facts beside the verdict. The published `isolation` block was outside the compared
+    // surfaces, so every one of these could be rewritten and the recomputation still passed --
+    // including `task_external`, whose `NOT_OBSERVED` is the limitation this issue requires be
+    // shown. Each edit is checked on its own, so a comparison that covers one field and not the
+    // rest cannot pass this.
+    const honest = JSON.parse(canonicalJson(stored));
+    const edits = [
+      ["level", (one) => { one.isolation.level = "STRICT"; }],
+      ["backend", (one) => { one.isolation.backend = "macos-seatbelt"; }],
+      ["filesystem_enforced", (one) => { one.isolation.filesystem_enforced = true; }],
+      ["process_enforced", (one) => { one.isolation.process_enforced = true; }],
+      ["support_status", (one) => { one.isolation.support_status = "SUPPORTED"; }],
+      ["policy_digest", (one) => { one.isolation.policy_digest = `sha256:${"f".repeat(64)}`; }],
+      ["network.task_external", (one) => { one.isolation.network.task_external = "denied"; }],
+      ["network.enforcement", (one) => { one.isolation.network.enforcement = "kernel"; }]
+    ];
+    for (const [field, edit] of edits) {
+      const forgedFacts = JSON.parse(canonicalJson(honest));
+      edit(forgedFacts);
+      writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(forgedFacts)}\n`);
+      const rejected = run(cwd, ["verify", "--run", runId], 5);
+      assert.match(rejected.stdout, /FAIL\trecompute/u, `${field} was rewritten and the recomputation passed: ${rejected.stdout}`);
+    }
+    // The unedited artifact still verifies, so the comparison above is not simply refusing every
+    // result it is handed.
+    writeFileSync(join(cwd, ".aos", "runs", runId, "result.json"), `${canonicalJson(honest)}\n`);
+    assert.match(run(cwd, ["verify", "--run", runId]).stdout, /PASS\trecompute/u);
 
     // And with no record at all there is nothing behind the claim: the run says so rather than
     // falling back on what the result says about itself.

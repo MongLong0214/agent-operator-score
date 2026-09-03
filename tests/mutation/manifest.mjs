@@ -2657,6 +2657,24 @@ export const GUARDS = [
     name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
   },
   {
+    guard: "a settlement nobody could check is not a clean one",
+    reason: "the comparison answers true, false or 'could not ask', and blocking on exactly true read a digest that raised as a workspace that had not moved -- absent evidence opening the gate, inside the isolation verdict itself",
+    file: "lib/confinement.mjs",
+    from: "    if (changed === true) written.push(family);\n    else if (changed !== false) unverified.push(family);",
+    to: "    if (changed === true) written.push(family);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_settlement_nobody_could_check_withholds_like_one_that_moved"
+  },
+  {
+    guard: "a recomputation compares the boundary facts it published",
+    reason: "the isolation block was outside the compared surfaces, so level, backend, both axes, the policy digest and the network row could be rewritten -- NOT_OBSERVED to denied -- and `verify --run` still reported PASS recompute",
+    file: "lib/cli.mjs",
+    from: "      one.boundary_withheld, one.isolation,",
+    to: "      one.boundary_withheld,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
     guard: "a write after settlement is visible",
     reason: "the frozen copy keeps a later write out of the number; the digest beside it is what makes such a write reportable instead of silent",
     file: "lib/confinement.mjs",
@@ -3691,6 +3709,7 @@ export const ACCOUNTED_GUARDS = [
   "a phase's predecessors must be in the plan",
   "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a recomputation compares the boundary facts it published",
   "a recomputation runs under the run's own boundary",
   "a record is authenticated before it is judged",
   "a refused file fails the check",
@@ -3706,6 +3725,7 @@ export const ACCOUNTED_GUARDS = [
   "a sanitised value is one this module boxed",
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
+  "a settlement nobody could check is not a clean one",
   "a skipped real lane is not a verified one",
   "a started phase cannot integrate code on a blocked issue",
   "a status this build does not know is refused",
