@@ -15,6 +15,8 @@ import {
   capabilityRecord,
   capabilityRecordsFor,
   capabilityDigestOf,
+  operatorAssignment,
+  taskOfOpportunity,
   requirementsFromRoute,
   routeOracle,
   routingObservables,
@@ -194,4 +196,46 @@ test("the requirement is a function of the operator's route alone, so a record e
   assert.equal(oracle.assignment.find((entry) => entry.task_id === "FAM-3/stage-1").owner_id, "alpha");
   assert.equal(oracle.assignment.find((entry) => entry.task_id === "FAM-3/stage-1").provenance, "actual-route-event");
   assert.deepEqual(verdicts(oracle), verdicts(HONEST()));
+});
+
+test("the proposal the oracle reads is the operator's attested decision, not the agent's plan", () => {
+  // #560 mints `route.assign` at a checkpoint, through the store's authority gate, session-bound.
+  // That is the one statement about who should own a stage that is neither the artifact under
+  // measurement nor the ledger, so it is what supplies the proposal. The plan is not an input at
+  // all any more: `routingObservables` has no `plan` parameter to pass one to.
+  const rows = [
+    { decision_type: "route.assign", opportunity_id: "opp-FAM-3-stage-2-1", declared_route: ["beta"], state_revision: 3, operator_event_id: "operator-2f1c4d0e-9b7a-4c31-8f52-0a6d3b8e1c47" },
+    { decision_type: "route.assign", opportunity_id: "opp-FAM-3-stage-2-2", declared_route: ["gamma"], state_revision: 7, operator_event_id: "operator-3a2b5c6d-1e0f-4a9b-8c7d-6e5f4a3b2c1d" }
+  ];
+  const assignment = operatorAssignment(rows);
+  assert.deepEqual(assignment.map((entry) => [entry.task_id, entry.owner_id]), [["FAM-3/stage-2", "gamma"]],
+    "the later revision of the same stage is the operator's current decision");
+
+  const oracle = routingObservables({
+    requirements: REQUIREMENT().requirements,
+    declared_assignment: assignment,
+    capabilities: CAPABILITIES(),
+    actual_route_events: LEDGER()
+  }).oracle;
+  // The ledger still assigns; the operator's decision is the proposal beside it, and it is on the
+  // record so a reader can see the run went somewhere the operator did not last ask for.
+  const stage2 = oracle.assignment.find((entry) => entry.task_id === "FAM-3/stage-2");
+  assert.equal(stage2.owner_id, "beta", "the ledger stopped assigning");
+  assert.equal(stage2.provenance, "actual-route-event");
+  assert.equal(stage2.proposed_owner_id, "gamma", "the operator's decision is not on the record");
+
+  // A decision of another kind, an unparsable opportunity, or a route that is not one owner
+  // contributes nothing rather than a guess.
+  assert.deepEqual(operatorAssignment([{ decision_type: "intervention.decide", opportunity_id: "opp-FAM-3-stage-1-1", declared_route: ["beta"], state_revision: 1 }]), []);
+  assert.deepEqual(operatorAssignment([{ decision_type: "route.assign", opportunity_id: "not-an-opportunity", declared_route: ["beta"], state_revision: 1 }]), []);
+  assert.deepEqual(operatorAssignment([{ decision_type: "route.assign", opportunity_id: "opp-FAM-3-stage-1-1", declared_route: ["beta", "gamma"], state_revision: 1 }]), []);
+  assert.equal(taskOfOpportunity("opp-FAM-3-stage-1-1"), "FAM-3/stage-1");
+  assert.equal(taskOfOpportunity("opp-FAM-3-stage-1"), null);
+
+  // An unattended run mints no such event, so the proposal is empty and nothing is said about it.
+  const unattended = routingObservables({
+    requirements: REQUIREMENT().requirements, declared_assignment: [], capabilities: CAPABILITIES(), actual_route_events: LEDGER()
+  }).oracle;
+  for (const row of unattended.assignment) assert.equal(row.proposed_owner_id, null);
+  assert.deepEqual(verdicts(unattended), verdicts(HONEST()), "an absent operator decision changed a verdict");
 });

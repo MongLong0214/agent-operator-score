@@ -16,6 +16,24 @@
 
 export const GUARDS = [
   {
+    guard: "the proposal comes from an admitted operator decision",
+    reason: "the one statement about who should own a stage that is neither the artifact under measurement nor the ledger is the operator's attested route.assign; reading any decision type would let an intervention or a context choice stand in for a routing decision",
+    file: "lib/routing-oracle.mjs",
+    from: "    if (row?.decision_type !== \"route.assign\") continue;",
+    to: "    if (false) continue;",
+    test: "tests/product/routing-requirement-authority.test.mjs",
+    name: "the proposal the oracle reads is the operator's attested decision, not the agent's plan"
+  },
+  {
+    guard: "an operator decision is lined up with the stage it was about",
+    reason: "an opportunity id this module cannot parse names no task, and inventing one would put an operator's decision against work they did not decide on",
+    file: "lib/routing-oracle.mjs",
+    from: "  return match === null ? null : `${match[1]}${STAGE_SEPARATOR}${match[2]}`;",
+    to: "  return match === null ? String(opportunityId) : `${match[1]}${STAGE_SEPARATOR}${match[2]}`;",
+    test: "tests/product/routing-requirement-authority.test.mjs",
+    name: "the proposal the oracle reads is the operator's attested decision, not the agent's plan"
+  },
+  {
     guard: "a task id is a reference to a task this run holds",
     reason: "the shape of an identifier is not proof that it identifies anything; an event naming a task the requirement does not hold used to be admitted and then dropped by every consumer that looked its task up, so it counted as an invocation nowhere and left the route looking cheaper than the work it did",
     file: "lib/routing-oracle.mjs",
@@ -3737,6 +3755,7 @@ export const ACCOUNTED_GUARDS = [
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "an operator decision binds only to an operator_process cell",
+  "an operator decision is lined up with the stage it was about",
   "an operator event is assembled from named fields",
   "an operator event states its challenge and its value",
   "an opportunity id cannot pass for the operator event id",
@@ -3950,6 +3969,7 @@ export const ACCOUNTED_GUARDS = [
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
   "the printed shape is named",
+  "the proposal comes from an admitted operator decision",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",
   "the record binding covers the payload the scorer reads",
