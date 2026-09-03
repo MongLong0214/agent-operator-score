@@ -51,15 +51,6 @@ export const DELETION_BLOCKED_BY = Object.freeze([578, 588]);
 export const OBSERVATION_MAX_AGE_SECONDS = 900;
 
 const SHA = /^[0-9a-f]{40}$/u;
-
-/**
- * An error's text with filesystem paths reduced to their last two segments.
- *
- * Findings are written into a record that gets committed and rendered, and `error.message` from a
- * failed read carries the absolute path it tried -- which on a real checkout is somebody's home
- * directory. The reason survives; the path does not.
- */
-const withoutPaths = (message) => String(message).replace(/(?:\/[\w.@%+-]+){2,}/gu, (path) => `…/${path.split("/").slice(-2).join("/")}`);
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/u;
 
@@ -341,6 +332,14 @@ export const derivationFindings = (audit, observation = audit?.live_observation)
     if (canonicalize(entry.references?.tree_scan?.hits) !== canonicalize(derived.tree_scan?.value)) {
       findings.push(`${entry.name}: records a tree scan the collector did not run`);
     }
+    // The command, not only its name. A record collected by an older collector carries a receipt for
+    // a command this one would not run -- `git grep … HEAD` rather than the integration line -- and
+    // comparing source names alone cannot see it.
+    const scanReceipt = (observation.receipts ?? []).find((one) => one.source === derived.tree_scan?.source);
+    const devHead = (observation.heads ?? []).find((one) => one.name === "dev")?.sha;
+    if (scanReceipt && devHead && !scanReceipt.command.includes(devHead)) {
+      findings.push(`${entry.name}: the tree scan was run against something other than the observed dev commit, so its result is about a different tree`);
+    }
     // "No pull request ever used this branch as a head" is a claim about closed and merged pull
     // requests too, so it needs the all-state query rather than the open list.
     const openInHistory = (derived.pr_history?.value ?? []).filter((pr) => isOpen(pr.state));
@@ -547,9 +546,12 @@ export const boundaryInvariantFindings = (deletionLog, pre, post) => {
     if (!pre.protection?.[ref] || !post.protection?.[ref]) findings.push(`${ref} protection is not recorded on both sides of the deletion, so nothing can say it is unchanged`);
     else if (contentDigest(pre.protection[ref]) !== contentDigest(post.protection[ref])) findings.push(`${ref} protection changed across the deletion`);
   }
-  if (contentDigest(pre.rulesets ?? []) !== contentDigest(post.rulesets ?? [])) findings.push("the repository's ruleset configuration changed across the deletion");
-  if (contentDigest(pre.install_source) !== contentDigest(post.install_source)) findings.push("the stable plugin/install source changed across the deletion");
-  if (contentDigest(pre.settings) !== contentDigest(post.settings)) findings.push("the repository settings changed across the deletion");
+  // Absent on both sides digests the same as equal on both sides, for every one of these, not only
+  // for protection.
+  for (const [family, before, after] of [["ruleset configuration", pre.rulesets, post.rulesets], ["stable plugin/install source", pre.install_source, post.install_source], ["repository settings", pre.settings, post.settings]]) {
+    if (before === undefined || before === null || after === undefined || after === null) findings.push(`the ${family} is not recorded on both sides of the deletion, so nothing can say it is unchanged`);
+    else if (contentDigest(before) !== contentDigest(after)) findings.push(`the ${family} changed across the deletion`);
+  }
 
   const stillOpen = new Map((post.open_prs ?? []).map((pr) => [pr.number, pr]));
   for (const pr of pre.open_prs ?? []) {

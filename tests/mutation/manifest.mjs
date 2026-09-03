@@ -2305,14 +2305,54 @@ export const GUARDS = [
     name: "a list endpoint that succeeds and returns nothing is not an empty list"
   },
   {
-    guard: "tag containment is the repository's tags, not the checkout's",
+    guard: "tag containment is derived against the repository's tags",
     reason:
-      "git tag --contains reads whatever this checkout carries; a locally deleted tag would drop a release the branch is in, and a locally invented one would add one it is not",
+      "git tag --contains reads whatever this checkout carries; deriving containment by ancestry against the tag commits ls-remote reported keeps a locally deleted or locally invented tag out of the answer, and writes no local ref to do it",
     file: "scripts/collect-branch-state.mjs",
-    from: "      tags_containing: { value: receipted(receipts, `tags-containing-${name}`, \"git\", [\"tag\", \"--contains\", sha], { cwd }).text.split(\"\\n\").filter(Boolean).filter((tag) => originTags.has(tag)).sort(), source: `tags-containing-${name}` },",
-    to: "",
+    from: "          .filter((tag) => receipted(receipts, `tag-contains-${tag.name}-${name}`, \"git\", [\"merge-base\", \"--is-ancestor\", sha, tag.commit_sha], { cwd, allowExit: [0, 1] }).status === 0)",
+    to: "          .filter(() => true)",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "tag containment reports the repository's tags, not whatever this checkout carries"
+  },
+  {
+    guard: "the collector writes no local ref",
+    reason:
+      "an earlier version ran `git fetch --tags --force`, which rewrites local tags: a write, in a collector whose whole claim is that it only reads",
+    file: "scripts/collect-branch-state.mjs",
+    from: "  const wanted = [...new Set([...heads.map((head) => head.sha), ...tags.map((tag) => tag.commit_sha)])];",
+    to: "  const wanted = heads.map((head) => head.sha);",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "tag containment reports the repository's tags, not whatever this checkout carries"
+  },
+  {
+    guard: "a collector read error names a relative path",
+    reason:
+      "an ENOENT carries the absolute path it tried, which on a real checkout is somebody's home directory, and these messages end up in findings that get committed and rendered",
+    file: "scripts/collect-branch-state.mjs",
+    from: "      throw new Error(`${path}: ${error.code ?? \"could not be read\"}`);",
+    to: "      throw error;",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a collector error names a repository-relative path, not the checkout it ran in"
+  },
+  {
+    guard: "the tree scan receipt names the commit it scanned",
+    reason:
+      "a record collected by an older collector carries a receipt for a command this one would not run, and comparing source names alone cannot see it",
+    file: "scripts/branch-audit.mjs",
+    from: "      findings.push(`${entry.name}: the tree scan was run against something other than the observed dev commit, so its result is about a different tree`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a tree scan run against something other than the observed dev commit is refused"
+  },
+  {
+    guard: "every invariant family is recorded on both sides",
+    reason:
+      "absent on both sides digests the same as equal on both sides, so a pair that never recorded a family would report it unchanged across the deletion",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (before === undefined || before === null || after === undefined || after === null) findings.push(`the ${family} is not recorded on both sides of the deletion, so nothing can say it is unchanged`);",
+    to: "",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "a family absent from both boundary observations is not that family unchanged"
   },
   {
     guard: "the tree scan reads the integration line",
@@ -2589,30 +2629,10 @@ export const GUARDS = [
     reason:
       "two rulesets of equal length are not the same two rulesets, and an equal-count replacement is how a policy change hides inside a cleanup",
     file: "scripts/branch-audit.mjs",
-    from: "  if (contentDigest(pre.rulesets ?? []) !== contentDigest(post.rulesets ?? [])) findings.push(\"the repository's ruleset configuration changed across the deletion\");",
+    from: "    else if (contentDigest(before) !== contentDigest(after)) findings.push(`the ${family} changed across the deletion`);",
     to: "",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "a ruleset replaced by a different one of the same count is refused"
-  },
-  {
-    guard: "the stable plugin/install source is compared",
-    reason:
-      "the issue names it among the invariants: a cleanup that changes how people install the project has changed the thing the invariant exists to hold still",
-    file: "scripts/branch-audit.mjs",
-    from: "  if (contentDigest(pre.install_source) !== contentDigest(post.install_source)) findings.push(\"the stable plugin/install source changed across the deletion\");",
-    to: "",
-    test: "tests/product/branch-cleanup-invariants.test.mjs",
-    name: "the stable plugin/install source or the repository settings changing across the deletion is refused"
-  },
-  {
-    guard: "the repository settings are compared",
-    reason:
-      "auto-delete and the default branch decide what happens to every future branch; a cleanup that flips one has changed the policy it was executing",
-    file: "scripts/branch-audit.mjs",
-    from: "  if (contentDigest(pre.settings) !== contentDigest(post.settings)) findings.push(\"the repository settings changed across the deletion\");",
-    to: "",
-    test: "tests/product/branch-cleanup-invariants.test.mjs",
-    name: "the stable plugin/install source or the repository settings changing across the deletion is refused"
   },
   {
     guard: "an open PR head survives the deletion",
@@ -3802,6 +3822,7 @@ export const ACCOUNTED_GUARDS = [
   "a calendar-impossible instant is refused before any arithmetic",
   "a capped pull request history is refused when the observation is verified",
   "a capped pull request history supports no claim in the record",
+  "a collector read error names a relative path",
   "a command that returned nothing is not an empty list",
   "a completed deletion requires the observation that witnessed it",
   "a completed log cites both boundary observation digests",
@@ -3928,6 +3949,7 @@ export const ACCOUNTED_GUARDS = [
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
   "every asserted graph fact names a derivation",
+  "every invariant family is recorded on both sides",
   "every projection is compared with the result",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
@@ -4051,7 +4073,7 @@ export const ACCOUNTED_GUARDS = [
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
-  "tag containment is the repository's tags, not the checkout's",
+  "tag containment is derived against the repository's tags",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the after-snapshot exception is bound to the branch the audit was submitted from",
@@ -4065,6 +4087,7 @@ export const ACCOUNTED_GUARDS = [
   "the card drops no facet",
   "the claim is compared like the numbers are",
   "the closing pull request changed something the issue owns",
+  "the collector writes no local ref",
   "the command prints the floored result",
   "the committed observation read each pull request history to the end",
   "the composite has to agree with its own inputs",
@@ -4096,7 +4119,6 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
   "the report command serves what the result projects to",
-  "the repository settings are compared",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
   "the rows a result must carry come from its contract",
@@ -4104,8 +4126,8 @@ export const ACCOUNTED_GUARDS = [
   "the run-metadata door carries only run metadata",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
-  "the stable plugin/install source is compared",
   "the tree scan reads the integration line",
+  "the tree scan receipt names the commit it scanned",
   "the two head transports are cross-checked",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",

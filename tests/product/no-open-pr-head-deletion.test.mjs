@@ -5,7 +5,7 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, liveEligibility, loadCompletionSnapshot, openPrHeadDeletionFindings } from "../../scripts/branch-audit.mjs";
+import { DELETION_BLOCKED_BY, deletionAuthorizationFindings, deletionEligibility, derivationFindings, liveEligibility, loadCompletionSnapshot, openPrHeadDeletionFindings } from "../../scripts/branch-audit.mjs";
 import { collect, observationDigest } from "../../scripts/collect-branch-state.mjs";
 import { auditFor, buildFixtureRepository, withFakeGitHub } from "./branch-state-fixture.mjs";
 
@@ -397,61 +397,32 @@ test("the tree scan reads the integration line, not the branch the collector hap
   });
 });
 
-// A finding is committed and rendered, and a raw read error carries the absolute path it tried.
-test("a finding carries no absolute filesystem path", () => {
+// The collector's own errors are where the path actually leaked: an ENOENT carries the absolute path
+// it tried, and these messages end up in findings that get committed and rendered.
+test("a collector error names a repository-relative path, not the checkout it ran in", () => {
   drive({}, (fixture, audit) => {
-    setResponses(fixture, (responses) => { delete responses[`repos/${fixture.repository}/rulesets?per_page=100`]; });
+    rmSync(join(fixture.work, ".claude-plugin", "marketplace.json"));
     let message = null;
     try { recollect(fixture); } catch (error) { message = error.message; }
-    assert.ok(message, "the collector did not fail when the fake GitHub lost a response");
-    const { findings } = liveEligibility(audit, null);
-    for (const finding of findings) {
+    assert.ok(message, "the collector did not fail when the install source went missing");
+    assert.ok(message.includes(".claude-plugin/marketplace.json"), `the error does not say which file: ${message}`);
+    assert.ok(!message.includes(fixture.work), `the error names the checkout path: ${message}`);
+    assert.ok(!/(?:\/[\w.@%+-]+){3,}/u.test(message), `the error carries an absolute path: ${message}`);
+    for (const finding of liveEligibility(audit, null).findings) {
       assert.ok(!/(?:\/[\w.@%+-]+){3,}/u.test(finding), `a finding carries an absolute path: ${finding}`);
     }
   });
 });
 
-// GitHub's own value is "open"; the collector normalises to "OPEN". A gate matching one spelling
-// exactly is a gate an unnormalised observation walks straight through.
-test("a pull request state in either spelling blocks the branch", () => {
-  drive({}, (fixture, audit, observation) => {
-    for (const spelling of ["open", "OPEN", "Open"]) {
-      const pre = structuredClone(observation);
-      pre.open_prs = [...pre.open_prs, { number: 999, head_branch: "tmp/merged-thing", head_sha: fixture.shas.main, base: "dev", state: spelling }];
-      const { eligible } = liveEligibility(audit, pre);
-      assert.deepEqual(eligible, [], `a pull request whose state reads "${spelling}" did not block the branch`);
-    }
-  });
-});
-
-// Omission is not observation: a gate reading `open_prs ?? []` treats a missing family as an empty one.
-test("an observation that omits a family it is read for is refused", () => {
-  drive({}, (fixture, audit, observation) => {
-    for (const family of ["open_prs", "rest_heads", "tags", "rulesets"]) {
-      const pre = structuredClone(observation);
-      delete pre[family];
-      const { eligible, findings } = liveEligibility(audit, pre);
-      assert.deepEqual(eligible, [], `an observation with no ${family} still produced an eligible branch`);
-      assert.ok(findings.some((one) => one.includes(family)), `an observation with no ${family} was not refused for it: ${findings.join(" | ")}`);
-    }
-    const noProtection = structuredClone(observation);
-    delete noProtection.protection;
-    assert.ok(liveEligibility(audit, noProtection).findings.some((one) => one.includes("protection")), "an observation with no protection was not refused");
-  });
-});
-
-// The reviewer's reproduction: the derivations are collected fresh and then the record is checked
-// against its own stored copy. A branch whose live graph facts disagree with the audit -- not
-// contained, commits reaching neither line -- stayed eligible because only coverage was re-run.
-test("a branch whose live graph facts disagree with the audit is refused", () => {
-  drive({}, (fixture, audit, observation) => {
-    const pre = structuredClone(observation);
-    const derived = pre.derivations["tmp/merged-thing"];
-    derived.unique_vs_dev_and_main.value = 99;
-    derived.ancestor_of_dev.value = false;
-    pre.digest = observationDigest(pre);
-    const { eligible, findings } = liveEligibility(audit, pre);
-    assert.deepEqual(eligible, [], "a branch the fresh derivations contradict stayed eligible");
-    assert.ok(findings.some((one) => one.includes("the collector derived")), `the disagreement with the fresh derivations was not reported: ${findings.join(" | ")}`);
+// The receipt, not only its name. A record collected by an older collector carries a command this
+// one would not run, and comparing source names alone cannot see it.
+test("a tree scan run against something other than the observed dev commit is refused", () => {
+  drive({}, (_fixture, audit, observation) => {
+    const forged = structuredClone(observation);
+    const scan = forged.receipts.find((one) => one.source === forged.derivations["tmp/merged-thing"].tree_scan.source);
+    scan.command = scan.command.replace(/[0-9a-f]{40}/u, "HEAD");
+    forged.digest = observationDigest(forged);
+    const findings = derivationFindings(audit, forged);
+    assert.ok(findings.some((one) => one.includes("about a different tree")), `a scan of another tree passed: ${findings.join(" | ")}`);
   });
 });

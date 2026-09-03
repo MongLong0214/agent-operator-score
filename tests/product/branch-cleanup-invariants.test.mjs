@@ -309,3 +309,13 @@ test("protection absent from both boundary observations is not protection unchan
   const findings = boundaryInvariantFindings(completedLog(pre, post), pre, post);
   assert.ok(findings.some((f) => f.includes("not recorded on both sides")), `two observations with no protection reported it unchanged: ${findings.join(" | ")}`);
 });
+
+test("a family absent from both boundary observations is not that family unchanged", () => {
+  for (const family of ["rulesets", "install_source", "settings"]) {
+    const { pre, post } = boundaryPair();
+    delete pre[family];
+    delete post[family];
+    const findings = boundaryInvariantFindings(completedLog(pre, post), pre, post);
+    assert.ok(findings.some((f) => f.includes("not recorded on both sides")), `two observations with no ${family} reported it unchanged: ${findings.join(" | ")}`);
+  }
+});

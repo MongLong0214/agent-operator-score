@@ -206,10 +206,20 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
   const repo = apiOne(receipts, "rest-repo", `repos/${repository}`);
   const settings = { default_branch: repo.default_branch, delete_branch_on_merge: repo.delete_branch_on_merge };
 
+  // Read by repository-relative path, and reported by it too: an ENOENT carries the absolute path it
+  // tried, which on a real checkout is somebody's home directory, and these messages end up in
+  // findings that get committed and rendered.
+  const read = (path) => {
+    try {
+      return readFileSync(`${cwd}/${path}`);
+    } catch (error) {
+      throw new Error(`${path}: ${error.code ?? "could not be read"}`);
+    }
+  };
   const installSource = {
-    files: INSTALL_SOURCE_FILES.map((path) => ({ path, digest: sha256Bytes(readFileSync(`${cwd}/${path}`)) })),
+    files: INSTALL_SOURCE_FILES.map((path) => ({ path, digest: sha256Bytes(read(path)) })),
     package: (() => {
-      const pkg = JSON.parse(readFileSync(`${cwd}/package.json`, "utf8"));
+      const pkg = JSON.parse(read("package.json").toString("utf8"));
       return { name: pkg.name, bin: pkg.bin, files: pkg.files };
     })()
   };
@@ -221,9 +231,11 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
   // Every graph fact a branch record is allowed to assert, derived here, each with its own receipt.
   // Fetching first, because a fact about a commit the checkout does not have is not a fact.
   const auditable = heads.filter((head) => head.name !== "main" && head.name !== "dev");
-  if (auditable.length > 0) receipted(receipts, "git-fetch-observed", "git", ["fetch", "-q", "origin", ...heads.map((head) => head.sha)], { cwd });
-  receipted(receipts, "git-fetch-tags", "git", ["fetch", "-q", "--tags", "--force", "origin"], { cwd });
-  const originTags = new Set(tags.map((tag) => tag.name));
+  // Fetch the objects, never a ref: `git fetch <sha>` writes to the object store and leaves every
+  // local ref where it was. An earlier version ran `--tags --force`, which rewrites local tags -- a
+  // write, in a collector whose whole claim is that it only reads.
+  const wanted = [...new Set([...heads.map((head) => head.sha), ...tags.map((tag) => tag.commit_sha)])];
+  if (wanted.length > 0) receipted(receipts, "git-fetch-observed", "git", ["fetch", "-q", "origin", ...wanted], { cwd });
 
   // `Number("")` is 0, so empty stdout would read as "no commits unique to this branch" -- the same
   // absence-as-success shape, on the count the deletion decision turns on.
@@ -253,9 +265,16 @@ export const collect = ({ repository, cwd = process.cwd() } = {}) => {
       // Neither difference alone answers "what would be lost": a commit on dev but not main is still
       // elsewhere. This is the count deletion turns on.
       unique_vs_dev_and_main: { value: count(`rev-list-neither-${name}`, [sha, "--not", devSha, mainSha]), source: `rev-list-neither-${name}` },
-      // Intersected with the tag list `git ls-remote --tags origin` returned, so the answer is about
-      // the tags the repository has and not about whatever this checkout happens to carry.
-      tags_containing: { value: receipted(receipts, `tags-containing-${name}`, "git", ["tag", "--contains", sha], { cwd }).text.split("\n").filter(Boolean).filter((tag) => originTags.has(tag)).sort(), source: `tags-containing-${name}` },
+      // Derived against the tag commits `git ls-remote --tags origin` reported, one ancestry test per
+      // tag. `git tag --contains` would answer from the local tag set instead, which is neither the
+      // repository's nor stable across checkouts.
+      tags_containing: {
+        value: tags
+          .filter((tag) => receipted(receipts, `tag-contains-${tag.name}-${name}`, "git", ["merge-base", "--is-ancestor", sha, tag.commit_sha], { cwd, allowExit: [0, 1] }).status === 0)
+          .map((tag) => tag.name)
+          .sort(),
+        source: `tag-contains-${tags[0]?.name}-${name}`
+      },
       tree_scan: { value: grep.text.split("\n").filter(Boolean).map((line) => line.split(":").slice(0, 2).join(":")), source: `git-grep-${name}` },
       pr_history: {
         value: prs.items.map((pr) => ({ number: pr.number, state: pr.state.toUpperCase(), merged_at: pr.merged_at, base: pr.base.ref, head_sha: pr.head.sha })),
