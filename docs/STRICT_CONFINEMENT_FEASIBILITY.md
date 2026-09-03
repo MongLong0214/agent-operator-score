@@ -1,9 +1,11 @@
 # STRICT workspace confinement: what this machine can actually enforce
 
-This is Phase 0 feasibility evidence for issue #556 and nothing else. No production code was
-changed, no isolation backend was implemented, and `lib/isolation.mjs` and the spawn path in
-`lib/core.mjs` were not touched. The issue's `feasibility-proof` phase declares
-`code_integration_allowed: false`, and #556 remains blocked on #554, #555 and #588.
+The sections up to "Phase B" are the Phase 0 feasibility evidence for issue #556, kept as they were
+measured: at that point no production code had been changed, no isolation backend had been
+implemented, and `lib/isolation.mjs` and the spawn path in `lib/core.mjs` had not been touched.
+"Phase B" below is the integration that followed once #554, #555 and #588 landed: the backend in
+`lib/confinement.mjs`, the boundary canary, the issuance gate, and the one lane on which official
+issuance was proven with the real runtime.
 
 The question is narrow and answerable: on this machine, and on Linux, can AOS enforce a workspace
 boundary on a child agent process, and does a real agent CLI's authentication survive inside it?
@@ -52,7 +54,13 @@ The machine-readable form is `fixtures/confinement/probe.json`, digest
   cleanup observation, independent of this issue. #553 has already acted on it: unable to close the
   escape, it made `cleanup_established` false by construction, with
   `DESCENDANT_SCAN_ESTABLISHES_CLEANUP` as the constant Phase B flips once an enumeration exists
-  that does not depend on the process group.
+  that does not depend on the process group. **Historical, as of Phase B:** the enumeration that
+  constant was waiting for exists -- the ancestry poll, the process-group sweep and the survivor
+  sweep over environment markers and open paths, all three described above -- and #556's own gate no
+  longer consults `cleanup_established`. It reads `cleanup_verified`, which this issue computes from
+  those scans and refuses when no scan could answer. The constant is still `false` in
+  `lib/verifier-run.mjs` because flipping it is #553's call about #553's surface, not this issue's;
+  nothing in the isolation gate depends on it.
 - **A leak under Seatbelt is a process that outlives the run without gaining reach.** The orphan,
   reparented to pid 1, wrote `ORPHAN_STILL_CONFINED`; the unconfined control wrote
   `ORPHAN_READ_OK`. It still blocks `cleanup_verified`, and it should.
@@ -195,6 +203,495 @@ Commands are written with placeholders rather than the probing machine's paths.
 | `@RUNTIME_FILES@` | fixtures/confinement/probes, mounted or allowed read-only |
 | `@AGENT_TEMP_HOME@` | the temporary HOME a BEST_EFFORT_CLI run creates |
 | `@HOSTNAME@` | the probing machine's network name, removed from recorded output |
+
+## Phase B: the boundary in the spawn path, and what may be called official
+
+Everything above this heading is Phase 0 evidence and is left as it was measured. This section is
+the integration that evidence was collected for: `lib/confinement.mjs` now sits between
+`buildAgentEnv` (#555) and the `spawn` in `lib/core.mjs`, and every result carries a confinement
+record that the issuance gate reads. The support matrix at the end of this section is rendered
+from `fixtures/confinement/support-matrix.json`, whose rows point at observations under
+`fixtures/confinement/observations/strict-lane.*` that were produced by running
+`fixtures/confinement/probes/strict-lane.mjs` on this machine. `tests/product/confinement.test.mjs`
+holds the fixture, the observations and this document together the way the Phase 0 test holds
+the probe record: the table printed here must be the one the fixture renders to, the fixture's
+digest must describe its own content, and every official row must name a canary observation that
+says `PASS` and a runtime observation that exited 0.
+
+### The adapter
+
+`prepareConfinement` is the one seam. It takes the level `buildAgentEnv` already decided, the
+adapter, the workspace, `AOS_HOME`, the agent's private HOME and the run's scratch directory, and
+returns a handle whose `spawnSpec` wraps the command, whose `track` starts the descendant scan,
+whose `record` writes the confinement record and whose `cleanup` tears the profile down. Under
+`BEST_EFFORT_CLI` and `NONE` the handle is a passthrough: the command is spawned as before, no
+boundary is claimed, and the record says `filesystem_enforced: false`, `process_enforced: false`,
+`boundary_canary.result: NOT_RUN`. Under `STRICT` on darwin the handle renders a Seatbelt profile
+from the isolation policy and spawns through `/usr/bin/sandbox-exec -f <profile>`; on linux it
+builds a `bwrap` argument vector, and where `bwrap` is not on the machine `prepareConfinement`
+refuses with `AOS_ISOLATION_BACKEND_ABSENT` rather than running the agent unconfined under a
+STRICT label. The backend's presence is probed on every run, not remembered.
+
+The profile is rendered *from* the policy. Every grant the boundary carries is declared in
+`policy.filesystem` -- the writable trees, the readable trees, the platform's own trees and files,
+the devices, the executables and the denies -- and `renderSeatbeltProfile` emits those arrays and
+nothing of its own. It used to keep a second list, which made the policy digest decorative: a
+review set the declared readable set to empty and the rendered rules did not move. One mapping
+means the digest governs the bytes, which is what `isolation_policy_digest` on the profile is for.
+
+The Linux vector is rendered from the same declaration: `bubblewrapArgs` mounts the policy's own
+trees and nothing of its own. It used to bind all of `/etc` and all of `/sbin` against a policy
+declaring `/etc/ssl` and `/etc/resolv.conf`, which is the Seatbelt defect on the other side -- the
+digest describing one boundary while the argument vector applied another, with `/etc/hostname` and
+`/etc/machine-id` inside it.
+
+The special mounts are the other half of the same rule, and they were the half still broken: `--proc
+/proc`, `--dev /dev` and `--tmpfs /tmp` were added unconditionally, so emptying both device arrays
+produced a byte-identical argument vector and the policy digest could move while the applied
+boundary did not. `--dev` was the worst of the three, mounting a whole device instance whose
+contents the policy never named. Now a tmpfs holds `/dev` and each declared node is bound onto it at
+the access the policy gives it (`--ro-bind-try` for `device_readable`, `--dev-bind-try` for
+`device_writable`); `/proc` follows the process axis, since a fresh proc instance is what a pid
+namespace is for; and the private `/tmp` is declared as `filesystem.private_tmpfs`, a key that
+exists only on a mount-namespace backend because Seatbelt has no mounts to give.
+
+The system grants are the narrowest set the runtime was measured to need on this machine:
+`/usr/lib`, `/System/Library` and `/private/var/db/dyld` as trees, plus the individual symlinks a
+path resolves through (`/tmp`, `/var`, `/etc`, `/Users`, `/usr`, `/bin`). `/Library`, `/usr/share`,
+`/private/etc`, `/private/var/select` and `/private/var/db/timezone` were granted in Phase 0 and
+are not needed: `codex login status` and `codex exec` both run without them, measured by removing
+each in turn. Two canary cells hold the line -- `system_library_read` proves the granted tree is
+readable, `host_etc_read` proves `/private/etc/hosts` is not -- so a policy that widens again fails
+the canary rather than passing quietly. The run's own trees are granted *after* the denies, because
+a later rule wins and a node or runtime installed under the operator's home has to stay readable
+while the rest of that home does not.
+
+The filesystem policy is the Phase 0 profile with the holes closed:
+
+- the workspace is the only read-write subpath;
+- the operator's home and the directory holding every other run's workspace are denied by name
+  too, and the run's own workspace and trees are granted back after them;
+- `AOS_HOME` is denied by name, and the rule comes *before* the workspace allow -- the later rule
+  wins under Seatbelt, so a deny placed after the allow would be the one that lost. Run workspaces
+  live outside the store now (see below), so the store is denied whole and nothing inside it is
+  granted back; a workspace that *contains* the store is refused outright by `prepareConfinement`
+  with `AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME`, and one *inside* it is refused by `runProcess`
+  with `AOS_ISOLATION_WORKSPACE_INSIDE_STORE`, both before anything is rendered;
+- the agent's private HOME is read-write and is where TMPDIR points, so a runtime that must write
+  somewhere writes there and the directory goes with the run;
+- the run's scratch directory (the prompt file), the node tree and the runtime CLI tree are
+  read-only;
+- the operator's home directory is never named. The Phase 0 profile allowed `~/.codex`
+  read-only as a hole so that Codex could authenticate; under Phase B the operator's
+  configuration directory does not appear in the profile at all. `stageRuntimeConfig` copies the
+  adapter's declared files -- for `codex-cli.v1`, `auth.json` and `config.toml` -- into
+  `<agent HOME>/.codex` (mode 0700, files 0600) before the spawn and points `CODEX_HOME` at the
+  copy. A read-only hole was tried first and Codex 0.148.0 exits 1 under it (`failed to
+  initialize in-process app-server client: Operation not permitted`: it writes its state database,
+  `installation_id` and `tmp/arg0` into `CODEX_HOME` on start). A read-write hole would have let
+  the agent rewrite the operator's `config.toml`, which is where `notify` hooks and MCP servers
+  are declared, and that is persistence outside the boundary. The copy is neither: what Codex
+  writes -- session logs, its state database, a refreshed token -- lands in the copy and is
+  removed with the agent's HOME. The record lists the hole as
+  `{ env: "CODEX_HOME", access: "staged-copy", staged: ["auth.json", "config.toml"] }`.
+
+The policy is a value, and `isolationPolicyDigestOf(policy)` is its digest over the canonical
+bytes; #561 folds it into the profile digest, and the canary observation and the confinement
+record both carry it so a result can be tied to the exact boundary it ran under. The Phase 0
+profiles printed below are unchanged and still digest to the values the probe record holds; the
+Phase B profile is generated per run and is not printed here because its paths are the run's.
+
+### The process axis
+
+Phase 0 item 1 is bought. `descendantTracker` polls `ps -axo pid=,ppid=,pgid=,lstart=` (on
+linux, `/proc`) every 200 ms while the agent runs, and a process is adopted when its parent chain
+reaches the agent or its group is the agent's; identity is pid plus start time so a recycled pid
+is not mistaken for a survivor. A descendant that `setsid`s out of the group is still adopted
+through its parent, and if it double-forks it is adopted through the reparented `ppid` chain
+provided it is alive at a poll. After the agent exits, `runProcess` kills the group as before and
+then terminates everything the tracker still holds, and the record's `descendants` block carries
+`leaked` (alive after the agent exited), `survivors` (alive after teardown), `tracked` and
+`polls`. A process that double-forks *between* two polls and re-sessions before the next is
+not seen by the poll, so the poll is not what the record rests on. `processAxisEnforced` writes
+`process_enforced: true` only when four measured things hold together: the canary's own detached
+descendant tried to write outside the boundary and the kernel refused it (`escapee_confined`), the
+scan polled more than once while the agent was alive, the process group was swept at teardown --
+which catches a descendant that forks away without taking its own session -- and `survivorSweep`
+ran and found nothing.
+
+**What holds a descendant, and what does not.** Three scanners cannot prove a process is absent. A
+descendant that double-forks, calls `setsid`, clears its environment, closes every inherited
+descriptor and changes directory is in none of them, and each round of hardening here ended with a
+further stripping that evaded the new scanner. So the lane does not claim the scans are complete.
+What it claims is the property that is actually enforced: on Seatbelt the profile is inherited
+across fork and exec and cannot be shed with the markers, so a descendant AOS never sees is still
+refused everything outside the workspace. The canary demonstrates it on every STRICT run --
+`stripped_descendant` sheds all of it, writes inside the workspace (which is how the parent knows it
+ran) and is refused the file it tries to create outside (which is the claim) -- and
+`processAxisEnforced` reads that proof. The scans stay and anything they find still blocks, because
+a descendant AOS can see is one it must terminate; they are detection, and the inherited profile is
+containment. `process_containment` on the record says which of the two a lane has:
+`inherited-profile` on Seatbelt, `pid-namespace` under bubblewrap's `--unshare-pid`, where
+membership cannot be shed at all and the case does not arise.
+
+The case is measured, not assumed away, and it is narrower than "a descendant nothing saw". A review reproduced it against an injected process table --
+poll 1 holding root PID 100, poll 2 additionally holding PID 200 reparented to PID 1 and regrouped
+to PGID 200 -- and `processAxisEnforced` returned true while PID 200 was still in the table. That is
+the known-undetectable case, and it is accepted with the bound below rather than papered over: the
+alternative would be to weaken the canary until the finding disappeared, which would remove the only
+evidence the lane has.
+
+**A leak with a pid is not a residual.** The canary's own escapee is AOS's child and its pid is in
+hand at spawn, so the observation records that pid, AOS kills it at teardown and checks that it went
+(`stripped.dead_after_cleanup`), and a live one fails the canary and blocks issuance by name. The
+same is true of anything the three scans do find. What is accepted below is only the case where AOS
+never had a pid at all.
+
+**The residual, exactly.** A survivor with no marker, no handle and no pid AOS ever held can outlive
+the run, and it can write
+inside *that run's own workspace* after AOS has digested the evidence. It cannot read or write
+anything else: not the store, not another run's workspace, not the operator's home, not the staged
+credential copy once the agent HOME is gone. It cannot see another run, and it cannot outlive the
+boundary's grant of anything but the one directory. macOS has no facility that makes membership
+unsheddable -- no cgroup, no jail this tool can enter, and `ps` exposes no session id to a non-root
+process -- so this is stated as a limitation of the lane rather than enforced away, and it is one of
+the reasons the lane is `SUPPORTED_WITH_CONSTRAINTS`.
+
+That sweep is what closes the double-fork-plus-`setsid` case -- and what it may *do* with what it
+finds is now separated from what it finds. The open-path scan identifies candidates, not
+descendants: a process is this run's because it was tracked from the spawn, carries the run's
+marker, or is in the run's group. A pid named only by an open handle is recorded as a
+`path_holder`, blocks issuance, and is never signalled. The version that put it straight into
+`survivors` killed an unrelated `sleep` whose working directory was the operator's project -- `aos
+agent run` defaults `--workspace` to the operator's current directory -- and reported it as this
+run's leaked descendant. For the same reason neither sweep looks at the operator-supplied workspace
+at all any more: they scan the agent HOME and the run scratch, which AOS created for this run.
+
+The claim is weaker than it was and it is the claim that is true: a descendant that clears its
+environment *and* leaves its group *and* closes every inherited handle is not caught; one that keeps
+a handle is *reported and blocks the run*, but is not killed unless something else identifies it as
+ours. Termination follows identity, and an open file is not identity. It looks for this run's marker
+(`AOS_SESSION_ID=<session>`, unique to the run) in every process environment, and for the run's own
+workspace, agent HOME and scratch among every process's open files and working directories: both
+handles survive a reparent and a regroup, which is exactly what the process table does not. It runs
+at teardown, kills what it finds, sweeps again, and the record carries the second result -- so a
+run that caught its own escapee reads clean and one that could not kill it does not. A sweep that
+could not run leaves the axis unenforced rather than unmentioned, and the sweep never treats itself
+or any process above it as a survivor. The canary proves the mechanism on every STRICT run: beside
+the descendant it leaves for the ancestry scan, it starts a child that spawns a grandchild and
+exits at once, so the grandchild is reparented to init in a session and a group of its own, and the
+run is official only if the sweep found it and it was gone afterwards.
+
+What is left is a process that clears its own environment *and* closes every handle it inherited
+before the sweep runs -- and such a process is still inside the same kernel-enforced profile, which
+the escapee cell measures on every run. On a backend with a pid namespace (bubblewrap's
+`--unshare-pid`) the case cannot arise at all. That residual is named on
+`descendants.residual`, in the lane's constraints, and in the support table -- it is why the lane
+is `SUPPORTED_WITH_CONSTRAINTS` and not `SUPPORTED`.
+
+What bounds it is the settlement freeze. Such a survivor is granted this run's own workspace by the
+same profile that holds it, and grading used to read that tree afterwards -- so a process nothing
+could see could write an artifact between the last invocation and the grader and change the
+measurement. `freezeWorkspace` copies each family's workspace at the moment execution is declared
+settled, grading and every artifact read run against that copy, and the live tree is digested again
+afterwards: a difference is `AOS_ISOLATION_WORKSPACE_WRITTEN_AFTER_SETTLEMENT` and the run is not
+official. A comparison that could not answer at all -- a digest that raised, a family whose freeze
+recorded none, a family that never settled and so left no entry -- is
+`AOS_ISOLATION_SETTLEMENT_UNVERIFIED` and is equally not official: "we could not check" and "we
+checked and it was fine" are different runs, and only one of them may carry a claim. The check is
+made against the families the run was supposed to settle rather than against the keys the record
+happens to carry, because an empty settlement raises no complaint and that is not the same as
+having nothing to complain about. The copy holds regular files and directories and nothing else. A symlink is refused by
+name, because a link's own bytes are in the tree digest and its target's are not: reproduced in the
+copy, it would have let a survivor point `response.json` outside the workspace, rewrite that file
+after settlement, and be graded on the new bytes with `changed_after_settlement: false` beside them.
+A refused artifact reads as missing, which is the rule staging, the cohort digest and the workspaces
+root already hold. The settlement digest is taken over the live tree rather than over the copy, so
+the two sides of the comparison are the same question asked twice; the copy's own digest is recorded
+beside it as `copy_digest`. `cleanup_verified` is true only when the profile, the agent HOME and the scratch
+directory were removed and `survivors` is empty; it is set in `settleConfinement`, after the
+`finally` in `runProcess` has done the removal, so a cleanup failure it cannot see is not one it
+can vouch for.
+
+### The boundary canary
+
+Before the agent is spawned under `STRICT`, `runBoundaryCanary` runs a node program under the
+same profile the agent will get. The program is embedded in `lib/confinement.mjs` rather than kept
+in `fixtures/`, so it is present wherever the module is and its bytes are the bytes that ran; its
+digest is `BOUNDARY_CANARY_PROGRAM_DIGEST`, and it exercises
+eleven cells in the Phase 0 vocabulary: read and write inside the workspace (expected `allowed`),
+read, write and delete outside it, read the store root, read another run's directory, follow a
+symlink out, list the operator's home (all expected `denied`), connect outbound (expected
+`allowed` for a provider-required policy -- an `ECONNREFUSED` against a closed local port is a
+connection the kernel let through), and spawn a detached descendant (expected `spawned`, then
+observed by the scan, proved confined, and dead after cleanup). The descendant is not a `sleep`:
+before it sleeps it tries to write a file outside the boundary and leaves the shell's status where
+the parent can read it inside the workspace. A descendant that outlives its parent is a lifetime
+problem; one that outlives it *outside* the boundary is an access problem, and this cell is the
+kernel's own answer to which of the two happened. `evaluateCanary` compares every observed cell to
+the expectation this module declares for it -- `CANARY_CELLS` is the list, and it is fourteen cells
+now that the read policy and the orphan are measured -- and the result is `PASS` only when all of
+them agree and the planted files outside the boundary are intact afterwards; anything else is
+`FAIL`, with the failed cells named. The
+Every cell's verdict is derived from its own `expected`/`observed` pair, and the `result` a record
+reports is never read: a review handed the gate the committed official record with `outside_read`
+reporting that it had read what it expected to be denied, `result: "PASS"` left in place, and got
+`official: true` with no reasons. A cell that contradicts its expectation is a failed boundary, a
+cell that reports nothing is `NOT_RUN`, and the summary above them is a claim about observations
+rather than one of them.
+
+The `evidence_digest` on the record is the digest of the canary's own report -- the bytes the program
+wrote to stdout -- and the raw observation is kept beside the run. The digest of the *file* an
+observation is committed as is a different value, and it is what the support matrix cites a row's
+evidence by; the two are never the same number and the table names which is which.
+
+The canary is what separates "the profile did not apply" from "the profile applied". Phase 0
+item 4 asked for a setup-failure channel other than the exit code; this is it. A profile that
+`sandbox-exec` rejects (exit 65) or a binary it cannot exec (exit 71) fails the canary before the
+agent runs, `setup_verified` stays false, and nothing is issued.
+
+### The network axis, stated rather than implied
+
+The profile allows outbound network wholesale, because the provider transport needs it and this
+layer cannot tell a request to the provider from a request the task made. The record therefore
+says `network.provider_transport: allowed` and `network.task_external: NOT_OBSERVED`, the policy
+name is `provider-required-unrestricted`, and the gate never reads `denied` into it. A future
+`restricted` or `disabled` policy would have to be measured by a canary cell before the record
+could say anything else.
+
+### The gate
+
+`issuanceGate(record)` returns `{ official, record_problems[], isolation_level, backend,
+boundary_canary, reasons[], claim_stage_ceiling, platform_lane, network, policy_digest }` and #559
+and #563 consume it.
+
+Before any condition below is read, a `STRICT` record is authenticated: it must carry the schema
+the builder stamps, a rendered-profile digest and a policy digest, a network observation with its
+enforcement stated, a canary whose `program_digest` is the digest of the canary source shipped in
+this package, every one of the eleven cells that program reports, the out-of-band checks made from
+outside it, and a descendant block with the poll interval, more than one poll and the teardown
+sweep. Anything missing is `AOS_ISOLATION_RECORD_INVALID` with the missing evidence named in
+`record_problems`. This is the difference between judging a record and judging an object shaped
+like one: a review handed the old gate a record with no schema, no cells, no polls and digests of
+sixty-four zeroes, and got `official: true` with an empty reason list. Missing evidence closes the
+gate; it never opens it.
+
+`official` is true only when every one of these holds at once, and every one that fails is named
+in `reasons`:
+
+| Condition | Reason when it fails |
+| --- | --- |
+| level is `STRICT` | `AOS_ISOLATION_LEVEL_NOT_STRICT` |
+| a real backend ran (`macos-seatbelt`, `linux-bubblewrap`, `linux-container`) | `AOS_ISOLATION_BACKEND_ABSENT` |
+| filesystem and process axes enforced | `AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED`, `AOS_ISOLATION_PROCESS_NOT_ENFORCED` |
+| the profile applied (canary ran under it) | `AOS_ISOLATION_SETUP_UNVERIFIED` |
+| canary `PASS` with an evidence digest | `AOS_ISOLATION_CANARY_NOT_PASS` |
+| no leaked descendant, no survivor | `AOS_ISOLATION_LEAKED_DESCENDANT` |
+| profile, HOME and scratch removed | `AOS_ISOLATION_CLEANUP_UNVERIFIED` |
+| policy digest present | `AOS_ISOLATION_POLICY_DIGEST_MISSING` |
+| the lane's support status is releasable | `AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE` |
+| the (platform, backend, adapter, level) lane has committed evidence | `AOS_ISOLATION_LANE_NOT_PROVEN` |
+| the record carries the evidence the run produced | `AOS_ISOLATION_RECORD_INVALID` |
+| a matrix row's cited observation matches the digest it declares | `AOS_ISOLATION_EVIDENCE_DIGEST_MISMATCH` |
+
+A STRICT row must cite every kind of evidence by name -- canary, runtime, exec, cleanup, host --
+and the requirement follows the row's *level*, never its own `official` label: keyed on the label it
+composed away, because a row marked not-official was asked for no evidence while the decision the
+gate derives separately still came out official and the renderer printed it. The label declares
+which rows are expected to be official; it does not decide what they must show. Each cited
+observation must record a run that succeeded *and* say it did the thing: a login
+whose markers report no login and an execution that did not answer the prompt are refused with
+`AOS_ISOLATION_EVIDENCE_EXECUTION_FAILED`, and a missing kind with
+`AOS_ISOLATION_EVIDENCE_MISSING`. The identity a row claims comes from the observation of the
+runtime that authenticated, not from the canary beside it, and the recorder resolves the binary
+once so the identity describes the executable that produced the evidence. The network axis is
+enumerated rather than typed: an unknown policy has no expectation for the network cell at all, and
+`provider_transport` must be `allowed` or `denied` -- a record naming a policy nobody has measured,
+or publishing a null transport, is refused rather than read as permission.
+
+`claim_stage_ceiling` is `PROFILE_BOUND` when official and `RUN_DIAGNOSTIC` otherwise, and the
+CLI applies it against the result surface #559 introduced. The verdict travels into `evaluate` as
+the run's `boundary` -- and an absent verdict withholds exactly like a negative one: a caller who
+says nothing about the boundary has established nothing about it, so an omitted, null or malformed
+boundary is `AOS_ISOLATION_NOT_MEASURED` rather than permission. Two things follow from it. The claim stage falls to `RUN_DIAGNOSTIC` on
+every surface, with the `AOS_ISOLATION_*` codes carried beside it in `boundary_withheld`. And the
+composite -- the surface labelled *PROFILE-BOUND OPERATOR-AGENT SYSTEM PERFORMANCE* -- is withheld:
+`issued: false`, `value: null`, and a `withheld_reason` naming the isolation conditions, so `aos
+assess` exits non-zero and prints the reasons where the number would have been. The codes travel on
+the result as `boundary_withheld`, beside the other three lists that say why a claim stage fell, and
+`aos verify --run` recomputes the result under them -- reading the verdict from the run's own
+confinement record rather than from the artifact, and comparing the published `isolation` block as
+well as the codes. Without that input every withheld result recomputed as an issued one, so an
+untampered artifact failed its own verification; taking the verdict off the artifact instead let a
+withheld result edited to a consistent set of official surfaces recompute to exactly the forged
+version and verify; and leaving the `isolation` block out of the comparison let level, backend,
+both axes, the policy digest and `network.task_external` be rewritten -- `NOT_OBSERVED` to `denied`
+-- with `PASS recompute` beside them.
+
+All three PROFILE-BOUND surfaces withhold together. Both index labels begin with PROFILE-BOUND, so
+an index published under a boundary that did not hold is the same claim the composite would have
+made one line down the page, and SSOT's completion condition is that BEST_EFFORT and NONE issue
+none of the three. Nothing measured is lost: every construct and every domain row keeps the
+estimate it was issued, and the outcome and composite keep their raw values. What the boundary
+decides is the claim about the profile, and a headline number whose own label says "profile-bound"
+is that claim. This is what the level table above means in practice --
+`BEST_EFFORT_CLI` is diagnostic only (SSOT §24), which the legacy scorer now enforces on its own
+side too: `issuanceCheck` issues under a declared `STRICT` level and nothing else, where its default
+of `BEST_EFFORT_CLI` used to hand a caller who declared no level at all the permissive answer -- and it is a behaviour change for every host
+that cannot run the proven lane: `aos cycle` has no aggregate to take there, and says so per run
+rather than printing a number that reads as official. `issuanceGateForRun(records)` folds a run's
+invocations into one decision that is official only when every invocation is, on the same lane
+and policy, and a run with no invocations is not official. `BEST_EFFORT_CLI` and `NONE` cannot
+reach `official` by any path: the level check alone refuses them, and
+`tests/product/confinement.test.mjs` walks every lane in the support matrix and every level to
+show zero official cases outside `STRICT`.
+
+### The lane that was proven
+
+The real-lane recorder ran on this machine (`strict-lane.darwin.host.json`: Darwin 25.3.0
+arm64, macOS 26.3, node v22.23.2, codex-cli 0.148.0, `/usr/bin/sandbox-exec` present). Under
+the generated profile:
+
+- the canary passed all eleven cells, the planted files were intact, and the detached descendant
+  was seen by the scan and dead after cleanup (`strict-lane.darwin.seatbelt.canary.json`);
+- `codex login status` exited 0 with `Logged in using ChatGPT` against the staged copy
+  (`strict-lane.darwin.seatbelt.codex-auth.json`);
+- `codex exec --skip-git-repo-check -C @WORKSPACE@ -o @WORKSPACE@/last-message.txt -` with the
+  prompt on stdin exited 0 and answered `OK` in about five seconds
+  (`strict-lane.darwin.seatbelt.codex-exec.json`).
+
+What a runtime wrote is recorded as a summary -- bytes, lines, a digest over the bytes, and which
+of a few markers the stream contained -- and never as text. `fixtures/confinement/` ships with the
+package, SSOT excludes raw transcripts from committed evidence, and the recorder used to copy the
+runtime's stdout and stderr verbatim: the prompt, the model's answer, the banner and a session id.
+The digest is what makes the summary evidence, because it is over what the runtime actually wrote
+and a re-run can be compared against it.
+
+The probe stamps the lane official only if all three of its subprocesses succeeded -- the canary,
+`codex login status` and `codex exec` -- and it records its own teardown as an observation
+(`strict-lane.darwin.seatbelt.cleanup.json`: the staged credential copy, the agent HOME, the run
+scratch and the base store, each gone or not). Its cleanup is unconditional, so a failing canary no
+longer leaves the staged copy of the operator's credential on disk. The matrix reads
+`cleanup_verified` from that observation and the process axis from the canary's recorded group
+sweep through `processAxisEnforced` -- the same helper a run uses -- so the table has one formula
+rather than two, and every observation a row cites must record an exit status of 0.
+
+A guard that only one platform can measure is recorded where the other can require it:
+`tests/mutation/measured.json` carries, per guard, the platform that measured it and a fingerprint
+of the guard and the bytes of the file it mutates. The lane that cannot run it demands a record that
+still describes the code in front of it, so a guard cannot be deferred on every lane and counted as
+fine -- and a change to the guard or that file makes the record stale until the platform that owns
+it has run again.
+
+`npm run verify:real-runtime-strict` sets `AOS_REAL_STRICT_REQUIRED=1`, and under that variable a
+skip is a failure: on a host without the backend, or without an authenticated Codex, the script
+exits non-zero naming `AOS_REAL_STRICT_NOT_RUN` rather than reporting a suite that skipped
+everything as a pass. `npm test` sets nothing, so the same file skips honestly there.
+
+`tests/product/confinement-real-lane.test.mjs` (`npm run verify:real-runtime-strict`) repeats
+this through `runProcess` rather than the recorder: a node agent that tries to leave the boundary
+and leaves a detached `sleep` behind gets `EPERM` on every outside cell, sees no `AOS_HOME` in its
+environment, is reported with `leaked_descendants: true` and the descendant's pid, and the
+descendant is dead after teardown; the installed Codex runtime, run through the same path, exits
+0, answers `OK`, and its record is `official: true` with an empty reason list. On a machine
+without `sandbox-exec`, or one that is not darwin, the file skips with an explicit `NOT_OBSERVED`
+reason and does not pass on nothing.
+
+Adapter membership is the name a package publishes, not the shape of a path. The rule that binds
+staging to the executable #554 verified was first written as a test on that executable's realpath
+(`/(?:^|\/)@openai\/codex\//`), and a directory is something anyone can create:
+`/tmp/x/@openai/codex/evil.mjs` is an operator-owned file with safe modes, so #554 called it
+VERIFIED and it was handed the operator's live `auth.json` -- and accepted by the gate as the one
+lane the release has proven. `declaringPackage` walks up from the verified executable, reads each
+`package.json` through the same no-symlink rule staging uses, and requires one of them to publish
+the adapter's package name; the shipped Codex layout, where the binary sits inside a nested platform
+package, resolves at the ancestor that names itself `@openai/codex`. The residual is stated rather
+than implied: an operator who plants a complete package tree naming itself `@openai/codex` is still
+staged, because nothing offline distinguishes that from an install -- the closure is an
+operator-pinned identity digest on the agent registration, which is #554's surface.
+
+A staged file must be the file it claims to be: `lstat`, not `stat`, so a `config.toml` that is a
+link to anywhere on the host is refused by name rather than copied into the agent's private HOME.
+Its bytes would not be credential-shaped -- plain host content walks straight through the redactor
+-- so this is a fail-closed rule and not a redaction problem, and the record lists what was refused
+so the operator sees why the runtime came up without it.
+
+The staged copy is also what the run scrubs by value: `stageRuntimeConfig` hands the caller the
+credential-shaped strings it copied, and `runProcess` rebuilds its exact-value scrubber from them
+before the agent starts. The scrubber used to be built from the environment alone, so a task that
+opened its own staged `auth.json` and printed an unfamiliar token shape published it; the shape
+rules in `lib/redact.mjs` now also cover a JSON `refresh_token`-style field and vendor-prefixed
+opaque tokens. The bytes of the staged `config.toml` are bound into the profile as
+`runtime_config_digest` (the credential is deliberately excluded: a refreshed token is not a new
+cohort), and the lane the CLI runs under is bound as `isolation_level` plus
+`isolation_policy_digest`, so a run under `AOS_ISOLATION=STRICT` is a different cohort from one
+under the default lane instead of an identical digest with a different boundary.
+
+Nothing the child can read discloses the store. `AOS_WORKSPACE` is `.` against a cwd of the
+workspace and `assertNoStorePathInEnv` refuses the spawn if any variable -- from any layer --
+carries the store path; and the workspaces no longer live inside the store at all. `runPaths` puts
+them under their own root beside it (`<store>-workspaces/<run>/<family>`, or `AOS_WORKSPACES`), so
+the working directory an agent reads out of `getcwd` names its own workspace and nothing above it.
+Every containment question is asked of canonical paths, in both directions: `workspacesRoot`
+refuses an `AOS_WORKSPACES` that resolves inside the store, `checkBindings` refuses a workspace that
+contains the store *or* sits inside it, and the spawn compares the resolved workspace as well as the
+one it was handed. A symlinked workspaces root is outside the store to a string comparison and
+inside it to the kernel, which is the only reader whose answer becomes the child's working
+directory. `runProcess` refuses a workspace under `AOS_HOME` outright
+(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE`), because the layout is decided three files away from the
+spawn. The store keeps AOS's own records: manifests, events, results, reports.
+
+A cleanup failure is recorded by class and by digest of the path, never by the path: this record
+is copied whole into the result the operator publishes, and the directories in it are absolute
+paths under their home with the run's own id in them.
+
+From the CLI, the lane is the operator's to name: `AOS_ISOLATION=STRICT aos agent run ...` (and
+`aos assess`, `aos observe`) runs under the boundary and the record says so; unset, the CLI runs
+`BEST_EFFORT_CLI`, which every host can run and which is never official. A value that is neither
+lane is refused as `AOS_ISOLATION_LEVEL_UNKNOWN` before any command runs, because a misspelling
+that quietly fell back to the weaker lane would look exactly like choosing it. A live
+`aos agent run codex --task ... --json` under `AOS_ISOLATION=STRICT` on this machine returned a
+record with `level: STRICT`, `backend: macos-seatbelt`, canary `PASS`, three tracked descendants
+and none leaked, `cleanup_verified: true`, and `AOS_HOME` in the removed-variable list; the gate
+over that record is `official: true` with no reasons.
+
+That lane -- `darwin/macos-seatbelt/codex-cli.v1` at `STRICT` -- is the one row in the matrix
+that is official, and it is `SUPPORTED_WITH_CONSTRAINTS` rather than `SUPPORTED` for the four
+reasons the fixture lists: `sandbox-exec` is deprecated by Apple and still enforcing, so the
+adapter re-checks it on every run; `CODEX_HOME` is a staged copy; task-initiated external
+network is `NOT_OBSERVED`; and a descendant that double-forks between two polls is not tracked.
+The darwin `claude-code.v1` and `generic-command.v1` rows share the boundary measurement but no
+real runtime authenticated under it on those lanes, so they are `NOT_OBSERVED` and withheld. The
+linux rows are `NOT_OBSERVED` because this machine cannot run `bwrap` and the Phase 0 container
+could not run the darwin-only runtime; the argument vector is tested, the boundary is not
+measured, and Phase 0 item 3 -- a Linux runner -- is still the coordinator's to add.
+
+### Support matrix
+
+Rendered by `renderSupportMatrix` from the decisions `supportMatrixDecisions` made -- it renders
+what was decided rather than deciding again -- over `fixtures/confinement/support-matrix.json`,
+digest
+`sha256:e1d66f95354536f4ebd6f0059f42237cca3876062d4aadb526351b4cc75c21e2`. The `Official` column
+is the gate's decision over the row's committed evidence, not the row's own label: the test forges
+an official Linux row and shows the gate refuses it. Each row cites its observations by file *and
+by digest*, and the digest is checked against the bytes before the observation is read -- a row
+whose citation does not match what is on disk claims nothing
+(`AOS_ISOLATION_EVIDENCE_DIGEST_MISMATCH`). Those observations ship with the package
+(`fixtures/confinement/` is in `files`), so the shipped matrix can prove what it cites.
+
+| Platform | Backend | Adapter | Level | Support | Official | Reason / evidence |
+|---|---|---|---|---|---|---|
+| darwin | macos-seatbelt | codex-cli.v1 | STRICT | SUPPORTED_WITH_CONSTRAINTS | OFFICIAL | canary `strict-lane.darwin.seatbelt.canary.json`; runtime `strict-lane.darwin.seatbelt.codex-auth.json`; exec `strict-lane.darwin.seatbelt.codex-exec.json`; cleanup `strict-lane.darwin.seatbelt.cleanup.json`; host `strict-lane.darwin.host.json` |
+| darwin | macos-seatbelt | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_EVIDENCE_MISSING, AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
+| darwin | macos-seatbelt | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_EVIDENCE_MISSING, AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- boundary measured by the same canary, no real runtime authenticated under it on this lane |
+| darwin | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
+| darwin | none | * | NONE | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
+| linux | linux-bubblewrap | codex-cli.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_EVIDENCE_MISSING, AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-bubblewrap | claude-code.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_EVIDENCE_MISSING, AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-bubblewrap | generic-command.v1 | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_EVIDENCE_MISSING, AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured |
+| linux | linux-container | * | STRICT | NOT_OBSERVED | withheld | AOS_ISOLATION_EVIDENCE_MISSING, AOS_ISOLATION_RECORD_INVALID, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- Phase 0 measured the boundary in a container and could not run the darwin-only runtime inside it; no adapter targets it |
+| linux | none | * | BEST_EFFORT_CLI | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
+| linux | none | * | NONE | BLOCKED | withheld | AOS_ISOLATION_LEVEL_NOT_STRICT, AOS_ISOLATION_BACKEND_ABSENT, AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED, AOS_ISOLATION_PROCESS_NOT_ENFORCED, AOS_ISOLATION_SETUP_UNVERIFIED, AOS_ISOLATION_CANARY_NOT_PASS, AOS_ISOLATION_CLEANUP_UNVERIFIED, AOS_ISOLATION_POLICY_DIGEST_MISSING, AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE, AOS_ISOLATION_LANE_NOT_PROVEN -- no OS boundary: a replaced HOME and a filtered environment are not a sandbox |
 
 ## Matrix
 
@@ -1012,6 +1509,14 @@ temporary directory to test a `CODEX_HOME` redirect; that copy stored the value,
 and the question was re-answered with an empty directory. Recorded output is scrubbed of the
 operator's home, temp directory and hostname before it is written.
 
+Phase B makes a copy of that kind deliberately, and the difference is its scope. `stageRuntimeConfig`
+copies `auth.json` and `config.toml` into the agent's private HOME (0700, files 0600) for the
+duration of one run and removes the directory with the run; the bytes are never read into this
+process as anything but a buffer handed straight to `writeFileSync`, nothing about their content
+is recorded, and the observation files record the staged file *names* and the source
+(`default_dir` or `operator_env`) only. The real-lane recorder and the tests were checked for the
+operator's account name, home path and hostname before the observations were committed.
+
 ## What was not measured
 
 - **No Linux host was probed.** The Linux kernel reachable from this machine is a VM, and a result
@@ -1028,6 +1533,10 @@ operator's home, temp directory and hostname before it is written.
   Any claim that rests on that distinction has to be recorded NOT_OBSERVED.
 
 ## What Phase B has to buy
+
+This list was written at the end of Phase 0. Items 1, 4 and 5 are bought by the Phase B section
+above; item 2 is still open (the darwin `claude-code.v1` row is `NOT_OBSERVED`); item 3 is the
+coordinator's.
 
 1. **A descendant enumeration that does not depend on the process group.** The cheapest correct
    item, and it fixes a defect that exists today: `processGroupMembers` did not report the detached

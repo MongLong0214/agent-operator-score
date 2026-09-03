@@ -18,7 +18,13 @@ const assessed = () => {
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
   const runId = newestRunId(cwd);
-  return { cwd, runId, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
+  const recordPath = join(cwd, ".aos", "runs", runId, "record.json");
+  // #556. The confinement verdict this run was actually issued under. `verify` reads it from the
+  // record rather than from the result, so a rebuild in a test has to hand `evaluate` the same
+  // input the CLI did -- a result rebuilt under a different boundary is a different result, which
+  // is the property the check exists to enforce.
+  const boundary = JSON.parse(readFileSync(recordPath, "utf8")).isolation.official_issuance;
+  return { cwd, runId, boundary, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
 };
 
 test("a result names the contract files it was built from, and verify checks them against this build's", () => {
@@ -63,13 +69,13 @@ test("a result carrying reliance evidence is recomputed from its own record too"
   // not it was carried through. #583 issues the ten metrics as an input like the caps are, and a
   // rebuild that dropped that input compared its withheld default against a stored PARTIAL profile
   // and reported that the result did not follow from its own observations.
-  const { cwd, runId, resultPath } = assessed();
+  const { cwd, runId, boundary, resultPath } = assessed();
   try {
     const stored = JSON.parse(readFileSync(resultPath, "utf8"));
     const contract = shippedEcdContract();
     const { contract_digest: _contract, profile_digest: _profile, ...facets } = stored.facet_identity;
     const withReliance = buildResult({
-      evaluation: evaluate(stored.observations, { facets, profile_digest: stored.profile_digest, forms_completed: stored.run.forms_completed }, contract),
+      evaluation: evaluate(stored.observations, { facets, profile_digest: stored.profile_digest, forms_completed: stored.run.forms_completed, boundary }, contract),
       contract,
       observations: stored.observations,
       run: stored.run,

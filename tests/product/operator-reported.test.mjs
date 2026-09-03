@@ -42,16 +42,62 @@ test("cleaning up scratch cannot end a run", async () => {
       { id: "x", command: process.execPath, args: ["-e", leaveAWriter] },
       { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "s", timeoutMs: 30000 }
     );
-    assert.equal(result.ok, true, "the run did not survive its own cleanup");
+    // The property under test: cleanup reports what it could not remove instead of throwing from
+    // a `finally` and replacing the run's own result. The run has a result, and it is the agent's.
+    // The writer above is a race -- the sweep may kill it before the walk -- so the assertions on
+    // the reported shape live in the deterministic case below, which makes its own HOME
+    // unremovable.
+    assert.equal(result.exit_code, 0, "the run did not survive its own cleanup");
+    assert.match(result.stdout_excerpt, /did the work/u);
     assert.equal(Array.isArray(result.scratch_not_removed), true);
-    // A directory left in the system temp folder is the smaller loss, and it is reported.
-    assert.equal(result.scratch_not_removed.every((entry) => typeof entry === "string"), true);
+    // By class and by digest of the path, never by the path: #556 publishes this record whole.
+    for (const entry of result.scratch_not_removed) {
+      assert.deepEqual(Object.keys(entry).sort(), ["class", "code", "path_digest"]);
+      assert.match(entry.path_digest, /^sha256:[0-9a-f]{64}$/u);
+    }
+    // And the writer itself: a descendant still running after the agent exited is a leak, which
+    // #556's survivor sweep finds even when it took its own session between two polls. It is
+    // reported rather than swallowed, and the run is not issued on it.
+    if (result.leaked_descendants) assert.equal(result.ok, false, "a leaked descendant left the run ok");
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }
 });
 
 // #459
+test("what cleanup could not remove is reported by class and digest, never by path", async () => {
+  // Deterministic, where the sibling above is a race: the agent makes a directory inside its own
+  // HOME unwritable, so removing the file in it is refused and the walk raises. #556 publishes this
+  // list in the run result and in the confinement record, and both are absolute paths on the
+  // operator's machine -- their home directory, the run's own id -- so both carry a class, a digest
+  // of the path and the errno instead.
+  const workspace = temporary("aos-cleanup-refused-");
+  try {
+    const lockItsOwnHome = [
+      'const { mkdirSync, writeFileSync, chmodSync } = require("node:fs");',
+      'const { join } = require("node:path");',
+      'const dir = join(process.env.HOME, "sealed");',
+      'mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, "x"), "y"); chmodSync(dir, 0o500);',
+      'process.stdout.write("sealed\\n");'
+    ].join("");
+    const result = await runProcess(
+      { id: "x", command: process.execPath, args: ["-e", lockItsOwnHome] },
+      { workspace, family: "FAM-1", stage: "stage-1", prompt: "go", promptFile: join(workspace, "p.txt"), session: "cleanup-refused-run", timeoutMs: 30000 }
+    );
+    assert.equal(result.exit_code, 0);
+    assert.ok(result.scratch_not_removed.length > 0, "the sealed directory was removed after all");
+    const published = JSON.stringify(result);
+    assert.equal(/\/(Users|home)\//u.test(published.replace(/"stdout_excerpt":"[^"]*"/u, "")), false, "an absolute home path reached the result");
+    for (const entry of result.scratch_not_removed) {
+      assert.deepEqual(Object.keys(entry).sort(), ["class", "code", "path_digest"]);
+      assert.match(entry.path_digest, /^sha256:[0-9a-f]{64}$/u);
+      assert.match(entry.class, /agent-home|run-scratch|confinement-scratch|other/u);
+    }
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test("an agent that fails two families identically stops the run", () => {
   // A Claude Code route exited 1 after a second with `Not logged in · Please run /login`, four
   // times, and the report blamed the operator for producing no contract.
@@ -139,6 +185,20 @@ test("this tool's own assessment workspaces are not the operator's sessions", ()
   assert.equal(isAosWorkspaceTranscript(`/h/.aos/runs/${run083}/workspaces/FAM-2/y.jsonl`), true);
   assert.equal(isAosWorkspaceTranscript("/h/.claude/projects/-Users-i-projects-myapp/x.jsonl"), false);
   assert.equal(isAosWorkspaceTranscript("/h/.codex/sessions/2026/08/28/rollout-x.jsonl"), false);
+
+  // #556 made the workspaces root configurable, and `AOS_WORKSPACES` accepts any absolute path
+  // while this recogniser knew only roots whose name ends in `-workspaces`. Under that supported
+  // knob AOS stopped recognising its own suite transcripts, and a family that is *designed* to end
+  // without verification came back to the operator as their own session -- the inversion this
+  // function exists to prevent, reached through a documented option.
+  const configured = { AOS_WORKSPACES: "/tmp/ws" };
+  assert.equal(isAosWorkspaceTranscript(`/tmp/ws/${run083}/FAM-1/.codex/sessions/x.jsonl`), false, "the default env is not supposed to know this root");
+  assert.equal(isAosWorkspaceTranscript(`/tmp/ws/${run083}/FAM-1/.codex/sessions/x.jsonl`, configured), true);
+  assert.equal(isAosWorkspaceTranscript(`/h/.claude/projects/-tmp-ws-${run083}-FAM-1/x.jsonl`, configured), true);
+  // A configured root is not a licence to skip everything under it: without a run id it is just a
+  // directory, and the operator's own sessions elsewhere are untouched.
+  assert.equal(isAosWorkspaceTranscript("/tmp/ws/notes/x.jsonl", configured), false);
+  assert.equal(isAosWorkspaceTranscript("/h/.codex/sessions/2026/08/28/rollout-x.jsonl", configured), false);
 });
 
 // #471

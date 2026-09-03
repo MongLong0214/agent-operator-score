@@ -11,7 +11,7 @@ import { BAND_NAMES } from "../../lib/report-i18n.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { LABELS, RESULT_SCHEMA_ID, RESULT_SCHEMA_VERSION, buildResult, projectResult } from "../../lib/result-schema.mjs";
-import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 import { addAgent, makePlan, newestResult, newestRunId, run as runCli } from "./helpers.mjs";
@@ -30,6 +30,13 @@ const bandNames = [...new Set(Object.values(BAND_NAMES).flatMap((names) => Objec
 // The words a hero is made of. Percentile, rank and certification are not in this list because the
 // claim section prints them on purpose -- as forbidden uses -- and the fields that would carry
 // them are asserted null below instead.
+// #556. The legacy scorer withholds its number on a lane the confinement gate did not call
+// official and under any level but STRICT, which is every lane a unit test runs on. These fixtures
+// are about what the renderers do with a legacy record that has a score, so they are built under a
+// boundary that held.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
+const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+
 const forbidden = [
   /Operator Score/u,
   /\/ 100\b/u,

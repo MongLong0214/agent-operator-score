@@ -19,6 +19,7 @@ const allPass = () => METRIC_IDS.map((id) => observationOf({
   subchecks: METRICS[id].subchecks.map((one) => ({ id: one, pass: true })),
   reason: "test"
 }));
+const BOUNDARY_HELD = Object.freeze({ official: true, reasons: Object.freeze([]) });
 const complete = { forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"] };
 
 /** A valid contract that is not the shipped one. Only the digest has to differ. */
@@ -28,8 +29,12 @@ const contractWithADifferentDigest = () => {
   return sealEcdContract(doc);
 };
 const facets = { language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", operator: "alice", occasion: 1 };
-/** A run that names the whole profile it was administered under, which PROFILE_BOUND requires. */
-const identified = { ...complete, facets, profile_digest: "sha256:aaa" };
+/**
+ * A run that names the whole profile it was administered under, which PROFILE_BOUND requires --
+ * including the boundary that enforced it: #556 makes an unstated boundary withhold by name, since
+ * a profile nothing enforced is a description of an environment rather than one.
+ */
+const identified = { ...complete, facets, profile_digest: "sha256:aaa", boundary: BOUNDARY_HELD };
 
 test("the four inferences are present, ordered, and each carries assumptions, evidence and rebuttals", () => {
   const { inferences } = loadEcdContract().interpretation_use;

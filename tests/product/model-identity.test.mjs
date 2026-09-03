@@ -43,7 +43,7 @@ import {
 import { ADAPTERS, appliedProfile, buildProfile, profileDigestOf } from "../../lib/profile.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
-import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
+import { BOUNDARY_HELD, contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { renderProfileCard, renderProfileHtml, renderProfileMarkdown } from "../../lib/profile-report.mjs";
@@ -138,9 +138,12 @@ const issuingContract = () => contractWithAPopulatedIndex();
 
 const allPassEvaluation = () => evaluate(allPassObservations(), {
   // Every facet identified, so the contract itself reaches PROFILE_BOUND and what withholds in
-  // these tests is the identity record and only the identity record.
+  // these tests is the identity record and only the identity record. The boundary is stated for
+  // the same reason: #556 makes an unstated boundary withhold by name, so a fixture that means to
+  // reach PROFILE_BOUND has to say the environment was enforced.
   facets: { language: "en", interface: "cli", harness: "aos@test", runtime: "codex", model: EXACT_A, operator: "fixture-operator", occasion: "1" },
   profile_digest: "d".repeat(64),
+  boundary: BOUNDARY_HELD,
   forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"]
 }, shippedEcdContract());
 

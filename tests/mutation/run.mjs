@@ -1,9 +1,11 @@
-import { readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { GUARDS } from "./manifest.mjs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 
 // Breaks each named guard in turn and reports whether the test that claims to hold it notices.
 //
@@ -25,6 +27,18 @@ if (dirty && process.env.AOS_MUTATION_ALLOW_DIRTY !== "1") {
   process.exit(2);
 }
 
+// `--test-name-pattern` is a regular expression, and a test name is prose: parentheses, dots and
+// question marks in it would otherwise match something else or nothing at all.
+const escapeForPattern = (name) => `^${name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}$`;
+
+const LEDGER_SCHEMA = "aos-mutation-measurement-ledger.v1";
+
+// One guard at a time when asked, so a lane that exists only to measure a platform-specific guard
+// -- a Linux container run from a macOS machine, say -- measures exactly that one and leaves the
+// rest of the ledger alone. A filtered run makes no claim about what it did not run, so it does
+// not require the guards it skipped to have been measured elsewhere.
+const only = process.env.AOS_MUTATION_ONLY ?? null;
+
 const worktree = mkdtempSync(join(tmpdir(), "aos-mutation-"));
 rmSync(worktree, { recursive: true, force: true });
 const added = run("git", ["worktree", "add", "--detach", worktree, "HEAD"]);
@@ -37,6 +51,7 @@ const results = [];
 const deferred = [];
 try {
   for (const entry of GUARDS) {
+    if (only !== null && entry.guard !== only) continue;
     // A guard for behaviour only one platform has. The ACL walk is macOS-only, and running its
     // mutant on Ubuntu would report SURVIVED for a guard that is load-bearing everywhere it
     // applies -- so the honest answer is that this lane did not ask, and a lane that runs there
@@ -61,7 +76,16 @@ try {
     // non-terminal changed between the version this is developed on and the one CI runs, so every
     // mutation came back with no `not ok` lines at all and was reported as a crash. Fifteen guards
     // read as not load-bearing when all fifteen were.
-    const test = run("node", ["--test", "--test-reporter=tap", entry.test], { cwd: worktree, timeout: 900000 });
+    // The named test first, on its own. A guard's question is "does this test notice?", and asking
+    // it of one test answers it in a second where running its whole file takes a minute -- with
+    // 288 guards that is the difference between a job that finishes and one that is still going.
+    // The whole file is run only when the named test passed, because that is the case where the
+    // two answers differ: SURVIVED (nothing noticed) and WRONG-TEST (something else noticed) are
+    // told apart by what the rest of the file does.
+    const named = run("node", ["--test", "--test-reporter=tap", "--test-name-pattern", escapeForPattern(entry.name), entry.test], { cwd: worktree, timeout: 900000 });
+    const namedFailed = /^TAP version/m.test(named.stdout)
+      && [...named.stdout.matchAll(/^not ok \d+ - (.+)$/gm)].map((match) => match[1].trim()).includes(entry.name);
+    const test = namedFailed ? named : run("node", ["--test", "--test-reporter=tap", entry.test], { cwd: worktree, timeout: 900000 });
     writeFileSync(path, original);
 
     // If the output is not TAP at all, nothing below can be trusted: "no test failed" and "the
@@ -88,9 +112,57 @@ try {
 
 const killed = results.filter((entry) => entry.outcome === "killed");
 console.log(`\n${killed.length}/${results.length} guards are load-bearing.`);
-if (deferred.length > 0) {
-  console.log(`${deferred.length} deferred to another platform, unmeasured here:`);
-  for (const entry of deferred) console.log(`  ${entry.guard} (${entry.platform})`);
+
+// What this lane measured, written down so the lane that cannot measure it can require it.
+//
+// A guard for behaviour only one platform has cannot be measured here, and the release gate runs
+// on one platform: deferring it there and exiting zero let a guard be deferred everywhere and
+// counted as fine, which is the "unsupported lane produces a green result" rule this project keeps
+// finding. So the lane that *can* measure a guard records the measurement -- the guard, its
+// mutation, and a digest of the file it mutates -- and the lane that cannot requires a record that
+// still describes the code in front of it. Change the guard or that file and the record goes
+// stale, and the gate fails until the platform that owns it has run again.
+//
+// What this ledger proves, exactly: **freshness, not measurement.** Every input to the fingerprint
+// is public repository content, so anyone who can edit the repo can compute a matching entry
+// without running anything -- a review recomputed all 536 from repo bytes alone. It is a staleness
+// detector, and its whole value is that it goes red when the code moves under a deferred guard. It
+// is not evidence that a mutation was ever applied, and the honest way to make a deferred guard's
+// measurement real is to run the mutation job on the platform that owns it. `measured_on` records
+// which lane wrote the entry and when, for a reader tracing a record back; it is provenance for
+// people, not a credential -- it is as mintable as the fingerprint is.
+const ledgerPath = fileURLToPath(new URL("./measured.json", import.meta.url));
+const fingerprint = (entry) => sha256Bytes(Buffer.from(JSON.stringify([
+  entry.guard,
+  entry.file,
+  entry.from,
+  entry.to,
+  entry.test,
+  entry.name,
+  // Read from the checkout, not the worktree: the worktree is removed with the run, and the
+  // runner refuses to start on a dirty tree, so the two hold the same bytes while it exists.
+  sha256Bytes(readFileSync(new URL(`../../${entry.file}`, import.meta.url)))
+]), "utf8"));
+const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { schema: LEDGER_SCHEMA, measured: {} };
+for (const entry of results.filter((one) => one.outcome === "killed")) {
+  ledger.measured[entry.guard] = {
+    platform: process.platform,
+    fingerprint: fingerprint(entry),
+    // Provenance for a reader, not a credential: see the note above.
+    measured_on: { arch: process.arch, node: process.version, at: new Date().toISOString() }
+  };
+}
+const unmeasured = [];
+for (const entry of only === null ? deferred : []) {
+  const record = ledger.measured[entry.guard] ?? null;
+  if (record === null) unmeasured.push(`${entry.guard}: never measured on ${entry.platform}`);
+  else if (record.fingerprint !== fingerprint(entry)) unmeasured.push(`${entry.guard}: the ${record.platform} measurement describes different code`);
+  else console.log(`measured  ${entry.guard}  <- on ${record.platform}, and that measurement still describes this code`);
+}
+writeFileSync(ledgerPath, `${JSON.stringify({ schema: LEDGER_SCHEMA, measured: Object.fromEntries(Object.entries(ledger.measured).sort(([a], [b]) => (a < b ? -1 : 1))) }, null, 2)}\n`);
+if (unmeasured.length > 0) {
+  console.log(`\n${unmeasured.length} guard(s) have been measured on no lane this release gates on:`);
+  for (const line of unmeasured) console.log(`  ${line}`);
 }
 
 for (const entry of results.filter((entry) => entry.outcome !== "killed")) {
@@ -102,4 +174,4 @@ for (const entry of results.filter((entry) => entry.outcome !== "killed")) {
   if (entry.noise) console.log(entry.noise.split("\n").map((line) => `    ${line}`).join("\n"));
 }
 
-process.exit(killed.length === results.length ? 0 : 1);
+process.exit(killed.length === results.length && unmeasured.length === 0 ? 0 : 1);

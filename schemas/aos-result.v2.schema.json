@@ -914,6 +914,8 @@
     "incomplete_forms",
     "unsupported_forms",
     "unidentified_facets",
+    "boundary_withheld",
+    "isolation",
     "facet_identity",
     "facet_coverage",
     "operator_process_profile",
@@ -929,7 +931,7 @@
       "const": "aos-result.v2"
     },
     "schema_version": {
-      "const": "2.0.0"
+      "const": "2.1.0"
     },
     "run": {
       "type": "object",
@@ -1210,6 +1212,42 @@
       },
       "maxItems": 64,
       "uniqueItems": true
+    },
+    "boundary_withheld": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^AOS_ISOLATION_[A-Z_]+$",
+        "maxLength": 200
+      },
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "isolation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "backend", "boundary_canary", "filesystem_enforced", "process_enforced", "lane", "support_status", "policy_digest", "network"],
+      "properties": {
+        "level": { "type": ["string", "null"], "maxLength": 200 },
+        "backend": { "type": ["string", "null"], "maxLength": 200 },
+        "boundary_canary": { "type": ["string", "null"], "maxLength": 200 },
+        "filesystem_enforced": { "type": ["boolean", "null"] },
+        "process_enforced": { "type": ["boolean", "null"] },
+        "lane": { "type": ["string", "null"], "maxLength": 200 },
+        "support_status": { "type": ["string", "null"], "maxLength": 200 },
+        "policy_digest": { "type": ["string", "null"], "maxLength": 200 },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["policy", "enforcement", "provider_transport", "task_external"],
+          "properties": {
+            "policy": { "type": ["string", "null"], "maxLength": 200 },
+            "enforcement": { "type": ["string", "null"], "maxLength": 200 },
+            "provider_transport": { "type": ["string", "null"], "maxLength": 200 },
+            "task_external": { "type": ["string", "null"], "maxLength": 200 }
+          }
+        }
+      }
     },
     "facet_identity": {
       "$ref": "#/$defs/facet_identity"

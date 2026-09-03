@@ -1,0 +1,45 @@
+{
+  "backend_run": "strict-lane.darwin.seatbelt.cleanup",
+  "command": "handle.cleanup(); rm -rf @BASE@ @AGENT_TEMP_HOME@ @RUN_SCRATCH@   # the probe's own teardown",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout": {
+    "bytes": 0,
+    "lines": 0,
+    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": false,
+      "error": false,
+      "tokens_used": false
+    }
+  },
+  "stderr": {
+    "bytes": 0,
+    "lines": 0,
+    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": false,
+      "error": false,
+      "tokens_used": false
+    }
+  },
+  "parse_error": null,
+  "captured": {
+    "not_removed": [],
+    "removed": {
+      "profile_and_confinement_scratch": true,
+      "staged_runtime_config": true,
+      "agent_home": true,
+      "run_scratch": true,
+      "base_store": true
+    },
+    "outcomes": {
+      "canary": 0,
+      "auth": 0,
+      "exec": 0
+    }
+  }
+}

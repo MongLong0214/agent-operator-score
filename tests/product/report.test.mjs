@@ -22,11 +22,16 @@ const observations = (over = {}) =>
     });
   });
 
+// #556: a run whose confinement nobody established is not issued, and these fixtures are about
+// what the report renders rather than about a boundary. The verdict is stated here so the pages
+// under test are the ones an official run produces.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
+
 const resultOf = (over = {}, context = {}) => {
   const metrics = observations(over);
   return {
     schema_id: "aos-mvp-result.v1",
-    ...scoreRun(metrics, context),
+    ...scoreRun(metrics, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context }),
     run_id: "run-fixture",
     metrics,
     limitations: ["PROFILE-BOUND: this number describes the declared environment."]
