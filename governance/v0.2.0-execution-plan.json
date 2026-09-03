@@ -204,7 +204,7 @@
     {
       "issue": 556,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 1,
       "blocked_by": [
         554,
@@ -237,7 +237,7 @@
       "phases": [
         {
           "id": "feasibility-proof",
-          "status": "ready",
+          "status": "done",
           "blocked_by": [],
           "allowed_outputs": [
             "safe-evidence-matrix",
@@ -247,7 +247,7 @@
         },
         {
           "id": "final-integration",
-          "status": "ready",
+          "status": "done",
           "blocked_by": [
             554,
             555,
@@ -272,7 +272,7 @@
     {
       "issue": 557,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 2,
       "blocked_by": [
         553,
@@ -980,7 +980,7 @@
     {
       "issue": 574,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 2,
       "blocked_by": [
         554,

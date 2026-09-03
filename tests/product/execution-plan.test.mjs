@@ -150,22 +150,51 @@ const withFeasibilityBlocked = (doc) => {
 
 test("phase-ready is separate from issue ready", () => {
   const doc = plan();
-  const feasibility = entry(doc, 556);
-  const proof = feasibility.phases.find((one) => one.id === "feasibility-proof");
-  const integration = feasibility.phases.find((one) => one.id === "final-integration");
-  // The proof phase is open in either state and never integrates code; the integrating phase
-  // opens only with the issue itself.
-  assert.equal(proof.status, "ready");
-  assert.equal(proof.code_integration_allowed, false);
   const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
-  const unblocked = feasibility.blocked_by.every((number) => done.has(number));
-  assert.equal(feasibility.status, unblocked ? "ready" : "blocked");
-  assert.equal(integration.status, unblocked ? "ready" : "blocked");
+  // Stated over every phased issue rather than over #556, which used to be the only one and has
+  // since finished -- an assertion pinned to one issue's current status stops being true the moment
+  // that issue advances, which is exactly when it should still be checked.
+  const phased = doc.issues.filter((one) => (one.phases ?? []).length > 0);
+  assert.ok(phased.length > 0, "the plan has no phased issue left to check");
+  for (const one of phased) {
+    const unblocked = one.blocked_by.every((number) => done.has(number));
+    if (one.status === "done") {
+      // Terminal: a finished issue's phases are finished too, including the integrating one.
+      for (const phase of one.phases) assert.equal(phase.status, "done", `#${one.issue} phase ${phase.id}`);
+      continue;
+    }
+    for (const phase of one.phases) {
+      // A non-integrating phase may open on its own; an integrating one opens only with the issue.
+      if (!phase.code_integration_allowed) continue;
+      const phaseUnblocked = (phase.blocked_by ?? []).every((number) => done.has(number));
+      assert.equal(phase.status, unblocked && phaseUnblocked ? "ready" : "blocked", `#${one.issue} ${phase.id}`);
+    }
+  }
 });
 
 test("a phase-ready phase that claims final integration exceeds its scope and fails", () => {
   const doc = withFeasibilityBlocked(plan());
   entry(doc, 556).phases.find((one) => one.id === "feasibility-proof").code_integration_allowed = true;
+  assert.ok(failures(checkPlan(doc)).includes("phase-scope-exceeded"));
+});
+
+test("a finished code-integrating phase on a finished issue is the terminal state, not a scope violation", () => {
+  // The rule read `STARTED`, which contains `done`, so an issue carrying a code-integrating phase
+  // could never be recorded as finished: the phase reaches done, the issue reaches done, and the
+  // check fired forever. #556 was the first such issue to complete and it could not be written down.
+  const doc = plan();
+  const one = entry(doc, 556);
+  one.status = "done";
+  for (const phase of one.phases) phase.status = "done";
+  assert.ok(!failures(checkPlan(doc)).includes("phase-scope-exceeded"));
+});
+
+test("a running code-integrating phase on a finished issue still exceeds its scope", () => {
+  const doc = plan();
+  const one = entry(doc, 556);
+  one.status = "done";
+  const integration = one.phases.find((phase) => phase.code_integration_allowed);
+  integration.status = "in-progress";
   assert.ok(failures(checkPlan(doc)).includes("phase-scope-exceeded"));
 });
 
@@ -319,15 +348,18 @@ test("the next batch is decidable from the manifest alone", () => {
     assert.ok(one.status === "done" || one.status === "ready", `#${one.issue} is batch 0 and ${one.status}`);
   }
 
-  // #556 is the phase case: open as a probe while its issue waits, and ready as an issue only once
-  // every predecessor is done. Until then it is the one issue in the plan that is startable through
-  // a phase and not as itself.
-  const issueReady = entry(doc, 556).blocked_by.every((number) => done.has(number));
-  assert.equal(ready.includes(556), issueReady);
+  // The phase case, stated as the property rather than as one issue's number: an issue that is
+  // startable only through a phase is one that is not itself ready while carrying a ready phase, and
+  // every such issue must still be waiting on a predecessor. Naming #556 here made this assertion
+  // false the day #556 finished.
   const phaseOnly = doc.issues
-    .filter((one) => one.status !== "ready" && (one.phases ?? []).some((p) => p.status === "ready"))
+    .filter((one) => one.status !== "ready" && (one.phases ?? []).some((phase) => phase.status === "ready"))
     .map((one) => one.issue);
-  assert.deepEqual(phaseOnly, issueReady ? [] : [556]);
+  for (const number of phaseOnly) {
+    const one = entry(doc, number);
+    assert.notEqual(one.status, "done", `#${number} is done yet carries a ready phase`);
+    assert.ok(!one.blocked_by.every((each) => done.has(each)), `#${number} is startable as itself, so it is not phase-only`);
+  }
 });
 
 test("a done issue is closed on GitHub and a not-done issue is open", () => {
