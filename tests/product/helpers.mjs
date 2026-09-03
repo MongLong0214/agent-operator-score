@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { Readable } from "node:stream";
 
 export const cli = new URL("../../bin/aos.mjs", import.meta.url).pathname;
 export const fakeAgent = new URL("./fake-agent.mjs", import.meta.url).pathname;
@@ -29,11 +30,32 @@ export function run(cwd, args, expected = 0, env = {}) {
  * them is what a real adapter does with `CODEX_HOME`, and it keeps the fixture on the same footing
  * as the runtimes it stands in for.
  */
-export function addAgent(cwd, id, script = fakeAgent) {
+/**
+ * A launcher for the fixture agent whose own executable identity verifies (#554, #561).
+ *
+ * Registering `process.execPath` directly records the identity of whatever Node the test happens
+ * to run under. On a machine where that binary sits in a group-writable or third-party-owned
+ * directory -- GitHub's hosted tool cache is one -- #554 records it UNTRUSTED, and since #561 an
+ * unverified executable withholds the profile-bound aggregate. That is the intended posture and
+ * not something a test should assert its way around, so the fixture stands in for a runtime
+ * installed where a runtime normally is: a two-line launcher inside the test's own directory,
+ * which is exactly what the identity tests elsewhere use.
+ */
+export function verifiedRunner(cwd) {
+  const launcher = join(cwd, "fixture-runtime");
+  writeFileSync(launcher, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} "$@"\n`, { mode: 0o755 });
+  chmodSync(launcher, 0o755);
+  return launcher;
+}
+
+export function addAgent(cwd, id, script = fakeAgent, extraArgs = [], command = process.execPath) {
   run(cwd, [
-    "agent", "add", id, "--command", process.execPath, "--arg", script,
+    "agent", "add", id, "--command", command, "--arg", script,
     "--allow-env", "FAKE_AGENT_PROFILE",
-    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE"
+    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE",
+    // What the fixture runtime announces in its own transcript, the way Codex and Claude Code do.
+    "--allow-env", "FAKE_AGENT_MODEL",
+    ...extraArgs
   ]);
 }
 
@@ -172,4 +194,51 @@ export function initBare(cwd) {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
     });
   }
+}
+
+/**
+ * A run driven by an operator at a terminal.
+ *
+ * In process, through `runCli`, because the descriptor is the thing under test. Since #560 the
+ * source of an operator event is decided by whether the stream the answers arrive on is a terminal:
+ * a pipe carries somebody relaying, and admitting a relayed answer needs the owner-relay attestation
+ * of #576. Driving this through `spawnSync` would therefore measure the pipe rather than the
+ * checkpoint runtime -- which is the correct behaviour and the wrong test.
+ *
+ * `script` was tried and does not work here: it delivers the whole answer file and its EOF into the
+ * pty before the reader attaches, so every checkpoint reads as unanswered (measured: seven refusals,
+ * no answers). What is faked is one bit -- the operating system's answer to "is this a terminal" --
+ * and nothing else: the same reader, the same checkpoint runtime and the same store. That a pipe
+ * really does report false is proved against the real binary in
+ * `tests/product/operator-channel-authority.test.mjs`.
+ *
+ * Returns what `spawnSync` would, so a caller reads `status`, `stdout` and `stderr` unchanged.
+ */
+export async function assessAtATerminal(cwd, args, { env = {} } = {}) {
+  const { runCli } = await import("../../lib/cli.mjs");
+  const answers = env.ANSWERS ?? [];
+  const stdin = Readable.from(answers.map((line) => `${line}\n`));
+  stdin.isTTY = true;
+  const out = [];
+  const err = [];
+  const previous = new Map(Object.keys(env).filter((name) => name !== "ANSWERS").map((name) => [name, process.env[name]]));
+  for (const [name, value] of Object.entries(env)) if (name !== "ANSWERS") process.env[name] = value;
+  let status;
+  try {
+    status = await runCli([...args, "--data-dir", join(cwd, ".aos")], {
+      cwd,
+      stdin,
+      stdout: { write: (text) => { out.push(String(text)); return true; } },
+      stderr: { write: (text) => { err.push(String(text)); return true; } }
+    });
+  } catch (error) {
+    err.push(`AOS_INTERNAL_ERROR ${error instanceof Error ? error.message : String(error)}\n`);
+    status = 70;
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+  return { status, stdout: out.join(""), stderr: err.join("") };
 }

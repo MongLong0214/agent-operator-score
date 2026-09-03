@@ -191,6 +191,11 @@
       "file": "tests/mutation/manifest.mjs",
       "match": "sha256Bytes(Buffer.from(readFileSync(full, \"utf8\").replace(",
       "note": "a mutation `to` string quoting the CRLF-folding digest #567 removed; the manifest never runs it"
+    },
+    {
+      "file": "tests/package-smoke.mjs",
+      "match": "const plan = JSON.parse(readFileSync(planPath, \"utf8\"));",
+      "note": "pre-existing; the smoke test reads its own generated plan as text and hashes nothing from it. In scope only because #556 added a digest check to this file."
     }
   ],
   "regex-no-unicode": [

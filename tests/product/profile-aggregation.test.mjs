@@ -899,13 +899,18 @@ test("a cycle of profile results has no aggregate and names the issue that owns 
     } finally {
       await dashboard.close();
     }
-    // Two legacy records and one without the field: the field predates nothing here, the record
-    // is legacy, and the legacy median still runs.
+    // Two legacy records and one without the field: the field predates nothing here and the record
+    // is legacy, so the legacy path is the one that runs. What it produces is not a number: these
+    // runs carry no model provenance, and #561 makes a cycle nobody can name a model for
+    // historical rather than issuable. The dispatch is what this test is about, and the dispatch
+    // still lands on the legacy median -- which then withholds, by name, and says so.
     const undeclared = { ...legacyRecord("0000000000000003", 77) };
     delete undeclared.result_schema;
     writeJson(join(home, "cycle.json"), cycleWith([legacyRecord("0000000000000001", 71), legacyRecord("0000000000000002", 74), undeclared]));
-    const legacy = runCli(cwd, ["cycle"]);
-    assert.match(legacy.stdout, /Operator Score: 74 \/ 100/u);
+    const legacy = runCli(cwd, ["cycle"], 1);
+    assert.equal(/AOS_CYCLE_AGGREGATION_UNDEFINED/u.test(legacy.stdout), false, "a legacy cycle took the profile path");
+    assert.match(legacy.stdout, /MODEL_PROVENANCE_ABSENT/u);
+    assert.equal(/Operator Score: \d+ \/ 100/u.test(legacy.stdout), false, "a cycle with no provenance was issued a number");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

@@ -634,8 +634,8 @@ export const GUARDS = [
     guard: "ECD claim stage rests on what was observed",
     reason: "forms_completed is a list of names the caller hands in, and on its own it made a run that observed nothing report performance observed across every locked form",
     file: "lib/ecd-contract.mjs",
-    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
-    to: '  const claimStage = missingForms.length === 0 && unidentifiedFacets.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    to: '  const claimStage = missingForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
     test: "tests/product/ecd-interpretation-use.test.mjs",
     name: "naming every form as completed does not make a run that observed nothing PROFILE_BOUND"
   },
@@ -1141,6 +1141,9 @@ export const GUARDS = [
   },
   {
     guard: "effective execute permission",
+    // Its witness skips only when the suite runs as root, which no CI lane and no development
+    // machine here does; the mutation is measured on every ordinary run.
+    witness_skip: "skips only under uid 0, which is not an environment this suite runs in",
     reason: "an execute bit that does not apply to this process is a file execvp skips, so reading the mode describes a program the child would never run",
     file: "lib/runtime-identity.mjs",
     from: "accessSync(candidate, constants.X_OK);",
@@ -1186,8 +1189,8 @@ export const GUARDS = [
     guard: "spawn the verified file",
     reason: "the file handed to execve is the recorded realpath, not the configured name resolved a second time in the kernel; this is what removes the PATH search and the symlink chain from the spawn, and it does not close the check-to-execve window, which nothing short of executing a held descriptor would",
     file: "lib/core.mjs",
-    from: "child = spawn(verifiedPath ?? spec.command, args, {",
-    to: "child = spawn(spec.command, args, {",
+    from: "const launch = confinement.spawnSpec(verifiedPath ?? spec.command, args);",
+    to: "const launch = confinement.spawnSpec(spec.command, args);",
     test: "tests/product/runtime-identity.test.mjs",
     name: "the file whose identity was verified is the file that is spawned"
   },
@@ -1274,6 +1277,9 @@ export const GUARDS = [
   },
   {
     guard: "ACL walk",
+    // Its witness skips only when the suite runs as root, which no CI lane and no development
+    // machine here does; the mutation is measured on every ordinary run.
+    witness_skip: "skips only under uid 0, which is not an environment this suite runs in",
     // macOS only, and deliberately so: Node has no interface to an ACL and `ls -lde` is the only
     // thing that will say. The mutation runner defers it rather than reporting SURVIVED for a guard
     // that holds everywhere it applies -- so a macOS lane has to run this one, and the two guards
@@ -1290,7 +1296,7 @@ export const GUARDS = [
     guard: "configured argv0",
     reason: "spawning the resolved path is what makes the run verifiable, and argv0 is what keeps it compatible: a native runtime still reads the command the operator configured in argv[0] rather than a path it was never told about",
     file: "lib/core.mjs",
-    from: "      argv0: spec.command",
+    from: "      argv0: launch.argv0 ?? spec.command",
     to: "      argv0: undefined",
     test: "tests/product/runtime-identity.test.mjs",
     name: "a native runtime keeps the argv0 the operator configured"
@@ -1435,6 +1441,15 @@ export const GUARDS = [
     // Linux only, and named as such. APFS refuses a filename that is not valid UTF-8, so the case
     // cannot be constructed on macOS and the test returns early there; the mutation job runs on
     // ubuntu, which is where this one is decided.
+    //
+    // The sentence above was the whole of it until #560: the comment said "Linux only" and nothing
+    // told the runner, so `npm run test:mutation` on a Mac reported SURVIVED for a guard that holds
+    // everywhere it applies -- a false alarm in the one report whose job is to say which guards are
+    // real. `ACL walk` above has carried the field since it was written; this one is the same case
+    // in the other direction.
+    // The ledger records the lane that measured it, so the deferral is a fact with a date on it
+    // rather than a promise in a comment.
+    platform: "linux",
     reason: "readdir decoded as UTF-8 gives two files whose names differ by one byte a single unreadable-entry row",
     file: "lib/digest.mjs",
     from: '      return readdirSync(directory, { encoding: "buffer" }).sort(Buffer.compare);',
@@ -3099,12 +3114,17 @@ export const GUARDS = [
   },
   {
     guard: "operator decision window",
-    reason: "every stage sends an instruction, so without a window the plan being carried out reads as the operator stepping in",
+    // Repointed by #560. This guard was held by the fact that every stage sent a `user.instruction`
+    // under producer `operator`, so without the window the plan being carried out read as the
+    // operator stepping in. That instruction is now a `plan.instruction` under producer `aos` and is
+    // never scored, so the old fixture stopped exercising the line and the mutation survived. What
+    // the window still decides is stated below, and the test that decides it is named here.
+    reason: "a turn that answers no question is not an answer: without the window every later operator turn is attributed to the last checkpoint, which manufactures the opportunity rather than observing one",
     file: "lib/checkpoint.mjs",
     from: "if (closes) asked = false;",
     to: "",
-    test: "tests/product/checkpoint-runtime.test.mjs",
-    name: "retrying unchanged is not an intervention, whatever it is called"
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "an operator turn with no checkpoint in front of it is not an intervention, because an opportunity nobody administered is not one"
   },
   {
     guard: "credential env refusal",
@@ -3123,6 +3143,1688 @@ export const GUARDS = [
     to: '"checkpoint.raised": ["family", "kind", "evidence_digest"],',
     test: "tests/product/checkpoint-runtime.test.mjs",
     name: "the record keeps what the operator was shown, not just that they were shown something"
+  },
+  // #556: STRICT confinement and the official issuance gate. Each one is a condition the issue
+  // names as blocking issuance, broken at the line that blocks it.
+  {
+    guard: "issuance needs STRICT",
+    reason: "BEST_EFFORT_CLI and NONE are a replaced HOME and a filtered environment, not a boundary; a gate that stopped naming the level would issue official over a run the kernel never confined",
+    file: "lib/confinement.mjs",
+    from: "  if (record.level !== \"STRICT\") reasons.push(ISSUANCE_REASONS.LEVEL_NOT_STRICT);",
+    to: "  if (false) reasons.push(ISSUANCE_REASONS.LEVEL_NOT_STRICT);",
+    test: "tests/product/confinement.test.mjs",
+    name: "never_issues_official_under_best_effort_cli_or_none"
+  },
+  {
+    guard: "issuance needs a passing canary with evidence",
+    reason: "the canary is the only channel that says the profile applied; a gate that accepted any canary object, or a PASS with no evidence digest, would issue over a profile sandbox-exec rejected",
+    file: "lib/confinement.mjs",
+    from: "  if (canaryVerdict !== \"PASS\" || !isDigest(canary?.evidence_digest)) reasons.push(ISSUANCE_REASONS.CANARY_NOT_PASS);",
+    to: "  if (canary === null) reasons.push(ISSUANCE_REASONS.CANARY_NOT_PASS);",
+    test: "tests/product/confinement.test.mjs",
+    name: "blocks_official_when_boundary_canary_fails"
+  },
+  {
+    guard: "the spawn judge reads the gate's expectation table",
+    reason: "`evaluateCanary` decides whether the agent is spawned at all and kept its own rule: anything that was not the word `disabled` expected the connect to succeed, so `restricted`, `WITHHELD`, null and undefined were judged against the most permissive expectation there is",
+    file: "lib/confinement.mjs",
+    from: "    const expected = canonicalExpectation(name, networkPolicy);\n    const observed = cell && typeof cell === \"object\" && typeof cell.outcome === \"string\" ? cell.outcome : \"not_reported\";\n    // The errno the cell reported, read only where a denial has to be proved.",
+    to: "    const expected = name === \"network_outbound_connect\" ? (networkPolicy === \"disabled\" ? \"denied\" : \"allowed\") : EXPECTED_CELL[name];\n    const observed = cell && typeof cell === \"object\" && typeof cell.outcome === \"string\" ? cell.outcome : \"not_reported\";\n    // The errno the cell reported, read only where a denial has to be proved.",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
+  },
+  {
+    guard: "both canary judges share one denial predicate",
+    reason: "the spawn judge rejected `denied` + ENOENT while the issuance judge read no errno at all, so the committed observation with ENOENT on every deny cell failed one and passed the other with official:true",
+    file: "lib/confinement.mjs",
+    from: "        || (expected === \"denied\" && observed === \"denied\" && !denialProved({ errno: typeof cell?.errno === \"string\" ? cell.errno : null, mechanism, plantedIntact: plantedAll }))",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "both_canary_judges_ask_one_question_of_a_deny_cell"
+  },
+  {
+    guard: "a namespace deny needs a plant behind it",
+    reason: "under a mount namespace the denial is the absence, so ENOENT is what a working boundary returns -- and what separates it from a plant that never landed is the parent's own check, made from outside the namespace",
+    file: "lib/confinement.mjs",
+    from: "  return errno === \"ENOENT\" && mechanism === \"mount-namespace\" && plantedIntact === true;",
+    to: "  return errno === \"ENOENT\" && mechanism === \"mount-namespace\";",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "both_canary_judges_ask_one_question_of_a_deny_cell"
+  },
+  {
+    guard: "an empty isolation lane is not a chosen one",
+    reason: "`AOS_ISOLATION=` is an unset variable in a script that meant to set one; a misspelling was refused and an empty string silently chose the weak lane",
+    file: "lib/cli.mjs",
+    from: "  if (chosen === undefined) return \"BEST_EFFORT_CLI\";",
+    to: "  if (chosen === undefined || chosen === \"\") return \"BEST_EFFORT_CLI\";",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_empty_isolation_lane_is_refused_like_a_misspelled_one"
+  },
+  {
+    guard: "a deny the kernel refused, not a file that was not there",
+    reason: "the canary plants the files it then tries to read, so ENOENT is a plant that never landed; counting it as a deny made a missing fixture read as a boundary holding",
+    file: "lib/confinement.mjs",
+    from: "    const denialUnproven = expected === \"denied\" && observed === \"denied\" && !denialProved({ errno, mechanism, plantedIntact: plantedAll });",
+    to: "    const denialUnproven = false;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
+  },
+  {
+    guard: "the network enforcement name is the gate's own vocabulary",
+    reason: "the backend's mechanism is `namespace` and the gate accepts kernel|mount-namespace|none, so a live linux STRICT record could never authenticate -- one thing spelled two ways across the policy and the gate",
+    file: "lib/confinement.mjs",
+    from: "      enforcement: NETWORK_ENFORCEMENT.includes(mechanism) ? mechanism : mechanism === \"namespace\" ? \"mount-namespace\" : \"none\",",
+    to: "      enforcement: mechanism,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_spawn_judge_and_the_gate_read_one_expectation_table"
+  },
+  {
+    guard: "no raw confinement evidence is a verification failure",
+    reason: "falling back to the stored summary made deleting the per-invocation confinement objects a way of passing: the record kept an agreeing summary and nothing was left to disagree with it",
+    file: "lib/cli.mjs",
+    from: "  if (invocations.length === 0) return null;",
+    to: "  if (invocations.length === 0) return record?.isolation?.official_issuance ?? null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "the whole gate decision has to agree, not its headline",
+    reason: "comparing `official` and the reason list alone let an edit to the raw evidence that did not move those two -- a cleanup failure deleted on a lane already withheld -- rewrite the evidence under an agreeing summary",
+    file: "lib/cli.mjs",
+    from: "      : comparable(storedVerdict) === comparable(recomputed);",
+    to: "      : storedVerdict.official === recomputed.official;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "verification re-gates the invocations the record carries",
+    reason: "the stored issuance summary is a derived field in a file; reading it made the record its own witness one level down, and rewriting it to an official verdict while the confinement objects still said BEST_EFFORT_CLI passed both checks",
+    file: "lib/cli.mjs",
+    from: "  const verdict = officialIssuanceFor(invocations, record?.settlement ?? null, FAMILIES);",
+    to: "  const verdict = record?.isolation?.official_issuance;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "an open handle is corroboration, not a warrant",
+    reason: "every caller SIGKILLs what the sweep returns as a survivor, so promoting an open-path hit to a survivor killed an unrelated `sleep` whose cwd was the operator's project directory and reported it as this run's descendant",
+    file: "lib/confinement.mjs",
+    from: "        if (found.has(pid)) continue;\n        holders.add(pid);",
+    to: "        found.add(pid);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_process_is_this_runs_because_it_was_tracked_not_because_it_holds_a_path"
+  },
+  {
+    guard: "an unexplained holder of the run's directories withholds",
+    reason: "not killing what nothing identifies is only half of it; a process holding the agent HOME open at teardown that no marker and no group explains is an unexplained process around this run's private state, and an official run has none",
+    file: "lib/confinement.mjs",
+    from: "    } else if (Array.isArray(survivorScan.path_holders) && survivorScan.path_holders.length > 0) {",
+    to: "    } else if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_process_is_this_runs_because_it_was_tracked_not_because_it_holds_a_path"
+  },
+  {
+    guard: "a leaked descendant blocks issuance",
+    reason: "a process the agent left behind is the process axis not holding, whether or not the teardown later caught it; a gate that only looked for survivors would issue over the leak Phase 0 measured",
+    file: "lib/confinement.mjs",
+    from: "  if (leaked === null || leaked.length > 0 || survivors === null || survivors.length > 0) reasons.push(ISSUANCE_REASONS.LEAKED_DESCENDANT);",
+    to: "  if (leaked === null || survivors === null) reasons.push(ISSUANCE_REASONS.LEAKED_DESCENDANT);",
+    test: "tests/product/confinement.test.mjs",
+    name: "blocks_official_when_descendant_leaks"
+  },
+  {
+    guard: "unverified cleanup blocks issuance",
+    reason: "a record that was never settled has cleanup_verified null, and a gate that only refused an explicit false would issue over scratch that was never checked for removal",
+    file: "lib/confinement.mjs",
+    from: "  if (record.cleanup_verified !== true) reasons.push(ISSUANCE_REASONS.CLEANUP_UNVERIFIED);",
+    to: "  if (record.cleanup_verified === false) reasons.push(ISSUANCE_REASONS.CLEANUP_UNVERIFIED);",
+    test: "tests/product/confinement.test.mjs",
+    name: "blocks_official_when_cleanup_fails"
+  },
+  {
+    guard: "settle reads the cleanup failures",
+    reason: "the finally in runProcess reports every directory it could not remove; a settle that verified cleanup without reading that list would call a run clean with its agent HOME still on disk",
+    file: "lib/confinement.mjs",
+    from: "  record.cleanup_verified = record.level === \"STRICT\" && survivors !== null && survivors.length === 0 && swept && Array.isArray(cleanupFailures) && cleanupFailures.length === 0;",
+    to: "  record.cleanup_verified = record.level === \"STRICT\" && survivors !== null && survivors.length === 0 && swept && Array.isArray(cleanupFailures);",
+    test: "tests/product/confinement.test.mjs",
+    name: "blocks_official_when_cleanup_fails"
+  },
+  {
+    guard: "an unproven lane blocks issuance",
+    reason: "a STRICT record that passed everything on a platform/backend/adapter no committed observation proves is a lane the release has not measured; the lane table, not the record, says which lanes are proven",
+    file: "lib/confinement.mjs",
+    from: "  if (lane === null || !SUPPORTED_RELEASE_SET.has(lane.support_status)) reasons.push(ISSUANCE_REASONS.LANE_NOT_PROVEN);",
+    to: "  if (lane === null) reasons.push(ISSUANCE_REASONS.LANE_NOT_PROVEN);",
+    test: "tests/product/confinement.test.mjs",
+    name: "blocks_official_on_a_lane_the_release_has_not_proven"
+  },
+  {
+    guard: "a run is official only when every invocation is",
+    reason: "one confined invocation beside one that failed its canary is a run whose evidence was partly produced outside the boundary; any-of would issue over it",
+    file: "lib/confinement.mjs",
+    from: "    official: decisions.every((one) => one.official) && sameLane,",
+    to: "    official: decisions.some((one) => one.official) && sameLane,",
+    test: "tests/product/confinement.test.mjs",
+    name: "a_run_is_official_only_when_every_invocation_is"
+  },
+  {
+    guard: "AOS_HOME is denied before the workspace is allowed",
+    reason: "Seatbelt's later rule wins, so the run's own trees have to be granted after the denies: moved before them, the operator-home deny beats the runtime tree installed under it and the workspaces-root deny beats this run's own workspace",
+    file: "lib/confinement.mjs",
+    from: "  lines.push(`(allow file-read* ${subpaths(fs.readable)})`);\n  lines.push(`(allow file-read* file-write* ${subpaths(fs.writable)})`);",
+    to: "  lines.splice(lines.indexOf(\"(allow ipc-posix-shm)\"), 0, `(allow file-read* ${subpaths(fs.readable)})`, `(allow file-read* file-write* ${subpaths(fs.writable)})`);",
+    test: "tests/product/confinement.test.mjs",
+    name: "denies_aos_home_from_generated_profile"
+  },
+  {
+    guard: "a runtime tree inside the store is refused",
+    reason: "a tree under AOS_HOME is granted read by a rule that follows the store deny, and the verified path travels into the child's argv -- the AOS_HOME-in-argv the issue forbids; only the inverse direction was checked, so `<store>/runtime/node_modules` was accepted and rendered",
+    file: "lib/confinement.mjs",
+    from: "    if (value === \"/\" || within(value, bound[\"@AOS_HOME@\"]) || within(bound[\"@AOS_HOME@\"], value)) {",
+    to: "    if (value === \"/\" || within(value, bound[\"@AOS_HOME@\"])) {",
+    test: "tests/product/confinement.test.mjs",
+    name: "denies_aos_home_from_generated_profile"
+  },
+  {
+    guard: "a workspace that contains the store is refused",
+    reason: "the workspace allow follows the AOS_HOME deny, so a workspace above the store would grant the store; refusing that layout before rendering is what keeps the ordering argument true",
+    file: "lib/confinement.mjs",
+    from: "  if (within(bound[\"@WORKSPACE@\"], bound[\"@AOS_HOME@\"])) throw fail(\"AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME\", bound[\"@WORKSPACE@\"]);",
+    to: "  if (false) throw fail(\"AOS_ISOLATION_WORKSPACE_CONTAINS_AOS_HOME\", bound[\"@WORKSPACE@\"]);",
+    test: "tests/product/confinement.test.mjs",
+    name: "denies_aos_home_from_generated_profile"
+  },
+  {
+    guard: "task-initiated network is NOT_OBSERVED",
+    reason: "provider transport and a task's own external call are the same syscall under every backend here; a policy that recorded the second as denied would be a claim no probe made",
+    file: "lib/confinement.mjs",
+    from: "      task_external: \"NOT_OBSERVED\"\n    }),",
+    to: "      task_external: \"denied\"\n    }),",
+    test: "tests/product/confinement.test.mjs",
+    name: "records_network_not_observed_rather_than_denied"
+  },
+  {
+    guard: "only the declared runtime files are staged",
+    reason: "the staged copy exists so the operator's config directory is never in the profile; staging the whole directory would carry session logs and history into the agent's reach and back out in its evidence",
+    file: "lib/confinement.mjs",
+    from: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\"]), runtime_package: \"@openai/codex\" })],",
+    to: "  [\"codex-cli.v1\", Object.freeze({ dir: \".codex\", files: Object.freeze([\"auth.json\", \"config.toml\", \"history.jsonl\"]), runtime_package: \"@openai/codex\" })],",
+    test: "tests/product/confinement.test.mjs",
+    name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
+  },
+  {
+    guard: "the staged credential copy is private",
+    reason: "auth.json is a credential; a copy readable by other accounts on the machine would be a wider exposure than the file it was copied from",
+    file: "lib/confinement.mjs",
+    from: "    writeFileSync(join(dir, name), bytes, { mode: 0o600, flag: \"wx\" });",
+    to: "    writeFileSync(join(dir, name), bytes, { mode: 0o644, flag: \"wx\" });",
+    test: "tests/product/confinement.test.mjs",
+    name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
+  },
+  {
+    guard: "tracked descendants are terminated at teardown",
+    // darwin only: the real lane spawns through sandbox-exec, and the test that sees the detached
+    // descendant die is the one that runs the boundary for real.
+    platform: "darwin",
+    reason: "the process group does not reach a descendant that took its own session; the tracker's terminate is what reaches it, and without it the sleep Phase 0 left behind is left behind again",
+    file: "lib/core.mjs",
+    from: "    const trackedSurvivors = tracker ? await tracker.terminate() : [];",
+    to: "    const trackedSurvivors = [];",
+    test: "tests/product/confinement-real-lane.test.mjs",
+    name: "strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
+  },
+  {
+    guard: "an unknown isolation lane is refused, not defaulted",
+    reason: "AOS_ISOLATION=strict falling back to BEST_EFFORT_CLI would run and score under a lane the operator did not choose, and the record would look like they chose it",
+    file: "lib/cli.mjs",
+    from: '  if (chosen === "STRICT" || chosen === "BEST_EFFORT_CLI") return chosen;',
+    to: '  return chosen === "STRICT" ? chosen : "BEST_EFFORT_CLI";',
+    test: "tests/product/cli-refusals.test.mjs",
+    name: "the isolation lane is the operator's to name, and a name that is neither lane is refused"
+  },
+  {
+    guard: "the boundary's verdict decides whether the run carries a number",
+    reason: "with the gate recorded beside the score instead of in front of it, a run on a lane that cannot be official still printed 100/100 and exited 0; and reading only an explicitly negative verdict is the same defect from the other side -- a caller with no verdict measured no boundary, and a default of null that meant carry on let a perfect observation set issue 100 with no blockers",
+    file: "lib/scorer-v1.mjs",
+    from: "  if (officialIssuance?.official !== true) {",
+    to: "  if (officialIssuance !== null && officialIssuance !== undefined && officialIssuance.official !== true) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
+  },
+  {
+    guard: "the assessment is scored under the gate it reports",
+    reason: "computing the verdict for the record but not for the scoring context is the same defect one line later: the result would name the withheld gate and carry the number anyway",
+    file: "lib/cli.mjs",
+    from: "    const officialIssuance = officialIssuanceFor(confinementRecords, settlement, FAMILIES);",
+    to: "    const officialIssuance = { official: true, reasons: [], claim_stage_ceiling: \"PROFILE_BOUND\" };",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_would_be"
+  },
+  {
+    guard: "a record is authenticated before it is judged",
+    reason: "the gate read field shapes, so an object with the right shape and no boundary behind it -- no schema, digests of nothing, a canary result with no cells -- satisfied every condition at once",
+    file: "lib/confinement.mjs",
+    from: '  const problems = record.level === "STRICT" ? authenticityProblems(record) : [];',
+    to: "  const problems = [];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_record_that_is_not_the_boundary_s_own_output_is_refused_rather_than_believed"
+  },
+  {
+    guard: "the canary that certifies the boundary is the one that shipped",
+    reason: "without the program digest any process that writes a PASS-shaped report certifies the boundary, including one the agent wrote",
+    file: "lib/confinement.mjs",
+    from: "    if (canary.program_digest !== BOUNDARY_CANARY_PROGRAM_DIGEST) problems.push(`boundary_canary.program_digest: ${JSON.stringify(canary.program_digest ?? null)} is not the shipped canary`);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_that_did_not_run_the_shipped_program_cannot_certify_the_boundary"
+  },
+  {
+    guard: "an unmeasured network axis is not NOT_OBSERVED",
+    reason: "projecting an absent observation as NOT_OBSERVED is the gate inventing the fact it exists to check, and the honest answer -- nothing measured the axis -- is the one that closes it",
+    file: "lib/confinement.mjs",
+    from: '  if (!networkStated) problems.push("network: no observation of the network axis");',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_missing_network_observation_is_an_invalid_record_and_not_a_quiet_not_observed"
+  },
+  {
+    guard: "the escaped descendant is proved confined",
+    reason: "a descendant that outlives the run is a lifetime problem; one that outlives it outside the boundary is an access problem, and only the kernel's refusal of its write says which happened",
+    file: "lib/confinement.mjs",
+    from: '  for (const name of ["observed_by_scan", "dead_after_cleanup", "escapee_confined"]) {',
+    to: '  for (const name of ["observed_by_scan", "dead_after_cleanup"]) {',
+    test: "tests/product/confinement.test.mjs",
+    name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
+  },
+  {
+    guard: "the process axis needs the sweep and the second poll",
+    reason: "a passing canary, two polls and a group sweep still miss the descendant that reparents and regroups between two polls; the survivor sweep -- the run marker in a process's environment, the run's own directories among its open files -- is what finds it, and an axis that did not require the sweep issued over exactly that process",
+    file: "lib/confinement.mjs",
+    from: '    && sweep !== null && typeof sweep === "object" && sweep.scanned === true',
+    to: "    && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_process_axis_with_no_sweep_and_no_escapee_proof_is_not_enforced"
+  },
+  {
+    guard: "cited evidence is read only if it is the evidence cited",
+    reason: "a row that declares a digest and is judged from whatever is on disk has a decorative declaration: the review changed the digests to zeroes and the row stayed official",
+    file: "lib/confinement.mjs",
+    from: "  if (!isDigest(reference.digest) || sha256Bytes(bytes) !== reference.digest) return { observation: null, mismatch: true, cited: true };",
+    to: "  if (false) return { observation: null, mismatch: true, cited: true };",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_support_row_whose_evidence_does_not_match_its_declared_digest_claims_nothing"
+  },
+  {
+    guard: "a cleanup failure is published by class and digest",
+    reason: "the confinement record is copied whole into the result, so an absolute agent-home path kept here is an operator's home directory published in an evidence surface",
+    file: "lib/confinement.mjs",
+    from: "  record.scratch_not_removed = Array.isArray(cleanupFailures) ? cleanupFailures.map(redactCleanupFailure) : null;",
+    to: "  record.scratch_not_removed = Array.isArray(cleanupFailures) ? cleanupFailures.slice() : null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "cleanup_failures_are_recorded_by_class_and_digest_and_never_by_path"
+  },
+  {
+    guard: "a provider refusal is narrow, not any non-zero exit",
+    reason: "a runtime that fails *inside* the boundary is what this lane exists to catch; widening the refusal pattern to every failure would turn a broken boundary into NOT_OBSERVED, which is the absence-as-success shape the other way round",
+    file: "tests/product/confinement-real-lane.test.mjs",
+    from: "const PROVIDER_REFUSAL = /usage limit|rate limit|rate_limit|quota exceeded|429/iu;",
+    to: "const PROVIDER_REFUSAL = /./u;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_provider_refusal_is_not_a_failed_boundary"
+  },
+  {
+    guard: "a skipped real lane is not a verified one",
+    reason: "the script exists to answer whether a real STRICT run happened; a suite that skipped every STRICT test and exited 0 answers yes",
+    file: "lib/confinement.mjs",
+    from: '      if (required && !available) throw fail("AOS_REAL_STRICT_NOT_RUN", `${detail}; a skipped lane is NOT_OBSERVED and is not a pass`);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_real_runtime_strict_script_cannot_report_a_skip_as_a_pass"
+  },
+  {
+    guard: "the group sweep is recorded from the group",
+    reason: "a sweep the record claims and the teardown never made is the process axis asserting itself; the pgid and its members come from the table at teardown or the record says nothing",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: "      groupSweep: pgid ? { pgid, members: processGroupMembers(pgid).filter((pid) => pid !== pgid) } : null",
+    to: "      groupSweep: { pgid: 0, members: [] }",
+    test: "tests/product/confinement-real-lane.test.mjs",
+    name: "strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
+  },
+  {
+    guard: "the workspace is named relatively so the store is not",
+    reason: "the absolute workspace path names the store, the run and the family in one string, so an agent never given AOS_HOME was handed it inside another variable's value",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: '        AOS_WORKSPACE: ".",',
+    to: "        AOS_WORKSPACE: context.workspace,",
+    test: "tests/product/confinement-real-lane.test.mjs",
+    name: "strict_run_holds_the_boundary_and_the_tracked_descendant_does_not_survive"
+  },
+  {
+    guard: "no variable may carry the store path",
+    reason: "checking the one variable that was known to carry it is how the rule was passed while another variable carried it; the check belongs on the values of the environment the child is actually spawned with",
+    file: "lib/confinement.mjs",
+    from: '      if (value.includes(root)) throw fail("AOS_ISOLATION_STORE_PATH_IN_ENV", `${name} carries the store path`);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "no_environment_variable_may_carry_the_store_path"
+  },
+  {
+    guard: "the matrix decides the process axis with the run's own helper",
+    reason: "a second, weaker formula for one decision: the row took its declared process_enforced on trust and handed the gate a synthesized sweep the canonical helper rejects",
+    file: "lib/confinement.mjs",
+    from: "    const processEnforced = strict && canaryPassed && processAxisEnforced({",
+    to: "    const processEnforced = strict && canaryPassed && Boolean({",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_matrix_decides_the_process_axis_with_the_helper_a_run_uses"
+  },
+  {
+    guard: "every observation a row cites must record a run that succeeded",
+    reason: "exec was cited and never consumed, so a committed observation of the runtime failing to start under the boundary rode along inside an official row",
+    file: "lib/confinement.mjs",
+    from: "      .filter(([, , read]) => !read.mismatch && read.observation !== null && read.observation.exit_status !== 0)",
+    to: "      .filter(() => false)",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_row_whose_cited_runtime_did_not_run_is_not_official"
+  },
+  {
+    guard: "cleanup is read from the teardown that happened",
+    reason: "a row declaring its own cleanup_verified is the fixture vouching for itself; the probe's teardown observation is the only thing that watched the staged credential copy go",
+    file: "lib/confinement.mjs",
+    from: "      cleanup_verified: strict && canaryPassed && cleanupRemoved,",
+    to: "      cleanup_verified: strict && canaryPassed,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_row_whose_cited_runtime_did_not_run_is_not_official"
+  },
+  {
+    guard: "the staged credential is scrubbed by value",
+    reason: "staging puts a credential where the assessed process can read it and never in the environment, so a scrubber built from the environment alone let a task print it into stdout_excerpt",
+    file: "lib/confinement.mjs",
+    from: "    for (const value of credentialValuesIn(bytes)) secrets.add(value);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_never_reaches_a_public_surface"
+  },
+  {
+    guard: "the lane is bound into the cohort",
+    reason: "both CLI paths built the profile with a literal BEST_EFFORT_CLI, so AOS_ISOLATION=STRICT changed the boundary and left the digest identical and a cycle averaged two lanes as one",
+    file: "lib/profile.mjs",
+    from: "    isolation_policy_digest: isolationPolicyDigest ?? isolationPolicyDigestOf({ level: isolation }),",
+    to: "    isolation_policy_digest: null,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_profile_a_number_is_bound_to_names_the_lane_it_actually_ran_under"
+  },
+  {
+    guard: "the assessment profile is built for the lane the run uses",
+    reason: "binding the profile to a hardcoded lane records the cohort of a boundary the run did not have",
+    file: "lib/cli.mjs",
+    from: "    const built = profileFor(agent, isolationLane());",
+    to: '    const built = profileFor(agent, "STRICT");',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_records_the_lane_it_ran_under_in_the_profile_it_is_bound_to"
+  },
+  {
+    guard: "the profile digest binds the boundary and the runtime configuration",
+    reason: "both fields were stored on the profile and left out of its digest, so a Seatbelt policy change or a new MCP server in config.toml aggregated into the cohort it changed",
+    file: "lib/profile.mjs",
+    from: "    isolation_policy_digest: profile.isolation_policy_digest ?? null,\n    runtime_config_digest: profile.runtime_config_digest ?? null,",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_profile_digest_binds_the_boundary_and_the_runtime_configuration"
+  },
+  {
+    guard: "the profile is rendered from the policy that is digested",
+    reason: "a second list of grants inside the renderer made the policy digest decorative: the review set the declared readable set to empty and the rendered rules did not move",
+    file: "lib/confinement.mjs",
+    from: "    `(allow file-read* ${subpaths(fs.system_readable)} ${literals(fs.system_readable_files)})`,",
+    to: '    \'(allow file-read* (subpath "/usr/lib") (subpath "/usr/share") (subpath "/System") (subpath "/Library") (subpath "/private/etc") (literal "/") (literal "/private") (literal "/private/var") (literal "/Users") (literal "/etc") (literal "/tmp") (literal "/var") (literal "/usr") (literal "/usr/bin") (literal "/bin"))\',',
+    test: "tests/product/confinement.test.mjs",
+    name: "the_generated_profile_reads_only_what_the_policy_declares"
+  },
+  {
+    guard: "the canary verdict is derived from its cells",
+    reason: "the gate trusted the reported result: a record whose outside_read observed allowed against expected denied, with result PASS left in place, was issued as official with no reasons",
+    file: "lib/confinement.mjs",
+    from: "      if (cell.contradicted) problems.push(`boundary_canary.cells.${name}: observed ${JSON.stringify(cell.observed)}${cell.claimed !== null && cell.claimed !== cell.expected ? ` claiming ${JSON.stringify(cell.claimed)}` : \"\"} against the policy's ${JSON.stringify(cell.expected)}`);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
+  },
+  {
+    guard: "the derived verdict ignores the reported one",
+    reason: "returning the record's own result would put the summary back in charge of the decision the cells are there to make",
+    file: "lib/confinement.mjs",
+    from: '  if (derived.some((cell) => cell.contradicted)) return "FAIL";',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
+  },
+  {
+    guard: "a run workspace is never inside the store",
+    reason: "an agent reads its working directory out of getcwd whatever the environment says, so a workspace under AOS_HOME discloses the store -- the forbidden implementation the issue names",
+    file: "lib/store.mjs",
+    from: "    workspaces: join(workspacesRoot(home), runId),",
+    to: '    workspaces: join(root, "workspaces"),',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "no_run_workspace_lives_inside_the_store"
+  },
+  {
+    guard: "the spawn refuses a workspace inside the store",
+    reason: "the layout is decided three files away from the spawn, and a run that never renders a profile -- any BEST_EFFORT run -- passes no other check: without this one a caller hands runProcess a workspace under the store and the child reads the store's path out of its own cwd",
+    file: "lib/core.mjs",
+    from: "            throw new Error(`AOS_ISOLATION_WORKSPACE_INSIDE_STORE ${candidate}`);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
+  },
+  {
+    guard: "a committed observation carries no transcript",
+    reason: "the package ships fixtures/confinement/, and the recorder used to copy the runtime's raw stdout and stderr into it -- prompt, answer, banner and session id, which SSOT excludes from committed evidence",
+    file: "fixtures/confinement/probes/strict-lane.mjs",
+    from: "        stdout: streamSummary(result.stdout),\n        stderr: streamSummary(result.stderr),",
+    to: "        stdout: excerpt(result.stdout),\n        stderr: excerpt(result.stderr),",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "no_committed_observation_carries_a_runtime_transcript"
+  },
+  {
+    guard: "a /proc listing is not a list of survivors",
+    reason: "reading the listing and stopping makes every process on a linux host a holder of this run's directories -- flagged in the record, and killed a moment later",
+    file: "lib/confinement.mjs",
+    from: "      if (held) pids.add(pid);",
+    to: "      pids.add(pid);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_open_path_scan_answers_the_same_question_on_both_platforms"
+  },
+  {
+    guard: "the result publishes redacted cleanup failures",
+    reason: "the confinement record was redacted and the run result carried the same failures as raw absolute paths, which is the object assess stores and renders",
+    file: "lib/core.mjs",
+    from: "    redactedFailures.push(...cleanupFailures.map(redactCleanupFailure));",
+    to: "    redactedFailures.push(...cleanupFailures);",
+    // Witnessed by the test that runs a real process whose cleanup really fails -- an agent that
+    // seals a directory inside its own HOME -- because this line only has an effect when the list
+    // is non-empty. The surfaces test beside it hands the failures in already redacted, which is
+    // the right shape for asking what a renderer publishes and no test of what fills the list.
+    test: "tests/product/operator-reported.test.mjs",
+    name: "what cleanup could not remove is reported by class and digest, never by path"
+  },
+  {
+    guard: "the transcript recogniser knows the configured workspaces root",
+    reason: "`AOS_WORKSPACES` accepts any absolute path while the recogniser knew only roots named `*-workspaces`, so under a documented option AOS reported its own suite transcripts back to the operator as their sessions",
+    file: "lib/session.mjs",
+    from: "export const isAosWorkspaceTranscript = (path, env = process.env) => AOS_WORKSPACE.test(path) || underConfiguredRoot(path, configuredWorkspaceRoot(env));",
+    to: "export const isAosWorkspaceTranscript = (path) => AOS_WORKSPACE.test(path);",
+    test: "tests/product/operator-reported.test.mjs",
+    name: "this tool's own assessment workspaces are not the operator's sessions"
+  },
+  {
+    guard: "adapter membership is a published name, not a path shape",
+    reason: "a directory is something anyone can create: `/tmp/x/@openai/codex/evil.mjs` passed #554 as an operator-owned file, matched the path pattern, and was handed the operator's live auth.json -- SSOT S9's rule with `name` replaced by `path`",
+    file: "lib/confinement.mjs",
+    from: "  const declaring = [real, ...chain].map((path) => declaringPackage(path, spec.runtime_package)).find((one) => one !== null) ?? null;",
+    to: "  const declaring = [real, ...chain].some((path) => path.includes(`/${spec.runtime_package}/`)) ? \"/\" : null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_credential_is_staged_for_the_package_that_publishes_the_runtime_not_for_a_path_that_looks_like_it"
+  },
+  {
+    guard: "a credential is staged for the runtime, not for the label",
+    reason: "the adapter id is a string a registration chooses; without binding staging to the verified executable, `aos agent add evil --command node --adapter codex-cli.v1` was handed the operator's Codex token",
+    file: "lib/confinement.mjs",
+    from: "  const match = runtimeIdentityMatches(identity, adapter);\n  if (!match.ok) {",
+    to: "  const match = { ok: true, reason: null };\n  if (!match.ok) {",
+    test: "tests/product/confinement.test.mjs",
+    name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
+  },
+  {
+    guard: "the verified executable must be the adapter's runtime",
+    reason: "a VERIFIED identity for /usr/bin/node is a true statement about node and says nothing about Codex; without the membership check any verified file could claim any adapter",
+    file: "lib/confinement.mjs",
+    from: "  if (declaring === null) {",
+    to: "  if (false) {",
+    test: "tests/product/confinement.test.mjs",
+    name: "stages_only_the_declared_runtime_config_files_into_the_agent_home"
+  },
+  {
+    guard: "an unidentified runtime cannot carry the lane",
+    reason: "staging refused and issuance allowed would mean an impostor ran the proven lane with nothing staged and was still recorded as official on it",
+    file: "lib/confinement.mjs",
+    from: "  if (RUNTIME_CONFIG_STAGING.has(record.adapter) && record.runtime_identity?.matches_adapter !== true) {",
+    to: "  if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_lane_whose_adapter_stages_a_credential_is_official_only_for_that_runtime"
+  },
+  {
+    guard: "grading reads what was frozen at settlement",
+    reason: "a survivor no scan can see is granted this run's own workspace by the boundary that holds it, and grading read the live tree afterwards -- so it could write an artifact between the last invocation and the grader and change the measurement",
+    file: "lib/cli.mjs",
+    from: "      const graded = await gradeScenario(family, settled.path, { baseline: prepared.baseline, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
+    to: "      const graded = await gradeScenario(family, workspace, { baseline: prepared.baseline, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_records_what_each_family_was_graded_from"
+  },
+  {
+    guard: "the freeze certificate is over the copy",
+    reason: "no pair of digests over the source can certify the copy: a writer that mutated a file before the walk reached it and restored it before the second digest left before===after while the copy held bytes that appeared in neither digest, were handed to grading, and were scored",
+    file: "lib/confinement.mjs",
+    from: "    && copied.digest === before.digest",
+    to: "    && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_write_reverted_while_the_copy_ran_is_caught_by_the_copys_own_digest"
+  },
+  {
+    guard: "the copy carries the modes it copied",
+    reason: "treeByteDigest puts an entry's mode in its manifest row, so a copy written with writeFileSync defaults can never digest as its source and the certificate that reads it would be dead on arrival",
+    file: "lib/confinement.mjs",
+    from: "      chmodSync(target, stats.mode & 0o7777);",
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_write_reverted_while_the_copy_ran_is_caught_by_the_copys_own_digest"
+  },
+  {
+    guard: "a tree the digest cannot cover is not certified",
+    reason: "the manifest refuses an entry too large, a tree too large, one too deep or one unreadable and keeps a row without the bytes, so above those limits two different artifacts of the same size are the same row -- which is how a 220 MiB workspace's forged response.json digested identically on both sides",
+    file: "lib/confinement.mjs",
+    from: "    && notCovered.length === 0",
+    to: "    && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_tree_the_digest_cannot_cover_is_never_certified"
+  },
+  {
+    guard: "verification re-derives the settlement half too",
+    reason: "assess composed the confinement gate and the settlement together while verification re-derived only the first, so an honest snapshot-inconsistent run failed under a false accusation and deleting the settlement reasons verified as PROFILE_BOUND with the contradicting evidence still in the record",
+    file: "lib/cli.mjs",
+    from: "  const verdict = officialIssuanceFor(invocations, record?.settlement ?? null, FAMILIES);",
+    to: "  const verdict = issuanceGateForRun(invocations);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "an older schema generation is named, not accused",
+    reason: "#556 added two required properties while the version stayed 2.0.0, so every pre-#556 stored run failed verification with a message accusing the record of contradicting its own evidence when its only fault was predating the gate",
+    file: "lib/cli.mjs",
+    from: "    if (generation !== RESULT_SCHEMA_VERSION) {",
+    to: "    if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_result_from_an_older_schema_generation_is_named_not_accused"
+  },
+  {
+    guard: "a copy taken while the tree moved is not a snapshot",
+    reason: "a digest taken only after the copy describes the tree as the copy left it and says nothing about whether it held still; a process writing during the walk produced a copy of a state that never existed and the digest matched it",
+    file: "lib/confinement.mjs",
+    from: "    consistent: unreadable !== null ? null : certified,",
+    to: "    consistent: true,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_copy_taken_while_the_tree_moved_is_not_a_snapshot"
+  },
+  {
+    guard: "an inconsistent snapshot withholds",
+    reason: "recording `consistent: false` and gating nothing on it is a fact in a file: grading read the mixture and the run stayed official",
+    file: "lib/confinement.mjs",
+    from: "    if (entry !== null && entry.consistent !== true) inconsistent.push(family);",
+    to: "    if (entry !== null && entry.consistent === false && false) inconsistent.push(family);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_copy_taken_while_the_tree_moved_is_not_a_snapshot"
+  },
+  {
+    guard: "the freeze copies no link",
+    reason: "a link's own bytes are in the tree digest and its target's are not, so a survivor could point response.json outside the workspace, rewrite the target after settlement, and be graded on the new bytes with changed_after_settlement false beside them",
+    file: "lib/confinement.mjs",
+    from: "    if (!stats.isFile()) { refused.push({ path, type: stats.isSymbolicLink() ? \"symlink\" : \"other\" }); continue; }",
+    to: "    if (!stats.isFile() && !stats.isSymbolicLink()) { refused.push({ path, type: \"other\" }); continue; }",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
+  },
+  {
+    guard: "the settlement digest is over the tree the comparison recomputes",
+    reason: "taking it over the copy instead made a workspace holding a link digest differently from the tree it was copied from, so every later comparison reported a write that never happened and the run withheld for a phantom",
+    file: "lib/confinement.mjs",
+    from: "    digest: after?.digest ?? null,",
+    to: "    digest: copied?.digest ?? null,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_symlink_in_the_workspace_is_not_a_hole_in_the_freeze"
+  },
+  {
+    guard: "a family that never settled is a missing answer",
+    reason: "reading the settlement object's own keys made an empty one clean -- no family recorded, no complaint raised, gate open -- so a family whose freeze never ran opened the gate it should have closed",
+    file: "lib/confinement.mjs",
+    from: "  const expected = Array.isArray(expectedFamilies) ? expectedFamilies.map(String) : seen;",
+    to: "  const expected = seen;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_settlement_nobody_could_check_withholds_like_one_that_moved"
+  },
+  {
+    guard: "a settlement nobody could check is not a clean one",
+    reason: "the comparison answers true, false or 'could not ask', and blocking on exactly true read a digest that raised as a workspace that had not moved -- absent evidence opening the gate, inside the isolation verdict itself",
+    file: "lib/confinement.mjs",
+    from: "    if (changed === true) written.push(family);\n    else if (changed !== false) unverified.push(family);",
+    to: "    if (changed === true) written.push(family);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_settlement_nobody_could_check_withholds_like_one_that_moved"
+  },
+  {
+    guard: "a recomputation compares the boundary facts it published",
+    reason: "the isolation block was outside the compared surfaces, so level, backend, both axes, the policy digest and the network row could be rewritten -- NOT_OBSERVED to denied -- and `verify --run` still reported PASS recompute",
+    file: "lib/cli.mjs",
+    from: "      one.boundary_withheld, one.isolation,",
+    to: "      one.boundary_withheld,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "a write after settlement is visible",
+    reason: "the frozen copy keeps a later write out of the number; the digest beside it is what makes such a write reportable instead of silent",
+    file: "lib/confinement.mjs",
+    from: "  try { return digest(workspace) !== frozen.digest; } catch { return null; }",
+    to: "  return false;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "what_grading_reads_is_frozen_when_execution_is_declared_settled"
+  },
+  {
+    guard: "the cohort digest refuses what staging refuses",
+    reason: "the digest followed a symlink staging refuses and hashed the target, so the profile bound bytes the runtime never received -- two paths answering one question differently",
+    file: "lib/confinement.mjs",
+    from: "    return [name, stageableFile(file, dir).ok ? sha256Bytes(readFileSync(file)) : null];",
+    to: "    return [name, isRegularFile(file) ? sha256Bytes(readFileSync(file)) : null];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_cohort_digest_binds_the_bytes_the_runtime_received"
+  },
+  {
+    guard: "a policy no backend implements is not measured",
+    reason: "`restricted` is in the vocabulary and enforced by nothing, so a record claiming it described a boundary never applied -- and the gate, reading the vocabulary, called it official with no reasons",
+    file: "lib/confinement.mjs",
+    from: "    if (!IMPLEMENTED_NETWORK_POLICIES.includes(record.network_policy)) problems.push(`network_policy: ${JSON.stringify(record.network_policy ?? null)} is not a policy any backend on this release implements`);",
+    to: "    if (!NETWORK_POLICIES.includes(record.network_policy)) problems.push(`network_policy: not stated`);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_network_policy_no_backend_implements_cannot_be_official"
+  },
+  {
+    guard: "cleanup is verified by the scans that can answer",
+    reason: "the survivor list alone is what the scans happened to see; without the sweep having run and enumerated the group, an empty list is silence rather than a clean teardown",
+    file: "lib/confinement.mjs",
+    from: "  const swept = sweep !== null && typeof sweep === \"object\" && sweep.scanned === true",
+    to: "  const swept = true || sweep !== null && typeof sweep === \"object\" && sweep.scanned === true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_cleanup_that_no_scan_stood_behind_is_not_verified"
+  },
+  {
+    guard: "the canary's own escapee is killed and checked",
+    reason: "its pid is in hand at spawn, so a live one is a leak this run detected rather than the residual the lane carries; dropping the liveness check publishes a still-running descendant as a clean teardown",
+    file: "lib/confinement.mjs",
+    from: '  if (stripped === null || ["ran", "confined", "dead_after_cleanup"].some((name) => stripped[name] !== true)) return "FAIL";',
+    to: '  if (stripped === null || ["ran", "confined"].some((name) => stripped[name] !== true)) return "FAIL";',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_descendant_that_sheds_every_marker_is_held_by_the_boundary_not_by_the_scanners"
+  },
+  {
+    guard: "the evidence a row must cite follows its level, not its label",
+    reason: "keyed on the row's own official label, the requirement composed away: label false plus two deleted citations gave no missing evidence while the derived decision stayed official and the renderer printed it",
+    file: "lib/confinement.mjs",
+    from: 'const strictEvidenceKinds = (row) => (row.level === "STRICT" ? [...STRICT_EVIDENCE_KINDS] : []);',
+    to: 'const strictEvidenceKinds = (row) => (row.level === "STRICT" && row.official === true ? [...STRICT_EVIDENCE_KINDS] : []);',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_label_cannot_relax_what_the_gate_requires_of_a_row"
+  },
+  {
+    guard: "a symlinked staging source is refused by name",
+    reason: "statSync follows the last component, so a config file that is a link to anywhere on the host was copied into the agent's private HOME; plain host content is not credential-shaped and no redactor takes it out again",
+    file: "lib/confinement.mjs",
+    from: '  if (entry.isSymbolicLink()) return { ok: false, reason: "symlink" };',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_symlinked_runtime_config_is_refused_rather_than_copied"
+  },
+  {
+    guard: "support is read from the lane table, not restated",
+    reason: "two mappings of one fact drift: the Claude adapter claimed STRICT while the table the gate reads records that lane as NOT_OBSERVED",
+    file: "lib/profile.mjs",
+    from: "  const proven = SUPPORT_LANES\n    .filter((lane) => (lane.adapter === adapterId || lane.adapter === \"*\") && SUPPORTED_RELEASE_SET.has(lane.support_status))\n    .map((lane) => lane.level);",
+    to: '  const proven = ["STRICT"];',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_adapter_table_and_the_lane_table_cannot_disagree_about_support"
+  },
+  {
+    guard: "bubblewrap mounts what the policy declares",
+    reason: "the linux renderer kept a list of its own -- all of /etc and all of /sbin against a policy declaring /etc/ssl and /etc/resolv.conf -- so the digest described one boundary and the argument vector applied another, with /etc/hostname and /etc/machine-id inside it",
+    file: "lib/confinement.mjs",
+    from: "  for (const tree of [...fs.system_readable, ...fs.system_readable_files]) args.push(\"--ro-bind-try\", tree, tree);",
+    to: '  for (const tree of ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/etc"]) args.push("--ro-bind-try", tree, tree);',
+    test: "tests/product/confinement.test.mjs",
+    name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
+  },
+  {
+    guard: "the table shows the decision and not the label",
+    reason: "reading the fixture's own `official` beside the decision keeps a second vote on the one question the table exists to answer: a row the gate had issued rendered withheld whenever the label disagreed",
+    file: "lib/confinement.mjs",
+    from: "    const official = row.decision.official ? \"OFFICIAL\" : \"withheld\";",
+    to: '    const official = row.official && row.decision.official ? "OFFICIAL" : "withheld";',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_rendered_matrix_shows_the_decisions_it_was_handed"
+  },
+  {
+    guard: "the teardown observation reports what cleanup returned",
+    reason: "the recorder discarded handle.cleanup()'s return value and always wrote exit_status 0, so a profile the kernel refused to delete was recorded as a clean teardown and the row stayed eligible",
+    file: "fixtures/confinement/probes/strict-lane.mjs",
+    from: "      exit_status: cleanupFailures.length === 0 ? 0 : 1,",
+    to: "      exit_status: 0,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_recorder_removes_the_staged_credential_even_when_the_lane_fails"
+  },
+  {
+    guard: "the matrix reads what the teardown could not remove",
+    reason: "four booleans about other paths said the lane was clean while the profile removal had failed; the list of what stayed is the answer to the question the row asks",
+    file: "lib/confinement.mjs",
+    from: "      && (cleanup.captured.not_removed ?? []).length === 0",
+    to: "      && true",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "a workspace that resolves into the store is refused",
+    reason: "a symlinked workspaces root is outside the store to a string comparison and inside it to the kernel, which is the reader that decides what the child's cwd discloses",
+    file: "lib/store.mjs",
+    from: "  if (chosen === root || chosen.startsWith(`${root}/`) || root.startsWith(`${chosen}/`)) {",
+    to: "  if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
+  },
+  {
+    guard: "the renderer refuses a workspace inside the store",
+    reason: "the bindings check refused only a workspace containing the store, so a workspace inside it was rendered a profile whose workspace allow reopens the denied tree",
+    file: "lib/confinement.mjs",
+    from: '  if (within(bound["@AOS_HOME@"], bound["@WORKSPACE@"])) throw fail("AOS_ISOLATION_WORKSPACE_INSIDE_STORE", bound["@WORKSPACE@"]);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_workspace_that_resolves_into_the_store_is_refused_however_it_is_spelled"
+  },
+  {
+    guard: "every kind of evidence is required by name",
+    reason: "iterating the citations that happen to exist made each kind optional: deleting runtime and exec left one surviving citation and the lane stayed official with nothing saying the runtime authenticated or ran",
+    file: "lib/confinement.mjs",
+    from: "    const missingEvidence = strictEvidenceKinds(row).filter((kind) => !byKind.has(kind) || byKind.get(kind) === null);",
+    to: "    const missingEvidence = [];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "an observation's markers are read, not only its exit code",
+    reason: "a login that reported no login and an execution that did not answer both exit zero; the markers are what say the runtime did the thing the lane claims",
+    file: "lib/confinement.mjs",
+    from: '      ...(byKind.get("runtime") && !(byKind.get("runtime").stderr?.markers?.logged_in || byKind.get("runtime").stdout?.markers?.logged_in) ? ["runtime: no login was reported"] : []),',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "the lane's identity comes from the runtime that authenticated",
+    reason: "copied from the canary, the identity described a node program rather than the runtime whose evidence the row cites",
+    file: "lib/confinement.mjs",
+    from: '      runtime_identity: byKind.get("runtime")?.captured?.runtime_identity ?? null,',
+    to: "      runtime_identity: captured?.runtime_identity ?? null,",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_official_row_cites_every_kind_of_evidence_and_the_evidence_says_it_worked"
+  },
+  {
+    guard: "an unmeasured network policy has no expectation",
+    reason: "everything that was not the word disabled expected the connect to succeed, so a policy nobody has measured was judged against the most permissive expectation there is",
+    file: "lib/confinement.mjs",
+    from: '  if (networkPolicy === "provider-required-unrestricted") return "allowed";\n  return null;',
+    to: '  return "allowed";',
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_unmeasured_network_state_withholds_rather_than_defaulting_to_allowed"
+  },
+  {
+    guard: "the network axis is enumerated, not typed",
+    reason: "a string was enough for the policy and the enforcement and the transport was never read, so a record could name a policy nobody measured and publish provider_transport null beside it",
+    file: "lib/confinement.mjs",
+    from: '    if (!["allowed", "denied"].includes(network.provider_transport)) problems.push(`network.provider_transport: ${JSON.stringify(network.provider_transport ?? null)} is not one of allowed/denied`);',
+    to: "",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_unmeasured_network_state_withholds_rather_than_defaulting_to_allowed"
+  },
+  {
+    guard: "the canary expectation is this module's, not the record's",
+    reason: "reading `expected` from the record gives it a second authority over what the boundary was supposed to do: the review set outside_read to expected allowed, observed allowed, and the gate agreed",
+    file: "lib/confinement.mjs",
+    from: "    const expected = canonicalExpectation(name, networkPolicy);\n    const claimed = typeof cell?.expected === \"string\" ? cell.expected : null;",
+    to: "    const expected = typeof cell?.expected === \"string\" ? cell.expected : canonicalExpectation(name, networkPolicy);\n    const claimed = typeof cell?.expected === \"string\" ? cell.expected : null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_canary_whose_cells_contradict_their_expectations_is_a_failed_boundary"
+  },
+  {
+    guard: "the process group is enumerated, not assumed",
+    reason: "a descendant with env {} , a cwd outside the run and closed handles matches neither the marker scan nor the path scan; the group it was forked into is the handle it cannot drop, and an empty answer from scanners that never walked it is silence",
+    file: "lib/confinement.mjs",
+    from: '    && Array.isArray(sweep.scanners) && sweep.scanners.includes("process-group")\n    && Number.isInteger(sweep.group_enumerated)\n    && Array.isArray(sweep.survivors) && sweep.survivors.length === 0;\n}',
+    to: "    && true;\n}",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_descendant_that_strips_its_marks_is_still_enumerated_by_its_group"
+  },
+  {
+    guard: "a required metric with an unanswered subcheck is not present",
+    reason: "the aggregate stays non-null while one of the four questions was never answered, so a run with M19's external-action subcheck null issued at 99",
+    file: "lib/scorer-v1.mjs",
+    from: "    const unanswered = (observation.subchecks ?? []).filter((entry) => entry?.pass === null || entry?.pass === undefined).map((entry) => entry?.id ?? \"unnamed\");\n    return unanswered.length > 0 ? [`${id} (${unanswered.join(\", \")})`] : [];",
+    to: "    return [];",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_required_metric_with_an_unanswered_subcheck_withholds_the_score"
+  },
+  {
+    guard: "the staged secrets reach the scrubber",
+    reason: "the values staging copied are the ones the child can read and print; a scrubber built without them publishes the token in stdout_excerpt, and the previous test built its own scrubber and never saw it",
+    platform: "darwin",
+    file: "lib/core.mjs",
+    from: "      ...(Array.isArray(confinement.secrets) ? confinement.secrets : [])",
+    to: "      ...[]",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
+  },
+  {
+    guard: "a credential is what it is filed under, at any length",
+    reason: "length and shape were the only tests, so an eleven-character refresh token under tokens.refresh_token was collected by nothing and printed into the public result verbatim",
+    platform: "darwin",
+    file: "lib/confinement.mjs",
+    from: "      if ((credentialed && value.length >= KEYED_SECRET_MIN) || (value.length >= STAGED_SECRET_MIN && !/\\s/u.test(value))) found.add(value);",
+    to: "      if (value.length >= STAGED_SECRET_MIN && !/\\s/u.test(value)) found.add(value);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_staged_credential_printed_by_the_agent_is_scrubbed_from_the_public_result"
+  },
+  {
+    guard: "the canary proves the stripped descendant was confined",
+    reason: "without the cell the axis has nothing to read but empty enumerations, which is the thing this decision replaced; and liveness is in the cell because this escapee is AOS's own child -- a leak whose pid was in hand is detected, not residual",
+    file: "lib/confinement.mjs",
+    from: '  for (const name of ["ran", "confined", "dead_after_cleanup"]) {\n    if (strippedOut[name] !== true) failed.push(`stripped.${name}`);\n  }',
+    to: "",
+    test: "tests/product/confinement.test.mjs",
+    name: "the_canary_passes_only_when_every_cell_and_every_out_of_band_check_holds"
+  },
+  {
+    guard: "a verdict that contradicts itself is not a verdict",
+    reason: "the gate publishes `claim_stage_ceiling` beside `official` and nothing read it, so a record could state RUN_DIAGNOSTIC on one field and be issued PROFILE_BOUND from the other -- a declaration with no enforcement behind it",
+    file: "lib/ecd-contract.mjs",
+    from: "  const inconsistent = boundary?.official === true && ceiling !== undefined && ceiling !== \"PROFILE_BOUND\";",
+    to: "  const inconsistent = false;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
+  },
+  {
+    guard: "an absent boundary is not a passing one",
+    reason: "a caller who says nothing about the boundary has established nothing about it; the version that read `context.boundary ?? null` and withheld only on a non-null value gave an omitted, null or undefined boundary a PROFILE_BOUND claim and an issued composite of 100",
+    file: "lib/ecd-contract.mjs",
+    from: "  const boundaryWithheld = boundary === null\n    ? [UNUSABLE_BOUNDARY_REASONS.NOT_MEASURED]",
+    to: "  const boundaryWithheld = boundary === null\n    ? []",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
+  },
+  {
+    guard: "a recomputation runs under the run's own boundary",
+    reason: "the boundary is an input to the evaluation, so a recomputation without it rebuilds every withheld result as an issued one -- the untampered artifact fails its own verification and the check meant to catch a forged number produces the number a forger wants",
+    file: "lib/cli.mjs",
+    from: "profile_digest: result.profile_digest, forms_completed: forms, boundary }, contract);",
+    to: "profile_digest: result.profile_digest, forms_completed: forms }, contract);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "a verifier reads the boundary off the record, not off the result",
+    reason: "asking the artifact whether its own boundary held is asking the suspect for an alibi: a withheld result edited to a consistent set of official surfaces recomputed to exactly the forged version and verified",
+    file: "lib/cli.mjs",
+    from: "    const boundary = boundaryFor(record);",
+    to: "    const boundary = Array.isArray(result.boundary_withheld) ? { official: result.boundary_withheld.length === 0, reasons: [...result.boundary_withheld] } : null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_withheld_result_verifies_as_the_result_it_is"
+  },
+  {
+    guard: "an issued legacy number needs a declared STRICT level",
+    reason: "SSOT S24 makes BEST_EFFORT_CLI diagnostic-only, and the permissive default meant a caller who declared no level at all issued a hundred over a replaced HOME and a filtered environment",
+    file: "lib/scorer-v1.mjs",
+    from: "  } else if (isolationLevel !== \"STRICT\") {",
+    to: "  } else if (false) {",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_the_boundary_did_not_make_official_carries_no_score"
+  },
+  {
+    guard: "the device nodes are the policy's, not the renderer's",
+    reason: "`--dev` mounts a whole devtmpfs the policy never named; emptying both device arrays left the argument vector byte-identical, so the policy digest could move while the applied boundary did not",
+    file: "lib/confinement.mjs",
+    from: "  const devices = [...fs.device_readable, ...fs.device_writable];\n  if (devices.length > 0) args.push(\"--tmpfs\", \"/dev\");",
+    to: "  args.push(\"--dev\", \"/dev\");",
+    test: "tests/product/confinement.test.mjs",
+    name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
+  },
+  {
+    guard: "the private tmpfs is declared before it is mounted",
+    reason: "an unconditional `--tmpfs /tmp` is a grant no policy field carries, so nothing in the digest says the run got a private /tmp and nothing would say if it stopped",
+    file: "lib/confinement.mjs",
+    from: "  for (const directory of fs.private_tmpfs ?? []) args.push(\"--tmpfs\", directory);",
+    to: "  args.push(\"--tmpfs\", \"/tmp\");",
+    test: "tests/product/confinement.test.mjs",
+    name: "bubblewrap_arguments_isolate_the_store_and_share_only_the_named_trees"
+  },
+  {
+    guard: "the published result carries the boundary it ran under",
+    reason: "the result named an isolation level and nothing else, so the network axis's NOT_OBSERVED -- the limitation this issue requires be shown -- reached no reader on any page",
+    file: "lib/ecd-contract.mjs",
+    from: "  const boundaryState = boundaryFactsOf(boundary);",
+    to: "  const boundaryState = boundaryFactsOf(null);",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "an_assessment_on_a_lane_that_cannot_be_official_says_so_where_the_score_would_be"
+  },
+  {
+    guard: "the boundary withholds every index, not only the composite",
+    reason: "both index labels begin with PROFILE-BOUND, so both are claims about an enforced environment; withholding only the composite left a run with no measured boundary publishing two issued hundreds one line up the page",
+    file: "lib/result-schema.mjs",
+    from: "  const boundaryHeld = boundaryWithheld.length === 0;",
+    to: "  const boundaryHeld = true;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
+  },
+  {
+    guard: "the boundary withholds the number, not only the claim stage",
+    reason: "both index labels begin with PROFILE-BOUND, so both are claims about an enforced environment; withholding only the composite left a run with no measured boundary publishing two issued hundreds one line up the page",
+    file: "lib/result-schema.mjs",
+    from: "  const compositeIssued = compositeThroughOutcome.issued && identityWithheld === null && boundaryHeld;",
+    to: "  const compositeIssued = compositeThroughOutcome.issued && identityWithheld === null;",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
+  },
+  {
+    guard: "the claim stage reads the boundary",
+    reason: "the stage is what a reader is entitled to conclude; without the boundary term a run whose confinement was refused reports PROFILE_BOUND on every surface",
+    file: "lib/ecd-contract.mjs",
+    from: "&& boundaryWithheld.length === 0 ? \"PROFILE_BOUND\" : \"RUN_DIAGNOSTIC\";",
+    to: "? \"PROFILE_BOUND\" : \"RUN_DIAGNOSTIC\";",
+    test: "tests/product/official-issuance.test.mjs",
+    name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
+  },
+  {
+    guard: "a detected model that contradicts the declared one is a mismatch",
+    reason: "the first-ranked source silently winning over a declaration that named another model is the mismatch-ignored case the issue forbids; a run under a model nobody can name would be filed as the declared one",
+    file: "lib/model-identity.mjs",
+    from: "  const disagreeing = rest.find((candidate) => !sameModel(winner, candidate));",
+    to: "  const disagreeing = undefined;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "detected A vs declared B is a named mismatch that fails closed"
+  },
+  {
+    guard: "a mismatch cannot be bound into a profile",
+    reason: "a profile digest locked over a contradiction would file three runs under a model this product could not name, and the number would look exact",
+    file: "lib/model-identity.mjs",
+    from: "  if (record?.status === \"MISMATCH\") {",
+    to: "  if (false) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "detected A vs declared B is a named mismatch that fails closed"
+  },
+  {
+    guard: "a bare alias is never an exact identity",
+    reason: "`latest` names whatever the provider points it at today; a profile that took it for a model would compare two runs of two models",
+    file: "lib/model-identity.mjs",
+    from: "  if (BARE_ALIASES.has(parsed.model) || MOVING_ROOTS.has(rootToken(parsed.model))) {",
+    to: "  if (false) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "latest, default, gpt and sonnet are mutable aliases, never exact identities"
+  },
+  {
+    guard: "a name without snapshot proof is a mutable alias",
+    reason: "the fail-closed direction is that an unproven snapshot is mutable; reversing it makes every provider-managed name exact and every drift invisible",
+    file: "lib/model-identity.mjs",
+    from: "  return { alias_class: \"provider-managed-alias\", mutable_alias: true };",
+    to: "  return { alias_class: \"provider-managed-alias\", mutable_alias: false };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a provider-managed name without a snapshot marker is a mutable alias"
+  },
+  {
+    guard: "a mutable alias withholds the profile-bound aggregate",
+    reason: "a mutable alias may run, and the issue caps what it may claim at a run diagnostic; without this line the alias is issued as profile-bound",
+    file: "lib/model-identity.mjs",
+    from: "  if (provenance.mutable_alias !== false || provenance.status === \"MUTABLE\") return \"MODEL_MUTABLE_ALIAS\";",
+    to: "  if (false) return \"MODEL_MUTABLE_ALIAS\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a mutable alias may run, but its claim stage is capped and profile-bound aggregation withheld by name"
+  },
+  {
+    guard: "an unknown model withholds the aggregate by its own name",
+    reason: "an unknown model is not a mutable one and not an exact one; a reader told the wrong reason cannot act on it, and the historical cycles this touches are filed under exactly this reason",
+    file: "lib/model-identity.mjs",
+    from: "  if (provenance.status === \"UNKNOWN\" || typeof provenance.id !== \"string\") return \"MODEL_UNKNOWN\";",
+    to: "  if (false) return \"MODEL_UNKNOWN\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an unknown model may run, but profile-bound aggregation is withheld by name"
+  },
+  {
+    guard: "the runtime's own event outranks the declaration",
+    reason: "the source precedence is the issue's contract; a declaration that outranked the runtime's own transcript would let the operator name the model the run used",
+    file: "lib/model-identity.mjs",
+    from: "  const [winner, ...rest] = candidates;",
+    to: "  const winner = candidates.at(-1); const rest = candidates.slice(0, -1);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "source precedence is runtime event, then runtime config, then declared, then unknown"
+  },
+  {
+    guard: "a transcript that names another model contradicts the binding",
+    reason: "verification that confirmed any observed model would turn the runtime's own evidence into a rubber stamp for the declaration it was meant to check",
+    file: "lib/model-identity.mjs",
+    from: "  if (boundName !== null && sameModel(boundName, observed[0])) return { status: \"CONFIRMED\", code: null, observed, unnameable };",
+    to: "  if (boundName !== null) return { status: \"CONFIRMED\", code: null, observed, unnameable };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a runtime event confirms a bound identity, contradicts it by name, or was not observed"
+  },
+  {
+    guard: "the profile digest covers the mutable alias state",
+    reason: "an alias and the snapshot it currently points at would share a digest, and a number produced under one would aggregate with a number produced under the other",
+    file: "lib/profile.mjs",
+    from: "    model_mutable_alias: profile.model_mutable_alias ?? null,",
+    to: "    model_mutable_alias: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the profile digest moves for each model, runtime, adapter, environment, isolation and language field on its own"
+  },
+  {
+    guard: "the profile digest covers the executable identity",
+    reason: "the issue forbids a digest over the model id alone; the same model through a rebuilt or replaced executable is a different environment and must not form one cohort",
+    file: "lib/profile.mjs",
+    from: "    runtime_identity_digest: profile.runtime_identity_digest,",
+    to: "    runtime_identity_digest: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "same exact model with a different executable identity is not one cohort"
+  },
+  {
+    guard: "the profile digest covers the isolation policy",
+    reason: "two runs under different HOME regimes or withheld prefixes are different measurements, and the level's name alone does not say what the level committed the run to",
+    file: "lib/profile.mjs",
+    from: "    isolation_policy_digest: profile.isolation_policy_digest ?? null,\n    runtime_config_digest: profile.runtime_config_digest ?? null,",
+    to: "    isolation_policy_digest: null,\n    runtime_config_digest: profile.runtime_config_digest ?? null,",
+    // Witnessed by the test that moves the policy digest and nothing else. #561's field-by-field
+    // test varies the isolation *level*, which is its own digest input, so nulling the policy
+    // digest left that one green -- a guard reading as load-bearing on a witness that could not
+    // see it.
+    test: "tests/product/official-issuance.test.mjs",
+    name: "the_profile_digest_binds_the_boundary_and_the_runtime_configuration"
+  },
+  {
+    guard: "a run under a different profile digest is not a run in this cycle",
+    reason: "the cohort key is the profile digest, and a cycle that counted a run made under another one would average two measurements of different things -- which is what the model, executable, adapter, environment and isolation fields were folded into the digest for",
+    file: "lib/cycle.mjs",
+    from: "  if (!sameDigest(run.profile_digest, cycle.profile_digest)) return { valid: false, reason: \"PROFILE_CHANGED\" };",
+    to: "  if (false) return { valid: false, reason: \"PROFILE_CHANGED\" };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "same exact model with a different executable identity is not one cohort"
+  },
+  {
+    guard: "an unverified executable withholds the aggregate",
+    reason: "issuance read only the model, so an exact model whose runtime identity was missing, UNTRUSTED or unverifiable was issued as profile-bound under a cohort key whose executable half nobody established",
+    file: "lib/model-identity.mjs",
+    from: "  if (!runtimeIdentityVerified(runtimeIdentity)) return \"RUNTIME_IDENTITY_UNVERIFIED\";",
+    to: "  if (false) return \"RUNTIME_IDENTITY_UNVERIFIED\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a missing, untrusted or unverifiable executable identity withholds the aggregate by its own name"
+  },
+  {
+    guard: "an UNTRUSTED identity is not a verified one",
+    reason: "#554 marks an identity UNTRUSTED when the program or its directory failed a check; treating that as verified issues a profile-bound number over an executable the product itself refused to vouch for",
+    file: "lib/model-identity.mjs",
+    from: "  typeof runtimeIdentity?.identity_digest === \"string\" && runtimeIdentity.identity_status === \"VERIFIED\";",
+    to: "  typeof runtimeIdentity?.identity_digest === \"string\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a missing, untrusted or unverifiable executable identity withholds the aggregate by its own name"
+  },
+  {
+    guard: "the executable identity digest is recomputed, not read",
+    reason: "a hand-written object with the schema id, a syntactically valid digest and the word VERIFIED bound as an identity this product had verified, and its digest became the executable half of a cohort key while describing no file at all",
+    file: "lib/runtime-identity.mjs",
+    from: "  if (identityDigestOf(identity) !== identity.identity_digest) return unbound(\"UNVERIFIABLE\");",
+    to: "  if (false) return unbound(\"UNVERIFIABLE\");",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a runtime identity whose digest does not recompute is not bound, however well-formed it looks"
+  },
+  {
+    guard: "a transcript value is never printed unless it is a model name",
+    reason: "the transcript is written by the child process, so its model field is attacker text; a credential written there reached the result JSON, the CLI, Markdown and HTML verbatim, bypassing the stdout redactor",
+    file: "lib/model-identity.mjs",
+    from: "    const named = parseModelName(event.model, provider);",
+    to: "    const named = { provider, model: event.model, id: event.model };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a transcript value that is not a plausible model name leaves as a digest, never as text"
+  },
+  {
+    guard: "secret-shaped material is not a model name",
+    reason: "shape and length alone accept a short credential, and this function's output is an identifier every surface prints",
+    file: "lib/model-identity.mjs",
+    from: "  if (containsSecretMaterial(trimmed)) return null;",
+    to: "  if (false) return null;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a name this product cannot read as a model name is digested, whoever's prefix it wears"
+  },
+  {
+    guard: "an unnameable transcript row withholds the aggregate",
+    reason: "a row naming something this product will not print is not a transcript that said nothing; dropping it silently would issue a profile-bound number over a run whose own transcript contradicted the binding in a way nobody could read",
+    file: "lib/model-identity.mjs",
+    from: "  if (unnameable.length > 0) return { status: \"UNNAMEABLE\", code: \"AOS_MODEL_EVENT_UNNAMEABLE\", observed, unnameable };",
+    to: "  if (false) return { status: \"UNNAMEABLE\", code: \"AOS_MODEL_EVENT_UNNAMEABLE\", observed, unnameable };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a transcript value that is not a plausible model name leaves as a digest, never as text"
+  },
+  {
+    guard: "the renderers quote the stored identity lines",
+    reason: "Markdown and HTML recomputed the projection, so a stored record and the page rendered from it could say two different things about which model produced the number",
+    file: "lib/report.mjs",
+    from: "  Array.isArray(result?.model_identity?.lines) ? result.model_identity.lines : modelIdentityLines(null);",
+    to: "  modelIdentityLines(result?.model_identity ?? null);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "Markdown and HTML quote the stored identity lines instead of deriving them again"
+  },
+  {
+    guard: "a date-shaped substring is not a snapshot on its own",
+    reason: "any four-two-two run of digits counted as the provider's promise not to move the name, so latest-9999-99-99 and not-a-real-model-20260101 were exact identities -- the forbidden case of an unproved provider-managed alias read as exact",
+    file: "lib/model-identity.mjs",
+    from: "  if (!isCalendarDate(Number(marker[1]), Number(marker[2]), Number(marker[3]))) return false;",
+    to: "  if (false) return false;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a date-shaped substring is not snapshot proof"
+  },
+  {
+    guard: "a family with no known naming rules is not exact",
+    reason: "a snapshot is a promise a provider made about a name, and this product can only read that promise for families whose naming it has been told; guessing from the shape makes any invented name exact",
+    file: "lib/model-identity.mjs",
+    from: "  if (!recognisedFamily(provider, segments[0])) return false;",
+    to: "  if (false) return false;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a date-shaped substring is not snapshot proof"
+  },
+  {
+    guard: "an unknown status is not a verdict",
+    reason: "only null and NOT_OBSERVED counted as absent, so a shape this module never emits was carried into the record and read by every check that asks what the verification said -- it could claim a confirmation or mask a contradiction",
+    file: "lib/model-identity.mjs",
+    from: "    const verification = knownVerification(entry?.verification) ? entry.verification : null;",
+    to: "    const verification = entry?.verification ?? null;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a verdict this product did not produce is ignored, never read as agreement"
+  },
+  {
+    guard: "the assessed process does not decide issuance",
+    reason: "the transcript is written by the child into the HOME it was given, so requiring it handed that child the flip from withheld to issued; the operator's own statement is what may issue and the transcript may only contradict it",
+    file: "lib/model-identity.mjs",
+    from: "  return null;\n};\n\nconst mismatchSides",
+    to: "  if (verification === null || verification.status === \"NOT_OBSERVED\") return \"MODEL_EVENT_NOT_OBSERVED\";\n  return null;\n};\n\nconst mismatchSides",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the assessed process cannot flip a run from withheld to issued"
+  },
+  {
+    guard: "a status the record asserts about itself is not evidence",
+    reason: "the digest was taken over every field except the verdict, so an identity #554 recorded as UNTRUSTED could be relabelled VERIFIED with the digest still recomputing, and the run issued over an executable nobody vouched for",
+    file: "lib/runtime-identity.mjs",
+    from: "    ...(identity.schema_id === LEGACY_IDENTITY_SCHEMA ? {} : { identity_status: identity.identity_status }),",
+    to: "    ...({}),",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an untrusted identity cannot be relabelled VERIFIED without the digest saying so"
+  },
+  {
+    guard: "a risky security state is never VERIFIED",
+    reason: "the second lock for a record produced before the status was in the digest: a parent directory somebody else can write is not a verified executable whatever the field says",
+    file: "lib/runtime-identity.mjs",
+    from: "  if (risky && identity.identity_status === \"VERIFIED\") return unbound(\"UNVERIFIABLE\");",
+    to: "  if (false) return unbound(\"UNVERIFIABLE\");",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an untrusted identity cannot be relabelled VERIFIED without the digest saying so"
+  },
+  {
+    guard: "the run reports the executable it spawned",
+    reason: "the identity came off the registration, so a binary replaced between `agent add` and the run left the result claiming a VERIFIED identity for a file that no longer existed -- and #554's check is skipped whenever no credential is at stake",
+    file: "lib/core.mjs",
+    from: "    const appliedIdentity = identityVerdict.identity ?? describeExecutable(spec.command, { adapterId: adapter?.id ?? null });",
+    to: "    const appliedIdentity = identityVerdict.identity ?? null;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the executable a run records is the one it spawned, not the one it was registered with"
+  },
+  {
+    guard: "missing invariance evidence withholds",
+    reason: "an absent rule made the withholding condition false, so a contract with no invariance rule read as one permitting cross-model comparison -- absent evidence failing open",
+    file: "lib/model-identity.mjs",
+    from: "  const withheld = invariance === null || invariance.status !== \"ENFORCED\";",
+    to: "  const withheld = invariance !== null && invariance.status !== \"ENFORCED\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "cross-model and generalizability are read from the contract, not restated beside it"
+  },
+  {
+    guard: "the cohort key describes the policy that was applied",
+    reason: "automatic credential resolution can add an environment name the declared policy never had, and the pre-run digest cannot know it; two runs that differ in what the child could see are two measurements",
+    file: "lib/profile.mjs",
+    from: "  env_policy_digest: envPolicyDigest ?? profile.env_policy_digest",
+    to: "  env_policy_digest: profile.env_policy_digest",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the cohort key describes what was applied: the policy, the executable and the model"
+  },
+  {
+    guard: "an imported run names the producer of its evidence",
+    reason: "an empty by_agent map produced lines mentioning neither a model nor an executable, which reads as a Run with nothing to say rather than one saying that nothing here observed either",
+    file: "lib/cli.mjs",
+    from: "    by_agent: new Map([[producer, {",
+    to: "    by_agent: new Map([].slice(0) ?? [[producer, {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an imported run is a Run, so it carries a provenance record and a result on disk"
+  },
+  {
+    guard: "the card quotes the stored identity lines",
+    reason: "the card is the third renderer and the one that leaves the page; it derived its own model, executable and aggregation state from the first by_agent entry, so a two-agent result showed one model and the card could say something the stored projection did not",
+    file: "lib/report-card.mjs",
+    from: "  const lines = Array.isArray(result.model_identity?.lines) ? result.model_identity.lines : modelIdentityLines(null);",
+    to: "  const lines = modelIdentityLines(result.model_identity ?? null);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the card quotes the stored identity lines, every agent of them, and renders nothing missing as a zero"
+  },
+  {
+    guard: "the cohort key is the operator's binding, never the child's transcript",
+    reason: "the cycle locked the provenance it expected the runtime to state, so a forged Codex row was the difference between PROFILE_CHANGED and valid and three forged runs reached the score threshold; a contradiction may still move the key, which is the one direction a child cannot profit from",
+    file: "lib/model-identity.mjs",
+    from: "  return withEvent.status === \"MISMATCH\" ? withEvent : bound;",
+    to: "  return withEvent;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the operator's binding admits a run to the cohort; the transcript may only contradict it"
+  },
+  {
+    guard: "a contradicting transcript still leaves the cohort",
+    reason: "a key that ignored the transcript entirely would keep a run that named another model inside the cohort it is not in",
+    file: "lib/model-identity.mjs",
+    from: "  if (fromRuntime.length === 0 || typeof bound.id !== \"string\") return bound;",
+    to: "  if (true) return bound;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the operator's binding admits a run to the cohort; the transcript may only contradict it"
+  },
+  {
+    guard: "the transcript scan spends a bounded budget",
+    reason: "the scan runs after the child exited, so it is outside the timeout that bounds the child: ten thousand files of sixty-four megabytes is a cheap thing to leave behind and six hundred gigabytes of synchronous reading to do",
+    file: "lib/model-identity.mjs",
+    from: "      if (out.length >= limits.files || limits.spend() === \"over\") return;",
+    to: "      if (out.length >= limits.files) return;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the transcript scan is bounded, and exhausting the budget is a named answer"
+  },
+  {
+    guard: "a record an older release wrote is read as what it is",
+    reason: "binding the status into the digest changed what the digest covers while the record kept its id, so every identity the previous release wrote bound as UNVERIFIABLE with a null digest and every run of an already-registered agent was excluded as PROFILE_CHANGED, silently",
+    file: "lib/runtime-identity.mjs",
+    from: "  if (legacy) return { identity_digest: identity.identity_digest, identity_status: \"UNVERIFIED_LEGACY_SCHEMA\" };",
+    to: "  if (legacy) return unbound(\"UNVERIFIABLE\");",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an identity a previous release wrote still binds, by a name that says what it is"
+  },
+  {
+    guard: "a cycle locks the executable as it is, not as it was registered",
+    reason: "a registration written by a previous release locked a digest no run could land on, because a run describes the program it spawns and the cycle described the record on disk",
+    file: "lib/cli.mjs",
+    from: "      runtimeIdentity: boundRuntimeIdentity(describeExecutable(config.agents[id]?.command, { adapterId: config.agents[id]?.adapter ?? null }))",
+    to: "      runtimeIdentity: null",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle and its runs bind the executable as it is now, not as it was registered"
+  },
+  {
+    guard: "an incomplete result's terminal names it",
+    reason: "the terminal carried a null digest beside a persisted result, so recovery read the run as INVALID and the provenance that Run does carry was unreadable through the front door",
+    file: "lib/cli.mjs",
+    from: "        result_digest: incompleteDigest,",
+    to: "        result_digest: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a run that failed still says which model and which executable it was going to be"
+  },
+  {
+    guard: "an import reads every event before it creates a Run",
+    reason: "the Run was created before the input was parsed, so a row that is not an event and a file that is not JSON both left a manifest with no provenance record and no result -- produced by the command refusing to do anything",
+    file: "lib/cli.mjs",
+    from: "      return fail(io, \"AOS_INVALID_IMPORTED_EVENT every row needs an event_type\", 2);",
+    to: "      events.push({ event_type: \"import.unreadable\" });",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an import with nothing in it creates no Run at all"
+  },
+  {
+    guard: "the identity aggregation is recomputed from its agents",
+    reason: "reading the summary field beside the agents let a record that contradicts itself -- every agent withheld, the summary says issued -- carry a composite through the cap that exists to stop it",
+    file: "lib/result-schema.mjs",
+    from: "  const identityAgentsWithhold = identityAgents.some((entry) => entry?.profile_bound_aggregation?.status !== \"issued\");",
+    to: "  const identityAgentsWithhold = false;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a canonical result never issues a profile-bound claim its identity record withholds"
+  },
+  {
+    guard: "a cycle whose model is unknown says so",
+    reason: "the cycle report printed the profile-bound sentence over every cycle, so a cycle of runs whose model nobody named still told the reader it described a declared profile",
+    file: "lib/cli.mjs",
+    from: "      : \"RUN-DIAGNOSTIC: the model or the executable these runs used is not established, so they describe no profile.\");",
+    to: "      : \"PROFILE-BOUND: each run describes the declared environment and task pack it ran under.\");",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle over an unknown model completes its runs and withholds the profile-bound aggregate by name"
+  },
+  {
+    guard: "a status with no digest under it is the weakest one",
+    reason: "read at face value a VERIFIED with no executable digest tied with a real one, the tie kept the run that had a digest, and the cycle issued over an executable one of its runs never identified",
+    file: "lib/model-identity.mjs",
+    from: "      .map((entry) => (typeof entry.runtime_identity_digest === \"string\"",
+    to: "      .map((entry) => (true",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
+  },
+  {
+    guard: "a cycle answers with the provenance its runs resolved",
+    reason: "reading the binding alone let a run whose own provenance resolved to UNKNOWN sit inside a cycle reporting the exact model it was supposed to have used -- the run said it could not name what it ran and the cycle answered anyway",
+    file: "lib/model-identity.mjs",
+    from: "      provenance: unnamed?.provenance ?? bound?.provenance ?? (named.length > 0 ? named[0].provenance : null),",
+    to: "      provenance: bound?.provenance ?? null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
+  },
+  {
+    guard: "a run the cycle cannot identify closes it",
+    reason: "gating the refusal on a run's validity let a run with no provenance record at all sit inside an issued cycle, which is the completion condition -- every Run carries one -- read as its opposite",
+    file: "lib/model-identity.mjs",
+    from: "      && typeof entry.runtime_identity_status === \"string\");",
+    to: "      && true);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle is judged over the agents that ran, whether or not their runs earned a number"
+  },
+  {
+    guard: "a failed observation's error is redacted",
+    reason: "the refusal message names the file it refused, and it is written into a result an operator publishes -- unredacted it carried the operator's absolute paths out with it",
+    file: "lib/cli.mjs",
+    from: "  return redactText(withoutPaths).text.slice(0, 400);",
+    to: "  return raw;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an observation whose agent cannot be run leaves no Run without a record"
+  },
+  {
+    guard: "a withheld identity caps the canonical claim",
+    reason: "the record was copied into the result and read by nothing, so a result whose model was unknown still came out PROFILE_BOUND with a composite -- the gate this issue exists to build, not gating the artefact everybody reads",
+    file: "lib/result-schema.mjs",
+    from: "    claim_stage: identityWithheld === null ? evaluation.claim_stage : \"RUN_DIAGNOSTIC\",",
+    to: "    claim_stage: evaluation.claim_stage,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a canonical result never issues a profile-bound claim its identity record withholds"
+  },
+  {
+    guard: "a withheld identity withholds the composite",
+    reason: "a number describing a run nobody can say the model of is a number about an unnamed thing",
+    file: "lib/result-schema.mjs",
+    from: "  const compositeIssued = compositeThroughOutcome.issued && identityWithheld === null && boundaryHeld;",
+    to: "  const compositeIssued = compositeThroughOutcome.issued && boundaryHeld;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a canonical result never issues a profile-bound claim its identity record withholds"
+  },
+  {
+    guard: "the identity record is published field by field",
+    reason: "boxing the whole record as this module's own text handed a caller a door into the published artefact that nothing inspected: a line naming an absolute path or a credential went out verbatim",
+    file: "lib/result-schema.mjs",
+    from: "  for (const field of IDENTITY_FIELDS) {",
+    to: "  for (const field of Object.keys(record)) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a caller's identity record cannot carry a path or a credential into a published result"
+  },
+  {
+    guard: "a cycle reads the executable its runs saw",
+    reason: "the binding carries the registration's status, so a stale VERIFIED registration turned a run whose executable was UNTRUSTED into an issued cycle",
+    file: "lib/model-identity.mjs",
+    from: "      : { digest: weakest.runtime_identity_digest ?? null, status: weakest.runtime_identity_status, drifted: weakest.runtime_identity_drifted ?? null };",
+    to: "      : { digest: bound?.runtime_identity_digest ?? null, status: bound?.runtime_identity_status ?? \"MIGRATION_REQUIRED\", drifted: null };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a cycle's runtime identity is the runs' own, not the registration it was opened with"
+  },
+  {
+    guard: "a model id this product cannot read is refused",
+    reason: "an unreadable value became `unknown` for the profile while the raw string was stored on the agent and echoed by agent add --json, which is the credential channel the transcript reader closed, on the registration side",
+    file: "lib/cli.mjs",
+    from: "    if (modelId !== null && parseModelName(modelId) === null) {",
+    to: "    if (false) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a credential typed as a model id is refused at registration, never stored and never echoed"
+  },
+  {
+    guard: "the profile renderers quote the stored lines",
+    reason: "the v2 Markdown, HTML and card each derived their own model presentation, so three renderings of one result could say three things",
+    file: "lib/profile-report.mjs",
+    from: "  (Array.isArray(result?.model_identity?.lines) ? result.model_identity.lines : modelIdentityLines(result?.model_identity ?? null));",
+    to: "  modelIdentityLines(result?.model_identity ?? null);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the profile renderers quote the stored identity lines, and the profile card carries them"
+  },
+  {
+    guard: "a name that is not a model name is never printed",
+    reason: "the shape check was a charset and a length, so an agent-controlled transcript could put a credential this product had never been taught to recognise into the provenance id, the projection lines, and the result JSON, CLI, Markdown and HTML",
+    file: "lib/model-identity.mjs",
+    from: "  if (!MODEL_NAME.test(model) || !readableModelName(model)) return null;",
+    to: "  if (!MODEL_NAME.test(model)) return null;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a name this product cannot read as a model name is digested, whoever's prefix it wears"
+  },
+  {
+    guard: "an observation that could not run still leaves its record",
+    reason: "the invocation refuses before it starts when the executable moved since registration, and the Run already existed -- it was left as a manifest with no result and no provenance record",
+    file: "lib/cli.mjs",
+    from: "    const failed = observationResult({",
+    to: "    const failed = null ?? ({",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an observation whose agent cannot be run leaves no Run without a record"
+  },
+  {
+    guard: "every directory entry is charged to the scan budget",
+    reason: "the budget counted accepted .jsonl files, so a child could fill its session directory with hundreds of thousands of entries this reader walks and never opens, and the walk cost nothing against the bound it declares",
+    file: "lib/model-identity.mjs",
+    from: "  limits.spend = () => {\n    spentOn.entries += 1;",
+    to: "  limits.spend = () => {\n    spentOn.entries += 0;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the transcript scan is bounded, and exhausting the budget is a named answer"
+  },
+  {
+    guard: "a scan that ran out of budget says so",
+    reason: "stopping early and finding silence are different facts, and a reader that cannot tell them apart cannot tell a quiet runtime from a scan that gave up",
+    file: "lib/model-identity.mjs",
+    from: "  if (overspent && events.length === 0) return exhausted(events);",
+    to: "  if (false) return exhausted(events);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the transcript scan is bounded, and exhausting the budget is a named answer"
+  },
+  {
+    guard: "absent coverage is not a measured zero",
+    reason: "a result with no coverage recorded was drawn on the card as `0/20`, a measurement nobody made",
+    file: "lib/report-card.mjs",
+    from: "      typeof coverage.observed === \"number\" && typeof coverage.total === \"number\" ? `${coverage.observed}/${coverage.total}` : \"—\"",
+    to: "      `${coverage.observed ?? 0}/${coverage.total ?? 20}`",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the card quotes the stored identity lines, every agent of them, and renders nothing missing as a zero"
+  },
+  {
+    guard: "the run listing says what each run may claim",
+    reason: "two runs identical in score, status and coverage can be a profile-bound measurement and a run diagnostic over a model nobody named, and the listing could not tell them apart",
+    file: "lib/dashboard.mjs",
+    from: "  return `${identity.claim_stage}${aggregation && aggregation.status !== \"issued\" ? ` · ${aggregation.reason}` : \"\"}`;",
+    to: "  return \"—\";",
+    test: "tests/product/dashboard.test.mjs",
+    name: "the run listing says what each run may claim, not only what it scored"
+  },
+  {
+    guard: "the cycle command quotes the stored decision",
+    reason: "the dashboard test named both surfaces and exercised one, so the command could derive its own answer while the named guard stayed green",
+    file: "lib/cli.mjs",
+    from: "  const summary = stored.decision ?? summariseCycle(stored);",
+    to: "  const summary = summariseCycle(stored);",
+    test: "tests/product/cycle-command.test.mjs",
+    name: "the cycle command quotes the stored decision rather than deriving its own"
+  },
+  {
+    guard: "the identity record names the agents that ran",
+    reason: "a checkpoint reroute changes who does the work; binding the record to the plan's routes let a rerouted agent's artifacts earn a record naming the planned agent, with the planned agent's exact model and an issued aggregate",
+    file: "lib/cli.mjs",
+    from: "    const bound = executed.size > 0 ? executed : planned;",
+    to: "    const bound = planned;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the agent that actually ran is the agent the identity record names"
+  },
+  {
+    guard: "the dashboard quotes the stored cycle decision",
+    reason: "the dashboard rebuilt the aggregate and the model policy from the raw cycle while the cycle command rebuilt them independently, so a cycle the command refused was promoted on this surface and a stored projection could differ from the page rendered out of it",
+    file: "lib/dashboard.mjs",
+    from: "  const summary = stored.decision ?? summariseCycle(stored);",
+    to: "  const summary = { ...summariseCycle(stored), issued: true };",
+    test: "tests/product/dashboard.test.mjs",
+    name: "a cycle nothing bound a model to is not shown as an operator score"
+  },
+  {
+    guard: "the weakest run decides the cycle",
+    reason: "NOT_OBSERVED ranked below CONFIRMED, so a cycle of [CONFIRMED, NOT_OBSERVED, NOT_OBSERVED] reported CONFIRMED and issued -- two runs nobody could corroborate disappearing into the one that was",
+    file: "lib/model-identity.mjs",
+    from: "const VERIFICATION_RANK = new Map([[\"MISMATCH\", 0], [\"UNNAMEABLE\", 1], [\"AMBIGUOUS\", 2], [\"OBSERVED_UNBOUND\", 3], [\"NOT_OBSERVED\", 4], [\"CONFIRMED\", 5]]);",
+    to: "const VERIFICATION_RANK = new Map([[\"MISMATCH\", 0], [\"UNNAMEABLE\", 1], [\"AMBIGUOUS\", 2], [\"OBSERVED_UNBOUND\", 3], [\"CONFIRMED\", 4], [\"NOT_OBSERVED\", 5]]);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "one contradicted run withholds the whole cycle, however many others agreed"
+  },
+  {
+    guard: "only the configured runtime corroborates its own binding",
+    reason: "confirmation compared the model name alone, so anything able to write a Codex-shaped row under the run's temporary HOME confirmed a declaration -- including an agent whose adapter is not Codex at all",
+    file: "lib/model-identity.mjs",
+    from: "  const fromRuntime = (Array.isArray(events) ? events : []).filter((event) => typeof runtime === \"string\" && runtime !== \"\" && event?.runtime === runtime);",
+    to: "  const fromRuntime = Array.isArray(events) ? events : [];",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a transcript the configured runtime did not write is not evidence either way"
+  },
+  {
+    guard: "only the configured runtime's transcript tree is read",
+    reason: "reading both trees meant a run under one runtime could be corroborated by a file in the other's shape, and an adapter with no transcript shape was corroborated by whatever was lying in the directory",
+    file: "lib/model-identity.mjs",
+    from: "    if (root === null || kind !== runtime) continue;",
+    to: "    if (root === null) continue;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a transcript the configured runtime did not write is not evidence either way"
+  },
+  {
+    guard: "the profile digest covers the provenance record",
+    reason: "the issue names source, confidence and the evidence digest as digest inputs; a key that covered only the name could not tell a declared model from one the runtime stated, and a run that resolved a different provenance would be averaged into a cohort it is not in",
+    file: "lib/profile.mjs",
+    from: "    model_source: profile.model_source,\n    model_confidence: profile.model_confidence ?? null,",
+    to: "    model_confidence: profile.model_confidence ?? null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the profile digest covers the provenance record, source and evidence included"
+  },
+  {
+    guard: "the evidence digest is over the claim, not the transcript row",
+    reason: "a cohort key carrying the row's digest makes every repeat of one measurement its own profile, so three runs of one model could never form a cycle",
+    file: "lib/model-identity.mjs",
+    from: "  const claim = { schema_id: MODEL_PROVENANCE_SCHEMA, source: winner.source, provider, id, runtime: winner.runtime };",
+    to: "  const claim = { schema_id: MODEL_PROVENANCE_SCHEMA, source: winner.source, provider, id, runtime: winner.runtime, row_digest: winner.row_digest };",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the evidence digest is over the claim's bytes and is stable across two identical claims"
+  },
+  {
+    guard: "every segment of a snapshot name has to be readable",
+    reason: "a real family and a real date around a segment naming nothing this product knows is not proof of a snapshot; `gpt-not-a-real-model-2024-01-01` was exact",
+    file: "lib/model-identity.mjs",
+    from: "  return middle.every((segment) => recognisedSegment(provider, segment));",
+    to: "  return middle.every(() => true);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a date-shaped substring is not snapshot proof"
+  },
+  {
+    guard: "a transcript is never sufficient on its own",
+    reason: "the row is read out of the HOME the assessed child was given, so a model named only there is a claim the assessed artifact made about itself and a claim stage it could raise by writing a file",
+    file: "lib/model-identity.mjs",
+    from: "  if (provenance.source === \"runtime-event\" && !provenance.corroborated_by?.some((source) => source === \"declared\" || source === \"runtime-config\")) {",
+    to: "  if (false) {",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a transcript the assessed process could have written is never sufficient on its own"
+  },
+  {
+    guard: "a credential is not a model id",
+    reason: "--model-id was the one string on the registration line nothing secret-checked: the parser refused it as a model and the raw value was stored and echoed by agent add and agent list",
+    file: "lib/cli.mjs",
+    from: "      rejectSecretLike(modelId === null ? [] : [modelId]);",
+    to: "      rejectSecretLike([]);",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a credential typed as a model id is refused at registration, never stored and never echoed"
+  },
+  {
+    guard: "an imported run is written down",
+    reason: "aos import and aos bridge create a Run; leaving it with events and no result meant a Run with nothing on disk saying what produced its evidence",
+    file: "lib/cli.mjs",
+    from: "  writeResult(\n    home,\n    runId,\n    result,",
+    to: "  ((...unused) => unused)(\n    home,\n    runId,\n    result,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an imported run is a Run, so it carries a provenance record and a result on disk"
+  },
+  {
+    guard: "a run that failed still records what it was bound to",
+    reason: "the error path committed a terminal and no result, so the Run whose conditions a reader most wants had a manifest and no answer at all",
+    file: "lib/cli.mjs",
+    from: "        model_identity: failedIdentity,",
+    to: "        model_identity: null,",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a run that failed still says which model and which executable it was going to be"
+  },
+  {
+    guard: "the comparison projection is read from the contract",
+    reason: "generalizability, cross-model comparison and the refusal reason were literals beside the artifact that owns them, so a contract change would leave this projection stale and its named test green",
+    file: "lib/model-identity.mjs",
+    from: "    generalizability_status: use.generalizability_status,",
+    to: "    generalizability_status: \"UNESTABLISHED\",",
+    test: "tests/product/model-identity.test.mjs",
+    name: "cross-model and generalizability are read from the contract, not restated beside it"
+  },
+  {
+    guard: "the canary's digests verify against what it carries",
+    reason: "a digest that verifies nothing reads as proof; the shipped canary recorded a digest of a made-up string and every test passed with all four replaced by zeroes",
+    file: "lib/model-identity.mjs",
+    from: "export const canonicalModelEventLine = (event) =>\n  JSON.stringify({ runtime: event?.runtime ?? null, provider: event?.provider ?? null, model: event?.model ?? null });",
+    to: "export const canonicalModelEventLine = () => \"{}\";",
+    test: "tests/product/model-canary.test.mjs",
+    name: "every digest the canary can verify is recomputed from what the canary carries"
+  },
+  {
+    guard: "the run resolves its provenance again once its own events are in hand",
+    reason: "the stored record was the pre-run binding, so a run whose transcript named the model at HIGH confidence was filed as a LOW-confidence declaration and the issue's stated source precedence never operated in production",
+    file: "lib/cli.mjs",
+    from: "    : resolveModelProvenance({ ...built.model_inputs, runtimeEvent: fromRuntime[0] ?? null });",
+    to: "    : resolveModelProvenance({ ...built.model_inputs });",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a scored run records model provenance, and the CLI and Markdown show the same lines as the JSON"
+  },
+  {
+    guard: "an observation run carries a provenance record too",
+    reason: "aos observe creates and persists a Run, and the issue says every Run says which model and which executable produced it; this one carried the raw process record and no resolved identity at all",
+    file: "lib/cli.mjs",
+    from: "    model_identity: modelIdentity,\n    // Named here rather than inferred from the absence of a score",
+    to: "    model_identity: null,\n    // Named here rather than inferred from the absence of a score",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an observation run carries the same provenance record as a scored one"
+  },
+  {
+    guard: "a diagnostic never issues a profile-bound aggregate",
+    reason: "one run against the operator's own repository is not a measurement, whatever model it names",
+    file: "lib/cli.mjs",
+    from: "    profile_digest: profileDigest,\n    ceiling: \"RUN_DIAGNOSTIC\"",
+    to: "    profile_digest: profileDigest,\n    ceiling: null",
+    test: "tests/product/model-identity.test.mjs",
+    name: "an observation run carries the same provenance record as a scored one"
+  },
+  {
+    guard: "the projection verb is the record's own source",
+    reason: "the line read detected whenever a transcript confirmed a declaration, so the JSON said declared/LOW while the line beside it claimed the runtime had been observed saying it",
+    file: "lib/model-identity.mjs",
+    from: "    : provenance.source === \"runtime-config\" ? \"configured\" : \"declared\";",
+    to: "    : \"detected\";",
+    test: "tests/product/model-identity.test.mjs",
+    name: "the model identity lines are the same strings for JSON, CLI and Markdown"
+  },
+  {
+    guard: "the profile-bound claim is printed only when it was reached",
+    reason: "the header claimed PROFILE-BOUND unconditionally while the same page said four lines below that the profile-bound aggregate was withheld",
+    file: "lib/report.mjs",
+    from: "const claimLine = (result) => (result?.model_identity?.claim_stage === \"PROFILE_BOUND\" ? PROFILE_BOUND : RUN_DIAGNOSTIC);",
+    to: "const claimLine = () => PROFILE_BOUND;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a report whose aggregate is withheld does not also print the profile-bound claim"
+  },
+  {
+    guard: "a complete cycle is not an issued cycle",
+    reason: "three valid runs of a model nobody named were issued as a profile-bound Operator Score before #561; a historical cycle promoted to an exact profile is the auto-promotion the issue forbids",
+    file: "lib/cycle.mjs",
+    from: "  const issued = aggregate.complete && policy.profile_bound_aggregation.status === \"issued\";",
+    to: "  const issued = aggregate.complete;",
+    test: "tests/product/model-identity.test.mjs",
+    name: "a historical cycle without a provenance record is never promoted to an exact profile"
   },
   {
     guard: "profile index withholds on a missing row",
@@ -3441,6 +5143,7 @@ export const GUARDS = [
   },
   {
     guard: "a stored result may not elevate its own claim",
+    witness_skip: "the only returns in this witness are the base case of a recursive schema walker it defines; nothing in the test body itself can decline to assert",
     reason: "the claim stage is what a reader is entitled to conclude, so it is the field worth editing: changing it alone left every profile at PROFILE_BOUND and the elevated claim printed anyway",
     file: "lib/result-schema.mjs",
     from: "  assertClaimState(\"this stored result\", result);",
@@ -3450,6 +5153,7 @@ export const GUARDS = [
   },
   {
     guard: "a bound claim names the profile it is bound to",
+    witness_skip: "the only returns in this witness are the base case of a recursive schema walker it defines; nothing in the test body itself can decline to assert",
     reason: "PROFILE_BOUND is a claim about an exact profile, and `sha256:a` is a label rather than a digest over bytes -- a claim bound to nothing is the overstatement the stage exists to prevent",
     file: "lib/result-schema.mjs",
     from: "  if (stage !== \"RUN_DIAGNOSTIC\" && !PROFILE_DIGEST_TEXT.test(String(result.profile_digest))) {",
@@ -3459,6 +5163,7 @@ export const GUARDS = [
   },
   {
     guard: "the result states the claim ceiling it was issued under",
+    witness_skip: "the only returns in this witness are the base case of a recursive schema walker it defines; nothing in the test body itself can decline to assert",
     reason: "a reader has no contract in hand, so a claim checked against nothing is a claim checked by whoever wrote the file",
     file: "lib/result-schema.mjs",
     from: "      maximum_claim_stage: contract.interpretation_use.maximum_claim_stage,",
@@ -3709,6 +5414,487 @@ export const GUARDS = [
     test: "tests/product/verify-run.test.mjs",
     name: "a result names the contract files it was built from, and verify checks them against this build's"
   },
+  // #560 -- an agent artifact is not an operator action.
+  //
+  // The reproduction these guard: three lines of an agent's stdout, typed `checkpoint.raised`,
+  // `user.instruction` and `operator.decision` and recorded under `producer_id: "agent-evil"`,
+  // produced observed: true, one effective intervention, M11 = M12 = 1 and the operator_process
+  // cells C3.ER.01 and C4.IQ.01 issued at 1.0. Every layer that now refuses that is here, because a
+  // layer that can be deleted with the suite still green is a layer that was doing nothing.
+  {
+    guard: "operator event authority matrix",
+    reason: "the matrix is what separates a turn taken at this keyboard from one relayed or read out of a file; a source that could carry any authority makes the whole distinction decorative",
+    file: "lib/operator-events.mjs",
+    from: '  "interactive-tty": Object.freeze({ authority: "DIRECT_LOCAL", provenance: "DIRECT", confidence: "HIGH" }),',
+    to: '  "interactive-tty": Object.freeze({ authority: "LOCAL_OWNER_RELAY", provenance: "RELAY_ATTESTED", confidence: "MEDIUM" }),',
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "each operator source carries exactly the authority, provenance and confidence the matrix gives it"
+  },
+  {
+    guard: "operator event authority is the matrix's, not the caller's",
+    reason: "a caller that could hand in its own authority beside a file's source would be choosing its own place in the matrix, which is the whole of what the matrix is for",
+    file: "lib/operator-events.mjs",
+    from: "    authority: entitlement.authority,",
+    to: "    authority: fields.authority ?? entitlement.authority,",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "each operator source carries exactly the authority, provenance and confidence the matrix gives it"
+  },
+  {
+    guard: "operator event unknown source has no authority",
+    reason: "agent stdout, plugin output, an import, a bridge and the shipped template are all sources this product has; a lookup that answered for an unknown one would admit every one of them",
+    file: "lib/operator-events.mjs",
+    from: "  return Object.hasOwn(AUTHORITY_MATRIX, source) ? AUTHORITY_MATRIX[source] : null;",
+    to: '  return AUTHORITY_MATRIX[source] ?? { authority: "DIRECT_LOCAL", provenance: "DIRECT", confidence: "HIGH" };',
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "no source outside the matrix can mint an operator event, and each refusal names the source"
+  },
+  {
+    guard: "operator event session binding is verified",
+    reason: "the binding is the only thing an event cannot carry a forgery of; without the comparison every other check is over fields the forger wrote",
+    file: "lib/operator-events.mjs",
+    from: "  if (!bindingMatches(expected, event.session_binding)) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "an event minted under one run's key is refused under another's, with no key at all, and with the wrong key"
+  },
+  {
+    guard: "operator event cross-session rejection",
+    reason: "an event lifted out of one run and dropped into another is a decision the operator made about something else, and it would arrive with full authority",
+    file: "lib/operator-events.mjs",
+    from: "  if (typeof run_id === \"string\" && event.run_id !== run_id) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "an event minted for one run is refused when it is offered to another"
+  },
+  {
+    guard: "operator event replay rejection",
+    reason: "one operator turn counted twice is two interventions from one act, which is the cheapest way to raise a monitoring cell",
+    file: "lib/operator-events.mjs",
+    from: "      if (seen.has(event.event_id)) {",
+    to: "      if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "the ledger admits an event id once and refuses a state revision that does not advance its opportunity"
+  },
+  {
+    guard: "operator event state revision advances",
+    reason: "a revision that does not advance is the same decision offered again under a new id, and it is what keeps an operator's first decision first",
+    file: "lib/operator-events.mjs",
+    from: "      if (previous !== undefined && event.state_revision <= previous) {",
+    to: "      if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "the ledger admits an event id once and refuses a state revision that does not advance its opportunity"
+  },
+  {
+    guard: "operator-file event needs explicit provenance",
+    reason: "a file says what it says whenever it was written, so a file-sourced decision with nothing naming the file it came from is an assertion with a session binding on it",
+    file: "lib/operator-events.mjs",
+    from: "  if (event.source === \"operator-file\" && (event.file_provenance === undefined || event.file_provenance === null)) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "an operator-file event without its file provenance and a relay event without its attestation are both refused"
+  },
+  {
+    guard: "agent-relay event needs its attestation",
+    reason: "the relay is the one operator source an agent is on the other end of; without the attestation #576 issues, LOCAL_OWNER_RELAY is a name an agent can claim",
+    file: "lib/operator-events.mjs",
+    from: "  if (event.source === \"agent-relay\" && (event.relay_attestation === undefined || event.relay_attestation === null)) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "an operator-file event without its file provenance and a relay event without its attestation are both refused"
+  },
+  {
+    guard: "the store refuses an operator event type from another producer",
+    reason: "the reproduced defect exactly: agent stdout, a plugin and the import path all reached this function, and every one of them was allowed to type its record as an operator act",
+    file: "lib/store.mjs",
+    from: "    if (producerId !== OPERATOR_PRODUCER) {",
+    to: "    if (false) {",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "an agent producer cannot record the three events that make an operator intervention"
+  },
+  {
+    guard: "the store requires an attestation for an operator event",
+    reason: "`--producer operator` is one flag away, so the producer name on its own grades the caller's honesty rather than checking anything",
+    file: "lib/store.mjs",
+    from: "    if (!verdict.accepted) throw new Error(`AOS_NOT_OPERATOR_AUTHORITY ${event.event_type} from ${producerId}: ${verdict.reason}`);",
+    to: "    verdict.accepted = true;",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "the producer id `operator` is not enough on its own: without an attestation the same three events are refused"
+  },
+  {
+    guard: "the operator-typed event set is what the gate covers",
+    reason: "a checkpoint nobody administered is what makes a forged decision worth forging, so narrowing the set to the decision alone reopens the opportunity",
+    file: "lib/operator-events.mjs",
+    from: "export const isOperatorAuthorityType = (type) => OPERATOR_AUTHORITY_EVENT_TYPES.includes(type);",
+    to: 'export const isOperatorAuthorityType = (type) => type === "operator.decision";',
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "an agent producer cannot record the three events that make an operator intervention"
+  },
+  {
+    guard: "a stored operator trace is re-checked at the read",
+    reason: "the event files are ordinary files under the operator's home and a run recorded before this gate carries no attestation at all; a defence only at the write is a defence against this program",
+    file: "lib/operator-events.mjs",
+    from: "    const verdict = ledger.accept(event.operator_event, { source: event.operator_authority?.source ?? null });",
+    to: "    const verdict = { accepted: true };",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "an operator record appended to a run's event file by hand earns nothing, because the read re-checks the binding"
+  },
+  {
+    guard: "checkpoint observation reads who wrote the record",
+    reason: "this file matched on event type and never looked at the producer, which is the line the reproduction walked through",
+    file: "lib/checkpoint.mjs",
+    from: "  event.producer_id !== OPERATOR_PRODUCER;",
+    to: "  false;",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "checkpoint observation ignores a recorded event whose producer is not the operator, without deciding anything about an unattributed one"
+  },
+  {
+    guard: "a scored Process row carries its five references",
+    reason: "a row with no operator event, cell, opportunity, authority or state revision is a number nobody can bind to anything, and the issue makes each of the five a condition of scoring at all",
+    file: "lib/operator-plan.mjs",
+    from: "    if (reference !== undefined) {",
+    to: "    if (false) {",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "a decision missing any one of the five references is not a scored row, and its cell stays NOT_OBSERVED"
+  },
+  {
+    guard: "an operator decision binds only to an operator_process cell",
+    reason: "binding a decision to a delegated-artifact cell is how an operator's act would start moving a number the model owns",
+    file: "lib/operator-plan.mjs",
+    from: '    if (cell.axis !== "operator_process") {',
+    to: "    if (false) {",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "a decision bound to a cell on another axis, another construct, or no cell at all is refused rather than credited"
+  },
+  {
+    guard: "operator silence is NOT_OBSERVED",
+    reason: "the shipped plan template is complete and valid, so a cell that reported anything but NOT_OBSERVED on silence would credit AOS's own defaults to the operator",
+    file: "lib/operator-plan.mjs",
+    from: "    if (mine.length === 0) {",
+    to: "    if (false) {",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "counterfactual: a perfect autogenerated plan with an operator who said nothing withholds Process"
+  },
+  {
+    guard: "declared route and actual route stay separate",
+    reason: "overwriting the operator's declared route with the one that ran is on this issue's prohibited list, and a divergence reported as false is the overwrite with the record still in place",
+    file: "lib/operator-plan.mjs",
+    from: "      diverged: route === null || invoked.length === 0 ? null : sha256Value(route) !== sha256Value(invoked)",
+    to: "      diverged: false",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "counterfactual: a bad operator route stays the operator's, and this contract cannot yet lower a construct for it"
+  },
+  {
+    guard: "an initial judgment is not committed with a post-advice response",
+    reason: "once the two arrive together nothing can say which was formed first, and the reliance sequence is only meaningful in that order",
+    file: "lib/operator-events.mjs",
+    from: '      if (Object.hasOwn(payload ?? {}, "advice_response") || Object.hasOwn(payload ?? {}, "post_advice")) {',
+    to: "      if (false) {",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a payload carrying the initial judgment and the post-advice response together is refused"
+  },
+  {
+    guard: "an initial judgment after the reveal is refused",
+    reason: "a judgment written after the advice was seen is not an independent judgment, and recording it with a caveat is how it would reach #583 as one",
+    file: "lib/operator-events.mjs",
+    from: "      if (revealed.has(opportunity)) refuse(`the advice for ${opportunity} was already revealed, so a judgment committed now is not an independent one`);",
+    to: '      if (false) refuse("unreachable");',
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "an initial judgment committed after the advice was revealed is refused rather than recorded with a caveat"
+  },
+  {
+    guard: "the operator event projection is an allowlist",
+    reason: "copying the record and deleting what looks sensitive publishes every field nobody thought about, and this record is the one carrying what the operator typed",
+    file: "lib/operator-events.mjs",
+    from: "  for (const field of PROJECTED_FIELDS) if (event?.[field] !== undefined) projected[field] = event[field];",
+    to: "  for (const field of Object.keys(event ?? {})) projected[field] = event[field];",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection is an allowlist, so a field added to the schema is absent until somebody adds it here"
+  },
+  {
+    guard: "an operator event is assembled from named fields",
+    reason: "length and turn count are named shortcut prohibitions on these cells, and a mint that copied whatever the caller passed would put both on the record",
+    file: "lib/operator-events.mjs",
+    from: '  for (const optional of ["candidate_source", "proactive_delegation", "declared_route", "relay_attestation", "file_provenance"]) {',
+    // The widest form of this mutation -- copying every key the caller passed -- throws at the
+    // module load of the test file, which the runner reports as WRONG-TEST rather than as a kill.
+    // This is the same defect stated narrowly: the four shortcut sources this contract prohibits
+    // by name, admitted onto the record.
+    to: '  for (const optional of ["candidate_source", "proactive_delegation", "declared_route", "relay_attestation", "file_provenance", "instruction_length", "turn_count", "duration_ms", "prompt_length"]) {',
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "an operator event cannot be minted carrying a length or a turn count, whatever the caller passes"
+  },
+  {
+    guard: "the candidate source is digested, never named",
+    reason: "a candidate source id is a path on the operator's own filesystem, and the projection is the copy that leaves the machine",
+    file: "lib/operator-events.mjs",
+    from: "      source_digest: publishedDigest(event.candidate_source.source_id),",
+    to: "      source_digest: event.candidate_source.source_id,",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection carries digests and structural values, and no text the operator typed"
+  },
+  // #560 round 2 -- the seven findings of the first merge-gate review.
+  {
+    guard: "a raw value is hashed because it was supplied raw",
+    reason: "deciding by string shape published a sixty-four-character secret as its own digest, which is the field whose whole purpose is to stand in its place",
+    file: "lib/operator-events.mjs",
+    from: '  if (hasRaw) return sha256Bytes(Buffer.from(canonicalJson(raw), "utf8"));',
+    to: '  if (hasRaw) return typeof raw === "string" && /^[0-9a-f]{64}$/u.test(raw) ? `sha256:${raw}` : sha256Bytes(Buffer.from(canonicalJson(raw), "utf8"));',
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "a raw value is digested because it was supplied as a raw value, never because of how it looks"
+  },
+  {
+    guard: "a value and its digest are not both accepted",
+    reason: "two fields naming the same thing leave the module choosing which one is true, which is the choice this design exists to take away from it",
+    file: "lib/operator-events.mjs",
+    from: "  if (hasDigest && hasRaw) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "a value and a value digest may not both be supplied, and neither may be omitted"
+  },
+  {
+    guard: "an operator event states its challenge and its value",
+    reason: "an omitted challenge used to become the digest of null, which is a well-formed record of nobody having been asked anything",
+    file: "lib/operator-events.mjs",
+    from: "  throw new Error(`AOS_INVALID_OPERATOR_EVENT an operator event states its ${name}: supply ${name} to be hashed here, or ${digestKey} if it is already a digest`);",
+    to: '  return `sha256:${"0".repeat(64)}`;',
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "a value and a value digest may not both be supplied, and neither may be omitted"
+  },
+  {
+    guard: "a named evidence id is published as a digest",
+    reason: "an evidence id is the operator's own name for something on their machine, and this is the copy that leaves it",
+    file: "lib/operator-events.mjs",
+    from: "  if (Array.isArray(event?.named_evidence_ids)) projected.named_evidence_digests = event.named_evidence_ids.map(publishedDigest);",
+    to: "  if (Array.isArray(event?.named_evidence_ids)) projected.named_evidence_digests = [...event.named_evidence_ids];",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "a named evidence id reaches the projection as a digest, not as itself"
+  },
+  {
+    guard: "every published string is constrained at the mint",
+    reason: "the schema permitted any 1-128 characters, so a secret and an ssh key path were minted and published verbatim; digesting at the projection is the second half and this is the first",
+    file: "schemas/aos-operator-event.v2.schema.json",
+    from: '      "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" }\n    },\n    "reported_confidence"',
+    to: '      "items": { "type": "string", "minLength": 1, "maxLength": 128 }\n    },\n    "reported_confidence"',
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "no string the projection publishes can be minted as a secret or a path"
+  },
+  {
+    guard: "a reliance trace is built on a journal",
+    reason: "the reveal lived in an in-memory Set, so rebuilding the trace -- which is the normal case, because #583 reads a run that already happened -- started from nothing",
+    file: "lib/operator-events.mjs",
+    from: "  assertJournal(journal);",
+    to: "  if (false) assertJournal(journal);",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a reliance trace with no journal is refused, because a reveal nobody recorded cannot be checked later"
+  },
+  {
+    guard: "the reveal is read from the journal, not from this object",
+    reason: "an ordering rule a reconstruction resets is not an ordering rule",
+    file: "lib/operator-events.mjs",
+    from: "  const staged = (opportunity_id, stage) => entries().some((entry) => entry.opportunity_id === opportunity_id && entry.stage === stage);",
+    to: "  const staged = () => false;",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a second trace for the same run cannot commit an initial judgment after the first revealed the advice"
+  },
+  {
+    guard: "an initial judgment names its evidence",
+    reason: "an empty payload minted a well-formed calibration opportunity out of the digest of null and the digest of an empty list",
+    file: "lib/operator-events.mjs",
+    from: "      if (!Array.isArray(payload.named_evidence_ids) || payload.named_evidence_ids.length === 0) {",
+    to: "      if (false) {",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "an initial judgment with no named evidence, no challenge or no delegation decision is refused"
+  },
+  {
+    guard: "the run key is one key for one run",
+    reason: "the binding is checked against the key that minted it, and a key that changed between the two would make every record refuse or every record pass depending on which side moved",
+    file: "lib/store.mjs",
+    from: '  if (create && !operatorKeys.has(key)) operatorKeys.set(key, randomBytes(32).toString("hex"));',
+    to: '  if (!operatorKeys.has(key)) operatorKeys.set(key, randomBytes(32).toString("hex"));',
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "a process that did not record a run has no key for it, and says that rather than calling the evidence forged"
+  },
+  {
+    guard: "the channel decides the source",
+    reason: "the flag was read as proof of presence, so a controller piping four lines had AOS sign them DIRECT_LOCAL / HIGH",
+    file: "lib/cli.mjs",
+    from: '  const channel = io.stdin?.isTTY === true ? "interactive-tty" : null;',
+    to: '  const channel = "interactive-tty";',
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "answers arriving on a pipe are never signed as a direct local operator turn"
+  },
+  {
+    guard: "an unanswered checkpoint mints nothing",
+    reason: "the first version signed the opportunity when the question was printed, so closing the stream produced an AOS-authored operator turn",
+    file: "lib/cli.mjs",
+    from: "  if (decision.unanswered === true) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "nothing is signed before an answer arrives, so a stream that answers nothing mints no operator event"
+  },
+  {
+    guard: "the binding is in the assessment path",
+    reason: "bindOperatorDecisions had no caller at all, so no scored process row named the operator event it rested on",
+    file: "lib/cli.mjs",
+    from: "    const processBound = processEvidence(operatorBinding, interventionSummary(attested.trace));",
+    to: "    const processBound = { interventions: interventionSummary(attested.trace), evidence_ids: [], withheld_for: [] };",
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "answers on a stdin that reports itself a terminal are signed DIRECT_LOCAL and reach the scored process rows"
+  },
+  {
+    guard: "the observations carry the operator events they rest on",
+    reason: "a scored operator-process row that names no operator event is a number bound to nothing a reader can check",
+    file: "lib/observe.mjs",
+    from: '      evidence: ["run-events", "FAM-4", ...(Array.isArray(interventions?.evidence_ids) ? interventions.evidence_ids : [])]',
+    to: '      evidence: ["run-events", "FAM-4"]',
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "answers on a stdin that reports itself a terminal are signed DIRECT_LOCAL and reach the scored process rows"
+  },
+  {
+    guard: "a scorable cell with no bound decision withholds",
+    reason: "the monitoring metrics read cells this contract can score, and scoring one with no operator event behind it is the whole defect this issue exists for",
+    file: "lib/operator-plan.mjs",
+    from: "  const observed = interventions?.observed === true && unbound.length === 0 && ids.length > 0;",
+    to: "  const observed = interventions?.observed === true;",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "counterfactual: a perfect autogenerated plan with an operator who said nothing withholds Process"
+  },
+  {
+    guard: "a cancel typed at a shell is not an operator turn",
+    reason: "`aos session cancel` signed DIRECT_LOCAL/HIGH on the strength of having been invoked, and anything with a shell can invoke it -- the flag mistake on the other command",
+    file: "lib/cli.mjs",
+    from: '      event_type: "run.cancelled",',
+    to: '      event_type: "session.cancelled",',
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "session cancel typed on a pipe records the cancellation without claiming an operator turn"
+  },
+  {
+    guard: "an invocation nobody can attribute decides nothing",
+    reason: "flattening every invocation into one list made two opportunities and one matching invocation report a divergence",
+    file: "lib/operator-plan.mjs",
+    from: "    if (opportunity === null) { unattributed.push(agent); continue; }",
+    to: "    if (opportunity === null) { continue; }",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "a route the operator declared is compared with the invocations of its own opportunity, not with every invocation in the run"
+  },
+  // #560 round 3 -- the second merge-gate review.
+  {
+    guard: "the stored record is bound, not only the event on it",
+    reason: "the scorer reads the wrapper's type, family and payload, and the assessed agent works two path segments from the run's event file as the same user -- editing inspected: 0 to inspected: 99 moved M11 from 0.75 to 1.0 without forging an event or learning a key",
+    file: "lib/operator-events.mjs",
+    from: "    if (!bindingMatches(expectedRecord, event.operator_record_binding)) {",
+    to: "    if (false) {",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "editing the stored payload of an attested record makes the scorer refuse it"
+  },
+  {
+    guard: "the record binding covers the payload the scorer reads",
+    reason: "a binding over the identifiers alone would leave the fields that decide the state change outside every signature, which is the defect with the check still in place",
+    file: "lib/operator-events.mjs",
+    from: "    payload: record.payload ?? null,",
+    to: "    payload: null,",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "editing the stored payload of an attested record makes the scorer refuse it"
+  },
+  {
+    guard: "a state revision is stated, never defaulted",
+    reason: "an omitted revision became 1 and then satisfied the binding's required-reference check, which is a missing reference converted into a default",
+    file: "lib/operator-events.mjs",
+    from: "  if (!Number.isInteger(value) || value < 1) {",
+    to: "  if (false) {",
+    test: "tests/product/operator-event-authority.test.mjs",
+    name: "an operator event with no state revision is refused rather than defaulted to the first one"
+  },
+  {
+    guard: "a declared route is published as digests",
+    reason: "a character grammar that admits an agent called alpha admits AKIAIOSFODNN7EXAMPLE, and the review published exactly that through declared_route",
+    file: "lib/operator-events.mjs",
+    from: "  if (Array.isArray(event?.declared_route)) projected.declared_route_digests = event.declared_route.map(publishedDigest);",
+    to: "  if (Array.isArray(event?.declared_route)) projected.declared_route_digests = [...event.declared_route];",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection publishes no string the operator typed, whatever the character grammar allows"
+  },
+  {
+    guard: "a candidate source version is published as a digest",
+    reason: "the same class on the other field: a version string is text somebody typed on their own machine",
+    file: "lib/operator-events.mjs",
+    from: "      version_digest: event.candidate_source.version === null ? null : publishedDigest(event.candidate_source.version),",
+    to: "      version_digest: event.candidate_source.version,",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection publishes no string the operator typed, whatever the character grammar allows"
+  },
+  {
+    guard: "a relay id is published as a digest",
+    reason: "the same class on the third field, which #576 will be the one filling in",
+    file: "lib/operator-events.mjs",
+    from: "      relay_digest: publishedDigest(event.relay_attestation.relay_id),",
+    to: "      relay_digest: event.relay_attestation.relay_id,",
+    test: "tests/product/operator-event-projection.test.mjs",
+    name: "the projection publishes no string the operator typed, whatever the character grammar allows"
+  },
+  {
+    guard: "the reliance evidence survives its trace",
+    reason: "#583 reads a run that has already happened, so a rebuilt trace is the normal case, and the first version handed it an empty list",
+    file: "lib/operator-events.mjs",
+    from: "      journal.record(opportunity, \"initial-committed\", event);",
+    to: "      journal.record(opportunity, \"initial-committed\", null);",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a reconstructed trace hands the reliance consumer the evidence the first one committed, not an empty list"
+  },
+  {
+    guard: "a process with no key for a run says so",
+    reason: "minting on demand gave a second process a different key, so every genuine record it read came back as tampering -- a key epoch nobody chose, reported as a forgery",
+    file: "lib/operator-events.mjs",
+    from: "  const unauthenticable = typeof secret !== \"string\" || secret.length === 0;",
+    to: "  const unauthenticable = false;",
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "a process that did not record a run has no key for it, and says that rather than calling the evidence forged"
+  },
+  {
+    guard: "a reroute is a routing decision",
+    reason: "a whole assessment captured no D3 operator decision at all, so the declared side of the D3 comparison was always empty",
+    file: "lib/cli.mjs",
+    from: '      operator_event: turn("route.assign", "C2.OD.01", 3, { stage, to: decision.route }, [decision.route])',
+    to: '      operator_event: turn("intervention.decide", "C4.IQ.01", 3, { stage, to: decision.route })',
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it"
+  },
+  {
+    guard: "what runs after a reroute belongs to the decision that caused it",
+    reason: "an invocation nobody can attribute decides nothing in D3, so leaving them all unattributed left the comparison permanently undecided",
+    file: "lib/cli.mjs",
+    from: "  return { ...decision, opportunity_id: opportunity };",
+    to: "  return { ...decision, opportunity_id: null };",
+    test: "tests/product/operator-channel-authority.test.mjs",
+    name: "an operator who reroutes at a checkpoint makes a D3 routing decision, and the run that follows is attributed to it"
+  },
+  {
+    guard: "advice is answered once",
+    reason: "the ledger is fresh on every reconstruction, so a rebuilt trace accepted a second response to advice already answered -- one operator turn counted twice",
+    file: "lib/operator-events.mjs",
+    from: '      if (staged(opportunity, "advice-responded")) {',
+    to: "      if (false) {",
+    test: "tests/product/initial-before-advice.test.mjs",
+    name: "a rebuilt trace refuses a second response to advice that was already answered"
+  },
+  {
+    guard: "a decision binds to the construct it is evidence about",
+    reason: "an admitted decision landing on the wrong construct's cell is a scored row about something the operator did not decide, and the table is the only place that says which is which",
+    file: "lib/operator-plan.mjs",
+    from: '  ["verification.choose", "C5"],',
+    to: '  ["verification.choose", "C1"],',
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "every decision type the schema admits binds to the construct and the dimension it is evidence about"
+  },
+  {
+    guard: "a decision names the dimension it belongs to",
+    reason: "the dimension is what a reader groups D1, D2 and D3 rows by, and a wrong one files a routing decision under framing",
+    file: "lib/operator-plan.mjs",
+    from: '  ["route.assign", "D3"],',
+    to: '  ["route.assign", "D1"],',
+    test: "tests/product/no-agent-artifact-process-credit.test.mjs",
+    name: "every decision type the schema admits binds to the construct and the dimension it is evidence about"
+  },
 ];
 
 /**
@@ -3761,6 +5947,7 @@ export const ACCOUNTED_GUARDS = [
   "ACL replaceable rights",
   "ACL walk",
   "AOS home withheld from the agent",
+  "AOS_HOME is denied before the workspace is allowed",
   "ECD PROFILE_BOUND names the profile it claims",
   "ECD a bound profile identity is compared",
   "ECD a cell names only forms that administer its subchecks",
@@ -3813,96 +6000,209 @@ export const ACCOUNTED_GUARDS = [
   "UNIQUE_WORK names what is unique to it",
   "UNKNOWN_HOLD names what blocks the decision",
   "a .NET startup hook is a pre-main hook like the rest",
+  "a /proc listing is not a list of survivors",
   "a NOT_YET deletion log cites no boundary observations",
   "a NOT_YET deletion log may not list deletions",
   "a URL carrying userinfo is a credential",
+  "a bare alias is never an exact identity",
   "a blocker closed without close evidence has not cleared",
   "a bound claim names the profile it is bound to",
   "a boundary needs both of its observations",
   "a calendar-impossible instant is refused before any arithmetic",
+  "a cancel typed at a shell is not an operator turn",
+  "a candidate source version is published as a digest",
   "a capped pull request history is refused when the observation is verified",
   "a capped pull request history supports no claim in the record",
+  "a cleanup failure is published by class and digest",
   "a collector read error names a relative path",
   "a command that returned nothing is not an empty list",
+  "a committed observation carries no transcript",
+  "a complete cycle is not an issued cycle",
   "a completed deletion requires the observation that witnessed it",
   "a completed log cites both boundary observation digests",
+  "a contradicting transcript still leaves the cohort",
+  "a copy taken while the tree moved is not a snapshot",
+  "a credential is not a model id",
+  "a credential is staged for the runtime, not for the label",
+  "a credential is what it is filed under, at any length",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cycle answers with the provenance its runs resolved",
+  "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
+  "a cycle reads the executable its runs saw",
+  "a cycle whose model is unknown says so",
+  "a date-shaped substring is not a snapshot on its own",
+  "a decision binds to the construct it is evidence about",
+  "a decision names the dimension it belongs to",
+  "a declared route is published as digests",
   "a deletion names the commit the audit judged",
   "a deletion outside the audit is refused",
   "a deletion recommendation carries a reason",
   "a deletion-blocking unknown blocks the deletion",
+  "a deny the kernel refused, not a file that was not there",
   "a derivation cites a receipt the observation carries",
+  "a detected model that contradicts the declared one is a mismatch",
+  "a diagnostic never issues a profile-bound aggregate",
   "a facet is not normalised into a digest",
+  "a failed observation's error is redacted",
+  "a family that never settled is a missing answer",
+  "a family with no known naming rules is not exact",
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
   "a forged structural set is revalidated like the rest",
+  "a leaked descendant blocks issuance",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
   "a metric's status and its value are one state",
+  "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
+  "a model id this product cannot read is refused",
   "a multi-phase issue is not closed by the phase that has run",
+  "a mutable alias withholds the profile-bound aggregate",
+  "a name that is not a model name is never printed",
+  "a name without snapshot proof is a mutable alias",
+  "a named evidence id is published as a digest",
   "a named secret assigned a value is a secret at any length",
   "a named secret is a secret without a digit in it",
+  "a namespace deny needs a plant behind it",
   "a new run is never scored by the old scorer",
   "a one-segment absolute path is a path",
   "a phase's predecessors must be in the plan",
+  "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a process with no key for a run says so",
   "a protected branch is never deletion-eligible",
+  "a provider refusal is narrow, not any non-zero exit",
   "a pull request opened after the audit blocks the deletion",
+  "a raw value is hashed because it was supplied raw",
+  "a recomputation compares the boundary facts it published",
+  "a recomputation runs under the run's own boundary",
+  "a record an older release wrote is read as what it is",
+  "a record is authenticated before it is judged",
   "a refused file fails the check",
+  "a relay id is published as a digest",
+  "a reliance trace is built on a journal",
+  "a required metric with an unanswered subcheck is not present",
+  "a reroute is a routing decision",
   "a resolved key is the key",
   "a result has to agree with itself",
+  "a risky security state is never VERIFIED",
   "a root is a root wherever it starts",
   "a row is held to the cells its contract declared",
   "a row is read as a whole",
+  "a run is official only when every invocation is",
+  "a run that failed still records what it was bound to",
+  "a run the cycle cannot identify closes it",
+  "a run under a different profile digest is not a run in this cycle",
+  "a run workspace is never inside the store",
+  "a runtime tree inside the store is refused",
   "a sanitised value is one this module boxed",
+  "a scan that ran out of budget says so",
+  "a scorable cell with no bound decision withholds",
+  "a scored Process row carries its five references",
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
+  "a settlement nobody could check is not a clean one",
+  "a skipped real lane is not a verified one",
   "a started phase cannot integrate code on a blocked issue",
+  "a state revision is stated, never defaulted",
   "a state that may not be deleted fixes its recommendation",
+  "a status the record asserts about itself is not evidence",
   "a status this build does not know is refused",
+  "a status with no digest under it is the weakest one",
+  "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
   "a surface carries the rows it says it averaged",
+  "a symlinked staging source is refused by name",
   "a tag's ref object is part of its identity",
+  "a transcript is never sufficient on its own",
+  "a transcript that names another model contradicts the binding",
+  "a transcript value is never printed unless it is a model name",
+  "a tree the digest cannot cover is not certified",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a truncated reference sweep supports no reference claim",
   "a truncated sweep is refused when the observation is verified",
+  "a value and its digest are not both accepted",
+  "a verdict that contradicts itself is not a verdict",
+  "a verifier reads the boundary off the record, not off the result",
   "a violation decides before the floor does",
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
   "a withheld corpus does not pass",
+  "a withheld identity caps the canonical claim",
+  "a withheld identity withholds the composite",
   "a withheld metric says so rather than reading as uncomputed",
   "a withheld rate keeps the counts that withheld it",
+  "a workspace that contains the store is refused",
+  "a workspace that resolves into the store is refused",
+  "a write after settlement is visible",
+  "absent coverage is not a measured zero",
   "absent protection on both sides is not unchanged protection",
   "abstention cannot outweigh decision",
+  "adapter membership is a published name, not a path shape",
+  "advice is answered once",
+  "agent-relay event needs its attestation",
   "allowlist-only child environment",
+  "an UNTRUSTED identity is not a verified one",
+  "an absent boundary is not a passing one",
   "an after-snapshot head is in flight, not merely named",
   "an alias is the node it names",
   "an asserted number equals the number the collector derived",
   "an asserted open PR appears in the collected history",
   "an asserted tree scan is the one that ran",
   "an empty completion says why nothing was eligible",
+  "an empty isolation lane is not a chosen one",
   "an entry records its reference scan and tag containment",
   "an excused head is classified as the in-flight work it claims to be",
   "an excused head records no SHA it cannot have",
   "an excused head's own claims are checked against the observation",
+  "an import reads every event before it creates a Run",
+  "an imported run is written down",
+  "an imported run names the producer of its evidence",
+  "an incomplete result's terminal names it",
+  "an inconsistent snapshot withholds",
+  "an initial judgment after the reveal is refused",
+  "an initial judgment is not committed with a post-advice response",
+  "an initial judgment names its evidence",
+  "an invocation nobody can attribute decides nothing",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an issued legacy number needs a declared STRICT level",
+  "an observation run carries a provenance record too",
+  "an observation that could not run still leaves its record",
+  "an observation's markers are read, not only its exit code",
+  "an older schema generation is named, not accused",
   "an omitted observation family is not an observed empty one",
   "an open PR head survives the deletion",
   "an open PR makes the branch ACTIVE, whatever it is labelled",
+  "an open handle is corroboration, not a warrant",
   "an open pull request is looked for in every source that would know",
+  "an operator decision binds only to an operator_process cell",
+  "an operator event is assembled from named fields",
+  "an operator event states its challenge and its value",
   "an out-of-range month, day, hour, minute or second is refused",
+  "an unanswered checkpoint mints nothing",
+  "an unexplained holder of the run's directories withholds",
+  "an unidentified runtime cannot carry the lane",
+  "an unknown isolation lane is refused, not defaulted",
+  "an unknown model withholds the aggregate by its own name",
   "an unknown protection state is not an unprotected branch",
+  "an unknown status is not a verdict",
   "an unknown's bearing is one of two values, not free text",
+  "an unmeasured network axis is not NOT_OBSERVED",
+  "an unmeasured network policy has no expectation",
+  "an unnameable transcript row withholds the aggregate",
+  "an unproven lane blocks issuance",
+  "an unverified executable withholds the aggregate",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
   "block scalar measured from its key",
   "both blocking issues are named while the log is blocked",
+  "both canary judges share one denial predicate",
+  "bubblewrap mounts what the policy declares",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
@@ -3912,8 +6212,12 @@ export const ACCOUNTED_GUARDS = [
   "carriage returns stripped",
   "central redaction",
   "checkpoint evidence preserved",
+  "checkpoint observation reads who wrote the record",
   "child output credential scrub",
+  "cited evidence is read only if it is the evidence cited",
   "cleanup claim not overstated",
+  "cleanup is read from the teardown that happened",
+  "cleanup is verified by the scans that can answer",
   "close-evidence author trust",
   "close-evidence component confirmations",
   "close-evidence issue-specific fields",
@@ -3934,6 +6238,7 @@ export const ACCOUNTED_GUARDS = [
   "cycle search inside strongly connected components",
   "decisions must reach past one session",
   "declared credentials are never reprinted",
+  "declared route and actual route stay separate",
   "descriptor-bound fingerprint",
   "descriptor-bound metadata",
   "directory skip list",
@@ -3949,8 +6254,13 @@ export const ACCOUNTED_GUARDS = [
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
   "every asserted graph fact names a derivation",
+  "every directory entry is charged to the scan budget",
   "every invariant family is recorded on both sides",
+  "every kind of evidence is required by name",
+  "every observation a row cites must record a run that succeeded",
   "every projection is compared with the result",
+  "every published string is constrained at the mint",
+  "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
   "evidence bound to the audited revision",
@@ -3965,6 +6275,7 @@ export const ACCOUNTED_GUARDS = [
   "fingerprint compare",
   "flow-mapping uses",
   "full-SHA action reference",
+  "grading reads what was frozen at settlement",
   "handoff exact compare",
   "hard-forbidden class refusal",
   "hard-forbidden matching is case-insensitive",
@@ -3978,6 +6289,8 @@ export const ACCOUNTED_GUARDS = [
   "interpreter is part of the identity",
   "interpreter startup paths are a forbidden class",
   "invocation identity provenance",
+  "issuance needs STRICT",
+  "issuance needs a passing canary with evidence",
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",
@@ -3986,10 +6299,13 @@ export const ACCOUNTED_GUARDS = [
   "main and dev are compared across the deletion itself",
   "malformed-row reporting",
   "merge keys bring their keys with them",
+  "missing invariance evidence withholds",
   "missing-result refusal",
   "naming something to preserve refuses the deletion recommendation",
   "no deletion is authorized without a pre-deletion observation",
   "no eligible evidence is said to be none",
+  "no raw confinement evidence is a verification failure",
+  "no variable may carry the store path",
   "nothing claimed as deleted is still there",
   "nothing is eligible without a live observation",
   "nothing vanished that the log did not claim",
@@ -4001,8 +6317,20 @@ export const ACCOUNTED_GUARDS = [
   "one fixture id, one item",
   "one snapshot entry per issue",
   "oneOf means exactly one",
+  "only the configured runtime corroborates its own binding",
+  "only the configured runtime's transcript tree is read",
+  "only the declared runtime files are staged",
   "operator decision window",
+  "operator event authority is the matrix's, not the caller's",
+  "operator event authority matrix",
+  "operator event cross-session rejection",
+  "operator event replay rejection",
+  "operator event session binding is verified",
+  "operator event state revision advances",
+  "operator event unknown source has no authority",
+  "operator silence is NOT_OBSERVED",
   "operator-env credential gate",
+  "operator-file event needs explicit provenance",
   "owned paths are not only prose",
   "parent writable refusal",
   "phase permissions are pinned, not only phase names",
@@ -4053,8 +6381,10 @@ export const ACCOUNTED_GUARDS = [
   "run scratch is created inside the cleanup-protected region",
   "runtime auth is bound to the adapter that reads it",
   "safety cap",
+  "secret-shaped material is not a model name",
   "secret-value scan",
   "session ledger byte identity",
+  "settle reads the cleanup failures",
   "single observation per probe",
   "skipped directory is still an entry",
   "snapshot provenance",
@@ -4069,41 +6399,88 @@ export const ACCOUNTED_GUARDS = [
   "supply-chain digest covers the .npmrc",
   "supply-chain digest covers the policy",
   "supply-chain digest covers the verifier",
+  "support is read from the lane table, not restated",
   "symlink chain audit",
   "symlink chain containment",
   "symlink component expansion",
   "symlink escape refusal",
   "tag containment is derived against the repository's tags",
+  "task-initiated network is NOT_OBSERVED",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the after-snapshot exception is bound to the branch the audit was submitted from",
+  "the assessed process does not decide issuance",
+  "the assessment is scored under the gate it reports",
+  "the assessment profile is built for the lane the run uses",
   "the assessment writes the profile result",
   "the audited commit is the commit the snapshot observed",
   "the baseline records the stable plugin/install source at all",
+  "the binding is in the assessment path",
   "the blockers clear in the canonical snapshot, not in the log",
+  "the boundary withholds every index, not only the composite",
+  "the boundary withholds the number, not only the claim stage",
+  "the boundary's verdict decides whether the run carries a number",
+  "the canary expectation is this module's, not the record's",
+  "the canary proves the stripped descendant was confined",
+  "the canary that certifies the boundary is the one that shipped",
+  "the canary verdict is derived from its cells",
+  "the canary's digests verify against what it carries",
+  "the canary's own escapee is killed and checked",
+  "the candidate source is digested, never named",
   "the capture time names a day that exists",
   "the card carries every reliance metric",
   "the card carries the delegated-artifact rows",
   "the card drops no facet",
+  "the card quotes the stored identity lines",
+  "the channel decides the source",
   "the claim is compared like the numbers are",
+  "the claim stage reads the boundary",
   "the closing pull request changed something the issue owns",
+  "the cohort digest refuses what staging refuses",
+  "the cohort key describes the policy that was applied",
+  "the cohort key is the operator's binding, never the child's transcript",
   "the collector writes no local ref",
   "the command prints the floored result",
   "the committed observation read each pull request history to the end",
+  "the comparison projection is read from the contract",
   "the composite has to agree with its own inputs",
   "the contract digest covers the contract's bytes",
   "the contract states the cells each row averages",
+  "the copy carries the modes it copied",
   "the count deletion turns on is recorded",
+  "the cycle command quotes the stored decision",
+  "the dashboard quotes the stored cycle decision",
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
+  "the derived verdict ignores the reported one",
+  "the device nodes are the policy's, not the renderer's",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
+  "the escaped descendant is proved confined",
+  "the evidence a row must cite follows its level, not its label",
   "the evidence contract is pinned outside the plan",
+  "the evidence digest is over the claim, not the transcript row",
   "the exception needs a submission branch to be about",
+  "the executable identity digest is recomputed, not read",
   "the floor follows the worst severity observed",
+  "the freeze certificate is over the copy",
+  "the freeze copies no link",
   "the fresh observation's derivations are the ones checked",
+  "the group sweep is recorded from the group",
+  "the identity aggregation is recomputed from its agents",
+  "the identity record is published field by field",
+  "the identity record names the agents that ran",
   "the invariant baseline agrees with the snapshot it was taken from",
+  "the lane is bound into the cohort",
+  "the lane's identity comes from the runtime that authenticated",
+  "the matrix decides the process axis with the run's own helper",
+  "the matrix reads what the teardown could not remove",
+  "the network axis is enumerated, not typed",
+  "the network enforcement name is the gate's own vocabulary",
   "the observation digest is recursive over its content",
+  "the observations carry the operator events they rest on",
+  "the operator event projection is an allowlist",
+  "the operator-typed event set is what the gate covers",
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
   "the post-deletion observation follows the deletion",
@@ -4111,28 +6488,70 @@ export const ACCOUNTED_GUARDS = [
   "the pre-deletion observation is fresh",
   "the pre-deletion observation predates the deletion",
   "the printed shape is named",
+  "the private tmpfs is declared before it is mounted",
+  "the process axis needs the sweep and the second poll",
+  "the process group is enumerated, not assumed",
+  "the profile digest binds the boundary and the runtime configuration",
+  "the profile digest covers the executable identity",
+  "the profile digest covers the isolation policy",
+  "the profile digest covers the mutable alias state",
+  "the profile digest covers the provenance record",
+  "the profile is rendered from the policy that is digested",
+  "the profile renderers quote the stored lines",
+  "the profile-bound claim is printed only when it was reached",
+  "the projection verb is the record's own source",
   "the published contract names an entry point that exists",
+  "the published result carries the boundary it ran under",
   "the pull request history is read to the end",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",
+  "the record binding covers the payload the scorer reads",
   "the record cites the post-deletion observation",
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
+  "the reliance evidence survives its trace",
+  "the renderer refuses a workspace inside the store",
+  "the renderers quote the stored identity lines",
   "the report command serves what the result projects to",
+  "the result publishes redacted cleanup failures",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
+  "the reveal is read from the journal, not from this object",
   "the rows a result must carry come from its contract",
+  "the run key is one key for one run",
+  "the run listing says what each run may claim",
+  "the run reports the executable it spawned",
+  "the run resolves its provenance again once its own events are in hand",
   "the run-metadata door cannot be widened in the running process",
   "the run-metadata door carries only run metadata",
+  "the runtime's own event outranks the declaration",
   "the same evidence cannot be counted twice",
   "the scored result carries the boundary it was produced under",
+  "the settlement digest is over the tree the comparison recomputes",
+  "the spawn judge reads the gate's expectation table",
+  "the spawn refuses a workspace inside the store",
+  "the staged credential copy is private",
+  "the staged credential is scrubbed by value",
+  "the staged secrets reach the scrubber",
+  "the store refuses an operator event type from another producer",
+  "the store requires an attestation for an operator event",
+  "the stored record is bound, not only the event on it",
+  "the table shows the decision and not the label",
+  "the teardown observation reports what cleanup returned",
+  "the transcript recogniser knows the configured workspaces root",
+  "the transcript scan spends a bounded budget",
   "the tree scan reads the integration line",
   "the tree scan receipt names the commit it scanned",
   "the two head transports are cross-checked",
+  "the verified executable must be the adapter's runtime",
+  "the weakest run decides the cycle",
+  "the whole gate decision has to agree, not its headline",
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the withheld reason travels with the surface",
+  "the workspace is named relatively so the store is not",
   "top-level artifact open does not follow",
+  "tracked descendants are terminated at teardown",
   "transport approval binding",
   "trend dedupe",
   "trusted-file integrity re-check",
@@ -4142,10 +6561,14 @@ export const ACCOUNTED_GUARDS = [
   "unread ACL is not a clean ACL",
   "unreadable directory reported",
   "unreadable uses: fails closed",
+  "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
+  "verification re-derives the settlement half too",
+  "verification re-gates the invocations the record carries",
   "verification result check",
   "version comment after a flow mapping",
   "version comment is a version",
+  "what runs after a reroute belongs to the decision that caused it",
   "what was withheld outright is recorded as such",
   "withheld is never a number, and issued is never a reason",
   "withheld precision is absent",

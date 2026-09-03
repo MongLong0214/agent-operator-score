@@ -1,0 +1,155 @@
+{
+  "schema": "aos-confinement-support-matrix.v1",
+  "recorded_on": "darwin 25.3.0 arm64, macOS 26.3",
+  "lanes": [
+    {
+      "platform": "darwin",
+      "backend": "macos-seatbelt",
+      "adapter": "codex-cli.v1",
+      "level": "STRICT",
+      "support_status": "SUPPORTED_WITH_CONSTRAINTS",
+      "official": true,
+      "network_policy": "provider-required-unrestricted",
+      "provider_transport": "allowed",
+      "evidence": {
+        "canary": {
+          "file": "observations/strict-lane.darwin.seatbelt.canary.json",
+          "digest": "sha256:227e00818e75fcfd7c6c84272dd18ea57e70197f9d42a41122dc77f1be450914"
+        },
+        "runtime": {
+          "file": "observations/strict-lane.darwin.seatbelt.codex-auth.json",
+          "digest": "sha256:b6d691663d91e80d55b66e1a62c1eba2ecdb628a9dc944e5f94b2b64dc5cc8ce"
+        },
+        "exec": {
+          "file": "observations/strict-lane.darwin.seatbelt.codex-exec.json",
+          "digest": "sha256:c594501b8aa9798136e668240cb05ee5803881748fcf86ac2eb89f9442ee9bdd"
+        },
+        "cleanup": {
+          "file": "observations/strict-lane.darwin.seatbelt.cleanup.json",
+          "digest": "sha256:18885367fb129f8f6b81505df7b5e30ae0a0f4a97595657fc2964359044e414d"
+        },
+        "host": {
+          "file": "observations/strict-lane.darwin.host.json",
+          "digest": "sha256:ab211479570143aaa41ed92a9bdccf8e279eee964811ff530775ce6e4b32a2b5"
+        }
+      },
+      "constraints": [
+        "sandbox-exec is deprecated by Apple and still enforcing on darwin 25.3 (macOS 26.3); the probe re-checks it on every run",
+        "CODEX_HOME is a staged copy, not a hole: auth.json and config.toml are copied into the agent's private HOME before the spawn, the operator's ~/.codex is never named in the profile, and what Codex writes to the copy -- session logs, its state database, a refreshed token -- is discarded with the run",
+        "task-initiated external network is NOT_OBSERVED: the profile allows outbound network wholesale because the provider transport needs it",
+        "a descendant that double-forks between two 200 ms polls is not tracked; it stays confined by the kernel"
+      ]
+    },
+    {
+      "platform": "darwin",
+      "backend": "macos-seatbelt",
+      "adapter": "claude-code.v1",
+      "level": "STRICT",
+      "support_status": "NOT_OBSERVED",
+      "official": false,
+      "network_policy": "provider-required-unrestricted",
+      "provider_transport": "allowed",
+      "reason": "boundary measured by the same canary, no real runtime authenticated under it on this lane"
+    },
+    {
+      "platform": "darwin",
+      "backend": "macos-seatbelt",
+      "adapter": "generic-command.v1",
+      "level": "STRICT",
+      "support_status": "NOT_OBSERVED",
+      "official": false,
+      "network_policy": "disabled",
+      "provider_transport": "denied",
+      "reason": "boundary measured by the same canary, no real runtime authenticated under it on this lane"
+    },
+    {
+      "platform": "darwin",
+      "backend": "none",
+      "adapter": "*",
+      "level": "BEST_EFFORT_CLI",
+      "support_status": "BLOCKED",
+      "official": false,
+      "network_policy": null,
+      "provider_transport": "allowed",
+      "reason": "no OS boundary: a replaced HOME and a filtered environment are not a sandbox"
+    },
+    {
+      "platform": "darwin",
+      "backend": "none",
+      "adapter": "*",
+      "level": "NONE",
+      "support_status": "BLOCKED",
+      "official": false,
+      "network_policy": null,
+      "provider_transport": "allowed",
+      "reason": "no OS boundary: a replaced HOME and a filtered environment are not a sandbox"
+    },
+    {
+      "platform": "linux",
+      "backend": "linux-bubblewrap",
+      "adapter": "codex-cli.v1",
+      "level": "STRICT",
+      "support_status": "NOT_OBSERVED",
+      "official": false,
+      "network_policy": "provider-required-unrestricted",
+      "provider_transport": "allowed",
+      "reason": "bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured"
+    },
+    {
+      "platform": "linux",
+      "backend": "linux-bubblewrap",
+      "adapter": "claude-code.v1",
+      "level": "STRICT",
+      "support_status": "NOT_OBSERVED",
+      "official": false,
+      "network_policy": "provider-required-unrestricted",
+      "provider_transport": "allowed",
+      "reason": "bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured"
+    },
+    {
+      "platform": "linux",
+      "backend": "linux-bubblewrap",
+      "adapter": "generic-command.v1",
+      "level": "STRICT",
+      "support_status": "NOT_OBSERVED",
+      "official": false,
+      "network_policy": "disabled",
+      "provider_transport": "denied",
+      "reason": "bwrap is not installed on the probing host; the argument vector is tested, the boundary is not measured"
+    },
+    {
+      "platform": "linux",
+      "backend": "linux-container",
+      "adapter": "*",
+      "level": "STRICT",
+      "support_status": "NOT_OBSERVED",
+      "official": false,
+      "network_policy": "disabled",
+      "provider_transport": "denied",
+      "reason": "Phase 0 measured the boundary in a container and could not run the darwin-only runtime inside it; no adapter targets it"
+    },
+    {
+      "platform": "linux",
+      "backend": "none",
+      "adapter": "*",
+      "level": "BEST_EFFORT_CLI",
+      "support_status": "BLOCKED",
+      "official": false,
+      "network_policy": null,
+      "provider_transport": "allowed",
+      "reason": "no OS boundary: a replaced HOME and a filtered environment are not a sandbox"
+    },
+    {
+      "platform": "linux",
+      "backend": "none",
+      "adapter": "*",
+      "level": "NONE",
+      "support_status": "BLOCKED",
+      "official": false,
+      "network_policy": null,
+      "provider_transport": "allowed",
+      "reason": "no OS boundary: a replaced HOME and a filtered environment are not a sandbox"
+    }
+  ],
+  "evidence_digest": "sha256:e1d66f95354536f4ebd6f0059f42237cca3876062d4aadb526351b4cc75c21e2"
+}

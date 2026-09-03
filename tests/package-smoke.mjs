@@ -140,6 +140,41 @@ try {
     if (!/AGGREGATION_VECTORS_URL/.test(named)) throw new Error(`the aggregation vectors were not among the exported URLs: ${named}`);
     if (!/RESULT_SCHEMA_URL/.test(named)) throw new Error(`the result schema was not among the exported URLs: ${named}`);
   });
+
+  check("the packaged canary evidence opens from the installed tarball", () => {
+    // #556. The support matrix and the observations it cites are release evidence: they are what a
+    // reader outside this repository checks the proven lane against. `files` is a whitelist, so a
+    // committed evidence file that is not in it is evidence nobody outside the repo can open --
+    // and the matrix would resolve every row to a missing citation. Read from the installed copy,
+    // through the module that ships it, and checked against the digest each row declares.
+    const script = [
+      "const { readFileSync } = await import('node:fs');",
+      "const { join, dirname } = await import('node:path');",
+      "const { createHash } = await import('node:crypto');",
+      "const root = process.argv[1];",
+      "const matrixPath = join(root, 'fixtures', 'confinement', 'support-matrix.json');",
+      "const matrix = JSON.parse(readFileSync(matrixPath).toString('utf8'));",
+      "const rows = matrix.lanes ?? matrix.rows ?? [];",
+      "let cited = 0;",
+      "for (const row of rows) {",
+      "  for (const [kind, evidence] of Object.entries(row.evidence ?? {})) {",
+      "    const file = join(dirname(matrixPath), evidence.file ?? evidence);",
+      "    const bytes = readFileSync(file);",
+      "    const digest = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;",
+      "    const declared = evidence.digest ?? null;",
+      "    if (declared !== null && declared !== digest) throw new Error(`${row.platform}/${row.backend} ${kind}: shipped bytes are not the cited ones`);",
+      "    JSON.parse(bytes.toString('utf8'));",
+      "    cited += 1;",
+      "  }",
+      "}",
+      "if (cited === 0) throw new Error('the shipped matrix cites no observation, so this check verified nothing');",
+      "console.log(`${rows.length} lanes, ${cited} cited observations`);"
+    ].join("\n");
+    const installed = join(prefix, "lib", "node_modules", "agent-operator-score");
+    const out = execFileSync(process.execPath, ["--input-type=module", "-e", script, installed], { encoding: "utf8", timeout: 60000 }).trim();
+    if (!/cited observations/.test(out)) throw new Error(`the packaged canary evidence did not open: ${out}`);
+    say(`  ${out}`);
+  });
 } finally {
   rmSync(workspace, { recursive: true, force: true });
 }

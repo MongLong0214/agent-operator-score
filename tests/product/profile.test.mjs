@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ADAPTERS, adapterFor, buildProfile, probeCommand, profileDigestOf, profileLabel, sameCohort } from "../../lib/profile.mjs";
+import { ADAPTERS, adapterFor, buildProfile, probeCommand, profileDigestOf, profileLabel } from "../../lib/profile.mjs";
+import { issuancePolicyFor } from "../../lib/model-identity.mjs";
 
 const agent = (over = {}) => ({
   id: "main",
@@ -32,13 +33,16 @@ test("a version read from the runtime is detected, one typed by the operator is 
   assert.equal(neither.runtime_version_source, "unknown");
 });
 
-test("an undetectable model does not block a score", () => {
-  // Refusing to run because a version string could not be parsed would make the product unusable
-  // against exactly the runtimes it exists to be neutral about.
+test("an undetectable model does not stop the run from being scorable", () => {
+  // Named for what it checks. Refusing to run because no model could be identified would make the
+  // product unusable against exactly the runtimes it exists to be neutral about -- the run happens
+  // and scores, and what an unknown model costs is the profile-bound claim, which
+  // `issuancePolicyFor` withholds by name and `tests/product/model-identity.test.mjs` covers.
   const profile = build();
   assert.equal(profile.model_id, null);
   assert.equal(profile.model_source, "unknown");
   assert.equal(profile.scoring_permitted, true);
+  assert.equal(issuancePolicyFor({ provenance: profile.model_provenance }).run_diagnostic_permitted, true);
 });
 
 test("isolation NONE is recorded as not scorable", () => {
@@ -90,10 +94,22 @@ test("a node patch release is not a new cohort", () => {
   assert.notEqual(build({ nodeVersion: "22.18.0" }).profile_digest, build({ nodeVersion: "24.0.0" }).profile_digest);
 });
 
-test("same digest is the whole test for comparability", () => {
-  assert.equal(sameCohort(build(), build()), true);
-  assert.equal(sameCohort(build(), build({ isolation: "STRICT" })), false);
-  assert.equal(sameCohort(build(), null), false);
+test("same digest is necessary for a cohort, and an unknown model is never sufficient", () => {
+  // Two profiles that could not name their model share a digest and still may not be aggregated:
+  // the provider may have moved the default between them (#561). The digest is the cohort key and
+  // the issuance policy is what refuses to issue over a key whose model half cannot hold still.
+  const policyOf = (profile) => issuancePolicyFor({
+    provenance: profile.model_provenance,
+    runtimeIdentity: { identity_digest: profile.runtime_identity_digest, identity_status: profile.runtime_identity_status }
+  }).profile_bound_aggregation;
+  assert.equal(build().profile_digest, build().profile_digest);
+  assert.equal(policyOf(build()).reason, "MODEL_UNKNOWN");
+  const exact = (over = {}) => build({ agent: agent({ model_id: "gpt-4o-2024-08-06" }), ...over });
+  assert.equal(exact().profile_digest, exact().profile_digest);
+  assert.notEqual(exact().profile_digest, exact({ isolation: "STRICT" }).profile_digest);
+  // The model is exact, and the executable identity of this fixture is not one #554 verified, so
+  // what a profile with no verified program may claim is a run diagnostic.
+  assert.equal(policyOf(exact()).reason, "RUNTIME_IDENTITY_UNVERIFIED");
 });
 
 test("a runtime nobody wrote an adapter for is accepted", () => {
@@ -118,11 +134,14 @@ test("every declared adapter can answer the questions a profile asks", () => {
   for (const adapter of Object.values(ADAPTERS)) {
     assert.equal(Array.isArray(adapter.version_args), true, adapter.id);
     assert.equal(typeof adapter.version_of, "function", adapter.id);
-    assert.equal(typeof adapter.model_of, "function", adapter.id);
+    // The model is never read off version output; it comes through the flags the adapter names
+    // (#561), and an adapter that names none reads no model at all.
+    assert.equal(Array.isArray(adapter.model_flags), true, adapter.id);
+    assert.equal("model_of" in adapter, false, adapter.id);
+    assert.equal(Number.isInteger(adapter.version), true, adapter.id);
     assert.equal(adapter.supported_isolation.length > 0, true, adapter.id);
     // A parser that throws on unexpected output would take the run down at the probe.
     assert.doesNotThrow(() => adapter.version_of(""));
-    assert.doesNotThrow(() => adapter.model_of("garbage output \u0000"));
   }
 });
 

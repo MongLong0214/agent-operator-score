@@ -1,0 +1,114 @@
+{
+  "schema_id": "aos-model-canary.v1",
+  "captured_at": "2026-09-02T22:53:33.509Z",
+  "kind": "live-capture-replay",
+  "unverifiable_from_repository": "Each observation came from invoking the runtime and reading the transcript that invocation wrote. The transcripts are unsigned local files with no attestation channel to this repository, so the capture is asserted by this record and not proved by it. Re-run scripts/capture-model-canary.mjs to reproduce it on a machine with both runtimes authenticated.",
+  "capture": {
+    "platform": "darwin",
+    "command": "node scripts/capture-model-canary.mjs -- invokes each runtime once with a trivial prompt in a temporary HOME and reads the transcript that invocation wrote",
+    "note": "No transcript content and no absolute path is copied. `event_line` is the canonical form of the event this product carries forward and `event_digest` is the SHA-256 of its bytes, so the derived verdicts can be recomputed from what is written here."
+  },
+  "blockers": {},
+  "observations": [
+    {
+      "runtime": "codex",
+      "runtime_version": "codex-cli 0.148.0",
+      "invocation": {
+        "command": "codex exec --skip-git-repo-check <prompt>",
+        "prompt": "reply with the single word ok",
+        "exit_code": 0,
+        "duration_ms": 3700,
+        "isolated_home": false,
+        "workspace_digest": "sha256:7871b5383c09d94473c5ce5e9bf8373abd98aabbf2f31cd6633301f2da7f7b89"
+      },
+      "provider": "openai",
+      "model": "gpt-5.6-sol",
+      "event_line": "{\"runtime\":\"codex\",\"provider\":\"openai\",\"model\":\"gpt-5.6-sol\"}",
+      "event_digest": "sha256:eaf50504874c88ed253ebb8635e83b96346b7adf7347986834e81d868fe26b03",
+      "observed_row_digest": "sha256:40234232f43bc96c562528736c6ac0134ac33542c01b92be2a92a79d5706c5fa",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "openai/gpt-5.6-sol",
+      "verification": "CONFIRMED",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_MUTABLE_ALIAS"
+      }
+    },
+    {
+      "runtime": "codex",
+      "runtime_version": "codex-cli 0.148.0",
+      "invocation": {
+        "command": "codex exec --skip-git-repo-check <prompt>",
+        "prompt": "reply with the single word ok",
+        "exit_code": 0,
+        "duration_ms": 3700,
+        "isolated_home": false,
+        "workspace_digest": "sha256:7871b5383c09d94473c5ce5e9bf8373abd98aabbf2f31cd6633301f2da7f7b89"
+      },
+      "provider": "openai",
+      "model": "gpt-5.6-sol",
+      "event_line": "{\"runtime\":\"codex\",\"provider\":\"openai\",\"model\":\"gpt-5.6-sol\"}",
+      "event_digest": "sha256:eaf50504874c88ed253ebb8635e83b96346b7adf7347986834e81d868fe26b03",
+      "observed_row_digest": "sha256:40234232f43bc96c562528736c6ac0134ac33542c01b92be2a92a79d5706c5fa",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "anthropic/claude-3-5-sonnet-20241022",
+      "verification": "MISMATCH",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_IDENTITY_MISMATCH"
+      }
+    },
+    {
+      "runtime": "claude-code",
+      "runtime_version": "2.1.259 (Claude Code)",
+      "invocation": {
+        "command": "claude -p <prompt>",
+        "prompt": "reply with the single word ok",
+        "exit_code": 0,
+        "duration_ms": 5701,
+        "isolated_home": false,
+        "workspace_digest": "sha256:ec1f02907a86524ca8c940031cfcb3e6a8afbed6a64e5a8978e2cd372e034de1"
+      },
+      "provider": "anthropic",
+      "model": "claude-opus-5",
+      "event_line": "{\"runtime\":\"claude-code\",\"provider\":\"anthropic\",\"model\":\"claude-opus-5\"}",
+      "event_digest": "sha256:eae9bea6478250c3e5e1f1da447c45e8fa77a8eca263342bff0202395f1608be",
+      "observed_row_digest": "sha256:3649cb0abd1f8ba918e8686d57babae39c69a81ceca90a1617e469f7d20e2c6a",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "anthropic/claude-opus-5",
+      "verification": "CONFIRMED",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_MUTABLE_ALIAS"
+      }
+    },
+    {
+      "runtime": "claude-code",
+      "runtime_version": "2.1.259 (Claude Code)",
+      "invocation": {
+        "command": "claude -p <prompt>",
+        "prompt": "reply with the single word ok",
+        "exit_code": 0,
+        "duration_ms": 5701,
+        "isolated_home": false,
+        "workspace_digest": "sha256:ec1f02907a86524ca8c940031cfcb3e6a8afbed6a64e5a8978e2cd372e034de1"
+      },
+      "provider": "anthropic",
+      "model": "claude-opus-5",
+      "event_line": "{\"runtime\":\"claude-code\",\"provider\":\"anthropic\",\"model\":\"claude-opus-5\"}",
+      "event_digest": "sha256:eae9bea6478250c3e5e1f1da447c45e8fa77a8eca263342bff0202395f1608be",
+      "observed_row_digest": "sha256:3649cb0abd1f8ba918e8686d57babae39c69a81ceca90a1617e469f7d20e2c6a",
+      "alias_class": "provider-managed-alias",
+      "mutable_alias": true,
+      "declared": "anthropic/claude-3-5-sonnet-20241022",
+      "verification": "MISMATCH",
+      "issuance": {
+        "status": "withheld",
+        "reason": "MODEL_IDENTITY_MISMATCH"
+      }
+    }
+  ]
+}
