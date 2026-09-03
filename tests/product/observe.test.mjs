@@ -4,8 +4,17 @@ import test from "node:test";
 import { METRIC_IDS, NOT_OBSERVED } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, requirementsFromWork } from "../../lib/routing-oracle.mjs";
-import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
 import { scenarioParams } from "../../lib/suite-seed.mjs";
+
+// #556: `scoreRun` and `issuanceCheck` withhold issuance unless the confinement gate says the run
+// was official, and absent evidence withholds like a negative verdict. These tests are about the
+// arithmetic and the metric gates, so the boundary is stated once here rather than at every call:
+// what they assert is what the scorer does with observations, not what this machine's isolation
+// backend can do.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
+const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+
 
 const params = scenarioParams("1");
 

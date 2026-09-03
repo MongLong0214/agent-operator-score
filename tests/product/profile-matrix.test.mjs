@@ -8,7 +8,14 @@ import { addAgent, cli, makePlan, newestRecord, newestResult, run } from "./help
 import { canonicalJson } from "../../lib/core.mjs";
 import { CAPS } from "../../lib/scorer-v1.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
-import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
+
+// #556: `scoreRun` withholds issuance unless the confinement gate says the run was official, and
+// absent evidence withholds like a negative verdict. These tests are about the arithmetic and the
+// metric gates, so the boundary is stated once here rather than at every call.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
+const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 

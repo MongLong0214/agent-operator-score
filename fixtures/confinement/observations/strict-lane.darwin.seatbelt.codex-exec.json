@@ -1,0 +1,61 @@
+{
+  "backend_run": "strict-lane.darwin.seatbelt.codex-exec",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f strict.sb codex exec --skip-git-repo-check -C @WORKSPACE@ -o @WORKSPACE@/last-message.txt -   # same profile as the canary; HOME=TMPDIR=@AGENT_TEMP_HOME@, CODEX_HOME=@AGENT_TEMP_HOME@/.codex (staged copy of auth.json, config.toml)",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout": {
+    "bytes": 3,
+    "lines": 2,
+    "digest": "sha256:a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": true,
+      "error": false,
+      "tokens_used": false
+    }
+  },
+  "stderr": {
+    "bytes": 426,
+    "lines": 18,
+    "digest": "sha256:52ea14fc7b7254e41a54b34e626add8e15dafadd05b16d393641561006ba8804",
+    "markers": {
+      "logged_in": false,
+      "answered_ok": true,
+      "error": false,
+      "tokens_used": true
+    }
+  },
+  "parse_error": null,
+  "captured": {
+    "duration_ms": 6569,
+    "staging": {
+      "dir": "@AGENT_TEMP_HOME@/.codex",
+      "staged": [
+        "auth.json",
+        "config.toml"
+      ],
+      "source": "default_dir"
+    },
+    "runtime_identity": {
+      "status": "VERIFIED",
+      "digest": "sha256:1436bfbd0f443198d529ea9a342c600a48397e104cd048aba5910331076318c1",
+      "matches_adapter": true,
+      "reason": null
+    },
+    "runtime_command_digest": "sha256:134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
+    "prompt": "Reply with exactly the single word OK and nothing else.",
+    "answer": {
+      "bytes": 2,
+      "lines": 1,
+      "digest": "sha256:565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "markers": {
+        "logged_in": false,
+        "answered_ok": true,
+        "error": false,
+        "tokens_used": false
+      }
+    },
+    "answered_expected_word": true
+  }
+}

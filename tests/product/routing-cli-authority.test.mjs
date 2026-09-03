@@ -32,21 +32,22 @@ const OWNER_DEPENDENT = ["capability-matches-task", "simplest-adequate-route"];
 const LEDGER_ANSWERED = ["no-redundant-invocation", "invocation-budget-respected"];
 
 /**
- * A writable temporary directory, or the reason there is none.
+ * A writable temporary directory. It throws where there is none, and that is the point.
  *
- * A read-only host answers `mkdtemp` with EPERM, and a test that dies there reports the host as a
- * product defect. It is neither a pass nor a failure: it is evidence this machine could not
- * collect, so it is skipped by name.
+ * This used to catch `mkdtemp`'s EPERM and skip by name, on the reasoning that a read-only host is
+ * evidence this machine could not collect rather than a product defect. #556 refuses that shape and
+ * is right to: five of the guards in `tests/mutation/manifest.mjs` are witnessed by tests in this
+ * file, and a witness that can decide not to assert lets the mutation it guards survive while the
+ * runner reads `ok ... # SKIP` as a pass. The guard is then load-bearing nowhere and says nothing.
+ *
+ * Nothing is lost by throwing. Every other end-to-end test in `tests/product/` calls `mkdtempSync`
+ * bare, so a host that refuses one already fails the suite in fifty other places; catching it here
+ * only made this file the one that stayed green on a machine where nothing had run.
  */
-function workspaceOr(t) {
-  try {
-    const cwd = mkdtempSync(join(tmpdir(), "aos-routing-cli-"));
-    t.after(() => rmSync(cwd, { recursive: true, force: true }));
-    return cwd;
-  } catch (error) {
-    t.skip(`this host refuses a temporary directory (${error.code ?? error.message}), so the end-to-end path could not be exercised here`);
-    return null;
-  }
+function workspace(t) {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-routing-cli-"));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  return cwd;
 }
 
 /**
@@ -75,8 +76,7 @@ const m09Of = (result) => result.observations.find((entry) => entry.metric_id ==
 const subOf = (result, id) => m09Of(result).subchecks.find((entry) => entry.id === id).pass;
 
 test("a completed run attributes every route event to a stage the operator's route declared", async (t) => {
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   addAdaptedAgent(cwd, "alpha", "codex-cli.v1");
 
@@ -115,8 +115,7 @@ test("a completed run attributes every route event to a stage the operator's rou
 });
 
 test("an agent AOS holds no capability record for withholds the two questions that need one", async (t) => {
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   // The same run, registered with no adapter AOS ships. Nothing else changes.
   addAdaptedAgent(cwd, "alpha", null);
@@ -131,8 +130,7 @@ test("an agent AOS holds no capability record for withholds the two questions th
 });
 
 test("the agent a route event names is the agent that ran, not the one the plan named", async (t) => {
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   addAdaptedAgent(cwd, "alpha", "codex-cli.v1");
   addAdaptedAgent(cwd, "beta", "codex-cli.v1");
@@ -160,8 +158,7 @@ test("the agent a route event names is the agent that ran, not the one the plan 
 });
 
 test("a stage that produced no required artifact is not an adequate route", async (t) => {
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   // An agent that writes nothing at all. `assess` still completes; what changes is that the
   // artifact FAM-3 owes is absent, and AOS looked for it rather than reading a claim about it.
@@ -179,8 +176,7 @@ test("a stage that produced no required artifact is not an adequate route", asyn
 });
 
 test("a handoff from a stage that produced nothing is not a handoff that happened", async (t) => {
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   // Two stages, and the first one writes nothing at all. The requirement says stage 2 is owed a
   // handoff from stage 1; the ledger has to say whether anything arrived, and an empty hand is not
@@ -202,8 +198,7 @@ test("a handoff from a stage that produced nothing is not a handoff that happene
 });
 
 test("the oracle record the run stores is the one the scored row names", async (t) => {
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   addAdaptedAgent(cwd, "alpha", "codex-cli.v1");
 
@@ -229,8 +224,7 @@ test("an operator who reroutes at a checkpoint supplies the proposal the oracle 
   // In process, through `runCli`, because the descriptor is what decides whether an answer can be
   // recorded as an operator's at all -- answers on a pipe are somebody relaying, which is #576's.
   // The same reasoning and the same helper as `operator-channel-authority.test.mjs`.
-  const cwd = workspaceOr(t);
-  if (cwd === null) return;
+  const cwd = workspace(t);
   initBare(cwd);
   addAdaptedAgent(cwd, "solo", "codex-cli.v1");
   addAdaptedAgent(cwd, "spare", "codex-cli.v1");

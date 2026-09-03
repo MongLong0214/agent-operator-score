@@ -1,21 +1,30 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { addAgent, makePlan, run } from "./helpers.mjs";
+import { addAgent, makePlan, run, verifiedRunner } from "./helpers.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const SEEDS = ["0000000000000011", "0000000000000012", "0000000000000013"];
+const FIXTURE_MODEL = "openai/gpt-4o-2024-08-06";
 
 const opened = () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-cycle-"));
   run(cwd, ["init"]);
-  addAgent(cwd, "solo");
+  // Registered with an exact model, and the fixture runtime announces the same one in its own
+  // transcript below: a cycle over a model nobody named, or one no runtime corroborated, withholds
+  // its aggregate (#561), and these tests are about the aggregate. The name is a real snapshot of
+  // a real family because that is what "exact" means -- a family this product has naming rules for
+  // and a date the provider promised not to move. The unknown and mutable paths have their own
+  // fixtures in tests/product/model-identity.test.mjs.
+  // Under the Codex adapter, because only the runtime that was configured can corroborate its own
+  // binding: an adapter that declares no transcript shape is never corroborated (#561 round 3).
+  addAgent(cwd, "solo", undefined, ["--model-id", FIXTURE_MODEL, "--adapter", "codex-cli.v1"], verifiedRunner(cwd));
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["cycle", "start", ...SEEDS.flatMap((seed) => ["--seed", seed])]);
   return { cwd, plan, home: join(cwd, ".aos") };
@@ -32,7 +41,7 @@ const cycleRun = (cwd, plan, { profile = "needs-instruction", answers = UNBLOCK 
     encoding: "utf8",
     input: answers,
     timeout: 300000,
-    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: profile }
+    env: { ...process.env, AOS_HOME: join(cwd, ".aos"), FAKE_AGENT_PROFILE: profile, FAKE_AGENT_MODEL: FIXTURE_MODEL }
   });
 
 const cycleOf = (home) => JSON.parse(readFileSync(join(home, "cycle.json"), "utf8"));
@@ -90,12 +99,47 @@ test("each run takes the next locked seed, and a seed that produced a result is 
   }
 });
 
+test("the cycle command quotes the stored decision rather than deriving its own", () => {
+  // The other half of the rule the dashboard is tested for: both surfaces read the decision made
+  // when the cycle was written, and a sentinel in the stored lines is how that is checked, because
+  // a derived line cannot contain one.
+  //
+  // Over a legacy cycle, because that is the surface this decision still serves after #559: a
+  // cycle of profile results has no aggregate to decide (#563 owns defining one) and the command
+  // returns before reading it. A legacy cycle is what an operator's store already holds.
+  const { cwd, home } = opened();
+  const stored = cycleOf(home);
+  const legacy = {
+    ...stored,
+    runs: [{
+      seed: stored.seeds[0], run_id: "run-legacy", result_schema: "aos-mvp-result.v1",
+      profile_digest: stored.profile_digest, suite_major: stored.suite_major, scorer_major: stored.scorer_major,
+      failure: null, terminal_committed: true, issued: true, final_score: 74, dimensions: { D1: 80 },
+      valid: true, invalid_reason: null, model_identity: null
+    }],
+    decision: {
+      ...stored.decision,
+      model_identity: { ...stored.decision.model_identity, lines: ["SENTINEL_FROM_THE_STORED_CYCLE"] }
+    }
+  };
+  writeFileSync(join(home, "cycle.json"), `${JSON.stringify(legacy, null, 2)}\n`);
+  const printed = spawnSync(process.execPath, [cli, "cycle"], {
+    cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home }
+  });
+  assert.match(printed.stdout, /SENTINEL_FROM_THE_STORED_CYCLE/u);
+  assert.equal(/Model \(solo\)/u.test(printed.stdout), false, "the command derived its own lines");
+  rmSync(cwd, { recursive: true, force: true });
+});
+
 test("three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one", () => {
   // The locked cycle still runs three seeds and records three distinct runs. What it does not do
   // is produce a number: re-deriving the legacy scorer's score from a profile run's observations
   // would be a number about the new run under an instrument that never measured it, and averaging
   // three of those would put the old model beside the new one. #563 owns saying what a cycle of
   // profiles aggregates to, and until it does the command says whose question it is.
+  //
+  // What #561 still owns here is admission: every run has to land on the cohort key the cycle
+  // locked, or it is not one of the three.
   const { cwd, plan, home } = opened();
   try {
     for (let index = 0; index < 3; index += 1) {
@@ -121,6 +165,14 @@ test("three attended runs of the new instrument are recorded, and the cycle with
     assert.equal(summary.result_schema, "aos-result.v2");
     assert.match(summary.withheld_reason, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
     assert.match(summary.withheld_reason, /#563/u);
+    // Admission, which is #561's half: every run landed on the cohort key the cycle locked, so
+    // nothing was excluded as PROFILE_CHANGED. What each run *is* under the legacy validity rule is
+    // #563's question -- a profile result issues no legacy score, so that rule calls it NOT_ISSUED
+    // and no aggregate follows from it either way.
+    for (const entry of stored.runs) {
+      assert.equal(entry.profile_digest.replace(/^sha256:/u, ""), stored.profile_digest.replace(/^sha256:/u, ""));
+      assert.notEqual(entry.invalid_reason, "PROFILE_CHANGED");
+    }
     assert.equal(summary.seeds.length, 3);
     assert.equal(Object.hasOwn(summary, "operator_score"), false);
 
