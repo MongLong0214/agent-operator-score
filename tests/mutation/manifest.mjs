@@ -2334,8 +2334,12 @@ export const GUARDS = [
     reason:
       "an earlier version ran `git fetch --tags --force`, which rewrites local tags: a write, in a collector whose whole claim is that it only reads",
     file: "scripts/collect-branch-state.mjs",
-    from: "  const wanted = [...new Set([...heads.map((head) => head.sha), ...tags.map((tag) => tag.commit_sha)])];",
-    to: "  const wanted = heads.map((head) => head.sha);",
+    // The fetch itself, not the list handed to it. Shortening `wanted` to the heads only withheld
+    // objects the fixture already had, so nothing observable changed and the guard survived while
+    // naming a regression -- `--tags --force` -- that the mutation never performed. This restores
+    // that exact regression, and the witness now asserts the checkout's tags are untouched.
+    from: "  if (wanted.length > 0) receipted(receipts, \"git-fetch-observed\", \"git\", [\"fetch\", \"-q\", \"origin\", ...wanted], { cwd });",
+    to: "  if (wanted.length > 0) receipted(receipts, \"git-fetch-observed\", \"git\", [\"fetch\", \"-q\", \"--tags\", \"--force\", \"origin\"], { cwd });",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "tag containment reports the repository's tags, not whatever this checkout carries"
   },
@@ -2364,8 +2368,12 @@ export const GUARDS = [
     reason:
       "absent on both sides digests the same as equal on both sides, so a pair that never recorded a family would report it unchanged across the deletion",
     file: "scripts/branch-audit.mjs",
+    // Disabled, not deleted. The line is an `if` whose `else if` follows it, so removing it left a
+    // dangling `else` and the mutant died of a SyntaxError -- which reads as a kill while proving
+    // only that a file with a hole in it does not parse. Falsifying the condition is the actual
+    // defect: control reaches the digest comparison, and undefined digests equal to undefined.
     from: "    if (before === undefined || before === null || after === undefined || after === null) findings.push(`the ${family} is not recorded on both sides of the deletion, so nothing can say it is unchanged`);",
-    to: "",
+    to: "    if (false) findings.push(`the ${family} is not recorded on both sides of the deletion, so nothing can say it is unchanged`);",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "a family absent from both boundary observations is not that family unchanged"
   },
