@@ -1,72 +1,2536 @@
 {
-  "schema": "aos-stale-branch-audit.v1",
+  "schema": "aos-stale-branch-audit.v5",
   "repository": "MongLong0214/agent-operator-score",
   "issue": 572,
   "phase": "read-only-audit",
-  "snapshot_warning": "PHASE A SNAPSHOT TAKEN DURING ACTIVE PARALLEL DEVELOPMENT. This is a point-in-time record, not a deletion list. Do not act on this file. Phase B (blocked on #578) must re-collect every fact in it from scratch -- git ls-remote, merge status, and gh pr list all move under a batch this size, and this file has already gone stale once between its first version and this correction (see revision_history).",
-  "generated_at": "2026-09-02T00:29:41Z",
-  "dev_sha_at_snapshot": "499bb11b004024fc46b9e97300ad8909d86a5073",
+  "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B must collect its own observations -- one immediately before the deletion and one immediately after -- with scripts/collect-branch-state.mjs, and authorize against those. liveEligibility refuses outright without a freshly collected observation, and the invariants are compared between the two fresh observations, never against this file. This baseline is historical context: the repository goes on moving, and a Phase B compared against a Phase A snapshot would report ordinary progress as damage.",
+  "generated_at": "2026-09-03T22:40:04Z",
+  "method": "Read-only, and every asserted derivation is a command run by scripts/collect-branch-state.mjs with its command line, exit code, byte count and a SHA-256 of its raw stdout recorded beside the answer. That includes the graph facts, not only the repository queries around them: `git merge-base --is-ancestor` against dev and main, `git rev-list --count` in both directions and for commits reaching neither line, `git rev-list` for the ids of the commits reaching neither line, one `git merge-base --is-ancestor` per tag reported by `git ls-remote --tags origin`, `git grep` over the whole tree, `git log -1`, and an all-state paginated `gh api repos/<owner>/<repo>/pulls?state=all&head=<owner>:<branch>` per branch. Head lists are taken over two independent transports and cross-checked. Every list endpoint is paginated to the end, and each GitHub-wide search records whether it retrieved every result the API reported -- a truncated sweep establishes nothing and says so. No ref was created, deleted, renamed or force-pushed to produce this file.",
+  "excluded_refs": [
+    "main",
+    "dev"
+  ],
+  "live_observation": {
+    "schema": "aos-branch-live-observation.v3",
+    "repository": "MongLong0214/agent-operator-score",
+    "collected_at": "2026-09-03T22:40:04Z",
+    "collector": "scripts/collect-branch-state.mjs",
+    "heads": [
+      {
+        "name": "dev",
+        "sha": "0616cfa47353c201c790bda0e3a802387e6e321c"
+      },
+      {
+        "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1"
+      },
+      {
+        "name": "main",
+        "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+      },
+      {
+        "name": "task/issue-557-actual-effects",
+        "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
+      },
+      {
+        "name": "task/issue-572-branch-audit",
+        "sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5"
+      },
+      {
+        "name": "task/issue-574-discovery",
+        "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
+      },
+      {
+        "name": "tmp/read-claude-artifact",
+        "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb"
+      }
+    ],
+    "rest_heads": [
+      {
+        "name": "dev",
+        "sha": "0616cfa47353c201c790bda0e3a802387e6e321c",
+        "protected": true
+      },
+      {
+        "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "protected": false
+      },
+      {
+        "name": "main",
+        "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "protected": true
+      },
+      {
+        "name": "task/issue-557-actual-effects",
+        "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+        "protected": false
+      },
+      {
+        "name": "task/issue-572-branch-audit",
+        "sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+        "protected": false
+      },
+      {
+        "name": "task/issue-574-discovery",
+        "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+        "protected": false
+      },
+      {
+        "name": "tmp/read-claude-artifact",
+        "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "protected": false
+      }
+    ],
+    "open_prs": [
+      {
+        "number": 612,
+        "head_branch": "task/issue-572-branch-audit",
+        "head_sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+        "base": "dev",
+        "state": "OPEN"
+      },
+      {
+        "number": 617,
+        "head_branch": "task/issue-574-discovery",
+        "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+        "base": "dev",
+        "state": "OPEN"
+      },
+      {
+        "number": 618,
+        "head_branch": "task/issue-557-actual-effects",
+        "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+        "base": "dev",
+        "state": "OPEN"
+      }
+    ],
+    "tags": [
+      {
+        "name": "archive/pre-v0.1.0-governance",
+        "ref_sha": "332c6ab016a9a77a9c2625b03e5a6ecd2b6c817f",
+        "commit_sha": "36b823f22217e9d8be011318e295231c62a3f813"
+      },
+      {
+        "name": "v0.1.0",
+        "ref_sha": "0c482e24d2ad2c35955ffd7dafe9e4b66980890a",
+        "commit_sha": "fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3"
+      },
+      {
+        "name": "v0.1.1",
+        "ref_sha": "1ae539d02ed89134b496cb227a6a5b764172c442",
+        "commit_sha": "efe351c991797a8cde88c23b8e8933d9a90db11d"
+      },
+      {
+        "name": "v0.1.10",
+        "ref_sha": "c6dca1ca26683cdd53e6eeedbf1f813da4444bbf",
+        "commit_sha": "98353d24fdd6b932c717bd8b9a0971c22986f7b7"
+      },
+      {
+        "name": "v0.1.11",
+        "ref_sha": "f9dd920c091aca85765680dc5b346ef088ac4029",
+        "commit_sha": "4566b33143155b91981d07308bd113ad8fad9b35"
+      },
+      {
+        "name": "v0.1.12",
+        "ref_sha": "19eebfea5a6b9eae1ad8da296fba156dbc6de904",
+        "commit_sha": "c371ac93d49a592925b24de5013bc9b3b303dd7d"
+      },
+      {
+        "name": "v0.1.13",
+        "ref_sha": "d1a5602d049928de0bc356d1609f38665067ab3d",
+        "commit_sha": "1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea"
+      },
+      {
+        "name": "v0.1.14",
+        "ref_sha": "6ef289a2213d5f2110ed9809c9e1093013351898",
+        "commit_sha": "d89a4b22a0e8de14fff316edcae18c3e6caadf9a"
+      },
+      {
+        "name": "v0.1.15",
+        "ref_sha": "32705b97f71367a4b2dceeb47990eed091210e57",
+        "commit_sha": "426c23d0f62fa2666135f978db0f5802ace7c8cc"
+      },
+      {
+        "name": "v0.1.16",
+        "ref_sha": "ccdad531f3c02459a40306ec95e9a062cd215b12",
+        "commit_sha": "120ce7c96feb961ee7c4599c2946f059b8d9b7c6"
+      },
+      {
+        "name": "v0.1.17",
+        "ref_sha": "4bdc072b9cb7f60d1b2ce87c575450100c6169ac",
+        "commit_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+      },
+      {
+        "name": "v0.1.2",
+        "ref_sha": "0cd9f8aba4f7ad9bb01144b15b6c78102e03b577",
+        "commit_sha": "43bae4bf460939a743c837b8e0a05d8f9e044026"
+      },
+      {
+        "name": "v0.1.3",
+        "ref_sha": "8b33ae3cb13bb20ad0fa60e2b6e1fc5c51fad470",
+        "commit_sha": "dc7f6563ec0d6e951fe984fa026eea8c5efc3aed"
+      },
+      {
+        "name": "v0.1.4",
+        "ref_sha": "1ec11902ae3edaaf63560c4e9b5804296b430de4",
+        "commit_sha": "ae648b7dca5574c6af938dc44b6802f1bf732929"
+      },
+      {
+        "name": "v0.1.5",
+        "ref_sha": "268945956e99d24d9cf796eed2fb8dc62226042b",
+        "commit_sha": "bbfae658e87ac2de7c6326739704a877fb118301"
+      },
+      {
+        "name": "v0.1.6",
+        "ref_sha": "425fa1a8b24a87e83c588fb805f5a9e529cb7676",
+        "commit_sha": "aebcbd8b7105da88ae71d0e5a80be59b99e8cc53"
+      },
+      {
+        "name": "v0.1.7",
+        "ref_sha": "7349872a98c83e577d8193184aa6f16cb3a97011",
+        "commit_sha": "8e84fbcb42f79d86263aab42a1291ecf09ddba7f"
+      },
+      {
+        "name": "v0.1.8",
+        "ref_sha": "64f3ad0ccf46008e40a2a446a8df2f8de43131b4",
+        "commit_sha": "30d30485f4ade54238cba5aa1a8bc85452df7d39"
+      },
+      {
+        "name": "v0.1.9",
+        "ref_sha": "ac7fc44cafee09cc9765254ca6248efd1ddfc508",
+        "commit_sha": "3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0"
+      }
+    ],
+    "protection": {
+      "main": {
+        "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection",
+        "required_status_checks": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_status_checks",
+          "strict": true,
+          "contexts": [
+            "test (ubuntu-latest, node 22)",
+            "test (ubuntu-latest, node 24)",
+            "test (macos-latest, node 24)",
+            "verify-mvp",
+            "package-smoke (ubuntu-latest)",
+            "package-smoke (macos-latest)",
+            "mutation"
+          ],
+          "contexts_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_status_checks/contexts",
+          "checks": [
+            {
+              "context": "test (ubuntu-latest, node 22)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (ubuntu-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (macos-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "verify-mvp",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (ubuntu-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (macos-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "mutation",
+              "app_id": 15368
+            }
+          ]
+        },
+        "required_pull_request_reviews": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_pull_request_reviews",
+          "dismiss_stale_reviews": true,
+          "require_code_owner_reviews": false,
+          "require_last_push_approval": false,
+          "required_approving_review_count": 0
+        },
+        "required_signatures": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_signatures",
+          "enabled": false
+        },
+        "enforce_admins": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/enforce_admins",
+          "enabled": true
+        },
+        "required_linear_history": {
+          "enabled": false
+        },
+        "allow_force_pushes": {
+          "enabled": false
+        },
+        "allow_deletions": {
+          "enabled": false
+        },
+        "block_creations": {
+          "enabled": false
+        },
+        "required_conversation_resolution": {
+          "enabled": true
+        },
+        "lock_branch": {
+          "enabled": false
+        },
+        "allow_fork_syncing": {
+          "enabled": false
+        }
+      },
+      "dev": {
+        "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection",
+        "required_status_checks": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_status_checks",
+          "strict": true,
+          "contexts": [
+            "test (ubuntu-latest, node 22)",
+            "test (ubuntu-latest, node 24)",
+            "test (macos-latest, node 24)",
+            "verify-mvp",
+            "package-smoke (ubuntu-latest)",
+            "package-smoke (macos-latest)",
+            "mutation"
+          ],
+          "contexts_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_status_checks/contexts",
+          "checks": [
+            {
+              "context": "test (ubuntu-latest, node 22)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (ubuntu-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (macos-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "verify-mvp",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (ubuntu-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (macos-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "mutation",
+              "app_id": 15368
+            }
+          ]
+        },
+        "required_pull_request_reviews": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_pull_request_reviews",
+          "dismiss_stale_reviews": true,
+          "require_code_owner_reviews": false,
+          "require_last_push_approval": false,
+          "required_approving_review_count": 0
+        },
+        "required_signatures": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_signatures",
+          "enabled": false
+        },
+        "enforce_admins": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/enforce_admins",
+          "enabled": true
+        },
+        "required_linear_history": {
+          "enabled": false
+        },
+        "allow_force_pushes": {
+          "enabled": false
+        },
+        "allow_deletions": {
+          "enabled": false
+        },
+        "block_creations": {
+          "enabled": false
+        },
+        "required_conversation_resolution": {
+          "enabled": true
+        },
+        "lock_branch": {
+          "enabled": false
+        },
+        "allow_fork_syncing": {
+          "enabled": false
+        }
+      }
+    },
+    "rulesets": [],
+    "settings": {
+      "default_branch": "dev",
+      "delete_branch_on_merge": true
+    },
+    "install_source": {
+      "files": [
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "digest": "sha256:fbe00f610b6acf50d03baf59d474ded48aaa0badb0f3f8d1546b71adb2539713"
+        },
+        {
+          "path": ".claude-plugin/plugin.json",
+          "digest": "sha256:4e37598b3a12d1122b2dd2b8b091994faa04ca19c53e84108b98a6242e8fc64d"
+        }
+      ],
+      "package": {
+        "name": "agent-operator-score",
+        "bin": {
+          "aos": "./bin/aos.mjs"
+        },
+        "files": [
+          "bin/",
+          "contracts/",
+          "lib/",
+          "fixtures/known-incidents/",
+          "fixtures/scoring/",
+          "docs/",
+          "governance/",
+          "schemas/",
+          "scripts/",
+          "fixtures/execution-plan/",
+          "fixtures/confinement/",
+          "README.md",
+          "README.ko.md",
+          "README.ja.md",
+          "README.zh-CN.md",
+          "LICENSE",
+          "SECURITY.md",
+          "THIRD_PARTY_NOTICES.md",
+          "fixtures/attacks/"
+        ]
+      }
+    },
+    "derivations": {
+      "fix/a-fixture-backed-agent-is-not-a-runtime": {
+        "last_commit": {
+          "date": "2026-08-28T20:37:31+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "97578200+MongLong0214@users.noreply.github.com",
+          "source": "git-log-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "ancestor_of_dev": {
+          "value": true,
+          "source": "is-ancestor-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "ancestor_of_main": {
+          "value": true,
+          "source": "is-ancestor-main-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_vs_dev": {
+          "value": 0,
+          "source": "rev-list-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_vs_main": {
+          "value": 0,
+          "source": "rev-list-main-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "behind_dev": {
+          "value": 396,
+          "source": "rev-list-behind-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "behind_main": {
+          "value": 85,
+          "source": "rev-list-behind-main-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 0,
+          "source": "rev-list-neither-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "unique_commit_ids_vs_dev_and_main": {
+          "value": [],
+          "source": "rev-list-ids-neither-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "tags_containing": {
+          "value": [
+            "v0.1.11",
+            "v0.1.12",
+            "v0.1.13",
+            "v0.1.14",
+            "v0.1.15",
+            "v0.1.16",
+            "v0.1.17"
+          ],
+          "source": [
+            "tag-contains-archive/pre-v0.1.0-governance-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.0-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.1-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.10-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.11-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.12-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.13-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.14-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.15-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.16-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.17-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.2-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.3-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.4-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.5-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.6-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.7-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.8-fix/a-fixture-backed-agent-is-not-a-runtime",
+            "tag-contains-v0.1.9-fix/a-fixture-backed-agent-is-not-a-runtime"
+          ]
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-fix/a-fixture-backed-agent-is-not-a-runtime"
+        },
+        "pr_history": {
+          "value": [],
+          "complete": true,
+          "source": "pr-history-fix/a-fixture-backed-agent-is-not-a-runtime"
+        }
+      },
+      "task/issue-557-actual-effects": {
+        "last_commit": {
+          "date": "2026-09-04T07:31:10+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-557-actual-effects"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-557-actual-effects"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-557-actual-effects"
+        },
+        "unique_vs_dev": {
+          "value": 5,
+          "source": "rev-list-dev-task/issue-557-actual-effects"
+        },
+        "unique_vs_main": {
+          "value": 293,
+          "source": "rev-list-main-task/issue-557-actual-effects"
+        },
+        "behind_dev": {
+          "value": 23,
+          "source": "rev-list-behind-dev-task/issue-557-actual-effects"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-557-actual-effects"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 5,
+          "source": "rev-list-neither-task/issue-557-actual-effects"
+        },
+        "unique_commit_ids_vs_dev_and_main": {
+          "value": [
+            "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+            "b740e4823be5f0d6fa8c047f32e8fa06399c78cb",
+            "288f1a2dcdf194920b6dc61a2e475222a84cf26a",
+            "81e2b47c7bbf9a9e8a1c1991504f047e7c0de3d4",
+            "f8fe40b94a1c869b74d9fc89ecd255436ba6aadb"
+          ],
+          "source": "rev-list-ids-neither-task/issue-557-actual-effects"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": [
+            "tag-contains-archive/pre-v0.1.0-governance-task/issue-557-actual-effects",
+            "tag-contains-v0.1.0-task/issue-557-actual-effects",
+            "tag-contains-v0.1.1-task/issue-557-actual-effects",
+            "tag-contains-v0.1.10-task/issue-557-actual-effects",
+            "tag-contains-v0.1.11-task/issue-557-actual-effects",
+            "tag-contains-v0.1.12-task/issue-557-actual-effects",
+            "tag-contains-v0.1.13-task/issue-557-actual-effects",
+            "tag-contains-v0.1.14-task/issue-557-actual-effects",
+            "tag-contains-v0.1.15-task/issue-557-actual-effects",
+            "tag-contains-v0.1.16-task/issue-557-actual-effects",
+            "tag-contains-v0.1.17-task/issue-557-actual-effects",
+            "tag-contains-v0.1.2-task/issue-557-actual-effects",
+            "tag-contains-v0.1.3-task/issue-557-actual-effects",
+            "tag-contains-v0.1.4-task/issue-557-actual-effects",
+            "tag-contains-v0.1.5-task/issue-557-actual-effects",
+            "tag-contains-v0.1.6-task/issue-557-actual-effects",
+            "tag-contains-v0.1.7-task/issue-557-actual-effects",
+            "tag-contains-v0.1.8-task/issue-557-actual-effects",
+            "tag-contains-v0.1.9-task/issue-557-actual-effects"
+          ]
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-557-actual-effects"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 618,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
+            }
+          ],
+          "complete": true,
+          "source": "pr-history-task/issue-557-actual-effects"
+        }
+      },
+      "task/issue-572-branch-audit": {
+        "last_commit": {
+          "date": "2026-09-04T07:30:20+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-572-branch-audit"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-572-branch-audit"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-572-branch-audit"
+        },
+        "unique_vs_dev": {
+          "value": 22,
+          "source": "rev-list-dev-task/issue-572-branch-audit"
+        },
+        "unique_vs_main": {
+          "value": 333,
+          "source": "rev-list-main-task/issue-572-branch-audit"
+        },
+        "behind_dev": {
+          "value": 0,
+          "source": "rev-list-behind-dev-task/issue-572-branch-audit"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-572-branch-audit"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 22,
+          "source": "rev-list-neither-task/issue-572-branch-audit"
+        },
+        "unique_commit_ids_vs_dev_and_main": {
+          "value": [
+            "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+            "577fc0762bec873f3f856c6afca924d5e4dea0ff",
+            "0a0b47b14edc6e5023771470db564f6456ffda15",
+            "c67867ca749e6235dce295c6558efe93ca164d0c",
+            "f3fb852ce1a2b01948fb118513d5512a941e4f12",
+            "f095999721f2f17a541ebaba00d45100b0d11867",
+            "82af3693f57a51fb14c62b78b52b9054d4659a60",
+            "5dcadbc749119fa39cc51e1900c77b233c3adceb",
+            "cbf23fbff7313c587d8638e926ddc707ceee4545",
+            "f758e8f676f03471b3098cd81f5942bae153a99f",
+            "d8840caa2eb762238693ed978b43ed52ec071866",
+            "5fb2b8c28bd4e645a356be177bc7d421a761e73b",
+            "cc50fb9aa87156022a0b66dd21dd0cefc78c490e",
+            "83eb5962c5a62aad6611eb79774272a4c59e18cc",
+            "c19d8b10ace7dcda115a007ef7b00daa9db896ba",
+            "37fc22a0107561c77ddd18423cfce0e6f4fea190",
+            "fcd666fa938103559849b26a260fe9b6c381e580",
+            "1146e104978448e01b65ae0a274054bc4287b619",
+            "522df7e82fbd28cc62c7394f76c051b153910876",
+            "1de779c66bd5f211c0b4262e571beafada058950",
+            "cd09628b9b429e561a4b6dbeda885b76e142b7d1",
+            "5a10d6b832da6bf6b546fb0ad075164a8bdf1abc"
+          ],
+          "source": "rev-list-ids-neither-task/issue-572-branch-audit"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": [
+            "tag-contains-archive/pre-v0.1.0-governance-task/issue-572-branch-audit",
+            "tag-contains-v0.1.0-task/issue-572-branch-audit",
+            "tag-contains-v0.1.1-task/issue-572-branch-audit",
+            "tag-contains-v0.1.10-task/issue-572-branch-audit",
+            "tag-contains-v0.1.11-task/issue-572-branch-audit",
+            "tag-contains-v0.1.12-task/issue-572-branch-audit",
+            "tag-contains-v0.1.13-task/issue-572-branch-audit",
+            "tag-contains-v0.1.14-task/issue-572-branch-audit",
+            "tag-contains-v0.1.15-task/issue-572-branch-audit",
+            "tag-contains-v0.1.16-task/issue-572-branch-audit",
+            "tag-contains-v0.1.17-task/issue-572-branch-audit",
+            "tag-contains-v0.1.2-task/issue-572-branch-audit",
+            "tag-contains-v0.1.3-task/issue-572-branch-audit",
+            "tag-contains-v0.1.4-task/issue-572-branch-audit",
+            "tag-contains-v0.1.5-task/issue-572-branch-audit",
+            "tag-contains-v0.1.6-task/issue-572-branch-audit",
+            "tag-contains-v0.1.7-task/issue-572-branch-audit",
+            "tag-contains-v0.1.8-task/issue-572-branch-audit",
+            "tag-contains-v0.1.9-task/issue-572-branch-audit"
+          ]
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-572-branch-audit"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 612,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5"
+            }
+          ],
+          "complete": true,
+          "source": "pr-history-task/issue-572-branch-audit"
+        }
+      },
+      "task/issue-574-discovery": {
+        "last_commit": {
+          "date": "2026-09-04T07:27:32+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "weplay0628@gmail.com",
+          "source": "git-log-task/issue-574-discovery"
+        },
+        "ancestor_of_dev": {
+          "value": false,
+          "source": "is-ancestor-dev-task/issue-574-discovery"
+        },
+        "ancestor_of_main": {
+          "value": false,
+          "source": "is-ancestor-main-task/issue-574-discovery"
+        },
+        "unique_vs_dev": {
+          "value": 6,
+          "source": "rev-list-dev-task/issue-574-discovery"
+        },
+        "unique_vs_main": {
+          "value": 294,
+          "source": "rev-list-main-task/issue-574-discovery"
+        },
+        "behind_dev": {
+          "value": 23,
+          "source": "rev-list-behind-dev-task/issue-574-discovery"
+        },
+        "behind_main": {
+          "value": 0,
+          "source": "rev-list-behind-main-task/issue-574-discovery"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 6,
+          "source": "rev-list-neither-task/issue-574-discovery"
+        },
+        "unique_commit_ids_vs_dev_and_main": {
+          "value": [
+            "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+            "307efe945ad8ab5425661c9b2fcf1c2d1670764e",
+            "a66b91670c52e659824a09e5b13f7501bf405e86",
+            "c6aeed44adbea67bcf48ba370ecca9cd4024da23",
+            "0d6278dacc92476d6f33220bd418ed606e85f012",
+            "b8329d2800f565fdb827c09483e06d351bfc8436"
+          ],
+          "source": "rev-list-ids-neither-task/issue-574-discovery"
+        },
+        "tags_containing": {
+          "value": [],
+          "source": [
+            "tag-contains-archive/pre-v0.1.0-governance-task/issue-574-discovery",
+            "tag-contains-v0.1.0-task/issue-574-discovery",
+            "tag-contains-v0.1.1-task/issue-574-discovery",
+            "tag-contains-v0.1.10-task/issue-574-discovery",
+            "tag-contains-v0.1.11-task/issue-574-discovery",
+            "tag-contains-v0.1.12-task/issue-574-discovery",
+            "tag-contains-v0.1.13-task/issue-574-discovery",
+            "tag-contains-v0.1.14-task/issue-574-discovery",
+            "tag-contains-v0.1.15-task/issue-574-discovery",
+            "tag-contains-v0.1.16-task/issue-574-discovery",
+            "tag-contains-v0.1.17-task/issue-574-discovery",
+            "tag-contains-v0.1.2-task/issue-574-discovery",
+            "tag-contains-v0.1.3-task/issue-574-discovery",
+            "tag-contains-v0.1.4-task/issue-574-discovery",
+            "tag-contains-v0.1.5-task/issue-574-discovery",
+            "tag-contains-v0.1.6-task/issue-574-discovery",
+            "tag-contains-v0.1.7-task/issue-574-discovery",
+            "tag-contains-v0.1.8-task/issue-574-discovery",
+            "tag-contains-v0.1.9-task/issue-574-discovery"
+          ]
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-task/issue-574-discovery"
+        },
+        "pr_history": {
+          "value": [
+            {
+              "number": 617,
+              "state": "OPEN",
+              "merged_at": null,
+              "base": "dev",
+              "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
+            }
+          ],
+          "complete": true,
+          "source": "pr-history-task/issue-574-discovery"
+        }
+      },
+      "tmp/read-claude-artifact": {
+        "last_commit": {
+          "date": "2026-08-29T11:33:54+09:00",
+          "author_name": "MongLong0214",
+          "author_email": "97578200+MongLong0214@users.noreply.github.com",
+          "source": "git-log-tmp/read-claude-artifact"
+        },
+        "ancestor_of_dev": {
+          "value": true,
+          "source": "is-ancestor-dev-tmp/read-claude-artifact"
+        },
+        "ancestor_of_main": {
+          "value": true,
+          "source": "is-ancestor-main-tmp/read-claude-artifact"
+        },
+        "unique_vs_dev": {
+          "value": 0,
+          "source": "rev-list-dev-tmp/read-claude-artifact"
+        },
+        "unique_vs_main": {
+          "value": 0,
+          "source": "rev-list-main-tmp/read-claude-artifact"
+        },
+        "behind_dev": {
+          "value": 344,
+          "source": "rev-list-behind-dev-tmp/read-claude-artifact"
+        },
+        "behind_main": {
+          "value": 33,
+          "source": "rev-list-behind-main-tmp/read-claude-artifact"
+        },
+        "unique_vs_dev_and_main": {
+          "value": 0,
+          "source": "rev-list-neither-tmp/read-claude-artifact"
+        },
+        "unique_commit_ids_vs_dev_and_main": {
+          "value": [],
+          "source": "rev-list-ids-neither-tmp/read-claude-artifact"
+        },
+        "tags_containing": {
+          "value": [
+            "v0.1.16",
+            "v0.1.17"
+          ],
+          "source": [
+            "tag-contains-archive/pre-v0.1.0-governance-tmp/read-claude-artifact",
+            "tag-contains-v0.1.0-tmp/read-claude-artifact",
+            "tag-contains-v0.1.1-tmp/read-claude-artifact",
+            "tag-contains-v0.1.10-tmp/read-claude-artifact",
+            "tag-contains-v0.1.11-tmp/read-claude-artifact",
+            "tag-contains-v0.1.12-tmp/read-claude-artifact",
+            "tag-contains-v0.1.13-tmp/read-claude-artifact",
+            "tag-contains-v0.1.14-tmp/read-claude-artifact",
+            "tag-contains-v0.1.15-tmp/read-claude-artifact",
+            "tag-contains-v0.1.16-tmp/read-claude-artifact",
+            "tag-contains-v0.1.17-tmp/read-claude-artifact",
+            "tag-contains-v0.1.2-tmp/read-claude-artifact",
+            "tag-contains-v0.1.3-tmp/read-claude-artifact",
+            "tag-contains-v0.1.4-tmp/read-claude-artifact",
+            "tag-contains-v0.1.5-tmp/read-claude-artifact",
+            "tag-contains-v0.1.6-tmp/read-claude-artifact",
+            "tag-contains-v0.1.7-tmp/read-claude-artifact",
+            "tag-contains-v0.1.8-tmp/read-claude-artifact",
+            "tag-contains-v0.1.9-tmp/read-claude-artifact"
+          ]
+        },
+        "tree_scan": {
+          "value": [],
+          "source": "git-grep-tmp/read-claude-artifact"
+        },
+        "pr_history": {
+          "value": [],
+          "complete": true,
+          "source": "pr-history-tmp/read-claude-artifact"
+        }
+      }
+    },
+    "reference_sweep": [
+      {
+        "branch": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "query": "repo:MongLong0214/agent-operator-score \"fix/a-fixture-backed-agent-is-not-a-runtime\"",
+        "complete": true,
+        "total_count": 2,
+        "hits": [
+          {
+            "number": 572,
+            "is_pull_request": false,
+            "state": "open",
+            "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
+          },
+          {
+            "number": 592,
+            "is_pull_request": true,
+            "state": "closed",
+            "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
+          }
+        ]
+      },
+      {
+        "branch": "task/issue-557-actual-effects",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-557-actual-effects\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "task/issue-572-branch-audit",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-572-branch-audit\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "task/issue-574-discovery",
+        "query": "repo:MongLong0214/agent-operator-score \"task/issue-574-discovery\"",
+        "complete": true,
+        "total_count": 0,
+        "hits": []
+      },
+      {
+        "branch": "tmp/read-claude-artifact",
+        "query": "repo:MongLong0214/agent-operator-score \"tmp/read-claude-artifact\"",
+        "complete": true,
+        "total_count": 2,
+        "hits": [
+          {
+            "number": 572,
+            "is_pull_request": false,
+            "state": "open",
+            "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
+          },
+          {
+            "number": 592,
+            "is_pull_request": true,
+            "state": "closed",
+            "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
+          }
+        ]
+      }
+    ],
+    "receipts": [
+      {
+        "source": "git-ls-remote",
+        "command": "git ls-remote --heads origin",
+        "exit_code": 0,
+        "bytes": 525,
+        "digest": "sha256:40337b11ac0464d8ef2b0f4fcc8f10c585991920338fd21f58a1fb5a9b2e555b"
+      },
+      {
+        "source": "rest-branches",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100",
+        "exit_code": 0,
+        "bytes": 4380,
+        "digest": "sha256:a408d082a9dfa49c53a6cb0b377b86c6f7f3937918cc9407d7865a1047ffcf1d"
+      },
+      {
+        "source": "rest-open-prs",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100",
+        "exit_code": 0,
+        "bytes": 93314,
+        "digest": "sha256:abbaf86fba061f0c630b74b85a5715ebf554b71eddcd575d4684179d3ff13532"
+      },
+      {
+        "source": "git-ls-remote-tags",
+        "command": "git ls-remote --tags origin",
+        "exit_code": 0,
+        "bytes": 2323,
+        "digest": "sha256:e4110333eb2096c906041412784a350fe30b478de0af6caf9f24d61a5b2012db"
+      },
+      {
+        "source": "rest-protection-main",
+        "command": "gh api repos/MongLong0214/agent-operator-score/branches/main/protection",
+        "exit_code": 0,
+        "bytes": 1845,
+        "digest": "sha256:a61f822cb0c04a82978c62885dcf4f79608597db586540bd95de31ed00573aba"
+      },
+      {
+        "source": "rest-protection-dev",
+        "command": "gh api repos/MongLong0214/agent-operator-score/branches/dev/protection",
+        "exit_code": 0,
+        "bytes": 1839,
+        "digest": "sha256:23df58f6a5b41ffe54474d6561826e50b771c36dca772c62c4031869f67648a0"
+      },
+      {
+        "source": "rest-rulesets",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05"
+      },
+      {
+        "source": "rest-repo",
+        "command": "gh api repos/MongLong0214/agent-operator-score",
+        "exit_code": 0,
+        "bytes": 6760,
+        "digest": "sha256:a2492716a6ca9d905ef1c0fac93f55e09d6f20ab19395f62bdbd287e3992c595"
+      },
+      {
+        "source": "git-fetch-observed",
+        "command": "git fetch -q origin 0616cfa47353c201c790bda0e3a802387e6e321c e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 d4cbc108ebb827aad49eb6ba7673029e757efbd2 fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 f41d8402ee3120cb43e957bb4c7093adbe10af7c 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "exit_code": 0,
+        "bytes": 86,
+        "digest": "sha256:e7c84e8675d0fd07ebd7e555f8012acbbad816cbd2363059d3f2b8a4227df053"
+      },
+      {
+        "source": "git-grep-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:fix/a-fixture-backed-agent-is-not-a-runtime&per_page=100",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05"
+      },
+      {
+        "source": "is-ancestor-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-main-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-behind-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:c4d513277d029fa3fc155339b6eb2d51319b1a5e2044bb2d2957e5e982b87ea4"
+      },
+      {
+        "source": "rev-list-behind-main-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:ff393127b5a059b172af9b9eed820368071cf24d46df1b8326623c8e79178379"
+      },
+      {
+        "source": "rev-list-neither-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-ids-neither-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git rev-list e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-archive/pre-v0.1.0-governance-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 36b823f22217e9d8be011318e295231c62a3f813",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.0-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.1-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.10-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.11-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 4566b33143155b91981d07308bd113ad8fad9b35",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.12-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.13-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.14-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.15-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.16-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.17-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.2-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.3-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.4-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.5-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 bbfae658e87ac2de7c6326739704a877fb118301",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.6-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.7-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.8-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.9-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-task/issue-557-actual-effects",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:056899331c416d794a1f1fc0cfa9ea065f5ffa1a6509d241aed924b0f4e7e26e"
+      },
+      {
+        "source": "git-grep-task/issue-557-actual-effects",
+        "command": "git grep -n --fixed-strings task/issue-557-actual-effects 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-557-actual-effects",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-557-actual-effects&per_page=100",
+        "exit_code": 0,
+        "bytes": 30643,
+        "digest": "sha256:368edbdfb41924b63ab15291742387884c0cccf540aa2f29db6a99eeab74fe37"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-557-actual-effects",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
+      },
+      {
+        "source": "rev-list-main-task/issue-557-actual-effects",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:20b7863224b7cb6edbc009c2ef30a14a585fca79b285595a11f066bbd8b54bc6"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-557-actual-effects",
+        "command": "git rev-list --count d4cbc108ebb827aad49eb6ba7673029e757efbd2..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-557-actual-effects",
+        "command": "git rev-list --count d4cbc108ebb827aad49eb6ba7673029e757efbd2..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-557-actual-effects",
+        "command": "git rev-list --count d4cbc108ebb827aad49eb6ba7673029e757efbd2 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
+      },
+      {
+        "source": "rev-list-ids-neither-task/issue-557-actual-effects",
+        "command": "git rev-list d4cbc108ebb827aad49eb6ba7673029e757efbd2 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 205,
+        "digest": "sha256:1bba069251d381bd37c04e32fe25a9e24e0a4ebb9418f7a51d3518760d8416bc"
+      },
+      {
+        "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 36b823f22217e9d8be011318e295231c62a3f813",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.0-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.1-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.10-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.11-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 4566b33143155b91981d07308bd113ad8fad9b35",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.12-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.13-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.14-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.15-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.16-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.17-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.2-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.3-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.4-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.5-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 bbfae658e87ac2de7c6326739704a877fb118301",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.6-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.7-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.8-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.9-task/issue-557-actual-effects",
+        "command": "git merge-base --is-ancestor d4cbc108ebb827aad49eb6ba7673029e757efbd2 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-task/issue-572-branch-audit",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:98e277290c1b3e373b571371ecc1bd0bd8b2866b325c736ede4ab87279271dee"
+      },
+      {
+        "source": "git-grep-task/issue-572-branch-audit",
+        "command": "git grep -n --fixed-strings task/issue-572-branch-audit 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-572-branch-audit",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-572-branch-audit&per_page=100",
+        "exit_code": 0,
+        "bytes": 33134,
+        "digest": "sha256:8c767db78d4555f2412273fcdc2849b1841b05b723acaafbd9ad3f9dec2fcf3d"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-572-branch-audit",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
+      },
+      {
+        "source": "rev-list-main-task/issue-572-branch-audit",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:78b9041431a47c113011bf6056a6f48baded875b6845f59bc7f110bbd02d5ba6"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-572-branch-audit",
+        "command": "git rev-list --count fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-572-branch-audit",
+        "command": "git rev-list --count fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-572-branch-audit",
+        "command": "git rev-list --count fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
+      },
+      {
+        "source": "rev-list-ids-neither-task/issue-572-branch-audit",
+        "command": "git rev-list fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 902,
+        "digest": "sha256:7582e1164ccfc404087c825ce892c4be0cb81dea5eaf005514de08ad26fbc39e"
+      },
+      {
+        "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 36b823f22217e9d8be011318e295231c62a3f813",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.0-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.1-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.10-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.11-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 4566b33143155b91981d07308bd113ad8fad9b35",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.12-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.13-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.14-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.15-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.16-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.17-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.2-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.3-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.4-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.5-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 bbfae658e87ac2de7c6326739704a877fb118301",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.6-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.7-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.8-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.9-task/issue-572-branch-audit",
+        "command": "git merge-base --is-ancestor fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-task/issue-574-discovery",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+        "exit_code": 0,
+        "bytes": 60,
+        "digest": "sha256:b3293ceba2ac2c031a4267616afbfac891c907498cd86d62f63bb44dafe4896c"
+      },
+      {
+        "source": "git-grep-task/issue-574-discovery",
+        "command": "git grep -n --fixed-strings task/issue-574-discovery 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-task/issue-574-discovery",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-574-discovery&per_page=100",
+        "exit_code": 0,
+        "bytes": 29543,
+        "digest": "sha256:69e5a8a5e2ee5be745681768a89d8ad40271efe2429b8c70f46e8ecbe82804dc"
+      },
+      {
+        "source": "is-ancestor-dev-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-task/issue-574-discovery",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:06e9d52c1720fca412803e3b07c4b228ff113e303f4c7ab94665319d832bbfb7"
+      },
+      {
+        "source": "rev-list-main-task/issue-574-discovery",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:e3bc05312d04ecb2b6c64135ab59d2e63c5dc53640a7a4971fe17b5f5447d0a9"
+      },
+      {
+        "source": "rev-list-behind-dev-task/issue-574-discovery",
+        "command": "git rev-list --count f41d8402ee3120cb43e957bb4c7093adbe10af7c..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:076320a2a08267b4c026d06573bba408ea68841e73cdc20e62cce59de165ece3"
+      },
+      {
+        "source": "rev-list-behind-main-task/issue-574-discovery",
+        "command": "git rev-list --count f41d8402ee3120cb43e957bb4c7093adbe10af7c..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-neither-task/issue-574-discovery",
+        "command": "git rev-list --count f41d8402ee3120cb43e957bb4c7093adbe10af7c --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:06e9d52c1720fca412803e3b07c4b228ff113e303f4c7ab94665319d832bbfb7"
+      },
+      {
+        "source": "rev-list-ids-neither-task/issue-574-discovery",
+        "command": "git rev-list f41d8402ee3120cb43e957bb4c7093adbe10af7c --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 246,
+        "digest": "sha256:8a680aa8eaec63c36afa24a27958dcbca8118c967e99e8233bdfe83acb9d5b14"
+      },
+      {
+        "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 36b823f22217e9d8be011318e295231c62a3f813",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.0-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.1-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.10-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.11-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 4566b33143155b91981d07308bd113ad8fad9b35",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.12-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.13-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.14-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.15-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.16-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.17-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.2-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.3-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.4-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.5-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c bbfae658e87ac2de7c6326739704a877fb118301",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.6-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.7-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.8-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.9-task/issue-574-discovery",
+        "command": "git merge-base --is-ancestor f41d8402ee3120cb43e957bb4c7093adbe10af7c 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "git-log-tmp/read-claude-artifact",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae 2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 86,
+        "digest": "sha256:d8c2f5d56283e67f81f06a76d251da95d22bfcdd88664ac30b9cbb4eeb418b5b"
+      },
+      {
+        "source": "git-grep-tmp/read-claude-artifact",
+        "command": "git grep -n --fixed-strings tmp/read-claude-artifact 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "pr-history-tmp/read-claude-artifact",
+        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:tmp/read-claude-artifact&per_page=100",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05"
+      },
+      {
+        "source": "is-ancestor-dev-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "is-ancestor-main-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "rev-list-dev-tmp/read-claude-artifact",
+        "command": "git rev-list --count 0616cfa47353c201c790bda0e3a802387e6e321c..2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-main-tmp/read-claude-artifact",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-behind-dev-tmp/read-claude-artifact",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb..0616cfa47353c201c790bda0e3a802387e6e321c",
+        "exit_code": 0,
+        "bytes": 4,
+        "digest": "sha256:e65305e9101efdba6f7e202287d754cf3fbb4c904a63a9d7af7b6215ef2cc10e"
+      },
+      {
+        "source": "rev-list-behind-main-tmp/read-claude-artifact",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 3,
+        "digest": "sha256:19b8d5c59e421f037fe563007c7254eb8d98bc221b278c3db3e5fdbbfd52e273"
+      },
+      {
+        "source": "rev-list-neither-tmp/read-claude-artifact",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 2,
+        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "source": "rev-list-ids-neither-tmp/read-claude-artifact",
+        "command": "git rev-list 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not 0616cfa47353c201c790bda0e3a802387e6e321c d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-archive/pre-v0.1.0-governance-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.0-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.1-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.10-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.11-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 4566b33143155b91981d07308bd113ad8fad9b35",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.12-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.13-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.14-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.15-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.16-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.17-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "exit_code": 0,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.2-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.3-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.4-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.5-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb bbfae658e87ac2de7c6326739704a877fb118301",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.6-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.7-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.8-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "tag-contains-v0.1.9-tmp/read-claude-artifact",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "exit_code": 1,
+        "bytes": 0,
+        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "source": "search-fix/a-fixture-backed-agent-is-not-a-runtime",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22fix%2Fa-fixture-backed-agent-is-not-a-runtime%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 27252,
+        "digest": "sha256:49c7b64852a58a21c284994f52ab79e50367af7f8cb55136169b5e49cff00ac1"
+      },
+      {
+        "source": "search-task/issue-557-actual-effects",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-557-actual-effects%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-task/issue-572-branch-audit",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-572-branch-audit%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-task/issue-574-discovery",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-574-discovery%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 81,
+        "digest": "sha256:ac665104357c26394059dca42930629db46ed01a9d2385e2252b8cd7e5e57a42"
+      },
+      {
+        "source": "search-tmp/read-claude-artifact",
+        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22tmp%2Fread-claude-artifact%22&per_page=100",
+        "exit_code": 0,
+        "bytes": 27252,
+        "digest": "sha256:49c7b64852a58a21c284994f52ab79e50367af7f8cb55136169b5e49cff00ac1"
+      }
+    ],
+    "digest": "sha256:79ca16e340b1ce753cdd136bc86033a90b0685a5bdfb8f6c0378cc5af53509b8"
+  },
+  "ls_remote_snapshot": [
+    {
+      "name": "dev",
+      "sha": "0616cfa47353c201c790bda0e3a802387e6e321c"
+    },
+    {
+      "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+      "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1"
+    },
+    {
+      "name": "main",
+      "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+    },
+    {
+      "name": "task/issue-557-actual-effects",
+      "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
+    },
+    {
+      "name": "task/issue-574-discovery",
+      "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
+    },
+    {
+      "name": "tmp/read-claude-artifact",
+      "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb"
+    }
+  ],
+  "submission_branch": "task/issue-572-branch-audit",
+  "invariant_baseline": {
+    "note": "Historical context, not the deletion comparison. What must not change across a deletion is compared between two observations collected either side of it (boundaryInvariantFindings); this baseline records what Phase A saw so a later reader can see how far the repository has moved since.",
+    "main_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846",
+    "dev_sha": "0616cfa47353c201c790bda0e3a802387e6e321c",
+    "tags": [
+      {
+        "name": "archive/pre-v0.1.0-governance",
+        "ref_sha": "332c6ab016a9a77a9c2625b03e5a6ecd2b6c817f",
+        "commit_sha": "36b823f22217e9d8be011318e295231c62a3f813"
+      },
+      {
+        "name": "v0.1.0",
+        "ref_sha": "0c482e24d2ad2c35955ffd7dafe9e4b66980890a",
+        "commit_sha": "fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3"
+      },
+      {
+        "name": "v0.1.1",
+        "ref_sha": "1ae539d02ed89134b496cb227a6a5b764172c442",
+        "commit_sha": "efe351c991797a8cde88c23b8e8933d9a90db11d"
+      },
+      {
+        "name": "v0.1.10",
+        "ref_sha": "c6dca1ca26683cdd53e6eeedbf1f813da4444bbf",
+        "commit_sha": "98353d24fdd6b932c717bd8b9a0971c22986f7b7"
+      },
+      {
+        "name": "v0.1.11",
+        "ref_sha": "f9dd920c091aca85765680dc5b346ef088ac4029",
+        "commit_sha": "4566b33143155b91981d07308bd113ad8fad9b35"
+      },
+      {
+        "name": "v0.1.12",
+        "ref_sha": "19eebfea5a6b9eae1ad8da296fba156dbc6de904",
+        "commit_sha": "c371ac93d49a592925b24de5013bc9b3b303dd7d"
+      },
+      {
+        "name": "v0.1.13",
+        "ref_sha": "d1a5602d049928de0bc356d1609f38665067ab3d",
+        "commit_sha": "1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea"
+      },
+      {
+        "name": "v0.1.14",
+        "ref_sha": "6ef289a2213d5f2110ed9809c9e1093013351898",
+        "commit_sha": "d89a4b22a0e8de14fff316edcae18c3e6caadf9a"
+      },
+      {
+        "name": "v0.1.15",
+        "ref_sha": "32705b97f71367a4b2dceeb47990eed091210e57",
+        "commit_sha": "426c23d0f62fa2666135f978db0f5802ace7c8cc"
+      },
+      {
+        "name": "v0.1.16",
+        "ref_sha": "ccdad531f3c02459a40306ec95e9a062cd215b12",
+        "commit_sha": "120ce7c96feb961ee7c4599c2946f059b8d9b7c6"
+      },
+      {
+        "name": "v0.1.17",
+        "ref_sha": "4bdc072b9cb7f60d1b2ce87c575450100c6169ac",
+        "commit_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846"
+      },
+      {
+        "name": "v0.1.2",
+        "ref_sha": "0cd9f8aba4f7ad9bb01144b15b6c78102e03b577",
+        "commit_sha": "43bae4bf460939a743c837b8e0a05d8f9e044026"
+      },
+      {
+        "name": "v0.1.3",
+        "ref_sha": "8b33ae3cb13bb20ad0fa60e2b6e1fc5c51fad470",
+        "commit_sha": "dc7f6563ec0d6e951fe984fa026eea8c5efc3aed"
+      },
+      {
+        "name": "v0.1.4",
+        "ref_sha": "1ec11902ae3edaaf63560c4e9b5804296b430de4",
+        "commit_sha": "ae648b7dca5574c6af938dc44b6802f1bf732929"
+      },
+      {
+        "name": "v0.1.5",
+        "ref_sha": "268945956e99d24d9cf796eed2fb8dc62226042b",
+        "commit_sha": "bbfae658e87ac2de7c6326739704a877fb118301"
+      },
+      {
+        "name": "v0.1.6",
+        "ref_sha": "425fa1a8b24a87e83c588fb805f5a9e529cb7676",
+        "commit_sha": "aebcbd8b7105da88ae71d0e5a80be59b99e8cc53"
+      },
+      {
+        "name": "v0.1.7",
+        "ref_sha": "7349872a98c83e577d8193184aa6f16cb3a97011",
+        "commit_sha": "8e84fbcb42f79d86263aab42a1291ecf09ddba7f"
+      },
+      {
+        "name": "v0.1.8",
+        "ref_sha": "64f3ad0ccf46008e40a2a446a8df2f8de43131b4",
+        "commit_sha": "30d30485f4ade54238cba5aa1a8bc85452df7d39"
+      },
+      {
+        "name": "v0.1.9",
+        "ref_sha": "ac7fc44cafee09cc9765254ca6248efd1ddfc508",
+        "commit_sha": "3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0"
+      }
+    ],
+    "protection": {
+      "main": {
+        "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection",
+        "required_status_checks": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_status_checks",
+          "strict": true,
+          "contexts": [
+            "test (ubuntu-latest, node 22)",
+            "test (ubuntu-latest, node 24)",
+            "test (macos-latest, node 24)",
+            "verify-mvp",
+            "package-smoke (ubuntu-latest)",
+            "package-smoke (macos-latest)",
+            "mutation"
+          ],
+          "contexts_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_status_checks/contexts",
+          "checks": [
+            {
+              "context": "test (ubuntu-latest, node 22)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (ubuntu-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (macos-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "verify-mvp",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (ubuntu-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (macos-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "mutation",
+              "app_id": 15368
+            }
+          ]
+        },
+        "required_pull_request_reviews": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_pull_request_reviews",
+          "dismiss_stale_reviews": true,
+          "require_code_owner_reviews": false,
+          "require_last_push_approval": false,
+          "required_approving_review_count": 0
+        },
+        "required_signatures": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/required_signatures",
+          "enabled": false
+        },
+        "enforce_admins": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/main/protection/enforce_admins",
+          "enabled": true
+        },
+        "required_linear_history": {
+          "enabled": false
+        },
+        "allow_force_pushes": {
+          "enabled": false
+        },
+        "allow_deletions": {
+          "enabled": false
+        },
+        "block_creations": {
+          "enabled": false
+        },
+        "required_conversation_resolution": {
+          "enabled": true
+        },
+        "lock_branch": {
+          "enabled": false
+        },
+        "allow_fork_syncing": {
+          "enabled": false
+        }
+      },
+      "dev": {
+        "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection",
+        "required_status_checks": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_status_checks",
+          "strict": true,
+          "contexts": [
+            "test (ubuntu-latest, node 22)",
+            "test (ubuntu-latest, node 24)",
+            "test (macos-latest, node 24)",
+            "verify-mvp",
+            "package-smoke (ubuntu-latest)",
+            "package-smoke (macos-latest)",
+            "mutation"
+          ],
+          "contexts_url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_status_checks/contexts",
+          "checks": [
+            {
+              "context": "test (ubuntu-latest, node 22)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (ubuntu-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "test (macos-latest, node 24)",
+              "app_id": 15368
+            },
+            {
+              "context": "verify-mvp",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (ubuntu-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "package-smoke (macos-latest)",
+              "app_id": 15368
+            },
+            {
+              "context": "mutation",
+              "app_id": 15368
+            }
+          ]
+        },
+        "required_pull_request_reviews": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_pull_request_reviews",
+          "dismiss_stale_reviews": true,
+          "require_code_owner_reviews": false,
+          "require_last_push_approval": false,
+          "required_approving_review_count": 0
+        },
+        "required_signatures": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/required_signatures",
+          "enabled": false
+        },
+        "enforce_admins": {
+          "url": "https://api.github.com/repos/MongLong0214/agent-operator-score/branches/dev/protection/enforce_admins",
+          "enabled": true
+        },
+        "required_linear_history": {
+          "enabled": false
+        },
+        "allow_force_pushes": {
+          "enabled": false
+        },
+        "allow_deletions": {
+          "enabled": false
+        },
+        "block_creations": {
+          "enabled": false
+        },
+        "required_conversation_resolution": {
+          "enabled": true
+        },
+        "lock_branch": {
+          "enabled": false
+        },
+        "allow_fork_syncing": {
+          "enabled": false
+        }
+      }
+    },
+    "rulesets": [],
+    "install_source": {
+      "files": [
+        {
+          "path": ".claude-plugin/marketplace.json",
+          "digest": "sha256:fbe00f610b6acf50d03baf59d474ded48aaa0badb0f3f8d1546b71adb2539713"
+        },
+        {
+          "path": ".claude-plugin/plugin.json",
+          "digest": "sha256:4e37598b3a12d1122b2dd2b8b091994faa04ca19c53e84108b98a6242e8fc64d"
+        }
+      ],
+      "package": {
+        "name": "agent-operator-score",
+        "bin": {
+          "aos": "./bin/aos.mjs"
+        },
+        "files": [
+          "bin/",
+          "contracts/",
+          "lib/",
+          "fixtures/known-incidents/",
+          "fixtures/scoring/",
+          "docs/",
+          "governance/",
+          "schemas/",
+          "scripts/",
+          "fixtures/execution-plan/",
+          "fixtures/confinement/",
+          "README.md",
+          "README.ko.md",
+          "README.ja.md",
+          "README.zh-CN.md",
+          "LICENSE",
+          "SECURITY.md",
+          "THIRD_PARTY_NOTICES.md",
+          "fixtures/attacks/"
+        ]
+      }
+    },
+    "settings": {
+      "default_branch": "dev",
+      "delete_branch_on_merge": true
+    },
+    "delete_branch_on_merge": true,
+    "default_branch": "dev",
+    "open_pr_heads": [
+      {
+        "pr": 612,
+        "branch": "task/issue-572-branch-audit",
+        "sha": "fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5",
+        "base": "dev"
+      },
+      {
+        "pr": 617,
+        "branch": "task/issue-574-discovery",
+        "sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+        "base": "dev"
+      },
+      {
+        "pr": 618,
+        "branch": "task/issue-557-actual-effects",
+        "sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+        "base": "dev"
+      }
+    ]
+  },
   "revision_history": [
     {
       "generated_at": "2026-09-02T00:18:26Z",
-      "note": "Initial version. Classified task/issue-588-mark-done as must_be_preserved under branches because its PR-list query found no PR referencing it. PR #591 had in fact already been opened against it five minutes earlier (00:13:30Z); the query was stale, not the branch."
+      "note": "First snapshot (PR #592)."
     },
     {
-      "generated_at": "2026-09-02T00:29:41Z",
-      "note": "Coordinator correction: PR #591 (opened 00:13:30Z, five minutes before the first snapshot's stated generation time of 00:18:26Z) was already open against task/issue-588-mark-done when the first snapshot was generated; that snapshot's PR-list query had gone stale before the document was produced and missed it. Further review-round commits are reported to have landed on the branch locally since. Re-collected live state: moved task/issue-588-mark-done into open_pr_heads_excluded, refreshed task/issue-570-action-pins's SHA (34ad44c, one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (task/issue-572-work, PR #592) to open_pr_heads_excluded. Recorded dev_sha_at_snapshot and this revision_history so a reader can tell how far the repository has moved. See branches_reported_but_not_found_on_origin for a discrepancy this correction did not resolve by assumption."
+      "generated_at": "2026-09-02T22:56:22Z",
+      "note": "Schema v2: the six-value classification, release-tag containment, superseding evidence, the reference scan, protection status, and a named list of what could not be established."
+    },
+    {
+      "generated_at": "2026-09-03T00:37:58Z",
+      "note": "Schema v3: external facts moved behind a receipted collector, the destructive decision took a live observation, and the Phase B deletion log stopped being emitted in Phase A."
+    },
+    {
+      "generated_at": "2026-09-03T05:41:47Z",
+      "note": "Schema v4, second remediation. The per-branch pull request history was read with `gh pr list --limit 200`, whose flag is a maximum: an omitted 201st historical pull request was indistinguishable from a branch that never had one, while the record asserted exactly that. It is a paginated REST read now, and both the collector and the consumers refuse a history that was read as a bounded slice, the same way they already refused a truncated search. And Phase A no longer ships an executor: performing a deletion, witnessing it and recording completion is the blocked phase's work, so what is here is the evidence and the verifiers -- liveEligibility, boundaryInvariantFindings, deletionLogFindings, prerequisiteFindings -- and nothing that deletes. Earlier in v4: The observation digest is now recursive: the previous one passed an array replacer to JSON.stringify, which is a key allowlist applied at every level, so every nested head, pull request and receipt hashed to the same value and the digest bound nothing. Every graph derivation a branch record asserts is now collected here with its own receipt -- previously the record asserted merge-base, rev-list, tag-contains, grep and PR-history results the collector never ran. List endpoints paginate to the end and searches prove completeness, so an open pull request on a second page can no longer read as absent. Calendar-impossible instants are rejected before any freshness arithmetic. The invariant comparison is now between two freshly collected observations bracketing the deletion instead of against this snapshot. And the after-snapshot head exception has to be earned by an open pull request rather than by appearing in a list."
+    },
+    {
+      "generated_at": "2026-09-03T08:18:25Z",
+      "note": "Re-collected after PR #609 (#556) merged. A branch-audit snapshot is the fastest-staling artifact in this release, and this one was two merges old: taken against dev at fa0749959fffb8ccfabe7a8a0d6f5882a45b4dcf, it is now taken against 93179cf53757e0755efc1936c7d96c0779feedf1. The drift from 2026-09-03T05:41:47Z is one head and one number. task/issue-556-strict-confinement, audited ACTIVE as the head of open PR #609, merged and was removed by delete_branch_on_merge; it moves to previously_recorded_heads_now_absent and the audited set falls from four branches to three. dev advanced 63 commits, so behind_dev rises by 63 on all three survivors -- 307 to 370, 30 to 93, 255 to 318. Every other derived fact is unchanged: no survivor's ancestry, unique-commit count, release-tag containment, tree scan or reference sweep moved, and no recommendation changed. No schema change."
+    },
+    {
+      "generated_at": "2026-09-03T22:40:04Z",
+      "note": "Schema v5, third remediation, re-collected at the head that merges after #609 and #614 are both in dev. Two changes move what the digest covers, which is why the observation is v3 and this file is v5. Tag containment is decided by one `git merge-base --is-ancestor` per tag and now cites the receipt for each of them: it cited whichever tag sorted first, whose recorded exit status was 1 -- 'not contained' -- beside a value listing seven tags the branch is contained in, and neither checker could see it, because one asked only whether the named receipt existed and the other compared the record against the same record. verifyObservation compares each cited command's exit status against the answer it is cited for now, in both directions. And the commits that reach neither dev nor main are collected as ids rather than only counted, because the SUPERSEDED route accepted any list of 40-hex strings of the right length as an accounting of them, which is the one route by which a branch holding unmerged work becomes deletion-eligible. Also in this revision: the Phase B contract names deletionAuthorizationFindings, and deletionLogFindings is handed the two observations it was previously asked to trust a record's citation of -- the composition this contract used to name returned no finding at all for a COMPLETED record citing two well-formed digests that named nothing, stamped forty days after the observation it calls the one collected immediately beforehand. And five prose sites here and in the rendered report described the collector as running `git tag --contains` and an all-state `gh pr list --head`, both of which this issue's work removed as unsafe and neither of which matches any receipt in this record."
     }
   ],
-  "method": "Read-only: git ls-remote --heads origin, git merge-base --is-ancestor and git rev-list against origin/dev and origin/main, gh pr list --state all --limit 500 --json ..., gh api search/issues, gh api repos/.../branches/<b>/protection, and independently gh api repos/.../branches --paginate to cross-check git ls-remote against the REST API directly. No ref was deleted, force-pushed, or renamed, and none was created or deleted for audit purposes, to produce this file. The one ref created and pushed to origin while this file was being produced is this agent's own required task branch (task/issue-572-work) -- the normal artifact of submitting this file via PR #592, not an audit action; it is recorded in open_pr_heads_excluded like any other branch.",
-  "excluded_refs": ["main", "dev"],
-  "ls_remote_snapshot": [
-    { "name": "dev", "sha": "499bb11b004024fc46b9e97300ad8909d86a5073" },
-    { "name": "fix/a-fixture-backed-agent-is-not-a-runtime", "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1" },
-    { "name": "main", "sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846" },
-    { "name": "task/issue-570-action-pins", "sha": "34ad44ccedb8d13a698ab3aa8b82237aec908f5b" },
-    { "name": "task/issue-572-work", "sha": "1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71" },
-    { "name": "task/issue-588-mark-done", "sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a" },
-    { "name": "tmp/read-claude-artifact", "sha": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb" }
-  ],
-  "drift_observed_while_finalizing_this_correction": {
-    "observed_at": "2026-09-02T00:37:14Z",
-    "note": "A follow-up git fetch/ls-remote, run while finalizing this very correction, already showed 3 of the 7 branches recorded above as not-found-on-origin (task/issue-553-work at ddcf43e, task/issue-556-work at f2048b0, task/issue-565-work at 55f651f) now pushed to origin, and task/issue-588-mark-done's head advanced again, to 2c445d9 -- matching neither this document's recorded 034fcac nor the coordinator's previously-cited 88523a4. None of this is incorporated into ls_remote_snapshot, open_pr_heads_excluded, or branches above: doing so would only produce another already-stale snapshot, chasing a target that is moving faster than a full audit pass (merge status + PR check + protection check per branch) can complete. It is recorded here, once, as concrete and timestamped evidence for why the snapshot_warning at the top of this file and the equivalent banner in docs/STALE_BRANCH_AUDIT.md exist, and why Phase B must re-collect rather than trust any snapshot, including this one."
-  },
-  "branches_reported_but_not_found_on_origin": {
-    "note": "The coordinator reported eight new branches in flight: task/issue-553-work, task/issue-554-work, task/issue-555-work, task/issue-556-work, task/issue-565-work, task/issue-567-work, task/issue-572-work, and task/issue-582-work. This agent's own -572-work is accounted for above (it is now on origin, as this PR's head). The other seven were checked twice, independently, at generated_at: git ls-remote --heads origin and gh api repos/MongLong0214/agent-operator-score/branches --paginate (bypasses the git protocol entirely). Both returned the same 7 heads listed in ls_remote_snapshot -- neither method found task/issue-553-work, -554-work, -555-work, -556-work, -565-work, -567-work, or -582-work on origin. A git worktree list / git branch -vv on the shared local checkout at /Users/isaac/projects/agent-operator-score shows local branches with exactly those seven names, each still sitting at dev's current tip (499bb11b, unchanged), in worktrees at /private/tmp/wt-553, wt-554, wt-555, wt-556, wt-565, wt-567, wt-582. That is: they exist as prepared local worktree branches that have not yet been pushed to origin, so they are not yet remote branches for this audit to cover. This is recorded rather than assumed away, because treating an unverified claim as a fact is exactly the failure task/issue-588-mark-done's own unmerged commit (034fcac) was written to close in the execution-plan governance gate. If any of them have been pushed by the time this file is read, this audit is stale for that branch and a fresh regeneration is needed."
-  },
-  "open_pr_heads_excluded": [
+  "previously_recorded_heads_now_absent": [
     {
       "name": "task/issue-570-action-pins",
-      "recommendation": "must_be_preserved",
-      "pr_number": 590,
-      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/590",
-      "pr_state": "OPEN",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 2,
-      "reason": "Head of open PR #590 ('feat(ci): pin every external action to a commit, and check that it stays pinned') targeting dev. ISSUE.md's prohibited-actions list forbids deleting an open PR's head branch. Active review is in progress -- its head advanced from 7d2d1be to 34ad44c ('fix(ci): close the scanner bypasses the review found') between this audit's first snapshot and this correction."
+      "prior_sha": "34ad44ccedb8d13a698ab3aa8b82237aec908f5b",
+      "fate": {
+        "pr": 590,
+        "state": "MERGED",
+        "merged_at": "2026-09-02T07:10:00Z",
+        "merge_commit": "8e87da05e2233d00a5a65ba008a00dfafc2d1d97"
+      },
+      "note": "Merged into dev and removed by delete_branch_on_merge, not by this audit."
     },
     {
       "name": "task/issue-572-work",
-      "recommendation": "must_be_preserved",
-      "pr_number": 592,
-      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/592",
-      "pr_state": "OPEN",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 1,
-      "reason": "Head of this very PR (#592, the read-only audit for issue #572) targeting dev. It is the branch this audit is written from and cannot meaningfully classify itself as stale; it is recorded here purely so ls_remote_snapshot coverage stays exact."
+      "prior_sha": "1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71",
+      "fate": {
+        "pr": 592,
+        "state": "MERGED",
+        "merged_at": "2026-09-02T02:47:36Z",
+        "merge_commit": "ea1fe9ec6e7efe360da5ab7ceaa316a7cbfa65d9"
+      },
+      "note": "The first version of this audit."
     },
     {
       "name": "task/issue-588-mark-done",
-      "recommendation": "must_be_preserved",
-      "pr_number": 591,
-      "pr_url": "https://github.com/MongLong0214/agent-operator-score/pull/591",
-      "pr_state": "OPEN",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unmerged_commit_count": 2,
-      "reason": "Head of open PR #591 ('fix(governance): bind the close-evidence confirmation to one piece of work') targeting dev. PR #591 was in fact already open (created 00:13:30Z) five minutes before this audit's first snapshot was generated (00:18:26Z); the first snapshot's own PR-list query had gone stale before generation and missed it, which is why the first snapshot classified this branch must_be_preserved under branches on the different basis that no PR referenced it and it existed on no other ref -- see revision_history. That finding is now stronger, not weaker: real, active work is landing on it (the coordinator reports further review-round commits, up to 88523a4, beyond origin's snapshot head of 034fcac at generated_at -- unverified by this audit's own read-only remote commands as of generated_at; see the Known limitation note in docs/STALE_BRANCH_AUDIT.md). Whatever its exact current SHA, it must not be deleted while PR #591 is open."
+      "prior_sha": "034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a",
+      "fate": {
+        "pr": 591,
+        "state": "MERGED",
+        "merged_at": "2026-09-02T05:10:28Z",
+        "merge_commit": "50c4ddb9643ec170e469f26f47f99a7df4a24802"
+      },
+      "note": "Merged into dev and auto-deleted."
+    },
+    {
+      "name": "task/issue-560-operator-events",
+      "prior_sha": "5a697b290f2b6c320c79852f9be8e892b5fe28a5",
+      "fate": {
+        "pr": 611,
+        "state": "MERGED",
+        "merged_at": "2026-09-03T00:35:57Z",
+        "merge_commit": "38c32f751f7e242ec20e891e9e6478ffc66145de"
+      },
+      "note": "Audited as ACTIVE two snapshots ago and gone from this one: PR #611 merged while the previous observation was being collected."
+    },
+    {
+      "name": "task/issue-556-strict-confinement",
+      "prior_sha": "c5706859457a9388b3e28c4685057d5edcd29302",
+      "fate": {
+        "pr": 609,
+        "state": "MERGED",
+        "merged_at": "2026-09-03T08:11:16Z",
+        "merge_commit": "93179cf53757e0755efc1936c7d96c0779feedf1"
+      },
+      "note": "Audited as ACTIVE in the previous snapshot and gone from this one: PR #609 merged and delete_branch_on_merge removed the head. It advanced from c5706859457a9388b3e28c4685057d5edcd29302 to a00d0b588de0b37b5cb15d87c4782e2404d0baec between that snapshot and the merge, which is the ordinary reason a recorded SHA is not the SHA that merged."
+    },
+    {
+      "name": "task/issue-558-routing-oracle",
+      "prior_sha": "f81b17a378d9cbdef111e2cfbe76ccf4b88232ec",
+      "fate": {
+        "pr": 614,
+        "state": "MERGED",
+        "merged_at": "2026-09-03T21:29:53Z",
+        "merge_commit": "0616cfa47353c201c790bda0e3a802387e6e321c"
+      },
+      "note": "Audited as ACTIVE in the previous snapshot and gone from this one: PR #614 merged into dev and the head was removed by delete_branch_on_merge, not by this audit."
+    }
+  ],
+  "heads_created_after_this_snapshot": [
+    {
+      "name": "task/issue-572-branch-audit",
+      "sha": null,
+      "classification": "ACTIVE",
+      "open_pr": 612,
+      "note": "The branch this audit is submitted from. Its head SHA cannot be recorded here, because the commit that carries this file is the commit whose SHA it would be. The exception is not the name being on this list: auditCoverageFindings excuses it only while the observation shows an open pull request with it as a head, so a branch that is merely written here does not become accounted for."
     }
   ],
   "branches": [
@@ -76,20 +2540,200 @@
       "author_name": "MongLong0214",
       "author_email": "97578200+MongLong0214@users.noreply.github.com",
       "last_commit_date": "2026-08-28T20:37:31+09:00",
-      "age_days": 4,
+      "age_days": 6,
+      "classification": "MERGED",
       "merged_into_dev": true,
       "merged_into_main": true,
-      "unmerged_commit_count": 0,
-      "unmerged_summary": null,
-      "referenced_by_pr": [
-        { "number": 592, "url": "https://github.com/MongLong0214/agent-operator-score/pull/592", "reference_type": "body", "self_reference": true, "note": "PR #592 is this audit's own PR. Its body names this branch as a Phase-A candidate (mirroring issue #572's own candidate list), which is the audit describing itself, not independent evidence that other work relies on or watches this branch. It was opened 00:23:32Z, after the PR search underlying this entry's reason and before the corrected snapshot (00:29:41Z). Recorded because it is a real reference, not filtered out; it does not change the recommendation." }
+      "unique_commits_vs_dev": 0,
+      "unique_commits_vs_main": 0,
+      "unique_commits_vs_dev_and_main": 0,
+      "behind_dev": 396,
+      "behind_main": 85,
+      "release_tags_containing": [
+        "v0.1.11",
+        "v0.1.12",
+        "v0.1.13",
+        "v0.1.14",
+        "v0.1.15",
+        "v0.1.16",
+        "v0.1.17"
       ],
-      "referenced_elsewhere": [
-        { "type": "issue", "number": 572, "url": "https://github.com/MongLong0214/agent-operator-score/issues/572", "note": "named as a candidate in issue #572's own 'Current candidates' list" }
-      ],
+      "open_pr": null,
+      "superseding": null,
+      "preserve": [],
+      "references": {
+        "tree_scan": {
+          "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "hits": []
+        },
+        "github_search": {
+          "query": "repo:MongLong0214/agent-operator-score \"fix/a-fixture-backed-agent-is-not-a-runtime\"",
+          "complete": true,
+          "total_count": 2,
+          "issues": [
+            {
+              "number": 572,
+              "state": "open",
+              "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
+            }
+          ],
+          "prs": [
+            {
+              "number": 592,
+              "state": "closed",
+              "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
+            }
+          ]
+        },
+        "pr_history": [],
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": []
+      },
       "branch_protected": false,
+      "unestablished": [
+        {
+          "fact": "why this branch was created, and what change its name ('a fixture-backed agent is not a runtime') was meant to carry",
+          "searched": "The receipted GitHub-wide sweep in live_observation.reference_sweep (complete: every result the API reported was retrieved) and a receipted `git grep` over the whole tree. Every hit is this audit's own PR, issue #572's candidate list, or the previous audit PR. The receipted all-state PR history for this branch is empty: no pull request has ever used it as a head.",
+          "bearing_on_deletion": "none",
+          "why_it_does_not_bear": "Intent is a question about the past; data loss is a question about the present, and the present is established by receipted commands. The tip is an ancestor of both dev and main by `git merge-base --is-ancestor`, `git rev-list --count <tip> --not <dev> <main>` returns 0, and the commit is contained in seven release tags. There is no object on this ref that deleting the ref would remove, whatever it was created for."
+        }
+      ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "Tip commit e75d232 is an ancestor of both origin/dev and origin/main (`git merge-base --is-ancestor` true both ways; `git rev-list origin/dev..` and `git rev-list origin/main..` both return 0 commits). Every commit on this branch already lives on the integration and release lines. No open or closed PR (of the 355 checked in that search) ever used it as a head branch, and that GitHub-wide search found no reference to it outside issue #572's own candidate list; PR #592 (this audit's own PR, opened after that search) also names it in its body, but only as a self-reference -- see referenced_by_pr. Deleting it after #578's evidence bundle is captured loses nothing."
+      "reason": "Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, one `git merge-base --is-ancestor` per tag places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content."
+    },
+    {
+      "name": "task/issue-557-actual-effects",
+      "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-04T07:31:10+09:00",
+      "age_days": 0,
+      "classification": "ACTIVE",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unique_commits_vs_dev": 5,
+      "unique_commits_vs_main": 293,
+      "unique_commits_vs_dev_and_main": 5,
+      "behind_dev": 23,
+      "behind_main": 0,
+      "release_tags_containing": [],
+      "open_pr": {
+        "number": 618,
+        "url": "https://github.com/MongLong0214/agent-operator-score/pull/618",
+        "state": "OPEN",
+        "base": "dev",
+        "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
+      },
+      "superseding": null,
+      "preserve": [
+        "5 commits implementing #557, reachable from no other ref",
+        "the effect-recording surface those commits add, reachable from no other ref",
+        "the product tests and mutation guards those commits carry"
+      ],
+      "references": {
+        "tree_scan": {
+          "command": "git grep -n --fixed-strings task/issue-557-actual-effects 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "hits": []
+        },
+        "github_search": {
+          "query": "repo:MongLong0214/agent-operator-score \"task/issue-557-actual-effects\"",
+          "complete": true,
+          "total_count": 0,
+          "issues": [],
+          "prs": []
+        },
+        "pr_history": [
+          {
+            "number": 618,
+            "state": "OPEN",
+            "merged_at": null,
+            "base": "dev",
+            "head_sha": "d4cbc108ebb827aad49eb6ba7673029e757efbd2"
+          }
+        ],
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": []
+      },
+      "branch_protected": false,
+      "unestablished": [],
+      "recommendation": "must_be_preserved",
+      "reason": "Head of open PR #618 targeting dev, under review. Receipted derivations show 5 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
+    },
+    {
+      "name": "task/issue-574-discovery",
+      "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c",
+      "author_name": "MongLong0214",
+      "author_email": "weplay0628@gmail.com",
+      "last_commit_date": "2026-09-04T07:27:32+09:00",
+      "age_days": 0,
+      "classification": "ACTIVE",
+      "merged_into_dev": false,
+      "merged_into_main": false,
+      "unique_commits_vs_dev": 6,
+      "unique_commits_vs_main": 294,
+      "unique_commits_vs_dev_and_main": 6,
+      "behind_dev": 23,
+      "behind_main": 0,
+      "release_tags_containing": [],
+      "open_pr": {
+        "number": 617,
+        "url": "https://github.com/MongLong0214/agent-operator-score/pull/617",
+        "state": "OPEN",
+        "base": "dev",
+        "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
+      },
+      "superseding": null,
+      "preserve": [
+        "6 commits implementing #574, reachable from no other ref",
+        "the discovery surface those commits add, reachable from no other ref",
+        "the product tests and mutation guards those commits carry"
+      ],
+      "references": {
+        "tree_scan": {
+          "command": "git grep -n --fixed-strings task/issue-574-discovery 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "hits": []
+        },
+        "github_search": {
+          "query": "repo:MongLong0214/agent-operator-score \"task/issue-574-discovery\"",
+          "complete": true,
+          "total_count": 0,
+          "issues": [],
+          "prs": []
+        },
+        "pr_history": [
+          {
+            "number": 617,
+            "state": "OPEN",
+            "merged_at": null,
+            "base": "dev",
+            "head_sha": "f41d8402ee3120cb43e957bb4c7093adbe10af7c"
+          }
+        ],
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": []
+      },
+      "branch_protected": false,
+      "unestablished": [],
+      "recommendation": "must_be_preserved",
+      "reason": "Head of open PR #617 targeting dev, under review. Receipted derivations show 6 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
     },
     {
       "name": "tmp/read-claude-artifact",
@@ -97,28 +2741,117 @@
       "author_name": "MongLong0214",
       "author_email": "97578200+MongLong0214@users.noreply.github.com",
       "last_commit_date": "2026-08-29T11:33:54+09:00",
-      "age_days": 3,
+      "age_days": 5,
+      "classification": "MERGED",
       "merged_into_dev": true,
       "merged_into_main": true,
-      "unmerged_commit_count": 0,
-      "unmerged_summary": null,
-      "referenced_by_pr": [
-        { "number": 592, "url": "https://github.com/MongLong0214/agent-operator-score/pull/592", "reference_type": "body", "self_reference": true, "note": "PR #592 is this audit's own PR. Its body names this branch as a Phase-A candidate (mirroring issue #572's own candidate list), which is the audit describing itself, not independent evidence that other work relies on or watches this branch. It was opened 00:23:32Z, after the PR search underlying this entry's reason and before the corrected snapshot (00:29:41Z). Recorded because it is a real reference, not filtered out; it does not change the recommendation." }
+      "unique_commits_vs_dev": 0,
+      "unique_commits_vs_main": 0,
+      "unique_commits_vs_dev_and_main": 0,
+      "behind_dev": 344,
+      "behind_main": 33,
+      "release_tags_containing": [
+        "v0.1.16",
+        "v0.1.17"
       ],
-      "referenced_elsewhere": [
-        { "type": "issue", "number": 572, "url": "https://github.com/MongLong0214/agent-operator-score/issues/572", "note": "named as a candidate in issue #572's own 'Current candidates' list" }
-      ],
+      "open_pr": null,
+      "superseding": null,
+      "preserve": [],
+      "references": {
+        "tree_scan": {
+          "command": "git grep -n --fixed-strings tmp/read-claude-artifact 0616cfa47353c201c790bda0e3a802387e6e321c -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "hits": []
+        },
+        "github_search": {
+          "query": "repo:MongLong0214/agent-operator-score \"tmp/read-claude-artifact\"",
+          "complete": true,
+          "total_count": 2,
+          "issues": [
+            {
+              "number": 572,
+              "state": "open",
+              "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다"
+            }
+          ],
+          "prs": [
+            {
+              "number": 592,
+              "state": "closed",
+              "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
+            }
+          ]
+        },
+        "pr_history": [],
+        "workflows": [],
+        "skills": [],
+        "commands": [],
+        "scripts": [],
+        "schemas": [],
+        "contracts": [],
+        "docs": []
+      },
       "branch_protected": false,
+      "unestablished": [
+        {
+          "fact": "what the branch was used to read, and whether anything was ever committed to it and later discarded",
+          "searched": "The receipted complete GitHub-wide sweep, a receipted `git grep` over the tree, and the receipted all-state PR history: nothing names it outside this audit, #572 and the previous audit's PR, and no pull request ever used it as a head. A remote branch has no reflog readable from a clone, so a commit pushed and force-replaced before this audit would leave no trace any command here can reach.",
+          "bearing_on_deletion": "none",
+          "why_it_does_not_bear": "The question is about objects that are not on the ref now. The ref as it stands is an ancestor of both dev and main with 0 commits reaching neither, so deleting it removes no reachable object. An object already unreachable from this ref is not preserved by keeping the ref either, which is why #572 routes evidence into committed fixtures and issue records rather than leaving it on a branch."
+        }
+      ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "Tip commit 2d6392f is fully contained in both origin/dev and origin/main (0 commits unique vs either) via PR #538's back-merge chain. This is a tmp/* branch; repository policy caps those at 7 days or task end, and this one is already 3 days old with its content long since merged elsewhere. No PR references it as a head; PR #592 (this audit's own PR) names it in its body, but only as a self-reference -- see referenced_by_pr. Deleting it after #578 loses nothing."
+      "reason": "Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16 and v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it. It is a tmp/* branch, which repository policy caps at seven days or task end; it is past that. The all-state PR history is empty and the complete reference sweep finds nothing outside this audit."
     }
   ],
-  "repository_policy_notes": {
-    "default_branch": "dev",
-    "delete_branch_on_merge": true,
-    "rulesets": [],
-    "main_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
-    "dev_protection": { "allow_deletions": false, "allow_force_pushes": false, "enforce_admins": true },
-    "candidate_branch_protection": "none of the 5 non-main/dev branches on origin (7 heads in ls_remote_snapshot minus main and dev; checked via gh api repos/.../branches/<b>/protection) have branch protection configured"
+  "closes_issue": false,
+  "lifecycle": {
+    "phase_completed": "read-only-audit",
+    "phase_outstanding": "final-deletion",
+    "note": "The PR carrying this audit must not use a closing keyword for #572. It completes the read-only-audit phase; final-deletion is blocked on #578 and #588 and is the phase that produces the deletion log."
+  },
+  "phase_b_contract": {
+    "note": "The Phase B output is `branch-deletion-log`, which the canonical execution plan reserves for the blocked final-deletion phase. No deletion log is emitted by this PR; what is recorded here is the contract that artifact has to satisfy.",
+    "deletion_log_status": "NOT_YET",
+    "deletion_log_path": "fixtures/stale-branches/deletion-log.json",
+    "blocked_by": [
+      578,
+      588
+    ],
+    "prerequisite_authority": "fixtures/execution-plan/github-state.json -- #578 and #588 must be closed there with close evidence. The deletion log does not clear its own prerequisites; scripts/branch-audit.mjs cross-checks its claims against that snapshot and treats a disagreement as a finding.",
+    "entry_point": "deletionAuthorizationFindings({audit, log, pre, post, completion}) in scripts/branch-audit.mjs is the gate Phase B has to clear, and the only composition that binds the deletion record to the two observations it cites. Everything it needs is collected by scripts/collect-branch-state.mjs: an observation immediately before the deletion and another immediately after. Its read-only half is liveEligibility(audit, pre), which answers what would be eligible right now and why each of the rest would not be -- the ref still at the commit the audit judged, no pull request open on it according to either source that would know, and the observation reporting it unprotected. Phase A ships no executor: performing the deletion, witnessing it and recording completion is Phase B's work, and the verifiers below are what Phase B has to satisfy.",
+    "verifiers": "deletionAuthorizationFindings({audit, log, pre, post, completion}) is the composition to run, and running it is not optional: it is the only caller that hands every check the evidence it compares against. It composes prerequisiteFindings(completion) for whether Phase B may start; verifyObservation and derivationFindings against the fresh observation; deletionLogFindings(log, {completion, pre, post}) for the record Phase B produces, which recomputes both observation digests and applies the OBSERVATION_MAX_AGE_SECONDS window rather than accepting the record's own citation of them; boundaryInvariantFindings(log, pre, post) for what must not have changed across the deletion; cleanupInvariantFindings and openPrHeadDeletionFindings for the stored half; and the live re-checks of every branch it is about to remove. liveEligibility(audit, pre) is the read-only report and may be run on its own, but it cannot check a deletion record and does not claim to. Phase A ships all of these and no code that deletes anything.",
+    "required_shape": {
+      "schema": "aos-branch-deletion-log.v1",
+      "status": "COMPLETED",
+      "completed_at": "<instant, stamped by the gate between its two collections>",
+      "deleted": "[{name, sha}] -- the audit's eligible set narrowed to the branches the fresh observation still shows at the judged commit with no pull request open on them. An empty list is legitimate when nothing survives that narrowing, and then no_op_reason says why.",
+      "blockers_cleared": "[{issue, canonical_state}] -- cross-checked against the canonical snapshot, not believed",
+      "pre_observation": "{digest} -- the recursive digest of the observation collected immediately before the deletion. The gate recomputes it from that observation and refuses a record citing anything else, so a well-formed digest naming nothing is not a citation.",
+      "post_observation": "{digest} -- the recursive digest of the observation collected immediately after it, recomputed and compared the same way. Both instants are checked against completed_at, within OBSERVATION_MAX_AGE_SECONDS (900s), so \"immediately\" is a condition rather than a word."
+    },
+    "invariant_comparison": "boundaryInvariantFindings(log, pre, post), reached through deletionAuthorizationFindings, over the two observations the gate collected itself: main, dev, tag ref and commit identity, the complete protection objects, the rulesets, the install source, the repository settings, and every open pull request head -- compared between the two fresh observations. The set of heads that vanished between them must equal exactly the set the log says it deleted.",
+    "eligible_at_this_snapshot": [
+      {
+        "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
+        "sha_at_audit": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "note": "Eligible as of this snapshot only. Phase B re-verifies against its own observation before deleting; a snapshot is not permission."
+      },
+      {
+        "name": "tmp/read-claude-artifact",
+        "sha_at_audit": "2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "note": "Eligible as of this snapshot only. Phase B re-verifies against its own observation before deleting; a snapshot is not permission."
+      }
+    ]
+  },
+  "repository_policy": {
+    "note": "The branch policy this issue asks to be written down. Descriptive of the repository's current settings where a setting exists, prescriptive where none does.",
+    "rules": [
+      "feature/, task/ and fix/ branches are deleted once their PR merges. delete_branch_on_merge is enabled, so this happens automatically; the branches in this audit that were not removed are the ones that never had a PR.",
+      "tmp/* branches live at most seven days or until their task ends, whichever comes first. No setting enforces this; it is checked by re-running this audit.",
+      "release/ and hotfix/ branches are deleted after the release ships and the back-merge into dev lands.",
+      "main and dev are protected: no deletion, no force push, enforced for admins. No repository rulesets are configured.",
+      "A branch is not an evidence archive. Anything worth keeping is moved into a commit, a committed fixture, a document or an issue record before the branch it lived on is deleted -- which is why this issue's Phase B is blocked on #578 and #588 rather than running now."
+    ]
   }
 }

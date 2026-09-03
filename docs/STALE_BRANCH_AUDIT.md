@@ -1,247 +1,389 @@
 # Stale remote branch audit (#572, Phase A -- read-only)
 
-> **This is a snapshot taken during active parallel development. It is a Phase A record, not a
-> deletion list. Do not act on this file.** A batch of agents is working in sibling worktrees of
-> this same repository right now; branches and PRs referenced below can move within minutes.
-> **Phase B (blocked on #578) must re-collect every fact in this document from scratch** --
-> `git ls-remote`, merge status, and `gh pr list` -- rather than trust any SHA, merge state, or PR
-> number written here. This is not a hypothetical caution: this document's first version (generated
-> 2026-09-02T00:18:26Z) classified `task/issue-588-mark-done` as `must_be_preserved` because its
-> PR-list query found no PR referencing it -- but PR #591 had in fact already been opened against it
-> five minutes earlier (00:13:30Z). The query was stale before this document was even generated, not
-> the branch state changing after the fact. See "Revision history" below for exactly what changed and
-> why.
+> **This is a snapshot, not a deletion list. Do not act on this file.** Phase B (blocked on #578 and
+> #588) collects its own observations -- one immediately before the deletion and one immediately
+> after -- and decides against those. `liveEligibility` refuses outright without a freshly collected
+> observation. The invariants are compared between the two fresh observations, never against
+> this file: the repository goes on moving, and a Phase B measured against a Phase A snapshot would
+> report ordinary progress as damage. Five heads have turned over across the versions of this
+> document, one of them while a snapshot was being taken.
 
-Generated: 2026-09-02T00:29:41Z (corrected; see Revision history)
-Repository SHA at snapshot: `dev` was at `499bb11b004024fc46b9e97300ad8909d86a5073`
-Repository: `MongLong0214/agent-operator-score`
-Machine-readable source of truth: [`fixtures/stale-branches/audit.json`](../fixtures/stale-branches/audit.json)
-(checked by [`tests/product/stale-branch-audit.test.mjs`](../tests/product/stale-branch-audit.test.mjs))
+- **Generated:** 2026-09-03T22:40:04Z
+- **Repository:** `MongLong0214/agent-operator-score`
+- **Observation digest:** `sha256:79ca16e340b1ce753cdd136bc86033a90b0685a5bdfb8f6c0378cc5af53509b8` (recursive over the whole record)
+- **`dev` at snapshot:** `0616cfa47353c201c790bda0e3a802387e6e321c`
+- **`main` at snapshot:** `d2c68036ebf9f9fd7287258fd3cec252133ef846`
+- **Machine-readable source of truth:** [`fixtures/stale-branches/audit.json`](../fixtures/stale-branches/audit.json)
+- **Checked by:** `npm run verify:branch-audit`, `npm run verify:branch-cleanup-invariants`, `npm run verify:no-open-pr-head-deletion`
 
-**This is Phase A of #572 only.** Phase A is read-only: inventory, classify, and record what would
-be lost. No branch was deleted, renamed, or force-pushed, and no branch was created or deleted for
-audit purposes, to produce this document. (The one branch that *was* created and pushed to origin
-while this document was being written is this agent's own required task branch,
-`task/issue-572-work` -- the normal, unavoidable artifact of submitting this document via PR #592,
-not an action the audit process took. It is recorded in the tables below like any other branch.) The
-destructive phase (Phase B / "final-deletion") is explicitly out of scope here and remains blocked
-on **#578** -- final release/E2E evidence must be preserved before anything is deleted. Nothing in
-this document authorizes deletion; it only records what a future, separate deletion step should do
-and why.
+This document is rendered from the fixture. Where the two disagree the fixture wins, and
+`tests/product/stale-branch-audit.test.mjs` parses the summary table below and fails when it does
+not hold exactly one row per audited branch, at the recorded SHA.
 
-## Revision history
+## Where these facts came from
 
-| generated at | what changed |
-|---|---|
-| 2026-09-02T00:18:26Z | Initial version. `task/issue-588-mark-done` classified `must_be_preserved` under the per-branch table because its PR-list query found no PR referencing it. PR #591 had in fact already been opened against it five minutes earlier (00:13:30Z); the query was stale, not the branch. |
-| 2026-09-02T00:29:41Z | Coordinator correction. PR #591 (opened 00:13:30Z, five minutes before the first snapshot's stated generation time of 00:18:26Z) was already open against `task/issue-588-mark-done` when the first snapshot was generated; that snapshot's PR-list query had gone stale before the document was produced and missed it. Further review-round commits are reported to have landed on the branch locally since. Re-collected live state: moved `task/issue-588-mark-done` into the open-PR-heads table (alongside `#570`), refreshed `task/issue-570-action-pins`'s SHA (one PR-review round further than the first snapshot), and added this agent's own now-pushed branch (`task/issue-572-work`, PR #592) to the same table. Recorded the `dev` SHA at snapshot time and this history. Also recorded, rather than assumed, a discrepancy with the coordinator's report of seven other new branches -- see "Branches reported but not found on origin" below. |
+Every external fact was collected by `scripts/collect-branch-state.mjs`, which records the command
+line, exit code, byte count and a SHA-256 of the raw stdout beside each answer. **164 receipts** in
+total: 9 repository-wide, listed below, and 155 per-branch derivations.
 
-## Method
+That includes the graph facts, not only the queries around them. When a branch record below says it
+is contained in `dev`, the `git merge-base --is-ancestor` that decides it is a receipt; so are the
+`git rev-list --count` in each direction and for commits reaching neither line, the `git rev-list`
+for the ids of those commits, the one `git merge-base --is-ancestor` per tag reported by
+`git ls-remote --tags origin`, the `git grep` over the tree, and the all-state paginated
+`gh api repos/<owner>/<repo>/pulls?state=all&head=<owner>:<branch>` behind
+"no pull request ever used this branch as a head". A receipt for a neighbouring query is not
+evidence for a derivation nobody ran, and `derivationFindings` fails when a record asserts a number
+the collector did not produce.
 
-Every fact below came from a read command against `MongLong0214/agent-operator-score`:
+Every list endpoint is paginated to the end, and each GitHub-wide search compares what it retrieved
+against the count the API reported. That matters in one direction specifically: an unpaginated read
+turns a pull request on the second page into an absent pull request, and the deletion gate reads
+absence as "no PR open on this branch".
 
-- `git ls-remote --heads origin` -- the full current list of remote branches.
-- `gh api repos/MongLong0214/agent-operator-score/branches --paginate` -- the same list independently,
-  via the REST API rather than the git protocol, used as a cross-check.
-- `git merge-base --is-ancestor <branch> origin/dev` / `origin/main`, and `git rev-list
-  origin/dev..<branch>` / `origin/main..<branch>` -- merge status and unique-commit counts.
-- `git log`, `git branch -r --contains`, `git tag --contains` -- authorship, dates, and whether a
-  commit exists on any other ref.
-- `gh pr list --repo MongLong0214/agent-operator-score --state all --limit 500 --json ...` (355+ PRs
-  fetched in full, not the default 30) -- whether any PR, open or closed, ever used a branch as its
-  head, or mentioned its name in a PR body.
-- `gh pr view <number>` -- current state and head SHA of specific PRs.
-- `gh api -X GET search/issues -f q='repo:... "<branch name>"'` -- whether any issue anywhere on the
-  repository mentions a branch by name.
-- `gh api repos/MongLong0214/agent-operator-score/branches/<branch>/protection` and
-  `.../rulesets` -- branch protection and ruleset status.
+The head list is taken over two independent transports -- `git ls-remote --heads origin` and the
+REST branch list -- and any disagreement between them is a finding. One transport read twice would
+prove nothing.
+
+| command | exit | bytes | digest |
+|---|---|---|---|
+| `git ls-remote --heads origin` | 0 | 525 | `sha256:40337b11ac0464d8ef2b0f4fcc8f10c585991920338fd21f58a1fb5a9b2e555b` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4380 | `sha256:a408d082a9dfa49c53a6cb0b377b86c6f7f3937918cc9407d7865a1047ffcf1d` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 93314 | `sha256:abbaf86fba061f0c630b74b85a5715ebf554b71eddcd575d4684179d3ff13532` |
+| `git ls-remote --tags origin` | 0 | 2323 | `sha256:e4110333eb2096c906041412784a350fe30b478de0af6caf9f24d61a5b2012db` |
+| `gh api repos/MongLong0214/agent-operator-score/branches/main/protection` | 0 | 1845 | `sha256:a61f822cb0c04a82978c62885dcf4f79608597db586540bd95de31ed00573aba` |
+| `gh api repos/MongLong0214/agent-operator-score/branches/dev/protection` | 0 | 1839 | `sha256:23df58f6a5b41ffe54474d6561826e50b771c36dca772c62c4031869f67648a0` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100` | 0 | 4 | `sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05` |
+| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6760 | `sha256:a2492716a6ca9d905ef1c0fac93f55e09d6f20ab19395f62bdbd287e3992c595` |
+| `git fetch -q origin 0616cfa47353c201c790bda0e3a802387e6e321c e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 d4cbc108ebb827aad49eb6ba7673029e757efbd2 fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5 f41d8402ee3120cb43e957bb4c7093adbe10af7c 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+
+What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
+offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
+recursive over the whole record, so no nested value can change under the same identity. And Phase B
+rests on an observation collected immediately beforehand, never on this file. What is
+left outside the boundary is the trustworthiness of the machine that runs it, which is stated here
+rather than hidden.
+
+## Phase A is read-only, and Phase B has not run
+
+Phase A is inventory, classification and a preservation plan. Nothing here authorizes deletion. No
+ref was deleted, renamed or force-pushed to produce this document, and none was created or deleted
+for audit purposes. The one branch this work adds to `origin` is the branch it is submitted from
+(`task/issue-572-branch-audit`), recorded under `heads_created_after_this_snapshot` because its SHA is the
+SHA of the commit carrying this file. That exception is earned rather than declared, and it is for
+that branch alone: coverage excuses an entry only when the audit names it as the branch it was
+submitted from, the observation shows an open pull request with it as a head, the entry is classified
+`ACTIVE`, the pull request number it claims is the one that is actually open, it records no head SHA
+-- which the branch carrying this audit cannot have -- and it says why it sits outside the snapshot.
+A name merely written into the list does not become accounted for.
+
+**No deletion log is emitted by this PR.** The canonical execution plan reserves the
+`branch-deletion-log` output for the blocked `final-deletion` phase. Whether that phase may start is
+decided by `fixtures/execution-plan/github-state.json`, not by anything the deletion log says about
+itself.
 
 ## Snapshot
 
-`git ls-remote --heads origin` (cross-checked against `gh api .../branches --paginate`, independently,
-same result) reported 7 heads at correction time:
+| branch | head SHA | classification | in dev / main | commits reaching neither | release tags | open PR | recommendation |
+|---|---|---|---|---|---|---|---|
+| `fix/a-fixture-backed-agent-is-not-a-runtime` | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` | MERGED | yes / yes | 0 | v0.1.11, v0.1.12, v0.1.13, v0.1.14, v0.1.15, v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
+| `task/issue-557-actual-effects` | `d4cbc108ebb827aad49eb6ba7673029e757efbd2` | ACTIVE | no / no | 5 | none | [#618](https://github.com/MongLong0214/agent-operator-score/pull/618) | **must_be_preserved** |
+| `task/issue-574-discovery` | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | ACTIVE | no / no | 6 | none | [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) | **must_be_preserved** |
+| `tmp/read-claude-artifact` | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | MERGED | yes / yes | 0 | v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
 
-| branch | head SHA |
-|---|---|
-| `dev` | `499bb11b004024fc46b9e97300ad8909d86a5073` |
-| `fix/a-fixture-backed-agent-is-not-a-runtime` | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` |
-| `main` | `d2c68036ebf9f9fd7287258fd3cec252133ef846` |
-| `task/issue-570-action-pins` | `34ad44ccedb8d13a698ab3aa8b82237aec908f5b` |
-| `task/issue-572-work` | `1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71` |
-| `task/issue-588-mark-done` | `034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a` |
-| `tmp/read-claude-artifact` | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` |
+`main` (`d2c68036ebf9f9fd7287258fd3cec252133ef846`) and `dev` (`0616cfa47353c201c790bda0e3a802387e6e321c`) are excluded
+by definition and are listed in the fixture's snapshot so a reader can see they were excluded rather
+than missed.
 
-`main` and `dev` are excluded from the table below by definition.
+## What happened to the branches earlier snapshots recorded
 
-## Branches reported but not found on origin
+None was deleted by this audit; each was merged and removed by `delete_branch_on_merge`.
 
-The coordinator separately reported eight new branches in flight: `task/issue-553-work`,
-`task/issue-554-work`, `task/issue-555-work`, `task/issue-556-work`, `task/issue-565-work`,
-`task/issue-567-work`, `task/issue-572-work`, and `task/issue-582-work`.
+| branch | SHA the earlier snapshot recorded | PR that consumed it | merge commit | note |
+|---|---|---|---|---|
+| `task/issue-570-action-pins` | `34ad44ccedb8d13a698ab3aa8b82237aec908f5b` | [#590](https://github.com/MongLong0214/agent-operator-score/pull/590) 2026-09-02T07:10:00Z | `8e87da05e2233d00a5a65ba008a00dfafc2d1d97` | Merged into dev and removed by delete_branch_on_merge, not by this audit. |
+| `task/issue-572-work` | `1afd3524f3fb4a4b5e884bd0d30b0ee3216a2d71` | [#592](https://github.com/MongLong0214/agent-operator-score/pull/592) 2026-09-02T02:47:36Z | `ea1fe9ec6e7efe360da5ab7ceaa316a7cbfa65d9` | The first version of this audit. |
+| `task/issue-588-mark-done` | `034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a` | [#591](https://github.com/MongLong0214/agent-operator-score/pull/591) 2026-09-02T05:10:28Z | `50c4ddb9643ec170e469f26f47f99a7df4a24802` | Merged into dev and auto-deleted. |
+| `task/issue-560-operator-events` | `5a697b290f2b6c320c79852f9be8e892b5fe28a5` | [#611](https://github.com/MongLong0214/agent-operator-score/pull/611) 2026-09-03T00:35:57Z | `38c32f751f7e242ec20e891e9e6478ffc66145de` | Audited as ACTIVE two snapshots ago and gone from this one: PR #611 merged while the previous observation was being collected. |
+| `task/issue-556-strict-confinement` | `c5706859457a9388b3e28c4685057d5edcd29302` | [#609](https://github.com/MongLong0214/agent-operator-score/pull/609) 2026-09-03T08:11:16Z | `93179cf53757e0755efc1936c7d96c0779feedf1` | Audited as ACTIVE in the previous snapshot and gone from this one: PR #609 merged and delete_branch_on_merge removed the head. It advanced from c5706859457a9388b3e28c4685057d5edcd29302 to a00d0b588de0b37b5cb15d87c4782e2404d0baec between that snapshot and the merge, which is the ordinary reason a recorded SHA is not the SHA that merged. |
+| `task/issue-558-routing-oracle` | `f81b17a378d9cbdef111e2cfbe76ccf4b88232ec` | [#614](https://github.com/MongLong0214/agent-operator-score/pull/614) 2026-09-03T21:29:53Z | `0616cfa47353c201c790bda0e3a802387e6e321c` | Audited as ACTIVE in the previous snapshot and gone from this one: PR #614 merged into dev and the head was removed by delete_branch_on_merge, not by this audit. |
 
-This agent's own `task/issue-572-work` is accounted for above -- it is now on origin, as this PR's
-head. The other seven were checked twice, independently, at the corrected snapshot time:
-`git ls-remote --heads origin` and `gh api repos/MongLong0214/agent-operator-score/branches
---paginate` (which bypasses the git protocol entirely). **Both returned the same 7 heads listed
-above.** Neither method found `task/issue-553-work`, `task/issue-554-work`, `task/issue-555-work`,
-`task/issue-556-work`, `task/issue-565-work`, `task/issue-567-work`, or `task/issue-582-work` on
-origin.
-
-`git worktree list` / `git branch -vv` on the shared local checkout at
-`/Users/isaac/projects/agent-operator-score` does show local branches with exactly those seven
-names, each still sitting at `dev`'s current tip (`499bb11b`, unchanged), in worktrees at
-`/private/tmp/wt-553`, `wt-554`, `wt-555`, `wt-556`, `wt-565`, `wt-567`, and `wt-582`. Read plainly:
-they exist as prepared local worktree branches that have not yet been pushed to origin, so they are
-not yet remote branches for a *remote*-branch audit to cover.
-
-This is written down as a discrepancy rather than resolved by assumption, because treating an
-unverified claim as settled fact is exactly the failure `task/issue-588-mark-done`'s own unmerged
-commit (`034fcac`, "harden the execution-plan checks against a forged pass") exists to close in the
-execution-plan governance gate -- it would have been a strange thing to do in the same document that
-cites that fix approvingly. If any of these seven have been pushed by the time this file is read,
-this document is stale for that branch and needs a fresh regeneration, which is exactly what the
-warning at the top says to do before Phase B acts on anything here.
-
-## Drift observed while finalizing this very correction
-
-While finalizing the correction above, a follow-up `git fetch`/`git ls-remote` (at
-2026-09-02T00:37:14Z) already showed 3 of the 7 branches listed in "Branches reported but not found
-on origin" now pushed to origin: `task/issue-553-work` (`ddcf43e`), `task/issue-556-work`
-(`f2048b0`), and `task/issue-565-work` (`55f651f`). `task/issue-588-mark-done`'s head had also
-advanced again, to `2c445d9` -- matching neither this document's recorded `034fcac` nor the
-`88523a4` cited earlier in this same correction.
-
-None of this has been folded into the tables in this document. Doing so would only produce another
-already-stale snapshot: a full audit pass per branch (merge status against `dev` and `main`, a PR
-reference check across the growing PR list, a protection check) cannot complete faster than this
-batch is pushing new branches. This is recorded once, here, as concrete and timestamped proof of
-the claim at the top of this document, not as an update to act on.
-
-## Open PR heads (excluded from the stale-branch table, recorded here instead)
-
-Per the issue's own scope ("every remote branch ... that is not main, dev, or an open PR's head"),
-these three branches are active in-flight work, not stale refs, so they are recorded separately.
-None may be deleted while their PR is open -- ISSUE.md's prohibited-actions list forbids deleting an
-open PR's head branch outright.
-
-| branch | PR | title | notes |
-|---|---|---|---|
-| `task/issue-570-action-pins` | [#590](https://github.com/MongLong0214/agent-operator-score/pull/590) | feat(ci): pin every external action to a commit, and check that it stays pinned | Active review; head advanced from `7d2d1be` to `34ad44c` ("fix(ci): close the scanner bypasses the review found") between this document's two snapshots. |
-| `task/issue-572-work` | [#592](https://github.com/MongLong0214/agent-operator-score/pull/592) | docs(governance): read-only audit of stale remote branches (#572 Phase A) | This is the branch this document is written from. Recorded here purely so branch coverage stays exact; it cannot meaningfully audit itself. |
-| `task/issue-588-mark-done` | [#591](https://github.com/MongLong0214/agent-operator-score/pull/591) | fix(governance): bind the close-evidence confirmation to one piece of work | See "Known limitation" immediately below -- this entry's exact current head SHA is not independently confirmed by this document's own read-only commands as of the corrected snapshot. |
-
-### Known limitation: `task/issue-588-mark-done`'s current head SHA
-
-At the corrected snapshot time, `git ls-remote origin refs/heads/task/issue-588-mark-done` and
-`gh pr view 591 --json headRefOid` both reported `034fcac5fcbd50e64ceb7cf8e8a7d21e57e7f08a` -- the
-same SHA this document's first version recorded -- at a time when PR #591 already existed
-(created 00:13:30Z), though the first version's PR-list query had not yet found it. The
-coordinator has stated
-that at least one further review-round commit (`88523a4`) has since landed on this branch. This
-document's own read-only remote commands, run at the times stated, did not observe `88523a4` on
-`origin` -- only in the shared local checkout's copy of the `task/issue-588-mark-done` branch
-(`git worktree list` shows a worktree at that SHA), which is one commit ahead of what has been
-pushed. This is recorded rather than silently adopted, for the same reason the previous section is:
-this document verifies against the remote it is auditing, not against unpushed local state, and a
-reader relying on it should re-run `git ls-remote origin refs/heads/task/issue-588-mark-done`
-before trusting either SHA. Regardless of which SHA is current, the classification is unchanged:
-**this branch must be preserved.** It is the head of an open PR with active review; that alone rules
-out deletion, independent of exactly how many commits are on it right now.
-
-## Per-branch audit (stale-branch table)
+## Per-branch audit
 
 ### `fix/a-fixture-backed-agent-is-not-a-runtime`
 
-| field | value |
-|---|---|
-| head SHA | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` |
-| author | MongLong0214 |
-| last commit | 2026-08-28T20:37:31+09:00 |
-| age | 4 days |
-| merged into `dev` | yes (0 commits unique to the branch) |
-| merged into `main` | yes (0 commits unique to the branch) |
-| unmerged commits | 0 |
-| ever referenced by a PR | not as a head. In a PR body, only by this audit's own PR [#592](https://github.com/MongLong0214/agent-operator-score/pull/592) (opened 00:23:32Z, naming it as a Phase-A candidate) -- a self-reference from the audit describing itself, not independent evidence; does not change the recommendation |
-| ever referenced elsewhere | only as a named candidate in issue #572 itself |
-| branch protection | none |
-| **recommendation** | **safe to delete after #578** |
+| field | value | derived by |
+|---|---|---|
+| current SHA | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-08-28T20:37:31+09:00 (6 days before this snapshot) | `git-log-fix/a-fixture-backed-agent-is-not-a-runtime` |
+| owner (last committer) | MongLong0214 <97578200+MongLong0214@users.noreply.github.com> | `git-log-fix/a-fixture-backed-agent-is-not-a-runtime` |
+| classification | **MERGED** | — |
+| PR history (all states) | no pull request has ever used this branch as a head | `pr-history-fix/a-fixture-backed-agent-is-not-a-runtime` |
+| contained in `dev` / `main` | yes / yes | `is-ancestor-dev-fix/a-fixture-backed-agent-is-not-a-runtime`, `is-ancestor-main-fix/a-fixture-backed-agent-is-not-a-runtime` |
+| unique commits vs `dev` / `main` | 0 / 0 | `rev-list-dev-fix/a-fixture-backed-agent-is-not-a-runtime`, `rev-list-main-fix/a-fixture-backed-agent-is-not-a-runtime` |
+| **commits reaching neither line** | **0** | `rev-list-neither-fix/a-fixture-backed-agent-is-not-a-runtime` for the count, `rev-list-ids-neither-fix/a-fixture-backed-agent-is-not-a-runtime` for the ids |
+| release-tag containment | v0.1.11, v0.1.12, v0.1.13, v0.1.14, v0.1.15, v0.1.16, v0.1.17 | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-fix/a-fixture-backed-agent-is-not-a-runtime`, 19 of them |
+| superseding PR/issue/SHA | none recorded | — |
+| to preserve | nothing -- no object on this ref is absent from `dev` and `main` | — |
+| protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
+| **recommendation** | **safe_to_delete_after_578** | — |
 
-Reason: the tip commit is an ancestor of both `origin/dev` and `origin/main`; every commit on this
-branch already lives on the integration and release lines under a different route (it was, per its
-own merge-commit subject, folded in via the `chore/back-merge-0.1.10` chain). This audit's own PR
-#592 names the branch in its body, but only as this document talking about itself, not as evidence
-of active use elsewhere -- see "ever referenced by a PR" above. Deleting it after #578's evidence
-bundle is captured loses nothing, because nothing on it is unique.
+| reference scan | result |
+|---|---|
+| GitHub-wide issues (`repo:MongLong0214/agent-operator-score "fix/a-fixture-backed-agent-is-not-a-runtime"`) | [#572](https://github.com/MongLong0214/agent-operator-score/issues/572) (open) |
+| GitHub-wide pull requests | [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
+| sweep completeness | complete -- all 2 result(s) the API reported were retrieved |
+| repository tree (`git-grep-fix/a-fixture-backed-agent-is-not-a-runtime`) | none found |
+
+Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, one `git merge-base --is-ancestor` per tag places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content.
+
+**Could not establish: why this branch was created, and what change its name ('a fixture-backed agent is not a runtime') was meant to carry**
+
+- Searched: The receipted GitHub-wide sweep in live_observation.reference_sweep (complete: every result the API reported was retrieved) and a receipted `git grep` over the whole tree. Every hit is this audit's own PR, issue #572's candidate list, or the previous audit PR. The receipted all-state PR history for this branch is empty: no pull request has ever used it as a head.
+- Bearing on deletion: `none`
+- Why it does not bear: Intent is a question about the past; data loss is a question about the present, and the present is established by receipted commands. The tip is an ancestor of both dev and main by `git merge-base --is-ancestor`, `git rev-list --count <tip> --not <dev> <main>` returns 0, and the commit is contained in seven release tags. There is no object on this ref that deleting the ref would remove, whatever it was created for.
+
+### `task/issue-557-actual-effects`
+
+| field | value | derived by |
+|---|---|---|
+| current SHA | `d4cbc108ebb827aad49eb6ba7673029e757efbd2` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-04T07:31:10+09:00 (0 days before this snapshot) | `git-log-task/issue-557-actual-effects` |
+| owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-task/issue-557-actual-effects` |
+| classification | **ACTIVE** | — |
+| PR history (all states) | #618 (OPEN) | `pr-history-task/issue-557-actual-effects` |
+| contained in `dev` / `main` | no / no | `is-ancestor-dev-task/issue-557-actual-effects`, `is-ancestor-main-task/issue-557-actual-effects` |
+| unique commits vs `dev` / `main` | 5 / 293 | `rev-list-dev-task/issue-557-actual-effects`, `rev-list-main-task/issue-557-actual-effects` |
+| **commits reaching neither line** | **5** | `rev-list-neither-task/issue-557-actual-effects` for the count, `rev-list-ids-neither-task/issue-557-actual-effects` for the ids |
+| release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-task/issue-557-actual-effects`, 19 of them |
+| superseding PR/issue/SHA | none recorded | — |
+| to preserve | 5 commits implementing #557, reachable from no other ref; the effect-recording surface those commits add, reachable from no other ref; the product tests and mutation guards those commits carry | — |
+| protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
+| **recommendation** | **must_be_preserved** | — |
+
+| reference scan | result |
+|---|---|
+| GitHub-wide issues (`repo:MongLong0214/agent-operator-score "task/issue-557-actual-effects"`) | none found |
+| GitHub-wide pull requests | none found |
+| sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
+| repository tree (`git-grep-task/issue-557-actual-effects`) | none found |
+
+Head of open PR #618 targeting dev, under review. Receipted derivations show 5 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
+
+Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
+
+### `task/issue-574-discovery`
+
+| field | value | derived by |
+|---|---|---|
+| current SHA | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-04T07:27:32+09:00 (0 days before this snapshot) | `git-log-task/issue-574-discovery` |
+| owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-task/issue-574-discovery` |
+| classification | **ACTIVE** | — |
+| PR history (all states) | #617 (OPEN) | `pr-history-task/issue-574-discovery` |
+| contained in `dev` / `main` | no / no | `is-ancestor-dev-task/issue-574-discovery`, `is-ancestor-main-task/issue-574-discovery` |
+| unique commits vs `dev` / `main` | 6 / 294 | `rev-list-dev-task/issue-574-discovery`, `rev-list-main-task/issue-574-discovery` |
+| **commits reaching neither line** | **6** | `rev-list-neither-task/issue-574-discovery` for the count, `rev-list-ids-neither-task/issue-574-discovery` for the ids |
+| release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-task/issue-574-discovery`, 19 of them |
+| superseding PR/issue/SHA | none recorded | — |
+| to preserve | 6 commits implementing #574, reachable from no other ref; the discovery surface those commits add, reachable from no other ref; the product tests and mutation guards those commits carry | — |
+| protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
+| **recommendation** | **must_be_preserved** | — |
+
+| reference scan | result |
+|---|---|
+| GitHub-wide issues (`repo:MongLong0214/agent-operator-score "task/issue-574-discovery"`) | none found |
+| GitHub-wide pull requests | none found |
+| sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
+| repository tree (`git-grep-task/issue-574-discovery`) | none found |
+
+Head of open PR #617 targeting dev, under review. Receipted derivations show 6 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
+
+Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
 ### `tmp/read-claude-artifact`
 
-| field | value |
+| field | value | derived by |
+|---|---|---|
+| current SHA | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-08-29T11:33:54+09:00 (5 days before this snapshot) | `git-log-tmp/read-claude-artifact` |
+| owner (last committer) | MongLong0214 <97578200+MongLong0214@users.noreply.github.com> | `git-log-tmp/read-claude-artifact` |
+| classification | **MERGED** | — |
+| PR history (all states) | no pull request has ever used this branch as a head | `pr-history-tmp/read-claude-artifact` |
+| contained in `dev` / `main` | yes / yes | `is-ancestor-dev-tmp/read-claude-artifact`, `is-ancestor-main-tmp/read-claude-artifact` |
+| unique commits vs `dev` / `main` | 0 / 0 | `rev-list-dev-tmp/read-claude-artifact`, `rev-list-main-tmp/read-claude-artifact` |
+| **commits reaching neither line** | **0** | `rev-list-neither-tmp/read-claude-artifact` for the count, `rev-list-ids-neither-tmp/read-claude-artifact` for the ids |
+| release-tag containment | v0.1.16, v0.1.17 | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-tmp/read-claude-artifact`, 19 of them |
+| superseding PR/issue/SHA | none recorded | — |
+| to preserve | nothing -- no object on this ref is absent from `dev` and `main` | — |
+| protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
+| **recommendation** | **safe_to_delete_after_578** | — |
+
+| reference scan | result |
 |---|---|
-| head SHA | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` |
-| author | MongLong0214 |
-| last commit | 2026-08-29T11:33:54+09:00 |
-| age | 3 days |
-| merged into `dev` | yes (0 commits unique to the branch) |
-| merged into `main` | yes (0 commits unique to the branch) |
-| unmerged commits | 0 |
-| ever referenced by a PR | not as a head. In a PR body, only by this audit's own PR [#592](https://github.com/MongLong0214/agent-operator-score/pull/592) (opened 00:23:32Z, naming it as a Phase-A candidate) -- a self-reference from the audit describing itself, not independent evidence; does not change the recommendation |
-| ever referenced elsewhere | only as a named candidate in issue #572 itself |
-| branch protection | none |
-| **recommendation** | **safe to delete after #578** |
+| GitHub-wide issues (`repo:MongLong0214/agent-operator-score "tmp/read-claude-artifact"`) | [#572](https://github.com/MongLong0214/agent-operator-score/issues/572) (open) |
+| GitHub-wide pull requests | [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
+| sweep completeness | complete -- all 2 result(s) the API reported were retrieved |
+| repository tree (`git-grep-tmp/read-claude-artifact`) | none found |
 
-Reason: fully contained in both `origin/dev` and `origin/main` via PR #538's back-merge chain. It is
-a `tmp/*` branch; repository policy already caps those at 7 days or task end, and this one is 3 days
-old with its only content long since merged elsewhere. This audit's own PR #592 names the branch in
-its body, but only as this document talking about itself -- see "ever referenced by a PR" above.
-Deleting it after #578 loses nothing.
+Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16 and v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it. It is a tmp/* branch, which repository policy caps at seven days or task end; it is past that. The all-state PR history is empty and the complete reference sweep finds nothing outside this audit.
 
-## Why `task/issue-588-mark-done` is no longer in the stale-branch table
+**Could not establish: what the branch was used to read, and whether anything was ever committed to it and later discarded**
 
-The first version of this document audited `task/issue-588-mark-done` here, with `must_be_preserved`,
-because its PR-list query (355 PRs checked) found nothing referencing it and it existed on no other
-ref -- it was carrying two real, unmerged commits hardening the #588 execution-plan governance gate
-with nobody watching it, so far as that query could tell. That finding was correct given what the
-query saw, and the underlying facts about the commits themselves have not changed. What changed is
-that the correction found PR #591, which had in fact already been opened against the branch five
-minutes before the first snapshot was generated (00:13:30Z vs. 00:18:26Z) -- the first snapshot's own
-query was stale, not the branch. Once found, this moves the branch from "orphaned unmerged work" to
-"active work under review" -- a stronger, not weaker, reason to preserve it. It now lives in the
-open-PR-heads table above instead of here, per the issue's own scoping rule.
+- Searched: The receipted complete GitHub-wide sweep, a receipted `git grep` over the tree, and the receipted all-state PR history: nothing names it outside this audit, #572 and the previous audit's PR, and no pull request ever used it as a head. A remote branch has no reflog readable from a clone, so a commit pushed and force-replaced before this audit would leave no trace any command here can reach.
+- Bearing on deletion: `none`
+- Why it does not bear: The question is about objects that are not on the ref now. The ref as it stands is an ancestor of both dev and main with 0 commits reaching neither, so deleting it removes no reachable object. An object already unreachable from this ref is not preserved by keeping the ref either, which is why #572 routes evidence into committed fixtures and issue records rather than leaving it on a branch.
+## Classification vocabulary, and what each state has to carry
 
-## Repository-level facts
+| classification | what it claims | required record | may become deletable |
+|---|---|---|---|
+| `MERGED` | every commit is reachable from `dev` and `main` | zero commits reaching neither line; nothing named to preserve | yes |
+| `SUPERSEDED` | the work was redone elsewhere, *not* merged verbatim | a superseding PR or issue, the SHA the replacement landed at, a note saying how it covers this branch, and one accounted-for commit id per commit reaching neither line | yes |
+| `UNIQUE_WORK` | commits or files exist on no other ref | what is unique, plus a plan: canonical issue, replacement branch base, `cherry-pick` or `reimplement`, and a required new PR with CI | no |
+| `EVIDENCE_ONLY` | the branch is holding evidence | what evidence, plus a destination (issue, comment, doc, fixture or commit), its locator, and whether the migration has happened | no |
+| `ACTIVE` | an open PR or an active owner | the open PR | no |
+| `UNKNOWN_HOLD` | something bearing on the decision could not be established | at least one `unestablished` entry marked `blocks_deletion` | no |
 
-- `main` and `dev` are both branch-protected: `allow_deletions: false`, `allow_force_pushes: false`,
-  `enforce_admins: true`. No repository rulesets are configured (`gh api .../rulesets` returns `[]`).
-- The repository has `delete_branch_on_merge: true` -- normal feature/task branches are already
-  removed automatically on merge, consistent with the general policy this issue documents
-  (feature/task/fix branches deleted after merge; `tmp/*` capped at 7 days or task end;
-  release/hotfix branches deleted after release + back-merge).
-- None of the 5 branches on origin other than `main`/`dev` (7 heads total minus `main` and `dev`) have
-  any branch protection of their own.
+`SUPERSEDED` is deliberately not a synonym for `MERGED`: its premise is that the original commits
+were reimplemented rather than merged, so demanding containment of it would delete the route the
+issue describes.
 
-## Why the JSON lives at `fixtures/stale-branches/audit.json`, not under `governance/`
+A branch reaches deletion-eligibility only by satisfying all of these at once: a deletable
+classification with its record complete; content demonstrably elsewhere; audited at the exact commit
+the snapshot observed, with every asserted number matching a receipted derivation; no open PR; no
+protection; an empty `preserve` list; and nothing in `unestablished` that bears on the decision. Any
+finding anywhere empties the whole eligible set.
 
-`AGENT_RULES.md` lists `governance/**` as coordinator-owned hot-file surface. The machine-readable
-audit was placed at `fixtures/stale-branches/audit.json` instead so this issue does not touch that
-surface. **The coordinator may want to move this file under `governance/` (or elsewhere) as part of
-its own integration; nothing here depends on the exact path, only on the schema (`aos-stale-branch-audit.v1`).**
+And eligibility is still only necessary. The deletion additionally requires a freshly collected
+observation showing the ref at that commit with no pull request open on it now.
 
-## What Phase B (blocked on #578) must still do
+## What could not be established
 
-Per the issue's own two-phase execution section, Phase B (after #578 PASS) is:
+Both fully-merged branches carry a named unestablished fact, argued rather than dismissed. In each
+case the shape is the same: what could not be established is a question about the past, while the
+question deletion turns on is about the present -- and the present is established by receipted
+commands, at zero commits reaching neither line.
 
-1. **Re-collect everything in this document from scratch** -- `git ls-remote`, `gh pr list`, merge
-   status against the then-current `dev`/`main`. This document is a snapshot from an actively
-   developed batch and has already needed one correction before merge; treat every fact here as a
-   starting point for re-verification, not as ground truth.
-2. Confirm the final evidence bundle preserves what needs preserving (in particular, resolve
-   `task/issue-588-mark-done` and any other branch this document could not classify as fully
-   inactive -- do not delete anything still under an open PR).
-3. Delete only the branches a fresh audit marks `safe_to_delete_after_578` --
-   (`fix/a-fixture-backed-agent-is-not-a-runtime`, `tmp/read-claude-artifact` as of this snapshot,
-   pending re-verification).
-4. Re-read post-delete state and confirm the invariants the issue lists: `main`/`dev`/tag SHAs
-   unchanged, open PR heads untouched, branch protection unchanged.
+Neither branch is recommended for deletion *because* nothing could be found against it. Each is
+recommended because `git merge-base --is-ancestor` -- against `dev`, against `main`, and once per
+tag reported by `git ls-remote --tags origin` -- together with `git rev-list`
+positively establish that its content lives on both integration lines and in released tags. Absence
+of evidence is not the evidence.
 
-None of that was performed here. No `git push --delete`, `git branch -D` on a branch this agent did
-not create, or `gh api -X DELETE` was run at any point during this work.
+Two things remain unestablishable from inside the repository:
+
+- **The historical state at an earlier `generated_at`.** GitHub keeps no queryable history of branch
+  refs. Every fact here is bound to this collection instant; earlier snapshots are superseded, not
+  re-verified.
+- **A commit force-replaced on a remote branch before this audit.** A remote branch has no reflog
+  readable from a clone. Recorded on `tmp/read-claude-artifact`, the branch it could apply to.
+
+## Historical baseline (context, not the deletion comparison)
+
+Recorded so a later reader can see how far the repository has moved. What must not change *across a
+deletion* is compared between the two observations that bracket it, not against this.
+
+- `main`: `d2c68036ebf9f9fd7287258fd3cec252133ef846`, `dev`: `0616cfa47353c201c790bda0e3a802387e6e321c`
+- protection: the complete objects for both refs (12 fields each)
+- rulesets: 0 configured
+- `delete_branch_on_merge`: true, default branch `dev`
+
+### The stable plugin/install source
+
+| file | digest |
+|---|---|
+| `.claude-plugin/marketplace.json` | `sha256:fbe00f610b6acf50d03baf59d474ded48aaa0badb0f3f8d1546b71adb2539713` |
+| `.claude-plugin/plugin.json` | `sha256:4e37598b3a12d1122b2dd2b8b091994faa04ca19c53e84108b98a6242e8fc64d` |
+
+Plus the package identity (`agent-operator-score`, its `bin` map and its published `files` list).
+
+### Release tags
+
+Two object ids per tag. `ref_sha` is what `refs/tags/<name>` points at -- for an annotated tag the
+tag object itself, carrying the annotation and any signature. `commit_sha` is what it peels to.
+Recording only the commit would let a tag be replaced by a *different* tag object over the same
+commit, and nothing would notice.
+
+| tag | ref object | commit |
+|---|---|---|
+| `archive/pre-v0.1.0-governance` | `332c6ab016a9a77a9c2625b03e5a6ecd2b6c817f` | `36b823f22217e9d8be011318e295231c62a3f813` |
+| `v0.1.0` | `0c482e24d2ad2c35955ffd7dafe9e4b66980890a` | `fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3` |
+| `v0.1.1` | `1ae539d02ed89134b496cb227a6a5b764172c442` | `efe351c991797a8cde88c23b8e8933d9a90db11d` |
+| `v0.1.10` | `c6dca1ca26683cdd53e6eeedbf1f813da4444bbf` | `98353d24fdd6b932c717bd8b9a0971c22986f7b7` |
+| `v0.1.11` | `f9dd920c091aca85765680dc5b346ef088ac4029` | `4566b33143155b91981d07308bd113ad8fad9b35` |
+| `v0.1.12` | `19eebfea5a6b9eae1ad8da296fba156dbc6de904` | `c371ac93d49a592925b24de5013bc9b3b303dd7d` |
+| `v0.1.13` | `d1a5602d049928de0bc356d1609f38665067ab3d` | `1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea` |
+| `v0.1.14` | `6ef289a2213d5f2110ed9809c9e1093013351898` | `d89a4b22a0e8de14fff316edcae18c3e6caadf9a` |
+| `v0.1.15` | `32705b97f71367a4b2dceeb47990eed091210e57` | `426c23d0f62fa2666135f978db0f5802ace7c8cc` |
+| `v0.1.16` | `ccdad531f3c02459a40306ec95e9a062cd215b12` | `120ce7c96feb961ee7c4599c2946f059b8d9b7c6` |
+| `v0.1.17` | `4bdc072b9cb7f60d1b2ce87c575450100c6169ac` | `d2c68036ebf9f9fd7287258fd3cec252133ef846` |
+| `v0.1.2` | `0cd9f8aba4f7ad9bb01144b15b6c78102e03b577` | `43bae4bf460939a743c837b8e0a05d8f9e044026` |
+| `v0.1.3` | `8b33ae3cb13bb20ad0fa60e2b6e1fc5c51fad470` | `dc7f6563ec0d6e951fe984fa026eea8c5efc3aed` |
+| `v0.1.4` | `1ec11902ae3edaaf63560c4e9b5804296b430de4` | `ae648b7dca5574c6af938dc44b6802f1bf732929` |
+| `v0.1.5` | `268945956e99d24d9cf796eed2fb8dc62226042b` | `bbfae658e87ac2de7c6326739704a877fb118301` |
+| `v0.1.6` | `425fa1a8b24a87e83c588fb805f5a9e529cb7676` | `aebcbd8b7105da88ae71d0e5a80be59b99e8cc53` |
+| `v0.1.7` | `7349872a98c83e577d8193184aa6f16cb3a97011` | `8e84fbcb42f79d86263aab42a1291ecf09ddba7f` |
+| `v0.1.8` | `64f3ad0ccf46008e40a2a446a8df2f8de43131b4` | `30d30485f4ade54238cba5aa1a8bc85452df7d39` |
+| `v0.1.9` | `ac7fc44cafee09cc9765254ca6248efd1ddfc508` | `3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` |
+
+### Open PR heads
+
+| PR | head branch | head SHA | base |
+|---|---|---|---|
+| [#612](https://github.com/MongLong0214/agent-operator-score/pull/612) | `task/issue-572-branch-audit` | `fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5` | dev |
+| [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) | `task/issue-574-discovery` | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | dev |
+| [#618](https://github.com/MongLong0214/agent-operator-score/pull/618) | `task/issue-557-actual-effects` | `d4cbc108ebb827aad49eb6ba7673029e757efbd2` | dev |
+
+## Repository branch policy
+
+The branch policy this issue asks to be written down. Descriptive of the repository's current settings where a setting exists, prescriptive where none does.
+
+- feature/, task/ and fix/ branches are deleted once their PR merges. delete_branch_on_merge is enabled, so this happens automatically; the branches in this audit that were not removed are the ones that never had a PR.
+- tmp/* branches live at most seven days or until their task ends, whichever comes first. No setting enforces this; it is checked by re-running this audit.
+- release/ and hotfix/ branches are deleted after the release ships and the back-merge into dev lands.
+- main and dev are protected: no deletion, no force push, enforced for admins. No repository rulesets are configured.
+- A branch is not an evidence archive. Anything worth keeping is moved into a commit, a committed fixture, a document or an issue record before the branch it lived on is deleted -- which is why this issue's Phase B is blocked on #578 and #588 rather than running now.
+
+## What Phase B must do, once #578 and #588 have cleared
+
+**Phase A ships no executor.** Performing a deletion, witnessing it and recording completion is
+Phase B's work; what this PR provides is the evidence and the verifiers Phase B has to satisfy. The
+sequence below is what Phase B does, and every step of it is checkable by something in this
+repository today.
+
+**The gate is `deletionAuthorizationFindings({audit, log, pre, post, completion})`**, and running it
+is the step that cannot be skipped. It composes every check below and is the only caller that hands
+each of them the evidence it is supposed to compare against — the two observations, recomputed and
+matched against the digests the record cites. Running the parts individually and reading four empty
+results as authorization is how a record citing two fabricated digests, stamped forty days after the
+observation it calls "immediately beforehand", once drew no finding at all: each part was asked a
+question it had not been given the evidence to answer.
+
+1. **Read the canonical prerequisite snapshot** for the repository being operated on --
+   `prerequisiteFindings` -- and stop if #578 or #588 is not closed with close evidence. Before
+   anything else: a check that runs after the act is a report, and the act is not reversible.
+2. **Collect an observation** with `node scripts/collect-branch-state.mjs`, and re-run the audit
+   against it: coverage, derivations, classification, unestablished facts, and the observation's own
+   shape. `liveEligibility` does all of that and refuses outright without an observation.
+3. **Take only what is still true.** A branch is eligible only if the fresh observation shows it at
+   the exact commit the audit judged, with no pull request open on it according to *either* source
+   that would know -- the open-PR list and the branch's own collected history -- and with the
+   observation reporting it unprotected. As of this snapshot the audit's eligible set is
+   `fix/a-fixture-backed-agent-is-not-a-runtime` (`e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1`) and
+   `tmp/read-claude-artifact` (`2d6392f578dd2667d5f1f6ba5073a2c4311430eb`); what survives the narrowing is decided then, not now.
+   Nothing surviving it is a legitimate completion, not a failure -- auto-delete makes that ordinary.
+4. **Delete exactly that list**, and nothing else.
+5. **Collect a second observation**, whether or not the deletion succeeded -- one that failed halfway
+   has still changed the repository, and what it changed is the same question.
+6. **Compare the two observations** -- `boundaryInvariantFindings` -- `main`, `dev`, tag ref and commit identity, the complete
+   protection objects, the rulesets, the install source, the repository settings, and every open pull
+   request head. The set of heads that vanished between them must equal exactly the set being
+   claimed: a deletion that took one extra ref with it, and a claim of a deletion that did not
+   happen, are both findings.
+7. **Write `fixtures/stale-branches/deletion-log.json`** citing both observation digests, and check
+   the whole thing with `deletionAuthorizationFindings({audit, log, pre, post, completion})`. The log
+   carries no state of its own: the state lives in the two observations, and the log names them —
+   which is why the check is handed those observations rather than the log's account of them.
+   `deletionLogFindings(log, {completion, pre, post})` is the part of it that recomputes both digests
+   and applies the 900-second window; called without the observations it reports that it could not
+   check the citation, because a check that was not run is not a check that passed.
