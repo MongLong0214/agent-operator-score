@@ -266,3 +266,52 @@ test("the scored row and the oracle record describe the same oracle", () => {
   // And the digest is the record's own, recomputed rather than read off it.
   assert.equal(routeOracleDigest(record), record.route_oracle_digest);
 });
+
+test("a ledger that speaks about some tasks does not make the route cheaper than the cheapest one", () => {
+  // Counting a partly attributed ledger gives the unattributed tasks nought invocations each, and
+  // the route then costs less than the minimum -- a route nobody finished observing, reported as
+  // one that beat the oracle.
+  const requirements = requirementsFromWork(WORK).requirements;
+  const capabilities = twoKnown();
+  const owners = { contract: "one", implementation: "one", docs: "one", verification: "two", release: "one" };
+  const declared = Object.keys(owners).map((task_id) => ({ task_id, owner_id: owners[task_id] }));
+  const partial = ["contract", "docs"].map((taskId, index) => event({
+    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
+  }));
+
+  const oracle = routeOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: partial });
+  assert.equal(oracle.cost_basis, "declared-assignment");
+  assert.equal(oracle.actual_cost, oracle.minimum.minimum_cost);
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route").pass, true);
+
+  // Every task attributed, and the ledger is the basis.
+  const whole = Object.keys(owners).sort().map((taskId, index) => event({
+    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
+  }));
+  const full = routeOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: whole });
+  assert.equal(full.cost_basis, "actual-route-events");
+  assert.equal(full.actual_cost, full.minimum.minimum_cost);
+});
+
+test("a task two different agents invoked has no owner rather than the first of them", () => {
+  const requirements = requirementsFromWork(WORK).requirements;
+  const capabilities = twoKnown();
+  const owners = { contract: "one", implementation: "one", docs: "one", verification: "two", release: "one" };
+  const ledger = Object.keys(owners).sort().map((taskId, index) => event({
+    task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
+  }));
+  const contested = [...ledger, event({ task_id: "verification", agent_id: "one", invocation_id: "invocation-contested", purpose_id: "verification", artifact_ids: ["artifact-contested"] })];
+
+  const oracle = routeOracle({ requirements, capabilities, actual_route_events: contested });
+  const verification = oracle.assignment.find((entry) => entry.task_id === "verification");
+  assert.equal(verification.owner_id, null, "the first invocation was taken as the owner");
+  assert.equal(verification.provenance, "ambiguous");
+  // And the questions that need an owner withhold rather than answering about one of the two.
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").pass, null);
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "verification-independence").pass, null);
+
+  // A task invoked twice by the same agent is not ambiguous.
+  const retried = [...ledger, event({ task_id: "verification", agent_id: "two", invocation_id: "invocation-retry", purpose_id: "verification", artifact_ids: ["artifact-retry"] })];
+  const plain = routeOracle({ requirements, capabilities, actual_route_events: retried });
+  assert.equal(plain.assignment.find((entry) => entry.task_id === "verification").owner_id, "two");
+});

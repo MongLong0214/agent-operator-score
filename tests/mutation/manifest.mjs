@@ -16,6 +16,24 @@
 
 export const GUARDS = [
   {
+    guard: "a partly attributed ledger is not the cost basis",
+    reason: "counting a ledger that speaks about some tasks gives the rest nought invocations each, and the route then costs less than the cheapest possible one -- a run nobody finished observing, reported as one that beat the oracle",
+    file: "lib/routing-oracle.mjs",
+    from: "  const costBasis = requirements.length > 0 && requirements.every((requirement) => invocationsOf.has(requirement.task_id))",
+    to: "  const costBasis = requirements.length > 0 && requirements.some((requirement) => invocationsOf.has(requirement.task_id))",
+    test: "tests/product/actual-route-authority.test.mjs",
+    name: "a ledger that speaks about some tasks does not make the route cheaper than the cheapest one"
+  },
+  {
+    guard: "a task two agents invoked has no owner",
+    reason: "picking the first or the last of two agents would be this module deciding who owned a task the ledger did not say, and every capability and independence answer would then rest on that choice",
+    file: "lib/routing-oracle.mjs",
+    from: "    if (agents.size === 1) actualOf.set(taskId, [...agents][0]);",
+    to: "    actualOf.set(taskId, [...agents][0]);",
+    test: "tests/product/actual-route-authority.test.mjs",
+    name: "a task two different agents invoked has no owner rather than the first of them"
+  },
+  {
     guard: "an owner AOS cannot judge is not delegation the operator got wrong",
     reason: "the reference #583 consumes must not turn AOS not knowing what an agent can do into a judgement that the operator under-delegated; the same distinction is made in the minimality verdict and fixing it on one side only is how the class survives",
     file: "lib/routing-oracle.mjs",
@@ -3561,6 +3579,7 @@ export const ACCOUNTED_GUARDS = [
   "a named secret is a secret without a digit in it",
   "a new run is never scored by the old scorer",
   "a one-segment absolute path is a path",
+  "a partly attributed ledger is not the cost basis",
   "a phase's predecessors must be in the plan",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a process with no key for a run says so",
@@ -3589,6 +3608,7 @@ export const ACCOUNTED_GUARDS = [
   "a subcheck verdict is one of three states, never rounded",
   "a surface carries the rows it says it averaged",
   "a task re-entering an ancestor's resource is the one that checks it",
+  "a task two agents invoked has no owner",
   "a truncated cycle search says so",
   "a truncated reachability answer is not an answer",
   "a value and its digest are not both accepted",
