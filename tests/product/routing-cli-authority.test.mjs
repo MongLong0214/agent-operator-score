@@ -48,7 +48,14 @@ function workspaceOr(t) {
   }
 }
 
-/** Registered the way a real runtime is, under an adapter AOS ships a capability record for. */
+/**
+ * Registered the way a real runtime is, under an adapter AOS ships a capability record for.
+ *
+ * `codex-cli.v1` and not `claude-code.v1`: the latter resolves its credential from the login
+ * keychain, so AOS refuses to hand it to a binary on a world-writable path -- which is where the CI
+ * runner keeps node. That refusal is correct and it is `lib/runtime-identity.mjs`'s subject, not
+ * this file's; a routing test that trips it is testing the wrong thing on one platform only.
+ */
 const addAdaptedAgent = (cwd, id, adapter) => runCli(cwd, [
   "agent", "add", id, "--command", process.execPath, "--arg", fakeAgent,
   ...(adapter === null ? [] : ["--adapter", adapter]),
@@ -127,7 +134,7 @@ test("the agent a route event names is the agent that ran, not the one the plan 
   if (cwd === null) return;
   initBare(cwd);
   addAdaptedAgent(cwd, "alpha", "codex-cli.v1");
-  addAdaptedAgent(cwd, "beta", "claude-code.v1");
+  addAdaptedAgent(cwd, "beta", "codex-cli.v1");
 
   const agents = (record) => [...new Set(record.routing_oracle.actual_route_events.map((event) => event.agent_id))].sort();
   const routeIds = (record) => [...new Set(record.routing_oracle.actual_route_events.map((event) => event.route_id))];
@@ -180,7 +187,7 @@ test("a handoff from a stage that produced nothing is not a handoff that happene
   const silent = join(cwd, "silent-agent.mjs");
   writeFileSync(silent, SILENT_AGENT);
   runCli(cwd, ["agent", "add", "alpha", "--command", process.execPath, "--arg", silent, "--adapter", "codex-cli.v1"]);
-  addAdaptedAgent(cwd, "beta", "claude-code.v1");
+  addAdaptedAgent(cwd, "beta", "codex-cli.v1");
 
   const { record } = assess(cwd, "alpha>beta", "1");
   const oracle = record.routing_oracle;
