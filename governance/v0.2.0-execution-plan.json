@@ -441,7 +441,7 @@
     {
       "issue": 561,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 1,
       "blocked_by": [
         554,
