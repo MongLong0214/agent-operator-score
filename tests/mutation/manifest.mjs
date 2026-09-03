@@ -29,7 +29,7 @@ export const GUARDS = [
     reason: "picking the first or the last of two agents would be this module deciding who owned a task the ledger did not say, and every capability and independence answer would then rest on that choice",
     file: "lib/routing-oracle.mjs",
     from: "    if (agents.size === 1) actualOf.set(taskId, [...agents][0]);",
-    to: "    actualOf.set(taskId, [...agents][0]);",
+    to: "    if (agents.size >= 1) actualOf.set(taskId, [...agents][0]);",
     test: "tests/product/actual-route-authority.test.mjs",
     name: "a task two different agents invoked has no owner rather than the first of them"
   },
