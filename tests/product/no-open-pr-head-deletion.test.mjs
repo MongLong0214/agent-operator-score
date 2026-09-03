@@ -312,9 +312,12 @@ test("an open pull request visible only in the collected history still refuses t
       responses[`repos/${fixture.repository}/pulls?state=all&head=fixture-owner:tmp/merged-thing&per_page=100`]
         .push({ number: 2, state: "open", merged_at: null, base: { ref: "dev" }, head: { ref: "tmp/merged-thing", sha: fixture.shas.main } });
     });
-    const { eligible, refused } = liveEligibility(audit, recollect(fixture));
+    // Two independent refusals now: the fresh derivations disagree with the stored record, and the
+    // per-branch check sees the pull request. Either is enough; both naming it is better.
+    const { eligible, refused, findings } = liveEligibility(audit, recollect(fixture));
     assert.deepEqual(eligible, [], "an open PR the open-list did not mention left the branch eligible");
-    assert.ok(refused.some((one) => one.name === "tmp/merged-thing" && one.reason.includes("#2")), `the refusal does not name the pull request: ${JSON.stringify(refused)}`);
+    const said = [...findings, ...refused.map((one) => `${one.name}: ${one.reason}`)];
+    assert.ok(said.some((one) => one.includes("tmp/merged-thing") && one.includes("#2")), `the refusal does not name the pull request: ${said.join(" | ")}`);
   });
 });
 
@@ -360,9 +363,10 @@ test("a branch that moved since the audit is refused at the commit the audit jud
         if (branch.name === "tmp/merged-thing") branch.commit.sha = moved;
       }
     });
-    const { eligible, refused } = liveEligibility(audit, recollect(fixture));
+    const { eligible, refused, findings } = liveEligibility(audit, recollect(fixture));
     assert.deepEqual(eligible, [], "a branch that moved after the audit stayed eligible");
-    assert.ok(refused.some((one) => one.reason.includes("live it points at")), `the refusal does not name the moved commit: ${JSON.stringify(refused)}`);
+    const said = [...findings, ...refused.map((one) => `${one.name}: ${one.reason}`)];
+    assert.ok(said.some((one) => one.includes("tmp/merged-thing")), `nothing named the branch that moved: ${said.join(" | ")}`);
   });
 });
 
@@ -404,5 +408,50 @@ test("a finding carries no absolute filesystem path", () => {
     for (const finding of findings) {
       assert.ok(!/(?:\/[\w.@%+-]+){3,}/u.test(finding), `a finding carries an absolute path: ${finding}`);
     }
+  });
+});
+
+// GitHub's own value is "open"; the collector normalises to "OPEN". A gate matching one spelling
+// exactly is a gate an unnormalised observation walks straight through.
+test("a pull request state in either spelling blocks the branch", () => {
+  drive({}, (fixture, audit, observation) => {
+    for (const spelling of ["open", "OPEN", "Open"]) {
+      const pre = structuredClone(observation);
+      pre.open_prs = [...pre.open_prs, { number: 999, head_branch: "tmp/merged-thing", head_sha: fixture.shas.main, base: "dev", state: spelling }];
+      const { eligible } = liveEligibility(audit, pre);
+      assert.deepEqual(eligible, [], `a pull request whose state reads "${spelling}" did not block the branch`);
+    }
+  });
+});
+
+// Omission is not observation: a gate reading `open_prs ?? []` treats a missing family as an empty one.
+test("an observation that omits a family it is read for is refused", () => {
+  drive({}, (fixture, audit, observation) => {
+    for (const family of ["open_prs", "rest_heads", "tags", "rulesets"]) {
+      const pre = structuredClone(observation);
+      delete pre[family];
+      const { eligible, findings } = liveEligibility(audit, pre);
+      assert.deepEqual(eligible, [], `an observation with no ${family} still produced an eligible branch`);
+      assert.ok(findings.some((one) => one.includes(family)), `an observation with no ${family} was not refused for it: ${findings.join(" | ")}`);
+    }
+    const noProtection = structuredClone(observation);
+    delete noProtection.protection;
+    assert.ok(liveEligibility(audit, noProtection).findings.some((one) => one.includes("protection")), "an observation with no protection was not refused");
+  });
+});
+
+// The reviewer's reproduction: the derivations are collected fresh and then the record is checked
+// against its own stored copy. A branch whose live graph facts disagree with the audit -- not
+// contained, commits reaching neither line -- stayed eligible because only coverage was re-run.
+test("a branch whose live graph facts disagree with the audit is refused", () => {
+  drive({}, (fixture, audit, observation) => {
+    const pre = structuredClone(observation);
+    const derived = pre.derivations["tmp/merged-thing"];
+    derived.unique_vs_dev_and_main.value = 99;
+    derived.ancestor_of_dev.value = false;
+    pre.digest = observationDigest(pre);
+    const { eligible, findings } = liveEligibility(audit, pre);
+    assert.deepEqual(eligible, [], "a branch the fresh derivations contradict stayed eligible");
+    assert.ok(findings.some((one) => one.includes("the collector derived")), `the disagreement with the fresh derivations was not reported: ${findings.join(" | ")}`);
   });
 });

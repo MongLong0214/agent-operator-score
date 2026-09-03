@@ -299,3 +299,13 @@ test("canonicalization compares content rather than key order or cardinality", (
   assert.notEqual(canonicalize({ a: 1 }), canonicalize({ a: 2 }));
   assert.notEqual(canonicalize([{ id: 1 }]), canonicalize([{ id: 2 }]));
 });
+
+// Absent on both sides digests the same as equal on both sides, so a pair that never recorded
+// protection at all would report it unchanged.
+test("protection absent from both boundary observations is not protection unchanged", () => {
+  const { pre, post } = boundaryPair();
+  delete pre.protection;
+  delete post.protection;
+  const findings = boundaryInvariantFindings(completedLog(pre, post), pre, post);
+  assert.ok(findings.some((f) => f.includes("not recorded on both sides")), `two observations with no protection reported it unchanged: ${findings.join(" | ")}`);
+});

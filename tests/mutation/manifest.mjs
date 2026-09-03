@@ -2265,34 +2265,14 @@ export const GUARDS = [
     name: "nothing is found eligible without a live observation"
   },
   {
-    guard: "live eligibility re-checks the commit the audit judged",
-    reason:
-      "a branch that moved since the audit is a different branch; carrying the old verdict onto it would authorize removing work nobody looked at",
-    file: "scripts/branch-audit.mjs",
-    from: "    else if (live !== entry.head_sha) refused.push({ name: entry.name, reason: `the audit judged it at ${entry.head_sha} but live it points at ${live}` });",
-    to: "",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "a branch that moved since the audit is refused at the commit the audit judged"
-  },
-  {
     guard: "an open pull request is looked for in every source that would know",
     reason:
       "the observation collects the open-PR list and the per-branch history separately; reading only the first let an OPEN row in the history pass, and an empty list read as nothing open",
     file: "scripts/branch-audit.mjs",
-    from: "  const listed = (observation?.open_prs ?? []).find((pr) => pr.state === \"OPEN\" && pr.head_branch === branch);",
+    from: "  const listed = (observation?.open_prs ?? []).find((pr) => isOpen(pr.state) && pr.head_branch === branch);",
     to: "  const listed = null;",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a pull request opened after the audit was written blocks the deletion, whatever the audit says"
-  },
-  {
-    guard: "the per-branch history is consulted for an open pull request",
-    reason:
-      "an open pull request the open-PR list did not mention is still an open pull request, and its head branch is still one this issue forbids deleting",
-    file: "scripts/branch-audit.mjs",
-    from: "  return history.find((pr) => pr.state === \"OPEN\") ?? null;",
-    to: "  return null;",
-    test: "tests/product/no-open-pr-head-deletion.test.mjs",
-    name: "an open pull request visible only in the collected history still refuses the branch"
   },
   {
     guard: "protection is re-checked live, not read from the stored flag",
@@ -2353,6 +2333,56 @@ export const GUARDS = [
     to: "    const prs = { items: [], complete: false };",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "a live observation of a real repository finds exactly the eligible branch"
+  },
+  {
+    guard: "the fresh observation's derivations are the ones checked",
+    reason:
+      "collecting the derivations and then checking the record against its own stored copy is the lie the receipts exist to stop: a branch whose live graph facts disagree with the audit would still authorize",
+    file: "scripts/branch-audit.mjs",
+    from: "    ...derivationFindings(audit, pre),\n    ...classificationFindings(audit),",
+    to: "    ...derivationFindings(audit),\n    ...classificationFindings(audit),",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a branch whose live graph facts disagree with the audit is refused"
+  },
+  {
+    guard: "either spelling of an open pull request blocks",
+    reason:
+      "GitHub returns \"open\" and the collector normalises to \"OPEN\"; a gate matching one exactly is one an unnormalised observation walks through",
+    file: "scripts/branch-audit.mjs",
+    from: "const isOpen = (state) => typeof state === \"string\" && state.toLowerCase() === \"open\";",
+    to: "const isOpen = (state) => state === \"OPEN\";",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "a pull request state in either spelling blocks the branch"
+  },
+  {
+    guard: "an omitted observation family is not an observed empty one",
+    reason:
+      "a gate reading open_prs ?? [] treats a missing family as an empty one, so the families every decision reads have to be present before any of it is believed",
+    file: "scripts/collect-branch-state.mjs",
+    from: "    if (!Array.isArray(observation[family])) findings.push(`the observation records no ${family}, which is not the same as observing none`);",
+    to: "",
+    test: "tests/product/no-open-pr-head-deletion.test.mjs",
+    name: "an observation that omits a family it is read for is refused"
+  },
+  {
+    guard: "absent protection on both sides is not unchanged protection",
+    reason:
+      "two absent objects digest the same, so a pair that never recorded protection would report it unchanged across the deletion",
+    file: "scripts/branch-audit.mjs",
+    from: "    if (!pre.protection?.[ref] || !post.protection?.[ref]) findings.push(`${ref} protection is not recorded on both sides of the deletion, so nothing can say it is unchanged`);\n    else if (contentDigest(pre.protection[ref]) !== contentDigest(post.protection[ref])) findings.push(`${ref} protection changed across the deletion`);",
+    to: "    if (contentDigest(pre.protection?.[ref] ?? null) !== contentDigest(post.protection?.[ref] ?? null)) findings.push(`${ref} protection changed across the deletion`);",
+    test: "tests/product/branch-cleanup-invariants.test.mjs",
+    name: "protection absent from both boundary observations is not protection unchanged"
+  },
+  {
+    guard: "the references a record reports are the ones the sweep returned",
+    reason:
+      "only the sweep's completeness was read, so a record could report fewer references than the search found and nothing compared the two",
+    file: "scripts/branch-audit.mjs",
+    from: "      if (canonicalize(recorded) !== canonicalize(collected)) findings.push(`${entry.name}: records ${recorded.length} GitHub reference(s) but the sweep returned ${collected.length}`);",
+    to: "",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "a record that under-reports the references the sweep returned is refused"
   },
   {
     guard: "the observation digest is recursive over its content",
@@ -2549,7 +2579,7 @@ export const GUARDS = [
     reason:
       "three booleans out of a twelve-field protection object cannot report that a fourth changed",
     file: "scripts/branch-audit.mjs",
-    from: "    if (contentDigest(pre.protection?.[ref] ?? null) !== contentDigest(post.protection?.[ref] ?? null)) findings.push(`${ref} protection changed across the deletion`);",
+    from: "    else if (contentDigest(pre.protection[ref]) !== contentDigest(post.protection[ref])) findings.push(`${ref} protection changed across the deletion`);",
     to: "",
     test: "tests/product/branch-cleanup-invariants.test.mjs",
     name: "branch protection changed across the deletion is refused, in any field the API returns"
@@ -3825,6 +3855,7 @@ export const ACCOUNTED_GUARDS = [
   "a withheld corpus does not pass",
   "a withheld metric says so rather than reading as uncomputed",
   "a withheld rate keeps the counts that withheld it",
+  "absent protection on both sides is not unchanged protection",
   "abstention cannot outweigh decision",
   "allowlist-only child environment",
   "an after-snapshot head is in flight, not merely named",
@@ -3839,6 +3870,7 @@ export const ACCOUNTED_GUARDS = [
   "an excused head's own claims are checked against the observation",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an omitted observation family is not an observed empty one",
   "an open PR head survives the deletion",
   "an open PR makes the branch ACTIVE, whatever it is labelled",
   "an open pull request is looked for in every source that would know",
@@ -3888,6 +3920,7 @@ export const ACCOUNTED_GUARDS = [
   "doctor checks a required config name has a value",
   "done issues have no withheld phase",
   "effective execute permission",
+  "either spelling of an open pull request blocks",
   "elementary cycle enumeration",
   "entry state coherence",
   "env option scan",
@@ -3926,7 +3959,6 @@ export const ACCOUNTED_GUARDS = [
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",
-  "live eligibility re-checks the commit the audit judged",
   "local reference redirection",
   "locked cycle seed",
   "main and dev are compared across the deletion itself",
@@ -4046,9 +4078,9 @@ export const ACCOUNTED_GUARDS = [
   "the evidence contract is pinned outside the plan",
   "the exception needs a submission branch to be about",
   "the floor follows the worst severity observed",
+  "the fresh observation's derivations are the ones checked",
   "the invariant baseline agrees with the snapshot it was taken from",
   "the observation digest is recursive over its content",
-  "the per-branch history is consulted for an open pull request",
   "the phrase list names the artifact rows it is supposed to check",
   "the policy digest covers the forbidden rules themselves",
   "the post-deletion observation follows the deletion",
@@ -4062,6 +4094,7 @@ export const ACCOUNTED_GUARDS = [
   "the rebuild is handed the reliance the result was built from",
   "the record cites the post-deletion observation",
   "the record cites the pre-deletion observation it was checked against",
+  "the references a record reports are the ones the sweep returned",
   "the report command serves what the result projects to",
   "the repository settings are compared",
   "the result states the claim ceiling it was issued under",

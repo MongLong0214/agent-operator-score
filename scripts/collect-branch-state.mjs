@@ -325,6 +325,16 @@ export const verifyObservation = (observation) => {
       findings.push(`${branch}: the pull request history was read as a bounded slice, so "no pull request ever used this branch as a head" was not established`);
     }
   }
+  // Omission is not observation. A gate that reads `open_prs ?? []` treats a missing family as an
+  // empty one, so the families every decision reads have to be present before any of it is believed.
+  for (const family of ["heads", "rest_heads", "open_prs", "tags", "rulesets", "reference_sweep"]) {
+    if (!Array.isArray(observation[family])) findings.push(`the observation records no ${family}, which is not the same as observing none`);
+  }
+  for (const ref of ["main", "dev"]) {
+    if (!observation.protection?.[ref]) findings.push(`the observation records no protection for ${ref}`);
+  }
+  if (!observation.settings || !observation.install_source) findings.push("the observation records no repository settings or install source");
+
   for (const branch of (observation.heads ?? []).map((head) => head.name)) {
     if (branch === "main" || branch === "dev") continue;
     if (!observation.derivations?.[branch]) findings.push(`${branch} is on the repository but the observation derives nothing about it`);

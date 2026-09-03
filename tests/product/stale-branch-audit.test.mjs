@@ -743,3 +743,18 @@ test("a multi-phase issue is not closed by the phase that has run", async () => 
   assert.notEqual(audit.lifecycle.phase_outstanding, audit.phase, "the outstanding phase is the one that already ran");
   assert.equal(audit.phase_b_contract.deletion_log_status, "NOT_YET", "the outstanding phase's output is recorded as done");
 });
+
+// The sweep's hits were collected and only its completeness was read, so a record could report
+// fewer references than the search returned and nothing compared the two.
+test("a record that under-reports the references the sweep returned is refused", () => {
+  const audit = loadAudit();
+  const withHits = audit.branches.find((entry) => entry.references.github_search.issues.length + entry.references.github_search.prs.length > 0);
+  assert.ok(withHits, "no branch has a GitHub reference, so this test would check nothing");
+  for (const patch of [
+    { issues: [], prs: [] },
+    { total_count: 0 }
+  ]) {
+    const forged = withBranch(audit, withHits.name, { references: { ...withHits.references, github_search: { ...withHits.references.github_search, ...patch } } });
+    assert.notDeepEqual(derivationFindings(forged), [], `a record dropping ${JSON.stringify(patch)} from its reference scan passed`);
+  }
+});

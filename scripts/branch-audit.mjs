@@ -64,6 +64,9 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/u;
 
 const isNonEmptyString = (value, min = 1) => typeof value === "string" && value.trim().length >= min;
+
+/** GitHub returns "open"; the collector normalises to "OPEN". Neither spelling may slip past a gate. */
+const isOpen = (state) => typeof state === "string" && state.toLowerCase() === "open";
 const isList = (value) => Array.isArray(value) && value.length > 0;
 
 // Epoch seconds from the shape the regex already accepted, computed rather than parsed: a lenient
@@ -229,7 +232,7 @@ export const auditCoverageFindings = (audit, live = null) => {
     // carrying whatever classification and metadata it liked. The exception now applies only to the
     // branch the audit names as its own submission, and every claim that entry makes is checked
     // against the observation rather than accepted.
-    const openPrByBranch = new Map((live.open_prs ?? []).filter((pr) => pr.state === "OPEN").map((pr) => [pr.head_branch, pr]));
+    const openPrByBranch = new Map((live.open_prs ?? []).filter((pr) => isOpen(pr.state)).map((pr) => [pr.head_branch, pr]));
     const excused = new Set();
     for (const entry of audit.heads_created_after_this_snapshot ?? []) {
       const complaint = afterSnapshotComplaint(audit, entry, openPrByBranch.get(entry.name));
@@ -340,7 +343,7 @@ export const derivationFindings = (audit, observation = audit?.live_observation)
     }
     // "No pull request ever used this branch as a head" is a claim about closed and merged pull
     // requests too, so it needs the all-state query rather than the open list.
-    const openInHistory = (derived.pr_history?.value ?? []).filter((pr) => pr.state === "OPEN");
+    const openInHistory = (derived.pr_history?.value ?? []).filter((pr) => isOpen(pr.state));
     if (entry.open_pr && !openInHistory.some((pr) => pr.number === entry.open_pr.number)) {
       findings.push(`${entry.name}: records open PR #${entry.open_pr.number}, which the collected PR history does not show`);
     }
@@ -356,6 +359,15 @@ export const derivationFindings = (audit, observation = audit?.live_observation)
     const sweep = (observation.reference_sweep ?? []).find((one) => one.branch === entry.name);
     if (!sweep) findings.push(`${entry.name}: no GitHub-wide reference sweep`);
     else if (sweep.complete !== true) findings.push(`${entry.name}: the reference sweep was truncated, so no reference claim rests on it`);
+    else {
+      // The hits themselves, not only that a sweep happened. A record may not report fewer references
+      // than the search returned.
+      const search = entry.references?.github_search ?? {};
+      const recorded = [...(search.issues ?? []), ...(search.prs ?? [])].map((one) => one.number).sort((a, b) => a - b);
+      const collected = sweep.hits.map((one) => one.number).sort((a, b) => a - b);
+      if (canonicalize(recorded) !== canonicalize(collected)) findings.push(`${entry.name}: records ${recorded.length} GitHub reference(s) but the sweep returned ${collected.length}`);
+      if (search.total_count !== sweep.total_count) findings.push(`${entry.name}: records a reference total the sweep did not return`);
+    }
   }
   return findings;
 };
@@ -530,7 +542,10 @@ export const boundaryInvariantFindings = (deletionLog, pre, post) => {
   }
 
   for (const ref of ["main", "dev"]) {
-    if (contentDigest(pre.protection?.[ref] ?? null) !== contentDigest(post.protection?.[ref] ?? null)) findings.push(`${ref} protection changed across the deletion`);
+    // Absent on both sides digests the same, so "unchanged" would be reported for a pair that never
+    // recorded protection at all.
+    if (!pre.protection?.[ref] || !post.protection?.[ref]) findings.push(`${ref} protection is not recorded on both sides of the deletion, so nothing can say it is unchanged`);
+    else if (contentDigest(pre.protection[ref]) !== contentDigest(post.protection[ref])) findings.push(`${ref} protection changed across the deletion`);
   }
   if (contentDigest(pre.rulesets ?? []) !== contentDigest(post.rulesets ?? [])) findings.push("the repository's ruleset configuration changed across the deletion");
   if (contentDigest(pre.install_source) !== contentDigest(post.install_source)) findings.push("the stable plugin/install source changed across the deletion");
@@ -676,10 +691,14 @@ export const openPrHeadDeletionFindings = (audit, deletionLog) => {
  * either one saying OPEN is enough.
  */
 const liveOpenPr = (observation, branch) => {
-  const listed = (observation?.open_prs ?? []).find((pr) => pr.state === "OPEN" && pr.head_branch === branch);
+  const listed = (observation?.open_prs ?? []).find((pr) => isOpen(pr.state) && pr.head_branch === branch);
   if (listed) return listed;
+  // Defence in depth rather than a claimed guard: since the fresh observation's derivations are now
+  // checked against the record, a history that disagrees is already refused before this is reached.
+  // It stays because the two rules answer to different failures and only one of them is about the
+  // record being honest.
   const history = observation?.derivations?.[branch]?.pr_history?.value ?? [];
-  return history.find((pr) => pr.state === "OPEN") ?? null;
+  return history.find((pr) => isOpen(pr.state)) ?? null;
 };
 
 /**
@@ -710,7 +729,9 @@ const liveProtected = (observation, branch) => {
 export const deletionAuthorizationFindings = ({ audit, log, pre = null, post = null, completion = null, maxAgeSeconds = OBSERVATION_MAX_AGE_SECONDS } = {}) => {
   const findings = [
     ...auditCoverageFindings(audit, pre),
-    ...derivationFindings(audit),
+    // Against the fresh observation, not the audit's stored copy of it. Collecting the derivations
+    // and then checking the record against its own transcript is the lie the receipts exist to stop.
+    ...derivationFindings(audit, pre),
     ...deletionLogFindings(log, { completion }),
     ...cleanupInvariantFindings(audit, log),
     ...openPrHeadDeletionFindings(audit, log)
@@ -788,7 +809,7 @@ export const liveEligibility = (audit, pre) => {
   const findings = [
     ...verifyObservation(pre).map((finding) => `observation: ${finding}`),
     ...auditCoverageFindings(audit, pre),
-    ...derivationFindings(audit),
+    ...derivationFindings(audit, pre),
     ...classificationFindings(audit),
     ...unestablishedFindings(audit)
   ];
@@ -801,6 +822,8 @@ export const liveEligibility = (audit, pre) => {
     const pr = liveOpenPr(pre, entry.name);
     const guarded = liveProtected(pre, entry.name);
     if (live === undefined) refused.push({ name: entry.name, reason: "the observation does not show it on the repository" });
+    // Also subsumed by the fresh-derivation check today, and kept for the same reason: a branch that
+    // moved is refused whether or not anyone remembered to compare the derivations.
     else if (live !== entry.head_sha) refused.push({ name: entry.name, reason: `the audit judged it at ${entry.head_sha} but live it points at ${live}` });
     else if (pr) refused.push({ name: entry.name, reason: `PR #${pr.number} is open on it live, whatever the stored audit says` });
     else if (guarded !== false) refused.push({ name: entry.name, reason: guarded === null ? "the observation reports no protection state for it" : "the observation reports it as protected" });
