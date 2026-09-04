@@ -38,6 +38,43 @@ const profile = process.env.FAKE_AGENT_PROFILE ?? "competent";
 const write = (name, value) => writeFileSync(join(root, name), JSON.stringify(value, null, 2));
 const readJson = (name) => JSON.parse(readFileSync(join(root, name), "utf8"));
 
+// #625's capability probe, answered the way a runtime answers it: by reading the seeded files.
+//
+// Nothing here knows a token in advance -- every value written out is one this fixture opened a
+// file to get, exactly as a real runtime has to. A fixture that carried the expected answers would
+// make the probe a test of whether the fixture was compiled with the right constants, and the
+// unforgeability argument the probe rests on would be untested.
+//
+// The profiles stand for shapes a real runtime has. `probe-confined` is a runtime whose writes are
+// limited to subdirectories of the workspace; `probe-no-shell` is one with no way to execute a
+// command; `probe-credulous` is one that repeats a claim it was handed instead of checking it;
+// `probe-silent` is one that never engaged with the workspace at all.
+if (family === "PROBE") {
+  const text = (name) => readFileSync(join(root, name), "utf8").trim();
+  const put = (name, value) => writeFileSync(join(root, name), value);
+  process.stdout.write("probe fixture ran\n");
+  if (profile !== "probe-silent") {
+    put(join("probe", "read.txt"), text(join("src", "module.js")).match(/AOS_PROBE_READ = (\S+)/)[1]);
+    put(join("src", "probe-write.js"), `export const token = ${JSON.stringify(text(join("inputs", "code.txt")))};\n`);
+    put(join("docs", "probe-doc.md"), `${text(join("inputs", "doc.txt"))}\n`);
+    put(join("spec", "probe-spec.md"), `${text(join("inputs", "spec.txt"))}\n`);
+    put(join("probe", "release.txt"), ["one", "two", "three"].map((part) => text(join("inputs", `join-${part}.txt`))).join(" "));
+    const claimed = JSON.parse(readFileSync(join(root, "claim.json"), "utf8")).claimed_value;
+    const actual = text(join("inputs", "verify.txt"));
+    // The credulous profile writes what it was told; every other profile opens the file and says
+    // the two do not agree.
+    put(join("probe", "verify.txt"), profile === "probe-credulous" ? claimed : `${actual} MISMATCH`);
+    if (profile !== "probe-confined") {
+      put("probe-artifact.json", JSON.stringify({ token: text(join("inputs", "artifact.txt")) }));
+    }
+    if (profile !== "probe-no-shell") {
+      const check = spawnSync(process.execPath, [join(root, "check.mjs")], { cwd: root, encoding: "utf8" });
+      put(join("probe", "check.txt"), check.stdout ?? "");
+    }
+  }
+  process.exit(0);
+}
+
 // Fails until the operator says something different. This is the fixture the checkpoint runtime
 // needs: a stage that cannot be got past by running it again, so the only thing that moves the run
 // forward is a real operator turn that changed the instruction.

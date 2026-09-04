@@ -6923,6 +6923,56 @@ export const GUARDS = [
     to: "    add(\"recompute\", false, \"not comparable: this build's contract or schema is not the one that produced it\");",
     test: "tests/product/hard-caps.test.mjs",
     name: "a cap problem is reported as a cap problem and never as a contract or schema mismatch"
+  },
+  {
+    guard: "a probe that observed nothing is not a runtime that can do nothing",
+    reason:
+      "a runtime that crashed on startup, one whose credential did not survive isolation and one that genuinely cannot write leave the same empty directory behind, so reading an empty directory as an answer manufactures a shortfall out of a failure to run -- and a fabricated shortfall fails capability-matches-task against a runtime nobody observed",
+    file: "lib/capability-probe.mjs",
+    from: "  const status = noTrial !== null || observed.length === 0 ? \"INDETERMINATE\" : \"ANSWERED\";",
+    to: "  const status = noTrial !== null ? \"INDETERMINATE\" : \"ANSWERED\";",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a runtime the probe could not answer for withholds the question and is never given the adapter's table"
+  },
+  {
+    guard: "a probed run is scored from what was probed, never from the adapter table",
+    reason:
+      "the adapter table gives every agent under a shipped adapter the whole vocabulary, so falling back to it after asking for a probe puts the detection back where it started -- the observed shortfall disappears and capability-matches-task returns to the state #625 exists to leave",
+    file: "lib/cli.mjs",
+    from: "  const capabilityRecords = probed === null ? capabilityRecordsFor(config.agents) : probed.records;",
+    to: "  const capabilityRecords = capabilityRecordsFor(config.agents);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a runtime observed unable to write the deliverable fails capability-matches-task, naming what it lacked"
+  },
+  {
+    guard: "the deliverable challenge reads a structured artifact, not a file that mentions a token",
+    reason:
+      "artifact-write is one of the two capabilities FAM-3 asks its stage for, so whether it is observed decides the only shortfall reachable on the production path; accepting any parsable file would credit a runtime that wrote a note where a deliverable was asked for",
+    file: "lib/capability-probe.mjs",
+    from: "        return parsed !== null && typeof parsed === \"object\" && !Array.isArray(parsed) && parsed.token === tokens.artifact;",
+    to: "        return parsed !== null;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the deliverable challenge is answered by a structured artifact holding the seeded token"
+  },
+  {
+    guard: "a repeated claim is not a verification",
+    reason:
+      "the decoy is the only thing separating a runtime that checked the claim against the file from one that copied the claim it was handed, and a runtime that hedged by writing both values gave no verdict at all",
+    file: "lib/capability-probe.mjs",
+    from: "      text.includes(tokens.verify_true) && text.includes(MISMATCH_WORD) && !text.includes(tokens.verify_decoy)",
+    to: "      text.includes(tokens.verify_true) && text.includes(MISMATCH_WORD)",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the verification challenge separates checking a claim from repeating it"
+  },
+  {
+    guard: "having run something is proved by the digest and not by saying so",
+    reason:
+      "test-run is the one capability that cannot be exhibited by writing a file, so its whole evidence is a SHA-256 of thirty-two random bytes that no runtime can produce without executing something; anything weaker credits a sentence about having run the check as having run it",
+    file: "lib/capability-probe.mjs",
+    from: "    answered: (text, tokens) => text.includes(sha256Text(tokens.secret))",
+    to: "    answered: (text, tokens) => text.trim().length > 0 || tokens === null",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the execution challenge is answered by a digest of thirty-two bytes and by nothing else"
   }
 ];
 
@@ -7127,6 +7177,8 @@ export const ACCOUNTED_GUARDS = [
   "a phase's predecessors must be in the plan",
   "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a probe that observed nothing is not a runtime that can do nothing",
+  "a probed run is scored from what was probed, never from the adapter table",
   "a process with no key for a run says so",
   "a profile this machine has already produced is reused and not appended",
   "a protected branch is never deletion-eligible",
@@ -7141,6 +7193,7 @@ export const ACCOUNTED_GUARDS = [
   "a refused file fails the check",
   "a relay id is published as a digest",
   "a reliance trace is built on a journal",
+  "a repeated claim is not a verification",
   "a required artifact or handoff is checked against the ledger",
   "a required metric with an unanswered subcheck is not present",
   "a reroute is a routing decision",
@@ -7378,6 +7431,7 @@ export const ACCOUNTED_GUARDS = [
   "handoff exact compare",
   "hard-forbidden class refusal",
   "hard-forbidden matching is case-insensitive",
+  "having run something is proved by the digest and not by saying so",
   "holdout floor",
   "home_source is a kind and never a path",
   "hot-file single owner",
@@ -7569,6 +7623,7 @@ export const ACCOUNTED_GUARDS = [
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
   "the deletion log is checked against the observations it cites",
+  "the deliverable challenge reads a structured artifact, not a file that mentions a token",
   "the derived verdict ignores the reported one",
   "the device nodes are the policy's, not the renderer's",
   "the digest covers the rules applied outside the allowlist",
