@@ -13,7 +13,7 @@
 // reproduced the defect and at the one that did not.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -310,4 +310,46 @@ test("a form AOS states no work for cannot select a capability floor for a graph
   const oracle = routeOracle({ requirements, capabilities, work_requirement: borrowed, actual_route_events: [] });
   assert.equal(oracle.minimum.status, "NO_WORK_REQUIREMENT");
   assert.equal(oracle.work_requirement.problems.some((problem) => problem.includes("is not a form AOS states work for")), true);
+});
+
+/**
+ * The shape of the limitation C2.RF.01's HOLD names, pinned so it is read rather than reasoned about.
+ *
+ * `workRequirementDigest` is an unkeyed SHA-256 over the graph's canonical JSON, so it attests the
+ * bytes and not their origin: anyone holding a graph can compute the digest that verifies for it.
+ * A caller who fabricates a work graph shaped like the route and computes its digest therefore gets
+ * a record whose two halves agree, an empty `problems`, and the route-derived floor back.
+ *
+ * Two things follow, and the second is why this test exists rather than a fix. Requiring a digest
+ * on every envelope would close nothing, because the forgery carries one. And what does keep the
+ * floor honest is that no product entry point reaches this function: `package.json` declares no
+ * `main` and no `exports`, so `lib/routing-oracle.mjs` is deep-import-only, and `lib/cli.mjs` is
+ * the only constructor of the envelope in the product. A reader who takes the digest for a
+ * provenance control would add ceremony, watch it pass, and believe this was closed.
+ */
+test("an unkeyed digest attests the graph's bytes and not where it came from", () => {
+  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
+  const fabricated = { tasks: [{ id: "stage-1", resource: "FAM-3", depends_on: [] }, { id: "stage-2", resource: "FAM-3", depends_on: ["stage-1"] }] };
+  const envelope = {
+    schema_id: WORK_REQUIREMENT_SCHEMA,
+    form_id: "FAM-3",
+    work_graph: fabricated,
+    work_digest: workRequirementDigest(fabricated),
+    frozen_at: null,
+    problems: []
+  };
+  const oracle = routeOracle({ requirements, capabilities, work_requirement: envelope, actual_route_events: [] });
+
+  // The digest verifies and nothing is refused: this is not a hole in the check, it is what the
+  // check is for. A digest over bytes cannot say who wrote them.
+  assert.equal(oracle.work_requirement.work_digest, oracle.work_requirement.declared_work_digest);
+  assert.deepEqual(oracle.work_requirement.problems, []);
+  assert.equal(oracle.minimum.minimum_cost, 3, "a fabricated route-shaped graph no longer sets the floor -- if that is deliberate, this is the claim to update");
+
+  // And the reason it is safe: the package exposes no entry point that reaches this function.
+  const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  assert.equal(Object.hasOwn(manifest, "main"), false, "package.json now declares a main, so lib/ is importable as a package entry point");
+  assert.equal(Object.hasOwn(manifest, "exports"), false, "package.json now declares exports, so lib/ may be importable as a package entry point");
+  assert.deepEqual(Object.keys(manifest.bin), ["aos"]);
 });

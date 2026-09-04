@@ -157,6 +157,17 @@ test("a cell listed as both required and optional by one form fails", () => {
   assert.ok(checks(report).includes("form-cell-listed-twice"));
 });
 
+test("a form list naming a cell nobody declared fails rather than crashing the comparison", () => {
+  const doc = clone();
+  const form = doc.task_model.forms.find((one) => one.form_id === "FAM-3");
+  // In both lists, so the reciprocity checks are satisfied and this one is what is left to catch it.
+  form.required_cell_ids = [...form.required_cell_ids, "C7.ZZ.99"];
+  form.construct_opportunity_cell_ids = [...form.construct_opportunity_cell_ids, "C7.ZZ.99"];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-list-cell-unknown"));
+});
+
 test("a cell naming a form the task model does not declare fails", () => {
   const doc = clone();
   doc.cells.cells.find((one) => one.cell_id === "C1.GF.01").task_opportunity.form_ids.push("FAM-9");

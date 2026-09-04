@@ -384,6 +384,15 @@ export const GUARDS = [
     name: "a form AOS states no work for cannot select a capability floor for a graph"
   },
   {
+    guard: "a form list naming an undeclared cell is refused before it is dereferenced",
+    reason: "this branch is the guard that stops the optionality comparison one line below reading `required_for_construct` off an undeclared cell, so removing it turns a reportable contract error into a TypeError inside the validator -- and the validator is the thing every other check depends on running to completion",
+    file: "lib/ecd-contract.mjs",
+    from: "        if (!cell) {\n          // Its own name, not the one the opportunity-list check above uses.",
+    to: "        if (cell === undefined && false) {\n          // Its own name, not the one the opportunity-list check above uses.",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form list naming a cell nobody declared fails rather than crashing the comparison"
+  },
+  {
     guard: "the task model's form lists agree with the cell they name",
     reason: "a cell's optionality is declared in four places and this is the fourth; without the check the validator returns ok on a contract whose form list says optional and whose cell says required, which is the state the contract's own prose says cannot exist",
     file: "lib/ecd-contract.mjs",
@@ -6924,6 +6933,7 @@ export const ACCOUNTED_GUARDS = [
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
   "a forged structural set is revalidated like the rest",
+  "a form list naming an undeclared cell is refused before it is dereferenced",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
   "a leaked descendant blocks issuance",
