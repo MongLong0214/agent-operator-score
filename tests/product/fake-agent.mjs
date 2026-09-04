@@ -38,6 +38,76 @@ const profile = process.env.FAKE_AGENT_PROFILE ?? "competent";
 const write = (name, value) => writeFileSync(join(root, name), JSON.stringify(value, null, 2));
 const readJson = (name) => JSON.parse(readFileSync(join(root, name), "utf8"));
 
+// #625's capability probe, answered the way a runtime answers it: by reading the seeded files.
+//
+// Nothing here knows a token in advance -- every value written out is one this fixture opened a
+// file to get, exactly as a real runtime has to. A fixture that carried the expected answers would
+// make the probe a test of whether the fixture was compiled with the right constants, and the
+// unforgeability argument the probe rests on would be untested.
+//
+// The profiles stand for shapes a real runtime has. `probe-confined` is a runtime whose writes are
+// limited to subdirectories of the workspace; `probe-no-shell` is one with no way to execute a
+// command; `probe-credulous` repeats the claims it was handed instead of checking them;
+// `probe-unchecked` asserts a verdict on every claim without comparing anything; `probe-pasting`
+// copies every stated value onto every line; `probe-fixed-verdict` never opens claims.json and
+// always names the same two claims as wrong; `probe-silent` never engaged with the workspace at
+// all; `probe-cut-off` answers the first three items and then dies the way a provider-quota failure
+// dies.
+if (family === "PROBE") {
+  const text = (name) => readFileSync(join(root, name), "utf8").trim();
+  const put = (name, value) => writeFileSync(join(root, name), value);
+  process.stdout.write("probe fixture ran\n");
+  if (profile !== "probe-silent") {
+    put(join("probe", "read.txt"), text(join("src", "module.js")).match(/AOS_PROBE_READ = (\S+)/)[1]);
+    put(join("src", "probe-write.js"), `export const token = ${JSON.stringify(text(join("inputs", "code.txt")))};\n`);
+    put(join("docs", "probe-doc.md"), `${text(join("inputs", "doc.txt"))}\n`);
+    // A runtime cut off part way through. Three items answered, five never attempted, a quota
+    // message on stderr and a non-zero exit -- the shape the merge gate reproduced, and the shape
+    // the live codex lane would have had if quota had struck one item later.
+    if (profile === "probe-cut-off") {
+      process.stderr.write("stream error: 429 You exceeded your current quota\n");
+      process.exit(1);
+    }
+    put(join("spec", "probe-spec.md"), `${text(join("inputs", "spec.txt"))}\n`);
+    put(join("probe", "release.txt"), ["one", "two", "three"].map((part) => text(join("inputs", `join-${part}.txt`))).join(" "));
+    // Five ways to answer the claims, four of which are not verification.
+    //
+    // `probe-fixed-verdict` is the strategy that beat the previous instrument one probe in fifteen:
+    // read the truth files, NEVER OPEN claims.json, and always say the first two claims differ. It
+    // is written here without reading that file at all, so the fixture cannot accidentally launder
+    // the attack into a legitimate answer.
+    if (profile === "probe-fixed-verdict") {
+      put(join("probe", "verify.txt"), Array.from({ length: 6 }, (_, index) =>
+        `claim-${index + 1}: ${text(join("inputs", `verify-${index + 1}.txt`))} ${index < 2 ? "DIFFERS" : "AGREES"}`).join("\n"));
+    } else {
+      const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
+      // The credulous profile repeats what it was told; the unchecked profile reads the files and
+      // asserts one verdict for every claim without comparing; the pasting profile reads claims.json
+      // and copies every stated value onto every line, which is a hedge and not a verdict; every
+      // other profile compares and answers each claim on its merits, carrying the claimed value only
+      // where the claim was actually wrong.
+      put(join("probe", "verify.txt"), claims.map((claim, index) => {
+        const actual = text(claim.file);
+        const line = `claim-${index + 1}:`;
+        if (profile === "probe-credulous") return `${line} ${claim.claimed_value} AGREES`;
+        if (profile === "probe-unchecked") return `${line} ${actual} DIFFERS`;
+        if (profile === "probe-pasting") return `${line} ${actual} ${claims.map((entry) => entry.claimed_value).join(" ")} DIFFERS`;
+        return actual === claim.claimed_value
+          ? `${line} ${actual} AGREES`
+          : `${line} ${actual} ${claim.claimed_value} DIFFERS`;
+      }).join("\n"));
+    }
+    if (profile !== "probe-confined") {
+      put("probe-artifact.json", JSON.stringify({ token: text(join("inputs", "artifact.txt")) }));
+    }
+    if (profile !== "probe-no-shell") {
+      const check = spawnSync(process.execPath, [join(root, "check.mjs")], { cwd: root, encoding: "utf8" });
+      put(join("probe", "check.txt"), check.stdout ?? "");
+    }
+  }
+  process.exit(0);
+}
+
 // Fails until the operator says something different. This is the fixture the checkpoint runtime
 // needs: a stage that cannot be got past by running it again, so the only thing that moves the run
 // forward is a real operator turn that changed the instruction.

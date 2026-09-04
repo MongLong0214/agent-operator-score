@@ -155,6 +155,19 @@ node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分�
 `doctor` 会检查可执行文件和已知凭据路径，但不会调用模型。如果 Agent 根本没有启动，或者不同
 任务在工作开始前以完全相同的方式失败，AOS 会停止，而不会把错误配置算成操作者低分。
 
+`assess --probe-capabilities` 会给每个已注册的 Agent 一个 AOS 准备好的隔离工作区，并读回它
+实际做了什么，而不是假定用已知适配器注册的 Agent 就具备该适配器自带的全部能力。正是这个观测
+让 `capability-matches-task` 有可能失败：一旦发现某个 Agent 比适配器默认值更窄，就会记录并
+指明这个缺口。`aos agent probe <id>` 可以脱离打分流程，单独对一个 Agent 做同样的检查：
+
+```bash
+node bin/aos.mjs agent probe alpha           # 观测 alpha 实际做了什么
+node bin/aos.mjs assess --probe-capabilities # 用观测结果而非适配器表打分
+```
+
+默认关闭，因为每探测一个已注册的 Agent 都会消耗一次真实的 provider 调用。不加这个参数时，
+能力记录仍然和以前一样来自 AOS 自己的适配器表。
+
 ## 评分卡上的六个问题
 
 AOS 关注下面六件事。
