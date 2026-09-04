@@ -112,6 +112,62 @@ test("a form claiming a cell that does not name it fails", () => {
   assert.ok(checks(report).includes("form-cell-not-reciprocal"));
 });
 
+/**
+ * The fourth of the four declarations that must agree about a cell's optionality.
+ *
+ * A merge-gate round found this site enforced by `tests/product/ecd-task-model.test.mjs` alone:
+ * moving `C2.RF.01` into FAM-3's `optional_cell_ids` left `checkEcdContract` returning ok with zero
+ * failures, while the other three sites all fired. A cross-check the contract's own prose names and
+ * its validator does not perform is the class this contract exists to refuse, so these ask the
+ * validator rather than asking a test to stand in for it.
+ */
+test("a form list that disagrees with the cell's own required_for_construct fails", () => {
+  const doc = clone();
+  const form = doc.task_model.forms.find((one) => one.form_id === "FAM-3");
+  form.required_cell_ids = form.required_cell_ids.filter((id) => id !== "C2.RF.01");
+  form.optional_cell_ids = [...form.optional_cell_ids, "C2.RF.01"];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-requirement-mismatch"));
+});
+
+test("a cell a form administers and places in neither list fails", () => {
+  const doc = clone();
+  const form = doc.task_model.forms.find((one) => one.form_id === "FAM-3");
+  form.required_cell_ids = form.required_cell_ids.filter((id) => id !== "C2.RF.01");
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-cell-unplaced"));
+});
+
+test("a form that lists a cell it does not administer fails", () => {
+  const doc = clone();
+  doc.task_model.forms.find((one) => one.form_id === "FAM-1").required_cell_ids.push("C2.RF.01");
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-cell-unclaimed"));
+});
+
+test("a cell listed as both required and optional by one form fails", () => {
+  const doc = clone();
+  const form = doc.task_model.forms.find((one) => one.form_id === "FAM-3");
+  form.optional_cell_ids = [...form.optional_cell_ids, "C2.RF.01"];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-cell-listed-twice"));
+});
+
+test("a form list naming a cell nobody declared fails rather than crashing the comparison", () => {
+  const doc = clone();
+  const form = doc.task_model.forms.find((one) => one.form_id === "FAM-3");
+  // In both lists, so the reciprocity checks are satisfied and this one is what is left to catch it.
+  form.required_cell_ids = [...form.required_cell_ids, "C7.ZZ.99"];
+  form.construct_opportunity_cell_ids = [...form.construct_opportunity_cell_ids, "C7.ZZ.99"];
+  const report = checkEcdContract(doc);
+  assert.equal(report.ok, false);
+  assert.ok(checks(report).includes("form-list-cell-unknown"));
+});
+
 test("a cell naming a form the task model does not declare fails", () => {
   const doc = clone();
   doc.cells.cells.find((one) => one.cell_id === "C1.GF.01").task_opportunity.form_ids.push("FAM-9");

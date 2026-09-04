@@ -42,6 +42,16 @@ import {
   validateRoutingRequirement
 } from "../../lib/routing-oracle.mjs";
 
+// #558's second half made the cost floor a separate input, and since round 1 of the merge gate the
+// oracle derives that floor from the envelope's `work_graph` rather than reading a requirement list
+// off it -- a list no digest covered, swappable for the route-derived one on an otherwise honest
+// record. So a fixture supplies the graph, not the requirements. These fixtures' graph IS their
+// work. What production supplies instead -- `FORM_WORK` through `workRequirementAtPlanApproval` --
+// is asked in `routing-work-requirement.test.mjs`.
+const floorOf = (workGraph) => ({ work_graph: workGraph, problems: [] });
+/** The oracle asked with a floor, which every one of these fixtures prices against its own work. */
+const pricedOracle = (input, workGraph = WORK) => routeOracle({ ...input, work_requirement: floorOf(workGraph) });
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const corpus = JSON.parse(readFileSync(join(root, "fixtures", "attacks", "corpus.v1.json"), "utf8"));
 
@@ -90,14 +100,14 @@ test("an event whose capability digest is not the one AOS holds is refused, not 
   const requirements = requirementsFromWork(WORK).requirements;
   const good = event({ capability_digest: capabilityDigestOf(capabilities.get("one")) });
   const forged = event({ invocation_id: "invocation-2", capability_digest: `sha256:${"0".repeat(64)}` });
-  const oracle = routeOracle({ requirements, capabilities, actual_route_events: [good, forged] });
+  const oracle = pricedOracle({ requirements, capabilities, actual_route_events: [good, forged] });
   assert.deepEqual(oracle.actual_route_events.map((entry) => entry.invocation_id), ["invocation-1"]);
   assert.equal(oracle.rejected_route_events.length, 1);
   assert.match(oracle.rejected_route_events[0].reason, /not the digest of the record AOS holds/u);
 });
 
 test("an event naming an agent with no capability record at all is refused when it claims a digest", () => {
-  const oracle = routeOracle({
+  const oracle = pricedOracle({
     requirements: requirementsFromWork(WORK).requirements,
     capabilities: twoKnown(),
     actual_route_events: [event({ agent_id: "stranger", capability_digest: `sha256:${"a".repeat(64)}` })]
@@ -110,11 +120,11 @@ test("an event naming an agent with no capability record at all is refused when 
 
 test("the route oracle digest covers the record and moves when the record does", () => {
   const requirements = requirementsFromWork(WORK).requirements;
-  const one = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: [event()] });
-  const again = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: [event()] });
+  const one = pricedOracle({ requirements, capabilities: twoKnown(), actual_route_events: [event()] });
+  const again = pricedOracle({ requirements, capabilities: twoKnown(), actual_route_events: [event()] });
   assert.equal(one.route_oracle_digest, again.route_oracle_digest);
   assert.equal(routeOracleDigest(one), one.route_oracle_digest, "the digest is not the digest of the record it sits on");
-  const different = routeOracle({ requirements, capabilities: twoKnown(), actual_route_events: [event({ agent_id: "two" })] });
+  const different = pricedOracle({ requirements, capabilities: twoKnown(), actual_route_events: [event({ agent_id: "two" })] });
   assert.notEqual(different.route_oracle_digest, one.route_oracle_digest);
   // A record whose digest field is edited still recomputes to the real one.
   assert.equal(routeOracleDigest({ ...one, route_oracle_digest: `sha256:${"0".repeat(64)}` }), one.route_oracle_digest);
@@ -135,7 +145,7 @@ test("shared-resource work shown overlapping in the ledger fails even when the s
     timed("implementation", "one", "2026-09-01T10:00:00Z", "2026-09-01T10:05:00Z"),
     timed("verification", "two", "2026-09-01T10:04:00Z", "2026-09-01T10:09:00Z")
   ];
-  const collision = (events) => routeOracle({ requirements, capabilities: twoKnown(), declared_schedule: schedule, actual_route_events: events })
+  const collision = (events) => pricedOracle({ requirements, capabilities: twoKnown(), declared_schedule: schedule, actual_route_events: events })
     .observables.find((entry) => entry.observable_id === "collision-safe-parallelism");
 
   assert.equal(collision(apart).pass, true);
@@ -144,7 +154,7 @@ test("shared-resource work shown overlapping in the ledger fails even when the s
 
 test("a schedule that orders nothing and a ledger that timed nothing leaves the collision unobserved", () => {
   const requirements = requirementsFromWork(WORK).requirements;
-  const oracle = routeOracle({ requirements, capabilities: twoKnown(), declared_schedule: [], actual_route_events: [] });
+  const oracle = pricedOracle({ requirements, capabilities: twoKnown(), declared_schedule: [], actual_route_events: [] });
   const collision = oracle.observables.find((entry) => entry.observable_id === "collision-safe-parallelism");
   assert.equal(collision.pass, null);
   assert.match(collision.reason, /not observed/u);
@@ -153,7 +163,7 @@ test("a schedule that orders nothing and a ledger that timed nothing leaves the 
 test("a schedule edge naming a task the requirement does not hold orders nothing", () => {
   const requirements = requirementsFromWork(WORK).requirements;
   const smuggled = [{ task_id: "verification", after: ["a-task-nobody-asked-for"] }];
-  const oracle = routeOracle({ requirements, capabilities: twoKnown(), declared_schedule: smuggled, actual_route_events: [] });
+  const oracle = pricedOracle({ requirements, capabilities: twoKnown(), declared_schedule: smuggled, actual_route_events: [] });
   assert.equal(oracle.observables.find((entry) => entry.observable_id === "collision-safe-parallelism").pass, null);
 });
 
@@ -203,7 +213,7 @@ test("a route label that is not an identifier assigns nobody", () => {
     { task_id: "verification", owner_id: "two\nrm -rf /" },
     { task_id: "release", owner_id: "/Users/alice/private/notes.txt" }
   ];
-  const oracle = routeOracle({ requirements, capabilities: twoKnown(), declared_assignment: declared });
+  const oracle = pricedOracle({ requirements, capabilities: twoKnown(), declared_assignment: declared });
   const proposed = new Map(oracle.assignment.map((entry) => [entry.task_id, entry.proposed_owner_id]));
   assert.equal(proposed.get("verification"), null, "the artifact's text was recorded as a proposed owner");
   assert.equal(proposed.get("release"), null);
@@ -214,7 +224,7 @@ test("a route label that is not an identifier assigns nobody", () => {
   for (const entry of oracle.assignment) assert.equal(entry.owner_id, null);
   assert.equal(oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").pass, null);
   // An owner label that is an identifier is kept as the proposal it is.
-  const good = routeOracle({ requirements, capabilities: twoKnown(), declared_assignment: declared.slice(0, 3) });
+  const good = pricedOracle({ requirements, capabilities: twoKnown(), declared_assignment: declared.slice(0, 3) });
   assert.equal(new Map(good.assignment.map((entry) => [entry.task_id, entry.proposed_owner_id])).get("contract"), "one");
   assert.deepEqual(good.refused_owner_labels, []);
 });
@@ -226,7 +236,7 @@ test("a declared schedule cannot certify that shared-resource work was kept apar
   // issued; only the ledger issues one now.
   const requirements = requirementsFromWork(WORK).requirements;
   const schedule = WORK.tasks.map((task) => ({ task_id: task.id, after: task.depends_on }));
-  const collision = (events, declaredSchedule) => routeOracle({
+  const collision = (events, declaredSchedule) => pricedOracle({
     requirements, capabilities: twoKnown(), declared_schedule: declaredSchedule, actual_route_events: events
   }).observables.find((entry) => entry.observable_id === "collision-safe-parallelism");
 
@@ -250,7 +260,7 @@ test("a declared schedule cannot certify that shared-resource work was kept apar
   assert.deepEqual(collision(apart, schedule).basis, ["invocation-ledger"]);
 
   // The declaration is still on the record, so a reader can compare what was planned with what ran.
-  const oracle = routeOracle({ requirements, capabilities: twoKnown(), declared_schedule: schedule, actual_route_events: [] });
+  const oracle = pricedOracle({ requirements, capabilities: twoKnown(), declared_schedule: schedule, actual_route_events: [] });
   assert.equal(oracle.declared_schedule.length > 0, true, "the plan's schedule was dropped rather than kept as context");
 });
 
@@ -288,7 +298,7 @@ test("a ledger that speaks about some tasks does not make the route cheaper than
     task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
   }));
 
-  const oracle = routeOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: partial });
+  const oracle = pricedOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: partial });
   assert.equal(oracle.cost_basis, null, "a partly attributed ledger produced a cost");
   assert.equal(oracle.actual_cost, null);
   // And nothing is scored off the proposal that filled the gap in the first version.
@@ -299,7 +309,7 @@ test("a ledger that speaks about some tasks does not make the route cheaper than
   const whole = Object.keys(owners).sort().map((taskId, index) => event({
     task_id: taskId, agent_id: owners[taskId], invocation_id: `invocation-${index + 1}`, purpose_id: taskId, artifact_ids: [`artifact-${index + 1}`]
   }));
-  const full = routeOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: whole });
+  const full = pricedOracle({ requirements, capabilities, declared_assignment: declared, actual_route_events: whole });
   assert.equal(full.cost_basis, "actual-route-events");
   assert.equal(full.actual_cost, full.minimum.minimum_cost);
 });
@@ -313,7 +323,7 @@ test("a task two different agents invoked has no owner rather than the first of 
   }));
   const contested = [...ledger, event({ task_id: "verification", agent_id: "one", invocation_id: "invocation-contested", purpose_id: "verification", artifact_ids: ["artifact-contested"] })];
 
-  const oracle = routeOracle({ requirements, capabilities, actual_route_events: contested });
+  const oracle = pricedOracle({ requirements, capabilities, actual_route_events: contested });
   const verification = oracle.assignment.find((entry) => entry.task_id === "verification");
   assert.equal(verification.owner_id, null, "the first invocation was taken as the owner");
   assert.equal(verification.provenance, "ambiguous");
@@ -323,7 +333,7 @@ test("a task two different agents invoked has no owner rather than the first of 
 
   // A task invoked twice by the same agent is not ambiguous.
   const retried = [...ledger, event({ task_id: "verification", agent_id: "two", invocation_id: "invocation-retry", purpose_id: "verification", artifact_ids: ["artifact-retry"] })];
-  const plain = routeOracle({ requirements, capabilities, actual_route_events: retried });
+  const plain = pricedOracle({ requirements, capabilities, actual_route_events: retried });
   assert.equal(plain.assignment.find((entry) => entry.task_id === "verification").owner_id, "two");
 });
 
@@ -348,7 +358,7 @@ test("an opportunity id cannot pass for the operator event id that recorded the 
   }
 
   // Both survive admission with their own field.
-  const admitted = routeOracle({
+  const admitted = pricedOracle({
     requirements: requirementsFromWork(WORK).requirements,
     capabilities: twoKnown(),
     actual_route_events: [event({ operator_opportunity_id: opportunity, operator_decision_event_id: operatorEvent })]

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { validateOperatorPlan } from "../../lib/operator-plan.mjs";
 import test from "node:test";
-import { addAgent, cli, initBare, makePlan, newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
+import { addAgent, cli, fakeAgent, initBare, makePlan, newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 
@@ -101,14 +101,23 @@ test("six vendor-neutral aliases produce the same numbers as one, with no agent-
   const solo = temporary("aos-one-");
   const six = temporary("aos-six-");
   const ids = ["codex", "claude", "gemini", "grok", "hermes", "buzz"];
+  // Registered under an adapter AOS ships a capability record for, on both sides.
+  //
+  // Not to make anything pass: what varies here is the alias, and the adapter is what AOS knows
+  // about the runtime behind it. Since #558 made `C2.RF.01` required, a run whose runtime AOS holds
+  // no capability record for withholds that cell and with it outcome domain O4 -- which is the
+  // intended posture, because an owner AOS knows nothing about is not an operator who routed badly.
+  // Registering these as a runtime AOS ships leaves more of the instrument issuing on both sides,
+  // and so leaves this comparison with more to compare rather than less.
+  const known = ["--adapter", "codex-cli.v1"];
   try {
     run(solo, ["init"]);
-    addAgent(solo, "solo");
+    addAgent(solo, "solo", fakeAgent, known);
     run(solo, ["assess", "--plan", makePlan(solo, { default: "solo" }), "--json"], 3);
     const one = newestResult(solo);
 
     run(six, ["init"]);
-    for (const id of ids) addAgent(six, id);
+    for (const id of ids) addAgent(six, id, fakeAgent, known);
     run(six, ["assess", "--plan", makePlan(six, Object.fromEntries(ids.map((id, index) => [`FAM-${index + 1}`, id]))), "--json"], 3);
     const many = newestResult(six);
 

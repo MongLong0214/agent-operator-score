@@ -1,6 +1,6 @@
 {
   "schema": "aos-task-model.v1",
-  "contract_version": "1.2.0",
+  "contract_version": "1.3.0",
   "form_classes": [
     {
       "class_id": "WARMUP",
@@ -166,11 +166,10 @@
         "C2.DC.01",
         "C2.DG.01",
         "C2.IB.01",
-        "C2.HJ.01"
-      ],
-      "optional_cell_ids": [
+        "C2.HJ.01",
         "C2.RF.01"
       ],
+      "optional_cell_ids": [],
       "required_perturbation": "Work whose tasks share a resource and must be ordered",
       "required_oracle": "The required dependency edges and the join coverage are fixed by the scenario",
       "facets": {

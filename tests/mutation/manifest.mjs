@@ -330,6 +330,105 @@ export const GUARDS = [
     name: "an actual route whose owner AOS knows nothing about is not observed"
   },
   {
+    guard: "the cost floor is the work AOS asked for, not the route under measurement",
+    reason: "the floor used to be the cheapest owner assignment of the operator's own declared stages, so adding a stage raised the actual route and its minimum by the same amount and route breadth was structurally unjudgeable -- measured through the binary at 3/3, 5/5, 7/7 and 5/5; pointing it back at the run's own requirement restores exactly that, and `simplest-adequate-route` goes back to being true of every adequate route however wide",
+    file: "lib/routing-oracle.mjs",
+    from: "      : minimumRoute(workRequirements, ownerCapabilities, { owners: knownOwnerSet(caps) });",
+    to: "      : minimumRoute(requirements, ownerCapabilities, { owners: knownOwnerSet(caps) });",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "route cost on the production path counts handoffs, and prices a route wider than the work"
+  },
+  {
+    guard: "an unstated work floor withholds rather than falling back to the route",
+    reason: "a run of a form AOS states no work for has no floor, and pricing it against its own route is the tautology this replaced -- the absence has to reach the observation as NOT_OBSERVED rather than be repaired into a number",
+    file: "lib/routing-oracle.mjs",
+    from: "    : !Array.isArray(workRequirements) || workRequirements.length === 0 || workProblemList.length > 0\n      ? Object.freeze({ status: \"NO_WORK_REQUIREMENT\", minimum_cost: null, assignment: null, states_explored: 0 })",
+    to: "    : false\n      ? Object.freeze({ status: \"NO_WORK_REQUIREMENT\", minimum_cost: null, assignment: null, states_explored: 0 })",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a form AOS states no work for withholds rather than passing or scoring zero"
+  },
+  {
+    guard: "the floor is derived from the work graph, never read off the envelope",
+    reason: "a requirement list handed in beside the graph is covered by no digest and was believed -- the merge gate swapped only that field on an otherwise honest record and got a verified digest, an empty problems list and the route-derived floor back, which is the tautology this module removes on a record a reader would call sound; deriving it from the graph is the same rule `capabilityDigestOf` already applies to a digest-shaped field",
+    file: "lib/routing-oracle.mjs",
+    from: "  const derivedWork = workGraph === null || workProblemList.length > 0\n    ? { requirements: null, problems: [] }\n    : requirementsFromWork(workGraph, workFormId === null",
+    to: "  const derivedWork = workGraph === null || workProblemList.length > 0\n    ? { requirements: workRequirement?.requirements ?? null, problems: [] }\n    : requirementsFromWork(workGraph, workFormId === null",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a work record declaring a requirement list and carrying no graph withholds"
+  },
+  {
+    guard: "the floor is recomputed through the producer, not copied from the envelope",
+    reason: "this is the sharper half of the same attack: an honest frozen record whose requirement list alone was swapped kept a verifying digest and an empty problems list, and copying that list instead of recomputing it from the graph puts the route-derived floor back on a record a reader checking its digest would call sound",
+    file: "lib/routing-oracle.mjs",
+    from: "    : requirementsFromWork(workGraph, workFormId === null\n      ? {}\n      : { form_id: workFormId, required_capabilities: FORM_CAPABILITIES[workFormId] ?? FORM_BASE_CAPABILITIES });",
+    to: "    : { requirements: workRequirement.requirements ?? null, problems: [] };",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "an honest work record with its requirement list swapped prices exactly as the honest one does"
+  },
+  {
+    guard: "a work record with no graph is not a work statement",
+    reason: "without it an envelope that declares a requirement list and carries no graph is silently priced against nothing, or against whatever the caller declared -- the floor has to come from a statement of the work, and a list with no graph behind it is not one",
+    file: "lib/routing-oracle.mjs",
+    from: "  if (workRequirement !== null && workGraph === null) {",
+    to: "  if (false) {",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a work record declaring a requirement list and carrying no graph withholds"
+  },
+  {
+    guard: "a work floor is priced under a form AOS states work for",
+    reason: "the form id selects which capability set the floor requires, so an unrecognised form would take AOS's permissive base set and make an infeasible floor feasible -- a caller naming a form nobody states work for is naming nobody's statement",
+    file: "lib/routing-oracle.mjs",
+    from: "  if (workFormId !== null && !Object.hasOwn(FORM_WORK, workFormId)) {",
+    to: "  if (false) {",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a form AOS states no work for cannot select a capability floor for a graph"
+  },
+  {
+    guard: "a form list naming an undeclared cell is refused before it is dereferenced",
+    reason: "this branch is the guard that stops the optionality comparison one line below reading `required_for_construct` off an undeclared cell, so removing it turns a reportable contract error into a TypeError inside the validator -- and the validator is the thing every other check depends on running to completion",
+    file: "lib/ecd-contract.mjs",
+    from: "        if (!cell) {\n          // Its own name, not the one the opportunity-list check above uses.",
+    to: "        if (cell === undefined && false) {\n          // Its own name, not the one the opportunity-list check above uses.",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form list naming a cell nobody declared fails rather than crashing the comparison"
+  },
+  {
+    guard: "the task model's form lists agree with the cell they name",
+    reason: "a cell's optionality is declared in four places and this is the fourth; without the check the validator returns ok on a contract whose form list says optional and whose cell says required, which is the state the contract's own prose says cannot exist",
+    file: "lib/ecd-contract.mjs",
+    from: "        if (cell.required_for_construct !== required) {\n          fail(\"form-requirement-mismatch\",",
+    to: "        if (false) {\n          fail(\"form-requirement-mismatch\",",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "a form list that disagrees with the cell's own required_for_construct fails"
+  },
+  {
+    guard: "the work digest is checked against the graph it travels with",
+    reason: "a record whose digest names work other than the graph beside it describes some other freeze, and pricing a route against it prices it against work nobody can identify -- believing the field turns the digest into decoration",
+    file: "lib/routing-oracle.mjs",
+    from: "  if (isText(workRequirement?.work_digest) && workRequirement.work_digest !== recomputedWorkDigest) {",
+    to: "  if (false) {",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a work digest that names other work than the graph beside it withholds rather than pricing"
+  },
+  {
+    guard: "a work task is named by the form that asked for it",
+    reason: "a work task and a stage of the same run share an id space, and an unnamespaced work task can collide with a stage the ledger attributes -- an event admitted against the wrong one of those is attribution by coincidence",
+    file: "lib/routing-oracle.mjs",
+    from: "  const named = (id) => (formId === null ? id : `${formId}${STAGE_SEPARATOR}${id}`);",
+    to: "  const named = (id) => id;",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "the run records the work AOS froze at plan approval, bound by digest"
+  },
+  {
+    guard: "the work floor is frozen at plan approval",
+    reason: "the freeze is what makes the floor independent of the run -- an instant the record cannot state is a floor a reader cannot place before the first invocation, and a requirement recovered after the answer is not a requirement",
+    file: "lib/cli.mjs",
+    from: "  const workRequirement = workRequirementAtPlanApproval({ form_id: \"FAM-3\", frozen_at: new Date().toISOString() });",
+    to: "  const workRequirement = workRequirementAtPlanApproval({ form_id: \"FAM-3\", frozen_at: null });",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "the run records the work AOS froze at plan approval, bound by digest"
+  },
+  {
     guard: "route cost counts the handoffs a split buys",
     // Re-pointed at the production path. The witness was `one redundant agent lowers routing
     // minimality and nothing else`, which builds its requirement with `requirementsFromWork` -- a
@@ -344,7 +443,7 @@ export const GUARDS = [
     from: "  return invocations + dependenciesOf(requirement).filter((dependency) => ownerOf.get(dependency) !== owner).length;",
     to: "  return invocations;",
     test: "tests/product/routing-cli-authority.test.mjs",
-    name: "route cost on the production path counts handoffs, and cannot price route breadth"
+    name: "route cost on the production path counts handoffs, and prices a route wider than the work"
   },
   {
     guard: "the minimum route is the cheapest and its tie-break is canonical",
@@ -6998,6 +7097,7 @@ export const ACCOUNTED_GUARDS = [
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
   "a forged structural set is revalidated like the rest",
+  "a form list naming an undeclared cell is refused before it is dereferenced",
   "a generation is named for what it actually predates",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
@@ -7105,7 +7205,10 @@ export const ACCOUNTED_GUARDS = [
   "a withheld identity withholds the composite",
   "a withheld metric says so rather than reading as uncomputed",
   "a withheld rate keeps the counts that withheld it",
+  "a work floor is priced under a form AOS states work for",
   "a work graph that refers to itself has no order to route",
+  "a work record with no graph is not a work statement",
+  "a work task is named by the form that asked for it",
   "a workspace that contains the store is refused",
   "a workspace that resolves into the store is refused",
   "a workspace-relative effect is inside the workspace",
@@ -7182,6 +7285,7 @@ export const ACCOUNTED_GUARDS = [
   "an unproven lane blocks issuance",
   "an unreadable store is reported and not read as an empty one",
   "an unsafe sentence is not an unsafe run",
+  "an unstated work floor withholds rather than falling back to the route",
   "an untrusted executable blocks the candidate outright",
   "an untrusted reason travels without the path it names",
   "an unverified executable gets no credential lookup",
@@ -7457,6 +7561,7 @@ export const ACCOUNTED_GUARDS = [
   "the contract names the gate that binds the record to its evidence",
   "the contract states the cells each row averages",
   "the copy carries the modes it copied",
+  "the cost floor is the work AOS asked for, not the route under measurement",
   "the count deletion turns on is recorded",
   "the credential is reduced to a name and a source where it is resolved",
   "the cycle command quotes the stored decision",
@@ -7477,6 +7582,8 @@ export const ACCOUNTED_GUARDS = [
   "the exception needs a submission branch to be about",
   "the executable identity digest is recomputed, not read",
   "the floor follows the worst severity observed",
+  "the floor is derived from the work graph, never read off the envelope",
+  "the floor is recomputed through the producer, not copied from the envelope",
   "the freeze certificate is over the copy",
   "the freeze copies no link",
   "the fresh observation's derivations are the ones checked",
@@ -7563,6 +7670,7 @@ export const ACCOUNTED_GUARDS = [
   "the stored ceiling is checked against the rows it rests on",
   "the stored record is bound, not only the event on it",
   "the table shows the decision and not the label",
+  "the task model's form lists agree with the cell they name",
   "the teardown observation reports what cleanup returned",
   "the terminal prints the ceiling the other renderers print",
   "the total invocation bound is compared",
@@ -7577,6 +7685,8 @@ export const ACCOUNTED_GUARDS = [
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the withheld reason travels with the surface",
+  "the work digest is checked against the graph it travels with",
+  "the work floor is frozen at plan approval",
   "the workspace is named relatively so the store is not",
   "top-level artifact open does not follow",
   "tracked descendants are terminated at teardown",
@@ -7605,5 +7715,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository"
+  "write access asked of the repository",
 ];

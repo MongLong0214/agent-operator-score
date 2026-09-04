@@ -37,6 +37,10 @@ const REQUIREMENT = () => requirementsFromWork(WORK).requirements;
 const handoffsInto = (taskId) => REQUIREMENT().find((entry) => entry.task_id === taskId).required_handoffs;
 const routingInput = () => ({
   requirements: REQUIREMENT(),
+  // See `routing-work-requirement.test.mjs`: since #558's second half the floor a route is priced
+  // against is a separate input, and the oracle derives it from the graph rather than from a
+  // requirement list handed in beside it. This fixture's graph is its own work.
+  work_requirement: { work_graph: WORK, problems: [] },
   capabilities: new Map(["r1", "r2"].map((id) =>
     [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })])),
   actual_route_events: Object.keys(ROUTED).sort().map((taskId, index) => ({
