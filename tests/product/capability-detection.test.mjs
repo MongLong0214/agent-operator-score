@@ -48,7 +48,9 @@ import {
   routingObservables,
   workRequirementAtPlanApproval
 } from "../../lib/routing-oracle.mjs";
-import { fakeAgent, initBare, makePlan, newestRecord, newestResult, run as runCli } from "./helpers.mjs";
+import { spawnSync } from "node:child_process";
+
+import { cli, fakeAgent, initBare, makePlan, newestRecord, newestResult, run as runCli } from "./helpers.mjs";
 
 function workspace(t) {
   const cwd = mkdtempSync(join(tmpdir(), "aos-capability-probe-test-"));
@@ -524,6 +526,53 @@ test("an answer path that resolves outside the workspace is not an answer", (t) 
   assert.equal(row.observed, false);
   // And the published path is still this module's own relative string, never the resolved one.
   assert.equal(row.answer_path, "probe/read.txt");
+});
+
+test("a mistyped probe flag is refused, and the spellings most command lines take turn it on", async (t) => {
+  const cwd = workspace(t);
+  initBare(cwd);
+  addProbedAgent(cwd, "alpha");
+
+  // Round 2. Only the bare `--probe-capabilities` turned the probe on; `--probe-capabilities=true`,
+  // `--probe-capabilities 1` and `--probe-capabilities=1` all silently fell back to the probe being
+  // off. An operator who wrote the flag the way most command lines accept it got the default
+  // posture and no indication of it -- a silence read as a choice, in the flag that decides whether
+  // the measurement happens at all.
+
+  // The behavioural half: an alternative spelling really does probe, not merely fail to error.
+  const { record } = assess(cwd, ["--probe-capabilities=true"], { FAKE_AGENT_PROFILE: "probe-confined" });
+  assert.notEqual(record.capability_probes, null, "--probe-capabilities=true ran no probe and said nothing about it");
+  const alpha = record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha");
+  assert.equal(alpha.source, "detected");
+  assert.equal(capabilityOf(record).pass, false);
+
+  // The classification half, asked cheaply: the flag is read before the plan, so a run against a
+  // plan that does not exist reaches the flag and nothing else. `AOS_INVALID_FLAG` means refused;
+  // reaching the missing plan means accepted.
+  const classify = (flag) => {
+    const result = spawnSync(process.execPath, [cli, "assess", "--plan", "does-not-exist.json", flag], {
+      cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+    });
+    const refused = /AOS_INVALID_FLAG/u.test(result.stderr);
+    assert.equal(result.status, 2, `${flag} exited ${result.status}`);
+    return refused ? "REFUSED" : "ACCEPTED";
+  };
+  for (const flag of ["--probe-capabilities", "--probe-capabilities=true", "--probe-capabilities=1",
+    "--probe-capabilities=yes", "--probe-capabilities=ON", "--probe-capabilities=false",
+    "--probe-capabilities=0", "--probe-capabilities=off"]) {
+    assert.equal(classify(flag), "ACCEPTED", `${flag} was refused`);
+  }
+  // And anything that is not a spelling of on or off is refused with the value in the message,
+  // rather than read as "off". The second case is the one where `parseArgs` swallowed what the
+  // operator meant as a separate token: telling them beats losing both.
+  for (const flag of ["--probe-capabilities=nonsense", "--probe-capabilities=2", "--probe-capabilities=-1"]) {
+    assert.equal(classify(flag), "REFUSED", `${flag} was read as a deliberate default`);
+  }
+  const swallowed = spawnSync(process.execPath, [cli, "assess", "--plan", "does-not-exist.json", "--probe-capabilities", "stray-token"], {
+    cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
+  });
+  assert.match(swallowed.stderr, /AOS_INVALID_FLAG --probe-capabilities stray-token/u);
+  assert.match(swallowed.stderr, /pass --probe-capabilities on its own, or one of/u);
 });
 
 test("aos agent probe reports what it observed and exits 3 when it observed nothing", async (t) => {

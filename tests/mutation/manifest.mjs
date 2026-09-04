@@ -7030,6 +7030,16 @@ export const GUARDS = [
     name: "a trial cut off part way through withholds the question and never scores what it did not reach"
   },
   {
+    guard: "a mistyped flag is not a deliberate default",
+    reason:
+      "only the bare spelling turned the probe on, so `--probe-capabilities=true` silently produced the default posture with nothing printed -- a silence read as a choice, in the flag that decides whether the measurement happens at all",
+    file: "lib/cli.mjs",
+    from: "  const probeRequested = booleanFlag(options, \"probe-capabilities\");",
+    to: "  const probeRequested = getOption(options, \"probe-capabilities\", false) === true;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a mistyped probe flag is refused, and the spellings most command lines take turn it on"
+  },
+  {
     guard: "an answer is bounded to the workspace it was asked for",
     reason:
       "lstat covers the final component only, so a redirected parent directory made AOS read a file it never seeded; nothing is published from it today, but the guard is what keeps a later diagnostic from turning the gap into a read primitive",
@@ -7238,6 +7248,7 @@ export const ACCOUNTED_GUARDS = [
   "a metric's status and its value are one state",
   "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
+  "a mistyped flag is not a deliberate default",
   "a model id this product cannot read is refused",
   "a multi-phase issue is not closed by the phase that has run",
   "a mutable alias withholds the profile-bound aggregate",
