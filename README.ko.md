@@ -163,12 +163,14 @@ node bin/aos.mjs assess --checkpoints   # 운영자가 직접 참여하는 점�
 아예 시작되지 않거나 서로 다른 과제가 작업 전에 똑같이 실패하면, AOS는 잘못된 설정을 운영자의
 낮은 점수로 바꾸지 않고 실행을 중단합니다.
 
-`assess --probe-capabilities`는 등록된 에이전트마다 AOS가 준비한 격리 작업 공간을 하나씩 내주고
+고급/수동 조사에서 `assess --probe-capabilities`는 등록된 에이전트마다 AOS가 준비한 격리 작업 공간을 하나씩 내주고
 실제로 무엇을 했는지 읽어옵니다. 알려진 어댑터로 등록된 에이전트라면 그 어댑터가 갖춘 모든
 능력을 갖췄다고 가정하는 대신입니다. `capability-matches-task`가 실패할 수 있게 만드는 것이
 바로 이 관측입니다 — 어댑터 기본값보다 좁은 에이전트를 찾으면 그 부족함을 기록하고 이름을
 붙입니다. `aos agent probe <id>`는 점수를 매기는 실행과 무관하게 에이전트 하나에 같은 확인을
 그 자리에서 실행합니다.
+
+고급/수동 CLI 형식은 `aos assess --probe-capabilities`입니다.
 
 ```bash
 node bin/aos.mjs agent probe alpha           # alpha가 실제로 무엇을 했는지 관측
@@ -179,8 +181,9 @@ node bin/aos.mjs assess --probe-capabilities # 어댑터 표가 아니라 관측
 플래그가 없으면 AOS는 알려진 어댑터 표를 여전히 `aos-known`으로 기록하지만, 이 출처로는 런타임
 능력 질문에 답할 수 없습니다. 그래서 `capability-matches-task`와 `simplest-adequate-route`가
 보류되고 C2.RF.01은 필요한 세 opportunity에 닿지 못해 O4, outcome index, composite도 보류됩니다.
-그 답이 필요하면 `aos assess --probe-capabilities`를 실행하세요. 런타임을 관측해 `detected` 증거를
-만듭니다.
+주요 zero-config 경로에서는 코딩 에이전트나 quickstart가 이 보류 상태를 감지하고 capability 관측을
+자동으로 실행합니다. 운영자에게 복구 명령을 직접 입력하라고 요구하지 않습니다. 위 CLI는 고급/수동
+인터페이스이며, 런타임을 관측해 `detected` 증거를 만듭니다.
 
 ## 채점표에 적히는 여섯 가지
 

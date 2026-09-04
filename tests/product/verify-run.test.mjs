@@ -24,8 +24,30 @@ const assessed = () => {
   // input the CLI did -- a result rebuilt under a different boundary is a different result, which
   // is the property the check exists to enforce.
   const boundary = JSON.parse(readFileSync(recordPath, "utf8")).isolation.official_issuance;
-  return { cwd, runId, boundary, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
+  return { cwd, runId, boundary, recordPath, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
 };
+
+test("a forged routing record is rejected before it can certify M09", () => {
+  const { cwd, runId, recordPath } = assessed();
+  try {
+    const original = readFileSync(recordPath, "utf8");
+    const forgeries = [
+      ["capability source", (record) => { record.routing_oracle.capabilities[0].source = "detected"; }],
+      ["observable basis", (record) => { record.routing_oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").basis = ["measured"]; }],
+      ["observable pass", (record) => { record.routing_oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").pass = true; }],
+      ["minimum route", (record) => { record.routing_oracle.minimum.status = "SOLVED"; }]
+    ];
+    for (const [name, forge] of forgeries) {
+      const record = JSON.parse(original);
+      forge(record);
+      writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+      const verified = run(cwd, ["verify", "--run", runId], 5);
+      assert.match(verified.stdout, /FAIL\trouting-record/, `${name}: ${verified.stdout}`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
 
 test("a result names the contract files it was built from, and verify checks them against this build's", () => {
   // The digest a result cited was over the contract's canonical form, which is stable against key

@@ -166,12 +166,14 @@ node bin/aos.mjs assess --checkpoints   # オペレーターが参加するス�
 起動できない場合や、異なる課題が作業開始前に同じ形で失敗する場合、AOS は壊れた設定を
 オペレーターの低得点にせず、実行を止めます。
 
-`assess --probe-capabilities` は登録されたエージェントごとに AOS が用意した隔離ワークスペースを
+高度/手動の調査では、`assess --probe-capabilities` は登録されたエージェントごとに AOS が用意した隔離ワークスペースを
 与え、実際に何をしたかを読み取ります。既知のアダプターで登録されたエージェントなら、その
 アダプターが備える能力をすべて持っていると仮定する代わりです。`capability-matches-task` が
 失敗しうるのはこの観測があるからです -- アダプターの既定値より狭いエージェントが見つかれば、
 その不足を記録し名指しします。`aos agent probe <id>` は採点対象の実行とは関係なく、一つの
 エージェントに同じ確認をその場で行います。
+
+高度/手動 CLI の形式は `aos assess --probe-capabilities` です。
 
 ```bash
 node bin/aos.mjs agent probe alpha           # alpha が実際に何をしたか観測する
@@ -182,8 +184,9 @@ node bin/aos.mjs assess --probe-capabilities # アダプター表ではなく観
 です。フラグなしでは、AOS は既知のアダプター表を引き続き `aos-known` として記録しますが、この
 出所ではランタイム能力の問いに答えられません。したがって `capability-matches-task` と
 `simplest-adequate-route` は保留となり、C2.RF.01 は必要な三つの opportunity に届かないため、O4、
-outcome index、composite も保留になります。その答えが必要な場合は `aos assess --probe-capabilities`
-を実行してください。ランタイムを観測して `detected` の証拠を生成します。
+outcome index、composite も保留になります。主な zero-config 経路では、コーディングエージェントまたは
+quickstart がこの保留状態を検出し、capability 観測を自動で実行します。利用者に復旧コマンドの入力を
+求めません。上の CLI は高度/手動のインターフェースであり、ランタイムを観測して `detected` の証拠を生成します。
 
 ## 採点表に並ぶ六つの問い
 

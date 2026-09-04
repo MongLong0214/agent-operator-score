@@ -27,11 +27,31 @@ const CAPABILITY_POSTURE = Object.freeze({
   "README.zh-CN.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u]
 });
 
+// The regular CLI is deliberately documented as an advanced/manual interface, but the primary
+// recovery path has to stay zero-config: a coding agent or quickstart notices this exact withheld
+// state and runs the observation without asking the operator to type a recovery command.
+const PRIMARY_CAPABILITY_RECOVERY = Object.freeze({
+  "README.md": /the coding agent or quickstart detects this withheld state and runs the capability observation automatically/u,
+  "README.ko.md": /코딩 에이전트나 quickstart가 이 보류 상태를 감지하고 capability 관측을 자동으로 실행합니다/u,
+  "README.ja.md": /コーディングエージェントまたは quickstart がこの保留状態を検出し、capability 観測を自動で実行します/u,
+  "README.zh-CN.md": /编码 Agent 或 quickstart 会检测到这一保留状态并自动运行 capability 观测/u
+});
+
 test("the capability-probe section in every README describes the shipped default posture", () => {
   assert.deepEqual(SCORABLE_CAPABILITY_SOURCES, ["detected"], "the README posture is written for a different scorable-source policy");
   for (const [file, phrases] of Object.entries(CAPABILITY_POSTURE)) {
     const text = readFileSync(join(root, file), "utf8");
     for (const phrase of phrases) assert.match(text, phrase, `${file} omits a consequence of the default capability posture`);
+  }
+});
+
+test("the primary capability recovery in every README needs no user-typed CLI", () => {
+  for (const [file, promise] of Object.entries(PRIMARY_CAPABILITY_RECOVERY)) {
+    const text = readFileSync(join(root, file), "utf8");
+    const paragraph = text.split("\n\n").find((block) => promise.test(block.replace(/\s+/gu, " ")));
+    assert.notEqual(paragraph, undefined, `${file} does not document the zero-config recovery path`);
+    assert.doesNotMatch(paragraph, /aos assess --probe-capabilities|node bin\/aos\.mjs/u,
+      `${file} makes the primary recovery a command the user must type`);
   }
 });
 

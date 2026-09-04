@@ -164,11 +164,13 @@ is not a scoring input.
 never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
 a broken setup into a low operator score.
 
-`assess --probe-capabilities` gives each registered agent a bounded, seeded workspace and reads back
+For an advanced/manual investigation, `assess --probe-capabilities` gives each registered agent a bounded, seeded workspace and reads back
 what it actually did, instead of assuming every agent registered under a known adapter can do
 everything that adapter ships with. This is what lets `capability-matches-task` fail: a run that
 finds an agent narrower than its adapter's default records the shortfall and names it. `aos agent
 probe <id>` runs the same check on one agent by itself, outside a scored run:
+
+The advanced/manual CLI form is `aos assess --probe-capabilities`:
 
 ```bash
 node bin/aos.mjs agent probe alpha           # what alpha was actually observed to do
@@ -179,8 +181,10 @@ Off by default, because probing spends one real provider invocation per register
 the flag, AOS still records a known adapter's table as `aos-known`, but that source cannot answer a
 runtime-capability question. `capability-matches-task` and `simplest-adequate-route` therefore
 withhold; C2.RF.01 cannot reach its three required opportunities, so O4, the outcome index, and the
-composite withhold too. Run `aos assess --probe-capabilities` when you need those answers: it
-observes the runtime and produces `detected` evidence.
+composite withhold too. On the primary zero-config path, the coding agent or quickstart detects this
+withheld state and runs the capability observation automatically. It does not ask the operator to
+type a recovery command. The CLI above remains an advanced/manual interface; it observes the
+runtime and produces `detected` evidence.
 
 ## The six things measured
 

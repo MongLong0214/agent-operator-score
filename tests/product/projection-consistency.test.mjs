@@ -43,6 +43,27 @@ const mixed = () => build({
   M17: null
 });
 
+const withRoutingCapabilityNotice = () => {
+  const overrides = {
+    M12: { "retry-input-meaningfully-changed": false, "reroute-reason-matches-failure": false, "unnecessary-switch-avoided": true, "instruction-actionable-and-scoped": true },
+    M15: { "verifier-process-separate": false, "verifier-code-immutable": false, "verifier-exits-success": true, "verifier-evidence-complete": true },
+    M17: null
+  };
+  const observations = observationsWith(overrides);
+  const result = buildResult({
+    contract: populated,
+    evaluation: evaluate(observations, identified, populated),
+    observations,
+    run: { run_id: "run-projection", seed: "seed-1" }
+  });
+  return {
+    ...result,
+    observations: result.observations.map((entry) => entry.metric_id === "M09"
+      ? { ...entry, reason: "test; routing capability evidence: capability-matches-task withholds: observed runtime capability is unavailable" }
+      : entry)
+  };
+};
+
 const contains = (output, phrase) => output.includes(phrase) || output.includes(htmlEscape(phrase));
 const positionOf = (output, phrase) => {
   const at = output.indexOf(phrase) >= 0 ? output.indexOf(phrase) : output.indexOf(htmlEscape(phrase));
@@ -109,6 +130,19 @@ test("every renderer prints every phrase of the projection -- the card included,
   for (const phrase of view.headline) assert.ok(view.phrases.includes(phrase), `headline phrase not in phrases: ${phrase}`);
   for (const [name, output] of Object.entries(fullRenderers(result))) {
     for (const phrase of view.phrases) assert.ok(contains(output, phrase), `${name} lacks: ${phrase}`);
+  }
+});
+
+test("the routing capability notice is projected for every renderer", () => {
+  const result = withRoutingCapabilityNotice();
+  const view = projectResult(result);
+  const notice = "capability-matches-task withholds: observed runtime capability is unavailable";
+  const phrase = `Routing capability evidence: ${notice}`;
+  assert.equal(view.outcome.routing_capability_notice, notice);
+  assert.ok(view.phrases.includes(phrase));
+  assert.ok(view.headline.includes(phrase));
+  for (const [name, output] of Object.entries(everySurface(result))) {
+    assert.ok(contains(output, phrase), `${name} lacks the projected routing capability notice`);
   }
 });
 
