@@ -667,6 +667,15 @@
         "at": "2026-09-04T03:45:27.566Z"
       }
     },
+    "a cap that names no evidence is refused where it is produced": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4a2213bd04eabc57f06eb0bfdd702b867389dd632ba8d364ca211236099d3b58",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "a capped pull request history is refused when the observation is verified": {
       "platform": "darwin",
       "fingerprint": "sha256:92efd8612fb803eb6cd3f1e54d1a845d9af96eb19c51a71142efabaf24f2bc6f",
@@ -683,6 +692,24 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-04T03:45:27.542Z"
+      }
+    },
+    "a ceiling's magnitude is re-derived, never read off the artifact": {
+      "platform": "darwin",
+      "fingerprint": "sha256:cff1039c3ab5ed7913c7af7624d1ecac805143138eebfc043f100361543687ca",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
+    "a ceiling's reach is re-derived, never read off the artifact": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d5a1979e437b537257d9f6955d83107f788d126d10b4cdba981cf7656aea6256",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
       }
     },
     "a citation is checked against the answer the cited command gave": {
@@ -1027,6 +1054,15 @@
         "at": "2026-09-04T03:45:27.563Z"
       }
     },
+    "a failed check is named rather than blamed on the contract": {
+      "platform": "darwin",
+      "fingerprint": "sha256:5f6f9402438308f432421778d830c39bc75d2fc435128c5fc7acefb631c2b9f9",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "a failed observation's error is redacted": {
       "platform": "darwin",
       "fingerprint": "sha256:2c8b1b7c5e9324efbfc29c0df6b523810654e16919c0a0d6a345416ef3e09bce",
@@ -1079,6 +1115,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-04T03:45:27.537Z"
+      }
+    },
+    "a generation is named for what it actually predates": {
+      "platform": "darwin",
+      "fingerprint": "sha256:b89e568302d64d0e706ee7ad36b128070b5a7b8ccbe63a6be1fa32b07d132b96",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
       }
     },
     "a handoff is recorded only where something was handed": {
@@ -1612,6 +1657,15 @@
         "at": "2026-09-04T03:45:27.549Z"
       }
     },
+    "a safety ceiling names its own cell's events": {
+      "platform": "darwin",
+      "fingerprint": "sha256:05356047208a9b70dd335018d7119b4324d208bbdab8c093c4ce1f9d4bdd08b2",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "a same-name binary that is not the adapter's runtime gets no credential": {
       "platform": "darwin",
       "fingerprint": "sha256:60618db4da0299d50625dd170b8213aae66a2f6409e2d892c60a2400895c7746",
@@ -1790,6 +1844,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-04T03:45:27.531Z"
+      }
+    },
+    "a superseded generation stays readable enough to be named": {
+      "platform": "darwin",
+      "fingerprint": "sha256:435bf95f39f7451b2fd54692db90f72ea6b7688b4c6361ab2c630faf06092922",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
       }
     },
     "a surface carries the rows it says it averaged": {
@@ -2881,6 +2944,24 @@
         "at": "2026-09-04T03:45:27.543Z"
       }
     },
+    "cap trigger names the contract's own cell": {
+      "platform": "darwin",
+      "fingerprint": "sha256:bc2f13dd567c1ab71d78fbe4e3d0ea6608582f06e1fc73de494f7c50e2e56c67",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
+    "cap trigger rests on an explicit failure": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a1feecc40f35e92999fedf9a2ff9a455bfb6d4fafceb83f80bcf275b7450f00f",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "captured stderr byte authority": {
       "platform": "darwin",
       "fingerprint": "sha256:fe83a5dc35df1218f8a0b9bc28483846edcc5f8bc641bf92b838a83b7c8cd48b",
@@ -3304,6 +3385,15 @@
         "at": "2026-09-04T03:45:27.542Z"
       }
     },
+    "every cap trigger is preserved, not the first": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a1eba8a169340df82720a68780b4de2b7fcef7932fcffb8d71513ef995e6454e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "every directory entry is charged to the scan budget": {
       "platform": "darwin",
       "fingerprint": "sha256:7d4f789cf5d236acf0050820a66e09672f87dc13f9811a1b808894d3f6451524",
@@ -3473,6 +3563,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-04T03:45:27.546Z"
+      }
+    },
+    "false completion needs the completion claim": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d7517b7bbf8565a415eaad2891c91bc06acc379fe7dcf3251290d3fd613d81ba",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
       }
     },
     "fingerprint compare": {
@@ -5027,6 +5126,15 @@
         "at": "2026-09-04T03:45:27.557Z"
       }
     },
+    "the ceilings a run earned reach the result it publishes": {
+      "platform": "darwin",
+      "fingerprint": "sha256:b7b703db3971b821176d5feb20f83fa770cb96cca2e9d7fc886933ed3c3e5dd3",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "the channel decides the source": {
       "platform": "darwin",
       "fingerprint": "sha256:6a0d80e230e31391cea48c18829bd024ba4d84fd80ec032f6c2139bd6fe25d4d",
@@ -5279,6 +5387,15 @@
         "at": "2026-09-04T03:45:27.537Z"
       }
     },
+    "the domain a ceiling is filed under is the contract's": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ea20a754c7febb283fbdc1c436f72516dc6c15c82784692b6d156ff0beb961ac",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "the emitter attributes an invocation to the stage AOS invoked it for": {
       "platform": "darwin",
       "fingerprint": "sha256:a522c686598df9041d5780b903d44d98df00fd3a17b6845cd1a587c1dfb71ed7",
@@ -5403,6 +5520,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-04T03:45:27.550Z"
+      }
+    },
+    "the headline oracle names the ceiling every surface must carry": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3835272e5eef9aec5413c755b5068c5d69492e21d4c381a0c8670e15d92f06a9",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
       }
     },
     "the identity aggregation is recomputed from its agents": {
@@ -6107,6 +6233,15 @@
         "at": "2026-09-04T03:45:27.564Z"
       }
     },
+    "the stored ceiling is checked against the rows it rests on": {
+      "platform": "darwin",
+      "fingerprint": "sha256:acfe94ae037cad7860e5e2265ec7712ac1af1ce6c715754bf98dc5354ac52fe7",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
+      }
+    },
     "the stored record is bound, not only the event on it": {
       "platform": "darwin",
       "fingerprint": "sha256:4a9800d7c359f64820be4bd6ed1f6fa47413fa5e5dfa27a0928fc616dab5b863",
@@ -6141,6 +6276,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-04T03:45:27.554Z"
+      }
+    },
+    "the terminal prints the ceiling the other renderers print": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8d34829858c6f4e2464715482f0ab7dbb76aabb8d174b198912034c216120b0a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T03:10:35.367Z"
       }
     },
     "the total invocation bound is compared": {

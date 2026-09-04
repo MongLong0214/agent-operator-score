@@ -648,7 +648,7 @@
     {
       "issue": 566,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 3,
       "blocked_by": [
         557,
@@ -667,6 +667,7 @@
         "hard-cap-binding"
       ],
       "owned_paths": [
+        "lib/hard-caps.mjs",
         "lib/scorer-v1.mjs"
       ],
       "evidence_bindings": {},
