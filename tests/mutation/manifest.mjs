@@ -2434,7 +2434,7 @@ export const GUARDS = [
     from: "    const allowed = WRITE_PERMISSIONS.has(body.permission);",
     to: "    const allowed = true;",
     test: "tests/product/execution-plan.test.mjs",
-    name: "write access is asked of the repository, not inferred from an association"
+    name: "the public write-access lookup preserves allowed, denied, and unavailable answers"
   },
   {
     guard: "snapshot source matches how it was read",
