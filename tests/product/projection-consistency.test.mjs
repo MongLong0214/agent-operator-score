@@ -7,8 +7,10 @@ import test from "node:test";
 import { canonicalJson, htmlEscape } from "../../lib/core.mjs";
 import { LOOPBACK, startDashboard } from "../../lib/dashboard.mjs";
 import { evaluate } from "../../lib/ecd-contract.mjs";
+import { hardCapsFor } from "../../lib/hard-caps.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
+import { renderProfileTerminal } from "../../lib/profile-report.mjs";
 import { loadSchema, validateAgainstSchema } from "../../lib/execution-plan.mjs";
 import { RESULT_SCHEMA_URL, SECTION_ORDER, buildResult, projectResult } from "../../lib/result-schema.mjs";
 import { createRun, initHome, runPaths, writeResult } from "../../lib/store.mjs";
@@ -53,6 +55,14 @@ const fullRenderers = (result) => ({
   html: renderHtml(result),
   card: renderCard(result)
 });
+
+// Every surface a result is shown on, the operator's terminal included. `fullRenderers` above are
+// the three that print a whole page and are held to `view.phrases`; the terminal is a summary and
+// is held to `view.headline`, which is the subset every surface must carry. It was outside both
+// until #566: the oracle named the ceiling lines and the enforcer enumerated three renderers, so
+// the terminal could -- and did -- print a withheld index and no ceiling while the other three
+// named the violation.
+const everySurface = (result) => ({ ...fullRenderers(result), terminal: renderProfileTerminal(result).join("\n") });
 
 test("the projection is built from the stored numbers alone and survives a JSON round trip", () => {
   const result = mixed();
@@ -317,6 +327,38 @@ test("a renderer quotes the number it was given and works out none of its own", 
     assert.ok(contains(output, "39.0"), `${name} did not print the capped number it was given`);
     assert.equal(contains(output, "69.5"), false, `${name} computed the mean of the indices instead of quoting the stored value`);
     assert.ok(contains(output, "capped by CRITICAL_SAFETY"), `${name} printed a lowered number without the cap that lowered it`);
+  }
+});
+
+test("every surface prints every headline phrase, the terminal included and the ceiling with it", () => {
+  // The enforcer for the oracle. `view.headline` is what a reader must be told wherever the result
+  // is shown, and until #566 the mechanism that held it reached three of the four surfaces -- so a
+  // renderer could stop printing the ceiling and nothing turned red. The capped result is the case
+  // that matters: on this contract the index is withheld, so no number moved, `cap_applied` is null
+  // and the trigger list is the only thing that says a violation was observed.
+  const observations = observationsWith({ M06: { "injected-instruction-rejected": true, "canary-absent": false, "secret-material-absent": true, "untrusted-content-not-executed": true }, M19: null })
+    .map((row) => (row.state === "NOT_OBSERVED" ? row : { ...row, evidence_ids: [`evidence-${row.metric_id}`] }));
+  const capped = buildResult({
+    contract: shippedEcdContract(),
+    evaluation: evaluate(observations, identified, shippedEcdContract()),
+    observations,
+    caps: hardCapsFor({ observations, contract: shippedEcdContract() })
+  });
+  const view = projectResult(capped);
+  assert.equal(view.outcome.index, "withheld");
+  assert.equal(view.outcome.cap, null, "a number moved here, so this is not the case the gap lived in");
+  assert.ok(view.outcome.cap_triggers.length > 0, "the fixture earned no ceiling, so this checks nothing");
+  for (const phrase of view.outcome.cap_triggers) assert.ok(view.headline.includes(phrase), `headline omits ${phrase}`);
+  for (const phrase of view.headline) assert.ok(view.phrases.includes(phrase), `headline phrase not in phrases: ${phrase}`);
+  for (const [name, output] of Object.entries(everySurface(capped))) {
+    for (const phrase of view.headline) assert.ok(contains(output, phrase), `${name} lacks the headline phrase: ${phrase}`);
+  }
+  // And the surface that carries no ceiling says nothing about one, so the line is evidence rather
+  // than furniture.
+  const clean = buildResult({ contract: populated, evaluation: evaluate(observationsWith(), identified, populated) });
+  assert.deepEqual(projectResult(clean).outcome.cap_triggers, []);
+  for (const [name, output] of Object.entries(everySurface(clean))) {
+    assert.equal(output.includes("Ceiling trigger:"), false, `${name} printed a ceiling on a run that earned none`);
   }
 });
 
