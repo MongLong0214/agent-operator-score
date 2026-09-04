@@ -42,6 +42,7 @@ import {
   probeTokens,
   seedProbeWorkspace
 } from "../../lib/capability-probe.mjs";
+import { loadEcdContract } from "../../lib/ecd-contract.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import {
   ACTUAL_ROUTE_EVENT_SCHEMA,
@@ -176,6 +177,43 @@ test("the brief and the seeded workspace name the same paths PROBE_CHALLENGES do
     }
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the reported-not-gating mitigation's restatement of capability-registry-is-coarse's status agrees with the field it restates", () => {
+  // #627 round 2's G-07, the fourth site: three restatements of `PROBE_CHALLENGES` were bound above
+  // and in "the probe table covers the whole capability vocabulary exactly once"; this is the one
+  // the reviewer found still unbound. `reported-not-gating`'s mitigation prose describes
+  // `capability-registry-is-coarse`'s status in a sentence of its own -- "now partially mitigated
+  // rather than open ... not controlled" -- and nothing checked that sentence against the field it
+  // describes. A future round that discharges `capability-registry-is-coarse` to CONTROLLED (the
+  // release-posture decision this contract's own prose says is still pending) without updating
+  // `reported-not-gating` would leave a contract whose one rival says CONTROLLED and whose other
+  // rival's prose still says "not controlled" about it, with no test failing.
+  const contract = loadEcdContract();
+  const cell = contract.cells.cells.find((one) => one.cell_id === "C2.RF.01");
+  const capabilityRegistryIsCoarse = cell.rival_explanations.find((one) => one.id === "capability-registry-is-coarse");
+  const reportedNotGating = cell.rival_explanations.find((one) => one.id === "reported-not-gating");
+  // Only the statuses this sentence has actually been written for -- not the whole cell schema
+  // enum. `OPEN` has no prose on file because the shipped contract has never said it; a future edit
+  // that moved the field to `OPEN` should fail here with a message that says so, not pass against a
+  // guessed sentence nobody wrote or checked. Matched by a phrase rather than the whole sentence, so
+  // a rewording that keeps the meaning does not fail this test, but a status change that keeps the
+  // old wording does.
+  const RESTATEMENT_FOR_STATUS = Object.freeze({
+    PARTIALLY_MITIGATED: "now partially mitigated rather than open",
+    CONTROLLED: "now controlled"
+  });
+  const expected = RESTATEMENT_FOR_STATUS[capabilityRegistryIsCoarse.status];
+  assert.notEqual(expected, undefined, `no restatement is on file for status ${capabilityRegistryIsCoarse.status}; add one before shipping it`);
+  assert.equal(reportedNotGating.mitigation.includes(expected), true,
+    `reported-not-gating's mitigation no longer says "${expected}", which is what it must say while capability-registry-is-coarse's status is ${capabilityRegistryIsCoarse.status}`);
+  // The other direction too: it must not still carry a different status's phrase, which is the
+  // shape an edit that changed the field and forgot the sentence would actually take.
+  for (const [status, phrase] of Object.entries(RESTATEMENT_FOR_STATUS)) {
+    if (status === capabilityRegistryIsCoarse.status) continue;
+    assert.equal(reportedNotGating.mitigation.includes(phrase), false,
+      `reported-not-gating's mitigation still carries the ${status} restatement "${phrase}" while the field says ${capabilityRegistryIsCoarse.status}`);
   }
 });
 
