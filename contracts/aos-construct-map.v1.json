@@ -1,6 +1,6 @@
 {
   "schema": "aos-construct-map.v1",
-  "contract_version": "1.1.0",
+  "contract_version": "1.2.0",
   "process_index": {
     "label": "PROFILE-BOUND OPERATOR PROCESS INDEX",
     "interpretation": "descriptive only",
@@ -106,18 +106,19 @@
         },
         "system_outcome": {
           "required_cell_ids": [
-            "C2.IB.01",
-            "C2.HJ.01"
+            "C2.HJ.01",
+            "C2.IB.01"
           ],
-          "optional_cell_ids": []
+          "optional_cell_ids": [
+            "C2.RF.01"
+          ]
         },
         "delegated_artifact": {
           "required_cell_ids": [
             "C2.CS.01",
             "C2.PV.01",
             "C2.DC.01",
-            "C2.DG.01",
-            "C2.RF.01"
+            "C2.DG.01"
           ],
           "optional_cell_ids": []
         }

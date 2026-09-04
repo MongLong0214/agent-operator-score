@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { observeInterventions } from "../../lib/checkpoint.mjs";
 import { observeRun } from "../../lib/observe.mjs";
+import { CAPABILITY_VOCABULARY, capabilityRecord, requirementsFromWork } from "../../lib/routing-oracle.mjs";
 import { capsFor } from "../../lib/scorer-v1.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
 import { resolveRuntimeAuth } from "../../lib/runtime-auth.mjs";
@@ -94,15 +95,58 @@ test("the subcheck a safety ceiling names agrees with the ceiling", () => {
 
 // Round 7. `undefined !== "a1"` is true, so deleting the verification task took this subcheck to a pass
 // and M09 to a full 1.0 on a plan with no verification step in it.
+//
+// #558 moved M09 to the routing oracle, and the question this round asked is now asked of the
+// requirement rather than of the plan: the work AOS seeded names a task that re-enters an ancestor's
+// resource, so a plan that leaves it out is a plan that answered less, not one that answered well.
+// The assertion is kept because the property it was written for is the one that has to survive --
+// deleting work must not raise the number.
 test("a plan with no verification step does not pass the check about verification", () => {
-  const m09 = (tasks) => observeRun({ artifacts: { plan: { tasks } }, params: P }).find((entry) => entry.metric_id === "M09");
-  const both = (routes) => [{ id: "implementation", route: routes[0] }, { id: "verification", route: routes[1] }];
+  const work = {
+    tasks: [
+      { id: "implementation", resource: "src", depends_on: [] },
+      { id: "verification", resource: "src", depends_on: ["implementation"] }
+    ]
+  };
+  const capabilities = new Map(["a1", "a2"].map((id) =>
+    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })]));
+  // The ledger, not the plan: since #558 only an admitted event attributes a task to an agent, so
+  // the counterfactual has to move what ran rather than what was written down.
+  const ledger = (owners) => Object.keys(owners).sort().map((task_id, index) => ({
+    schema_id: "aos-actual-route-event.v1",
+    task_id,
+    agent_id: owners[task_id],
+    route_id: "a1>a2",
+    invocation_id: `invocation-${index + 1}`,
+    purpose_id: task_id,
+    started_at: `2026-09-01T10:${String(index * 2).padStart(2, "0")}:00Z`,
+    completed_at: `2026-09-01T10:${String(index * 2 + 1).padStart(2, "0")}:00Z`,
+    artifact_ids: [`artifact-${index + 1}`],
+    handoff_ids: requirementsFromWork(work).requirements.find((entry) => entry.task_id === task_id).required_handoffs,
+    capability_digest: null,
+    operator_decision_event_id: null,
+    operator_opportunity_id: null
+  }));
+  const m09 = (tasks, owners) => observeRun({
+    artifacts: { plan: { tasks } },
+    params: P,
+    routing: { requirements: requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger(owners) }
+  }).find((entry) => entry.metric_id === "M09");
+  const both = (routes) => [
+    { id: "implementation", route: routes[0], depends_on: [] },
+    { id: "verification", route: routes[1], depends_on: ["implementation"] }
+  ];
 
-  assert.equal(sub([m09(both(["a1", "a1"]))], "M09", "no-redundant-invocation"), false);
-  assert.equal(sub([m09(both(["a1", "a2"]))], "M09", "no-redundant-invocation"), true);
-  // Neither: there is no second route to compare, so there is no answer to give.
-  assert.equal(sub([m09([{ id: "implementation", route: "a1" }])], "M09", "no-redundant-invocation"), null);
-  assert.notEqual(m09([{ id: "implementation", route: "a1" }]).value, 1, "deleting the task reached full marks");
+  const shared = { implementation: "a1", verification: "a1" };
+  const apart = { implementation: "a1", verification: "a2" };
+  assert.equal(sub([m09(both(["a1", "a1"]), shared)], "M09", "simplest-adequate-route"), false);
+  assert.equal(sub([m09(both(["a1", "a2"]), apart)], "M09", "simplest-adequate-route"), true);
+  // The verification work was never done, so nothing attributes it and there is no answer to give.
+  const missing = m09([{ id: "implementation", route: "a1", depends_on: [] }], { implementation: "a1" });
+  assert.equal(sub([missing], "M09", "simplest-adequate-route"), null);
+  assert.equal(sub([missing], "M09", "capability-matches-task"), null);
+  assert.notEqual(missing.value, 1, "deleting the task reached full marks");
+  assert.equal(missing.value < m09(both(["a1", "a2"]), apart).value, true, "deleting the task did not cost anything");
 });
 
 // Round 6. `assess` writes this file when no --plan is named, and `git add -A` committed the stub into

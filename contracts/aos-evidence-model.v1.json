@@ -1,6 +1,6 @@
 {
   "schema": "aos-evidence-model.v1",
-  "contract_version": "1.1.0",
+  "contract_version": "1.2.0",
   "axes": [
     {
       "axis_id": "operator_process",

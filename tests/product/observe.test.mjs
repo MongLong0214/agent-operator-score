@@ -4,6 +4,7 @@ import test from "node:test";
 import { observedCleanEffects } from "./helpers.mjs";
 import { METRIC_IDS, NOT_OBSERVED } from "../../lib/metrics.mjs";
 import { observeRun } from "../../lib/observe.mjs";
+import { ACTUAL_ROUTE_EVENT_SCHEMA, CAPABILITY_VOCABULARY, capabilityRecord, requirementsFromWork } from "../../lib/routing-oracle.mjs";
 import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
 import { scenarioParams } from "../../lib/suite-seed.mjs";
 
@@ -17,6 +18,46 @@ const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations,
 
 
 const params = scenarioParams("1");
+
+// #558. A perfect run is now one whose routing was observed as well as declared: the requirement
+// AOS seeds for FAM-3, the capability records it holds for the agents, and the invocations that
+// followed. Without them M09 answers nothing, which is the point of the change and not a perfect
+// run.
+const WORK = {
+  tasks: [
+    { id: "contract", resource: "spec", depends_on: [] },
+    { id: "implementation", resource: "src", depends_on: ["contract"] },
+    { id: "docs", resource: "docs", depends_on: ["contract"] },
+    { id: "verification", resource: "src", depends_on: ["implementation"] },
+    { id: "release", resource: "join", depends_on: ["docs", "verification"] }
+  ]
+};
+const ROUTED = { contract: "r1", implementation: "r1", docs: "r1", verification: "r2", release: "r1" };
+const REQUIREMENT = () => requirementsFromWork(WORK).requirements;
+const handoffsInto = (taskId) => REQUIREMENT().find((entry) => entry.task_id === taskId).required_handoffs;
+const routingInput = () => ({
+  requirements: REQUIREMENT(),
+  capabilities: new Map(["r1", "r2"].map((id) =>
+    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })])),
+  actual_route_events: Object.keys(ROUTED).sort().map((taskId, index) => ({
+    schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
+    task_id: taskId,
+    agent_id: ROUTED[taskId],
+    route_id: "r1>r2",
+    invocation_id: `invocation-${index + 1}`,
+    purpose_id: taskId,
+    // Timed, and apart. Two tasks that own the same resource and that nothing timed leave the
+    // collision unresolved, which withholds the route's adequacy -- so a fixture describing a
+    // perfect run has to say when its stages ran.
+    started_at: `2026-09-01T10:${String(index * 2).padStart(2, "0")}:00Z`,
+    completed_at: `2026-09-01T10:${String(index * 2 + 1).padStart(2, "0")}:00Z`,
+    artifact_ids: [`artifact-${index + 1}`],
+    handoff_ids: [...handoffsInto(taskId)],
+    capability_digest: null,
+    operator_decision_event_id: null,
+    operator_opportunity_id: null
+  }))
+});
 const fam2 = params["FAM-2"];
 const fam6 = params["FAM-6"];
 
@@ -44,11 +85,11 @@ const perfectInput = (over = {}) => ({
     },
     plan: {
       tasks: [
-        { id: "contract", objective: "o", acceptance: "a", route: "r1", depends_on: [] },
-        { id: "implementation", objective: "o", acceptance: "a", route: "r2", depends_on: ["contract"] },
-        { id: "docs", objective: "o", acceptance: "a", route: "r3", depends_on: ["contract"] },
-        { id: "verification", objective: "o", acceptance: "a", route: "r4", depends_on: ["implementation"] },
-        { id: "release", objective: "o", acceptance: "a", route: "r5", depends_on: ["docs", "verification"] }
+        { id: "contract", objective: "o", acceptance: "a", route: ROUTED.contract, depends_on: [] },
+        { id: "implementation", objective: "o", acceptance: "a", route: ROUTED.implementation, depends_on: ["contract"] },
+        { id: "docs", objective: "o", acceptance: "a", route: ROUTED.docs, depends_on: ["contract"] },
+        { id: "verification", objective: "o", acceptance: "a", route: ROUTED.verification, depends_on: ["implementation"] },
+        { id: "release", objective: "o", acceptance: "a", route: ROUTED.release, depends_on: ["docs", "verification"] }
       ]
     },
       // A complete FAM-4 answer, not a fragment. This was `{ stop_condition }` alone and passed
@@ -91,6 +132,7 @@ const perfectInput = (over = {}) => ({
     ...over.fam5
   },
   invocations: { "FAM-3": 5, "FAM-6": 1 },
+  routing: routingInput(),
   interventions: null,
   // #557. M19 is answered from what the run did, so a fixture that wants it answered has to say
   // what was observed -- the same way the boundary above is stated for #556's gate. This is the

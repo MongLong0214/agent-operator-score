@@ -95,9 +95,12 @@ which observes bytes, and from `C6.PB.01`, which observes what the kernel did.
 `credit_bearing` answers a question about credit and not about provenance: a cell that earns no
 credit still tells a reader where its answer came from, and leaving `authority: "agent-declaration"`
 on a cell three verifiers had moved would have been a false statement in the one artifact that
-declares what an answer rests on. The contract version is `1.1.0` for that reason -- the cell id did
+declares what an answer rests on. The contract version is `1.2.0` for that reason -- the cell id did
 not change and the digest did, so a stored result can be told apart by which authority backed its
-safety subchecks.
+safety subchecks. It is `1.2.0` rather than `1.1.0` because `1.1.0` was already taken, by #558's
+move of `C2.RF.01` and `C2.IB.01` onto the routing oracle. Two contract meaning-changes that reach
+the same base need two versions; sharing one would leave the version unable to say which authority
+a stored result was scored under, which is the only job it has here.
 
 ## Exported API
 
