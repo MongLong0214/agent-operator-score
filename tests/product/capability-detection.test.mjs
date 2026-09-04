@@ -19,15 +19,18 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import {
   CAPABILITY_PROBE_VERIFIER,
-  MISMATCH_WORD,
+  CLAIM_AGREES_WORD,
+  CLAIM_DIFFERS_WORD,
   PROBE_CHALLENGES,
+  VERIFY_CLAIM_COUNT,
+  VERIFY_WRONG_SETS,
   capabilityProbeRecord,
   detectedCapabilityRecord,
   observeProbeWorkspace,
@@ -189,23 +192,79 @@ test("a probe that got no trial is unknown, and unknown never lists an ability",
   }
 });
 
-test("the verification challenge separates checking a claim from repeating it", (t) => {
+test("the verification challenge separates checking a claim from asserting a verdict", (t) => {
+  // Round 1, G-04. The first version seeded one claim and it was always wrong, so `MISMATCH` was
+  // the correct answer on every probe that would ever run: a runtime could copy the file's own
+  // value, append the word, never open the claim, and earn `independent-verify`. The word on the
+  // record was then wider than what was observed, and a wider record is a shortfall nobody notices.
+  //
+  // There is now a negative control. Six claims, exactly two wrong, positions drawn per probe --
+  // so the assertions below are about the *reason* a strategy fails: it gave the same verdict to a
+  // true claim and a false one.
   const root = mkdtempSync(join(tmpdir(), "aos-probe-verify-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const tokens = probeTokens();
   seedProbeWorkspace(root, tokens);
   const verify = () => observeProbeWorkspace(root, tokens).find((row) => row.capability === "independent-verify").observed;
-  const put = (text) => writeFileSync(join(root, "probe", "verify.txt"), text);
+  const put = (lines) => writeFileSync(join(root, "probe", "verify.txt"), lines.join("\n"));
+  const truth = (index) => tokens[`verify_${index}`];
+  const claimed = (index) => JSON.parse(readFileSync(join(root, "claims.json"), "utf8"))[index - 1].claimed_value;
+  const each = (verdictOf, valueOf = truth) =>
+    Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => `claim-${offset + 1}: ${valueOf(offset + 1)} ${verdictOf(offset + 1)}`);
 
-  put(`${tokens.verify_decoy}\n`);
-  assert.equal(verify(), false, "a runtime that repeated the claim was credited with having checked it");
-  // Hedging is not checking either: writing both values leaves the reader no verdict at all.
-  put(`${tokens.verify_true} ${tokens.verify_decoy} ${MISMATCH_WORD}\n`);
-  assert.equal(verify(), false, "a runtime that wrote both values was credited with a verdict it did not give");
-  put(`${tokens.verify_true}\n`);
-  assert.equal(verify(), false, "the true value with no verdict was read as a verdict");
-  put(`${tokens.verify_true} ${MISMATCH_WORD}\n`);
+  // Exactly two of the six are misstated, so the seeding itself has a negative control in it.
+  const wrong = Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => offset + 1)
+    .filter((index) => claimed(index) !== truth(index));
+  assert.equal(wrong.length, 2, "the seeding did not put up two wrong claims, so an unconditional verdict could be right");
+  assert.deepEqual(wrong, [...tokens.verify_wrong_claims]);
+
+  put(each(() => CLAIM_DIFFERS_WORD));
+  assert.equal(verify(), false, "a runtime that called every claim wrong was credited with having compared them");
+  put(each(() => CLAIM_AGREES_WORD));
+  assert.equal(verify(), false, "a runtime that called every claim right was credited with having compared them");
+  put(each(() => CLAIM_AGREES_WORD, claimed));
+  assert.equal(verify(), false, "a runtime that repeated the claims was credited with having checked them");
+  // The hedge: the true value and the claimed one together is not a verdict.
+  put(each((index) => (wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD),
+    (index) => (wrong.includes(index) ? `${truth(index)} ${claimed(index)}` : truth(index))));
+  assert.equal(verify(), false, "a runtime that wrote both the true and the claimed value was credited with a verdict");
+  // Right values, right verdicts, one claim left unanswered.
+  put(each((index) => (wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD)).slice(1));
+  assert.equal(verify(), false, "a runtime that answered five of six claims was credited for the one it skipped");
+
+  put(each((index) => (wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD)));
   assert.equal(verify(), true);
+});
+
+test("a runtime that compares always earns the verification word and one that guesses mostly does not", () => {
+  // The property the negative control has to have in both directions. A challenge whose randomness
+  // could fail a capable runtime would manufacture a shortfall, which is the class this whole
+  // module exists to refuse; a challenge a guesser passes measures compliance rather than ability.
+  const seedings = 90;
+  let comparer = 0;
+  let asserted = 0;
+  const positions = new Set();
+  for (let round = 0; round < seedings; round += 1) {
+    const root = mkdtempSync(join(tmpdir(), "aos-probe-verify-sweep-"));
+    const tokens = probeTokens();
+    seedProbeWorkspace(root, tokens);
+    positions.add(String(tokens.verify_wrong_claims));
+    const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
+    const truth = (index) => tokens[`verify_${index}`];
+    const put = (verdictOf) => writeFileSync(join(root, "probe", "verify.txt"),
+      Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => `claim-${offset + 1}: ${truth(offset + 1)} ${verdictOf(offset + 1)}`).join("\n"));
+    const observed = () => observeProbeWorkspace(root, tokens).find((row) => row.capability === "independent-verify").observed;
+
+    put((index) => (claims[index - 1].claimed_value === truth(index) ? CLAIM_AGREES_WORD : CLAIM_DIFFERS_WORD));
+    if (observed()) comparer += 1;
+    put(() => CLAIM_DIFFERS_WORD);
+    if (observed()) asserted += 1;
+    rmSync(root, { recursive: true, force: true });
+  }
+  assert.equal(comparer, seedings, "a runtime that compared every claim was refused the word on some seeding, so the challenge is noisy against a capable runtime");
+  assert.equal(asserted, 0, "a runtime that asserted one verdict for every claim earned the word");
+  assert.equal(positions.size > 1, true, "every seeding put the wrong claims in the same place, so the position is learnable");
+  assert.equal(VERIFY_WRONG_SETS.length, 15);
 });
 
 test("the deliverable challenge is answered by a structured artifact holding the seeded token", (t) => {
@@ -337,6 +396,72 @@ test("a runtime the probe could not answer for withholds the question and is nev
   assert.match(probe.reason, /indistinguishable from a runtime that never engaged/u);
 });
 
+test("a trial cut off part way through withholds the question and never scores what it did not reach", async (t) => {
+  const cwd = workspace(t);
+  initBare(cwd);
+  addProbedAgent(cwd, "alpha");
+
+  // Round 1, O-03/G-02/G-03, end to end. The runtime answers three of the eight items and then
+  // dies the way a provider-quota failure dies: a 429 on stderr, exit 1, five items never
+  // attempted. Before the fix this published `detected` with three capabilities and a `false` on
+  // `capability-matches-task` naming artifact-write -- an operator scored for the probe's own
+  // plumbing, which is the defect this issue exists to remove.
+  const { record, result } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-cut-off" });
+
+  const capability = capabilityOf(record);
+  assert.equal(capability.pass, null, "a runtime that stopped part way was scored as one that fell short");
+  assert.equal(subOf(result, "capability-matches-task"), null);
+  // The reason the row was withheld, not merely that it was. The two wrong answers this pins are
+  // `false` -- a shortfall the probe manufactured -- and `true`, which would mean the record fell
+  // back to the adapter table.
+  assert.match(capability.reason, /AOS holds no capability record it may score for alpha/u);
+
+  const alpha = record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha");
+  assert.equal(alpha.source, "unknown");
+  assert.deepEqual(alpha.capabilities, []);
+
+  const probe = record.capability_probes.find((entry) => entry.agent_id === "alpha");
+  assert.equal(probe.status, "INDETERMINATE");
+  // Withheld because the trial did not finish -- not because the workspace was empty. The runtime
+  // did answer three items, and the record has to say which of the two absences this was.
+  assert.match(probe.reason, /exited 1 before the trial finished, so the items it did not reach were never asked/u);
+  assert.equal(probe.invocation.completed, false);
+  assert.equal(probe.invocation.exit_code, 1);
+  assert.equal(probe.observations.filter((row) => row.observed).length, 3,
+    "the fixture no longer answers three items, so this test no longer distinguishes a cut-off trial from an empty one");
+  assert.deepEqual(probe.exhibited, [], "a cut-off trial published the abilities it happened to reach");
+});
+
+test("every way a trial can fail to complete withholds alike", () => {
+  // The class, not the four field names. `runProcess` answers "did this run to completion" in one
+  // field, and reading that rather than re-deriving it is what makes a termination mode added to
+  // `lib/core.mjs` later reach this control on the day it is added.
+  const observations = PROBE_CHALLENGES.map((challenge, index) => ({
+    capability: challenge.capability, answer_path: challenge.answer_path, method: "aos-read-the-workspace",
+    present: index < 3, observed: index < 3, expected_digest: "sha256"
+  }));
+  const shapes = [
+    ["a clean run", { ok: true, exit_code: 0 }, "ANSWERED"],
+    ["a non-zero exit", { ok: false, exit_code: 1 }, "INDETERMINATE"],
+    ["a signal kill", { ok: false, exit_code: null, signal: "SIGKILL" }, "INDETERMINATE"],
+    ["a timeout", { ok: false, exit_code: null, timed_out: true }, "INDETERMINATE"],
+    ["an interrupt", { ok: false, exit_code: null, interrupted: true }, "INDETERMINATE"],
+    ["a surviving descendant", { ok: false, exit_code: 0, survivor: true }, "INDETERMINATE"],
+    ["a leaked descendant", { ok: false, exit_code: 0, leaked_descendants: true }, "INDETERMINATE"],
+    ["a refused spawn", { ok: false, exit_code: null, error: "AOS_RUNTIME_IDENTITY_UNVERIFIED" }, "INDETERMINATE"],
+    // An invocation that does not say it completed has not said it completed. The control is
+    // positive, so a caller cannot reach ANSWERED by leaving the field out.
+    ["an invocation that claims nothing", { exit_code: 0 }, "INDETERMINATE"]
+  ];
+  for (const [label, invocation, expected] of shapes) {
+    const probe = capabilityProbeRecord({ agent_id: "alpha", probe_id: "probe-3", observations, invocation });
+    assert.equal(probe.status, expected, `${label} was ${probe.status}`);
+    const record = detectedCapabilityRecord(probe);
+    assert.equal(record.source, expected === "ANSWERED" ? "detected" : "unknown", label);
+    assert.deepEqual(record.capabilities.length, expected === "ANSWERED" ? 3 : 0, label);
+  }
+});
+
 test("a run that did not probe is scored from the adapter table exactly as before", async (t) => {
   const cwd = workspace(t);
   initBare(cwd);
@@ -350,6 +475,55 @@ test("a run that did not probe is scored from the adapter table exactly as befor
   const alpha = record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha");
   assert.equal(alpha.source, "aos-known");
   assert.equal(subOf(result, "capability-matches-task"), true);
+});
+
+test("a fixture runtime that does not compare loses the verification word and keeps the other seven", async (t) => {
+  const cwd = workspace(t);
+  initBare(cwd);
+  addProbedAgent(cwd, "alpha");
+
+  // Both non-comparing fixture profiles, exercised rather than merely declared. Round 1 noted that
+  // `probe-credulous` existed and no test ran it, which is a claim with no test behind it.
+  for (const [profile, why] of [
+    ["probe-credulous", "a runtime that repeated the claims it was handed"],
+    ["probe-unchecked", "a runtime that asserted one verdict for every claim without comparing"]
+  ]) {
+    const probed = runCli(cwd, ["agent", "probe", "alpha", "--json"], 0, { FAKE_AGENT_PROFILE: profile });
+    const { capability_record: record, probe } = JSON.parse(probed.stdout);
+    assert.equal(probe.status, "ANSWERED", profile);
+    assert.equal(record.capabilities.includes("independent-verify"), false, `${why} was credited with having verified`);
+    // Everything else it did do is still on the record: the withheld word is the one it did not earn.
+    assert.equal(record.capabilities.length, CAPABILITY_VOCABULARY.length - 1, profile);
+    assert.equal(probe.observations.find((row) => row.capability === "independent-verify").present, true,
+      `${profile} wrote no answer at all, so this no longer distinguishes a wrong answer from a missing one`);
+  }
+});
+
+test("an answer path that resolves outside the workspace is not an answer", (t) => {
+  // Round 1, G-06. `lstat` covers the final component only, so the answer path itself was refused
+  // as a link and `probe -> <somewhere else>` was not: the parent is resolved by the kernel before
+  // lstat sees the leaf. Nothing left the process even then, but the docstring claimed the stronger
+  // property, so the whole resolved path is now bounded to the workspace.
+  const root = mkdtempSync(join(tmpdir(), "aos-probe-escape-"));
+  const outside = mkdtempSync(join(tmpdir(), "aos-probe-outside-"));
+  t.after(() => {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  });
+  const tokens = probeTokens();
+  seedProbeWorkspace(root, tokens);
+
+  // The correct answer, at the correct relative path -- but the directory holding it is elsewhere.
+  mkdirSync(join(outside, "probe"), { recursive: true });
+  writeFileSync(join(outside, "probe", "read.txt"), tokens.read);
+  rmSync(join(root, "probe"), { recursive: true, force: true });
+  symlinkSync(join(outside, "probe"), join(root, "probe"));
+
+  const row = observeProbeWorkspace(root, tokens).find((entry) => entry.capability === "code-read");
+  assert.equal(row.present, false, "a file reached through a redirected parent directory was read as an answer");
+  assert.equal(row.observed, false);
+  // And the published path is still this module's own relative string, never the resolved one.
+  assert.equal(row.answer_path, "probe/read.txt");
 });
 
 test("aos agent probe reports what it observed and exits 3 when it observed nothing", async (t) => {

@@ -7002,12 +7002,42 @@ export const GUARDS = [
   {
     guard: "a repeated claim is not a verification",
     reason:
-      "the decoy is the only thing separating a runtime that checked the claim against the file from one that copied the claim it was handed, and a runtime that hedged by writing both values gave no verdict at all",
+      "the decoys are the only thing separating a runtime that checked each claim against its file from one that copied the claims it was handed, and a runtime that hedged by writing both values gave no verdict at all",
     file: "lib/capability-probe.mjs",
-    from: "      text.includes(tokens.verify_true) && text.includes(MISMATCH_WORD) && !text.includes(tokens.verify_decoy)",
-    to: "      text.includes(tokens.verify_true) && text.includes(MISMATCH_WORD)",
+    from: "      if (tokens.verify_wrong_claims.some((_, offset) => text.includes(tokens[`verify_decoy_${offset + 1}`]))) return false;",
+    to: "",
     test: "tests/product/capability-detection.test.mjs",
-    name: "the verification challenge separates checking a claim from repeating it"
+    name: "the verification challenge separates checking a claim from asserting a verdict"
+  },
+  {
+    guard: "a verdict asserted is not a comparison performed",
+    reason:
+      "with one always-wrong claim the correct answer was constant, so a runtime could copy the file's value, append the verdict and never open the claim -- earning a word wider than what was observed, which is a shortfall nobody notices; the seeded wrong set is what makes an asserted verdict wrong somewhere",
+    file: "lib/capability-probe.mjs",
+    from: "        if (claimIsWrong(tokens, index) ? !(differed && !agreed) : !(agreed && !differed)) return false;",
+    to: "        if (!(agreed || differed)) return false;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the verification challenge separates checking a claim from asserting a verdict"
+  },
+  {
+    guard: "a cut-off trial is not a measurement",
+    reason:
+      "a runtime that answered three of eight items and then died on a provider quota published `detected` with three capabilities and a scored false naming artifact-write -- an unanswered question published as a failed answer, and the operator penalised for the probe's own plumbing",
+    file: "lib/capability-probe.mjs",
+    from: "  if (invocation.ok === true) return null;",
+    to: "  if (invocation.timed_out !== true && invocation.interrupted !== true && (invocation.error ?? null) === null) return null;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a trial cut off part way through withholds the question and never scores what it did not reach"
+  },
+  {
+    guard: "an answer is bounded to the workspace it was asked for",
+    reason:
+      "lstat covers the final component only, so a redirected parent directory made AOS read a file it never seeded; nothing is published from it today, but the guard is what keeps a later diagnostic from turning the gap into a read primitive",
+    file: "lib/capability-probe.mjs",
+    from: "  if (base === null || !contains(base, resolved)) return null;",
+    to: "  if (base === null && resolved === null) return null;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "an answer path that resolves outside the workspace is not an answer"
   },
   {
     guard: "having run something is proved by the digest and not by saying so",
@@ -7167,6 +7197,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential is what it is filed under, at any length",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cut-off trial is not a measurement",
   "a cycle answers with the provenance its runs resolved",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
@@ -7296,6 +7327,7 @@ export const ACCOUNTED_GUARDS = [
   "a truncated reference sweep supports no reference claim",
   "a truncated sweep is refused when the observation is verified",
   "a value and its digest are not both accepted",
+  "a verdict asserted is not a comparison performed",
   "a verdict that contradicts itself is not a verdict",
   "a verifier reads the boundary off the record, not off the result",
   "a violation decides before the floor does",
@@ -7326,6 +7358,7 @@ export const ACCOUNTED_GUARDS = [
   "an absent boundary is not a passing one",
   "an after-snapshot head is in flight, not merely named",
   "an alias is the node it names",
+  "an answer is bounded to the workspace it was asked for",
   "an asserted number equals the number the collector derived",
   "an asserted open PR appears in the collected history",
   "an asserted tree scan is the one that ran",

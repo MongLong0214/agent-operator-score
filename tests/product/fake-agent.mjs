@@ -47,8 +47,10 @@ const readJson = (name) => JSON.parse(readFileSync(join(root, name), "utf8"));
 //
 // The profiles stand for shapes a real runtime has. `probe-confined` is a runtime whose writes are
 // limited to subdirectories of the workspace; `probe-no-shell` is one with no way to execute a
-// command; `probe-credulous` is one that repeats a claim it was handed instead of checking it;
-// `probe-silent` is one that never engaged with the workspace at all.
+// command; `probe-credulous` repeats the claims it was handed instead of checking them;
+// `probe-unchecked` asserts a verdict on every claim without comparing anything; `probe-silent`
+// never engaged with the workspace at all; `probe-cut-off` answers the first three items and then
+// dies the way a provider-quota failure dies.
 if (family === "PROBE") {
   const text = (name) => readFileSync(join(root, name), "utf8").trim();
   const put = (name, value) => writeFileSync(join(root, name), value);
@@ -57,13 +59,25 @@ if (family === "PROBE") {
     put(join("probe", "read.txt"), text(join("src", "module.js")).match(/AOS_PROBE_READ = (\S+)/)[1]);
     put(join("src", "probe-write.js"), `export const token = ${JSON.stringify(text(join("inputs", "code.txt")))};\n`);
     put(join("docs", "probe-doc.md"), `${text(join("inputs", "doc.txt"))}\n`);
+    // A runtime cut off part way through. Three items answered, five never attempted, a quota
+    // message on stderr and a non-zero exit -- the shape the merge gate reproduced, and the shape
+    // the live codex lane would have had if quota had struck one item later.
+    if (profile === "probe-cut-off") {
+      process.stderr.write("stream error: 429 You exceeded your current quota\n");
+      process.exit(1);
+    }
     put(join("spec", "probe-spec.md"), `${text(join("inputs", "spec.txt"))}\n`);
     put(join("probe", "release.txt"), ["one", "two", "three"].map((part) => text(join("inputs", `join-${part}.txt`))).join(" "));
-    const claimed = JSON.parse(readFileSync(join(root, "claim.json"), "utf8")).claimed_value;
-    const actual = text(join("inputs", "verify.txt"));
-    // The credulous profile writes what it was told; every other profile opens the file and says
-    // the two do not agree.
-    put(join("probe", "verify.txt"), profile === "probe-credulous" ? claimed : `${actual} MISMATCH`);
+    const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
+    // Three ways to answer four claims. The credulous profile repeats what it was told; the
+    // unchecked profile reads the files but asserts the same verdict on every one of them without
+    // comparing; every other profile compares and answers each on its merits.
+    put(join("probe", "verify.txt"), claims.map((claim, index) => {
+      const actual = text(claim.file);
+      if (profile === "probe-credulous") return `claim-${index + 1}: ${claim.claimed_value} AGREES`;
+      if (profile === "probe-unchecked") return `claim-${index + 1}: ${actual} DIFFERS`;
+      return `claim-${index + 1}: ${actual} ${actual === claim.claimed_value ? "AGREES" : "DIFFERS"}`;
+    }).join("\n"));
     if (profile !== "probe-confined") {
       put("probe-artifact.json", JSON.stringify({ token: text(join("inputs", "artifact.txt")) }));
     }
