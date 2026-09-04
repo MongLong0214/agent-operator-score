@@ -164,6 +164,20 @@ is not a scoring input.
 never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
 a broken setup into a low operator score.
 
+`assess --probe-capabilities` gives each registered agent a bounded, seeded workspace and reads back
+what it actually did, instead of assuming every agent registered under a known adapter can do
+everything that adapter ships with. This is what lets `capability-matches-task` fail: a run that
+finds an agent narrower than its adapter's default records the shortfall and names it. `aos agent
+probe <id>` runs the same check on one agent by itself, outside a scored run:
+
+```bash
+node bin/aos.mjs agent probe alpha           # what alpha was actually observed to do
+node bin/aos.mjs assess --probe-capabilities # score this run from what was observed, not the adapter table
+```
+
+Off by default, because probing spends one real provider invocation per registered agent. Without
+the flag, capability records still come from AOS's own adapter table, exactly as before.
+
 ## The six things measured
 
 AOS asks six practical questions.

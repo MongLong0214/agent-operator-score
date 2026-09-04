@@ -7049,6 +7049,116 @@ export const GUARDS = [
     to: "    add(\"recompute\", false, \"not comparable: this build's contract or schema is not the one that produced it\");",
     test: "tests/product/hard-caps.test.mjs",
     name: "a cap problem is reported as a cap problem and never as a contract or schema mismatch"
+  },
+  {
+    guard: "a probe that observed nothing is not a runtime that can do nothing",
+    reason:
+      "a runtime that crashed on startup, one whose credential did not survive isolation and one that genuinely cannot write leave the same empty directory behind, so reading an empty directory as an answer manufactures a shortfall out of a failure to run -- and a fabricated shortfall fails capability-matches-task against a runtime nobody observed",
+    file: "lib/capability-probe.mjs",
+    from: "  const status = noTrial !== null || observed.length === 0 ? PROBE_STATUS_INDETERMINATE : PROBE_STATUS_ANSWERED;",
+    to: "  const status = noTrial !== null ? PROBE_STATUS_INDETERMINATE : PROBE_STATUS_ANSWERED;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a runtime the probe could not answer for withholds the question and is never given the adapter's table"
+  },
+  {
+    guard: "a probed run is scored from what was probed, never from the adapter table",
+    reason:
+      "the adapter table gives every agent under a shipped adapter the whole vocabulary, so falling back to it after asking for a probe puts the detection back where it started -- the observed shortfall disappears and capability-matches-task returns to the state #625 exists to leave",
+    file: "lib/cli.mjs",
+    from: "  const capabilityRecords = probed === null ? capabilityRecordsFor(config.agents) : probed.records;",
+    to: "  const capabilityRecords = capabilityRecordsFor(config.agents);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a runtime observed unable to write the deliverable fails capability-matches-task, naming what it lacked"
+  },
+  {
+    guard: "the deliverable challenge reads a structured artifact, not a file that mentions a token",
+    reason:
+      "artifact-write is one of the two capabilities FAM-3 asks its stage for, so whether it is observed decides the only shortfall reachable on the production path; accepting any parsable file would credit a runtime that wrote a note where a deliverable was asked for",
+    file: "lib/capability-probe.mjs",
+    from: "        return parsed !== null && typeof parsed === \"object\" && !Array.isArray(parsed) && parsed.token === tokens.artifact;",
+    to: "        return parsed !== null;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the deliverable challenge is answered by a structured artifact holding the seeded token"
+  },
+  {
+    guard: "a verdict must report what was claimed",
+    reason:
+      "the claimed value of a misstated claim exists only inside claims.json, so requiring it on a DIFFERS line is the whole of what stops a runtime that never opened that file from guessing the wrong set -- which it did, one probe in fifteen, for two review rounds",
+    file: "lib/capability-probe.mjs",
+    from: "        if (mine !== null && !line.includes(mine)) return false;",
+    to: "",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "no answer that skips claims.json is accepted, for any wrong set and any fixed strategy"
+  },
+  {
+    guard: "one claim's stated value is not another's",
+    reason:
+      "without it a runtime pastes every claimed value onto every line, which carries the right token on the right line by accident and is a hedge rather than a per-claim verdict",
+    file: "lib/capability-probe.mjs",
+    from: "        if (decoys.some((decoy) => decoy !== mine && line.includes(decoy))) return false;",
+    to: "",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the verification challenge separates checking a claim from asserting a verdict"
+  },
+  {
+    guard: "the probe verifier is bound to the record it decides",
+    reason:
+      "the record's shape and its verification instrument both moved while the identity stayed v1, so two records with different evidentiary meanings shared one id and a reader could not tell which was held",
+    file: "lib/capability-probe.mjs",
+    from: "export const CAPABILITY_PROBE_VERIFIER = CAPABILITY_PROBE_SCHEMA;",
+    to: "export const CAPABILITY_PROBE_VERIFIER = \"aos-capability-probe.v1\";",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the probe record's schema identity moves when the record's meaning does"
+  },
+  {
+    guard: "a verdict asserted is not a comparison performed",
+    reason:
+      "with one always-wrong claim the correct answer was constant, so a runtime could copy the file's value, append the verdict and never open the claim -- earning a word wider than what was observed, which is a shortfall nobody notices; the seeded wrong set is what makes an asserted verdict wrong somewhere",
+    file: "lib/capability-probe.mjs",
+    from: "        if (wrong ? !(differed && !agreed) : !(agreed && !differed)) return false;",
+    to: "        if (!(agreed || differed)) return false;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the verification challenge separates checking a claim from asserting a verdict"
+  },
+  {
+    guard: "a cut-off trial is not a measurement",
+    reason:
+      "a runtime that answered three of eight items and then died on a provider quota published `detected` with three capabilities and a scored false naming artifact-write -- an unanswered question published as a failed answer, and the operator penalised for the probe's own plumbing",
+    file: "lib/capability-probe.mjs",
+    from: "  if (invocation.ok === true) return null;",
+    to: "  if (invocation.timed_out !== true && invocation.interrupted !== true && (invocation.error ?? null) === null) return null;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a trial cut off part way through withholds the question and never scores what it did not reach"
+  },
+  {
+    guard: "a mistyped flag is not a deliberate default",
+    reason:
+      "only the bare spelling turned the probe on, so `--probe-capabilities=true` silently produced the default posture with nothing printed -- a silence read as a choice, in the flag that decides whether the measurement happens at all",
+    file: "lib/cli.mjs",
+    from: "  const probeRequested = booleanFlag(options, \"probe-capabilities\");",
+    to: "  const probeRequested = getOption(options, \"probe-capabilities\", false) === true;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a mistyped probe flag is refused, and the spellings most command lines take turn it on"
+  },
+  {
+    guard: "an answer is bounded to the workspace it was asked for",
+    reason:
+      "lstat covers the final component only, so a redirected parent directory made AOS read a file it never seeded; nothing is published from it today, but the guard is what keeps a later diagnostic from turning the gap into a read primitive",
+    file: "lib/capability-probe.mjs",
+    from: "  if (base === null || !contains(base, resolved)) return null;",
+    to: "  if (base === null && resolved === null) return null;",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "an answer path that resolves outside the workspace is not an answer"
+  },
+  {
+    guard: "having run something is proved by the digest and not by saying so",
+    reason:
+      "test-run is the one capability that cannot be exhibited by writing a file, so its whole evidence is a SHA-256 of thirty-two random bytes that no runtime can produce without executing something; anything weaker credits a sentence about having run the check as having run it",
+    file: "lib/capability-probe.mjs",
+    from: "    answered: (text, tokens) => text.includes(sha256Text(tokens.secret))",
+    to: "    answered: (text, tokens) => text.trim().length > 0 || tokens === null",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the execution challenge is answered by a digest of thirty-two bytes and by nothing else"
   }
 ];
 
@@ -7201,6 +7311,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential is what it is filed under, at any length",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cut-off trial is not a measurement",
   "a cycle answers with the provenance its runs resolved",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
@@ -7241,6 +7352,7 @@ export const ACCOUNTED_GUARDS = [
   "a metric's status and its value are one state",
   "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
+  "a mistyped flag is not a deliberate default",
   "a model id this product cannot read is refused",
   "a multi-phase issue is not closed by the phase that has run",
   "a mutable alias withholds the profile-bound aggregate",
@@ -7259,6 +7371,8 @@ export const ACCOUNTED_GUARDS = [
   "a phase's predecessors must be in the plan",
   "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
+  "a probe that observed nothing is not a runtime that can do nothing",
+  "a probed run is scored from what was probed, never from the adapter table",
   "a process with no key for a run says so",
   "a profile this machine has already produced is reused and not appended",
   "a protected branch is never deletion-eligible",
@@ -7327,6 +7441,8 @@ export const ACCOUNTED_GUARDS = [
   "a truncated reference sweep supports no reference claim",
   "a truncated sweep is refused when the observation is verified",
   "a value and its digest are not both accepted",
+  "a verdict asserted is not a comparison performed",
+  "a verdict must report what was claimed",
   "a verdict that contradicts itself is not a verdict",
   "a verifier reads the boundary off the record, not off the result",
   "a violation decides before the floor does",
@@ -7357,6 +7473,7 @@ export const ACCOUNTED_GUARDS = [
   "an absent boundary is not a passing one",
   "an after-snapshot head is in flight, not merely named",
   "an alias is the node it names",
+  "an answer is bounded to the workspace it was asked for",
   "an asserted number equals the number the collector derived",
   "an asserted open PR appears in the collected history",
   "an asserted tree scan is the one that ran",
@@ -7514,6 +7631,7 @@ export const ACCOUNTED_GUARDS = [
   "handoff exact compare",
   "hard-forbidden class refusal",
   "hard-forbidden matching is case-insensitive",
+  "having run something is proved by the digest and not by saying so",
   "holdout floor",
   "home_source is a kind and never a path",
   "hot-file single owner",
@@ -7552,6 +7670,7 @@ export const ACCOUNTED_GUARDS = [
   "observation schema",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
+  "one claim's stated value is not another's",
   "one fixture id, one item",
   "one snapshot entry per issue",
   "oneOf means exactly one",
@@ -7709,6 +7828,7 @@ export const ACCOUNTED_GUARDS = [
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
   "the deletion log is checked against the observations it cites",
+  "the deliverable challenge reads a structured artifact, not a file that mentions a token",
   "the derived verdict ignores the reported one",
   "the device nodes are the policy's, not the renderer's",
   "the digest covers the rules applied outside the allowlist",
@@ -7754,6 +7874,7 @@ export const ACCOUNTED_GUARDS = [
   "the pre-deletion observation predates the deletion",
   "the printed shape is named",
   "the private tmpfs is declared before it is mounted",
+  "the probe verifier is bound to the record it decides",
   "the process axis needs the sweep and the second poll",
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
