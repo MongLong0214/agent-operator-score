@@ -579,7 +579,7 @@ test("a record nobody ever checked is not evidence either", () => {
   assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-unchecked"));
 });
 
-test("the shipped snapshot records a live confirmation of every component, not a summary", () => {
+test("the shipped snapshot records a live confirmation of every component, not a summary", async () => {
   // This asserts what the fixture *contains*, which is all a committed file can be asked. What it
   // does not do -- and its earlier name implied it did -- is re-establish those booleans; only a
   // live run does that, which is why the offline audit refuses to assert them at all.
@@ -587,11 +587,29 @@ test("the shipped snapshot records a live confirmation of every component, not a
   assert.equal(issue.state, "closed");
   assert.equal(issue.close_evidence.verdict, "PASS");
   assert.equal(issue.close_evidence.author_trusted, true);
-  assert.deepEqual(issue.close_evidence_checked, verified());
-  // `verified`, `resolution` and `unresolved` summarise the ten; everything else in the object has
-  // to be one of them, or the snapshot is carrying a confirmation nobody named.
-  const summary = new Set(["verified", "resolution", "unresolved"]);
-  assert.deepEqual(Object.keys(issue.close_evidence_checked).filter((key) => !summary.has(key)).sort(), [...REQUIRED_CONFIRMATIONS].sort());
+
+  // Every component, individually, and `=== true` rather than truthy. That distinction is the
+  // point of the record now carrying three states: `NOT_CHECKED` is a non-empty string, so a
+  // truthy test would read "nobody could ask" as a confirmation -- which is the shape of the
+  // defect this whole file exists to refuse.
+  for (const key of REQUIRED_CONFIRMATIONS) {
+    assert.equal(issue.close_evidence_checked[key], true, `${key} is not confirmed in the shipped snapshot`);
+  }
+  assert.equal(issue.close_evidence_checked.verified, true);
+
+  // And no key the live verifier does not write. Asked *of the verifier* rather than restated
+  // here, because this assertion used to pin an exact key set: the documented way to refresh this
+  // fixture is `--write-snapshot`, that writes whatever the verifier returns, and the moment the
+  // record gained `resolution` and `unresolved` the refresh produced a file this very test
+  // rejected -- turning the required `test` and `execution-plan` checks red on whoever next
+  // refreshed a governance fixture, for a change they did not make. A subset rather than an
+  // equality, so a snapshot captured before a widening still reads; what stays forbidden is a
+  // confirmation nobody named, which would be a fact the audit never established.
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const refuse = async () => { const error = new Error("404"); error.status = 404; throw error; };
+  const written = new Set(Object.keys(await verifyCompletionRecord("o/r", { issue: 588, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1] }, { get: refuse })));
+  const unknown = Object.keys(issue.close_evidence_checked).filter((key) => !written.has(key));
+  assert.deepEqual(unknown, [], `the snapshot carries ${unknown.join(", ")}, which no live run writes`);
 });
 
 test("a record from someone without write access is not an attestation", async () => {
