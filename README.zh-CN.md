@@ -170,9 +170,10 @@ node bin/aos.mjs assess --probe-capabilities # 用观测结果而非适配器表
 默认关闭，因为每探测一个已注册的 Agent 都会消耗一次真实的 provider 调用。不加这个参数时，
 AOS 仍将已知适配器表记录为 `aos-known`，但这个来源不能回答运行时能力问题。因此
 `capability-matches-task` 和 `simplest-adequate-route` 会被保留；C2.RF.01 无法达到所需的三个
-opportunity，于是 O4、outcome index 和 composite 也会被保留。在主要的 zero-config 路径中，编码
-Agent 或 quickstart 会检测到这一保留状态并自动运行 capability 观测；不会要求操作者键入恢复命令。
-上面的 CLI 仍是高级/手动接口，它会观测运行时并生成 `detected` 证据。
+opportunity，于是 O4、outcome index 和 composite 也会被保留。运行时 capability 尚未观测到，因此
+routing outcome 和 composite 会被保留；能回答它的是 capability 观测。目前高级/手动的
+`aos assess --probe-capabilities` 会运行该观测，并为每个已注册的 Agent 消耗一次真实的 provider 调用。
+让编码 Agent 或 quickstart 自动运行它是 #575 的工作。该 CLI 会观测运行时并生成 `detected` 证据。
 
 ## 评分卡上的六个问题
 

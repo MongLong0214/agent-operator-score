@@ -237,7 +237,7 @@ test("a subcheck verdict that is not one of the three states is refused, not rou
   const four = METRICS.M09.subchecks;
   const answer = (pass) => observationOf({
     metric_id: "M09",
-    verifier_id: "aos-route-oracle.v1",
+    verifier_id: "aos-route-oracle.v2",
     subchecks: four.map((id, index) => ({ id, pass: index === 0 ? pass : true })),
     reason: "test"
   });

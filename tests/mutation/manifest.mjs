@@ -7215,6 +7215,15 @@ export const GUARDS = [
     name: "a clean silent probe and a cut-off probe publish different retry signals without provider output"
   },
   {
+    guard: "withheld routing observables carry the capability disposition",
+    reason: "a probe record is evidence rather than the default consumer seam; dropping its disposition from the withheld observable makes a quickstart parse prose or rediscover the probe before it can decide whether another provider invocation is warranted",
+    file: "lib/routing-oracle.mjs",
+    from: "      ...capabilityWithholdingDisposition(unscorable, probesByAgent)",
+    to: "      ...capabilityWithholdingDisposition([], probesByAgent)",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a run that did not probe withholds routing fitness from the adapter table"
+  },
+  {
     guard: "a declared capability source is not scorable",
     reason: "an owner's declaration is provenance, not runtime evidence, so adding it to the candidate set would turn a self-report into a routing verdict",
     file: "lib/routing-oracle.mjs",
@@ -8111,6 +8120,7 @@ export const ACCOUNTED_GUARDS = [
   "what was withheld outright is recorded as such",
   "withheld is never a number, and issued is never a reason",
   "withheld precision is absent",
+  "withheld routing observables carry the capability disposition",
   "workflow permission drift",
   "workspace containment",
   "workspace snapshot map is null-prototype",

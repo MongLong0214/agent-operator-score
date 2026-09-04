@@ -162,8 +162,8 @@ test("the same plan text with a different actual route is judged by the actual r
   assert.equal(sub(followed, "simplest-adequate-route"), true);
   assert.equal(sub(diverged, "simplest-adequate-route"), false);
   // The plan is the same object in both, so nothing about the artifact explains the difference.
-  assert.equal(followed.verifier_id, "aos-route-oracle.v1");
-  assert.equal(diverged.verifier_id, "aos-route-oracle.v1");
+  assert.equal(followed.verifier_id, "aos-route-oracle.v2");
+  assert.equal(diverged.verifier_id, "aos-route-oracle.v2");
   assert.notEqual(followed.value, diverged.value);
 });
 
@@ -265,7 +265,7 @@ test("no seeded requirement leaves every routing question unanswered rather than
   assert.equal(nothing.state, NOT_OBSERVED);
   assert.equal(nothing.value, null);
   // And the row says so rather than claiming the oracle decided it.
-  assert.match(nothing.reason, /^not observed by aos-route-oracle\.v1: /u);
+  assert.match(nothing.reason, /^not observed by aos-route-oracle\.v2: /u);
 
   // The consequence, which is why the value matters: an unanswered row must not enter the coverage
   // count, and must not drag its dimension toward zero. Asserted as "D3 is what it would be if M09

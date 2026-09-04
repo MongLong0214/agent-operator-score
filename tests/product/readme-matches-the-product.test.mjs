@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { RUNTIMES } from "../../lib/session.mjs";
 import { SCORABLE_CAPABILITY_SOURCES } from "../../lib/routing-oracle.mjs";
+import { fakeAgent, initBare, makePlan, newestRecord } from "./helpers.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
@@ -27,10 +28,10 @@ const CAPABILITY_POSTURE = Object.freeze({
   "README.zh-CN.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u]
 });
 
-// The regular CLI is deliberately documented as an advanced/manual interface, but the primary
-// recovery path has to stay zero-config: a coding agent or quickstart notices this exact withheld
-// state and runs the observation without asking the operator to type a recovery command.
-const PRIMARY_CAPABILITY_RECOVERY = Object.freeze({
+// #575 owns automatic quickstart orchestration. These patterns name the particular unshipped
+// promise that must never return; the behaviour below is checked from a persisted run instead of
+// treating translated prose as evidence that a command did or did not execute.
+const UN_SHIPPED_AUTOMATION = Object.freeze({
   "README.md": /the coding agent or quickstart detects this withheld state and runs the capability observation automatically/u,
   "README.ko.md": /코딩 에이전트나 quickstart가 이 보류 상태를 감지하고 capability 관측을 자동으로 실행합니다/u,
   "README.ja.md": /コーディングエージェントまたは quickstart がこの保留状態を検出し、capability 観測を自動で実行します/u,
@@ -45,13 +46,49 @@ test("the capability-probe section in every README describes the shipped default
   }
 });
 
-test("the primary capability recovery in every README needs no user-typed CLI", () => {
-  for (const [file, promise] of Object.entries(PRIMARY_CAPABILITY_RECOVERY)) {
-    const text = readFileSync(join(root, file), "utf8");
-    const paragraph = text.split("\n\n").find((block) => promise.test(block.replace(/\s+/gu, " ")));
-    assert.notEqual(paragraph, undefined, `${file} does not document the zero-config recovery path`);
-    assert.doesNotMatch(paragraph, /aos assess --probe-capabilities|node bin\/aos\.mjs/u,
-      `${file} makes the primary recovery a command the user must type`);
+test("the documented capability recovery is a deferred orchestration concern with a machine-readable current action", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-readme-capability-recovery-"));
+  const home = join(cwd, ".aos");
+  try {
+    initBare(cwd);
+    const added = aosIn(cwd, home, [
+      "agent", "add", "alpha", "--command", process.execPath, "--arg", fakeAgent, "--adapter", "codex-cli.v1",
+      "--allow-env", "FAKE_AGENT_PROFILE"
+    ]);
+    assert.equal(added.status, 0, added.stderr);
+    const run = aosIn(cwd, home, ["assess", "--plan", makePlan(cwd, { default: "alpha" }), "--seed", "1"]);
+    assert.equal(run.status, 3, run.stderr);
+
+    // This is the current binary behaviour. No probe ran, and the two consumers that withhold
+    // carry a stable reason, required action and disposition. A future #575 implementation may
+    // change this test deliberately when it actually starts the observation.
+    const record = newestRecord(cwd);
+    assert.equal(record.capability_probes, null, "a default assess silently ran a provider-backed capability probe");
+    const withheld = record.routing_oracle.observables
+      .filter((entry) => ["capability-matches-task", "simplest-adequate-route"].includes(entry.observable_id));
+    assert.equal(withheld.length, 2);
+    for (const observable of withheld) {
+      assert.equal(observable.pass, null, observable.observable_id);
+      assert.equal(observable.reason_code, "AOS_ROUTING_CAPABILITY_NOT_OBSERVED", observable.observable_id);
+      assert.equal(observable.required_action, "OBSERVE_CAPABILITIES", observable.observable_id);
+      assert.deepEqual(
+        {
+          retryable: observable.retryable,
+          blocker_class: observable.blocker_class,
+          provider_blocker_class: observable.provider_blocker_class
+        },
+        { retryable: true, blocker_class: "NOT_OBSERVED", provider_blocker_class: "NOT_APPLICABLE" },
+        observable.observable_id
+      );
+    }
+
+    for (const [file, promise] of Object.entries(UN_SHIPPED_AUTOMATION)) {
+      const text = readFileSync(join(root, file), "utf8");
+      assert.doesNotMatch(text.replace(/\s+/gu, " "), promise, `${file} promises #575 behaviour that this binary does not ship`);
+      assert.match(text, /#575/u, `${file} does not name the owner of automatic quickstart orchestration`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
   }
 });
 

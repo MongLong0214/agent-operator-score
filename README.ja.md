@@ -184,9 +184,11 @@ node bin/aos.mjs assess --probe-capabilities # アダプター表ではなく観
 です。フラグなしでは、AOS は既知のアダプター表を引き続き `aos-known` として記録しますが、この
 出所ではランタイム能力の問いに答えられません。したがって `capability-matches-task` と
 `simplest-adequate-route` は保留となり、C2.RF.01 は必要な三つの opportunity に届かないため、O4、
-outcome index、composite も保留になります。主な zero-config 経路では、コーディングエージェントまたは
-quickstart がこの保留状態を検出し、capability 観測を自動で実行します。利用者に復旧コマンドの入力を
-求めません。上の CLI は高度/手動のインターフェースであり、ランタイムを観測して `detected` の証拠を生成します。
+outcome index、composite も保留になります。ランタイム能力は観測されていないため routing outcome と
+composite は保留であり、それに答えるのは capability 観測です。現在は高度/手動の
+`aos assess --probe-capabilities` がその観測を実行し、登録済みエージェントごとに実際の provider 呼び出しを
+一回消費します。コーディングエージェントまたは quickstart が自動で実行するようにするのは #575 の担当です。
+この CLI はランタイムを観測して `detected` の証拠を生成します。
 
 ## 採点表に並ぶ六つの問い
 

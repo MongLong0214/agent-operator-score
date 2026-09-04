@@ -181,9 +181,10 @@ node bin/aos.mjs assess --probe-capabilities # 어댑터 표가 아니라 관측
 플래그가 없으면 AOS는 알려진 어댑터 표를 여전히 `aos-known`으로 기록하지만, 이 출처로는 런타임
 능력 질문에 답할 수 없습니다. 그래서 `capability-matches-task`와 `simplest-adequate-route`가
 보류되고 C2.RF.01은 필요한 세 opportunity에 닿지 못해 O4, outcome index, composite도 보류됩니다.
-주요 zero-config 경로에서는 코딩 에이전트나 quickstart가 이 보류 상태를 감지하고 capability 관측을
-자동으로 실행합니다. 운영자에게 복구 명령을 직접 입력하라고 요구하지 않습니다. 위 CLI는 고급/수동
-인터페이스이며, 런타임을 관측해 `detected` 증거를 만듭니다.
+런타임 capability가 관측되지 않았으므로 routing outcome과 composite은 보류되며, 이 답을 줄 수 있는
+것은 capability 관측입니다. 지금은 고급/수동 `aos assess --probe-capabilities`가 그 관측을 실행하고
+등록된 에이전트마다 실제 provider 호출 하나를 소모합니다. 코딩 에이전트나 quickstart가 이를 자동으로
+실행하게 만드는 일은 #575의 소유입니다. 이 CLI는 런타임을 관측해 `detected` 증거를 만듭니다.
 
 ## 채점표에 적히는 여섯 가지
 

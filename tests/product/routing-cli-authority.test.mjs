@@ -106,7 +106,7 @@ test("a completed run attributes every route event to a stage the operator's rou
   assert.equal(oracle.capabilities.find((entry) => entry.agent_id === "alpha").source, "aos-known");
   for (const id of OWNER_DEPENDENT) assert.equal(subOf(result, id), null, `${id} was answered from the adapter table`);
   for (const id of LEDGER_ANSWERED) assert.equal([true, false].includes(subOf(result, id)), true, `${id} needs no capability record and was withheld anyway`);
-  assert.equal(m09Of(result).verifier_id, "aos-route-oracle.v1");
+  assert.equal(m09Of(result).verifier_id, "aos-route-oracle.v2");
   assert.equal(record.delegation_oracle.expected_value_class, "NOT_OBSERVED");
 });
 

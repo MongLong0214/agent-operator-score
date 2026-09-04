@@ -740,6 +740,32 @@ test("a clean silent probe and a cut-off probe publish different retry signals w
     { observed: cutOff.observed_challenge_count, total: cutOff.challenge_count },
     { observed: 3, total: 8 }
   );
+
+  // The probe record is evidence, not the consumer seam. A quickstart deciding whether it may
+  // spend another provider invocation reads the withheld routing observable, so the two facts
+  // above must reach it without parsing `reason` or rediscovering the probe by agent id.
+  for (const [label, record, expected] of [
+    ["silent", silentRecord, { retryable: false, blocker_class: "NO_ENGAGEMENT", provider_blocker_class: "NOT_APPLICABLE" }],
+    ["cut-off", cutOffRecord, { retryable: true, blocker_class: "NON_ZERO_EXIT", provider_blocker_class: "UNDETERMINED" }]
+  ]) {
+    const withheld = record.routing_oracle.observables
+      .filter((entry) => ["capability-matches-task", "simplest-adequate-route"].includes(entry.observable_id));
+    assert.equal(withheld.length, 2, `${label} probe did not withhold both capability-dependent observables`);
+    for (const observable of withheld) {
+      assert.equal(observable.pass, null, `${label} ${observable.observable_id}`);
+      assert.equal(observable.reason_code, "AOS_ROUTING_CAPABILITY_PROBE_INDETERMINATE", `${label} ${observable.observable_id}`);
+      assert.equal(observable.required_action, expected.retryable ? "RETRY_CAPABILITY_PROBE" : "INVESTIGATE_CAPABILITY_PROBE", `${label} ${observable.observable_id}`);
+      assert.deepEqual(
+        {
+          retryable: observable.retryable,
+          blocker_class: observable.blocker_class,
+          provider_blocker_class: observable.provider_blocker_class
+        },
+        expected,
+        `${label} ${observable.observable_id}`
+      );
+    }
+  }
 });
 
 test("every way a trial can fail to complete withholds alike", () => {
@@ -800,16 +826,44 @@ test("a run that did not probe withholds routing fitness from the adapter table"
       observable_id: "capability-matches-task",
       pass: null,
       basis: ["unmeasured-owner"],
-      reason: "AOS holds aos-known adapter records for alpha, but did not observe those runtimes; run aos assess --probe-capabilities to answer this question"
+      reason: "AOS holds aos-known adapter records for alpha, but did not observe those runtimes; run aos assess --probe-capabilities to answer this question",
+      reason_code: "AOS_ROUTING_CAPABILITY_NOT_OBSERVED",
+      required_action: "OBSERVE_CAPABILITIES",
+      retryable: true,
+      blocker_class: "NOT_OBSERVED",
+      provider_blocker_class: "NOT_APPLICABLE"
     },
     {
       observable_id: "simplest-adequate-route",
       pass: null,
       basis: ["unmeasured-owner"],
-      reason: "the cheapest adequate route could not be computed for this run: NO_SCORABLE_OWNER"
+      reason: "the cheapest adequate route could not be computed for this run: NO_SCORABLE_OWNER",
+      reason_code: "AOS_ROUTING_CAPABILITY_NOT_OBSERVED",
+      required_action: "OBSERVE_CAPABILITIES",
+      retryable: true,
+      blocker_class: "NOT_OBSERVED",
+      provider_blocker_class: "NOT_APPLICABLE"
     }
   ];
-  assert.deepEqual([capability, minimality].map(({ observable_id, pass, basis, reason }) => ({ observable_id, pass, basis, reason })), expectedWithholds);
+  assert.deepEqual(
+    [capability, minimality].map(({
+      observable_id, pass, basis, reason, reason_code, required_action, retryable, blocker_class, provider_blocker_class
+    }) => ({ observable_id, pass, basis, reason, reason_code, required_action, retryable, blocker_class, provider_blocker_class })),
+    expectedWithholds
+  );
+
+  // Same registered runtime, route, plan and seed; only the capability-observation request changes.
+  // This is the counterfactual the consumer contract needs: an adapter table remains visible but
+  // cannot score, while a complete detected record from that exact runtime can answer both rows.
+  const { record: detectedRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "competent" });
+  const detectedCapability = capabilityOf(detectedRecord);
+  const detectedMinimality = detectedRecord.routing_oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route");
+  assert.equal(detectedRecord.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha").source, "detected");
+  assert.deepEqual(
+    [capability.pass, minimality.pass, detectedCapability.pass, detectedMinimality.pass],
+    [null, null, true, true],
+    "the only differing input was whether the runtime was observed"
+  );
 
   // The oracle owns the wording; terminal, Markdown and HTML must relay the complete notice rather
   // than each picking one observable to summarize.
