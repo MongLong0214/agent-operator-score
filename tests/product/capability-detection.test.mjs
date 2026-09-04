@@ -29,8 +29,12 @@ import {
   CLAIM_AGREES_WORD,
   CLAIM_DIFFERS_WORD,
   PROBE_CHALLENGES,
+  CAPABILITY_PROBE_GENERATIONS,
+  CAPABILITY_PROBE_PREDATES,
+  CAPABILITY_PROBE_SCHEMA,
   VERIFY_CLAIM_COUNT,
   VERIFY_WRONG_SETS,
+  capabilityProbeGeneration,
   capabilityProbeRecord,
   detectedCapabilityRecord,
   observeProbeWorkspace,
@@ -141,8 +145,17 @@ test("the brief carries no token, so a runtime that read only the brief can answ
   seedProbeWorkspace(root, tokens);
   const brief = probeBrief();
   for (const [name, value] of Object.entries(tokens)) {
+    // The tokens are the hex strings. `verify_wrong_claims` is a set of small positions rather than
+    // a token, and it is checked below on its own terms -- a substring test would match the "1" in
+    // "claim-1" and report a leak that is not one.
+    if (typeof value !== "string") continue;
     assert.equal(brief.includes(value), false, `the brief hands the runtime the ${name} token, so that challenge tests echoing`);
   }
+  assert.equal(Array.isArray(tokens.verify_wrong_claims), true);
+  // And the one non-token the seeding draws is not disclosed either: the brief has to tell the
+  // runtime that it is not being told how many claims are wrong, because a stated count is a prior
+  // an answer can be built on without comparing anything.
+  assert.match(brief, /you are not told how many/u);
   // And a workspace nobody answered observes nothing, which is what makes every observation below
   // an effect of the runtime rather than of the seeding.
   assert.deepEqual(observeProbeWorkspace(root, tokens).filter((row) => row.observed), []);
@@ -195,78 +208,176 @@ test("a probe that got no trial is unknown, and unknown never lists an ability",
 });
 
 test("the verification challenge separates checking a claim from asserting a verdict", (t) => {
-  // Round 1, G-04. The first version seeded one claim and it was always wrong, so `MISMATCH` was
-  // the correct answer on every probe that would ever run: a runtime could copy the file's own
-  // value, append the word, never open the claim, and earn `independent-verify`. The word on the
-  // record was then wider than what was observed, and a wider record is a shortfall nobody notices.
-  //
-  // There is now a negative control. Six claims, exactly two wrong, positions drawn per probe --
-  // so the assertions below are about the *reason* a strategy fails: it gave the same verdict to a
-  // true claim and a false one.
+  // The seeded half of the same property, against a real workspace rather than a constructed token
+  // set: what the runtime is actually handed, and what AOS actually reads back.
   const root = mkdtempSync(join(tmpdir(), "aos-probe-verify-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const tokens = probeTokens();
   seedProbeWorkspace(root, tokens);
   const verify = () => observeProbeWorkspace(root, tokens).find((row) => row.capability === "independent-verify").observed;
   const put = (lines) => writeFileSync(join(root, "probe", "verify.txt"), lines.join("\n"));
+  const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
   const truth = (index) => tokens[`verify_${index}`];
-  const claimed = (index) => JSON.parse(readFileSync(join(root, "claims.json"), "utf8"))[index - 1].claimed_value;
-  const each = (verdictOf, valueOf = truth) =>
-    Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => `claim-${offset + 1}: ${valueOf(offset + 1)} ${verdictOf(offset + 1)}`);
-
-  // Exactly two of the six are misstated, so the seeding itself has a negative control in it.
+  const claimed = (index) => claims[index - 1].claimed_value;
   const wrong = Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => offset + 1)
     .filter((index) => claimed(index) !== truth(index));
-  assert.equal(wrong.length, 2, "the seeding did not put up two wrong claims, so an unconditional verdict could be right");
+  const each = (lineOf) => Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => lineOf(offset + 1));
+
+  // The seeding itself has a negative control in it, and it is not always the same size.
+  assert.equal(wrong.length >= 1 && wrong.length <= 4, true, "the seeding put up no wrong claim, so an unconditional AGREES would be right");
   assert.deepEqual(wrong, [...tokens.verify_wrong_claims]);
 
-  put(each(() => CLAIM_DIFFERS_WORD));
+  put(each((index) => `claim-${index}: ${truth(index)} ${CLAIM_DIFFERS_WORD}`));
   assert.equal(verify(), false, "a runtime that called every claim wrong was credited with having compared them");
-  put(each(() => CLAIM_AGREES_WORD));
+  put(each((index) => `claim-${index}: ${truth(index)} ${CLAIM_AGREES_WORD}`));
   assert.equal(verify(), false, "a runtime that called every claim right was credited with having compared them");
-  put(each(() => CLAIM_AGREES_WORD, claimed));
+  put(each((index) => `claim-${index}: ${claimed(index)} ${CLAIM_AGREES_WORD}`));
   assert.equal(verify(), false, "a runtime that repeated the claims was credited with having checked them");
-  // The hedge: the true value and the claimed one together is not a verdict.
-  put(each((index) => (wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD),
-    (index) => (wrong.includes(index) ? `${truth(index)} ${claimed(index)}` : truth(index))));
-  assert.equal(verify(), false, "a runtime that wrote both the true and the claimed value was credited with a verdict");
-  // Right values, right verdicts, one claim left unanswered.
-  put(each((index) => (wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD)).slice(1));
-  assert.equal(verify(), false, "a runtime that answered five of six claims was credited for the one it skipped");
+  // The verdicts right, but with no report of what was claimed: this is the answer a runtime that
+  // never opened claims.json would give if it happened to guess the wrong set correctly.
+  put(each((index) => `claim-${index}: ${truth(index)} ${wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD}`));
+  assert.equal(verify(), false, "a correct verdict with no claimed value was accepted, so guessing the wrong set is enough again");
+  // A claimed value on a line whose claim was right is not a report, it is a hedge.
+  put(each((index) => (wrong.includes(index)
+    ? `claim-${index}: ${truth(index)} ${claimed(index)} ${CLAIM_DIFFERS_WORD}`
+    : `claim-${index}: ${truth(index)} ${claimed(wrong[0])} ${CLAIM_AGREES_WORD}`)));
+  assert.equal(verify(), false, "another claim's stated value on an AGREES line was read as a verdict");
+  // The right values on every line and the verdicts the wrong way round. This is what the verdict
+  // check is for, now that the claimed-value binding carries most of the weight: a runtime with all
+  // the evidence in hand can still be wrong about what it means.
+  put(each((index) => (wrong.includes(index)
+    ? `claim-${index}: ${truth(index)} ${claimed(index)} ${CLAIM_AGREES_WORD}`
+    : `claim-${index}: ${truth(index)} ${CLAIM_DIFFERS_WORD}`)));
+  assert.equal(verify(), false, "a runtime that reported every claim's opposite verdict was credited with comparing them");
+  // One claim left unanswered is not six answers.
+  put(each((index) => (wrong.includes(index)
+    ? `claim-${index}: ${truth(index)} ${claimed(index)} ${CLAIM_DIFFERS_WORD}`
+    : `claim-${index}: ${truth(index)} ${CLAIM_AGREES_WORD}`)).slice(1));
+  assert.equal(verify(), false, "a runtime that skipped a claim was credited for it");
 
-  put(each((index) => (wrong.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD)));
+  put(each((index) => (wrong.includes(index)
+    ? `claim-${index}: ${truth(index)} ${claimed(index)} ${CLAIM_DIFFERS_WORD}`
+    : `claim-${index}: ${truth(index)} ${CLAIM_AGREES_WORD}`)));
   assert.equal(verify(), true);
 });
 
-test("a runtime that compares always earns the verification word and one that guesses mostly does not", () => {
-  // The property the negative control has to have in both directions. A challenge whose randomness
-  // could fail a capable runtime would manufacture a shortfall, which is the class this whole
-  // module exists to refuse; a challenge a guesser passes measures compliance rather than ability.
-  const seedings = 90;
-  let comparer = 0;
-  let asserted = 0;
-  const positions = new Set();
-  for (let round = 0; round < seedings; round += 1) {
-    const root = mkdtempSync(join(tmpdir(), "aos-probe-verify-sweep-"));
-    const tokens = probeTokens();
-    seedProbeWorkspace(root, tokens);
-    positions.add(String(tokens.verify_wrong_claims));
-    const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
-    const truth = (index) => tokens[`verify_${index}`];
-    const put = (verdictOf) => writeFileSync(join(root, "probe", "verify.txt"),
-      Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => `claim-${offset + 1}: ${truth(offset + 1)} ${verdictOf(offset + 1)}`).join("\n"));
-    const observed = () => observeProbeWorkspace(root, tokens).find((row) => row.capability === "independent-verify").observed;
+test("the probe record's schema identity moves when the record's meaning does", () => {
+  // The final review's R-01. The O-03 hunk took the persisted `invocation` projection from four
+  // fields to eight and the G-04 hunk changed what `independent-verify` witnesses, while the schema
+  // id stayed `aos-capability-probe.v1` -- so two records with different evidentiary meanings shared
+  // one identity, and `lib/cli.mjs` persists both into `record.json`. The module states the rule it
+  // was breaking: "A field moving means a new schema id."
+  assert.equal(CAPABILITY_PROBE_SCHEMA, "aos-capability-probe.v2");
+  // Bound, not merely equal by coincidence: this module is the only thing that writes this record
+  // and the only thing that decides it, so a verifier that kept its old name while the record moved
+  // would claim the authority had not changed when its instrument had.
+  assert.equal(CAPABILITY_PROBE_VERIFIER, CAPABILITY_PROBE_SCHEMA);
+  const emitted = capabilityProbeRecord({
+    agent_id: "alpha", probe_id: "probe-9", observations: [], invocation: { ok: true, exit_code: 0 }
+  });
+  assert.equal(emitted.schema_id, CAPABILITY_PROBE_SCHEMA);
+  assert.equal(emitted.verifier_id, CAPABILITY_PROBE_VERIFIER);
 
-    put((index) => (claims[index - 1].claimed_value === truth(index) ? CLAIM_AGREES_WORD : CLAIM_DIFFERS_WORD));
-    if (observed()) comparer += 1;
-    put(() => CLAIM_DIFFERS_WORD);
-    if (observed()) asserted += 1;
-    rmSync(root, { recursive: true, force: true });
+  // The superseded generation is kept and named, not dropped: a record from the earlier build reads
+  // as a version this build has heard of, with a sentence true of that record.
+  assert.deepEqual([...CAPABILITY_PROBE_GENERATIONS], ["aos-capability-probe.v1", "aos-capability-probe.v2"]);
+  const old = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v1" });
+  assert.equal(old.generation, "SUPERSEDED");
+  // The sentence has to say what is different about *that* record, so a reader knows which of the
+  // two things they are holding.
+  assert.match(old.predates, /before the withholding control read whether the trial completed/u);
+  assert.match(old.predates, /constant, so that word does not witness a comparison/u);
+  assert.equal(CAPABILITY_PROBE_PREDATES[CAPABILITY_PROBE_SCHEMA], undefined, "the current generation was described as superseding itself");
+
+  assert.equal(capabilityProbeGeneration(emitted).generation, "CURRENT");
+  // And a generation this build has never heard of is named as unknown rather than accused of
+  // forging one or quietly read as current.
+  for (const unknown of [{ schema_id: "aos-capability-probe.v9" }, { schema_id: null }, {}, null]) {
+    assert.equal(capabilityProbeGeneration(unknown).generation, "UNKNOWN");
+    assert.equal(capabilityProbeGeneration(unknown).predates, null);
   }
-  assert.equal(comparer, seedings, "a runtime that compared every claim was refused the word on some seeding, so the challenge is noisy against a capable runtime");
-  assert.equal(asserted, 0, "a runtime that asserted one verdict for every claim earned the word");
-  assert.equal(positions.size > 1, true, "every seeding put the wrong claims in the same place, so the position is learnable");
-  assert.equal(VERIFY_WRONG_SETS.length, 15);
+});
+
+test("no answer that skips claims.json is accepted, for any wrong set and any fixed strategy", () => {
+  // The final review's finding, and the test whose absence is why two rounds passed the defect.
+  //
+  // The previous instrument measured the best non-comparing strategy at 1 in 15 and both the
+  // implementer and the reviewer read that as an acceptable floor. It was not a floor, it was a
+  // live path: read the six truth files, never open `claims.json`, always answer that claims 1 and
+  // 2 differ, and earn `independent-verify` on every probe where those two happen to be the wrong
+  // ones. The word was then recorded for a runtime that compared nothing.
+  //
+  // The fix is structural rather than statistical, so this test is exhaustive rather than sampled:
+  // a DIFFERS verdict has to carry the value `claims.json` stated, that value exists only in that
+  // file, and so no strategy that did not read it can produce a valid line. Every wrong set crossed
+  // with every fixed-position strategy is 56 x 56, and the expected count is zero -- not small.
+  const verify = PROBE_CHALLENGES.find((entry) => entry.capability === "independent-verify");
+  const tokensFor = (wrong) => {
+    const built = { verify_wrong_claims: wrong };
+    for (let index = 1; index <= VERIFY_CLAIM_COUNT; index += 1) built[`verify_${index}`] = `truth-${index}-0123456789abcdef`;
+    wrong.forEach((_, offset) => { built[`verify_decoy_${offset + 1}`] = `decoy-${offset + 1}-fedcba9876543210`; });
+    return built;
+  };
+  const claimedOf = (tokens, index) => (tokens.verify_wrong_claims.includes(index)
+    ? tokens[`verify_decoy_${tokens.verify_wrong_claims.indexOf(index) + 1}`]
+    : tokens[`verify_${index}`]);
+  const answer = (tokens, lineOf) =>
+    Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => lineOf(tokens, offset + 1)).join("\n");
+
+  let comparer = 0;
+  let fixedAccepted = 0;
+  let fixedTried = 0;
+  let pasted = 0;
+  let credulous = 0;
+  for (const wrong of VERIFY_WRONG_SETS) {
+    const tokens = tokensFor(wrong);
+    // A runtime that compares carries the claimed value exactly where the claim was wrong.
+    if (verify.answered(answer(tokens, (held, index) => (wrong.includes(index)
+      ? `claim-${index}: ${held[`verify_${index}`]} ${claimedOf(held, index)} ${CLAIM_DIFFERS_WORD}`
+      : `claim-${index}: ${held[`verify_${index}`]} ${CLAIM_AGREES_WORD}`)), tokens)) comparer += 1;
+
+    // Every fixed-position strategy there is. It has the truth values -- it had to read those to
+    // answer at all -- and no claimed value, because it never opened the file that holds them.
+    for (const guess of VERIFY_WRONG_SETS) {
+      fixedTried += 1;
+      if (verify.answered(answer(tokens, (held, index) =>
+        `claim-${index}: ${held[`verify_${index}`]} ${guess.includes(index) ? CLAIM_DIFFERS_WORD : CLAIM_AGREES_WORD}`), tokens)) {
+        fixedAccepted += 1;
+      }
+    }
+
+    // And two strategies that did open the file but still did not compare.
+    const everyClaimed = Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => claimedOf(tokens, offset + 1)).join(" ");
+    if (verify.answered(answer(tokens, (held, index) =>
+      `claim-${index}: ${held[`verify_${index}`]} ${everyClaimed} ${CLAIM_DIFFERS_WORD}`), tokens)) pasted += 1;
+    if (verify.answered(answer(tokens, (held, index) =>
+      `claim-${index}: ${claimedOf(held, index)} ${CLAIM_AGREES_WORD}`), tokens)) credulous += 1;
+  }
+
+  assert.equal(VERIFY_WRONG_SETS.length, 56, "the wrong sets are no longer every non-empty subset of at most four");
+  assert.equal(comparer, VERIFY_WRONG_SETS.length,
+    "a runtime that compared every claim was refused on some seeding, so the challenge is noisy against a capable runtime");
+  assert.equal(fixedTried, VERIFY_WRONG_SETS.length ** 2);
+  // Zero, not small. A rate here would mean the word can still be earned without comparing.
+  assert.equal(fixedAccepted, 0,
+    "a runtime that never opened claims.json and named a fixed set of claims as wrong earned independent-verify");
+  assert.equal(pasted, 0, "a runtime that copied every stated value onto every line earned independent-verify");
+  assert.equal(credulous, 0, "a runtime that repeated the claims earned independent-verify");
+});
+
+test("the count of wrong claims is not knowable in advance either", () => {
+  // Defence in depth rather than the thing that closes the path, and described that way: the
+  // claimed-value binding above is what makes a non-comparing answer unconstructible. This only
+  // removes the second prior an answerer used to have -- with a fixed count, "exactly two of the
+  // six" was a shape it could assume.
+  const sizes = new Set(VERIFY_WRONG_SETS.map((set) => set.length));
+  assert.deepEqual([...sizes].sort(), [1, 2, 3, 4]);
+  // Never empty: an all-correct seeding would make an unconditional AGREES right again.
+  assert.equal(VERIFY_WRONG_SETS.every((set) => set.length >= 1), true);
+  // And a probe really does draw across them, so the count is not fixed in practice either.
+  const drawn = new Set();
+  for (let round = 0; round < 200; round += 1) drawn.add(probeTokens().verify_wrong_claims.length);
+  assert.equal(drawn.size > 1, true, "every probe drew the same number of wrong claims");
 });
 
 test("the deliverable challenge is answered by a structured artifact holding the seeded token", (t) => {
@@ -488,7 +599,11 @@ test("a fixture runtime that does not compare loses the verification word and ke
   // `probe-credulous` existed and no test ran it, which is a claim with no test behind it.
   for (const [profile, why] of [
     ["probe-credulous", "a runtime that repeated the claims it was handed"],
-    ["probe-unchecked", "a runtime that asserted one verdict for every claim without comparing"]
+    ["probe-unchecked", "a runtime that asserted one verdict for every claim without comparing"],
+    ["probe-pasting", "a runtime that copied every stated value onto every line"],
+    // The strategy the final review found beating the previous instrument: it never opens
+    // claims.json at all, and names the same two claims as wrong on every probe.
+    ["probe-fixed-verdict", "a runtime that never opened claims.json and named a fixed pair as wrong"]
   ]) {
     const probed = runCli(cwd, ["agent", "probe", "alpha", "--json"], 0, { FAKE_AGENT_PROFILE: profile });
     const { capability_record: record, probe } = JSON.parse(probed.stdout);

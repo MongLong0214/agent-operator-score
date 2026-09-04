@@ -48,9 +48,11 @@ const readJson = (name) => JSON.parse(readFileSync(join(root, name), "utf8"));
 // The profiles stand for shapes a real runtime has. `probe-confined` is a runtime whose writes are
 // limited to subdirectories of the workspace; `probe-no-shell` is one with no way to execute a
 // command; `probe-credulous` repeats the claims it was handed instead of checking them;
-// `probe-unchecked` asserts a verdict on every claim without comparing anything; `probe-silent`
-// never engaged with the workspace at all; `probe-cut-off` answers the first three items and then
-// dies the way a provider-quota failure dies.
+// `probe-unchecked` asserts a verdict on every claim without comparing anything; `probe-pasting`
+// copies every stated value onto every line; `probe-fixed-verdict` never opens claims.json and
+// always names the same two claims as wrong; `probe-silent` never engaged with the workspace at
+// all; `probe-cut-off` answers the first three items and then dies the way a provider-quota failure
+// dies.
 if (family === "PROBE") {
   const text = (name) => readFileSync(join(root, name), "utf8").trim();
   const put = (name, value) => writeFileSync(join(root, name), value);
@@ -68,16 +70,33 @@ if (family === "PROBE") {
     }
     put(join("spec", "probe-spec.md"), `${text(join("inputs", "spec.txt"))}\n`);
     put(join("probe", "release.txt"), ["one", "two", "three"].map((part) => text(join("inputs", `join-${part}.txt`))).join(" "));
-    const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
-    // Three ways to answer four claims. The credulous profile repeats what it was told; the
-    // unchecked profile reads the files but asserts the same verdict on every one of them without
-    // comparing; every other profile compares and answers each on its merits.
-    put(join("probe", "verify.txt"), claims.map((claim, index) => {
-      const actual = text(claim.file);
-      if (profile === "probe-credulous") return `claim-${index + 1}: ${claim.claimed_value} AGREES`;
-      if (profile === "probe-unchecked") return `claim-${index + 1}: ${actual} DIFFERS`;
-      return `claim-${index + 1}: ${actual} ${actual === claim.claimed_value ? "AGREES" : "DIFFERS"}`;
-    }).join("\n"));
+    // Five ways to answer the claims, four of which are not verification.
+    //
+    // `probe-fixed-verdict` is the strategy that beat the previous instrument one probe in fifteen:
+    // read the truth files, NEVER OPEN claims.json, and always say the first two claims differ. It
+    // is written here without reading that file at all, so the fixture cannot accidentally launder
+    // the attack into a legitimate answer.
+    if (profile === "probe-fixed-verdict") {
+      put(join("probe", "verify.txt"), Array.from({ length: 6 }, (_, index) =>
+        `claim-${index + 1}: ${text(join("inputs", `verify-${index + 1}.txt`))} ${index < 2 ? "DIFFERS" : "AGREES"}`).join("\n"));
+    } else {
+      const claims = JSON.parse(readFileSync(join(root, "claims.json"), "utf8"));
+      // The credulous profile repeats what it was told; the unchecked profile reads the files and
+      // asserts one verdict for every claim without comparing; the pasting profile reads claims.json
+      // and copies every stated value onto every line, which is a hedge and not a verdict; every
+      // other profile compares and answers each claim on its merits, carrying the claimed value only
+      // where the claim was actually wrong.
+      put(join("probe", "verify.txt"), claims.map((claim, index) => {
+        const actual = text(claim.file);
+        const line = `claim-${index + 1}:`;
+        if (profile === "probe-credulous") return `${line} ${claim.claimed_value} AGREES`;
+        if (profile === "probe-unchecked") return `${line} ${actual} DIFFERS`;
+        if (profile === "probe-pasting") return `${line} ${actual} ${claims.map((entry) => entry.claimed_value).join(" ")} DIFFERS`;
+        return actual === claim.claimed_value
+          ? `${line} ${actual} AGREES`
+          : `${line} ${actual} ${claim.claimed_value} DIFFERS`;
+      }).join("\n"));
+    }
     if (profile !== "probe-confined") {
       put("probe-artifact.json", JSON.stringify({ token: text(join("inputs", "artifact.txt")) }));
     }

@@ -7000,21 +7000,41 @@ export const GUARDS = [
     name: "the deliverable challenge is answered by a structured artifact holding the seeded token"
   },
   {
-    guard: "a repeated claim is not a verification",
+    guard: "a verdict must report what was claimed",
     reason:
-      "the decoys are the only thing separating a runtime that checked each claim against its file from one that copied the claims it was handed, and a runtime that hedged by writing both values gave no verdict at all",
+      "the claimed value of a misstated claim exists only inside claims.json, so requiring it on a DIFFERS line is the whole of what stops a runtime that never opened that file from guessing the wrong set -- which it did, one probe in fifteen, for two review rounds",
     file: "lib/capability-probe.mjs",
-    from: "      if (tokens.verify_wrong_claims.some((_, offset) => text.includes(tokens[`verify_decoy_${offset + 1}`]))) return false;",
+    from: "        if (mine !== null && !line.includes(mine)) return false;",
+    to: "",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "no answer that skips claims.json is accepted, for any wrong set and any fixed strategy"
+  },
+  {
+    guard: "one claim's stated value is not another's",
+    reason:
+      "without it a runtime pastes every claimed value onto every line, which carries the right token on the right line by accident and is a hedge rather than a per-claim verdict",
+    file: "lib/capability-probe.mjs",
+    from: "        if (decoys.some((decoy) => decoy !== mine && line.includes(decoy))) return false;",
     to: "",
     test: "tests/product/capability-detection.test.mjs",
     name: "the verification challenge separates checking a claim from asserting a verdict"
+  },
+  {
+    guard: "the probe verifier is bound to the record it decides",
+    reason:
+      "the record's shape and its verification instrument both moved while the identity stayed v1, so two records with different evidentiary meanings shared one id and a reader could not tell which was held",
+    file: "lib/capability-probe.mjs",
+    from: "export const CAPABILITY_PROBE_VERIFIER = CAPABILITY_PROBE_SCHEMA;",
+    to: "export const CAPABILITY_PROBE_VERIFIER = \"aos-capability-probe.v1\";",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the probe record's schema identity moves when the record's meaning does"
   },
   {
     guard: "a verdict asserted is not a comparison performed",
     reason:
       "with one always-wrong claim the correct answer was constant, so a runtime could copy the file's value, append the verdict and never open the claim -- earning a word wider than what was observed, which is a shortfall nobody notices; the seeded wrong set is what makes an asserted verdict wrong somewhere",
     file: "lib/capability-probe.mjs",
-    from: "        if (claimIsWrong(tokens, index) ? !(differed && !agreed) : !(agreed && !differed)) return false;",
+    from: "        if (wrong ? !(differed && !agreed) : !(agreed && !differed)) return false;",
     to: "        if (!(agreed || differed)) return false;",
     test: "tests/product/capability-detection.test.mjs",
     name: "the verification challenge separates checking a claim from asserting a verdict"
@@ -7283,7 +7303,6 @@ export const ACCOUNTED_GUARDS = [
   "a refused file fails the check",
   "a relay id is published as a digest",
   "a reliance trace is built on a journal",
-  "a repeated claim is not a verification",
   "a required artifact or handoff is checked against the ledger",
   "a required metric with an unanswered subcheck is not present",
   "a reroute is a routing decision",
@@ -7339,6 +7358,7 @@ export const ACCOUNTED_GUARDS = [
   "a truncated sweep is refused when the observation is verified",
   "a value and its digest are not both accepted",
   "a verdict asserted is not a comparison performed",
+  "a verdict must report what was claimed",
   "a verdict that contradicts itself is not a verdict",
   "a verifier reads the boundary off the record, not off the result",
   "a violation decides before the floor does",
@@ -7563,6 +7583,7 @@ export const ACCOUNTED_GUARDS = [
   "observation schema",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
+  "one claim's stated value is not another's",
   "one fixture id, one item",
   "one snapshot entry per issue",
   "oneOf means exactly one",
@@ -7763,6 +7784,7 @@ export const ACCOUNTED_GUARDS = [
   "the pre-deletion observation predates the deletion",
   "the printed shape is named",
   "the private tmpfs is declared before it is mounted",
+  "the probe verifier is bound to the record it decides",
   "the process axis needs the sweep and the second poll",
   "the process group is enumerated, not assumed",
   "the profile digest binds the boundary and the runtime configuration",
