@@ -823,17 +823,16 @@ test("write access is asked of the repository, not inferred from an association"
   // A collaborator with the read or triage role would have attested to completed work.
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("triage") }), false);
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("read") }), false);
-  // A 403 does not answer whether the person has write access. It is not a denial, and it is not
-  // a pass: callers must distinguish it from both with a strict comparison.
-  const unavailable = await hasWriteAccess("o/r", "a", {
+  // A 403 does not answer whether the person has write access. The public predicate is therefore
+  // false: a caller that only asks whether access exists cannot mistake an unavailable answer for
+  // permission.
+  assert.equal(await hasWriteAccess("o/r", "a", {
     get: async () => {
       const error = new Error("403");
       error.status = 403;
       throw error;
     }
-  });
-  assert.equal(unavailable.answer, NOT_CHECKED);
-  assert.equal(unavailable.status, 403);
+  }), false);
   assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
 });
 
@@ -867,15 +866,82 @@ test("a transient permission failure is retried before the author is judged", as
     return { body: { permission: "write" } };
   };
 
-  const unavailable = await hasWriteAccess("o/r", "legitimate-writer", { get, cache });
-  assert.equal(unavailable.answer, NOT_CHECKED, "the first 502 was filed as a settled no-access answer");
-  assert.equal(unavailable.status, 502);
-  assert.match(unavailable.call, /collaborators\/legitimate-writer\/permission$/u);
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), false, "an unavailable result read as permission");
+  assert.equal(calls, 1, "the first permission lookup did not run");
 
   assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true, "the retry did not reach the later write answer");
   assert.equal(calls, 2, "the first unavailable answer was cached");
   assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true);
   assert.equal(calls, 2, "the settled write answer was not cached");
+});
+
+test("a snapshot stamps a login with its settled permission answer", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const completion = (issue) => ({ schema: "aos-issue-completion.v1", issue, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1], verdict: "PASS", evidence: {} });
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }, { issue: 629 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  let permissionCalls = 0;
+  const get = async (path) => {
+    if (path.includes("/permission")) {
+      permissionCalls += 1;
+      if (permissionCalls === 1) {
+        const error = new Error(`GitHub ${path} -> 502`);
+        error.status = 502;
+        throw error;
+      }
+      return { body: { permission: "admin" } };
+    }
+    const issue = /\/issues\/(628|629)$/u.exec(path)?.[1];
+    if (issue) {
+      return {
+        body: {
+          number: Number(issue), title: "legitimate record", state: "closed", labels: [],
+          body: "```json\n" + JSON.stringify(completion(Number(issue))) + "\n```",
+          user: { login: "maintainer" }, comments: 0
+        }
+      };
+    }
+    if (/\/issues\/(579|580|581)$/u.test(path)) {
+      const error = new Error(`GitHub ${path} -> 404`);
+      error.status = 404;
+      throw error;
+    }
+    throw new Error(`unexpected ${path}`);
+  };
+
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  const trust = snapshot.issues.map((issue) => ({ issue: issue.number, author_trusted: issue.close_evidence?.author_trusted }));
+  assert.deepEqual(trust, [{ issue: 628, author_trusted: true }, { issue: 629, author_trusted: true }]);
+  assert.equal(new Set(trust.map((one) => one.author_trusted)).size, 1, "one snapshot carried different trust answers for the same login");
+  assert.equal(permissionCalls, 2, "the retry did not settle the login once for this run");
+});
+
+test("permission retry is bounded per login", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }, { issue: 629 }, { issue: 630 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  let permissionCalls = 0;
+  const get = async (path) => {
+    if (path.includes("/permission")) {
+      permissionCalls += 1;
+      const error = new Error(`GitHub ${path} -> 403`);
+      error.status = 403;
+      throw error;
+    }
+    const issue = /\/issues\/(628|629|630)$/u.exec(path)?.[1];
+    if (issue) {
+      return { body: { number: Number(issue), title: "unreadable author", state: "open", labels: [], body: "", user: { login: "maintainer" }, comments: 1 } };
+    }
+    if (/\/issues\/(628|629|630)\/comments/u.test(path)) return { body: [{ body: "later source", user: { login: "maintainer" } }], link: null };
+    if (/\/issues\/(579|580|581)$/u.test(path)) {
+      const error = new Error(`GitHub ${path} -> 404`);
+      error.status = 404;
+      throw error;
+    }
+    throw new Error(`unexpected ${path}`);
+  };
+
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  assert.equal(snapshot.issues.length, 3, "the bound skipped sources instead of permission retries");
+  assert.equal(permissionCalls, 2, "six sources by one unavailable login caused more than one bounded retry");
 });
 
 test("comments are read until GitHub says there is no next page, and a runaway is refused", async () => {
