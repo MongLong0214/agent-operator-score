@@ -190,8 +190,18 @@ jobs:
   # The real lane stays with the host that can actually run it.
   security-gates:
     needs: action-pins
-    name: security-gates
-    runs-on: ubuntu-latest
+    name: security-gates (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both, and not for redundancy. `confinement.test.mjs` carries one test --
+        # `a staged credential printed by the agent is scrubbed from the public result` -- that
+        # needs a STRICT backend and reports NOT_OBSERVED on Linux for want of Seatbelt. Measured
+        # on darwin the file has zero skips; measured on the ubuntu runner it has one, and the one
+        # is a secret-scrubbing property. Naming this job on Linux alone would have required a
+        # check that never verifies it, which is the defect the job exists to prevent.
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
