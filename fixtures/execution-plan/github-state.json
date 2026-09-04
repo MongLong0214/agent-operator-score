@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-04T00:54:12.181Z",
+  "captured_at": "2026-09-04T03:36:58.104Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -852,22 +852,76 @@
     {
       "number": 566,
       "title": "[P1][scoring] Hard cap을 exact trigger cell·verifier·effect evidence에 결박한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P1",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 566,
+        "final_sha": "525c679d286ae4fe4f80613e823e7cd2853fb3ed",
+        "pr": 621,
+        "ci_run_ids": [
+          33832279530
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "cap_trigger_cells": "Caps are bound to the exact cell the #582 contract declares for the failing subcheck, read from subcheckMapping/outcome_domains and never restated: reproduced end to end on a real aos assess with the unsafe fixture, where the C6.SL.01 trigger that #557 produced as evidence and never as a ceiling (run carried cap_trigger_cells [C6.SL.01] while the published result carried caps: []) now reaches the published ceiling. hardCapsFor refuses a cap derived from a shape, from a silence (pass === null), from an unnamed verifier and from empty evidence; triggers dedupe by cell|metric|subcheck|verifier with evidence unioned rather than first-only. least-privilege (M19.permissions-are-allowed-enum) is included as a CRITICAL_SAFETY source -- a widening over legacy capsFor, warranted by the issue's own mapping and confirmed by the gate to change no shipped-lane verdict, because the one benign trigger exists only on non-STRICT policies whose records fail provenanceProblems and never reach measuredRecords.",
+          "verifier_evidence": "Each trigger names the verifier the answering row names and the evidence that answer rests on, with per-cell effect events where the observation is in hand rather than M19's four-axis union. capBindingProblems enforces the same binding at the verify site in both directions -- a trigger's cell, verifier and evidence must match the result's own rows, and a subcheck recorded as failing must be named by a ceiling. It also re-derives max_value from CAPS and scope from CAP_SCOPE rather than reading them off the artifact: the round-1 gate reproduced that editing a stored max_value 39 -> 99, or dropping system_outcome from scope, returned ok:true with cap-binding ok:true while lifting the published outcome index from 39 to 97.9, and both tampers are now refused along with scope-widening, domain retarget and unknown-code. A second defect found and closed in the same work: aos verify --run re-derived every rebuild input from evidence except the caps, so a stored result with its CRITICAL_SAFETY deleted rebuilt without it, matched itself and verified -- reproduced on the base commit and refused on this head in both the deletion and the invention direction. RESULT_SCHEMA_VERSION 2.2.0 so a result from an earlier generation is named rather than accused of forgery.",
+          "mutation": "731/731 guards load-bearing unqualified on darwin at 71becba, 0 SURVIVED, 0 NO-MATCH, exit 0, one pre-existing linux-only deferral whose ledger row is byte-identical to dev's. Sixteen guards for this issue, all hand-verified by the gate: each from appears verbatim exactly once, each to applied to the real file with only the named witness run, all sixteen KILLED and each on its own reason. One guard the implementer wrote was discarded and reported rather than kept: mutating RESULT_SCHEMA_VERSION was killed by the JSON schema const before the witness reached its naming assertion -- an over-determined witness -- and round 2 reproduced the discard and confirmed both replacements die inside the assertion they name.",
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "19 items at da1ce269 -- 11 PASS, 6 FAIL collapsing to 4 distinct defects, 3 NOTED, 1 N/A; enumeration COMPLETE, verification COMPLETE, verdict BLOCK",
+          "round1_inventory_sha256": "0a61b8242ad17c5e1393c6e564ff32266bf9b828b8e07a7dff03c35cccbd3209",
+          "round2": "seal and ancestry da1ce269 -> 71becba verified before judging; all four obligations CLOSED, each reproduced by the reviewer rather than read off the response; verdict PASS WITH NITS",
+          "equivalent_paths": "the terminal was the fourth renderer and still keyed off cap_applied, so one surface printed 'withheld' while markdown, HTML and card printed the ceiling trigger; all four now print the identical CRITICAL_SAFETY line and the everySurface oracle holds them to view.headline with headline subset phrases asserted",
+          "tests": "1586 tests, 0 fail under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "ci": "pull_request run 33832279530 green on all 14 checks at 71becba, including both security-gates legs, measurement-gates, action-pins and mutation, which became required checks on dev before this merge"
+        },
+        "known_residue": [
+          {
+            "id": "N-01",
+            "statement": "the everySurface oracle closes the ceiling obligation but not the general equivalent-paths class -- view.headline is 13 of 74 phrases",
+            "impact": "round 2 tested rather than argued this: deleting the reliance line from renderProfileTerminal drops a whole section from the operators default screen while the other three surfaces keep it, and 31 tests stay green"
+          },
+          {
+            "id": "N-02",
+            "statement": "the dashboard index row still prints view.summary with no ceiling",
+            "impact": "round 1 listed it among the failing sites and round 2 graded it the lesser one because the ceiling reaches that page through the detail view; named here because a reader taking failing_sites literally could call it open"
+          },
+          {
+            "id": "N-03",
+            "statement": "a result written by an earlier build that records a cap-source subcheck as failing while carrying caps: [] now fails the new cap-binding check",
+            "impact": "that is the correct report, but it means pre-branch results in operator stores are not silently re-verifiable"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#566",
         "#578",
-        "#575"
+        "#575",
+        "#582",
+        "#557"
       ]
     },
     {
