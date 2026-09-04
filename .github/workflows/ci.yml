@@ -177,3 +177,53 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/check-defect-classes.mjs
+  # Named gates for the security and measurement properties this release is built on. They already
+  # ran inside `npm test`, which means no required check could say *which* property held -- a green
+  # `test` job proved only that nothing in it failed. These name them, so branch protection can
+  # require the property rather than the suite.
+  #
+  # Each script here is hermetic: no Seatbelt, no authenticated runtime, no network. That is the
+  # selection rule, not an accident. `verify:official-issuance-gate` is deliberately NOT used as-is,
+  # because it includes confinement-real-lane.test.mjs, whose STRICT tests skip on Linux (no
+  # Seatbelt) and whose codex half skips on macOS runners (no authenticated Codex) -- as a required
+  # check it would go green on skips, which is the exact defect this release wrote tests against.
+  # The real lane stays with the host that can actually run it.
+  security-gates:
+    needs: action-pins
+    name: security-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: operator-event authority
+        run: npm run verify:operator-event-authority
+      - name: no agent artifact earns process credit
+        run: npm run verify:no-agent-artifact-process-credit
+      - name: isolation boundary
+        run: npm run verify:isolation-boundary
+      - name: official issuance gate (hermetic half)
+        run: node --test tests/product/confinement.test.mjs tests/product/official-issuance.test.mjs
+
+  measurement-gates:
+    needs: action-pins
+    name: measurement-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: profile aggregation
+        run: npm run verify:profile-aggregation
+      - name: projection consistency
+        run: npm run verify:projection-consistency
+      - name: no operator score hero
+        run: npm run verify:no-operator-score-hero
+      - name: model identity
+        run: npm run verify:model-identity
