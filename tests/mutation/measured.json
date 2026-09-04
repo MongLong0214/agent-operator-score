@@ -7,7 +7,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "ACL walk": {
@@ -16,7 +16,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "AOS home withheld from the agent": {
@@ -25,7 +25,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "AOS_HOME is denied before the workspace is allowed": {
@@ -34,7 +34,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "ECD PROFILE_BOUND names the profile it claims": {
@@ -43,7 +43,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD a bound profile identity is compared": {
@@ -52,7 +52,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD a cell names only forms that administer its subchecks": {
@@ -61,7 +61,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD a locked form is completed exactly once": {
@@ -70,7 +70,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD an answered opportunity names its verifier": {
@@ -79,7 +79,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD an observation agrees with its own subchecks": {
@@ -88,7 +88,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD artifact versions are exact": {
@@ -97,7 +97,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD capabilities are identity, not a property": {
@@ -106,7 +106,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD cell claims a real subcheck": {
@@ -115,7 +115,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD cell has an owning construct": {
@@ -124,7 +124,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD cell resolved from the contract": {
@@ -133,7 +133,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD claim stage rests on what was observed": {
@@ -142,7 +142,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD claim stages are the three this module scores": {
@@ -151,7 +151,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD comparability compares emitted results": {
@@ -160,7 +160,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD comparability enforces every declared rule": {
@@ -169,7 +169,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD comparability is governed by the contract the results were scored under": {
@@ -178,7 +178,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD comparability reads the emitted facet identity": {
@@ -187,7 +187,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD comparability refuses an undeclared facet": {
@@ -196,7 +196,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD comparability rules gate declared facets": {
@@ -205,7 +205,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD construct withheld on a missing required cell": {
@@ -214,7 +214,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD contract identity is derived, not declared": {
@@ -223,7 +223,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD contract seal required before an estimate": {
@@ -232,7 +232,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD contract-specified minimum cannot drift from its clause": {
@@ -241,7 +241,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD deferred claim may not be scored": {
@@ -250,7 +250,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD derived rows are frozen": {
@@ -259,7 +259,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD derived rows only": {
@@ -268,7 +268,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD every metric is administered exactly once": {
@@ -277,7 +277,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD form and cell name each other": {
@@ -286,7 +286,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD form opportunity count is derived": {
@@ -295,7 +295,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD insufficient opportunities yields null": {
@@ -304,7 +304,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD legacy band surface is disclosed, not asserted away": {
@@ -313,7 +313,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD missing evidence keeps its own reason": {
@@ -322,7 +322,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD observations are what lib/metrics.mjs says they are": {
@@ -331,7 +331,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD opportunities carry what decided them": {
@@ -340,7 +340,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "ECD process index withheld on a missing construct": {
@@ -349,7 +349,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD prohibited value source refused": {
@@ -358,7 +358,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD self-report earns no credit": {
@@ -367,7 +367,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD shared form cells are disclosed": {
@@ -376,7 +376,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD subcheck cardinality is pinned": {
@@ -385,7 +385,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "ECD subcheck double ownership": {
@@ -394,7 +394,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD subcheck exhaustive mapping": {
@@ -403,7 +403,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.192Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "ECD subcheck ownership follows the administering form": {
@@ -412,7 +412,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.191Z"
+        "at": "2026-09-04T08:55:38.031Z"
       }
     },
     "EVIDENCE_ONLY names where the evidence goes": {
@@ -421,7 +421,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "EVIDENCE_ONLY records whether the migration happened": {
@@ -430,7 +430,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "MERGED holds no commit that reaches neither line": {
@@ -439,7 +439,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "PATH carries no relative entry": {
@@ -448,7 +448,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "SUPERSEDED accounts for every commit on no other line": {
@@ -457,7 +457,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "SUPERSEDED requires the thing that superseded it": {
@@ -466,7 +466,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "UNIQUE_WORK carries the plan that gets the work off the branch": {
@@ -475,7 +475,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "UNIQUE_WORK names what is unique to it": {
@@ -484,7 +484,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "UNKNOWN_HOLD names what blocks the decision": {
@@ -493,7 +493,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a .NET startup hook is a pre-main hook like the rest": {
@@ -502,7 +502,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "a /proc listing is not a list of survivors": {
@@ -511,7 +511,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "a 404 is an answer and a 502 is not": {
@@ -520,7 +520,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "a NOT_YET deletion log cites no boundary observations": {
@@ -529,7 +529,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "a NOT_YET deletion log may not list deletions": {
@@ -538,7 +538,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "a SUPERSEDED accounting is compared against the commits the collector derived": {
@@ -547,7 +547,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a URL carrying userinfo is a credential": {
@@ -556,7 +556,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a backend refusal loses the path it named": {
@@ -565,7 +565,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a bare alias is never an exact identity": {
@@ -574,7 +574,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a binary swapped since registration never reaches official support": {
@@ -583,7 +583,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a blocked candidate is not selectable": {
@@ -592,7 +592,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a blocker closed without close evidence has not cleared": {
@@ -601,7 +601,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a borrowed explanation loses the paths it named": {
@@ -610,7 +610,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a bound claim names the profile it is bound to": {
@@ -619,7 +619,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a boundary needs both of its observations": {
@@ -628,7 +628,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a boundary record's own summary is not its observation": {
@@ -637,7 +637,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a calendar-impossible instant is refused before any arithmetic": {
@@ -646,7 +646,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a cancel typed at a shell is not an operator turn": {
@@ -655,7 +655,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a candidate source version is published as a digest": {
@@ -664,7 +664,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a candidate's lane verdict is the gate's decision": {
@@ -673,7 +673,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a cap that names no evidence is refused where it is produced": {
@@ -682,7 +682,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a capped pull request history is refused when the observation is verified": {
@@ -691,7 +691,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a capped pull request history supports no claim in the record": {
@@ -700,7 +700,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a ceiling's magnitude is re-derived, never read off the artifact": {
@@ -709,7 +709,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a ceiling's reach is re-derived, never read off the artifact": {
@@ -718,7 +718,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a citation is checked against the answer the cited command gave": {
@@ -727,7 +727,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a cleanup failure is published by class and digest": {
@@ -736,7 +736,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "a collector read error names a relative path": {
@@ -745,7 +745,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a command that returned nothing is not an empty list": {
@@ -754,7 +754,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a committed observation carries no transcript": {
@@ -763,7 +763,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "a complete cycle is not an issued cycle": {
@@ -772,7 +772,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "a completed deletion requires the observation that witnessed it": {
@@ -781,7 +781,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a completed log cites both boundary observation digests": {
@@ -790,7 +790,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "a configuration directory with no declared file is not a login": {
@@ -799,7 +799,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a confirmation nobody could check is not a true one": {
@@ -808,7 +808,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "a contradicted model blocks the candidate outright": {
@@ -817,7 +817,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a contradicting transcript still leaves the cohort": {
@@ -826,7 +826,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a copy taken while the tree moved is not a snapshot": {
@@ -835,7 +835,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "a credential gate that refused blocks the candidate outright": {
@@ -844,7 +844,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a credential is not a model id": {
@@ -853,7 +853,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "a credential is staged for the runtime, not for the label": {
@@ -862,7 +862,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "a credential is what it is filed under, at any length": {
@@ -871,7 +871,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "a credential-shaped name is refused as an ordinary allowed name": {
@@ -880,7 +880,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "a credential-shaped name is refused at the carry as well": {
@@ -889,16 +889,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "a cut-off trial is not a measurement": {
       "platform": "darwin",
-      "fingerprint": "sha256:06d80c3e968f9d30012f23b7222e7e13480d5bfedec2b64a2993f4cedfa1a1fd",
+      "fingerprint": "sha256:0b2cd0ff4672e194ce3a1793fb9c36184c9ca4fbfcfbf504db522496e08ff465",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a cycle answers with the provenance its runs resolved": {
@@ -907,7 +907,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a cycle locks the executable as it is, not as it was registered": {
@@ -916,7 +916,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a cycle of profiles withholds its aggregate by name": {
@@ -925,7 +925,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a cycle reads the executable its runs saw": {
@@ -934,7 +934,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "a cycle whose model is unknown says so": {
@@ -943,7 +943,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a date-shaped substring is not a snapshot on its own": {
@@ -952,7 +952,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "a decision binds to the construct it is evidence about": {
@@ -961,7 +961,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a decision names the dimension it belongs to": {
@@ -970,7 +970,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a declared route is published as digests": {
@@ -979,7 +979,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a declared schedule never certifies collision safety": {
@@ -988,7 +988,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a deletion names the commit the audit judged": {
@@ -997,7 +997,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a deletion outside the audit is refused": {
@@ -1006,7 +1006,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a deletion recommendation carries a reason": {
@@ -1015,7 +1015,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a deletion-blocking unknown blocks the deletion": {
@@ -1024,7 +1024,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a denied confirmation outranks an unread one": {
@@ -1033,7 +1033,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "a deny the kernel refused, not a file that was not there": {
@@ -1042,7 +1042,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "a derivation cites a receipt the observation carries": {
@@ -1051,7 +1051,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a detected model that contradicts the declared one is a mismatch": {
@@ -1060,7 +1060,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a diagnostic never issues a profile-bound aggregate": {
@@ -1069,7 +1069,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "a discovery stage cannot skip the one before it": {
@@ -1078,7 +1078,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a facet is not normalised into a digest": {
@@ -1087,7 +1087,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a failed check is named rather than blamed on the contract": {
@@ -1096,7 +1096,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a failed observation's error is redacted": {
@@ -1105,7 +1105,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a family that never settled is a missing answer": {
@@ -1114,7 +1114,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "a family with no known naming rules is not exact": {
@@ -1123,7 +1123,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "a filesystem location is one however it is spelled": {
@@ -1132,7 +1132,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a finding anywhere empties the eligible set": {
@@ -1141,7 +1141,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a forged structural set is revalidated like the rest": {
@@ -1150,7 +1150,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "a form list naming an undeclared cell is refused before it is dereferenced": {
@@ -1159,7 +1159,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "a generation is named for what it actually predates": {
@@ -1168,7 +1168,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a handoff is recorded only where something was handed": {
@@ -1177,7 +1177,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "a lane the release has not proven never reaches official support": {
@@ -1186,7 +1186,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a leaked descendant blocks issuance": {
@@ -1195,7 +1195,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "a leaked descendant is an actual external action": {
@@ -1204,7 +1204,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a live audit needs a live snapshot": {
@@ -1213,7 +1213,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "a live head the audit never covered is reported": {
@@ -1222,7 +1222,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a log checked without its observations is not a log that passed": {
@@ -1231,7 +1231,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a metric's status and its value are one state": {
@@ -1240,7 +1240,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a mismatch cannot be bound into a profile": {
@@ -1249,7 +1249,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a missed known incident is a regression": {
@@ -1258,7 +1258,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "a mistyped flag is not a deliberate default": {
@@ -1267,7 +1267,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a model id this product cannot read is refused": {
@@ -1276,7 +1276,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "a multi-phase issue is not closed by the phase that has run": {
@@ -1285,7 +1285,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "a mutable alias withholds the profile-bound aggregate": {
@@ -1294,7 +1294,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a name that is not a model name is never printed": {
@@ -1303,7 +1303,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "a name the runtime cannot start without is required unless the boundary supplies it": {
@@ -1312,7 +1312,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a name the runtime cannot start without never reaches official support": {
@@ -1321,7 +1321,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a name without snapshot proof is a mutable alias": {
@@ -1330,7 +1330,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a named evidence id is published as a digest": {
@@ -1339,7 +1339,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a named secret assigned a value is a secret at any length": {
@@ -1348,7 +1348,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.227Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a named secret is a secret without a digit in it": {
@@ -1357,7 +1357,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a namespace deny needs a plant behind it": {
@@ -1366,7 +1366,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "a new profile is filed beside the old one, never over it": {
@@ -1375,7 +1375,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a new run is never scored by the old scorer": {
@@ -1384,7 +1384,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a one-segment absolute path is a path": {
@@ -1393,7 +1393,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a partly attributed ledger is not the cost basis": {
@@ -1402,7 +1402,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "a phase's predecessors must be in the plan": {
@@ -1411,7 +1411,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "a policy no backend implements is not measured": {
@@ -1420,7 +1420,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "a policy that narrows the run-metadata door is applied, not merely recorded": {
@@ -1429,16 +1429,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "a probe that observed nothing is not a runtime that can do nothing": {
       "platform": "darwin",
-      "fingerprint": "sha256:6dec0315284e3852d91d71ab1d978147f10f0198f349bd1b5ee41667840acdc6",
+      "fingerprint": "sha256:77eee09457e98ba1f1ba093e4fca951f6bd70ff9bead485e425a1e4d8347c12d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a probed run is scored from what was probed, never from the adapter table": {
@@ -1447,7 +1447,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a process with no key for a run says so": {
@@ -1456,7 +1456,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a profile this machine has already produced is reused and not appended": {
@@ -1465,7 +1465,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a protected branch is never deletion-eligible": {
@@ -1474,7 +1474,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "a provider refusal is narrow, not any non-zero exit": {
@@ -1483,7 +1483,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "a pull request opened after the audit blocks the deletion": {
@@ -1492,7 +1492,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a raw value is hashed because it was supplied raw": {
@@ -1501,7 +1501,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a recomputation compares the boundary facts it published": {
@@ -1510,7 +1510,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "a recomputation runs under the run's own boundary": {
@@ -1519,7 +1519,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a record an older release wrote is read as what it is": {
@@ -1528,7 +1528,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a record is authenticated before it is judged": {
@@ -1537,7 +1537,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "a redundant invocation is one that added nothing": {
@@ -1546,7 +1546,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "a refused file fails the check": {
@@ -1555,7 +1555,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "a relay id is published as a digest": {
@@ -1564,7 +1564,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a reliance trace is built on a journal": {
@@ -1573,16 +1573,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
-      }
-    },
-    "a repeated claim is not a verification": {
-      "platform": "darwin",
-      "fingerprint": "sha256:27fefca95a7e38e4941a1c8deccd9c11839571e11522f3c6e83766ad90a93314",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a required artifact or handoff is checked against the ledger": {
@@ -1591,7 +1582,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a required metric with an unanswered subcheck is not present": {
@@ -1600,7 +1591,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "a reroute is a routing decision": {
@@ -1609,7 +1600,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a resolved key is the key": {
@@ -1618,7 +1609,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "a result has to agree with itself": {
@@ -1627,7 +1618,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.227Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a risky security state is never VERIFIED": {
@@ -1636,7 +1627,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "a root is a root wherever it starts": {
@@ -1645,7 +1636,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a route event names the agent that ran": {
@@ -1654,7 +1645,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "a route label that is not an identifier assigns nobody": {
@@ -1663,7 +1654,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "a row is held to the cells its contract declared": {
@@ -1672,7 +1663,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "a row is read as a whole": {
@@ -1681,7 +1672,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.227Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a run is official only when every invocation is": {
@@ -1690,7 +1681,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "a run that failed still records what it was bound to": {
@@ -1699,7 +1690,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "a run the cycle cannot identify closes it": {
@@ -1708,7 +1699,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a run under a different profile digest is not a run in this cycle": {
@@ -1717,7 +1708,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "a run workspace is never inside the store": {
@@ -1726,7 +1717,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "a runtime tree inside the store is refused": {
@@ -1735,7 +1726,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "a safety ceiling names its own cell's events": {
@@ -1744,7 +1735,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a same-name binary that is not the adapter's runtime gets no credential": {
@@ -1753,7 +1744,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "a sanitised value is one this module boxed": {
@@ -1762,7 +1753,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "a scan that ran out of budget says so": {
@@ -1771,7 +1762,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "a scorable cell with no bound decision withholds": {
@@ -1780,7 +1771,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a scored Process row carries its five references": {
@@ -1789,7 +1780,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "a search that returned no page is not a complete sweep": {
@@ -1798,7 +1789,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "a secret handed over with a space is still handed over": {
@@ -1807,7 +1798,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a sequence at its key's indentation is the value": {
@@ -1816,7 +1807,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "a settlement nobody could check does not pass": {
@@ -1825,7 +1816,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a settlement nobody could check is not a clean one": {
@@ -1834,7 +1825,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "a skipped real lane is not a verified one": {
@@ -1843,7 +1834,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "a started phase cannot integrate code on a blocked issue": {
@@ -1852,7 +1843,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "a state revision is stated, never defaulted": {
@@ -1861,7 +1852,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a state that may not be deleted fixes its recommendation": {
@@ -1870,7 +1861,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "a status the record asserts about itself is not evidence": {
@@ -1879,7 +1870,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "a status this build does not know is refused": {
@@ -1888,7 +1879,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a status with no digest under it is the weakest one": {
@@ -1897,7 +1888,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a stored operator trace is re-checked at the read": {
@@ -1906,7 +1897,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "a stored result may not elevate its own claim": {
@@ -1915,7 +1906,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a subcheck verdict is one of three states, never rounded": {
@@ -1924,7 +1915,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "a superseded generation stays readable enough to be named": {
@@ -1933,7 +1924,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a surface carries the rows it says it averaged": {
@@ -1942,7 +1933,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "a symlinked staging source is refused by name": {
@@ -1951,7 +1942,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "a tag's ref object is part of its identity": {
@@ -1960,7 +1951,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "a task id is a reference to a task this run holds": {
@@ -1969,7 +1960,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a task re-entering an ancestor's resource is the one that checks it": {
@@ -1978,7 +1969,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "a task two agents invoked has no owner": {
@@ -1987,7 +1978,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "a transcript is never sufficient on its own": {
@@ -1996,7 +1987,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "a transcript that names another model contradicts the binding": {
@@ -2005,7 +1996,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a transcript value is never printed unless it is a model name": {
@@ -2014,7 +2005,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "a tree the digest cannot cover is not certified": {
@@ -2023,7 +2014,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "a truncated cycle search says so": {
@@ -2032,7 +2023,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "a truncated reachability answer is not an answer": {
@@ -2041,7 +2032,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "a truncated reference sweep supports no reference claim": {
@@ -2050,7 +2041,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a truncated sweep is refused when the observation is verified": {
@@ -2059,7 +2050,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "a value and its digest are not both accepted": {
@@ -2068,16 +2059,25 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "a verdict asserted is not a comparison performed": {
       "platform": "darwin",
-      "fingerprint": "sha256:4ac37cb6e2ac5ddcab7452d0dbf021df3ad404c7d7e55800f0eb24192a51ef89",
+      "fingerprint": "sha256:e7052824b1399cec360e79e5efc3ebe8e5e613957e163aee0e6dfd897b07bb3f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
+      }
+    },
+    "a verdict must report what was claimed": {
+      "platform": "darwin",
+      "fingerprint": "sha256:cc496ab490bbe14ab8ab2aa12fe8f4b4773e837b46fa62f368d82615cfbc6d1c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "a verdict that contradicts itself is not a verdict": {
@@ -2086,7 +2086,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "a verifier reads the boundary off the record, not off the result": {
@@ -2095,7 +2095,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "a violation decides before the floor does": {
@@ -2104,7 +2104,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "a weight is a reciprocal or it is not a weight": {
@@ -2113,7 +2113,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a weight is a share of an equal-weight mean": {
@@ -2122,7 +2122,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a withheld corpus does not pass": {
@@ -2131,7 +2131,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "a withheld identity caps the canonical claim": {
@@ -2140,7 +2140,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "a withheld identity withholds the composite": {
@@ -2149,7 +2149,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "a withheld metric says so rather than reading as uncomputed": {
@@ -2158,7 +2158,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a withheld rate keeps the counts that withheld it": {
@@ -2167,7 +2167,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "a work floor is priced under a form AOS states work for": {
@@ -2176,7 +2176,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "a work graph that refers to itself has no order to route": {
@@ -2185,7 +2185,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "a work record with no graph is not a work statement": {
@@ -2194,7 +2194,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "a work task is named by the form that asked for it": {
@@ -2203,7 +2203,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "a workspace that contains the store is refused": {
@@ -2212,7 +2212,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "a workspace that resolves into the store is refused": {
@@ -2221,7 +2221,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "a workspace-relative effect is inside the workspace": {
@@ -2230,7 +2230,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "a write after settlement is visible": {
@@ -2239,7 +2239,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "absent coverage is not a measured zero": {
@@ -2248,7 +2248,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "absent protection on both sides is not unchanged protection": {
@@ -2257,7 +2257,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "abstention cannot outweigh decision": {
@@ -2266,7 +2266,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "actual-effect lookup": {
@@ -2275,7 +2275,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.183Z"
+        "at": "2026-09-04T08:55:38.024Z"
       }
     },
     "adapter membership is a published name, not a path shape": {
@@ -2284,7 +2284,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "advice is answered once": {
@@ -2293,7 +2293,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "agent-relay event needs its attestation": {
@@ -2302,7 +2302,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "allowlist-only child environment": {
@@ -2311,7 +2311,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "an UNTRUSTED identity is not a verified one": {
@@ -2320,7 +2320,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "an absent boundary is not a passing one": {
@@ -2329,7 +2329,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "an after-snapshot head is in flight, not merely named": {
@@ -2338,7 +2338,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an alias is the node it names": {
@@ -2347,16 +2347,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "an answer is bounded to the workspace it was asked for": {
       "platform": "darwin",
-      "fingerprint": "sha256:d0a68a2deedc4f7b5c7468aefeda27440036cbc7fe56c0cbb033a13257edc596",
+      "fingerprint": "sha256:4fe14994c84597c734c13c6a0445ce7bdedf46fb2d985776f166444f6b54884b",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "an asserted number equals the number the collector derived": {
@@ -2365,7 +2365,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "an asserted open PR appears in the collected history": {
@@ -2374,7 +2374,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "an asserted tree scan is the one that ran": {
@@ -2383,7 +2383,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "an effect event's denial has to be proved": {
@@ -2392,7 +2392,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "an empty completion says why nothing was eligible": {
@@ -2401,7 +2401,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "an empty isolation lane is not a chosen one": {
@@ -2410,7 +2410,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "an entry records its reference scan and tag containment": {
@@ -2419,7 +2419,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an equal rank is a tie and not a winner": {
@@ -2428,7 +2428,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "an event's capability digest is recomputed and compared": {
@@ -2437,7 +2437,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "an excused head is classified as the in-flight work it claims to be": {
@@ -2446,7 +2446,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an excused head records no SHA it cannot have": {
@@ -2455,7 +2455,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an excused head's own claims are checked against the observation": {
@@ -2464,7 +2464,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an import reads every event before it creates a Run": {
@@ -2473,7 +2473,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "an imported run is written down": {
@@ -2482,7 +2482,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "an imported run names the producer of its evidence": {
@@ -2491,7 +2491,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "an incomplete result's terminal names it": {
@@ -2500,7 +2500,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "an inconsistent snapshot withholds": {
@@ -2509,7 +2509,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "an inexact model never reaches official support": {
@@ -2518,7 +2518,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "an initial judgment after the reveal is refused": {
@@ -2527,7 +2527,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "an initial judgment is not committed with a post-advice response": {
@@ -2536,7 +2536,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "an initial judgment names its evidence": {
@@ -2545,7 +2545,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "an invalid routing contract withholds every routing observable": {
@@ -2554,7 +2554,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "an invocation nobody can attribute decides nothing": {
@@ -2563,7 +2563,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "an issue number is a number before it is a pattern": {
@@ -2572,7 +2572,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "an issue owns a surface": {
@@ -2581,7 +2581,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "an issued legacy number needs a declared STRICT level": {
@@ -2590,7 +2590,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "an observation run carries a provenance record too": {
@@ -2599,7 +2599,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "an observation that could not run still leaves its record": {
@@ -2608,7 +2608,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "an observation's markers are read, not only its exit code": {
@@ -2617,7 +2617,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "an older schema generation is named, not accused": {
@@ -2626,7 +2626,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "an omitted observation family is not an observed empty one": {
@@ -2635,7 +2635,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "an open PR head survives the deletion": {
@@ -2644,7 +2644,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "an open PR makes the branch ACTIVE, whatever it is labelled": {
@@ -2653,7 +2653,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an open handle is corroboration, not a warrant": {
@@ -2662,7 +2662,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "an open pull request is looked for in every source that would know": {
@@ -2671,7 +2671,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "an operator decision binds only to an operator_process cell": {
@@ -2680,7 +2680,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "an operator decision is lined up with the stage it was about": {
@@ -2689,7 +2689,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "an operator event is assembled from named fields": {
@@ -2698,7 +2698,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "an operator event states its challenge and its value": {
@@ -2707,7 +2707,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "an opportunity id cannot pass for the operator event id": {
@@ -2716,7 +2716,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "an orchestration signal ranks only a runtime this product identified": {
@@ -2725,7 +2725,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "an out-of-range month, day, hour, minute or second is refused": {
@@ -2734,7 +2734,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "an overlap in the ledger is a collision whatever the schedule said": {
@@ -2743,7 +2743,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "an overlap the requirement does not permit is not an adequate route": {
@@ -2752,7 +2752,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "an owner AOS cannot judge is not delegation the operator got wrong": {
@@ -2761,7 +2761,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "an unanswered checkpoint mints nothing": {
@@ -2770,7 +2770,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "an unexplained holder of the run's directories withholds": {
@@ -2779,7 +2779,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "an unidentified runtime cannot carry the lane": {
@@ -2788,7 +2788,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "an unknown capability source keeps no abilities": {
@@ -2797,7 +2797,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "an unknown isolation lane is refused, not defaulted": {
@@ -2806,7 +2806,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "an unknown model withholds the aggregate by its own name": {
@@ -2815,7 +2815,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "an unknown protection state is not an unprotected branch": {
@@ -2824,7 +2824,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "an unknown status is not a verdict": {
@@ -2833,7 +2833,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "an unknown's bearing is one of two values, not free text": {
@@ -2842,7 +2842,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "an unmeasured network axis is not NOT_OBSERVED": {
@@ -2851,7 +2851,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "an unmeasured network policy has no expectation": {
@@ -2860,7 +2860,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "an unnameable transcript row withholds the aggregate": {
@@ -2869,7 +2869,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "an unproven lane blocks issuance": {
@@ -2878,7 +2878,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "an unread confirmation is not reported as a denied one": {
@@ -2887,7 +2887,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "an unreadable store is reported and not read as an empty one": {
@@ -2896,7 +2896,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "an unsafe sentence is not an unsafe run": {
@@ -2905,7 +2905,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.182Z"
+        "at": "2026-09-04T08:55:38.023Z"
       }
     },
     "an unstated work floor withholds rather than falling back to the route": {
@@ -2914,7 +2914,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "an untrusted executable blocks the candidate outright": {
@@ -2923,7 +2923,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "an untrusted reason travels without the path it names": {
@@ -2932,7 +2932,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "an unverified executable gets no credential lookup": {
@@ -2941,7 +2941,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "an unverified executable withholds the aggregate": {
@@ -2950,7 +2950,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "artifact top-level mode": {
@@ -2959,7 +2959,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "artifact type in the envelope": {
@@ -2968,7 +2968,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "binary handling": {
@@ -2977,7 +2977,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "block scalar measured from its key": {
@@ -2986,7 +2986,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "both blocking issues are named while the log is blocked": {
@@ -2995,7 +2995,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "both canary judges share one denial predicate": {
@@ -3004,7 +3004,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "bubblewrap mounts what the policy declares": {
@@ -3013,7 +3013,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "canonical manifest order and uniqueness": {
@@ -3022,7 +3022,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "canonical path, type and mode tuple": {
@@ -3031,7 +3031,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "canonical row field alphabet": {
@@ -3040,7 +3040,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "canonicalization descends into objects": {
@@ -3049,7 +3049,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "cap trigger names the contract's own cell": {
@@ -3058,7 +3058,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "cap trigger rests on an explicit failure": {
@@ -3067,7 +3067,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "captured stderr byte authority": {
@@ -3076,7 +3076,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "captured stream byte authority": {
@@ -3085,7 +3085,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "carriage returns stripped": {
@@ -3094,7 +3094,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "central redaction": {
@@ -3103,7 +3103,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "checkpoint evidence preserved": {
@@ -3112,7 +3112,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "checkpoint observation reads who wrote the record": {
@@ -3121,7 +3121,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "child output credential scrub": {
@@ -3130,7 +3130,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "cited evidence is read only if it is the evidence cited": {
@@ -3139,7 +3139,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "cleanup claim not overstated": {
@@ -3148,7 +3148,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "cleanup is read from the teardown that happened": {
@@ -3157,7 +3157,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "cleanup is verified by the scans that can answer": {
@@ -3166,7 +3166,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "close-evidence author trust": {
@@ -3175,7 +3175,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "close-evidence component confirmations": {
@@ -3184,7 +3184,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "close-evidence issue-specific fields": {
@@ -3193,7 +3193,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "close-evidence repository confirmation": {
@@ -3202,7 +3202,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "close-evidence verdict": {
@@ -3211,7 +3211,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "completion requires an authority to check the prerequisites against": {
@@ -3220,7 +3220,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "composite action discovery": {
@@ -3229,7 +3229,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "configured argv0": {
@@ -3238,7 +3238,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "container image digest": {
@@ -3247,7 +3247,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "containment is measured, not inferred from a label": {
@@ -3256,7 +3256,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "corpus abstention cannot outweigh decision": {
@@ -3265,7 +3265,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "corpus leakage refusal": {
@@ -3274,7 +3274,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "coverage gate": {
@@ -3283,7 +3283,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "credential env refusal": {
@@ -3292,7 +3292,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "credential names a shape rule cannot see are listed": {
@@ -3301,7 +3301,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "credential names are matched whatever their capitalisation": {
@@ -3310,7 +3310,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "cycle run identity": {
@@ -3319,7 +3319,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "cycle search inside strongly connected components": {
@@ -3328,7 +3328,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "decisions must reach past one session": {
@@ -3337,7 +3337,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "declared credentials are never reprinted": {
@@ -3346,7 +3346,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "declared route and actual route stay separate": {
@@ -3355,7 +3355,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "descriptor-bound fingerprint": {
@@ -3364,7 +3364,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "descriptor-bound metadata": {
@@ -3373,7 +3373,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "directory skip list": {
@@ -3382,7 +3382,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "dismissing an unknown requires an argument": {
@@ -3391,7 +3391,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "doctor checks a required config name has a value": {
@@ -3400,7 +3400,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "done issues have no withheld phase": {
@@ -3409,7 +3409,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "effective execute permission": {
@@ -3418,7 +3418,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "either spelling of an open pull request blocks": {
@@ -3427,7 +3427,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "elementary cycle enumeration": {
@@ -3436,7 +3436,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "entry state coherence": {
@@ -3445,7 +3445,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "env option scan": {
@@ -3454,7 +3454,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "env policy digest binding": {
@@ -3463,7 +3463,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "escaped key resolved before it is a key": {
@@ -3472,7 +3472,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "escaping link keeps its own bytes": {
@@ -3481,7 +3481,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "every asserted graph fact names a derivation": {
@@ -3490,7 +3490,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "every cap trigger is preserved, not the first": {
@@ -3499,7 +3499,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "every directory entry is charged to the scan budget": {
@@ -3508,7 +3508,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "every invariant family is recorded on both sides": {
@@ -3517,7 +3517,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "every kind of evidence is required by name": {
@@ -3526,7 +3526,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "every observation a row cites must record a run that succeeded": {
@@ -3535,7 +3535,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "every projection is compared with the result": {
@@ -3544,7 +3544,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "every published string is constrained at the mint": {
@@ -3553,7 +3553,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "every segment of a snapshot name has to be readable": {
@@ -3562,7 +3562,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "every transport spelling needs the transport approval": {
@@ -3571,7 +3571,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "everything published passes the one gate": {
@@ -3580,7 +3580,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "evidence bound to the audited revision": {
@@ -3589,7 +3589,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "evidence contract cannot be switched off": {
@@ -3598,7 +3598,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "evidence failures decide the route's adequacy": {
@@ -3607,7 +3607,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "exact revision binding": {
@@ -3616,7 +3616,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "exactly one status label": {
@@ -3625,7 +3625,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "excluded issues are a floor": {
@@ -3634,7 +3634,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "excluded issues present in the snapshot": {
@@ -3643,7 +3643,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "execution plan cycle detection": {
@@ -3652,7 +3652,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "explicit keys are keys": {
@@ -3661,7 +3661,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "false completion cap": {
@@ -3670,7 +3670,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "false completion needs the completion claim": {
@@ -3679,7 +3679,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "fingerprint compare": {
@@ -3688,7 +3688,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "flow-mapping uses": {
@@ -3697,7 +3697,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "full-SHA action reference": {
@@ -3706,7 +3706,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "grading reads what was frozen at settlement": {
@@ -3715,7 +3715,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "handoff exact compare": {
@@ -3724,7 +3724,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "hard-forbidden class refusal": {
@@ -3733,7 +3733,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "hard-forbidden matching is case-insensitive": {
@@ -3742,16 +3742,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "having run something is proved by the digest and not by saying so": {
       "platform": "darwin",
-      "fingerprint": "sha256:665fcb70e54ea409968f5b72cc7fe22539c8480b829bfce84c8c009fc5691489",
+      "fingerprint": "sha256:751f19841c386261349a83b91bbcf766aac35e2aa0f1e3b6be8a6a0607ecd0b8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.066Z"
       }
     },
     "holdout floor": {
@@ -3760,7 +3760,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "home_source is a kind and never a path": {
@@ -3769,7 +3769,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "hot-file single owner": {
@@ -3778,7 +3778,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "identity-before-resolver ordering": {
@@ -3787,7 +3787,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "incomplete evidence never reported clean": {
@@ -3796,7 +3796,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "independent checks survive a non-canonical plan": {
@@ -3805,7 +3805,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "interpreter inherits its own findings": {
@@ -3814,7 +3814,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "interpreter is part of the identity": {
@@ -3823,7 +3823,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "interpreter startup paths are a forbidden class": {
@@ -3832,7 +3832,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "invocation identity provenance": {
@@ -3841,7 +3841,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "issuance needs STRICT": {
@@ -3850,7 +3850,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "issuance needs a passing canary with evidence": {
@@ -3859,7 +3859,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "legacy digest separation": {
@@ -3868,7 +3868,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "legacy ledger row is not holdout evidence": {
@@ -3877,7 +3877,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "legacy migration guard": {
@@ -3886,7 +3886,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "local reference redirection": {
@@ -3895,7 +3895,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "locked cycle seed": {
@@ -3904,7 +3904,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "main and dev are compared across the deletion itself": {
@@ -3913,7 +3913,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "malformed-row reporting": {
@@ -3922,7 +3922,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "merge keys bring their keys with them": {
@@ -3931,7 +3931,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "missing invariance evidence withholds": {
@@ -3940,7 +3940,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "missing observation is NOT_OBSERVED, not a failed metric": {
@@ -3949,7 +3949,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.183Z"
+        "at": "2026-09-04T08:55:38.024Z"
       }
     },
     "missing-result refusal": {
@@ -3958,7 +3958,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "naming something to preserve refuses the deletion recommendation": {
@@ -3967,7 +3967,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "no credential is looked up before the identity stage": {
@@ -3976,7 +3976,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "no deletion is authorized without a pre-deletion observation": {
@@ -3985,7 +3985,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "no eligible evidence is said to be none": {
@@ -3994,7 +3994,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "no raw confinement evidence is a verification failure": {
@@ -4003,7 +4003,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "no raw target reaches a published event": {
@@ -4012,7 +4012,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "no variable may carry the store path": {
@@ -4021,7 +4021,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "nothing claimed as deleted is still there": {
@@ -4030,7 +4030,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "nothing is eligible without a live observation": {
@@ -4039,7 +4039,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "nothing vanished that the log did not claim": {
@@ -4048,7 +4048,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "observation channel size bound": {
@@ -4057,7 +4057,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "observation line size bound": {
@@ -4066,7 +4066,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "observation schema": {
@@ -4075,7 +4075,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "offline does not assert close evidence": {
@@ -4084,7 +4084,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "offline runs do not print or report a pass": {
@@ -4093,7 +4093,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
+      }
+    },
+    "one claim's stated value is not another's": {
+      "platform": "darwin",
+      "fingerprint": "sha256:715962db03d6f82a1e68285bfb4b12f7f82291fd09e9db36cff0c8f7d010cf18",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "one fixture id, one item": {
@@ -4102,7 +4111,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "one snapshot entry per issue": {
@@ -4111,7 +4120,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "oneOf means exactly one": {
@@ -4120,7 +4129,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "only the configured runtime corroborates its own binding": {
@@ -4129,7 +4138,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "only the configured runtime's transcript tree is read": {
@@ -4138,7 +4147,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "only the declared runtime files are staged": {
@@ -4147,7 +4156,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "operator decision window": {
@@ -4156,7 +4165,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "operator event authority is the matrix's, not the caller's": {
@@ -4165,7 +4174,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator event authority matrix": {
@@ -4174,7 +4183,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator event cross-session rejection": {
@@ -4183,7 +4192,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator event replay rejection": {
@@ -4192,7 +4201,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator event session binding is verified": {
@@ -4201,7 +4210,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator event state revision advances": {
@@ -4210,7 +4219,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator event unknown source has no authority": {
@@ -4219,7 +4228,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator silence is NOT_OBSERVED": {
@@ -4228,7 +4237,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "operator-env credential gate": {
@@ -4237,7 +4246,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "operator-file event needs explicit provenance": {
@@ -4246,7 +4255,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "outside-target classification": {
@@ -4255,7 +4264,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.183Z"
+        "at": "2026-09-04T08:55:38.024Z"
       }
     },
     "owned paths are not only prose": {
@@ -4264,7 +4273,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "parent writable refusal": {
@@ -4273,7 +4282,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "phase permissions are pinned, not only phase names": {
@@ -4282,7 +4291,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "phases are a contract": {
@@ -4291,7 +4300,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "positive-observation cap guard": {
@@ -4300,7 +4309,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.183Z"
+        "at": "2026-09-04T08:55:38.024Z"
       }
     },
     "pristine error classification": {
@@ -4309,7 +4318,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "probe process independence": {
@@ -4318,7 +4327,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "probe result authentication": {
@@ -4327,7 +4336,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "production-quality needs both lanes": {
@@ -4336,7 +4345,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.030Z"
       }
     },
     "profile cap never names the process axis": {
@@ -4345,7 +4354,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile cap reaches the composite": {
@@ -4354,7 +4363,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile cap reaches the outcome index": {
@@ -4363,7 +4372,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile composite is the 50:50 mean": {
@@ -4372,7 +4381,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "profile composite withheld with the outcome index": {
@@ -4381,7 +4390,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile composite withheld with the process index": {
@@ -4390,7 +4399,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "profile evaluation is emitted under the given contract": {
@@ -4399,7 +4408,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile index weights every row the same": {
@@ -4408,7 +4417,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "profile index withholds on a missing row": {
@@ -4417,7 +4426,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "profile legacy result is not migrated": {
@@ -4426,7 +4435,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile outcome domains match the contract": {
@@ -4435,7 +4444,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile outcome grouping comes from the contract": {
@@ -4444,7 +4453,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile process index is never capped": {
@@ -4453,7 +4462,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile process index is the contract's own": {
@@ -4462,7 +4471,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile projection refuses a result that lost a surface": {
@@ -4471,7 +4480,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile reliance carries its own coverage": {
@@ -4480,7 +4489,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile reliance floor": {
@@ -4489,7 +4498,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile renderer recomputes nothing": {
@@ -4498,7 +4507,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile results are not aggregated with legacy ones": {
@@ -4507,7 +4516,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile undeclared run fields are digested": {
@@ -4516,7 +4525,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "profile unknown result schema is refused": {
@@ -4525,7 +4534,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "protection is compared as content, not as a projection": {
@@ -4534,7 +4543,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "protection is re-checked live, not read from the stored flag": {
@@ -4543,7 +4552,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "provider credential formats are recognised": {
@@ -4552,7 +4561,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "provider/task network separation": {
@@ -4561,7 +4570,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.183Z"
+        "at": "2026-09-04T08:55:38.024Z"
       }
     },
     "pull request produced the commit": {
@@ -4570,7 +4579,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "quoted keys are keys": {
@@ -4579,7 +4588,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "rate denominator floor": {
@@ -4588,7 +4597,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "raw Buffer authority": {
@@ -4597,7 +4606,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "raw artifact name bytes": {
@@ -4606,7 +4615,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "raw filename bytes": {
@@ -4619,7 +4628,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "realpath compare": {
@@ -4628,7 +4637,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "refusal marker in the tree digest": {
@@ -4637,7 +4646,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "refused size in the tree digest": {
@@ -4646,7 +4655,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "refused tree is not artifact identity": {
@@ -4655,7 +4664,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "resolver ownership": {
@@ -4664,7 +4673,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "restricted readiness": {
@@ -4673,7 +4682,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "reviewed action allowlist": {
@@ -4682,7 +4691,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "route cost counts the handoffs a split buys": {
@@ -4691,7 +4700,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "routing capability rests on a source AOS may score": {
@@ -4700,7 +4709,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "routing minimality withholds on an owner AOS cannot judge": {
@@ -4709,7 +4718,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "rulesets are compared by content, not by cardinality": {
@@ -4718,7 +4727,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "run scratch is created inside the cleanup-protected region": {
@@ -4727,7 +4736,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "runs are not disowned by an unread pull request": {
@@ -4736,7 +4745,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "runtime auth is bound to the adapter that reads it": {
@@ -4745,7 +4754,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "safety cap": {
@@ -4754,7 +4763,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "secret-shaped material is not a model name": {
@@ -4763,7 +4772,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "secret-value scan": {
@@ -4772,7 +4781,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "self-report authority prohibition": {
@@ -4781,7 +4790,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.183Z"
+        "at": "2026-09-04T08:55:38.024Z"
       }
     },
     "session ledger byte identity": {
@@ -4790,7 +4799,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "settle reads the cleanup failures": {
@@ -4799,7 +4808,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "single observation per probe": {
@@ -4808,7 +4817,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "skipped directory is still an entry": {
@@ -4817,7 +4826,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "snapshot provenance": {
@@ -4826,7 +4835,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "snapshot source matches how it was read": {
@@ -4835,7 +4844,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "spawn the verified file": {
@@ -4844,7 +4853,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "stale blocked status": {
@@ -4853,7 +4862,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "stale-branch audit deletion recommendations carry a reason": {
@@ -4862,7 +4871,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "stale-branch audit preserves orphaned unmerged work": {
@@ -4871,7 +4880,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "started statuses need finished predecessors": {
@@ -4880,7 +4889,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "subject nonce non-disclosure": {
@@ -4889,7 +4898,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "subject runner executed from memory": {
@@ -4898,7 +4907,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "supply-chain digest covers the .npmrc": {
@@ -4907,7 +4916,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "supply-chain digest covers the policy": {
@@ -4916,7 +4925,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "supply-chain digest covers the verifier": {
@@ -4925,7 +4934,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "support is read from the lane table, not restated": {
@@ -4934,7 +4943,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "symlink chain audit": {
@@ -4943,7 +4952,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "symlink chain containment": {
@@ -4952,7 +4961,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "symlink component expansion": {
@@ -4961,7 +4970,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "symlink escape refusal": {
@@ -4970,7 +4979,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "tag containment cites the ancestry test for each tag it answered about": {
@@ -4979,7 +4988,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "tag containment is derived against the repository's tags": {
@@ -4988,7 +4997,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "task-initiated network is NOT_OBSERVED": {
@@ -4997,7 +5006,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "the PATH rule is part of the digest": {
@@ -5006,7 +5015,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.193Z"
+        "at": "2026-09-04T08:55:38.032Z"
       }
     },
     "the adapter's own config directory is declared, not typed twice": {
@@ -5015,7 +5024,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "the after-snapshot exception is bound to the branch the audit was submitted from": {
@@ -5024,7 +5033,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "the artifact obligation is checked by opening the file": {
@@ -5033,7 +5042,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "the assessed process does not decide issuance": {
@@ -5042,7 +5051,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the assessment is scored under the gate it reports": {
@@ -5051,7 +5060,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "the assessment profile is built for the lane the run uses": {
@@ -5060,7 +5069,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the assessment writes the profile result": {
@@ -5069,7 +5078,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.058Z"
       }
     },
     "the audited commit is the commit the snapshot observed": {
@@ -5078,7 +5087,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "the baseline records the stable plugin/install source at all": {
@@ -5087,7 +5096,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "the binding is in the assessment path": {
@@ -5096,7 +5105,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the blockers clear in the canonical snapshot, not in the log": {
@@ -5105,7 +5114,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the boundary has to be present on this host, not only in the table": {
@@ -5114,7 +5123,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "the boundary withholds every index, not only the composite": {
@@ -5123,7 +5132,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the boundary withholds the number, not only the claim stage": {
@@ -5132,7 +5141,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the boundary's verdict decides whether the run carries a number": {
@@ -5141,7 +5150,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "the canary expectation is this module's, not the record's": {
@@ -5150,7 +5159,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the canary proves the stripped descendant was confined": {
@@ -5159,7 +5168,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the canary that certifies the boundary is the one that shipped": {
@@ -5168,7 +5177,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "the canary verdict is derived from its cells": {
@@ -5177,7 +5186,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the canary's digests verify against what it carries": {
@@ -5186,7 +5195,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "the canary's own escapee is killed and checked": {
@@ -5195,7 +5204,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "the candidate source is digested, never named": {
@@ -5204,7 +5213,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the capture time names a day that exists": {
@@ -5213,7 +5222,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     },
     "the card carries every reliance metric": {
@@ -5222,7 +5231,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "the card carries the delegated-artifact rows": {
@@ -5231,7 +5240,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the card drops no facet": {
@@ -5240,7 +5249,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the card quotes the stored identity lines": {
@@ -5249,7 +5258,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "the ceilings a run earned reach the result it publishes": {
@@ -5258,7 +5267,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "the channel decides the source": {
@@ -5267,7 +5276,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the claim is compared like the numbers are": {
@@ -5276,7 +5285,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "the claim stage reads the boundary": {
@@ -5285,7 +5294,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the closing pull request changed something the issue owns": {
@@ -5294,7 +5303,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "the cohort digest refuses what staging refuses": {
@@ -5303,7 +5312,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "the cohort key describes the policy that was applied": {
@@ -5312,7 +5321,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the cohort key is the operator's binding, never the child's transcript": {
@@ -5321,7 +5330,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "the collector writes no local ref": {
@@ -5330,7 +5339,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the command prints the floored result": {
@@ -5339,7 +5348,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "the committed observation read each pull request history to the end": {
@@ -5348,7 +5357,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "the comparison projection is read from the contract": {
@@ -5357,7 +5366,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "the composite has to agree with its own inputs": {
@@ -5366,7 +5375,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.227Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "the contract digest covers the contract's bytes": {
@@ -5375,7 +5384,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the contract names the gate that binds the record to its evidence": {
@@ -5384,7 +5393,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "the contract states the cells each row averages": {
@@ -5393,7 +5402,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the copy carries the modes it copied": {
@@ -5402,7 +5411,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "the cost floor is the work AOS asked for, not the route under measurement": {
@@ -5411,7 +5420,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "the count deletion turns on is recorded": {
@@ -5420,7 +5429,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.201Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "the credential is reduced to a name and a source where it is resolved": {
@@ -5429,7 +5438,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "the cycle command quotes the stored decision": {
@@ -5438,7 +5447,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the dashboard quotes the stored cycle decision": {
@@ -5447,7 +5456,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the deleted ref is live at the commit being deleted": {
@@ -5456,7 +5465,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the deleted ref still exists live": {
@@ -5465,7 +5474,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the deletion log is checked against the observations it cites": {
@@ -5474,16 +5483,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "the deliverable challenge reads a structured artifact, not a file that mentions a token": {
       "platform": "darwin",
-      "fingerprint": "sha256:fb6ec719fd244fd062e6d8a545c7521040fde202244cdc8745a58c5ae54782ef",
+      "fingerprint": "sha256:9918821d2f3afd27be95dc78b40f263a2a8e4af237afff7207bda6aba795b15d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.235Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "the derived verdict ignores the reported one": {
@@ -5492,7 +5501,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the device nodes are the policy's, not the renderer's": {
@@ -5501,7 +5510,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the digest covers the rules applied outside the allowlist": {
@@ -5510,7 +5519,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "the digest is recomputed over the policy actually applied": {
@@ -5519,7 +5528,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "the domain a ceiling is filed under is the contract's": {
@@ -5528,7 +5537,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "the emitter attributes an invocation to the stage AOS invoked it for": {
@@ -5537,7 +5546,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "the escaped descendant is proved confined": {
@@ -5546,7 +5555,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the evidence a row must cite follows its level, not its label": {
@@ -5555,7 +5564,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "the evidence contract is pinned outside the plan": {
@@ -5564,7 +5573,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.199Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "the evidence digest is over the claim, not the transcript row": {
@@ -5573,7 +5582,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the exception needs a submission branch to be about": {
@@ -5582,7 +5591,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "the executable identity digest is recomputed, not read": {
@@ -5591,7 +5600,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the floor follows the worst severity observed": {
@@ -5600,7 +5609,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "the floor is derived from the work graph, never read off the envelope": {
@@ -5609,7 +5618,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "the floor is recomputed through the producer, not copied from the envelope": {
@@ -5618,7 +5627,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.186Z"
+        "at": "2026-09-04T08:55:38.026Z"
       }
     },
     "the freeze certificate is over the copy": {
@@ -5627,7 +5636,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the freeze copies no link": {
@@ -5636,7 +5645,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "the fresh observation's derivations are the ones checked": {
@@ -5645,7 +5654,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the group sweep is recorded from the group": {
@@ -5654,7 +5663,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the headline oracle names the ceiling every surface must carry": {
@@ -5663,7 +5672,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "the identity aggregation is recomputed from its agents": {
@@ -5672,7 +5681,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "the identity record is published field by field": {
@@ -5681,7 +5690,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.221Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the identity record names the agents that ran": {
@@ -5690,7 +5699,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the invariant baseline agrees with the snapshot it was taken from": {
@@ -5699,7 +5708,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "the lane is bound into the cohort": {
@@ -5708,7 +5717,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the lane's identity comes from the runtime that authenticated": {
@@ -5717,7 +5726,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the ledger's owner replaces the declaration": {
@@ -5726,7 +5735,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "the matrix decides the process axis with the run's own helper": {
@@ -5735,7 +5744,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the matrix reads what the teardown could not remove": {
@@ -5744,7 +5753,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "the minimum route is the cheapest and its tie-break is canonical": {
@@ -5753,7 +5762,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the network axis is enumerated, not typed": {
@@ -5762,7 +5771,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the network enforcement name is the gate's own vocabulary": {
@@ -5771,7 +5780,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "the observation digest is recursive over its content": {
@@ -5780,7 +5789,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the observations carry the operator events they rest on": {
@@ -5789,7 +5798,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the operator event projection is an allowlist": {
@@ -5798,7 +5807,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the operator-typed event set is what the gate covers": {
@@ -5807,7 +5816,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the per-task invocation bound is compared": {
@@ -5816,7 +5825,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the phrase list names the artifact rows it is supposed to check": {
@@ -5825,7 +5834,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the policy digest covers the forbidden rules themselves": {
@@ -5834,7 +5843,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.195Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "the post-deletion observation follows the deletion": {
@@ -5843,7 +5852,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the post-deletion observation is taken promptly": {
@@ -5852,7 +5861,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.204Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the pre-deletion observation is fresh": {
@@ -5861,7 +5870,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the pre-deletion observation predates the deletion": {
@@ -5870,7 +5879,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the printed shape is named": {
@@ -5879,7 +5888,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "the private tmpfs is declared before it is mounted": {
@@ -5888,7 +5897,16 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
+      }
+    },
+    "the probe verifier is bound to the record it decides": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2641d1ec26d45bf19af905febb573124db3e7535474121b9c139ea3e0370c7df",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "the process axis needs the sweep and the second poll": {
@@ -5897,7 +5915,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.211Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the process group is enumerated, not assumed": {
@@ -5906,7 +5924,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the profile digest binds the boundary and the runtime configuration": {
@@ -5915,7 +5933,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the profile digest covers the executable identity": {
@@ -5924,7 +5942,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the profile digest covers the isolation policy": {
@@ -5933,7 +5951,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the profile digest covers the mutable alias state": {
@@ -5942,7 +5960,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the profile digest covers the provenance record": {
@@ -5951,7 +5969,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the profile is rendered from the policy that is digested": {
@@ -5960,7 +5978,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the profile renderers quote the stored lines": {
@@ -5969,7 +5987,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the profile-bound claim is printed only when it was reached": {
@@ -5978,7 +5996,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.224Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "the projection verb is the record's own source": {
@@ -5987,7 +6005,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "the proposal comes from an admitted operator decision": {
@@ -5996,7 +6014,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "the published contract names an entry point that exists": {
@@ -6005,7 +6023,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "the published result carries the boundary it ran under": {
@@ -6014,7 +6032,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.218Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the pull request history is read to the end": {
@@ -6023,7 +6041,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the reader checks the state it was handed": {
@@ -6032,7 +6050,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "the rebuild is handed the reliance the result was built from": {
@@ -6041,7 +6059,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.227Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "the record binding covers the payload the scorer reads": {
@@ -6050,7 +6068,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the record cites the post-deletion observation": {
@@ -6059,7 +6077,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the record cites the pre-deletion observation it was checked against": {
@@ -6068,7 +6086,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.042Z"
       }
     },
     "the references a record reports are the ones the sweep returned": {
@@ -6077,7 +6095,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the reliance evidence survives its trace": {
@@ -6086,7 +6104,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "the rendered audit does not describe a command the collector retired": {
@@ -6095,7 +6113,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.233Z"
+        "at": "2026-09-04T08:55:38.064Z"
       }
     },
     "the renderer refuses a workspace inside the store": {
@@ -6104,7 +6122,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the renderers quote the stored identity lines": {
@@ -6113,7 +6131,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the report command serves what the result projects to": {
@@ -6122,7 +6140,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.228Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "the reported support matrix is the isolation gate's decision": {
@@ -6131,7 +6149,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.232Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "the requirement's tasks are the stages the route declared": {
@@ -6140,7 +6158,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.185Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "the result publishes redacted cleanup failures": {
@@ -6149,7 +6167,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the result states the claim ceiling it was issued under": {
@@ -6158,7 +6176,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "the result states the rows its contract declared": {
@@ -6167,7 +6185,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.227Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "the reveal is read from the journal, not from this object": {
@@ -6176,7 +6194,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the routing evidence id is one a published result keeps": {
@@ -6185,7 +6203,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "the rows a result must carry come from its contract": {
@@ -6194,7 +6212,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.226Z"
+        "at": "2026-09-04T08:55:38.060Z"
       }
     },
     "the run key is one key for one run": {
@@ -6203,7 +6221,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.230Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the run listing says what each run may claim": {
@@ -6212,7 +6230,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.222Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the run reports the executable it spawned": {
@@ -6221,7 +6239,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.054Z"
       }
     },
     "the run resolves its provenance again once its own events are in hand": {
@@ -6230,7 +6248,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.057Z"
       }
     },
     "the run-metadata door cannot be widened in the running process": {
@@ -6239,7 +6257,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "the run-metadata door carries only run metadata": {
@@ -6248,7 +6266,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "the runtime's own event outranks the declaration": {
@@ -6257,7 +6275,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.219Z"
+        "at": "2026-09-04T08:55:38.053Z"
       }
     },
     "the same evidence cannot be counted twice": {
@@ -6266,7 +6284,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "the scanner reads the bytes the grader caps on": {
@@ -6275,7 +6293,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.184Z"
+        "at": "2026-09-04T08:55:38.025Z"
       }
     },
     "the scored result carries the boundary it was produced under": {
@@ -6284,7 +6302,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "the search bound refusal is named as one": {
@@ -6293,7 +6311,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the settlement digest is over the tree the comparison recomputes": {
@@ -6302,7 +6320,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.215Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "the spawn judge reads the gate's expectation table": {
@@ -6311,7 +6329,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.208Z"
+        "at": "2026-09-04T08:55:38.045Z"
       }
     },
     "the spawn refuses a workspace inside the store": {
@@ -6320,7 +6338,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the staged credential copy is private": {
@@ -6329,7 +6347,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "the staged credential is scrubbed by value": {
@@ -6338,7 +6356,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "the staged secrets reach the scrubber": {
@@ -6347,7 +6365,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.217Z"
+        "at": "2026-09-04T08:55:38.052Z"
       }
     },
     "the store refuses an operator event type from another producer": {
@@ -6356,7 +6374,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the store requires an attestation for an operator event": {
@@ -6365,7 +6383,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.229Z"
+        "at": "2026-09-04T08:55:38.061Z"
       }
     },
     "the stored ceiling is checked against the rows it rests on": {
@@ -6374,7 +6392,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "the stored record is bound, not only the event on it": {
@@ -6383,7 +6401,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.062Z"
       }
     },
     "the table shows the decision and not the label": {
@@ -6392,7 +6410,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "the task model's form lists agree with the cell they name": {
@@ -6401,7 +6419,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the teardown observation reports what cleanup returned": {
@@ -6410,7 +6428,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.216Z"
+        "at": "2026-09-04T08:55:38.051Z"
       }
     },
     "the terminal prints the ceiling the other renderers print": {
@@ -6419,7 +6437,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.234Z"
+        "at": "2026-09-04T08:55:38.065Z"
       }
     },
     "the total invocation bound is compared": {
@@ -6428,7 +6446,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.188Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the transcript recogniser knows the configured workspaces root": {
@@ -6437,7 +6455,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.213Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the transcript scan spends a bounded budget": {
@@ -6446,7 +6464,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.220Z"
+        "at": "2026-09-04T08:55:38.055Z"
       }
     },
     "the tree scan reads the integration line": {
@@ -6455,7 +6473,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the tree scan receipt names the commit it scanned": {
@@ -6464,7 +6482,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.203Z"
+        "at": "2026-09-04T08:55:38.041Z"
       }
     },
     "the two head transports are cross-checked": {
@@ -6473,7 +6491,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.202Z"
+        "at": "2026-09-04T08:55:38.040Z"
       }
     },
     "the verified executable must be the adapter's runtime": {
@@ -6482,7 +6500,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.049Z"
       }
     },
     "the weakest run decides the cycle": {
@@ -6491,7 +6509,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.223Z"
+        "at": "2026-09-04T08:55:38.056Z"
       }
     },
     "the whole gate decision has to agree, not its headline": {
@@ -6500,7 +6518,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "the whole policy is revalidated against its adapter at the point of use": {
@@ -6509,7 +6527,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "the withheld prefixes are the module's and the policy's together": {
@@ -6518,7 +6536,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "the withheld reason travels with the surface": {
@@ -6527,7 +6545,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "the work digest is checked against the graph it travels with": {
@@ -6536,7 +6554,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the work floor is frozen at plan approval": {
@@ -6545,7 +6563,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.187Z"
+        "at": "2026-09-04T08:55:38.027Z"
       }
     },
     "the workspace is named relatively so the store is not": {
@@ -6554,7 +6572,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.212Z"
+        "at": "2026-09-04T08:55:38.048Z"
       }
     },
     "top-level artifact open does not follow": {
@@ -6563,7 +6581,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "tracked descendants are terminated at teardown": {
@@ -6572,7 +6590,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.210Z"
+        "at": "2026-09-04T08:55:38.047Z"
       }
     },
     "transport approval binding": {
@@ -6581,7 +6599,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.196Z"
+        "at": "2026-09-04T08:55:38.036Z"
       }
     },
     "trend dedupe": {
@@ -6590,7 +6608,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "trusted-file integrity re-check": {
@@ -6599,7 +6617,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "trusted-process import prohibition": {
@@ -6608,7 +6626,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.206Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "undecided items are in neither denominator": {
@@ -6617,7 +6635,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "undeclared isolation is the weakest lane": {
@@ -6626,7 +6644,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.205Z"
+        "at": "2026-09-04T08:55:38.043Z"
       }
     },
     "unread ACL is not a clean ACL": {
@@ -6635,7 +6653,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "unreadable directory reported": {
@@ -6644,7 +6662,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "unreadable uses: fails closed": {
@@ -6653,7 +6671,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "unverified cleanup blocks issuance": {
@@ -6662,7 +6680,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "uses under with: or env: is an input": {
@@ -6671,7 +6689,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "verification re-derives the settlement half too": {
@@ -6680,7 +6698,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.214Z"
+        "at": "2026-09-04T08:55:38.050Z"
       }
     },
     "verification re-gates the invocations the record carries": {
@@ -6689,7 +6707,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.209Z"
+        "at": "2026-09-04T08:55:38.046Z"
       }
     },
     "verification result check": {
@@ -6698,7 +6716,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "version comment after a flow mapping": {
@@ -6707,7 +6725,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.028Z"
       }
     },
     "version comment is a version": {
@@ -6716,7 +6734,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "what runs after a reroute belongs to the decision that caused it": {
@@ -6725,7 +6743,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.231Z"
+        "at": "2026-09-04T08:55:38.063Z"
       }
     },
     "what was withheld outright is recorded as such": {
@@ -6734,7 +6752,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.194Z"
+        "at": "2026-09-04T08:55:38.035Z"
       }
     },
     "withheld is never a number, and issued is never a reason": {
@@ -6743,7 +6761,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.225Z"
+        "at": "2026-09-04T08:55:38.059Z"
       }
     },
     "withheld precision is absent": {
@@ -6752,7 +6770,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.190Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "workflow permission drift": {
@@ -6761,7 +6779,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.189Z"
+        "at": "2026-09-04T08:55:38.029Z"
       }
     },
     "workspace containment": {
@@ -6770,7 +6788,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.207Z"
+        "at": "2026-09-04T08:55:38.044Z"
       }
     },
     "workspace snapshot map is null-prototype": {
@@ -6779,7 +6797,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.197Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "workspace snapshot reads bytes": {
@@ -6788,7 +6806,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.038Z"
       }
     },
     "workspace snapshot records directories": {
@@ -6797,7 +6815,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.198Z"
+        "at": "2026-09-04T08:55:38.037Z"
       }
     },
     "write access asked of the repository": {
@@ -6806,7 +6824,7 @@
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-04T08:04:21.200Z"
+        "at": "2026-09-04T08:55:38.039Z"
       }
     }
   }
