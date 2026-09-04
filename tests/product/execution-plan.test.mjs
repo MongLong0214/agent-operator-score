@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   CANONICAL_ISSUE_COUNT,
@@ -815,17 +817,17 @@ test("an empty array is not a digest and false is not a count", () => {
 });
 
 test("the public write-access lookup preserves allowed, denied, and unavailable answers", async () => {
-  const { checkWriteAccess } = await import("../../lib/github-state.mjs");
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
   const withRole = (permission) => async () => ({ body: { permission } });
-  assert.equal(await checkWriteAccess("o/r", "a", { get: withRole("admin") }), true);
-  assert.equal(await checkWriteAccess("o/r", "a", { get: withRole("write") }), true);
-  assert.equal(await checkWriteAccess("o/r", "a", { get: withRole("maintain") }), true);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("admin") }), true);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("write") }), true);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("maintain") }), true);
   // A collaborator with the read or triage role would have attested to completed work.
-  assert.equal(await checkWriteAccess("o/r", "a", { get: withRole("triage") }), false);
-  assert.equal(await checkWriteAccess("o/r", "a", { get: withRole("read") }), false);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("triage") }), false);
+  assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("read") }), false);
   // A 403 is neither a denial nor a pass. The public lookup keeps the third answer and its
   // diagnostic context, so an audit can distinguish it from a known untrusted author.
-  const unavailable = await checkWriteAccess("o/r", "a", {
+  const unavailable = await hasWriteAccess("o/r", "a", {
     get: async () => {
       const error = new Error("403");
       error.status = 403;
@@ -835,22 +837,22 @@ test("the public write-access lookup preserves allowed, denied, and unavailable 
   assert.equal(unavailable.answer, NOT_CHECKED);
   assert.equal(unavailable.call, "/repos/o/r/collaborators/a/permission");
   assert.equal(unavailable.status, 403);
-  assert.equal(await checkWriteAccess("o/r", null, { get: withRole("admin") }), false);
+  assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
 });
 
 test("the boolean write-access predicate is fail-closed", async () => {
-  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
-  assert.equal(await hasWriteAccess("o/r", "a", { get: async () => ({ body: { permission: "admin" } }) }), true);
+  const { writeAccessConfirmed } = await import("../../lib/github-state.mjs");
+  assert.equal(await writeAccessConfirmed("o/r", "a", { get: async () => ({ body: { permission: "admin" } }) }), true);
   const unavailable = async () => {
     const error = new Error("502");
     error.status = 502;
     throw error;
   };
-  assert.equal(await hasWriteAccess("o/r", "a", { get: unavailable }), false);
+  assert.equal(await writeAccessConfirmed("o/r", "a", { get: unavailable }), false);
 });
 
 test("a 404 permission answer is a cached denial", async () => {
-  const { checkWriteAccess } = await import("../../lib/github-state.mjs");
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
   const cache = new Map();
   let calls = 0;
   const get = async () => {
@@ -860,13 +862,13 @@ test("a 404 permission answer is a cached denial", async () => {
     throw error;
   };
 
-  assert.equal(await checkWriteAccess("o/r", "no-access", { get, cache }), false, "a 404 was filed as unavailable rather than denied");
-  assert.equal(await checkWriteAccess("o/r", "no-access", { get, cache }), false);
+  assert.equal(await hasWriteAccess("o/r", "no-access", { get, cache }), false, "a 404 was filed as unavailable rather than denied");
+  assert.equal(await hasWriteAccess("o/r", "no-access", { get, cache }), false);
   assert.equal(calls, 1, "a settled no-access answer was not cached");
 });
 
 test("a transient permission failure is retried before the author is judged", async () => {
-  const { checkWriteAccess } = await import("../../lib/github-state.mjs");
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
   const cache = new Map();
   let calls = 0;
   const get = async () => {
@@ -879,16 +881,60 @@ test("a transient permission failure is retried before the author is judged", as
     return { body: { permission: "write" } };
   };
 
-  const unavailable = await checkWriteAccess("o/r", "legitimate-writer", { get, cache });
+  const unavailable = await hasWriteAccess("o/r", "legitimate-writer", { get, cache });
   assert.equal(unavailable.answer, NOT_CHECKED, "the first 502 was filed as a settled no-access answer");
   assert.equal(unavailable.status, 502);
   assert.match(unavailable.call, /collaborators\/legitimate-writer\/permission$/u);
   assert.equal(calls, 1, "the first permission lookup did not run");
 
-  assert.equal(await checkWriteAccess("o/r", "legitimate-writer", { get, cache }), true, "the retry did not reach the later write answer");
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true, "the retry did not reach the later write answer");
   assert.equal(calls, 2, "the first unavailable answer was cached");
-  assert.equal(await checkWriteAccess("o/r", "legitimate-writer", { get, cache }), true);
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true);
   assert.equal(calls, 2, "the settled write answer was not cached");
+});
+
+const sourceFiles = (directory) =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return sourceFiles(path);
+    return entry.isFile() && entry.name.endsWith(".mjs") ? [path] : [];
+  });
+
+test("the tri-state write-access API has no bare truthiness callers", () => {
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const files = ["lib", "tests"].flatMap((directory) => sourceFiles(join(repositoryRoot, directory)));
+  const accessName = ["has", "Write", "Access"].join("");
+  const openingParen = String.raw`(?:\(\s*)?`;
+  const awaitedCall = String.raw`(?:await\s+)?${accessName}\s*\(`;
+  const directUses = [
+    ["if", new RegExp(String.raw`\bif\s*\(\s*!?\s*${openingParen}${awaitedCall}`, "u")],
+    ["&&", new RegExp(String.raw`&&\s*!?\s*${openingParen}${awaitedCall}`, "u")],
+    ["&&", new RegExp(String.raw`${awaitedCall}[^;\n]*\)\s*&&`, "u")],
+    ["!", new RegExp(String.raw`(?<![=!])!\s*${openingParen}${awaitedCall}`, "u")]
+  ];
+  const findings = [];
+
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    for (const [operator, pattern] of directUses) {
+      if (pattern.test(source)) findings.push(`${file}: ${operator} applies directly to the tri-state lookup`);
+    }
+    const assigned = new Set(
+      [...source.matchAll(new RegExp(String.raw`(?<![.$\w])([A-Za-z_$][\w$]*)\s*=\s*${awaitedCall}`, "gu"))].map((match) => match[1])
+    );
+    for (const name of assigned) {
+      const bareVariableUses = [
+        new RegExp(String.raw`\bif\s*\(\s*!?\s*${openingParen}${name}\s*\)?\s*\)`, "u"),
+        new RegExp(String.raw`&&\s*!?\s*${openingParen}${name}\s*\)?(?=\s*(?:[;,){}]|$))`, "u"),
+        new RegExp(String.raw`(?<![=!])!\s*${openingParen}${name}\s*\)?(?=\s*(?:[;,){}]|$))`, "u")
+      ];
+      if (bareVariableUses.some((pattern) => pattern.test(source))) {
+        findings.push(`${file}: a variable assigned from the tri-state lookup is used as a boolean`);
+      }
+    }
+  }
+
+  assert.deepEqual(findings, []);
 });
 
 test("a snapshot stamps a login with its settled permission answer", async () => {

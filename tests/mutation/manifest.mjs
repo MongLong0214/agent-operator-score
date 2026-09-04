@@ -2437,6 +2437,15 @@ export const GUARDS = [
     name: "the public write-access lookup preserves allowed, denied, and unavailable answers"
   },
   {
+    guard: "public write-access lookup has its required name",
+    reason: "the tri-state contract belongs to hasWriteAccess; exporting it under a replacement name leaves its callers with a boolean that cannot report an unavailable request's answer, call, and status",
+    file: "lib/github-state.mjs",
+    from: "export async function hasWriteAccess(repository, login, { auth, get = httpGet, cache = new Map() } = {}) {",
+    to: "export async function checkWriteAccess(repository, login, { auth, get = httpGet, cache = new Map() } = {}) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the public write-access lookup preserves allowed, denied, and unavailable answers"
+  },
+  {
     guard: "snapshot source matches how it was read",
     reason: "an offline snapshot stamped `live` reads in the evidence bundle as an audit that talked to GitHub",
     file: "lib/execution-plan.mjs",
@@ -7577,6 +7586,7 @@ export const ACCOUNTED_GUARDS = [
   "protection is re-checked live, not read from the stored flag",
   "provider credential formats are recognised",
   "provider/task network separation",
+  "public write-access lookup has its required name",
   "pull request produced the commit",
   "quoted keys are keys",
   "rate denominator floor",
