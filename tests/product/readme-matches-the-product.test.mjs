@@ -14,7 +14,7 @@ import { RUNTIMES } from "../../lib/session.mjs";
 import { SCORABLE_CAPABILITY_SOURCES } from "../../lib/routing-oracle.mjs";
 import { fakeAgent, initBare, makePlan, newestRecord } from "./helpers.mjs";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const root = process.env.AOS_README_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const READMES = ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"];
 
@@ -37,6 +37,50 @@ const UN_SHIPPED_AUTOMATION = Object.freeze({
   "README.ja.md": /コーディングエージェントまたは quickstart がこの保留状態を検出し、capability 観測を自動で実行します/u,
   "README.zh-CN.md": /编码 Agent 或 quickstart 会检测到这一保留状态并自动运行 capability 观测/u
 });
+
+// The normal quickstart is zero-config. A provider-backed probe is a real, billable recovery
+// action, so the primary recovery explanation may name the current CLI but cannot make the
+// operator type it to recover. Advanced/manual documentation may do that; the default-recovery
+// block cannot. Keep the previously shipped wording here as the negative control: if it returns,
+// this test must fail for the same reason a reader would be sent to a terminal.
+const PRIMARY_RECOVERY = Object.freeze({
+  "README.md": {
+    starts: "Off by default",
+    advanced: /advanced\/manual/u,
+    previous: "Run `aos assess --probe-capabilities` when you need those answers: it observes the runtime and produces `detected` evidence."
+  },
+  "README.ko.md": {
+    starts: "기본값은 꺼짐",
+    advanced: /고급\/수동/u,
+    previous: "그 답이 필요하면 `aos assess --probe-capabilities`를 실행하세요. 런타임을 관측해 `detected` 증거를 만듭니다."
+  },
+  "README.ja.md": {
+    starts: "既定では無効",
+    advanced: /高度\/手動/u,
+    previous: "その答えが必要な場合は `aos assess --probe-capabilities` を実行してください。ランタイムを観測して `detected` の証拠を生成します。"
+  },
+  "README.zh-CN.md": {
+    starts: "默认关闭",
+    advanced: /高级\/手动/u,
+    previous: "需要这些答案时，请运行 `aos assess --probe-capabilities`：它会观测运行时并生成 `detected` 证据。"
+  }
+});
+
+const primaryRecoveryRequiresOperatorCli = (text, { starts, advanced }) => {
+  const start = text.indexOf(starts);
+  const end = start === -1 ? -1 : text.indexOf("\n## ", start);
+  const recovery = start === -1 ? "" : text.slice(start, end === -1 ? undefined : end).replace(/\s+/gu, " ");
+  const command = "`aos assess --probe-capabilities`";
+  let at = recovery.indexOf(command);
+  while (at !== -1) {
+    // A sentence's qualifier can sit on the prior wrapped line, so inspect its local context
+    // rather than a whole section that also contains an unrelated advanced/manual example.
+    const context = recovery.slice(Math.max(0, at - 120), at + command.length + 80);
+    if (!advanced.test(context)) return true;
+    at = recovery.indexOf(command, at + command.length);
+  }
+  return false;
+};
 
 test("the capability-probe section in every README describes the shipped default posture", () => {
   assert.deepEqual(SCORABLE_CAPABILITY_SOURCES, ["detected"], "the README posture is written for a different scorable-source policy");
@@ -89,6 +133,20 @@ test("the documented capability recovery is a deferred orchestration concern wit
     }
   } finally {
     rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("the primary zero-config recovery documentation never requires an operator recovery CLI", () => {
+  for (const [file, rule] of Object.entries(PRIMARY_RECOVERY)) {
+    const text = readFileSync(join(root, file), "utf8");
+    assert.equal(primaryRecoveryRequiresOperatorCli(text, rule), false,
+      `${file} makes primary zero-config recovery depend on an operator typing a provider-backed CLI command`);
+
+    // A scratch copy with the exact prior wording must be classified as a failure. This prevents a
+    // future test rewrite from merely requiring the current prose while losing item 14's property.
+    const scratch = text.replace(rule.starts, `${rule.starts}. ${rule.previous}`);
+    assert.equal(primaryRecoveryRequiresOperatorCli(scratch, rule), true,
+      `${file} no longer detects the prior primary recovery command in a scratch copy`);
   }
 });
 

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { canonicalJson } from "../../lib/core.mjs";
 import { contractFileDigests, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
-import { addAgent, makePlan, newestRunId, run } from "./helpers.mjs";
+import { addAgent, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
 
 // A result is checkable when the number can be derived again from what the file itself holds. A
 // hand-edited score, or one produced by a scorer that has since changed, stops matching.
@@ -27,6 +27,19 @@ const assessed = () => {
   return { cwd, runId, boundary, recordPath, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
 };
 
+const assessedWithProbe = () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-probe-"));
+  initBare(cwd);
+  addAgent(cwd, "solo");
+  const plan = makePlan(cwd, { default: "solo" });
+  // The cut-off fixture has three observed answers but an incomplete invocation. Rewriting its
+  // stored completion bit would turn it into a detected capability record unless verification
+  // derives the consumer-facing state from the probe evidence again.
+  run(cwd, ["assess", "--plan", plan, "--seed", "5", "--probe-capabilities"], 3, { FAKE_AGENT_PROFILE: "probe-cut-off" });
+  const runId = newestRunId(cwd);
+  return { cwd, runId, recordPath: join(cwd, ".aos", "runs", runId, "record.json") };
+};
+
 test("a forged routing record is rejected before it can certify M09", () => {
   const { cwd, runId, recordPath } = assessed();
   try {
@@ -43,6 +56,26 @@ test("a forged routing record is rejected before it can certify M09", () => {
       writeFileSync(recordPath, `${canonicalJson(record)}\n`);
       const verified = run(cwd, ["verify", "--run", runId], 5);
       assert.match(verified.stdout, /FAIL\trouting-record/, `${name}: ${verified.stdout}`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("forged probe and delegation records are rejected before they authorize consumer state", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const original = readFileSync(recordPath, "utf8");
+    const forgeries = [
+      ["probe completion", "probe-record", (record) => { record.capability_probes[0].invocation.completed = true; }],
+      ["delegation state", "delegation-record", (record) => { record.delegation_oracle.expected_value_class = "MINIMAL"; }]
+    ];
+    for (const [name, check, forge] of forgeries) {
+      const record = JSON.parse(original);
+      forge(record);
+      writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+      const verified = run(cwd, ["verify", "--run", runId], 5);
+      assert.equal(verified.stdout.includes(`FAIL\t${check}`), true, `${name}: ${verified.stdout}`);
     }
   } finally {
     rmSync(cwd, { recursive: true, force: true });

@@ -7206,6 +7206,15 @@ export const GUARDS = [
     name: "a forged routing record is rejected before it can certify M09"
   },
   {
+    guard: "stored probe and delegation evidence is rebound during run verification",
+    reason: "probe completion and delegation class are derived consumer state: letting either stored output certify itself would let a cut-off runtime become detected or a withheld route become minimal without its evidence changing",
+    file: "lib/cli.mjs",
+    from: "    const consumerStateProblems = consumerStateBindingProblems(record);",
+    to: "    const consumerStateProblems = { probe: [], delegation: [] };",
+    test: "tests/product/verify-run.test.mjs",
+    name: "forged probe and delegation records are rejected before they authorize consumer state"
+  },
+  {
     guard: "a cut-off probe remains retryable and provider-undetermined",
     reason: "AOS observes a non-zero exit and an incomplete challenge set, but never provider stderr; treating that as permanent or naming a provider cause would both invent evidence",
     file: "lib/capability-probe.mjs",
@@ -7908,6 +7917,7 @@ export const ACCOUNTED_GUARDS = [
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
   "started statuses need finished predecessors",
+  "stored probe and delegation evidence is rebound during run verification",
   "stored routing evidence is rebound during run verification",
   "subject nonce non-disclosure",
   "subject runner executed from memory",
