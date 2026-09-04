@@ -339,6 +339,15 @@ export const GUARDS = [
     name: "an actual route whose owner AOS knows nothing about is not observed"
   },
   {
+    guard: "routing minimality retains the causal source when no owner is scorable",
+    reason: "NO_SCORABLE_OWNER can return before minimality evaluates the actual route, but the actual route's non-scorable capability failures are still why it cannot compare costs; dropping their basis lets the published notice under-name the withheld subchecks",
+    file: "lib/routing-oracle.mjs",
+    from: "  const nonScorableBases = sortedUnique((failures ?? [])\n    .filter((entry) => NONSCORABLE_OWNER_BASES.has(entry.basis))\n    .map((entry) => entry.basis));",
+    to: "  const nonScorableBases = [];",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the routing notice names both causal subchecks and their reasons for every non-scorable source"
+  },
+  {
     guard: "the cost floor is the work AOS asked for, not the route under measurement",
     reason: "the floor used to be the cheapest owner assignment of the operator's own declared stages, so adding a stage raised the actual route and its minimum by the same amount and route breadth was structurally unjudgeable -- measured through the binary at 3/3, 5/5, 7/7 and 5/5; pointing it back at the run's own requirement restores exactly that, and `simplest-adequate-route` goes back to being true of every adequate route however wide",
     file: "lib/routing-oracle.mjs",
@@ -7772,6 +7781,7 @@ export const ACCOUNTED_GUARDS = [
   "reviewed action allowlist",
   "route cost counts the handoffs a split buys",
   "routing capability rests on a source AOS may score",
+  "routing minimality retains the causal source when no owner is scorable",
   "routing minimality withholds on an owner AOS cannot judge",
   "rulesets are compared by content, not by cardinality",
   "run scratch is created inside the cleanup-protected region",

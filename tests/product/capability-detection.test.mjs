@@ -44,6 +44,7 @@ import {
 } from "../../lib/capability-probe.mjs";
 import { loadEcdContract } from "../../lib/ecd-contract.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
+import { renderProfileTerminal } from "../../lib/profile-report.mjs";
 import {
   ACTUAL_ROUTE_EVENT_SCHEMA,
   CAPABILITY_VOCABULARY,
@@ -72,7 +73,7 @@ function workspace(t) {
  * route names, and every required artefact and handoff is carried. So a verdict that moves between
  * two calls of this moved because the capability records did.
  */
-function m09Of(route, capabilities) {
+function routingFor(route, capabilities) {
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route, required_artifacts: ["artifact:plan.json"] });
   const stages = route.split(">").map((group) => group.split("|"));
   const ownerOf = new Map();
@@ -99,15 +100,17 @@ function m09Of(route, capabilities) {
     operator_decision_event_id: null,
     operator_opportunity_id: null
   }));
-  const oracle = routingObservables({
+  return routingObservables({
     requirements,
     requirement_problems: [],
     capabilities,
     actual_route_events: events,
     work_requirement: workRequirementAtPlanApproval({ form_id: "FAM-3", frozen_at: "2026-09-01T09:00:00Z" })
   });
-  return oracle.oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
 }
+
+const m09Of = (route, capabilities) =>
+  routingFor(route, capabilities).oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
 
 test("adapter-derived capability records withhold capability-matches-task, whatever the route", () => {
   // Every route shape the oracle accepts, crossed with every assignment of a shipped adapter -- or
@@ -731,11 +734,33 @@ test("a run that did not probe withholds routing fitness from the adapter table"
   const adapterFailure = record.routing_oracle.constraint_failures.find((entry) => entry.constraint === "capability");
   assert.equal(adapterFailure.basis, "unmeasured-owner");
   assert.match(adapterFailure.detail, /aos-known adapter record but no observed runtime capability evidence/u);
-  assert.match(capability.reason, /AOS holds aos-known adapter records for alpha, but did not observe those runtimes/u);
-  assert.deepEqual(capability.basis, ["unmeasured-owner"]);
-  const report = runCli(cwd, ["report", "--run", record.run_id]);
-  assert.match(report.stdout, /Routing capability evidence: capability-matches-task withholds:.*aos-known adapter records/u);
-  assert.match(report.stdout, /aos assess --probe-capabilities/u);
+  const minimality = record.routing_oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route");
+  const expectedWithholds = [
+    {
+      observable_id: "capability-matches-task",
+      pass: null,
+      basis: ["unmeasured-owner"],
+      reason: "AOS holds aos-known adapter records for alpha, but did not observe those runtimes; run aos assess --probe-capabilities to answer this question"
+    },
+    {
+      observable_id: "simplest-adequate-route",
+      pass: null,
+      basis: ["unmeasured-owner"],
+      reason: "the cheapest adequate route could not be computed for this run: NO_SCORABLE_OWNER"
+    }
+  ];
+  assert.deepEqual([capability, minimality].map(({ observable_id, pass, basis, reason }) => ({ observable_id, pass, basis, reason })), expectedWithholds);
+
+  // The oracle owns the wording; terminal, Markdown and HTML must relay the complete notice rather
+  // than each picking one observable to summarize.
+  const notice = expectedWithholds.map(({ observable_id, reason }) => `${observable_id} withholds: ${reason}`).join("; ");
+  for (const [surface, rendered] of [
+    ["terminal", renderProfileTerminal(result).join("\n")],
+    ["Markdown", runCli(cwd, ["report", "--run", record.run_id]).stdout],
+    ["HTML", runCli(cwd, ["report", "--run", record.run_id, "--format", "html"]).stdout]
+  ]) {
+    assert.equal(rendered.includes(`Routing capability evidence: ${notice}`), true, `${surface} omitted a causal subcheck or its reason`);
+  }
 
   const { record: unknownRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-silent" });
   const unknownCapability = capabilityOf(unknownRecord);
@@ -756,6 +781,50 @@ test("a run that did not probe withholds routing fitness from the adapter table"
   assert.deepEqual(o4.withheld_for, [{ cell_id: "C2.RF.01", status: "INSUFFICIENT_OPPORTUNITIES" }]);
   assert.equal(result.system_outcome_profile.index, null);
   assert.equal(result.aos_composite.issued, false);
+});
+
+test("the routing notice names both causal subchecks and their reasons for every non-scorable source", () => {
+  const sourceCases = [
+    {
+      source: "aos-known",
+      basis: "unmeasured-owner",
+      capabilityReason: "AOS holds aos-known adapter records for alpha, beta, but did not observe those runtimes; run aos assess --probe-capabilities to answer this question"
+    },
+    {
+      source: "declared",
+      basis: "declared-owner",
+      capabilityReason: "AOS holds only declared capability records for alpha, beta; an owner's declaration cannot answer a runtime capability question"
+    },
+    {
+      source: "unknown",
+      basis: "unknown-owner",
+      capabilityReason: "AOS holds no capability record it may score for alpha, beta; an owner it knows nothing about is not an owner that matched"
+    }
+  ];
+  for (const { source, basis, capabilityReason } of sourceCases) {
+    const capabilities = new Map(["alpha", "beta"].map((agent_id) => [agent_id, capabilityRecord({
+      agent_id,
+      capabilities: CAPABILITY_VOCABULARY,
+      source,
+      evidence_ids: source === "aos-known" ? ["adapter:codex-cli.v1"] : []
+    })]));
+    const routing = routingFor("alpha>beta", capabilities);
+    const expectedWithholds = [
+      { observable_id: "capability-matches-task", pass: null, basis: [basis], reason: capabilityReason },
+      {
+        observable_id: "simplest-adequate-route",
+        pass: null,
+        basis: [basis],
+        reason: "the cheapest adequate route could not be computed for this run: NO_SCORABLE_OWNER"
+      }
+    ];
+    const actualWithholds = routing.oracle.observables
+      .filter(({ observable_id }) => ["capability-matches-task", "simplest-adequate-route"].includes(observable_id))
+      .map(({ observable_id, pass, basis: observedBasis, reason }) => ({ observable_id, pass, basis: observedBasis, reason }));
+    assert.deepEqual(actualWithholds, expectedWithholds, source);
+    assert.equal(routing.reason.split("; routing capability evidence: ")[1],
+      expectedWithholds.map(({ observable_id, reason }) => `${observable_id} withholds: ${reason}`).join("; "), source);
+  }
 });
 
 test("a missing admitted owner does not become a probe recommendation because another owner is aos-known", () => {
@@ -800,6 +869,7 @@ test("a missing admitted owner does not become a probe recommendation because an
     assert.equal(capability.pass, null, source);
     assert.equal(minimality.pass, null, source);
     assert.deepEqual(capability.basis, ["unassigned-owner"], source);
+    assert.equal(minimality.basis, undefined, source);
     assert.match(capability.reason, /no admitted route event attributes an owner to FAM-3\/stage-2/u, source);
     assert.doesNotMatch(routing.reason, /routing capability evidence|probe-capabilities|aos-known adapter/u, source);
   }
