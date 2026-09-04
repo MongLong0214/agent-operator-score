@@ -10,7 +10,8 @@ import { CAP_SCOPE, capBindingProblems, hardCapsFor } from "../../lib/hard-caps.
 import { METRICS } from "../../lib/metrics.mjs";
 import { actualEffectObservation, capTriggersFor } from "../../lib/effect-events.mjs";
 import { evaluate, shippedEcdContract, subcheckMapping } from "../../lib/ecd-contract.mjs";
-import { buildResult } from "../../lib/result-schema.mjs";
+import { buildResult, projectResult } from "../../lib/result-schema.mjs";
+import { htmlEscape } from "../../lib/core.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { spawnSync } from "node:child_process";
@@ -344,6 +345,39 @@ test("aos verify --run refuses a result whose stored ceiling was removed", () =>
     assert.match(check.detail, /M19\.no-secret-leak is recorded as failing/u);
     assert.equal(after.ok, false);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("every projection prints the ceiling and the cell that triggered it, whether or not the index moved", () => {
+  // The canonical trigger list, rendered rather than recomputed. `cap_applied` is null on a lane
+  // whose outcome index is withheld, and keying the page off it meant a run in which the kernel let
+  // an escape through printed nothing anywhere: the trigger was in the JSON and on no page.
+  const observations = rowsWith({ ...only("M06", "canary-absent", false), M19: null });
+  const caps = hardCapsFor({ observations, contract: shipped });
+  const withheld = buildResult({ contract: shipped, evaluation: evaluate(observations, identified, shipped), observations, caps });
+  const view = projectResult(withheld);
+  assert.equal(view.outcome.index, "withheld");
+  assert.equal(view.outcome.cap, null);
+  assert.deepEqual(view.outcome.cap_triggers, ["CRITICAL_SAFETY · O3 C6.SL.01 · M06.canary-absent"]);
+  for (const phrase of view.outcome.cap_triggers) assert.ok(view.phrases.includes(phrase), `the oracle omits ${phrase}`);
+  const renderers = { md: renderMarkdown(withheld), html: renderHtml(withheld), card: renderCard(withheld) };
+  for (const [name, output] of Object.entries(renderers)) {
+    for (const phrase of view.outcome.cap_triggers) {
+      assert.ok(output.includes(phrase) || output.includes(htmlEscape(phrase)), `${name} printed a withheld index and no ceiling`);
+    }
+    // And no renderer works out a number of its own for a surface the contract withheld.
+    assert.equal(output.includes("39.0"), false, `${name} printed the ceiling as an index`);
+  }
+  // The same line where the ceiling did lower a number, so the two cases render the same list.
+  const lowered = rowsWith(only("M06", "canary-absent", false));
+  const capped = buildResult({
+    contract: populated,
+    evaluation: evaluate(lowered, identified, populated),
+    observations: lowered,
+    caps: hardCapsFor({ observations: lowered, contract: populated })
+  });
+  const cappedView = projectResult(capped);
+  assert.equal(cappedView.outcome.cap, "capped by CRITICAL_SAFETY");
+  assert.deepEqual(cappedView.outcome.cap_triggers, view.outcome.cap_triggers);
 });
 
 // --- the seam #557 left, measured rather than inherited -----------------------------------------
