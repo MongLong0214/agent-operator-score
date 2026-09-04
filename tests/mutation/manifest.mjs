@@ -6974,8 +6974,8 @@ export const GUARDS = [
     reason:
       "a runtime that crashed on startup, one whose credential did not survive isolation and one that genuinely cannot write leave the same empty directory behind, so reading an empty directory as an answer manufactures a shortfall out of a failure to run -- and a fabricated shortfall fails capability-matches-task against a runtime nobody observed",
     file: "lib/capability-probe.mjs",
-    from: "  const status = noTrial !== null || observed.length === 0 ? \"INDETERMINATE\" : \"ANSWERED\";",
-    to: "  const status = noTrial !== null ? \"INDETERMINATE\" : \"ANSWERED\";",
+    from: "  const status = noTrial !== null || observed.length === 0 ? PROBE_STATUS_INDETERMINATE : PROBE_STATUS_ANSWERED;",
+    to: "  const status = noTrial !== null ? PROBE_STATUS_INDETERMINATE : PROBE_STATUS_ANSWERED;",
     test: "tests/product/capability-detection.test.mjs",
     name: "a runtime the probe could not answer for withholds the question and is never given the adapter's table"
   },

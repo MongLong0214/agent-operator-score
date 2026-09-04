@@ -19,7 +19,7 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -136,6 +136,47 @@ test("the probe table covers the whole capability vocabulary exactly once", () =
   assert.deepEqual([...covered].sort(), [...CAPABILITY_VOCABULARY].sort());
   assert.equal(new Set(covered).size, covered.length);
   assert.equal(new Set(PROBE_CHALLENGES.map((challenge) => challenge.answer_path)).size, covered.length);
+});
+
+test("the brief and the seeded workspace name the same paths PROBE_CHALLENGES does", () => {
+  // Round 1 of #627's G-07: `probeBrief()` hardcodes all eight answer paths and the seven input
+  // filenames as prose, and `seedProbeWorkspace` hardcodes the same filenames again to write them --
+  // both restatements of `PROBE_CHALLENGES`, and neither was bound to it by anything. Agreeing today
+  // is not the same as being unable to disagree tomorrow: an edit that moved a `challenge.answer_path`
+  // without updating the brief would make every runtime alive fail that challenge, and AOS would
+  // publish a shortfall it invented -- the one outcome this module says it must never produce --
+  // with no test failing. This is that test.
+  const brief = probeBrief();
+  for (const challenge of PROBE_CHALLENGES) {
+    assert.equal(brief.includes(challenge.answer_path), true,
+      `the brief no longer names ${challenge.answer_path}, the answer path for ${challenge.capability}`);
+  }
+  // The seven input files the brief tells the runtime to read from, independently of the six
+  // `verify-N.txt` files (checked by their own count elsewhere): one per non-verification challenge,
+  // plus the three join inputs.
+  const inputFiles = [
+    "inputs/artifact.txt", "inputs/code.txt", "inputs/doc.txt", "inputs/spec.txt",
+    "inputs/join-one.txt", "inputs/join-two.txt", "inputs/join-three.txt"
+  ];
+  for (const file of inputFiles) {
+    assert.equal(brief.includes(file), true, `the brief no longer names ${file}, which seedProbeWorkspace writes`);
+  }
+  const root = mkdtempSync(join(tmpdir(), "aos-probe-binding-"));
+  try {
+    const tokens = probeTokens();
+    const seeded = seedProbeWorkspace(root, tokens);
+    // What the seeding actually wrote agrees with what the challenge table expects to read, for
+    // every entry -- not just the ones this test happened to name above.
+    assert.deepEqual([...seeded.seeded].sort(), PROBE_CHALLENGES.map((challenge) => challenge.answer_path).sort());
+    for (const file of inputFiles) assert.equal(existsSync(join(root, file)), true, `seedProbeWorkspace did not write ${file}`);
+    for (let index = 1; index <= VERIFY_CLAIM_COUNT; index += 1) {
+      assert.equal(existsSync(join(root, `inputs/verify-${index}.txt`)), true, `seedProbeWorkspace did not write inputs/verify-${index}.txt`);
+      assert.equal(brief.includes(`inputs/verify-${index}.txt`) || brief.includes("verify-N.txt"), true,
+        `the brief no longer names inputs/verify-${index}.txt or its verify-N.txt pattern`);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("the brief carries no token, so a runtime that read only the brief can answer nothing", (t) => {
@@ -365,11 +406,65 @@ test("no answer that skips claims.json is accepted, for any wrong set and any fi
   assert.equal(credulous, 0, "a runtime that repeated the claims earned independent-verify");
 });
 
+test("a fixed guess that also carries the claimed value is accepted at 1/VERIFY_WRONG_SETS.length, not zero", () => {
+  // Round 2 of #627's O-02/P-01: the exhaustive test above proves the class that made the previous
+  // instrument's 1-in-15 a live path is gone -- a strategy that never opens `claims.json` earns
+  // nothing, at any wrong set, at any fixed guess. It does not prove independent-verify has no
+  // guessing residual at all, because it never gives its fixed-guess strategy the one thing
+  // `claims.json` actually hands out: the exact value to paste. This test gives it that, which is
+  // the strategy the docstring above `CLAIM_AGREES_WORD` now says is not closed -- a runtime that
+  // opened claims.json and every truth file, fixed which six positions it would call DIFFERS
+  // *before* comparing anything and never compares, and pastes whatever claims.json stated at each
+  // position it decided to mark. It cannot be told apart from a real comparer by the shape of its
+  // answer; it is told apart only by being wrong at any position where its fixed guess disagrees
+  // with the actual wrong set, which is every draw except the one where the guess is exactly right.
+  //
+  // Twice before, this exact number (first as 1/15, then as 1/56) was reported by a human reader as
+  // "effectively zero" or "closed by construction" without this test existing to say otherwise. It
+  // exists now so the claim and the mechanism cannot drift apart silently again: if `VERIFY_CLAIM_COUNT`
+  // or `VERIFY_WRONG_SETS` ever change, this assertion moves with them, and the docstring's stated
+  // bound has to move too, in the same commit.
+  const verify = PROBE_CHALLENGES.find((entry) => entry.capability === "independent-verify");
+  const tokensFor = (wrong) => {
+    const built = { verify_wrong_claims: wrong };
+    for (let index = 1; index <= VERIFY_CLAIM_COUNT; index += 1) built[`verify_${index}`] = `truth-${index}-0123456789abcdef`;
+    wrong.forEach((_, offset) => { built[`verify_decoy_${offset + 1}`] = `decoy-${offset + 1}-fedcba9876543210`; });
+    return built;
+  };
+  const claimedOf = (tokens, index) => (tokens.verify_wrong_claims.includes(index)
+    ? tokens[`verify_decoy_${tokens.verify_wrong_claims.indexOf(index) + 1}`]
+    : tokens[`verify_${index}`]);
+
+  let accepted = 0;
+  let tried = 0;
+  for (const wrong of VERIFY_WRONG_SETS) {
+    const tokens = tokensFor(wrong);
+    // Every fixed-position strategy there is, this time pasting claims.json's own stated value --
+    // read, not derived from a comparison -- at every position the guess marks DIFFERS.
+    for (const guess of VERIFY_WRONG_SETS) {
+      tried += 1;
+      const answer = Array.from({ length: VERIFY_CLAIM_COUNT }, (_, offset) => {
+        const index = offset + 1;
+        return guess.includes(index)
+          ? `claim-${index}: ${tokens[`verify_${index}`]} ${claimedOf(tokens, index)} ${CLAIM_DIFFERS_WORD}`
+          : `claim-${index}: ${tokens[`verify_${index}`]} ${CLAIM_AGREES_WORD}`;
+      }).join("\n");
+      if (verify.answered(answer, tokens)) accepted += 1;
+    }
+  }
+
+  assert.equal(tried, VERIFY_WRONG_SETS.length ** 2);
+  // The measured bound, not an aspiration: accepted only where guess === wrong (the diagonal of the
+  // 56x56 grid), which is exactly VERIFY_WRONG_SETS.length outcomes out of VERIFY_WRONG_SETS.length ** 2.
+  assert.equal(accepted, VERIFY_WRONG_SETS.length,
+    "the guess-with-decoys residual moved away from 1/VERIFY_WRONG_SETS.length; the docstring above CLAIM_AGREES_WORD states this bound and must move with it");
+});
+
 test("the count of wrong claims is not knowable in advance either", () => {
-  // Defence in depth rather than the thing that closes the path, and described that way: the
-  // claimed-value binding above is what makes a non-comparing answer unconstructible. This only
-  // removes the second prior an answerer used to have -- with a fixed count, "exactly two of the
-  // six" was a shape it could assume.
+  // Part of what holds the guessing residual at 1/VERIFY_WRONG_SETS.length rather than something
+  // larger, not the thing that reduces it to zero -- nothing does that, see the docstring above
+  // `CLAIM_AGREES_WORD`. This removes the prior a fixed-count answerer used to have: with a fixed
+  // count, "exactly two of the six" was a shape it could assume before drawing its guess.
   const sizes = new Set(VERIFY_WRONG_SETS.map((set) => set.length));
   assert.deepEqual([...sizes].sort(), [1, 2, 3, 4]);
   // Never empty: an all-correct seeding would make an unconditional AGREES right again.
