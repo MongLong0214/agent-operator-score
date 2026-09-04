@@ -242,3 +242,87 @@ export async function assessAtATerminal(cwd, args, { env = {} } = {}) {
   }
   return { status, stdout: out.join(""), stderr: err.join("") };
 }
+
+/**
+ * A run whose actual effects a real boundary observed, and found clean.
+ *
+ * #557 answers M19 from what the run did rather than from what the assessed agent wrote about
+ * itself, so a fixture that wants a scored run has to state what was observed -- exactly as it
+ * already states `{ isolationLevel: "STRICT", officialIssuance: { official: true } }` for #556's
+ * gate. Stating it as a verdict would defeat the point, so this is built from the committed
+ * observation of a real macos-seatbelt lane: the cells are the kernel's answers, the digests are
+ * the ones that run produced, and `lib/effect-events.mjs` derives the safety answers from them the
+ * same way it does in production.
+ *
+ * The network policy is `disabled`, which is the lane a runtime that needs no provider transport
+ * runs under. On a provider-required lane the outbound connect the canary makes is the transport
+ * the runtime needs, nothing at that layer separates it from a task's own call, and
+ * `no-prohibited-external-action` is NOT_OBSERVED -- which is the state the product ships in on the
+ * proven Codex lane and is asserted where that matters rather than papered over here.
+ */
+const CANARY_OBSERVATION = JSON.parse(
+  readFileSync(new URL("../../fixtures/confinement/observations/strict-lane.darwin.seatbelt.canary.json", import.meta.url), "utf8")
+).captured;
+
+export function observedCleanBoundary(over = {}, cellsOver = {}) {
+  return {
+    schema: "aos-confinement-record.v1",
+    level: "STRICT",
+    platform: "darwin",
+    backend: "macos-seatbelt",
+    adapter: "generic-command.v1",
+    filesystem_enforced: true,
+    process_enforced: true,
+    process_containment: "inherited-profile",
+    network_policy: "disabled",
+    network: { provider_transport: "denied", task_external: "NOT_OBSERVED", enforcement: "kernel" },
+    policy_digest: CANARY_OBSERVATION.policy_digest,
+    rendered_profile_digest: CANARY_OBSERVATION.rendered_profile_digest,
+    setup_verified: true,
+    boundary_canary: {
+      result: "PASS",
+      failed: [],
+      cells: {
+        ...CANARY_OBSERVATION.cells,
+        // The one cell the policy changes: a disabled network expects the connect to be refused by
+        // the boundary before it reaches a peer, and the committed run was made under a
+        // provider-required policy where it reaches one.
+        network_outbound_connect: { expected: "denied", observed: "denied", errno: "EPERM" },
+        ...cellsOver
+      },
+      out_of_band: CANARY_OBSERVATION.out_of_band,
+      evidence_digest: CANARY_OBSERVATION.evidence_digest,
+      program_digest: CANARY_OBSERVATION.program_digest
+    },
+    descendants: {
+      scan: "ancestry-poll+process-group-sweep+survivor-sweep",
+      poll_interval_ms: 200,
+      polls: CANARY_OBSERVATION.scan_polls,
+      tracked: [],
+      leaked: [],
+      survivors: [],
+      group_sweep: CANARY_OBSERVATION.group_sweep,
+      survivor_sweep: CANARY_OBSERVATION.survivor_sweep,
+      residual: "measured and accepted"
+    },
+    cleanup_verified: true,
+    support_status: "SUPPORTED_WITH_CONSTRAINTS",
+    platform_lane: "darwin/macos-seatbelt/generic-command.v1",
+    runtime_identity: CANARY_OBSERVATION.runtime_identity,
+    holes: [],
+    ...over
+  };
+}
+
+/** The evidence bundle `observeRun` takes, for a run a clean boundary measured end to end. */
+export function observedCleanEffects(over = {}) {
+  return {
+    run_id: "run-fixture",
+    confinement: [observedCleanBoundary()],
+    isolation: [{ env_policy_digest: CANARY_OBSERVATION.policy_digest, unauthorised_env_names: [] }],
+    settlement: { "FAM-1": { changed_after_settlement: false } },
+    filesystem: [],
+    observed_at: "2026-09-03T00:00:00Z",
+    ...over
+  };
+}

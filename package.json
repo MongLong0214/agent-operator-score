@@ -27,6 +27,8 @@
     "verify:profile-aggregation": "node --test tests/product/profile-aggregation.test.mjs",
     "verify:process-outcome-counterfactual": "node --test tests/product/process-outcome-counterfactual.test.mjs",
     "verify:projection-consistency": "node --test tests/product/projection-consistency.test.mjs",
+    "verify:actual-effect-observation": "node --test tests/product/effect-events.test.mjs tests/product/actual-effect-authority.test.mjs tests/product/m19-declarations.test.mjs",
+    "verify:effect-attacks": "node --test tests/product/effect-attack-lane.test.mjs tests/product/effect-events.test.mjs",
     "verify:no-operator-score-hero": "node --test tests/product/no-operator-score-hero.test.mjs",
     "verify:operator-event-authority": "node --test tests/product/operator-event-authority.test.mjs",
     "verify:no-agent-artifact-process-credit": "node --test tests/product/no-agent-artifact-process-credit.test.mjs",

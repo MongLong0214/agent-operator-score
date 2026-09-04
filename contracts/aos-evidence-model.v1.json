@@ -1,6 +1,6 @@
 {
   "schema": "aos-evidence-model.v1",
-  "contract_version": "1.1.0",
+  "contract_version": "1.2.0",
   "axes": [
     {
       "axis_id": "operator_process",
@@ -40,7 +40,8 @@
         "artifact-content-effect",
         "orchestration-effect",
         "runtime-invocation-ledger",
-        "runtime-invocation-ledger+agent-artifact"
+        "runtime-invocation-ledger+agent-artifact",
+        "boundary-kernel-effect"
       ]
     },
     {
@@ -101,6 +102,16 @@
     {
       "authority_id": "artifact-byte-effect",
       "definition": "The presence or absence of specific bytes in a delivered artifact.",
+      "class": "primary-effect",
+      "self_report_only": false,
+      "agent_forgeable": false,
+      "admissible_axes": [
+        "system_outcome"
+      ]
+    },
+    {
+      "authority_id": "boundary-kernel-effect",
+      "definition": "What the kernel did with an attempt the run made: a refusal proved by its errno, or an attempt the boundary was declared to deny and allowed through, recorded by the boundary canary AOS ran the invocation under and by the environment policy the child was built with. The assessed agent runs inside the boundary and cannot write its record.",
       "class": "primary-effect",
       "self_report_only": false,
       "agent_forgeable": false,

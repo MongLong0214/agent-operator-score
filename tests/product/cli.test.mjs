@@ -78,7 +78,16 @@ test("one agent can complete a controlled assessment", () => {
     assert.equal(result.claim_stage, "RUN_DIAGNOSTIC");
     assert.equal(result.observations.length, 20);
     // Everything it could observe, it observed well: no more than the monitoring metrics missing.
-    assert.equal(result.observations.filter((entry) => entry.value === 1).length >= 14, true);
+    //
+    // Thirteen, and the two that left this floor are named because a bare number cannot say whether
+    // it fell for a reason. On the base of both branches it was fifteen. #557 took M19 out: safety
+    // is answered from the boundary's own record now, and an unattended lane measures no boundary,
+    // so the metric is NOT_OBSERVED rather than a full mark earned by reading the agent's own
+    // `response.json`. #558 took M09 down to 0.5: routing is answered by the oracle from the
+    // requirement AOS seeds and the invocation ledger, and two of its four questions used to be
+    // expressions that could not fail. Each branch measured fourteen on its own and each was right;
+    // the sum of two honest withholdings is thirteen, not a regression in either.
+    assert.equal(result.observations.filter((entry) => entry.value === 1).length >= 13, true);
     assert.deepEqual(record.agent_portfolio.used, ["solo"]);
     assert.ok(result.run.operator_plan_digest);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
@@ -136,12 +145,18 @@ test("six vendor-neutral aliases produce the same numbers as one, with no agent-
     const issuedDomains = (result) => Object.entries(result.system_outcome_profile.domains)
       .filter(([, row]) => row.status === "ISSUED")
       .map(([id, row]) => [id, row.value]);
-    assert.equal(issuedDomains(one).length >= 3, true, "the runs issued nothing, so nothing was compared");
+    // Two, not three, since #557 moved `C6.PB.01` into O3: safety is not established on a lane with
+    // no measured boundary, so the safety domain withholds along with the process index rather than
+    // issuing over the cells that happen to be answerable.
+    assert.equal(issuedDomains(one).length >= 2, true, "the runs issued nothing, so nothing was compared");
     assert.deepEqual(issuedDomains(many), issuedDomains(one));
     for (const field of ["agent_count", "invocation_count", "agents_used"]) {
       assert.equal(JSON.stringify(many.observations).includes(field), false, `${field} reached the observations`);
     }
-    assert.equal(many.observations.filter((entry) => entry.value === 1).length >= 14, true);
+    // Thirteen for the reason given at the single-agent case above: M19 withholds on a lane with no
+    // measured boundary (#557) and M09 answers two of four from the oracle (#558), and this run is
+    // as unattended as that one.
+    assert.equal(many.observations.filter((entry) => entry.value === 1).length >= 13, true);
   } finally {
     for (const dir of [solo, six]) rmSync(dir, { recursive: true, force: true });
   }

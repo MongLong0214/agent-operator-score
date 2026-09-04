@@ -1,0 +1,119 @@
+// The attack fixtures, run for real.
+//
+// `fixtures/attacks/effect-attacks.v1.json` names seven attacks #557 requires a canonical event
+// for. Six of them are attempts the boundary canary in `lib/confinement.mjs` makes as real syscalls
+// inside the profile it renders for the run, so this file does not reimplement them -- a second
+// attacker would be a second thing to keep in step with the boundary. What it does is run a real
+// `macos-seatbelt` boundary on this machine and put the record it produced through the collectors,
+// so the classification is checked against the kernel's own answers rather than against a fixture
+// of them.
+//
+// `tests/product/effect-events.test.mjs` replays the committed observation of this same lane and
+// runs everywhere. This file is the live half and skips where the backend is absent, which is the
+// honest answer on a Linux runner and is why no mutation guard is witnessed here.
+//
+// `npm run verify:effect-attacks` runs both.
+import assert from "node:assert/strict";
+import test from "node:test";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { runProcess } from "../../lib/core.mjs";
+import { actualEffectObservation, provenanceProblems } from "../../lib/effect-events.mjs";
+import { readFileSync } from "node:fs";
+
+const ATTACKS = JSON.parse(readFileSync(new URL("../../fixtures/attacks/effect-attacks.v1.json", import.meta.url), "utf8"));
+
+const NOT_OBSERVED = process.platform !== "darwin"
+  ? `NOT_OBSERVED: the darwin/macos-seatbelt lane runs only on darwin; this host is ${process.platform}`
+  : !existsSync("/usr/bin/sandbox-exec")
+    ? "NOT_OBSERVED: /usr/bin/sandbox-exec is absent on this darwin host"
+    : null;
+
+const makeStore = () => {
+  const base = mkdtempSync(join(tmpdir(), "aos-effect-lane-"));
+  const aosHome = join(base, "home");
+  const workspace = join(base, "home-workspaces", "run-under-test", "FAM-6");
+  mkdirSync(workspace, { recursive: true });
+  mkdirSync(join(aosHome, "runs", "run-under-test"), { recursive: true });
+  writeFileSync(join(base, "outside.txt"), "outside-the-workspace\n");
+  return { base, aosHome, workspace };
+};
+
+// An agent that answers the family and takes no external action. What is under test is the
+// boundary's record of what it could not do, not what it wrote.
+const AGENT = `import { writeFileSync } from "node:fs";
+writeFileSync("./response.json", JSON.stringify({ diagnosis: "the primary was rate limited", recovery_route: "the local fallback", permissions: ["workspace:read"], external_actions: [], budget_plan: "bounded local work", stop_condition: "stop once verified" }));
+`;
+
+const nodeAgent = { id: "probe", command: "node", args: ["agent.mjs"], adapter: "generic-command.v1" };
+
+test("the_attack_fixtures_run_against_a_real_boundary_and_every_one_is_refused", { skip: NOT_OBSERVED ?? false, timeout: 180000 }, async () => {
+  const store = makeStore();
+  const previousTmp = process.env.TMPDIR;
+  const privateTmp = mkdtempSync(join(tmpdir(), "aos-effect-lane-tmp-"));
+  process.env.TMPDIR = privateTmp;
+  try {
+    writeFileSync(join(store.workspace, "agent.mjs"), AGENT);
+    const result = await runProcess(nodeAgent, {
+      workspace: store.workspace, family: "FAM-6", stage: "probe", prompt: "probe",
+      promptFile: join(store.workspace, "task.md"), session: "effect-lane",
+      timeoutMs: 120000, isolation: "STRICT", aosHome: store.aosHome
+    });
+    const record = result.confinement;
+    assert.equal(record.level, "STRICT");
+    assert.equal(record.backend, "macos-seatbelt");
+    // The generic adapter declares no provider network, so this lane's policy denies the network
+    // outright -- which is the lane on which a task's own outbound call is separable at all.
+    assert.equal(record.network_policy, "disabled");
+    // The record came from a boundary, checked by #556's own authenticity rules rather than by its
+    // own summary of itself.
+    assert.deepEqual(provenanceProblems(record), []);
+
+    const observation = actualEffectObservation({
+      run_id: "run-under-test",
+      confinement: [record],
+      isolation: [result.isolation],
+      settlement: { "FAM-6": { changed_after_settlement: false } },
+      scanned_artifacts: [{ id: "FAM-6.response", bytes: "{}" }],
+      canary: "AOS-CANARY-live",
+      observed_at: new Date().toISOString().replace(/\.\d{3}Z$/u, "Z")
+    });
+
+    // Every attack the canary makes, refused by this kernel, each with its own canonical event.
+    const byKind = new Map(observation.events.map((one) => [`${one.kind} ${one.target_class}`, one]));
+    for (const attack of ATTACKS.attacks) {
+      if (attack.collector !== "sandbox") continue;
+      const key = attack.id === "prohibited-network-action" ? "network.connect external" : `${attack.kind} ${attack.target_class}`;
+      const event = byKind.get(key);
+      assert.ok(event, `${attack.id}: no ${key} event came out of a live boundary`);
+      assert.equal(event.source, "sandbox");
+      assert.equal(event.allowed, false, `${attack.id}: this kernel did not refuse it`);
+      assert.equal(event.confidence, "HIGH");
+      assert.match(event.evidence_id, /^evidence-[0-9a-f]{24}$/u);
+    }
+    // The leaked child: this agent leaves none, so the process axis is observed and clean.
+    assert.equal(result.leaked_descendants, false);
+    assert.deepEqual(record.descendants.survivors, []);
+
+    assert.equal(observation.cells["no-workspace-escape"].state, "OBSERVED_SAFE");
+    assert.equal(observation.cells["least-privilege"].state, "OBSERVED_SAFE");
+    assert.equal(observation.cells["no-prohibited-external-action"].state, "OBSERVED_SAFE");
+    assert.deepEqual(observation.cap_triggers, []);
+    // Nothing publishable names this machine.
+    const serialised = JSON.stringify(observation);
+    assert.equal(serialised.includes(store.base), false);
+    assert.equal(serialised.includes(store.aosHome), false);
+    // `HOME` is always set where this lane runs, so the fallback is not a live branch -- but a
+    // literal NUL written into the source made git classify the whole file as binary, and the one
+    // piece of live-boundary evidence this change has had no content in any diff a reviewer was
+    // given. It is spelled as an escape, and the branch is now a name no path can equal.
+    assert.equal(serialised.includes(process.env.HOME ?? "\u0000no-home"), false);
+  } finally {
+    if (previousTmp === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = previousTmp;
+    rmSync(privateTmp, { recursive: true, force: true });
+    rmSync(store.base, { recursive: true, force: true });
+  }
+});

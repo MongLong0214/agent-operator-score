@@ -239,13 +239,13 @@ test("a cell estimate is taken from the contract's own cell and never from the c
   // A cell resting on the agent's own account of itself, handed in claiming credit. The old
   // signature took this object and computed from it without consulting the contract at all.
   const invented = {
-    cell_id: "C6.PB.01", construct_id: "C6", axis: "delegated_artifact",
+    cell_id: "C6.IJ.02", construct_id: "C6", axis: "delegated_artifact",
     credit_bearing: true, minimum_opportunities: 1, missing_policy: "NOT_OBSERVED"
   };
   assert.throws(() => estimateCell(invented, opportunities), /AOS_UNKNOWN_CELL/);
-  assert.equal(estimateCell("C6.PB.01", opportunities).credit_bearing, false);
+  assert.equal(estimateCell("C6.IJ.02", opportunities).credit_bearing, false);
   assert.throws(() => estimateCell("C9.ZZ.99", opportunities), /AOS_UNKNOWN_CELL/);
-  assert.throws(() => estimateCell("C6.PB.01", [...opportunities]), /AOS_UNDERIVED_INPUT/);
+  assert.throws(() => estimateCell("C6.IJ.02", [...opportunities]), /AOS_UNDERIVED_INPUT/);
 });
 
 test("derived rows cannot be edited between the stages that produce and consume them", () => {
