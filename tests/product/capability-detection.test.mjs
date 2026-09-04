@@ -48,6 +48,7 @@ import {
   ACTUAL_ROUTE_EVENT_SCHEMA,
   CAPABILITY_VOCABULARY,
   capabilityDigestOf,
+  capabilityRecord,
   capabilityRecordsFor,
   requirementsFromRoute,
   routingObservables,
@@ -731,8 +732,9 @@ test("a run that did not probe withholds routing fitness from the adapter table"
   assert.equal(adapterFailure.basis, "unmeasured-owner");
   assert.match(adapterFailure.detail, /aos-known adapter record but no observed runtime capability evidence/u);
   assert.match(capability.reason, /AOS holds aos-known adapter records for alpha, but did not observe those runtimes/u);
+  assert.deepEqual(capability.basis, ["unmeasured-owner"]);
   const report = runCli(cwd, ["report", "--run", record.run_id]);
-  assert.match(report.stdout, /Routing capability evidence:.*aos-known adapter-table records/u);
+  assert.match(report.stdout, /Routing capability evidence: capability-matches-task withholds:.*aos-known adapter records/u);
   assert.match(report.stdout, /aos assess --probe-capabilities/u);
 
   const { record: unknownRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-silent" });
@@ -754,6 +756,53 @@ test("a run that did not probe withholds routing fitness from the adapter table"
   assert.deepEqual(o4.withheld_for, [{ cell_id: "C2.RF.01", status: "INSUFFICIENT_OPPORTUNITIES" }]);
   assert.equal(result.system_outcome_profile.index, null);
   assert.equal(result.aos_composite.issued, false);
+});
+
+test("a missing admitted owner does not become a probe recommendation because another owner is aos-known", () => {
+  const { requirements, problems } = requirementsFromRoute({
+    form_id: "FAM-3",
+    route: "alpha>beta",
+    required_artifacts: ["artifact:plan.json"]
+  });
+  const stageOne = requirements.find((entry) => entry.task_id === "FAM-3/stage-1");
+
+  for (const source of ["aos-known", "detected"]) {
+    const capabilities = new Map(["alpha", "beta"].map((agent_id) => [agent_id, capabilityRecord({
+      agent_id,
+      capabilities: CAPABILITY_VOCABULARY,
+      source,
+      evidence_ids: source === "detected" ? ["verifier:aos-capability-probe.v1"] : ["adapter:codex-cli.v1"]
+    })]));
+    const routing = routingObservables({
+      requirements,
+      requirement_problems: problems,
+      capabilities,
+      actual_route_events: [{
+        schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
+        task_id: stageOne.task_id,
+        agent_id: "alpha",
+        route_id: "alpha>beta",
+        invocation_id: `only-stage-one-${source}`,
+        purpose_id: stageOne.task_id,
+        started_at: "2026-09-01T10:00:00Z",
+        completed_at: "2026-09-01T10:01:00Z",
+        artifact_ids: [],
+        handoff_ids: [],
+        capability_digest: capabilityDigestOf(capabilities.get("alpha")),
+        operator_decision_event_id: null,
+        operator_opportunity_id: null
+      }],
+      work_requirement: workRequirementAtPlanApproval({ form_id: "FAM-3", frozen_at: "2026-09-01T09:00:00Z" })
+    });
+    const byId = new Map(routing.oracle.observables.map((entry) => [entry.observable_id, entry]));
+    const capability = byId.get("capability-matches-task");
+    const minimality = byId.get("simplest-adequate-route");
+    assert.equal(capability.pass, null, source);
+    assert.equal(minimality.pass, null, source);
+    assert.deepEqual(capability.basis, ["unassigned-owner"], source);
+    assert.match(capability.reason, /no admitted route event attributes an owner to FAM-3\/stage-2/u, source);
+    assert.doesNotMatch(routing.reason, /routing capability evidence|probe-capabilities|aos-known adapter/u, source);
+  }
 });
 
 test("a fixture runtime that does not compare loses the verification word and keeps the other seven", async (t) => {
