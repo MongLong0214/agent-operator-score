@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync, symlinkSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -46,6 +46,18 @@ if (added.status !== 0) {
   console.error(added.stderr);
   process.exit(2);
 }
+
+// A worktree has tracked source but not the installing checkout's node_modules. Tests normally
+// inherit their parser and other dev dependencies from `npm install`; without this link a mutation
+// can die while loading a test rather than at the named witness. The worktree is disposable, and
+// the runner never writes through the link.
+const installedModules = join(fileURLToPath(new URL("../../node_modules", import.meta.url)));
+if (!existsSync(installedModules)) {
+  console.error("node_modules is missing; install dependencies before running mutations.\n");
+  run("git", ["worktree", "remove", "--force", worktree]);
+  process.exit(2);
+}
+symlinkSync(installedModules, join(worktree, "node_modules"), "dir");
 
 const results = [];
 const deferred = [];

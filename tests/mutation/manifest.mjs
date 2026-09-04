@@ -2419,6 +2419,15 @@ export const GUARDS = [
     name: "an unavailable author cannot overwrite a confirmed author"
   },
   {
+    guard: "missing authors fail closed after permission resolution",
+    reason: "null authors are filtered before permission requests, so their decision is now made by the post-resolution default rather than by hasWriteAccess; changing that default to true would make an unattributed completion record an attestation",
+    file: "lib/github-state.mjs",
+    from: "      const access = authorAccess.get(source.author) ?? false;",
+    to: "      const access = authorAccess.get(source.author) ?? true;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a source without an author fails closed"
+  },
+  {
     guard: "an unavailable author is reported as unavailable",
     reason: "a permission request that received no answer is still fail-closed, but calling it an untrusted author reports a network failure as a fact about the author",
     file: "lib/execution-plan.mjs",
@@ -2462,6 +2471,15 @@ export const GUARDS = [
     to: '  "main": "./lib/github-state.mjs",\n  "name": "agent-operator-score",',
     test: "tests/product/execution-plan.test.mjs",
     name: "the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point"
+  },
+  {
+    guard: "parsed truthiness scanner detects each bare write-access use",
+    reason: "the earlier regex named every caller but missed ternaries, Boolean, loops, aliases, namespaces, properties, and the left side of &&; the parser's fixture must fail if it stops recording detected uses",
+    file: "tests/product/execution-plan.test.mjs",
+    from: "    if (isBareTruthiness(node)) findings.add(`${file}:${node.loc.start.line}: ${construction}`);",
+    to: "    if (false) findings.add(`${file}:${node.loc.start.line}: ${construction}`);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the truthiness scanner catches parsed direct, aliased, and stored tri-state uses"
   },
   {
     guard: "snapshot source matches how it was read",
@@ -7652,6 +7670,7 @@ export const ACCOUNTED_GUARDS = [
   "main and dev are compared across the deletion itself",
   "malformed-row reporting",
   "merge keys bring their keys with them",
+  "missing authors fail closed after permission resolution",
   "missing invariance evidence withholds",
   "missing observation is NOT_OBSERVED, not a failed metric",
   "missing-result refusal",
@@ -7693,6 +7712,7 @@ export const ACCOUNTED_GUARDS = [
   "package exports remain absent while the tri-state module is deep-import-only",
   "package main remains absent while the tri-state module is deep-import-only",
   "parent writable refusal",
+  "parsed truthiness scanner detects each bare write-access use",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
   "positive-observation cap guard",

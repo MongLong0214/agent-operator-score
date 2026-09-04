@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { parse } from "acorn";
 
 import {
   CANONICAL_ISSUE_COUNT,
@@ -907,44 +909,234 @@ const sourceFiles = (directory) =>
     return entry.isFile() && entry.name.endsWith(".mjs") ? [path] : [];
   });
 
-// This scans call sites in this repository (lib/, bin/, scripts/, and tests/) for bare Boolean
-// use of the tri-state result. It does not cover a hypothetical external deep-importer; the
-// package-entry guard above is what keeps that separate residual bounded.
-test("the tri-state write-access API has no bare truthiness callers", () => {
-  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
-  const files = ["bin", "lib", "scripts", "tests"].flatMap((directory) => sourceFiles(join(repositoryRoot, directory)));
-  const accessName = ["has", "Write", "Access"].join("");
-  const openingParen = String.raw`(?:\(\s*)?`;
-  const awaitedCall = String.raw`(?:await\s+)?${accessName}\s*\(`;
-  const directUses = [
-    ["if", new RegExp(String.raw`\bif\s*\(\s*!?\s*${openingParen}${awaitedCall}`, "u")],
-    ["&&", new RegExp(String.raw`&&\s*!?\s*${openingParen}${awaitedCall}`, "u")],
-    ["&&", new RegExp(String.raw`${awaitedCall}[^;\n]*\)\s*&&`, "u")],
-    ["!", new RegExp(String.raw`(?<![=!])!\s*${openingParen}${awaitedCall}`, "u")]
-  ];
-  const findings = [];
+const walk = (node, visit) => {
+  if (!node || typeof node !== "object") return undefined;
+  if (typeof node.type === "string") visit(node);
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) value.forEach((child) => walk(child, visit));
+    else walk(value, visit);
+  }
+};
 
-  for (const file of files) {
-    const source = readFileSync(file, "utf8");
-    for (const [operator, pattern] of directUses) {
-      if (pattern.test(source)) findings.push(`${file}: ${operator} applies directly to the tri-state lookup`);
+const unwrap = (node) => {
+  let current = node;
+  while (current?.type === "AwaitExpression" || current?.type === "ChainExpression") current = current.expression ?? current.argument;
+  return current;
+};
+
+const propertyName = (node) => {
+  if (!node) return undefined;
+  if (node.type === "Property") {
+    if (!node.computed && node.key?.type === "Identifier") return node.key.name;
+    if (node.key?.type === "Literal" && typeof node.key.value === "string") return node.key.value;
+    return undefined;
+  }
+  if (!node.computed && node.property?.type === "Identifier") return node.property.name;
+  if (node.computed && (node.property?.type === "Literal" || node.property?.type === "TemplateLiteral") && typeof node.property.value === "string") return node.property.value;
+  return undefined;
+};
+
+const memberPath = (node) => {
+  const current = unwrap(node);
+  if (current?.type === "Identifier") return current.name;
+  if (current?.type !== "MemberExpression") return undefined;
+  const object = memberPath(current.object);
+  const property = propertyName(current);
+  return object != null && property != null ? `${object}.${property}` : undefined;
+};
+
+const importedModule = (node) => {
+  const current = unwrap(node);
+  return current?.type === "ImportExpression" && typeof current.source?.value === "string" ? current.source.value : null;
+};
+
+const resolvesGithubState = (specifier, file, repositoryRoot) =>
+  typeof specifier === "string" && resolve(dirname(file), specifier) === join(repositoryRoot, "lib", "github-state.mjs");
+
+// Parse call sites rather than guessing from text. The binding pass follows static and dynamic
+// imports, aliases, namespace members, and object properties that carry the lookup or its result;
+// the use pass then asks whether one of those results reaches a JavaScript truthiness operation.
+const bareTruthinessFindings = (source, file, repositoryRoot) => {
+  const ast = parse(source, { ecmaVersion: "latest", sourceType: "module", locations: true });
+  const functions = new Set();
+  const namespaces = new Set();
+  const values = new Set();
+  const members = new Map();
+  const declarators = [];
+  const assignments = [];
+
+  const set = (collection, value) => {
+    if (collection.has(value)) return false;
+    collection.add(value);
+    return true;
+  };
+  const setMember = (path, kind) => {
+    if (members.get(path) === kind) return false;
+    members.set(path, kind);
+    return true;
+  };
+  const kindOfMember = (node) => {
+    const path = memberPath(node);
+    if (path == null) return undefined;
+    const [base, ...properties] = path.split(".");
+    if (namespaces.has(base) && properties.at(-1) === "hasWriteAccess") return "function";
+    return members.get(path) ?? (values.has(base) ? "value" : null);
+  };
+  const kindOf = (node) => {
+    const current = unwrap(node);
+    if (!current) return undefined;
+    if (current.type === "Identifier") {
+      if (functions.has(current.name)) return "function";
+      if (namespaces.has(current.name)) return "namespace";
+      if (values.has(current.name)) return "value";
+      return undefined;
     }
-    const assigned = new Set(
-      [...source.matchAll(new RegExp(String.raw`(?<![.$\w])([A-Za-z_$][\w$]*)\s*=\s*${awaitedCall}`, "gu"))].map((match) => match[1])
-    );
-    for (const name of assigned) {
-      const bareVariableUses = [
-        new RegExp(String.raw`\bif\s*\(\s*!?\s*${openingParen}${name}\s*\)?\s*\)`, "u"),
-        new RegExp(String.raw`&&\s*!?\s*${openingParen}${name}\s*\)?(?=\s*(?:[;,){}]|$))`, "u"),
-        new RegExp(String.raw`(?<![=!])!\s*${openingParen}${name}\s*\)?(?=\s*(?:[;,){}]|$))`, "u")
-      ];
-      if (bareVariableUses.some((pattern) => pattern.test(source))) {
-        findings.push(`${file}: a variable assigned from the tri-state lookup is used as a boolean`);
+    if (current.type === "MemberExpression") return kindOfMember(current);
+    if (current.type === "ImportExpression") return resolvesGithubState(importedModule(current), file, repositoryRoot) ? "namespace" : null;
+    if (current.type === "CallExpression" && kindOf(current.callee) === "function") return "value";
+    if (current.type === "ObjectExpression") return "object";
+    return undefined;
+  };
+  const setBinding = (name, kind) => {
+    if (kind === "function") return set(functions, name);
+    if (kind === "namespace") return set(namespaces, name);
+    if (kind === "value") return set(values, name);
+    return false;
+  };
+  const addObjectMembers = (path, object) => {
+    let changed = false;
+    for (const property of object.properties) {
+      if (property.type !== "Property") continue;
+      const key = propertyName(property);
+      if (key == null) continue;
+      const childPath = `${path}.${key}`;
+      const kind = kindOf(property.value);
+      if (kind === "object" && property.value.type === "ObjectExpression") changed = addObjectMembers(childPath, property.value) || changed;
+      else if (kind !== null) changed = setMember(childPath, kind) || changed;
+    }
+    return changed;
+  };
+  const bindPattern = (pattern, kind, sourcePath = null) => {
+    let changed = false;
+    if (pattern.type === "Identifier") return setBinding(pattern.name, kind);
+    if (pattern.type !== "ObjectPattern") return false;
+    for (const property of pattern.properties) {
+      if (property.type !== "Property") continue;
+      const key = propertyName(property);
+      if (key == null) continue;
+      const memberKind = kind === "namespace" && key === "hasWriteAccess" ? "function" : sourcePath == null ? undefined : members.get(`${sourcePath}.${key}`);
+      changed = bindPattern(property.value, memberKind, sourcePath == null ? undefined : `${sourcePath}.${key}`) || changed;
+    }
+    return changed;
+  };
+
+  walk(ast, (node) => {
+    if (node.type === "ImportDeclaration" && resolvesGithubState(node.source.value, file, repositoryRoot)) {
+      for (const specifier of node.specifiers) {
+        if (specifier.type === "ImportSpecifier" && specifier.imported.name === "hasWriteAccess") functions.add(specifier.local.name);
+        if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name);
       }
     }
+    if (node.type === "VariableDeclarator") declarators.push(node);
+    if (node.type === "AssignmentExpression" && node.operator === "=") assignments.push(node);
+  });
+
+  for (let pass = 0; pass < 32; pass += 1) {
+    let changed = false;
+    for (const declaration of declarators) {
+      const imported = importedModule(declaration.init);
+      const kind = resolvesGithubState(imported, file, repositoryRoot) ? "namespace" : kindOf(declaration.init);
+      changed = bindPattern(declaration.id, kind, memberPath(declaration.init)) || changed;
+      if (declaration.id.type === "Identifier" && kind === "object" && unwrap(declaration.init).type === "ObjectExpression") {
+        changed = addObjectMembers(declaration.id.name, unwrap(declaration.init)) || changed;
+      }
+    }
+    for (const assignment of assignments) {
+      const kind = kindOf(assignment.right);
+      if (assignment.left.type === "Identifier") changed = setBinding(assignment.left.name, kind) || changed;
+      const path = memberPath(assignment.left);
+      if (path != null && kind !== null) changed = setMember(path, kind) || changed;
+    }
+    if (!changed) break;
   }
 
+  const isValue = (node) => kindOf(node) === "value";
+  const isBareTruthiness = (node) => {
+    const current = unwrap(node);
+    if (!current) return false;
+    if (isValue(current)) return true;
+    if (current.type === "UnaryExpression" && current.operator === "!") return isBareTruthiness(current.argument);
+    if (current.type === "LogicalExpression" && ["&&", "||"].includes(current.operator)) return isBareTruthiness(current.left) || isBareTruthiness(current.right);
+    if (current.type === "CallExpression" && current.callee.type === "Identifier" && current.callee.name === "Boolean") return isValue(current.arguments[0]);
+    if (current.type === "SequenceExpression") return isBareTruthiness(current.expressions.at(-1));
+    if (current.type === "AssignmentExpression" && current.operator === "=") return isBareTruthiness(current.right);
+    return false;
+  };
+  const findings = new Set();
+  const recordIfBare = (node, construction) => {
+    if (isBareTruthiness(node)) findings.add(`${file}:${node.loc.start.line}: ${construction}`);
+  };
+
+  walk(ast, (node) => {
+    if (["IfStatement", "WhileStatement", "DoWhileStatement", "ForStatement", "ConditionalExpression"].includes(node.type)) recordIfBare(node.test, node.type);
+    if (node.type === "LogicalExpression" && ["&&", "||"].includes(node.operator)) recordIfBare(node, node.operator);
+    if (node.type === "UnaryExpression" && node.operator === "!") recordIfBare(node, "!");
+    if (node.type === "CallExpression" && node.callee.type === "Identifier" && node.callee.name === "Boolean") recordIfBare(node, "Boolean");
+  });
+  return [...findings].sort();
+};
+
+test("the truthiness scanner catches parsed direct, aliased, and stored tri-state uses", () => {
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const fixturePath = join(repositoryRoot, "tests", "product", "truthiness-fixture.mjs");
+  const named = (body) => `import { hasWriteAccess } from "../../lib/github-state.mjs";\n${body}`;
+  const forms = [
+    ["direct ternary", named("const label = (await hasWriteAccess(\"o/r\", \"a\")) ? \"yes\" : \"no\";")],
+    ["stored ternary", named("const access = await hasWriteAccess(\"o/r\", \"a\"); const label = access ? \"yes\" : \"no\";")],
+    ["direct Boolean", named("const allowed = Boolean(await hasWriteAccess(\"o/r\", \"a\"));")],
+    ["stored Boolean", named("const access = await hasWriteAccess(\"o/r\", \"a\"); const allowed = Boolean(access);" )],
+    ["direct ||", named("const allowed = (await hasWriteAccess(\"o/r\", \"a\")) || false;")],
+    ["stored ||", named("const access = await hasWriteAccess(\"o/r\", \"a\"); const allowed = access || false;")],
+    ["direct while", named("while (await hasWriteAccess(\"o/r\", \"a\")) break;")],
+    ["stored while", named("const access = await hasWriteAccess(\"o/r\", \"a\"); while (access) break;")],
+    ["aliased import", 'import { hasWriteAccess as access } from "../../lib/github-state.mjs"; if (await access("o/r", "a")) {}'],
+    ["namespace import", 'import * as github from "../../lib/github-state.mjs"; if (await github.hasWriteAccess("o/r", "a")) {}'],
+    ["dynamic aliased import", 'const { hasWriteAccess: access } = await import("../../lib/github-state.mjs"); if (await access("o/r", "a")) {}'],
+    ["dynamic namespace import", 'const github = await import("../../lib/github-state.mjs"); if (await github.hasWriteAccess("o/r", "a")) {}'],
+    ["one property hop", named("const holder = { access: await hasWriteAccess(\"o/r\", \"a\") }; if (holder.access) {}")],
+    ["&& stored left", named("const access = await hasWriteAccess(\"o/r\", \"a\"); access && console.log(\"unsafe\");")],
+    ["&& direct left", named("(await hasWriteAccess(\"o/r\", \"a\")) && console.log(\"unsafe\");")],
+    ["for test", named("for (; await hasWriteAccess(\"o/r\", \"a\");) break;")],
+    ["do while test", named("let access = await hasWriteAccess(\"o/r\", \"a\"); do { access = false; } while (access);" )],
+    ["negation", named("const access = await hasWriteAccess(\"o/r\", \"a\"); if (!access) {}")]
+  ];
+  for (const [form, source] of forms) assert.notDeepEqual(bareTruthinessFindings(source, fixturePath, repositoryRoot), [], `${form} was not detected`);
+});
+
+// This parses every call site in lib/, bin/, scripts/, and tests/. It follows the tri-state result
+// through static or dynamic imports, aliases, namespace members, and stored object properties,
+// then rejects every JavaScript truthiness construction it can reach. It does not cover a
+// hypothetical external deep-importer; the package-entry guard above bounds that separate residual.
+test("the tri-state write-access API has no parsed bare truthiness callers", () => {
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const files = ["bin", "lib", "scripts", "tests"].flatMap((directory) => sourceFiles(join(repositoryRoot, directory)));
+  const findings = files.flatMap((file) => bareTruthinessFindings(readFileSync(file, "utf8"), file, repositoryRoot));
   assert.deepEqual(findings, []);
+});
+
+test("a source without an author fails closed", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const completion = { schema: "aos-issue-completion.v1", issue: 628, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1], verdict: "PASS", evidence: {} };
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  const get = async (path) => {
+    if (path === "/repos/owner/repo/issues/628") return { body: { title: "No author", state: "open", comments: 0, body: `\`\`\`json\n${JSON.stringify(completion)}\n\`\`\``, user: null } };
+    const error = new Error(`GitHub ${path} -> 404`);
+    error.status = 404;
+    throw error;
+  };
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  assert.equal(snapshot.issues[0].close_evidence.author, null);
+  assert.equal(snapshot.issues[0].close_evidence.author_trusted, false);
 });
 
 test("a snapshot stamps a login with its settled permission answer", async () => {
