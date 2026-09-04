@@ -130,7 +130,7 @@ test("a plan with no verification step does not pass the check about verificatio
   const m09 = (tasks, owners) => observeRun({
     artifacts: { plan: { tasks } },
     params: P,
-    routing: { requirements: requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger(owners) }
+    routing: { requirements: requirementsFromWork(work).requirements, work_requirement: { requirements: requirementsFromWork(work).requirements, problems: [] }, capabilities, actual_route_events: ledger(owners) }
   }).find((entry) => entry.metric_id === "M09");
   const both = (routes) => [
     { id: "implementation", route: routes[0], depends_on: [] },

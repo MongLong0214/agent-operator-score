@@ -23,6 +23,14 @@ import {
   validateActualRouteEvent
 } from "../../lib/routing-oracle.mjs";
 
+// #558's second half made the cost floor a separate input: what AOS asked the form for,
+// frozen at plan approval, so that a route cannot be priced against a requirement derived from
+// itself. These fixtures hand in a work graph, which IS the work, so the floor here is that same
+// requirement. What production supplies instead -- `FORM_WORK` through
+// `workRequirementAtPlanApproval` -- is asked in `routing-work-requirement.test.mjs`.
+const floorOf = (requirements) => ({ requirements, problems: [] });
+const pricedObservables = (input) => routingObservables({ ...input, work_requirement: floorOf(input.requirements ?? []) });
+
 const OPERATOR_ROUTE = "alpha>beta";
 const REQUIREMENT = () => requirementsFromRoute({
   form_id: "FAM-3",
@@ -57,7 +65,7 @@ const LEDGER = () => [
   event("FAM-3/stage-2", "beta", { artifact_ids: ["artifact:plan.json"], handoff_ids: ["FAM-3/stage-1->FAM-3/stage-2"], started_at: "2026-09-01T10:02:00Z", completed_at: "2026-09-01T10:03:00Z" })
 ];
 
-const oracleFor = (plan, ledger = LEDGER()) => routingObservables({
+const oracleFor = (plan, ledger = LEDGER()) => pricedObservables({
   requirements: REQUIREMENT().requirements,
   requirement_problems: REQUIREMENT().problems,
   plan,
@@ -215,7 +223,7 @@ test("the proposal the oracle reads is the operator's attested decision, not the
   assert.deepEqual(assignment.map((entry) => [entry.task_id, entry.owner_id]), [["FAM-3/stage-2", "gamma"]],
     "the later revision of the same stage is the operator's current decision");
 
-  const oracle = routingObservables({
+  const oracle = pricedObservables({
     requirements: REQUIREMENT().requirements,
     declared_assignment: assignment,
     capabilities: CAPABILITIES(),
@@ -237,7 +245,7 @@ test("the proposal the oracle reads is the operator's attested decision, not the
   assert.equal(taskOfOpportunity("opp-FAM-3-stage-1"), null);
 
   // An unattended run mints no such event, so the proposal is empty and nothing is said about it.
-  const unattended = routingObservables({
+  const unattended = pricedObservables({
     requirements: REQUIREMENT().requirements, declared_assignment: [], capabilities: CAPABILITIES(), actual_route_events: LEDGER()
   }).oracle;
   for (const row of unattended.assignment) assert.equal(row.proposed_owner_id, null);

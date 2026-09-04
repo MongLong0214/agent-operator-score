@@ -330,6 +330,51 @@ export const GUARDS = [
     name: "an actual route whose owner AOS knows nothing about is not observed"
   },
   {
+    guard: "the cost floor is the work AOS asked for, not the route under measurement",
+    reason: "the floor used to be the cheapest owner assignment of the operator's own declared stages, so adding a stage raised the actual route and its minimum by the same amount and route breadth was structurally unjudgeable -- measured through the binary at 3/3, 5/5, 7/7 and 5/1; pointing it back at the run's own requirement restores exactly that, and `simplest-adequate-route` goes back to being true of every adequate route however wide",
+    file: "lib/routing-oracle.mjs",
+    from: "      : minimumRoute(workRequirements, ownerCapabilities, { owners: knownOwnerSet(caps) });",
+    to: "      : minimumRoute(requirements, ownerCapabilities, { owners: knownOwnerSet(caps) });",
+    test: "tests/product/routing-cli-authority.test.mjs",
+    name: "route cost on the production path counts handoffs, and prices a route wider than the work"
+  },
+  {
+    guard: "an unstated work floor withholds rather than falling back to the route",
+    reason: "a run of a form AOS states no work for has no floor, and pricing it against its own route is the tautology this replaced -- the absence has to reach the observation as NOT_OBSERVED rather than be repaired into a number",
+    file: "lib/routing-oracle.mjs",
+    from: "    : !Array.isArray(workRequirements) || workRequirements.length === 0 || workProblemList.length > 0\n      ? Object.freeze({ status: \"NO_WORK_REQUIREMENT\", minimum_cost: null, assignment: null, states_explored: 0 })",
+    to: "    : false\n      ? Object.freeze({ status: \"NO_WORK_REQUIREMENT\", minimum_cost: null, assignment: null, states_explored: 0 })",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a form AOS states no work for withholds rather than passing or scoring zero"
+  },
+  {
+    guard: "the work digest is checked against the graph it travels with",
+    reason: "a record whose digest names work other than the graph beside it describes some other freeze, and pricing a route against it prices it against work nobody can identify -- believing the field turns the digest into decoration",
+    file: "lib/routing-oracle.mjs",
+    from: "  if (isText(workRequirement?.work_digest) && workRequirement.work_digest !== recomputedWorkDigest) {",
+    to: "  if (false) {",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "a work digest that names other work than the graph beside it withholds rather than pricing"
+  },
+  {
+    guard: "a work task is named by the form that asked for it",
+    reason: "a work task and a stage of the same run share an id space, and an unnamespaced work task can collide with a stage the ledger attributes -- an event admitted against the wrong one of those is attribution by coincidence",
+    file: "lib/routing-oracle.mjs",
+    from: "  const named = (id) => (formId === null ? id : `${formId}${STAGE_SEPARATOR}${id}`);",
+    to: "  const named = (id) => id;",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "the run records the work AOS froze at plan approval, bound by digest"
+  },
+  {
+    guard: "the work floor is frozen at plan approval",
+    reason: "the freeze is what makes the floor independent of the run -- an instant the record cannot state is a floor a reader cannot place before the first invocation, and a requirement recovered after the answer is not a requirement",
+    file: "lib/cli.mjs",
+    from: "  const workRequirement = workRequirementAtPlanApproval({ form_id: \"FAM-3\", frozen_at: new Date().toISOString() });",
+    to: "  const workRequirement = workRequirementAtPlanApproval({ form_id: \"FAM-3\", frozen_at: null });",
+    test: "tests/product/routing-work-requirement.test.mjs",
+    name: "the run records the work AOS froze at plan approval, bound by digest"
+  },
+  {
     guard: "route cost counts the handoffs a split buys",
     // Re-pointed at the production path. The witness was `one redundant agent lowers routing
     // minimality and nothing else`, which builds its requirement with `requirementsFromWork` -- a
@@ -344,7 +389,7 @@ export const GUARDS = [
     from: "  return invocations + dependenciesOf(requirement).filter((dependency) => ownerOf.get(dependency) !== owner).length;",
     to: "  return invocations;",
     test: "tests/product/routing-cli-authority.test.mjs",
-    name: "route cost on the production path counts handoffs, and cannot price route breadth"
+    name: "route cost on the production path counts handoffs, and prices a route wider than the work"
   },
   {
     guard: "the minimum route is the cheapest and its tie-break is canonical",
@@ -6939,6 +6984,7 @@ export const ACCOUNTED_GUARDS = [
   "a withheld metric says so rather than reading as uncomputed",
   "a withheld rate keeps the counts that withheld it",
   "a work graph that refers to itself has no order to route",
+  "a work task is named by the form that asked for it",
   "a workspace that contains the store is refused",
   "a workspace that resolves into the store is refused",
   "a workspace-relative effect is inside the workspace",
@@ -7015,6 +7061,7 @@ export const ACCOUNTED_GUARDS = [
   "an unproven lane blocks issuance",
   "an unreadable store is reported and not read as an empty one",
   "an unsafe sentence is not an unsafe run",
+  "an unstated work floor withholds rather than falling back to the route",
   "an untrusted executable blocks the candidate outright",
   "an untrusted reason travels without the path it names",
   "an unverified executable gets no credential lookup",
@@ -7285,6 +7332,7 @@ export const ACCOUNTED_GUARDS = [
   "the contract names the gate that binds the record to its evidence",
   "the contract states the cells each row averages",
   "the copy carries the modes it copied",
+  "the cost floor is the work AOS asked for, not the route under measurement",
   "the count deletion turns on is recorded",
   "the credential is reduced to a name and a source where it is resolved",
   "the cycle command quotes the stored decision",
@@ -7401,6 +7449,8 @@ export const ACCOUNTED_GUARDS = [
   "the whole policy is revalidated against its adapter at the point of use",
   "the withheld prefixes are the module's and the policy's together",
   "the withheld reason travels with the surface",
+  "the work digest is checked against the graph it travels with",
+  "the work floor is frozen at plan approval",
   "the workspace is named relatively so the store is not",
   "top-level artifact open does not follow",
   "tracked descendants are terminated at teardown",
@@ -7429,5 +7479,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository"
+  "write access asked of the repository",
 ];

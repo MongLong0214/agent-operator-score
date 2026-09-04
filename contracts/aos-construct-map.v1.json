@@ -1,6 +1,6 @@
 {
   "schema": "aos-construct-map.v1",
-  "contract_version": "1.2.0",
+  "contract_version": "1.3.0",
   "process_index": {
     "label": "PROFILE-BOUND OPERATOR PROCESS INDEX",
     "interpretation": "descriptive only",
@@ -56,7 +56,8 @@
         "title": "Efficiency & Resource Outcome",
         "cell_ids": [
           "C2.IB.01",
-          "C6.EB.01"
+          "C6.EB.01",
+          "C2.RF.01"
         ]
       }
     ]
@@ -107,11 +108,10 @@
         "system_outcome": {
           "required_cell_ids": [
             "C2.HJ.01",
-            "C2.IB.01"
-          ],
-          "optional_cell_ids": [
+            "C2.IB.01",
             "C2.RF.01"
-          ]
+          ],
+          "optional_cell_ids": []
         },
         "delegated_artifact": {
           "required_cell_ids": [

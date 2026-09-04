@@ -102,6 +102,19 @@ move of `C2.RF.01` and `C2.IB.01` onto the routing oracle. Two contract meaning-
 the same base need two versions; sharing one would leave the version unable to say which authority
 a stored result was scored under, which is the only job it has here.
 
+`1.3.0` is #558's second half. `C2.RF.01` was `required_for_construct: false` through `1.2.0` --
+optional, and therefore invisible, because an optional outcome cell reaches no domain, no coverage
+count and no rendered surface in any state. The reason was that the cost a route was compared
+against came from `requirementsFromRoute`, which builds one task per stage of the operator's own
+declared route: adding a stage added a task, the minimum rose by exactly what the actual route rose
+by, and route breadth was structurally unjudgeable (measured through the binary at four breadths --
+3/3, 5/5, 7/7, 5/5). The floor now comes from AOS's own statement of what the form asks for, frozen
+at plan approval before any invocation and read from nothing the graded party writes, so the cell is
+required and credit-bearing, joins outcome domain O4 and FAM-3's required cell list, and gates the
+outcome index and the composite the way every other required cell does. A run whose runtime AOS
+holds no capability record for therefore withholds it, which is the same rule the rest of the
+release rests on: absence is never a default.
+
 ## Exported API
 
 The surface is in two tiers, and the split is the point rather than a convenience. Everything in the

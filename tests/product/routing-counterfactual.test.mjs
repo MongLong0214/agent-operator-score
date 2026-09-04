@@ -47,6 +47,13 @@ const PLAN = (routes) => ({
 
 const MINIMAL = { contract: "other", implementation: "other", docs: "other", verification: "strong", release: "other" };
 
+// #558's second half made the cost floor a separate input: what AOS asked the form for,
+// frozen at plan approval, so that a route cannot be priced against a requirement derived from
+// itself. These fixtures hand in a work graph, which IS the work, so the floor here is that same
+// requirement. What production supplies instead -- `FORM_WORK` through
+// `workRequirementAtPlanApproval` -- is asked in `routing-work-requirement.test.mjs`.
+const floored = (input) => ({ ...input, work_requirement: { requirements: input.requirements ?? [], problems: [] } });
+
 const minute = (index) => `2026-09-01T10:${String(index).padStart(2, "0")}:00Z`;
 
 const event = (taskId, agentId, index) => ({
@@ -71,7 +78,7 @@ const m09 = ({ routes = MINIMAL, ledger = null, work = WORK, capabilities = CAPA
   observeRun({
     artifacts: { plan: PLAN(routes) },
     params: { "FAM-3": {} },
-    routing: { requirements: work === null ? null : requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger ?? ledgerFor(routes) }
+    routing: floored({ requirements: work === null ? null : requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger ?? ledgerFor(routes) })
   }).find((entry) => entry.metric_id === "M09");
 
 const sub = (observation, id) => observation.subchecks.find((entry) => entry.id === id).pass;
@@ -142,13 +149,13 @@ test("the same plan text with a different actual route is judged by the actual r
   const followed = observeRun({
     artifacts: { plan },
     params: { "FAM-3": {} },
-    routing: { requirements: REQUIREMENT(), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(MINIMAL) }
+    routing: floored({ requirements: REQUIREMENT(), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(MINIMAL) })
   }).find((entry) => entry.metric_id === "M09");
   // Identical plan bytes. The ledger says verification went to the agent that wrote the code.
   const diverged = observeRun({
     artifacts: { plan },
     params: { "FAM-3": {} },
-    routing: { requirements: REQUIREMENT(), capabilities: CAPABILITIES(), actual_route_events: ledgerFor({ ...MINIMAL, verification: "other" }) }
+    routing: floored({ requirements: REQUIREMENT(), capabilities: CAPABILITIES(), actual_route_events: ledgerFor({ ...MINIMAL, verification: "other" }) })
   }).find((entry) => entry.metric_id === "M09");
 
   assert.equal(sub(followed, "simplest-adequate-route"), true);
@@ -194,7 +201,7 @@ test("an actual route whose owner AOS knows nothing about is not observed", () =
 
 test("routing the independent verifier to the owner of the work it checks fails independence", () => {
   const sameOwner = { contract: "strong", implementation: "strong", docs: "strong", verification: "strong", release: "strong" };
-  const input = { requirements: REQUIREMENT(), plan: PLAN(sameOwner), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(sameOwner) };
+  const input = floored({ requirements: REQUIREMENT(), plan: PLAN(sameOwner), capabilities: CAPABILITIES(), actual_route_events: ledgerFor(sameOwner) });
 
   // The independence observable itself, by name, not only the minimality verdict it also sinks.
   const independence = routingObservables(input).oracle.observables
@@ -276,7 +283,7 @@ test("removing only the artifact lowers only adequacy, and removing only the han
   const requirements = REQUIREMENT();
   const complete = ledgerFor(MINIMAL);
   const verdicts = (ledger) => Object.fromEntries(
-    routingObservables({ requirements, capabilities: CAPABILITIES(), actual_route_events: ledger })
+    routingObservables(floored({ requirements, capabilities: CAPABILITIES(), actual_route_events: ledger }))
       .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
 
   const base = verdicts(complete);
@@ -292,9 +299,9 @@ test("removing only the artifact lowers only adequacy, and removing only the han
     started_at: null, completed_at: null, artifact_ids: artifacts, handoff_ids: [],
     capability_digest: null, operator_decision_event_id: null, operator_opportunity_id: null
   }];
-  const withArtifact = Object.fromEntries(routingObservables({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran(["artifact:out.json"]) })
+  const withArtifact = Object.fromEntries(routingObservables(floored({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran(["artifact:out.json"]) }))
     .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
-  const withoutArtifact = Object.fromEntries(routingObservables({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran([]) })
+  const withoutArtifact = Object.fromEntries(routingObservables(floored({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran([]) }))
     .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
   assert.equal(withArtifact["simplest-adequate-route"], true);
   assert.equal(withoutArtifact["simplest-adequate-route"], false);
