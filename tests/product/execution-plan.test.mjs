@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { parse } from "acorn";
 
 import {
   CANONICAL_ISSUE_COUNT,
@@ -625,6 +629,42 @@ test("a record from someone without write access is not an attestation", async (
   assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
 });
 
+test("a transient write-access failure is not an untrusted author", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const completion = { schema: "aos-issue-completion.v1", issue: 628, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1], verdict: "PASS", evidence: {} };
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  const get = async (path) => {
+    if (path.includes("/permission")) {
+      const error = new Error(`GitHub ${path} -> 502`);
+      error.status = 502;
+      throw error;
+    }
+    if (path.endsWith("/issues/628")) {
+      return { body: { number: 628, title: "legitimate record", state: "closed", labels: [], body: "```json\n" + JSON.stringify(completion) + "\n```", user: { login: "legitimate-writer" }, comments: 0 } };
+    }
+    if (/\/issues\/(579|580|581)$/u.test(path)) {
+      const error = new Error(`GitHub ${path} -> 404`);
+      error.status = 404;
+      throw error;
+    }
+    throw new Error(`unexpected ${path}`);
+  };
+
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  const record = snapshot.issues[0].close_evidence;
+  assert.equal(record.author_trusted, NOT_CHECKED, "a 502 on the permission call was recorded as no write access");
+  assert.deepEqual(record.author_trust_unresolved, {
+    call: "/repos/owner/repo/collaborators/legitimate-writer/permission",
+    status: 502
+  });
+
+  const audit = auditCloseEvidence(doc, snapshot, { live: true });
+  const names = audit.failures.map((one) => one.check);
+  assert.deepEqual(names, ["close-evidence-author-unchecked"], `an unavailable permission lookup was reported as ${names.join(", ") || "nothing"}`);
+  assert.match(audit.failures[0].detail, /collaborators\/legitimate-writer\/permission -> 502/u, "the unavailable result lost the failed call or HTTP status");
+  assert.equal(audit.ok, false, "an author whose access was not checked must remain fail-closed");
+});
+
 test("an outsider cannot overwrite a maintainer's record, and the attempt is recorded", async () => {
   const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
   const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
@@ -642,6 +682,18 @@ test("an outsider cannot overwrite a maintainer's record, and the attempt is rec
     { body: block("HOLD"), author_trusted: true, author: "reviewer" }
   ]);
   assert.equal(corrected.verdict, "HOLD");
+});
+
+test("an unavailable author cannot overwrite a confirmed author", async () => {
+  const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
+  const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
+
+  const held = parseCompletionRecord([
+    { body: block("PASS"), author_trusted: true, author: "maintainer" },
+    { body: block("HOLD"), author_trusted: NOT_CHECKED, author: "unavailable-writer", author_trust_unresolved: { call: "/permission", status: 502 } }
+  ]);
+  assert.equal(held.verdict, "PASS", "a truthy unavailable state overwrote a confirmed author");
+  assert.equal(held.contested_by, "unavailable-writer");
 });
 
 // --- the cycle diagnostic names every edge someone would have to remove ---------------------
@@ -766,7 +818,7 @@ test("an empty array is not a digest and false is not a count", () => {
   }
 });
 
-test("write access is asked of the repository, not inferred from an association", async () => {
+test("the public write-access lookup preserves allowed, denied, and unavailable answers", async () => {
   const { hasWriteAccess } = await import("../../lib/github-state.mjs");
   const withRole = (permission) => async () => ({ body: { permission } });
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("admin") }), true);
@@ -775,9 +827,385 @@ test("write access is asked of the repository, not inferred from an association"
   // A collaborator with the read or triage role would have attested to completed work.
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("triage") }), false);
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("read") }), false);
-  // "Could not establish" is not "has it".
-  assert.equal(await hasWriteAccess("o/r", "a", { get: async () => { throw new Error("403"); } }), false);
+  // A 403 is neither a denial nor a pass. The public lookup keeps the third answer and its
+  // diagnostic context, so an audit can distinguish it from a known untrusted author.
+  const unavailable = await hasWriteAccess("o/r", "a", {
+    get: async () => {
+      const error = new Error("403");
+      error.status = 403;
+      throw error;
+    }
+  });
+  assert.equal(unavailable.answer, NOT_CHECKED);
+  assert.equal(unavailable.call, "/repos/o/r/collaborators/a/permission");
+  assert.equal(unavailable.status, 403);
   assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
+});
+
+test("the boolean write-access predicate is fail-closed", async () => {
+  const { writeAccessConfirmed } = await import("../../lib/github-state.mjs");
+  assert.equal(await writeAccessConfirmed("o/r", "a", { get: async () => ({ body: { permission: "admin" } }) }), true);
+  const unavailable = async () => {
+    const error = new Error("502");
+    error.status = 502;
+    throw error;
+  };
+  assert.equal(await writeAccessConfirmed("o/r", "a", { get: unavailable }), false);
+});
+
+test("a 404 permission answer is a cached denial", async () => {
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const cache = new Map();
+  let calls = 0;
+  const get = async () => {
+    calls += 1;
+    const error = new Error("GitHub permission lookup -> 404");
+    error.status = 404;
+    throw error;
+  };
+
+  assert.equal(await hasWriteAccess("o/r", "no-access", { get, cache }), false, "a 404 was filed as unavailable rather than denied");
+  assert.equal(await hasWriteAccess("o/r", "no-access", { get, cache }), false);
+  assert.equal(calls, 1, "a settled no-access answer was not cached");
+});
+
+test("a transient permission failure is retried before the author is judged", async () => {
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const cache = new Map();
+  let calls = 0;
+  const get = async () => {
+    calls += 1;
+    if (calls === 1) {
+      const error = new Error("GitHub permission lookup -> 502");
+      error.status = 502;
+      throw error;
+    }
+    return { body: { permission: "write" } };
+  };
+
+  const unavailable = await hasWriteAccess("o/r", "legitimate-writer", { get, cache });
+  assert.equal(unavailable.answer, NOT_CHECKED, "the first 502 was filed as a settled no-access answer");
+  assert.equal(unavailable.status, 502);
+  assert.match(unavailable.call, /collaborators\/legitimate-writer\/permission$/u);
+  assert.equal(calls, 1, "the first permission lookup did not run");
+
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true, "the retry did not reach the later write answer");
+  assert.equal(calls, 2, "the first unavailable answer was cached");
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true);
+  assert.equal(calls, 2, "the settled write answer was not cached");
+});
+
+test("the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  const reason = "the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point";
+  assert.equal(manifest.main, undefined, `${reason}; package.json must not declare main`);
+  assert.equal(manifest.exports, undefined, `${reason}; package.json must not declare exports`);
+});
+
+const sourceFiles = (directory) =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return sourceFiles(path);
+    return entry.isFile() && entry.name.endsWith(".mjs") ? [path] : [];
+  });
+
+const walk = (node, visit) => {
+  if (!node || typeof node !== "object") return undefined;
+  if (typeof node.type === "string") visit(node);
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) value.forEach((child) => walk(child, visit));
+    else walk(value, visit);
+  }
+};
+
+const unwrap = (node) => {
+  let current = node;
+  while (current?.type === "AwaitExpression" || current?.type === "ChainExpression") current = current.expression ?? current.argument;
+  return current;
+};
+
+const propertyName = (node) => {
+  if (!node) return undefined;
+  if (node.type === "Property") {
+    if (!node.computed && node.key?.type === "Identifier") return node.key.name;
+    if (node.key?.type === "Literal" && typeof node.key.value === "string") return node.key.value;
+    return undefined;
+  }
+  if (!node.computed && node.property?.type === "Identifier") return node.property.name;
+  if (node.computed && (node.property?.type === "Literal" || node.property?.type === "TemplateLiteral") && typeof node.property.value === "string") return node.property.value;
+  return undefined;
+};
+
+const memberPath = (node) => {
+  const current = unwrap(node);
+  if (current?.type === "Identifier") return current.name;
+  if (current?.type !== "MemberExpression") return undefined;
+  const object = memberPath(current.object);
+  const property = propertyName(current);
+  return object != null && property != null ? `${object}.${property}` : undefined;
+};
+
+const importedModule = (node) => {
+  const current = unwrap(node);
+  return current?.type === "ImportExpression" && typeof current.source?.value === "string" ? current.source.value : null;
+};
+
+const resolvesGithubState = (specifier, file, repositoryRoot) =>
+  typeof specifier === "string" && resolve(dirname(file), specifier) === join(repositoryRoot, "lib", "github-state.mjs");
+
+// Parse call sites rather than guessing from text. The binding pass follows static and dynamic
+// imports, aliases, namespace members, and object properties that carry the lookup or its result;
+// the use pass then asks whether one of those results reaches a JavaScript truthiness operation.
+const bareTruthinessFindings = (source, file, repositoryRoot) => {
+  const ast = parse(source, { ecmaVersion: "latest", sourceType: "module", locations: true });
+  const functions = new Set();
+  const namespaces = new Set();
+  const values = new Set();
+  const members = new Map();
+  const declarators = [];
+  const assignments = [];
+
+  const set = (collection, value) => {
+    if (collection.has(value)) return false;
+    collection.add(value);
+    return true;
+  };
+  const setMember = (path, kind) => {
+    if (members.get(path) === kind) return false;
+    members.set(path, kind);
+    return true;
+  };
+  const kindOfMember = (node) => {
+    const path = memberPath(node);
+    if (path == null) return undefined;
+    const [base, ...properties] = path.split(".");
+    if (namespaces.has(base) && properties.at(-1) === "hasWriteAccess") return "function";
+    return members.get(path) ?? (values.has(base) ? "value" : null);
+  };
+  const kindOf = (node) => {
+    const current = unwrap(node);
+    if (!current) return undefined;
+    if (current.type === "Identifier") {
+      if (functions.has(current.name)) return "function";
+      if (namespaces.has(current.name)) return "namespace";
+      if (values.has(current.name)) return "value";
+      return undefined;
+    }
+    if (current.type === "MemberExpression") return kindOfMember(current);
+    if (current.type === "ImportExpression") return resolvesGithubState(importedModule(current), file, repositoryRoot) ? "namespace" : null;
+    if (current.type === "CallExpression" && kindOf(current.callee) === "function") return "value";
+    if (current.type === "ObjectExpression") return "object";
+    return undefined;
+  };
+  const setBinding = (name, kind) => {
+    if (kind === "function") return set(functions, name);
+    if (kind === "namespace") return set(namespaces, name);
+    if (kind === "value") return set(values, name);
+    return false;
+  };
+  const addObjectMembers = (path, object) => {
+    let changed = false;
+    for (const property of object.properties) {
+      if (property.type !== "Property") continue;
+      const key = propertyName(property);
+      if (key == null) continue;
+      const childPath = `${path}.${key}`;
+      const kind = kindOf(property.value);
+      if (kind === "object" && property.value.type === "ObjectExpression") changed = addObjectMembers(childPath, property.value) || changed;
+      else if (kind !== null) changed = setMember(childPath, kind) || changed;
+    }
+    return changed;
+  };
+  const bindPattern = (pattern, kind, sourcePath = null) => {
+    let changed = false;
+    if (pattern.type === "Identifier") return setBinding(pattern.name, kind);
+    if (pattern.type !== "ObjectPattern") return false;
+    for (const property of pattern.properties) {
+      if (property.type !== "Property") continue;
+      const key = propertyName(property);
+      if (key == null) continue;
+      const memberKind = kind === "namespace" && key === "hasWriteAccess" ? "function" : sourcePath == null ? undefined : members.get(`${sourcePath}.${key}`);
+      changed = bindPattern(property.value, memberKind, sourcePath == null ? undefined : `${sourcePath}.${key}`) || changed;
+    }
+    return changed;
+  };
+
+  walk(ast, (node) => {
+    if (node.type === "ImportDeclaration" && resolvesGithubState(node.source.value, file, repositoryRoot)) {
+      for (const specifier of node.specifiers) {
+        if (specifier.type === "ImportSpecifier" && specifier.imported.name === "hasWriteAccess") functions.add(specifier.local.name);
+        if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name);
+      }
+    }
+    if (node.type === "VariableDeclarator") declarators.push(node);
+    if (node.type === "AssignmentExpression" && node.operator === "=") assignments.push(node);
+  });
+
+  for (let pass = 0; pass < 32; pass += 1) {
+    let changed = false;
+    for (const declaration of declarators) {
+      const imported = importedModule(declaration.init);
+      const kind = resolvesGithubState(imported, file, repositoryRoot) ? "namespace" : kindOf(declaration.init);
+      changed = bindPattern(declaration.id, kind, memberPath(declaration.init)) || changed;
+      if (declaration.id.type === "Identifier" && kind === "object" && unwrap(declaration.init).type === "ObjectExpression") {
+        changed = addObjectMembers(declaration.id.name, unwrap(declaration.init)) || changed;
+      }
+    }
+    for (const assignment of assignments) {
+      const kind = kindOf(assignment.right);
+      if (assignment.left.type === "Identifier") changed = setBinding(assignment.left.name, kind) || changed;
+      const path = memberPath(assignment.left);
+      if (path != null && kind !== null) changed = setMember(path, kind) || changed;
+    }
+    if (!changed) break;
+  }
+
+  const isValue = (node) => kindOf(node) === "value";
+  const isBareTruthiness = (node) => {
+    const current = unwrap(node);
+    if (!current) return false;
+    if (isValue(current)) return true;
+    if (current.type === "UnaryExpression" && current.operator === "!") return isBareTruthiness(current.argument);
+    if (current.type === "LogicalExpression" && ["&&", "||"].includes(current.operator)) return isBareTruthiness(current.left) || isBareTruthiness(current.right);
+    if (current.type === "CallExpression" && current.callee.type === "Identifier" && current.callee.name === "Boolean") return isValue(current.arguments[0]);
+    if (current.type === "SequenceExpression") return isBareTruthiness(current.expressions.at(-1));
+    if (current.type === "AssignmentExpression" && current.operator === "=") return isBareTruthiness(current.right);
+    return false;
+  };
+  const findings = new Set();
+  const recordIfBare = (node, construction) => {
+    if (isBareTruthiness(node)) findings.add(`${file}:${node.loc.start.line}: ${construction}`);
+  };
+
+  walk(ast, (node) => {
+    if (["IfStatement", "WhileStatement", "DoWhileStatement", "ForStatement", "ConditionalExpression"].includes(node.type)) recordIfBare(node.test, node.type);
+    if (node.type === "LogicalExpression" && ["&&", "||"].includes(node.operator)) recordIfBare(node, node.operator);
+    if (node.type === "UnaryExpression" && node.operator === "!") recordIfBare(node, "!");
+    if (node.type === "CallExpression" && node.callee.type === "Identifier" && node.callee.name === "Boolean") recordIfBare(node, "Boolean");
+  });
+  return [...findings].sort();
+};
+
+test("the truthiness scanner catches parsed direct, aliased, and stored tri-state uses", () => {
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const fixturePath = join(repositoryRoot, "tests", "product", "truthiness-fixture.mjs");
+  const named = (body) => `import { hasWriteAccess } from "../../lib/github-state.mjs";\n${body}`;
+  const forms = [
+    ["direct ternary", named("const label = (await hasWriteAccess(\"o/r\", \"a\")) ? \"yes\" : \"no\";")],
+    ["stored ternary", named("const access = await hasWriteAccess(\"o/r\", \"a\"); const label = access ? \"yes\" : \"no\";")],
+    ["direct Boolean", named("const allowed = Boolean(await hasWriteAccess(\"o/r\", \"a\"));")],
+    ["stored Boolean", named("const access = await hasWriteAccess(\"o/r\", \"a\"); const allowed = Boolean(access);" )],
+    ["direct ||", named("const allowed = (await hasWriteAccess(\"o/r\", \"a\")) || false;")],
+    ["stored ||", named("const access = await hasWriteAccess(\"o/r\", \"a\"); const allowed = access || false;")],
+    ["direct while", named("while (await hasWriteAccess(\"o/r\", \"a\")) break;")],
+    ["stored while", named("const access = await hasWriteAccess(\"o/r\", \"a\"); while (access) break;")],
+    ["aliased import", 'import { hasWriteAccess as access } from "../../lib/github-state.mjs"; if (await access("o/r", "a")) {}'],
+    ["namespace import", 'import * as github from "../../lib/github-state.mjs"; if (await github.hasWriteAccess("o/r", "a")) {}'],
+    ["dynamic aliased import", 'const { hasWriteAccess: access } = await import("../../lib/github-state.mjs"); if (await access("o/r", "a")) {}'],
+    ["dynamic namespace import", 'const github = await import("../../lib/github-state.mjs"); if (await github.hasWriteAccess("o/r", "a")) {}'],
+    ["one property hop", named("const holder = { access: await hasWriteAccess(\"o/r\", \"a\") }; if (holder.access) {}")],
+    ["&& stored left", named("const access = await hasWriteAccess(\"o/r\", \"a\"); access && console.log(\"unsafe\");")],
+    ["&& direct left", named("(await hasWriteAccess(\"o/r\", \"a\")) && console.log(\"unsafe\");")],
+    ["for test", named("for (; await hasWriteAccess(\"o/r\", \"a\");) break;")],
+    ["do while test", named("let access = await hasWriteAccess(\"o/r\", \"a\"); do { access = false; } while (access);" )],
+    ["negation", named("const access = await hasWriteAccess(\"o/r\", \"a\"); if (!access) {}")]
+  ];
+  for (const [form, source] of forms) assert.notDeepEqual(bareTruthinessFindings(source, fixturePath, repositoryRoot), [], `${form} was not detected`);
+});
+
+// This parses every call site in lib/, bin/, scripts/, and tests/. It follows the tri-state result
+// through static or dynamic imports, aliases, namespace members, and stored object properties,
+// then rejects every JavaScript truthiness construction it can reach. It does not cover a
+// hypothetical external deep-importer; the package-entry guard above bounds that separate residual.
+test("the tri-state write-access API has no parsed bare truthiness callers", () => {
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const files = ["bin", "lib", "scripts", "tests"].flatMap((directory) => sourceFiles(join(repositoryRoot, directory)));
+  const findings = files.flatMap((file) => bareTruthinessFindings(readFileSync(file, "utf8"), file, repositoryRoot));
+  assert.deepEqual(findings, []);
+});
+
+test("a source without an author fails closed", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const completion = { schema: "aos-issue-completion.v1", issue: 628, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1], verdict: "PASS", evidence: {} };
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  const get = async (path) => {
+    if (path === "/repos/owner/repo/issues/628") return { body: { title: "No author", state: "open", comments: 0, body: `\`\`\`json\n${JSON.stringify(completion)}\n\`\`\``, user: null } };
+    const error = new Error(`GitHub ${path} -> 404`);
+    error.status = 404;
+    throw error;
+  };
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  assert.equal(snapshot.issues[0].close_evidence.author, null);
+  assert.equal(snapshot.issues[0].close_evidence.author_trusted, false);
+});
+
+test("a snapshot stamps a login with its settled permission answer", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const completion = (issue) => ({ schema: "aos-issue-completion.v1", issue, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1], verdict: "PASS", evidence: {} });
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }, { issue: 629 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  let permissionCalls = 0;
+  const get = async (path) => {
+    if (path.includes("/permission")) {
+      permissionCalls += 1;
+      if (permissionCalls === 1) {
+        const error = new Error(`GitHub ${path} -> 502`);
+        error.status = 502;
+        throw error;
+      }
+      return { body: { permission: "admin" } };
+    }
+    const issue = /\/issues\/(628|629)$/u.exec(path)?.[1];
+    if (issue) {
+      return {
+        body: {
+          number: Number(issue), title: "legitimate record", state: "closed", labels: [],
+          body: "```json\n" + JSON.stringify(completion(Number(issue))) + "\n```",
+          user: { login: "maintainer" }, comments: 0
+        }
+      };
+    }
+    if (/\/issues\/(579|580|581)$/u.test(path)) {
+      const error = new Error(`GitHub ${path} -> 404`);
+      error.status = 404;
+      throw error;
+    }
+    throw new Error(`unexpected ${path}`);
+  };
+
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  const trust = snapshot.issues.map((issue) => ({ issue: issue.number, author_trusted: issue.close_evidence?.author_trusted }));
+  assert.deepEqual(trust, [{ issue: 628, author_trusted: true }, { issue: 629, author_trusted: true }]);
+  assert.equal(new Set(trust.map((one) => one.author_trusted)).size, 1, "one snapshot carried different trust answers for the same login");
+  assert.equal(permissionCalls, 2, "the retry did not settle the login once for this run");
+});
+
+test("permission retry is bounded per login", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }, { issue: 629 }, { issue: 630 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  let permissionCalls = 0;
+  const get = async (path) => {
+    if (path.includes("/permission")) {
+      permissionCalls += 1;
+      const error = new Error(`GitHub ${path} -> 403`);
+      error.status = 403;
+      throw error;
+    }
+    const issue = /\/issues\/(628|629|630)$/u.exec(path)?.[1];
+    if (issue) {
+      return { body: { number: Number(issue), title: "unreadable author", state: "open", labels: [], body: "", user: { login: "maintainer" }, comments: 1 } };
+    }
+    if (/\/issues\/(628|629|630)\/comments/u.test(path)) return { body: [{ body: "later source", user: { login: "maintainer" } }], link: null };
+    if (/\/issues\/(579|580|581)$/u.test(path)) {
+      const error = new Error(`GitHub ${path} -> 404`);
+      error.status = 404;
+      throw error;
+    }
+    throw new Error(`unexpected ${path}`);
+  };
+
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  assert.equal(snapshot.issues.length, 3, "the bound skipped sources instead of permission retries");
+  assert.equal(permissionCalls, 2, "six sources by one unavailable login caused more than one bounded retry");
 });
 
 test("comments are read until GitHub says there is no next page, and a runaway is refused", async () => {
