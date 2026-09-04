@@ -109,7 +109,7 @@ test("a plan with no verification step does not pass the check about verificatio
     ]
   };
   const capabilities = new Map(["a1", "a2"].map((id) =>
-    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })]));
+    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "detected", evidence_ids: ["verifier:aos-capability-probe.v1"] })]));
   // The ledger, not the plan: since #558 only an admitted event attributes a task to an agent, so
   // the counterfactual has to move what ran rather than what was written down.
   const ledger = (owners) => Object.keys(owners).sort().map((task_id, index) => ({

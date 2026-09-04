@@ -108,9 +108,12 @@ function m09Of(route, capabilities) {
   return oracle.oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
 }
 
-test("no adapter-derived capability record can fail capability-matches-task, whatever the route", () => {
-  // The reproduction this issue exists for, run rather than argued. Every route shape the oracle
-  // accepts, crossed with every assignment of a shipped adapter -- or none -- to every owner in it.
+test("adapter-derived capability records withhold capability-matches-task, whatever the route", () => {
+  // Every route shape the oracle accepts, crossed with every assignment of a shipped adapter -- or
+  // none -- to every owner in it. This was the RED baseline for #558's last condition: before the
+  // provenance boundary, all 484 cases were either true or null and none could be false, because
+  // the requirement and every scorable adapter record came from AOS's vocabulary. `aos-known` must
+  // now be null instead: it says what AOS knows of an adapter, not what this runtime has exhibited.
   const adapters = [...Object.keys(ADAPTERS), null];
   const shapes = ["a", "a>b", "a>b>c", "a|b", "a|b>c", "a>b|c", "a>b>c>d"];
   const seen = new Map();
@@ -127,7 +130,8 @@ test("no adapter-derived capability record can fail capability-matches-task, wha
   }
   assert.equal(cases, 484);
   assert.equal(seen.get(false) ?? 0, 0, "an adapter-derived record failed the subcheck, so the premise of #625 has changed");
-  assert.equal(seen.get(true) > 0 && seen.get(null) > 0, true, "the sweep did not exercise both answers the producer can give");
+  assert.equal(seen.get(true) ?? 0, 0, "an adapter-derived record answered the runtime capability question");
+  assert.equal(seen.get(null), cases, "an adapter-derived record did not withhold the runtime capability question");
 });
 
 test("the probe table covers the whole capability vocabulary exactly once", () => {
@@ -184,12 +188,8 @@ test("the reported-not-gating mitigation's restatement of capability-registry-is
   // #627 round 2's G-07, the fourth site: three restatements of `PROBE_CHALLENGES` were bound above
   // and in "the probe table covers the whole capability vocabulary exactly once"; this is the one
   // the reviewer found still unbound. `reported-not-gating`'s mitigation prose describes
-  // `capability-registry-is-coarse`'s status in a sentence of its own -- "now partially mitigated
-  // rather than open ... not controlled" -- and nothing checked that sentence against the field it
-  // describes. A future round that discharges `capability-registry-is-coarse` to CONTROLLED (the
-  // release-posture decision this contract's own prose says is still pending) without updating
-  // `reported-not-gating` would leave a contract whose one rival says CONTROLLED and whose other
-  // rival's prose still says "not controlled" about it, with no test failing.
+  // `capability-registry-is-coarse`'s status in a sentence of its own. The default-path change
+  // below moves that rival to CONTROLLED, so this test keeps the two contract entries in lockstep.
   const contract = loadEcdContract();
   const cell = contract.cells.cells.find((one) => one.cell_id === "C2.RF.01");
   const capabilityRegistryIsCoarse = cell.rival_explanations.find((one) => one.id === "capability-registry-is-coarse");
@@ -708,19 +708,33 @@ test("every way a trial can fail to complete withholds alike", () => {
   }
 });
 
-test("a run that did not probe is scored from the adapter table exactly as before", async (t) => {
+test("a run that did not probe withholds routing fitness from the adapter table", async (t) => {
   const cwd = workspace(t);
   initBare(cwd);
   addProbedAgent(cwd, "alpha");
 
-  // The compatibility half. Without the flag nothing is probed, so the record is the one #558
-  // produced and no capability probe appears on the run at all -- null rather than an empty list,
-  // because "no probe was run" and "the probes observed nothing" are different facts.
+  // Without the flag nothing is probed, so this remains honest evidence of what AOS knows about
+  // the adapter -- not evidence of what this runtime can do. The source must stay visible beside
+  // the withheld answer: a probe that could not answer is `unknown`, while this is an unmeasured
+  // runtime under a known adapter.
   const { record, result } = assess(cwd, [], { FAKE_AGENT_PROFILE: "probe-confined" });
   assert.equal(record.capability_probes, null);
   const alpha = record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha");
   assert.equal(alpha.source, "aos-known");
-  assert.equal(subOf(result, "capability-matches-task"), true);
+  assert.equal(capabilityOf(record).pass, null);
+  assert.equal(subOf(result, "capability-matches-task"), null);
+
+  // C2.RF.01 owns the capability, minimality and no-redundancy subchecks. One answered ledger
+  // question cannot turn the two absent runtime-capability answers into a cell estimate; the
+  // required cell therefore withholds O4 and prevents an outcome index or composite issuance.
+  const routingFitness = result.cells.find((entry) => entry.cell_id === "C2.RF.01");
+  assert.equal(routingFitness.status, "INSUFFICIENT_OPPORTUNITIES");
+  assert.equal(routingFitness.estimate, null);
+  const o4 = result.system_outcome_profile.domains.O4;
+  assert.equal(o4.status, "WITHHELD");
+  assert.deepEqual(o4.withheld_for, [{ cell_id: "C2.RF.01", status: "INSUFFICIENT_OPPORTUNITIES" }]);
+  assert.equal(result.system_outcome_profile.index, null);
+  assert.equal(result.aos_composite.issued, false);
 });
 
 test("a fixture runtime that does not compare loses the verification word and keeps the other seven", async (t) => {

@@ -57,7 +57,7 @@ const WORK = {
   ]
 };
 
-const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] });
+const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "detected", evidence_ids: ["verifier:aos-capability-probe.v1"] });
 const twoKnown = () => new Map([["one", known("one")], ["two", known("two")]]);
 
 const event = (overrides = {}) => ({

@@ -13,7 +13,7 @@
 // reproduced the defect and at the one that did not.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -23,7 +23,8 @@ import {
   FORM_WORK,
   ROUTING_REQUIREMENT_SCHEMA,
   WORK_REQUIREMENT_SCHEMA,
-  capabilityRecordsFor,
+  CAPABILITY_VOCABULARY,
+  capabilityRecord,
   delegationOracle,
   requirementsFromRoute,
   requirementsFromWork,
@@ -41,10 +42,17 @@ const workspace = (t) => {
 
 const addAdaptedAgent = (cwd, id) => addAgent(cwd, id, fakeAgent, ["--adapter", "codex-cli.v1"]);
 
+const detectedCapabilities = (ids) => new Map(ids.map((id) => [id, capabilityRecord({
+  agent_id: id,
+  capabilities: [...CAPABILITY_VOCABULARY],
+  source: "detected",
+  evidence_ids: ["verifier:aos-capability-probe.v1"]
+})]));
+
 /** One assessment, unattended. Exit 3 is the ordinary outcome of a run nobody was watching. */
-const assess = (cwd, route) => {
+const assess = (cwd, route, env = {}) => {
   const plan = makePlan(cwd, { default: "alpha", "FAM-3": route });
-  runCli(cwd, ["assess", "--plan", plan, "--seed", "1"], 3);
+  runCli(cwd, ["assess", "--plan", plan, "--seed", "1", "--probe-capabilities"], 3, env);
   return { record: newestRecord(cwd), result: newestResult(cwd) };
 };
 
@@ -106,7 +114,7 @@ test("a form AOS states no work for withholds rather than passing or scoring zer
   assert.equal(absent.problems.length > 0, true);
   assert.equal(Object.hasOwn(FORM_WORK, "FAM-9"), false);
 
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha"]);
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha" });
   const oracle = routeOracle({ requirements, capabilities, work_requirement: absent, actual_route_events: [] });
   const minimality = oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route");
@@ -141,7 +149,7 @@ test("the run records the work AOS froze at plan approval, bound by digest", asy
 // --- negative and counterfactual ------------------------------------------------------------------
 
 test("a work digest that names other work than the graph beside it withholds rather than pricing", () => {
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha"]);
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
   const honest = workRequirementAtPlanApproval({ form_id: "FAM-3" });
   const forged = { ...honest, work_digest: workRequirementDigest({ tasks: [{ id: "elsewhere", resource: "x", depends_on: [] }] }) };
@@ -166,7 +174,7 @@ test("a work digest that names other work than the graph beside it withholds rat
  * the floor is taken from `FORM_WORK` and the attribution from the route AOS ran.
  */
 test("the seeded work graph cannot be a run's requirement: every real invocation would be refused", () => {
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha", "beta"]);
   const seeded = {
     tasks: [
       { id: "contract", resource: "spec", depends_on: [] },
@@ -209,12 +217,12 @@ test("a narrower route that did not do the work is inadequate, not cheap", async
   const cwd = workspace(t);
   initBare(cwd);
   addAdaptedAgent(cwd, "alpha");
-  // An agent that runs, says something and writes no artifact at all.
-  const silent = join(cwd, "silent-agent.mjs");
-  writeFileSync(silent, 'process.stdout.write("ran and wrote nothing" + String.fromCharCode(10));\n', "utf8");
-  addAgent(cwd, "mute", silent, ["--adapter", "codex-cli.v1"]);
+  // An agent that answers the probe but writes no FAM-3 artifact. This is a detected runtime
+  // capability record paired with observed missing work, not an absence interpreted as a failure.
+  addAdaptedAgent(cwd, "mute");
 
-  const { record } = assess(cwd, "mute");
+  const { record } = assess(cwd, "mute", { FAKE_AGENT_PROFILE: "no-artifact" });
+  assert.equal(record.routing_oracle.capabilities.find((entry) => entry.agent_id === "mute").source, "detected");
   const oracle = record.routing_oracle;
   // One invocation, which is the floor -- and still not adequate, because the artifact the
   // requirement names is not there. Fewer invocations does not buy a pass.
@@ -263,7 +271,7 @@ test("nothing the agent or the operator writes can reach the floor", async (t) =
  * ignored cannot be got wrong.
  */
 test("a work record declaring a requirement list and carrying no graph withholds", () => {
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha", "beta"]);
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
   const declared = { schema_id: WORK_REQUIREMENT_SCHEMA, form_id: "FAM-3", requirements, problems: [] };
 
@@ -277,7 +285,7 @@ test("a work record declaring a requirement list and carrying no graph withholds
 });
 
 test("an honest work record with its requirement list swapped prices exactly as the honest one does", () => {
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha", "beta"]);
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
   const honest = workRequirementAtPlanApproval({ form_id: "FAM-3" });
   // Only the requirement list differs. The digest still verifies, because it covers the graph.
@@ -299,7 +307,7 @@ test("an honest work record with its requirement list swapped prices exactly as 
 });
 
 test("a form AOS states no work for cannot select a capability floor for a graph", () => {
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha"]);
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha" });
   const borrowed = {
     schema_id: WORK_REQUIREMENT_SCHEMA,
@@ -328,7 +336,7 @@ test("a form AOS states no work for cannot select a capability floor for a graph
  * provenance control would add ceremony, watch it pass, and believe this was closed.
  */
 test("an unkeyed digest attests the graph's bytes and not where it came from", () => {
-  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const capabilities = detectedCapabilities(["alpha", "beta"]);
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
   const fabricated = { tasks: [{ id: "stage-1", resource: "FAM-3", depends_on: [] }, { id: "stage-2", resource: "FAM-3", depends_on: ["stage-1"] }] };
   const envelope = {

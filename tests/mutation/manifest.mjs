@@ -312,6 +312,15 @@ export const GUARDS = [
     name: "a route label that is not an identifier assigns nobody"
   },
   {
+    guard: "aos-known is not a scorable runtime capability source",
+    reason: "the adapter table supplies every capability word AOS may require, so admitting it to the runtime capability question makes capability-matches-task structurally true on the default path; keeping its source visible while withholding is what stops AOS from grading its own table",
+    file: "lib/routing-oracle.mjs",
+    from: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\"]);",
+    to: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"aos-known\", \"detected\"]);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a run that did not probe withholds routing fitness from the adapter table"
+  },
+  {
     guard: "routing capability rests on a source AOS may score",
     reason: "without it an owner AOS holds no scorable record for is judged as one that lacks every capability, so \"we do not know what this agent can do\" is reported as \"the operator routed the work wrongly\" -- the withholding one line up depends on this branch naming the case",
     file: "lib/routing-oracle.mjs",
@@ -7561,6 +7570,7 @@ export const ACCOUNTED_GUARDS = [
   "an untrusted reason travels without the path it names",
   "an unverified executable gets no credential lookup",
   "an unverified executable withholds the aggregate",
+  "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",

@@ -30,7 +30,7 @@ const REQUIREMENT = () => requirementsFromWork(WORK).requirements;
 // and has its own test; these fixtures are about ownership, so they show the work arriving.
 const handoffsInto = (taskId) => REQUIREMENT().find((entry) => entry.task_id === taskId).required_handoffs;
 
-const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] });
+const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "detected", evidence_ids: ["verifier:aos-capability-probe.v1"] });
 const CAPABILITIES = () => new Map([["strong", known("strong")], ["other", known("other")]]);
 
 const PLAN = (routes) => ({
@@ -103,7 +103,7 @@ test("M09 carries no subcheck whose expression is true of every input", () => {
   // for is now not an owner that matched.
   assert.equal(sub(m09({ routes: { ...MINIMAL, docs: "someone-else" } }), "capability-matches-task"), null);
   // And a known shortfall is a fail rather than a silence.
-  const narrow = new Map([...CAPABILITIES(), ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "aos-known" })]]);
+  const narrow = new Map([...CAPABILITIES(), ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "detected" })]]);
   assert.equal(sub(m09({ routes: { ...MINIMAL, verification: "narrow" }, capabilities: narrow }), "capability-matches-task"), false);
 
   const repeat = { ...ledger[0], invocation_id: "invocation-repeat" };

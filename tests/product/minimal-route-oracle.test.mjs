@@ -65,7 +65,7 @@ const WORK = {
   ]
 };
 
-const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] });
+const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "detected", evidence_ids: ["verifier:aos-capability-probe.v1"] });
 const twoKnown = () => new Map([["one", known("one")], ["two", known("two")]]);
 
 const event = (overrides = {}) => ({
@@ -165,7 +165,7 @@ test("an invalid requirement withholds all six observables rather than answering
 });
 
 test("a requirement asking for a capability the owner does not hold fails rather than withholding", () => {
-  const partial = capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "aos-known" });
+  const partial = capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "detected" });
   const capabilities = new Map([["one", known("one")], ["narrow", partial]]);
   const requirements = requirementsFromWork(WORK).requirements;
   const owners = { contract: "one", implementation: "one", docs: "one", verification: "narrow", release: "one" };
@@ -235,7 +235,7 @@ test("an owner AOS cannot judge is not delegation the operator got wrong", () =>
   assert.equal(undecided.under_delegation_reference.every((entry) => entry.basis === "unknown-owner"), true);
 
   // A real shortfall is still under-delegation.
-  const narrow = new Map([...capabilities, ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "aos-known" })]]);
+  const narrow = new Map([...capabilities, ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "detected" })]]);
   const shortfall = delegationOracle(pricedOracle({
     requirements, capabilities: narrow,
     actual_route_events: assign({ contract: "one", implementation: "one", docs: "one", verification: "narrow", release: "one" })

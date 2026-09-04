@@ -13,7 +13,7 @@
 // produced, whether it attributes, and whether the answers move when the run does.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -22,11 +22,6 @@ import { Readable } from "node:stream";
 
 import { ACTUAL_ROUTE_EVENT_SCHEMA, routeOracleEvidenceId, validateActualRouteEvent } from "../../lib/routing-oracle.mjs";
 import { cli, fakeAgent, initBare, makePlan, newestRecord, newestResult, run as runCli } from "./helpers.mjs";
-
-// An agent that starts, says something and writes nothing. It has to say something: AOS refuses to
-// score a command that produced no output at all, which is a different failure from an agent that
-// ran and left nothing behind.
-const SILENT_AGENT = 'process.stdout.write("ran and wrote nothing" + String.fromCharCode(10));\n';
 
 const OWNER_DEPENDENT = ["capability-matches-task", "simplest-adequate-route"];
 const LEDGER_ANSWERED = ["no-redundant-invocation", "invocation-budget-respected"];
@@ -64,11 +59,11 @@ const addAdaptedAgent = (cwd, id, adapter) => runCli(cwd, [
   "--allow-env", "FAKE_AGENT_PROFILE", "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE"
 ]);
 
-const assess = (cwd, route, seed, env = {}) => {
+const assess = (cwd, route, seed, env = {}, extra = []) => {
   const plan = makePlan(cwd, { default: route });
   // Exit 3: nobody was watching, so D4 is unobserved and the score is withheld. That is the
   // ordinary outcome of an unattended run and not what this file is about.
-  runCli(cwd, ["assess", "--plan", plan, "--seed", seed], 3, env);
+  runCli(cwd, ["assess", "--plan", plan, "--seed", seed, ...extra], 3, env);
   return { record: newestRecord(cwd), result: newestResult(cwd) };
 };
 
@@ -106,12 +101,13 @@ test("a completed run attributes every route event to a stage the operator's rou
   assert.equal(oracle.cost_basis, "actual-route-events");
   assert.equal(typeof oracle.actual_cost, "number");
 
-  // Which reaches the metric: the two questions that need an owner are answered, not withheld.
-  for (const id of [...OWNER_DEPENDENT, ...LEDGER_ANSWERED]) {
-    assert.equal([true, false].includes(subOf(result, id)), true, `${id} is still withheld in a completed run`);
-  }
+  // The ledger establishes who ran, but the default adapter table is explicitly non-scorable for
+  // runtime capability: it remains named as `aos-known` and the owner-dependent questions withhold.
+  assert.equal(oracle.capabilities.find((entry) => entry.agent_id === "alpha").source, "aos-known");
+  for (const id of OWNER_DEPENDENT) assert.equal(subOf(result, id), null, `${id} was answered from the adapter table`);
+  for (const id of LEDGER_ANSWERED) assert.equal([true, false].includes(subOf(result, id)), true, `${id} needs no capability record and was withheld anyway`);
   assert.equal(m09Of(result).verifier_id, "aos-route-oracle.v1");
-  assert.notEqual(record.delegation_oracle.expected_value_class, "NOT_OBSERVED");
+  assert.equal(record.delegation_oracle.expected_value_class, "NOT_OBSERVED");
 });
 
 test("an agent AOS holds no capability record for withholds the two questions that need one", async (t) => {
@@ -160,13 +156,12 @@ test("the agent a route event names is the agent that ran, not the one the plan 
 test("a stage that produced no required artifact is not an adequate route", async (t) => {
   const cwd = workspace(t);
   initBare(cwd);
-  // An agent that writes nothing at all. `assess` still completes; what changes is that the
-  // artifact FAM-3 owes is absent, and AOS looked for it rather than reading a claim about it.
-  const silent = join(cwd, "silent-agent.mjs");
-  writeFileSync(silent, SILENT_AGENT);
-  runCli(cwd, ["agent", "add", "alpha", "--command", process.execPath, "--arg", silent, "--adapter", "codex-cli.v1"]);
+  // `no-artifact` still answers the separate capability probe, then produces no FAM-3 artifact.
+  // This keeps an observed artifact miss distinct from an unobserved runtime capability.
+  addAdaptedAgent(cwd, "alpha", "codex-cli.v1");
 
-  const { record, result } = assess(cwd, "alpha", "1");
+  const { record, result } = assess(cwd, "alpha", "1", { FAKE_AGENT_PROFILE: "no-artifact" }, ["--probe-capabilities"]);
+  assert.equal(record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha").source, "detected");
   const oracle = record.routing_oracle;
   assert.deepEqual(oracle.requirements[0].required_artifacts, ["artifact:plan.json"]);
   assert.equal(oracle.actual_route_events.every((event) => !event.artifact_ids.includes("artifact:plan.json")), true);
@@ -178,15 +173,14 @@ test("a stage that produced no required artifact is not an adequate route", asyn
 test("a handoff from a stage that produced nothing is not a handoff that happened", async (t) => {
   const cwd = workspace(t);
   initBare(cwd);
-  // Two stages, and the first one writes nothing at all. The requirement says stage 2 is owed a
+  // Two stages, and the first one produces no artifact. The requirement says stage 2 is owed a
   // handoff from stage 1; the ledger has to say whether anything arrived, and an empty hand is not
   // a delivery.
-  const silent = join(cwd, "silent-agent.mjs");
-  writeFileSync(silent, SILENT_AGENT);
-  runCli(cwd, ["agent", "add", "alpha", "--command", process.execPath, "--arg", silent, "--adapter", "codex-cli.v1"]);
+  addAdaptedAgent(cwd, "alpha", "codex-cli.v1");
   addAdaptedAgent(cwd, "beta", "codex-cli.v1");
 
-  const { record } = assess(cwd, "alpha>beta", "1");
+  const { record } = assess(cwd, "alpha>beta", "1", { FAKE_AGENT_PROFILE: "no-artifact" }, ["--probe-capabilities"]);
+  assert.deepEqual(record.routing_oracle.capabilities.map((entry) => entry.source), ["detected", "detected"]);
   const oracle = record.routing_oracle;
   const second = oracle.requirements.find((entry) => entry.task_id === "FAM-3/stage-2");
   assert.deepEqual(second.required_handoffs, ["FAM-3/stage-1->FAM-3/stage-2"]);
@@ -304,7 +298,7 @@ test("route cost on the production path counts handoffs, and prices a route wide
 
   const costOf = (route) => {
     const plan = makePlan(cwd, { default: "alpha", "FAM-3": route });
-    runCli(cwd, ["assess", "--plan", plan, "--seed", "1"], 3);
+    runCli(cwd, ["assess", "--plan", plan, "--seed", "1", "--probe-capabilities"], 3);
     const record = newestRecord(cwd);
     return { oracle: record.routing_oracle, delegation: record.delegation_oracle };
   };

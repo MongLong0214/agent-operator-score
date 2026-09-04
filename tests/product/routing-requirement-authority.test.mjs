@@ -46,10 +46,12 @@ const REQUIREMENT = () => requirementsFromRoute({
   required_artifacts: ["artifact:plan.json"]
 });
 
-const CAPABILITIES = () => capabilityRecordsFor({
-  alpha: { id: "alpha", adapter: "codex-cli.v1" },
-  beta: { id: "beta", adapter: "codex-cli.v1" }
-});
+const CAPABILITIES = () => new Map(["alpha", "beta"].map((agent_id) => [agent_id, capabilityRecord({
+  agent_id,
+  capabilities: [...CAPABILITY_VOCABULARY],
+  source: "detected",
+  evidence_ids: ["verifier:aos-capability-probe.v1"]
+})]));
 
 const event = (taskId, agentId, overrides = {}) => ({
   schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
