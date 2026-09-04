@@ -893,6 +893,13 @@ test("a transient permission failure is retried before the author is judged", as
   assert.equal(calls, 2, "the settled write answer was not cached");
 });
 
+test("the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  const reason = "the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point";
+  assert.equal(manifest.main, undefined, `${reason}; package.json must not declare main`);
+  assert.equal(manifest.exports, undefined, `${reason}; package.json must not declare exports`);
+});
+
 const sourceFiles = (directory) =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
@@ -900,9 +907,12 @@ const sourceFiles = (directory) =>
     return entry.isFile() && entry.name.endsWith(".mjs") ? [path] : [];
   });
 
+// This scans call sites in this repository (lib/, bin/, scripts/, and tests/) for bare Boolean
+// use of the tri-state result. It does not cover a hypothetical external deep-importer; the
+// package-entry guard above is what keeps that separate residual bounded.
 test("the tri-state write-access API has no bare truthiness callers", () => {
   const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
-  const files = ["lib", "tests"].flatMap((directory) => sourceFiles(join(repositoryRoot, directory)));
+  const files = ["bin", "lib", "scripts", "tests"].flatMap((directory) => sourceFiles(join(repositoryRoot, directory)));
   const accessName = ["has", "Write", "Access"].join("");
   const openingParen = String.raw`(?:\(\s*)?`;
   const awaitedCall = String.raw`(?:await\s+)?${accessName}\s*\(`;

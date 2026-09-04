@@ -2446,6 +2446,24 @@ export const GUARDS = [
     name: "the public write-access lookup preserves allowed, denied, and unavailable answers"
   },
   {
+    guard: "package exports remain absent while the tri-state module is deep-import-only",
+    reason: "an exports entry would create a package-level import surface while hasWriteAccess can still return a truthy unavailable object",
+    file: "package.json",
+    from: '  "name": "agent-operator-score",',
+    to: '  "exports": "./lib/github-state.mjs",\n  "name": "agent-operator-score",',
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point"
+  },
+  {
+    guard: "package main remains absent while the tri-state module is deep-import-only",
+    reason: "a main entry would create a package-level import surface while hasWriteAccess can still return a truthy unavailable object",
+    file: "package.json",
+    from: '  "name": "agent-operator-score",',
+    to: '  "main": "./lib/github-state.mjs",\n  "name": "agent-operator-score",',
+    test: "tests/product/execution-plan.test.mjs",
+    name: "the tri-state's truthiness is safe only while lib/ is unreachable as a package entry point"
+  },
+  {
     guard: "snapshot source matches how it was read",
     reason: "an offline snapshot stamped `live` reads in the evidence bundle as an audit that talked to GitHub",
     file: "lib/execution-plan.mjs",
@@ -7553,6 +7571,8 @@ export const ACCOUNTED_GUARDS = [
   "operator-file event needs explicit provenance",
   "outside-target classification",
   "owned paths are not only prose",
+  "package exports remain absent while the tri-state module is deep-import-only",
+  "package main remains absent while the tri-state module is deep-import-only",
   "parent writable refusal",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
