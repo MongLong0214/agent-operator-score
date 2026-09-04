@@ -176,7 +176,11 @@ node bin/aos.mjs assess --probe-capabilities # 어댑터 표가 아니라 관측
 ```
 
 기본값은 꺼짐입니다. 관측은 등록된 에이전트마다 실제 provider 호출 한 번을 소모하기 때문입니다.
-플래그를 주지 않으면 이전과 똑같이 AOS 자체 어댑터 표에서 능력 기록을 가져옵니다.
+플래그가 없으면 AOS는 알려진 어댑터 표를 여전히 `aos-known`으로 기록하지만, 이 출처로는 런타임
+능력 질문에 답할 수 없습니다. 그래서 `capability-matches-task`와 `simplest-adequate-route`가
+보류되고 C2.RF.01은 필요한 세 opportunity에 닿지 못해 O4, outcome index, composite도 보류됩니다.
+그 답이 필요하면 `aos assess --probe-capabilities`를 실행하세요. 런타임을 관측해 `detected` 증거를
+만듭니다.
 
 ## 채점표에 적히는 여섯 가지
 

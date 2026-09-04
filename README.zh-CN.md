@@ -166,7 +166,10 @@ node bin/aos.mjs assess --probe-capabilities # 用观测结果而非适配器表
 ```
 
 默认关闭，因为每探测一个已注册的 Agent 都会消耗一次真实的 provider 调用。不加这个参数时，
-能力记录仍然和以前一样来自 AOS 自己的适配器表。
+AOS 仍将已知适配器表记录为 `aos-known`，但这个来源不能回答运行时能力问题。因此
+`capability-matches-task` 和 `simplest-adequate-route` 会被保留；C2.RF.01 无法达到所需的三个
+opportunity，于是 O4、outcome index 和 composite 也会被保留。需要这些答案时，请运行
+`aos assess --probe-capabilities`：它会观测运行时并生成 `detected` 证据。
 
 ## 评分卡上的六个问题
 

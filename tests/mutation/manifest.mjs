@@ -333,7 +333,7 @@ export const GUARDS = [
     guard: "routing minimality withholds on an owner AOS cannot judge",
     reason: "not knowing what an agent can do is not the operator routing badly, and failing there reports a silence as a fault",
     file: "lib/routing-oracle.mjs",
-    from: "  const undecided = failures.filter((entry) =>\n    entry.basis === \"unknown-owner\" ||\n    (entry.constraint === \"handoff\" && entry.basis === \"missing-evidence\") ||\n    entry.basis === \"unresolved-overlap\");",
+    from: "  const undecided = failures.filter((entry) =>\n    NONSCORABLE_OWNER_BASES.has(entry.basis) ||\n    (entry.constraint === \"handoff\" && entry.basis === \"missing-evidence\") ||\n    entry.basis === \"unresolved-overlap\");",
     to: "  const undecided = [];",
     test: "tests/product/routing-counterfactual.test.mjs",
     name: "an actual route whose owner AOS knows nothing about is not observed"

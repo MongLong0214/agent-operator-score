@@ -176,7 +176,11 @@ node bin/aos.mjs assess --probe-capabilities # score this run from what was obse
 ```
 
 Off by default, because probing spends one real provider invocation per registered agent. Without
-the flag, capability records still come from AOS's own adapter table, exactly as before.
+the flag, AOS still records a known adapter's table as `aos-known`, but that source cannot answer a
+runtime-capability question. `capability-matches-task` and `simplest-adequate-route` therefore
+withhold; C2.RF.01 cannot reach its three required opportunities, so O4, the outcome index, and the
+composite withhold too. Run `aos assess --probe-capabilities` when you need those answers: it
+observes the runtime and produces `detected` evidence.
 
 ## The six things measured
 

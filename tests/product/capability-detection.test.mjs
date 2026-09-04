@@ -721,8 +721,27 @@ test("a run that did not probe withholds routing fitness from the adapter table"
   assert.equal(record.capability_probes, null);
   const alpha = record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha");
   assert.equal(alpha.source, "aos-known");
-  assert.equal(capabilityOf(record).pass, null);
+  const capability = capabilityOf(record);
+  assert.equal(capability.pass, null);
   assert.equal(subOf(result, "capability-matches-task"), null);
+  // An adapter record is an unmeasured runtime, not an owner AOS knows nothing about. The distinction
+  // travels through the constraint failure #583 consumes and reaches the report that tells the
+  // operator how to obtain an answer.
+  const adapterFailure = record.routing_oracle.constraint_failures.find((entry) => entry.constraint === "capability");
+  assert.equal(adapterFailure.basis, "unmeasured-owner");
+  assert.match(adapterFailure.detail, /aos-known adapter record but no observed runtime capability evidence/u);
+  assert.match(capability.reason, /AOS holds aos-known adapter records for alpha, but did not observe those runtimes/u);
+  const report = runCli(cwd, ["report", "--run", record.run_id]);
+  assert.match(report.stdout, /Routing capability evidence:.*aos-known adapter-table records/u);
+  assert.match(report.stdout, /aos assess --probe-capabilities/u);
+
+  const { record: unknownRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-silent" });
+  const unknownCapability = capabilityOf(unknownRecord);
+  const unknownFailure = unknownRecord.routing_oracle.constraint_failures.find((entry) => entry.constraint === "capability");
+  assert.equal(unknownFailure.basis, "unknown-owner");
+  assert.match(unknownCapability.reason, /AOS holds no capability record it may score for alpha/u);
+  assert.notEqual(capability.reason, unknownCapability.reason, "an aos-known record was described as an unknown owner");
+  assert.notEqual(adapterFailure.basis, unknownFailure.basis, "the delegation oracle received one basis for different evidence states");
 
   // C2.RF.01 owns the capability, minimality and no-redundancy subchecks. One answered ledger
   // question cannot turn the two absent runtime-capability answers into a cell estimate; the

@@ -11,10 +11,29 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { RUNTIMES } from "../../lib/session.mjs";
+import { SCORABLE_CAPABILITY_SOURCES } from "../../lib/routing-oracle.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const READMES = ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"];
+
+// The default posture changed from an adapter-table answer to an honest withhold. These tokens are
+// code identifiers rather than a translation's wording, so the four public pages stay bound to the
+// same source policy even while each explains it naturally in its own language.
+const CAPABILITY_POSTURE = Object.freeze({
+  "README.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u],
+  "README.ko.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u],
+  "README.ja.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u],
+  "README.zh-CN.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u]
+});
+
+test("the capability-probe section in every README describes the shipped default posture", () => {
+  assert.deepEqual(SCORABLE_CAPABILITY_SOURCES, ["detected"], "the README posture is written for a different scorable-source policy");
+  for (const [file, phrases] of Object.entries(CAPABILITY_POSTURE)) {
+    const text = readFileSync(join(root, file), "utf8");
+    for (const phrase of phrases) assert.match(text, phrase, `${file} omits a consequence of the default capability posture`);
+  }
+});
 
 // What each README has to say about a cycle's aggregate, in its own language: that a cycle of
 // profile runs has none, that the median belongs to the legacy scorer, and never the flat promise

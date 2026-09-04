@@ -179,7 +179,11 @@ node bin/aos.mjs assess --probe-capabilities # アダプター表ではなく観
 ```
 
 既定では無効です。観測は登録されたエージェントごとに実際の provider 呼び出しを一回消費するため
-です。フラグを渡さなければ、これまでどおり AOS 自身のアダプター表から能力記録を取得します。
+です。フラグなしでは、AOS は既知のアダプター表を引き続き `aos-known` として記録しますが、この
+出所ではランタイム能力の問いに答えられません。したがって `capability-matches-task` と
+`simplest-adequate-route` は保留となり、C2.RF.01 は必要な三つの opportunity に届かないため、O4、
+outcome index、composite も保留になります。その答えが必要な場合は `aos assess --probe-capabilities`
+を実行してください。ランタイムを観測して `detected` の証拠を生成します。
 
 ## 採点表に並ぶ六つの問い
 
