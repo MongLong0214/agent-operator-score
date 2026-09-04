@@ -16,6 +16,7 @@ import {
   loadSchema,
   nextWork,
   MAX_REPORTED_CYCLES,
+  NOT_CHECKED,
   REQUIRED_CONFIRMATIONS,
   planDigest,
   validateAgainstSchema
@@ -587,7 +588,10 @@ test("the shipped snapshot records a live confirmation of every component, not a
   assert.equal(issue.close_evidence.verdict, "PASS");
   assert.equal(issue.close_evidence.author_trusted, true);
   assert.deepEqual(issue.close_evidence_checked, verified());
-  assert.deepEqual(Object.keys(issue.close_evidence_checked).filter((key) => key !== "verified").sort(), [...REQUIRED_CONFIRMATIONS].sort());
+  // `verified`, `resolution` and `unresolved` summarise the ten; everything else in the object has
+  // to be one of them, or the snapshot is carrying a confirmation nobody named.
+  const summary = new Set(["verified", "resolution", "unresolved"]);
+  assert.deepEqual(Object.keys(issue.close_evidence_checked).filter((key) => !summary.has(key)).sort(), [...REQUIRED_CONFIRMATIONS].sort());
 });
 
 test("a record from someone without write access is not an attestation", async () => {
@@ -1236,4 +1240,123 @@ test("an issue number from a comment cannot become a pattern", async () => {
       : get(path);
   const good = await verifyCompletionRecord("o/r", { issue: 588, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1] }, { get: honest, issue: { issue: 588, owned_paths: ["lib/"], evidence_bindings: {} } });
   assert.equal(good.pr_closes_issue, true);
+});
+
+// --- round three: "I could not check" is not "this fact is false" ------------------------------
+//
+// The observation this exists for: a live audit reported #565 as `close-evidence-unverified`, the
+// same record checked directly a minute later confirmed all ten components, and two further live
+// runs passed. The record never changed. The verifier initialised every confirmation to `false` and
+// eight `try/catch` blocks left them there, so one 502 while walking thirty-two issues was written
+// down as a forgery -- a silence scored as a value, in the tool that exists to refuse exactly that.
+
+test("a transient failure is not a false fact", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: {} };
+  const owner = { issue: 588, owned_paths: ["lib/"], evidence_bindings: {} };
+  const honest = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: record.final_sha }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+  const refusing = (fragment, status) => async (path) => {
+    if (path.includes(fragment)) {
+      const error = new Error(`GitHub ${path} -> ${status}`);
+      error.status = status;
+      throw error;
+    }
+    return honest(path);
+  };
+
+  // The counterfactual first: with nothing failing, the honest repository still confirms the record
+  // and claims no unresolved confirmation. Otherwise every assertion below could pass on a verifier
+  // that answers "could not check" to everything.
+  const clean = await verifyCompletionRecord("o/r", record, { get: honest, issue: owner });
+  assert.equal(clean.verified, true);
+  assert.equal(clean.resolution, "verified");
+  assert.deepEqual(clean.unresolved, []);
+
+  // One 502 on the comparison, and nothing else touched. The commit was read, so `commit_exists`
+  // keeps the answer it earned; the branch question was never answered and must not read as no.
+  const flaky = await verifyCompletionRecord("o/r", record, { get: refusing("/compare/", 502), issue: owner });
+  assert.equal(flaky.commit_exists, true, "the call that succeeded still counts");
+  assert.equal(flaky.commit_on_integration_branch, NOT_CHECKED, "a 502 was recorded as the fact being false");
+  assert.notEqual(flaky.commit_on_integration_branch, false);
+  assert.equal(flaky.verified, false, "an unresolved record must not pass");
+  assert.equal(flaky.resolution, "not-checked", "an unread confirmation was filed as a denied one");
+  // The catch says what failed: which confirmation, which call, and the HTTP status. All eight of
+  // them swallowed the error entirely, so nobody could tell a rate limit from a forged SHA.
+  assert.deepEqual(flaky.unresolved.map((one) => one.confirmation), ["commit_on_integration_branch"]);
+  assert.equal(flaky.unresolved[0].status, 502);
+  assert.match(flaky.unresolved[0].call, /\/compare\//u);
+
+  // And the other direction, which is the one the fix can get wrong: a 404 on a commit is the
+  // repository saying it does not have that commit. That is a false fact, and filing it as
+  // "could not check" would turn the third state into the bucket a forged SHA hides in.
+  const absent = await verifyCompletionRecord("o/r", record, { get: refusing("/commits/", 404), issue: owner });
+  assert.equal(absent.commit_exists, false, "a 404 on a commit that does not exist was swallowed as unreachable");
+  assert.notEqual(absent.commit_exists, NOT_CHECKED);
+  assert.equal(absent.resolution, "contradicted");
+  assert.deepEqual(absent.unresolved, []);
+  assert.equal(absent.verified, false);
+});
+
+test("runs are not disowned by a pull request nobody could read", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  // The commits a run may belong to are partly the pull request's -- its head and its merge commit.
+  // When the pull request could not be read, that set is short, and answering the question against
+  // a short set is not answering it: a CI run on the pull request's head reads as a run on
+  // somebody else's work.
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: {} };
+  const owner = { issue: 588, owned_paths: ["lib/"], evidence_bindings: {} };
+  const get = async (path) => {
+    if (path.includes("/pulls/")) {
+      const error = new Error(`GitHub ${path} -> 429`);
+      error.status = 429;
+      throw error;
+    }
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    return { body: { conclusion: "success", head_sha: "b".repeat(40) } };
+  };
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: owner });
+  assert.equal(checked.pr_merged, NOT_CHECKED);
+  assert.equal(checked.ci_runs_succeeded, true, "the runs themselves were read and did succeed");
+  assert.equal(checked.ci_runs_ran_on_this_work, NOT_CHECKED, "an unread pull request made a run look like somebody else's");
+  assert.notEqual(checked.ci_runs_ran_on_this_work, false);
+  assert.equal(checked.resolution, "not-checked");
+  assert.ok(checked.unresolved.some((one) => one.confirmation === "ci_runs_ran_on_this_work" && one.status === 429), JSON.stringify(checked.unresolved));
+});
+
+test("an unread confirmation and a denied one are different outcomes", () => {
+  // `close-evidence-unchecked` already existed and no path reached it, so a rate limit and a forged
+  // SHA arrived at the reader as the same sentence. The distinction has to survive the audit, not
+  // just the verifier.
+  const withChecked = (checked) => {
+    const snapshot = state();
+    snapshot.issues.find((one) => one.number === 588).close_evidence_checked = checked;
+    return auditCloseEvidence(plan(), asLive(snapshot), { live: true });
+  };
+
+  const unread = withChecked({ ...verified(), commit_on_integration_branch: NOT_CHECKED, verified: false, resolution: "not-checked" });
+  const names = unread.failures.filter((one) => one.issue === 588).map((one) => one.check);
+  assert.deepEqual(names, ["close-evidence-unchecked"], `an unread confirmation was reported as ${names.join(", ") || "nothing"}`);
+  assert.match(unread.failures.find((one) => one.issue === 588).detail, /commit_on_integration_branch/u);
+  // Fail-closed, still. An unresolved record is not a passing one, whatever it is called.
+  assert.equal(unread.ok, false, "a record nobody could check read as a pass");
+
+  const denied = withChecked({ ...verified(), commit_on_integration_branch: false, verified: false, resolution: "contradicted" });
+  const deniedNames = denied.failures.filter((one) => one.issue === 588).map((one) => one.check);
+  assert.deepEqual(deniedNames, ["close-evidence-unverified"], `a denied fact was reported as ${deniedNames.join(", ") || "nothing"}`);
+  assert.equal(denied.ok, false);
+
+  // Both at once is a denial: a fact the repository contradicts is contradicted however much else
+  // went unread, so "could not check" cannot become the quieter word a false fact is filed under.
+  const both = withChecked({ ...verified(), commit_exists: false, pr_merged: NOT_CHECKED, verified: false, resolution: "contradicted" });
+  assert.deepEqual(both.failures.filter((one) => one.issue === 588).map((one) => one.check), ["close-evidence-unverified"]);
+
+  // And the shipped fixture, whose confirmations are all plain `true`, still passes.
+  assert.equal(withChecked(verified()).failures.filter((one) => one.issue === 588).length, 0);
 });

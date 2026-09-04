@@ -2329,6 +2329,51 @@ export const GUARDS = [
     name: "three separately true facts are not a confirmation"
   },
   {
+    guard: "a 404 is an answer and a 502 is not",
+    reason: "a commit the repository does not have is a false fact, and filing it as could-not-check makes the third state the bucket a forged SHA hides in",
+    file: "lib/github-state.mjs",
+    from: "    if (error?.status === 404) return;",
+    to: "",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a transient failure is not a false fact"
+  },
+  {
+    guard: "a confirmation nobody could check is not a true one",
+    reason: "NOT_CHECKED is a non-empty string, so every(Boolean) reads an unresolved confirmation as a confirmed one -- the fail-open version of this whole fix",
+    file: "lib/github-state.mjs",
+    from: "    verified: values.every((value) => value === true),",
+    to: "    verified: values.every(Boolean),",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a transient failure is not a false fact"
+  },
+  {
+    guard: "a denied confirmation outranks an unread one",
+    reason: "a fact the repository contradicts is contradicted however much else went unread, and collapsing the two reports a forged SHA under the quieter word",
+    file: "lib/github-state.mjs",
+    from: '  const resolution = values.every((value) => value === true) ? "verified" : values.some((value) => value !== true && value !== NOT_CHECKED) ? "contradicted" : "not-checked";',
+    to: '  const resolution = values.every((value) => value === true) ? "verified" : "not-checked";',
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a transient failure is not a false fact"
+  },
+  {
+    guard: "an unread confirmation is not reported as a denied one",
+    reason: "close-evidence-unchecked existed and no path reached it, so a rate limit and a forged SHA arrived at the reader as the same sentence and people learned to re-run the gate",
+    file: "lib/execution-plan.mjs",
+    from: "      const wrong = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true && checked[key] !== NOT_CHECKED).map((key) => `${key}=${checked[key]}`);",
+    to: "      const wrong = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an unread confirmation and a denied one are different outcomes"
+  },
+  {
+    guard: "runs are not disowned by an unread pull request",
+    reason: "the commits a run may belong to are partly the pull request's, so answering that question with the pull request unread answers it against a set missing two of its three members",
+    file: "lib/github-state.mjs",
+    from: '    if (pullUnread !== null && checked.ci_runs_ran_on_this_work !== true) couldNotCheck(pullUnread, ["ci_runs_ran_on_this_work"]);',
+    to: "",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "runs are not disowned by a pull request nobody could read"
+  },
+  {
     guard: "write access asked of the repository",
     reason: "a collaborator with the read or triage role would have attested to completed work",
     file: "lib/github-state.mjs",
@@ -7030,6 +7075,7 @@ export const ACCOUNTED_GUARDS = [
   "UNKNOWN_HOLD names what blocks the decision",
   "a .NET startup hook is a pre-main hook like the rest",
   "a /proc listing is not a list of survivors",
+  "a 404 is an answer and a 502 is not",
   "a NOT_YET deletion log cites no boundary observations",
   "a NOT_YET deletion log may not list deletions",
   "a SUPERSEDED accounting is compared against the commits the collector derived",
@@ -7061,6 +7107,7 @@ export const ACCOUNTED_GUARDS = [
   "a completed deletion requires the observation that witnessed it",
   "a completed log cites both boundary observation digests",
   "a configuration directory with no declared file is not a login",
+  "a confirmation nobody could check is not a true one",
   "a contradicted model blocks the candidate outright",
   "a contradicting transcript still leaves the cohort",
   "a copy taken while the tree moved is not a snapshot",
@@ -7084,6 +7131,7 @@ export const ACCOUNTED_GUARDS = [
   "a deletion outside the audit is refused",
   "a deletion recommendation carries a reason",
   "a deletion-blocking unknown blocks the deletion",
+  "a denied confirmation outranks an unread one",
   "a deny the kernel refused, not a file that was not there",
   "a derivation cites a receipt the observation carries",
   "a detected model that contradicts the declared one is a mismatch",
@@ -7283,6 +7331,7 @@ export const ACCOUNTED_GUARDS = [
   "an unmeasured network policy has no expectation",
   "an unnameable transcript row withholds the aggregate",
   "an unproven lane blocks issuance",
+  "an unread confirmation is not reported as a denied one",
   "an unreadable store is reported and not read as an empty one",
   "an unsafe sentence is not an unsafe run",
   "an unstated work floor withholds rather than falling back to the route",
@@ -7487,6 +7536,7 @@ export const ACCOUNTED_GUARDS = [
   "routing minimality withholds on an owner AOS cannot judge",
   "rulesets are compared by content, not by cardinality",
   "run scratch is created inside the cleanup-protected region",
+  "runs are not disowned by an unread pull request",
   "runtime auth is bound to the adapter that reads it",
   "safety cap",
   "secret-shaped material is not a model name",
