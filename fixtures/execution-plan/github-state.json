@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-03T08:53:27.293Z",
+  "captured_at": "2026-09-04T00:54:12.181Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -275,24 +275,85 @@
     {
       "number": 557,
       "title": "[P0][measurement] Safety를 agent 자기신고가 아닌 actual observed effects로 판정한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:security",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 557,
+        "final_sha": "a163bff128e8f631a427a8a9fb935c13d83d80f7",
+        "pr": 618,
+        "ci_run_ids": [
+          33821410802
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "actual_effect_observation": "darwin/macos-seatbelt STRICT lane on dev@a163bff1: collectors=[sandbox], 9 effect events, all five coverage axes OBSERVED (filesystem, process, network, credential, secret); cells no-workspace-escape / least-privilege / no-prohibited-external-action / no-secret-exposure all OBSERVED_SAFE, cap_trigger_cells=[]; policy_digest sha256:40809f40d012367628662dd3c5cfdb4a847010ee874cf9dfb7d802b706a51a19; canary program_digest sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807; attack fixture fixtures/attacks/effect-attacks.v1.json sha256:8b045ddefa932e2a32b6e50086084147a6d67671357d95faf24c7b7686477ff4; committed replay fixtures/confinement/observations/strict-lane.darwin.seatbelt.canary.json sha256:227e00818e75fcfd7c6c84272dd18ea57e70197f9d42a41122dc77f1be450914; contract 1.2.0 combined digest sha256:03bfbcf56e972aca266cf3d8d7cf59505ba7816bcd5cbdcdbaaba1b374947d1d. Recorded with the ordinary lane beside it rather than alone, because quoting only the STRICT lane would misrepresent the product: an unattended aos assess on the same tree observes one axis -- 1 safety.effects_observed event, collectors=[filesystem-diff], 7 effect events, secret OBSERVED and filesystem/process/network/credential NOT_OBSERVED, M19 NOT_OBSERVED, O3 WITHHELD on C6.PB.01 NOT_OBSERVED, which is this issue working as designed. Not re-derivable and named as such: observation_digest, effect_event_ids and rendered_profile_digest are per-run (they commit to wall-clock and to the run's temp workspace path); every fixture, policy, canary and contract digest above is stable.",
+          "safety_canary": "boundary_canary PASS on darwin through real /usr/bin/sandbox-exec (backend macos-seatbelt, level STRICT, platform_lane darwin/macos-seatbelt/generic-command.v1); program_digest sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807 equals the shipped BOUNDARY_CANARY_PROGRAM_DIGEST in lib/confinement.mjs and is re-derivable from the constant without running anything; failed=[], holes=[], provenanceProblems=[]; 15 canary cells -- 9 expected-denied all refused with EPERM (outside_read, outside_write, outside_delete, store_root_read, run_store_read, symlink_escape_read, operator_home_list, network_outbound_connect, host_etc_read), 3 expected-allowed all allowed, 3 descendant cells spawned; the live kernel refused 9 sandbox events (allowed=false, confidence HIGH), covering each of the 6 sandbox-collector attacks in fixtures/attacks/effect-attacks.v1.json; tests/product/effect-attack-lane.test.mjs 1 pass 0 skipped on dev@a163bff1 -- 0 skipped is what distinguishes a real kernel run from the NOT_OBSERVED the lane emits on Linux or a darwin host without sandbox-exec.",
+          "mutation": "715/715 load-bearing unqualified on darwin, 1 deferred (raw filename bytes, linux-only, its recorded linux measurement still describes this code), 0 SURVIVED / WRONG-TEST / NO-TAP / NO-MATCH, of 716 guards. Measured on f3370cc0 and not re-run on the merge commit because it cannot differ: git tree of f3370cc0 and of a163bff1 are the same object a8e242cb23f5e08a90b8d8f6dfea4a07c585a678, and tests/mutation/run.mjs worktrees HEAD so its inputs are exactly the tree plus the host.",
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "20 items at b740e482 -- 8 PASS, 9 FAIL (6 BLOCKER + 4 NIT), 1 NOTED; enumeration COMPLETE, verification COMPLETE, verdict BLOCK",
+          "round1_inventory_sha256": "8744bebeb425a5c67a07e7cf08de6e031d5efbd171a69881a9181d8df58ff662",
+          "round2": "seal and ancestry b740e482 -> a045754e verified before judging; all six blockers CLOSED, both declines upheld with reasons, verdict PASS WITH NITS -- certifying the patch and explicitly not the merge product",
+          "headline_defect": "the per-axis coverage ledger was dropped on every run ever assessed -- coverage always contained the string secret=OBSERVED, which tripped containsSecretLike, and projectPayload discarded the whole key without error. The implementer's own completion report had led with that ledger as its headline evidence and the evidence was not in the record",
+          "general_fix": "closed at both halves -- the ledger reaches the store, and projectPayload now records anything it removes in redacted_keys, so a redaction that eats evidence says so",
+          "merge_only_defect": "dev bumped contract_version to 1.1.0 for #614 and this branch independently bumped to 1.1.0, and git merged the two with no conflict, so two unrelated contract meaning-changes would have shipped under one version string; the merged contract is 1.2.0 across all five artifacts and docs/ECD_CONTRACT.md with the agreement check enforcing it",
+          "merge_reconciliation": "guards 555 on the branch and 702 on dev with 541 shared, union 716, merged 716 -- zero dropped from either side, zero invented, ACCOUNTED_GUARDS bijective and sorted, mutation-manifest.test.mjs 8/8",
+          "tests": "1567 pass / 0 fail / 1 skip under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8 on the merge product; verify:ecd-contract 114/114; no outcomeDomains drift; verify:mvp 10 PASS; smoke:package passed",
+          "ci": "pull_request run 33821410802 green on 10 checks at f3370cc0, the merge-ref lane this PR had never had"
+        },
+        "known_residue": [
+          {
+            "id": "L-01",
+            "statement": "the merge shipped an unreconciled tests/mutation/measured.json -- 677 rows against a 716-guard manifest",
+            "impact": "not a breakage (the freshness check gates only the 7 platform-specific guards and the linux row was fresh) but the staleness detector lost its value for 39 guards; the reconciled 716-row ledger from the 715/715 darwin run lands in the governance PR that flips this issue to done"
+          },
+          {
+            "id": "L-02",
+            "statement": "merge commit f3370cc says the added M19 assertions are what keeps the guard missing observation is NOT_OBSERVED, not a failed metric load-bearing; that is wrong",
+            "impact": "found by testing rather than assuming -- with both assertions deleted the witness still dies, because the union unstated deepEqual catches the mutant. The sentence is permanent in history"
+          },
+          {
+            "id": "P-01",
+            "statement": "this issues central refusal is downstream of describeExecutable, whose macOS ACL walk is one of six darwin deferrals attested by a developer machine and never by a CI measurement, because the mutation job is runs-on ubuntu-latest only",
+            "impact": "pre-existing on dev and out of scope here; recorded so nobody reads a host-run measurement as a CI-verified one"
+          },
+          {
+            "id": "REC-01",
+            "statement": "two earlier postings of this record were wrong -- the first cited a CI run from a superseded head, failing ci_runs_ran_on_this_work; the second omitted the evidence fields the plan requires",
+            "impact": "this posting supersedes both and carries actual_effect_observation, safety_canary and mutation as the plan declares them"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
       "closing_references": [
         "#557",
         "#556",
         "#575",
         "#576",
-        "#578"
+        "#578",
+        "#614"
       ]
     },
     {
@@ -308,7 +369,50 @@
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 558,
+        "final_sha": "0616cfa47353c201c790bda0e3a802387e6e321c",
+        "pr": 614,
+        "ci_run_ids": [
+          33808839048,
+          33806251945,
+          33734868245
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "27 items at 50c90e38 -- 24 PASS, 4 FAIL (2 defects, each carried as one obligation and one class), 1 NOTED, 0 UNVERIFIED; enumeration COMPLETE, verification COMPLETE, verdict BLOCK",
+          "round1_inventory_sha256": "3f740601b5682c01ef42175bf07b2f8499a7ab8231e9db57bd719e946438aa58",
+          "round2": "seal and ancestry 50c90e38 -> c0b88efc verified before judging; both obligations CLOSED, NOTED closed, three NITs closed, no remediation regression, no round-1 escape; verdict PASS",
+          "defect1_absence_scored_as_zero": "a row answering none of its four questions was published FAIL/0 and averaged into D3; fixed in observationOf where subchecks become a state, not at the single call path that reached it -- round 2 constructed all-null rows for M01, M17 and M20 and all three withhold",
+          "defect2_route_breadth": "requirementsFromRoute derives the requirement from the route under measurement, so alpha>beta 3/3, alpha>beta>gamma 5/5, alpha>beta>gamma>delta 7/7 all report MINIMAL; the contract claimed CONTROLLED and now states PARTIALLY_MITIGATED with the unmitigated half and its closing condition named",
+          "guard_verified_by_hand": "the from string appears verbatim exactly once at lib/routing-oracle.mjs; applying the to makes the new production-path witness fail (expected 3, actual 2) -- checked directly rather than inferred from the mutation run",
+          "tests": "1339 pass / 0 fail / 1 skip under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "mutation": "574/574 guards load-bearing, npm run test:mutation unqualified on darwin, one linux-only deferral (raw filename bytes)",
+          "ci": "green on all eleven checks at c0b88efc and again at 5911ffd (run 33808839048) after syncing onto dev",
+          "merge": "git merge-tree exits 0 with zero conflicts; merged as 0616cfa4"
+        },
+        "known_residue": [
+          {
+            "id": "N-01",
+            "statement": "the remediation commit message and a manifest comment say the old witness was load-bearing nowhere; round 2 applied the mutation and it did kill the mutant. What the old witness lacked was a production-path demonstration, which was round 1s actual finding -- the re-pointing stands, the sentence overstates it",
+            "impact": "prose only; the guard and its witness are correct"
+          },
+          {
+            "id": "N-02",
+            "statement": "C2.IB.01 count-not-cost says route cost reaches one place; it also reaches minimalityObservable, which is credit-bearing",
+            "impact": "as a comparison against its own minimum rather than a spend figure, so the cells operative claims stand"
+          },
+          {
+            "id": "N-03",
+            "statement": "the first posting of this record carried an empty ci_run_ids array, because the run lookup was made with an abbreviated SHA and returned nothing; this posting supersedes it",
+            "impact": "record hygiene; the runs named here are the real successful runs"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
       "close_evidence_checked": null,
       "closing_references": [
         "#558",
@@ -319,7 +423,8 @@
         "#578",
         "#582",
         "#559",
-        "#583"
+        "#583",
+        "#614"
       ]
     },
     {
@@ -753,7 +858,7 @@
         "area:measurement",
         "priority:P1",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1021,19 +1126,82 @@
     {
       "number": 574,
       "title": "[P0][UX] runtime·auth·model·env·STRICT isolation·Profile을 자동 탐지·구성한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:ux",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
-      "closing_references": []
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 574,
+        "final_sha": "b3d653a24bf39da602d7d4535d3b2514d039cb01",
+        "pr": 617,
+        "ci_run_ids": [
+          33819296848
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "discovery_matrix": "Measured live at dev@b3d653a2 (this record's final_sha) on darwin 25.3.0 arm64 / macOS 26.3 / node 22.23.2 / codex-cli 0.148.0, by replicating scripts/record-discovery-canary.mjs's two lanes read-only without writing the fixture. Two of the three shipped adapters resolve on this host -- codex (codex-cli.v1) and claude (claude-code.v1); generic-command.v1 ships and nothing here resolves to it. Zero-config lane: terminal DIAGNOSTIC_ONLY / MODEL_WITHHELD, codex withheld [MODEL_WITHHELD], claude withheld [RUNTIME_NOT_ADAPTER x2, MODEL_WITHHELD, ISOLATION_NOT_STRICT]. Official-pairing lane: terminal OFFICIAL_READY with reason_code null, codex OFFICIAL with blocked_reasons [], claude DIAGNOSTIC_ONLY with the same four. Zero candidates BLOCKED in either lane. Support matrix 11 rows with exactly one official -- darwin/macos-seatbelt/codex-cli.v1/STRICT -- recomputed through supportMatrixDecisions rather than read from the fixture's label. Re-derivable from fixtures/discovery/local-canary.darwin.json sha256:83114fe200583c9a... against fixtures/confinement/support-matrix.json sha256:eb5fba00a7d5b1cc...; both files are byte-identical at b3d653a2 and at dev tip a163bff1, so this measurement describes both trees. ATTESTATION: verify:agent-discovery-local is wired into no CI job, so the committed recording and this re-measurement both come from one operator machine and nothing in CI has reproduced the official pairing.",
+          "profile_digest": "565c6eceeed9e72819032b634f6cab5edaa00c3ee153ffda3b8b69810bd591ce -- official-pairing lane, codex / codex-cli.v1 / openai/gpt-5-2025-08-07, all four zero-input counters 0. The zero-config lane binds e86551d26f...00eafd92 at DIAGNOSTIC_ONLY. Both lanes reproduced the committed canary byte-for-byte, so that record still describes this tree. verify:agent-discovery-local (AOS_DISCOVERY_LOCAL_REQUIRED=1) passes 7/7 with zero skips, and all four discovery verify:* scripts are green (7/7, 7/7, 8/8, 51/51). ATTESTATION: as above -- no CI job runs this, so the pairing rests on one operator machine.",
+          "mutation": "701/701 load-bearing unqualified on darwin at this record's final_sha b3d653a2, with the ubuntu pull_request lane reading 696/696 at the same work, zero SURVIVED, WRONG-TEST or NO-TAP, and killed for each of the three guards this issue's review named. Recorded at b3d653a2 rather than at dev tip: a later measurement of 715/715 darwin and 710/710 ubuntu exists but describes a163bff1, which includes #618 and is not the tree this issue completed on.",
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "29 items at 307efe94 -- 22 PASS, 3 FAIL (2 BLOCKER + 1 NIT), 3 NOTED, 1 UNVERIFIED; enumeration COMPLETE, verification PARTIAL, verdict BLOCK",
+          "round1_inventory_sha256": "2071a19cf00e7962298a2d6aab2d4406042346ff029308f1643bf68e4f6ee536",
+          "round2": "seal and ancestry 307efe94 -> ca7c5d1 verified before judging; both blockers CLOSED, verdict PASS WITH NITS -- certifying the patch and explicitly not the merge product",
+          "defect_found_by_ci": "the witness for an untrusted executable asserted BLOCKED but never asserted why; supportStatusOf returns BLOCKED if any of three terms fires, so deleting the identity term left an identical outcome and the guard was inert",
+          "defect_the_review_added": "two withheld terms the implementer had named and left were each reproducibly the only thing between a misconfigured host and OFFICIAL_READY -- a swapped binary carrying identity.drift on the same record, and a host missing CODEX_HOME carrying env.status ACTION_REQUIRED on the same record -- both invisible to the whole 1334-test suite",
+          "fragility_tested_not_argued": "round 2 rebuilt each host with a second withholding term and re-applied the mutation; both assertions still failed, where a weaker witness would have passed",
+          "merge_product_reverified": "conflicts additive on both sides, resolved as a union checked against both parents -- manifest 702 guards bijective and re-sorted with nothing dropped or invented, package.json merged structurally 30+35 to 39 with no key carrying a different value",
+          "tests": "1519 pass / 0 fail / 1 skip under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8 on the merge product",
+          "ci": "pull_request run 33819296848 green on 10 checks at a0cf27ea, the merge-ref lane this PR had never had"
+        },
+        "known_residue": [
+          {
+            "id": "O-15",
+            "statement": "verify:agent-discovery-local is wired into no CI job, so the committed local-canary.darwin.json official pairing rests on one operator machine; carried UNVERIFIED from round 1 and not converted to PASS",
+            "impact": "the fixture states this in its own note and the generator writes the same sentence, so a re-recording preserves it; the discovery_matrix and profile_digest fields above repeat it rather than reading as CI-verified"
+          },
+          {
+            "id": "R-01",
+            "statement": "withoutPaths lookbehind skips ~/, so interpreter_unresolved can carry a home-relative operand verbatim on the record",
+            "impact": "no secret and fail-closed, but it invalidates round 1s stated reason for dismissing O-02"
+          },
+          {
+            "id": "R-02",
+            "statement": "the :720 domination test is non-vacuous but encodes a proper subset of its precondition, omitting the config_env disjunct",
+            "impact": "its assertion message claims more than it checks; a fourth adapter with config_env and no resolver would pass it while :720 withholds alone"
+          },
+          {
+            "id": "REC-01",
+            "statement": "two earlier postings of this record were wrong -- the first cited a CI run from a superseded head, failing ci_runs_ran_on_this_work; the second omitted the evidence fields the plan requires",
+            "impact": "this posting supersedes both"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true
+      },
+      "closing_references": [
+        "#574",
+        "#618"
+      ]
     },
     {
       "number": 575,
