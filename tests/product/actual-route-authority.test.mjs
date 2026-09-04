@@ -42,14 +42,15 @@ import {
   validateRoutingRequirement
 } from "../../lib/routing-oracle.mjs";
 
-// #558's second half made the cost floor a separate input: what AOS asked the form for,
-// frozen at plan approval, so that a route cannot be priced against a requirement derived from
-// itself. These fixtures hand in a work graph, which IS the work, so the floor here is that same
-// requirement. What production supplies instead -- `FORM_WORK` through
-// `workRequirementAtPlanApproval` -- is asked in `routing-work-requirement.test.mjs`.
-const floorOf = (requirements) => ({ requirements, problems: [] });
+// #558's second half made the cost floor a separate input, and since round 1 of the merge gate the
+// oracle derives that floor from the envelope's `work_graph` rather than reading a requirement list
+// off it -- a list no digest covered, swappable for the route-derived one on an otherwise honest
+// record. So a fixture supplies the graph, not the requirements. These fixtures' graph IS their
+// work. What production supplies instead -- `FORM_WORK` through `workRequirementAtPlanApproval` --
+// is asked in `routing-work-requirement.test.mjs`.
+const floorOf = (workGraph) => ({ work_graph: workGraph, problems: [] });
 /** The oracle asked with a floor, which every one of these fixtures prices against its own work. */
-const pricedOracle = (input) => routeOracle({ ...input, work_requirement: floorOf(input.requirements ?? []) });
+const pricedOracle = (input, workGraph = WORK) => routeOracle({ ...input, work_requirement: floorOf(workGraph) });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const corpus = JSON.parse(readFileSync(join(root, "fixtures", "attacks", "corpus.v1.json"), "utf8"));

@@ -20,16 +20,24 @@ import {
   requirementsFromRoute,
   routeOracle,
   routingObservables,
+  workRequirementAtPlanApproval,
   validateActualRouteEvent
 } from "../../lib/routing-oracle.mjs";
 
-// #558's second half made the cost floor a separate input: what AOS asked the form for,
-// frozen at plan approval, so that a route cannot be priced against a requirement derived from
-// itself. These fixtures hand in a work graph, which IS the work, so the floor here is that same
-// requirement. What production supplies instead -- `FORM_WORK` through
-// `workRequirementAtPlanApproval` -- is asked in `routing-work-requirement.test.mjs`.
-const floorOf = (requirements) => ({ requirements, problems: [] });
-const pricedObservables = (input) => routingObservables({ ...input, work_requirement: floorOf(input.requirements ?? []) });
+// The floor here is the production one, and this file is the only one of the five that is not a
+// work-graph fixture.
+//
+// Its requirement comes from `requirementsFromRoute` over a two-stage route, because its subject is
+// what an agent's artifact can and cannot move -- proposal authority, not minimality. It would
+// therefore have been the one file where "price the fixture against its own requirement" meant
+// pricing a route against itself, which is the tautology #558's second half removes. So it takes
+// the same floor an ordinary run takes: AOS's statement of FAM-3's work, through
+// `workRequirementAtPlanApproval`. The consequence is stated rather than worked around -- the
+// baseline route below is two stages against a floor of one, so production reports it as costing
+// more than the work asked for, and `HONEST()` is the run this file measures *deviation* from
+// rather than a run that is minimal.
+const productionFloor = () => workRequirementAtPlanApproval({ form_id: "FAM-3" });
+const pricedObservables = (input) => routingObservables({ ...input, work_requirement: productionFloor() });
 
 const OPERATOR_ROUTE = "alpha>beta";
 const REQUIREMENT = () => requirementsFromRoute({
@@ -81,11 +89,21 @@ const HONEST = () => oracleFor({ tasks: [{ id: "contract", route: "alpha", depen
 
 test("the reference run this file measures against is answered, not withheld", () => {
   const baseline = verdicts(HONEST());
+  // Answered is the property this file needs: a withheld baseline would make every comparison below
+  // two silences held against each other.
+  for (const id of ["capability-matches-task", "simplest-adequate-route", "no-redundant-invocation", "invocation-budget-respected", "verification-independence"]) {
+    assert.equal(baseline[id] === null, false, `${id} is withheld in the run this file measures deviation from`);
+  }
   assert.equal(baseline["capability-matches-task"], true);
-  assert.equal(baseline["simplest-adequate-route"], true);
   assert.equal(baseline["no-redundant-invocation"], true);
   assert.equal(baseline["invocation-budget-respected"], true);
   assert.equal(baseline["verification-independence"], true);
+  // And false, not true, because the route is two stages against a floor of one. That is what
+  // production says about `alpha>beta` since the floor stopped being derived from the route; a
+  // baseline asserting `true` here would be asserting the tautology this file's own subject is
+  // about, in the one file whose requirement is route-derived.
+  assert.equal(baseline["simplest-adequate-route"], false);
+  assert.equal(HONEST().minimum.minimum_cost, 1, "the floor moved with the route this file declares");
 });
 
 test("an agent that writes a different route label changes no requirement and no owner", () => {
@@ -133,9 +151,12 @@ test("an agent cannot remove a required artifact from the requirement", () => {
   assert.deepEqual(artifacts(hostile), ["artifact:plan.json"]);
   assert.deepEqual(verdicts(hostile), verdicts(HONEST()));
 
-  // And the obligation still bites when the ledger does not show the artifact.
+  // And the obligation still bites when the ledger does not show the artifact. The verdict is
+  // already false on this route for cost, so the constraint failure is what isolates the artifact:
+  // the baseline carries no `artifact` failure and this one does.
   const without = oracleFor(null, [LEDGER()[0], { ...LEDGER()[1], artifact_ids: [] }]);
   assert.equal(verdicts(without)["simplest-adequate-route"], false);
+  assert.equal(HONEST().constraint_failures.some((entry) => entry.constraint === "artifact"), false);
   assert.equal(without.constraint_failures.some((entry) => entry.constraint === "artifact"), true);
 });
 

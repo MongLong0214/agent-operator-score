@@ -47,12 +47,13 @@ const PLAN = (routes) => ({
 
 const MINIMAL = { contract: "other", implementation: "other", docs: "other", verification: "strong", release: "other" };
 
-// #558's second half made the cost floor a separate input: what AOS asked the form for,
-// frozen at plan approval, so that a route cannot be priced against a requirement derived from
-// itself. These fixtures hand in a work graph, which IS the work, so the floor here is that same
-// requirement. What production supplies instead -- `FORM_WORK` through
-// `workRequirementAtPlanApproval` -- is asked in `routing-work-requirement.test.mjs`.
-const floored = (input) => ({ ...input, work_requirement: { requirements: input.requirements ?? [], problems: [] } });
+// #558's second half made the cost floor a separate input, and since round 1 of the merge gate the
+// oracle derives that floor from the envelope's `work_graph` rather than reading a requirement list
+// off it -- a list no digest covered, swappable for the route-derived one on an otherwise honest
+// record. So a fixture supplies the graph, not the requirements. These fixtures' graph IS their
+// work. What production supplies instead -- `FORM_WORK` through `workRequirementAtPlanApproval` --
+// is asked in `routing-work-requirement.test.mjs`.
+const floored = (input, workGraph = WORK) => ({ ...input, work_requirement: { work_graph: workGraph, problems: [] } });
 
 const minute = (index) => `2026-09-01T10:${String(index).padStart(2, "0")}:00Z`;
 
@@ -78,7 +79,7 @@ const m09 = ({ routes = MINIMAL, ledger = null, work = WORK, capabilities = CAPA
   observeRun({
     artifacts: { plan: PLAN(routes) },
     params: { "FAM-3": {} },
-    routing: floored({ requirements: work === null ? null : requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger ?? ledgerFor(routes) })
+    routing: floored({ requirements: work === null ? null : requirementsFromWork(work).requirements, capabilities, actual_route_events: ledger ?? ledgerFor(routes) }, work ?? WORK)
   }).find((entry) => entry.metric_id === "M09");
 
 const sub = (observation, id) => observation.subchecks.find((entry) => entry.id === id).pass;
@@ -291,7 +292,8 @@ test("removing only the artifact lowers only adequacy, and removing only the han
 
   // The requirement AOS derives from FAM-3's work declares no artifacts, so the artifact half of the
   // isolation is exercised on a requirement that does: one task, one artifact owed.
-  const [solo] = requirementsFromWork({ tasks: [{ id: "only", resource: "r", depends_on: [] }] }).requirements;
+  const SOLO_WORK = { tasks: [{ id: "only", resource: "r", depends_on: [] }] };
+  const [solo] = requirementsFromWork(SOLO_WORK).requirements;
   const owed = { ...solo, required_artifacts: Object.freeze(["artifact:out.json"]) };
   const ran = (artifacts) => [{
     schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
@@ -299,9 +301,9 @@ test("removing only the artifact lowers only adequacy, and removing only the han
     started_at: null, completed_at: null, artifact_ids: artifacts, handoff_ids: [],
     capability_digest: null, operator_decision_event_id: null, operator_opportunity_id: null
   }];
-  const withArtifact = Object.fromEntries(routingObservables(floored({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran(["artifact:out.json"]) }))
+  const withArtifact = Object.fromEntries(routingObservables(floored({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran(["artifact:out.json"]) }, SOLO_WORK))
     .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
-  const withoutArtifact = Object.fromEntries(routingObservables(floored({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran([]) }))
+  const withoutArtifact = Object.fromEntries(routingObservables(floored({ requirements: [owed], capabilities: CAPABILITIES(), actual_route_events: ran([]) }, SOLO_WORK))
     .oracle.observables.map((entry) => [entry.observable_id, entry.pass]));
   assert.equal(withArtifact["simplest-adequate-route"], true);
   assert.equal(withoutArtifact["simplest-adequate-route"], false);

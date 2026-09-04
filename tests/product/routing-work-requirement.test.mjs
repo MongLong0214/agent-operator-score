@@ -245,3 +245,69 @@ test("nothing the agent or the operator writes can reach the floor", async (t) =
   assert.equal(narrow.record.routing_oracle.work_requirement.work_graph.tasks.length, 1);
   assert.deepEqual(narrow.record.routing_oracle.work_requirement.work_graph.tasks.map((task) => task.id), ["work"]);
 });
+
+// --- the envelope declares nothing the oracle believes ---------------------------------------------
+
+/**
+ * Both reproductions round 1 of the merge gate built, kept as regressions.
+ *
+ * The first version of this read the floor straight off `work_requirement.requirements` — a field
+ * no digest covered, while the digest that *was* checked covered `work_graph`, which decided nothing
+ * else. The checked field was not the deciding field. Two envelopes exploited it: one declaring a
+ * route-derived requirement list and no graph at all, and the sharper one taking the honest frozen
+ * record and swapping only that list, which left the digest verifying and `problems` empty while the
+ * floor went back to 3 and `simplest-adequate-route` back to true.
+ *
+ * The floor is now recomputed from the graph the digest covers, so the first withholds and the
+ * second has no effect whatsoever — the stronger of the two outcomes, because a field that is
+ * ignored cannot be got wrong.
+ */
+test("a work record declaring a requirement list and carrying no graph withholds", () => {
+  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
+  const declared = { schema_id: WORK_REQUIREMENT_SCHEMA, form_id: "FAM-3", requirements, problems: [] };
+
+  const oracle = routeOracle({ requirements, capabilities, work_requirement: declared, actual_route_events: [] });
+  assert.equal(oracle.minimum.status, "NO_WORK_REQUIREMENT");
+  assert.equal(oracle.minimum.minimum_cost, null);
+  assert.equal(oracle.work_requirement.requirements, null, "a declared requirement list reached the record");
+  assert.equal(oracle.work_requirement.problems.some((problem) => problem.includes("carries no work graph")), true);
+  assert.equal(oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route").pass, null);
+  assert.equal(delegationOracle(oracle).expected_value_class, "NOT_OBSERVED");
+});
+
+test("an honest work record with its requirement list swapped prices exactly as the honest one does", () => {
+  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" }, beta: { adapter: "codex-cli.v1" } });
+  const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha>beta" });
+  const honest = workRequirementAtPlanApproval({ form_id: "FAM-3" });
+  // Only the requirement list differs. The digest still verifies, because it covers the graph.
+  const swapped = { ...honest, requirements };
+
+  const priced = (work) => routeOracle({ requirements, capabilities, work_requirement: work, actual_route_events: [] });
+  const clean = priced(honest);
+  const attacked = priced(swapped);
+
+  assert.equal(attacked.work_requirement.work_digest, attacked.work_requirement.declared_work_digest, "the attack was caught by the digest instead of being made irrelevant");
+  assert.deepEqual(attacked.work_requirement.problems, []);
+  assert.equal(attacked.minimum.minimum_cost, 1, "a swapped requirement list moved the floor");
+  assert.equal(attacked.minimum.minimum_cost, clean.minimum.minimum_cost);
+  assert.deepEqual(
+    attacked.work_requirement.requirements.map((entry) => entry.task_id),
+    clean.work_requirement.requirements.map((entry) => entry.task_id)
+  );
+  assert.equal(attacked.route_oracle_digest, clean.route_oracle_digest, "the envelope's own list reached the record");
+});
+
+test("a form AOS states no work for cannot select a capability floor for a graph", () => {
+  const capabilities = capabilityRecordsFor({ alpha: { adapter: "codex-cli.v1" } });
+  const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route: "alpha" });
+  const borrowed = {
+    schema_id: WORK_REQUIREMENT_SCHEMA,
+    form_id: "FAM-9",
+    work_graph: FORM_WORK["FAM-3"],
+    problems: []
+  };
+  const oracle = routeOracle({ requirements, capabilities, work_requirement: borrowed, actual_route_events: [] });
+  assert.equal(oracle.minimum.status, "NO_WORK_REQUIREMENT");
+  assert.equal(oracle.work_requirement.problems.some((problem) => problem.includes("is not a form AOS states work for")), true);
+});

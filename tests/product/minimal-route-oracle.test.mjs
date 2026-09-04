@@ -42,14 +42,15 @@ import {
   validateRoutingRequirement
 } from "../../lib/routing-oracle.mjs";
 
-// #558's second half made the cost floor a separate input: what AOS asked the form for,
-// frozen at plan approval, so that a route cannot be priced against a requirement derived from
-// itself. These fixtures hand in a work graph, which IS the work, so the floor here is that same
-// requirement. What production supplies instead -- `FORM_WORK` through
-// `workRequirementAtPlanApproval` -- is asked in `routing-work-requirement.test.mjs`.
-const floorOf = (requirements) => ({ requirements, problems: [] });
+// #558's second half made the cost floor a separate input, and since round 1 of the merge gate the
+// oracle derives that floor from the envelope's `work_graph` rather than reading a requirement list
+// off it -- a list no digest covered, swappable for the route-derived one on an otherwise honest
+// record. So a fixture supplies the graph, not the requirements. These fixtures' graph IS their
+// work. What production supplies instead -- `FORM_WORK` through `workRequirementAtPlanApproval` --
+// is asked in `routing-work-requirement.test.mjs`.
+const floorOf = (workGraph) => ({ work_graph: workGraph, problems: [] });
 /** The oracle asked with a floor, which every one of these fixtures prices against its own work. */
-const pricedOracle = (input) => routeOracle({ ...input, work_requirement: floorOf(input.requirements ?? []) });
+const pricedOracle = (input, workGraph = WORK) => routeOracle({ ...input, work_requirement: floorOf(workGraph) });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const corpus = JSON.parse(readFileSync(join(root, "fixtures", "attacks", "corpus.v1.json"), "utf8"));
@@ -246,12 +247,14 @@ test("a required artifact the ledger does not show is inadequate, and a silent h
   // Both lists were validated at construction and read by nothing. A route whose every event
   // carried `artifact_ids: []` took full credit for work with nothing to show for it, and a handoff
   // that was named and never made cost the route a point of cost and proved nothing.
-  const [solo] = requirementsFromWork({ tasks: [{ id: "a", resource: "r", depends_on: [] }] }).requirements;
+  const SOLO_WORK = { tasks: [{ id: "a", resource: "r", depends_on: [] }] };
+  const [solo] = requirementsFromWork(SOLO_WORK).requirements;
   const withArtifact = { ...solo, required_artifacts: Object.freeze(["artifact:out.json"]) };
   const ran = (overrides) => event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-1", started_at: "2026-09-01T10:00:00Z", completed_at: "2026-09-01T10:01:00Z", ...overrides });
   const capabilities = twoKnown();
-  const observableOf = (requirements, events, id) =>
-    pricedOracle({ requirements, capabilities, actual_route_events: events }).observables.find((entry) => entry.observable_id === id);
+  // The floor is the graph these requirements were derived from, not the suite's five-task one.
+  const observableOf = (requirements, events, id, workGraph = SOLO_WORK) =>
+    pricedOracle({ requirements, capabilities, actual_route_events: events }, workGraph).observables.find((entry) => entry.observable_id === id);
 
   assert.equal(observableOf([withArtifact], [ran({ artifact_ids: ["artifact:out.json"] })], "simplest-adequate-route").pass, true);
   assert.equal(observableOf([withArtifact], [ran({ artifact_ids: [] })], "simplest-adequate-route").pass, false,
@@ -259,18 +262,19 @@ test("a required artifact the ledger does not show is inadequate, and a silent h
   assert.match(observableOf([withArtifact], [ran({ artifact_ids: [] })], "simplest-adequate-route").reason, /requires artifact/u);
 
   // The same for a handoff, on the two-task graph where one is declared.
-  const pair = requirementsFromWork({ tasks: [{ id: "a", resource: "r1", depends_on: [] }, { id: "b", resource: "r2", depends_on: ["a"] }] }).requirements;
+  const PAIR_WORK = { tasks: [{ id: "a", resource: "r1", depends_on: [] }, { id: "b", resource: "r2", depends_on: ["a"] }] };
+  const pair = requirementsFromWork(PAIR_WORK).requirements;
   assert.deepEqual(pair.find((entry) => entry.task_id === "b").required_handoffs, ["a->b"]);
   const both = (handoffs) => [
     event({ task_id: "a", agent_id: "one", purpose_id: "a", invocation_id: "invocation-a", artifact_ids: ["artifact-a"], started_at: "2026-09-01T10:00:00Z", completed_at: "2026-09-01T10:01:00Z" }),
     event({ task_id: "b", agent_id: "one", purpose_id: "b", invocation_id: "invocation-b", artifact_ids: ["artifact-b"], handoff_ids: handoffs, started_at: "2026-09-01T10:02:00Z", completed_at: "2026-09-01T10:03:00Z" })
   ];
-  assert.equal(observableOf(pair, both(["a->b"]), "simplest-adequate-route").pass, true);
+  assert.equal(observableOf(pair, both(["a->b"]), "simplest-adequate-route", PAIR_WORK).pass, true);
   // Withheld, not failed. ISSUE.md's missing policy puts "handoff incomplete" with the states that
   // are NOT_OBSERVED: a ledger that is silent about an edge is missing evidence, and the artifact
   // above is different because AOS opened the workspace and looked.
-  assert.equal(observableOf(pair, both([]), "simplest-adequate-route").pass, null, "a silent ledger decided the route was inadequate");
-  assert.equal(pricedOracle({ requirements: pair, capabilities, actual_route_events: both([]) })
+  assert.equal(observableOf(pair, both([]), "simplest-adequate-route", PAIR_WORK).pass, null, "a silent ledger decided the route was inadequate");
+  assert.equal(pricedOracle({ requirements: pair, capabilities, actual_route_events: both([]) }, PAIR_WORK)
     .constraint_failures.some((entry) => entry.constraint === "handoff" && entry.basis === "missing-evidence"), true,
     "the missing edge is still on the record, it just does not decide adequacy");
 });
