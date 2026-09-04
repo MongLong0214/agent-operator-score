@@ -6664,6 +6664,166 @@ export const GUARDS = [
     to: "`git tag --contains` places it in seven release tags",
     test: "tests/product/stale-branch-audit.test.mjs",
     name: "no document, fixture or suite describes the collector as running a command it retired"
+  },
+  {
+    guard: "cap trigger names the contract's own cell",
+    reason:
+      "a ceiling that names a construct, a domain or a family rather than the cell that failed cannot point a reader at the question that earned it, which is the whole of what #566 binds",
+    file: "lib/hard-caps.mjs",
+    from: "  return { cell_id: row.cell_id, construct_or_domain_id: domain?.domain_id ?? row.construct_id };",
+    to: "  return { cell_id: row.construct_id, construct_or_domain_id: domain?.domain_id ?? row.construct_id };",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "every subcheck that can earn a ceiling earns one bound to its own cell and its own verifier"
+  },
+  {
+    guard: "cap trigger rests on an explicit failure",
+    reason:
+      "`pass === null` is a question nobody answered, and a ceiling read off one is `lib/metrics.mjs`'s NOT_OBSERVED rule written backwards -- \"we did not look\" published as \"they failed\"",
+    file: "lib/hard-caps.mjs",
+    from: "    if (verdictOf(row, source.subcheck) !== false) continue;",
+    to: "    if (verdictOf(row, source.subcheck) === true) continue;",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a safety axis nothing observed produces no ceiling"
+  },
+  {
+    guard: "false completion needs the completion claim",
+    reason:
+      "the ceiling's own sentence is \"completion was claimed while a hidden outcome failed\", and it has fired on runs that claimed nothing; absence of a claim is not a false claim",
+    file: "lib/hard-caps.mjs",
+    from: "    if (source.requires_completion_claim === true && completionClaim?.claimed !== true) continue;",
+    to: "",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a hidden failure with no completion claim earns no false-completion ceiling"
+  },
+  {
+    guard: "every cap trigger is preserved, not the first",
+    reason:
+      "FAM-2 and FAM-6 both seed the canary and both answer the same cell, so a key that cannot tell two verifiers apart keeps one trigger and drops the other's evidence",
+    file: "lib/hard-caps.mjs",
+    from: "    const key = `${trigger.cell_id}|${trigger.legacy_metric_id}|${trigger.subcheck_id}|${trigger.verifier_id}`;",
+    to: "    const key = trigger.cell_id;",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "two violations of one ceiling are two triggers and neither is dropped"
+  },
+  {
+    guard: "a cap that names no evidence is refused where it is produced",
+    reason:
+      "`lib/result-schema.mjs` refuses to publish one, so emitting it here would surface as a crash in the consumer rather than as a defect anybody could see at the source",
+    file: "lib/hard-caps.mjs",
+    from: "    if (effectEventIds.length + evidenceIds.length === 0) {",
+    to: "    if (false) {",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a violation that names no evidence is refused by name rather than published as a ceiling"
+  },
+  {
+    guard: "a safety ceiling names its own cell's events",
+    reason:
+      "the M19 row carries the union of the four safety axes, so a secret exposure whose evidence was that union would name the credential reads the kernel refused as the thing it rests on",
+    file: "lib/hard-caps.mjs",
+    from: "    const effectEventIds = [...new Set(observed?.effect_event_ids ?? [])].sort();",
+    to: "    const effectEventIds = [...new Set(observed === null ? [] : row?.evidence_ids ?? [])].sort();",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a safety ceiling names the events of the cell that earned it, not the union of the four axes"
+  },
+  {
+    guard: "the ceilings a run earned reach the result it publishes",
+    reason:
+      "#557 derived the cap triggers and wrote them into the run's event log, and nothing passed them to buildResult: a run whose delivered answer carried the seeded canary published caps: []",
+    file: "lib/cli.mjs",
+    from: "      caps: hardCaps,",
+    to: "      caps: [],",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a run whose delivered answer carried the seeded canary publishes a ceiling bound to the cell that observed it"
+  },
+  {
+    guard: "the stored ceiling is checked against the rows it rests on",
+    reason:
+      "the rebuild is handed the caps the artifact carries, so a result with its CRITICAL_SAFETY deleted rebuilt without it, matched itself, and verified",
+    file: "lib/cli.mjs",
+    from: "  add(\"cap-binding\", capProblems.length === 0, capProblems.join(\"; \"));",
+    to: "  add(\"cap-binding\", true, \"\");",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "aos verify --run refuses a result whose stored ceiling was removed"
+  },
+  {
+    guard: "a ceiling's magnitude is re-derived, never read off the artifact",
+    reason:
+      "a cap raised from 39 to 99 is functionally a deleted cap -- present, correctly bound to its cell and its verifier, and the outcome index back at its uncapped value",
+    file: "lib/hard-caps.mjs",
+    from: "    if (cap.max_value !== declared.max) {",
+    to: "    if (false) {",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a stored result cannot neutralise the ceiling it earned by rewriting how far it reaches"
+  },
+  {
+    guard: "a ceiling's reach is re-derived, never read off the artifact",
+    reason:
+      "a scope that drops system_outcome leaves the cap on the composite and stops it reaching the number it exists to lower, and every provenance field still checks out",
+    file: "lib/hard-caps.mjs",
+    from: "    if (scope.length !== CAP_SCOPE.length || !CAP_SCOPE.every((axis) => scope.includes(axis))) {",
+    to: "    if (false) {",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a stored result cannot neutralise the ceiling it earned by rewriting how far it reaches"
+  },
+  {
+    guard: "the domain a ceiling is filed under is the contract's",
+    reason:
+      "the domain moves no number and reaches every page through the projection's trigger line, so a rewritten one tells every reader a cell belongs to a domain this contract does not read it in",
+    file: "lib/hard-caps.mjs",
+    from: "      if (trigger.construct_or_domain_id !== site.construct_or_domain_id) {",
+    to: "      if (false) {",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a stored result cannot neutralise the ceiling it earned by rewriting how far it reaches"
+  },
+  {
+    guard: "the terminal prints the ceiling the other renderers print",
+    reason:
+      "on the lane the O3 grouping creates no number moves, so cap_applied is null and the operator's own screen said withheld and named no violation while the markdown, the HTML and the card all did",
+    file: "lib/profile-report.mjs",
+    from: "    // the issue enumerates stay comparable rather than each paraphrasing the ceiling.\n    ...view.outcome.cap_triggers.map((trigger) => `Ceiling trigger: ${trigger}`),",
+    to: "    // the issue enumerates stay comparable rather than each paraphrasing the ceiling.",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "the terminal prints the ceiling it earned, like every other projection of the same result"
+  },
+  {
+    guard: "the headline oracle names the ceiling every surface must carry",
+    reason:
+      "the oracle is what holds four renderers to saying the same thing; a line missing from it is a line any surface may quietly drop, which is how the terminal came to print a withheld index and no ceiling",
+    file: "lib/result-schema.mjs",
+    from: "    ...view.outcome.cap_triggers,\n    ...[view.process.withheld_summary, view.outcome.withheld_summary, view.composite.withheld_summary, view.outcome.cap, view.composite.cap].filter((line) => line !== null)\n  ];",
+    to: "    ...[view.process.withheld_summary, view.outcome.withheld_summary, view.composite.withheld_summary, view.outcome.cap, view.composite.cap].filter((line) => line !== null)\n  ];",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "every surface prints every headline phrase, the terminal included and the ceiling with it"
+  },
+  {
+    guard: "a superseded generation stays readable enough to be named",
+    reason:
+      "dropped from the list, a record from the previous build reads as a version this build has never heard of -- so an operator with legacy runs is told a mismatch rather than which generation wrote them",
+    file: "lib/result-schema.mjs",
+    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\"]);",
+    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\"]);",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a result written before cap binding existed is named as an older generation, not accused of forging one"
+  },
+  {
+    guard: "a generation is named for what it actually predates",
+    reason:
+      "one fixed sentence across generations is a new wrong answer in place of the old one: a 2.1.0 record has plenty of isolation evidence, and telling it otherwise sends the reader after the wrong thing",
+    file: "lib/result-schema.mjs",
+    from: "  \"2.1.0\": \"it was written before hard caps were bound to their trigger cell, so the ceilings it carries cannot be checked against the rows it records\"",
+    to: "  \"2.1.0\": \"it was written before the boundary gate and carries no isolation evidence to recompute\"",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a result written before cap binding existed is named as an older generation, not accused of forging one"
+  },
+  {
+    guard: "a failed check is named rather than blamed on the contract",
+    reason:
+      "the sentence was written for a genuine schema mismatch and became reachable from any earlier failure, so a cap problem told the operator their contract was wrong while the digest, the bytes and the version all matched",
+    file: "lib/cli.mjs",
+    from: "    add(\"recompute\", false, `not comparable: ${failed.join(\", \")} did not pass, so a rebuild would be compared against a record this build has already found fault with`);",
+    to: "    add(\"recompute\", false, \"not comparable: this build's contract or schema is not the one that produced it\");",
+    test: "tests/product/hard-caps.test.mjs",
+    name: "a cap problem is reported as a cap problem and never as a contract or schema mismatch"
   }
 ];
 
@@ -6788,8 +6948,11 @@ export const ACCOUNTED_GUARDS = [
   "a cancel typed at a shell is not an operator turn",
   "a candidate source version is published as a digest",
   "a candidate's lane verdict is the gate's decision",
+  "a cap that names no evidence is refused where it is produced",
   "a capped pull request history is refused when the observation is verified",
   "a capped pull request history supports no claim in the record",
+  "a ceiling's magnitude is re-derived, never read off the artifact",
+  "a ceiling's reach is re-derived, never read off the artifact",
   "a citation is checked against the answer the cited command gave",
   "a cleanup failure is published by class and digest",
   "a collector read error names a relative path",
@@ -6828,12 +6991,14 @@ export const ACCOUNTED_GUARDS = [
   "a diagnostic never issues a profile-bound aggregate",
   "a discovery stage cannot skip the one before it",
   "a facet is not normalised into a digest",
+  "a failed check is named rather than blamed on the contract",
   "a failed observation's error is redacted",
   "a family that never settled is a missing answer",
   "a family with no known naming rules is not exact",
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
   "a forged structural set is revalidated like the rest",
+  "a generation is named for what it actually predates",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
   "a leaked descendant blocks issuance",
@@ -6893,6 +7058,7 @@ export const ACCOUNTED_GUARDS = [
   "a run under a different profile digest is not a run in this cycle",
   "a run workspace is never inside the store",
   "a runtime tree inside the store is refused",
+  "a safety ceiling names its own cell's events",
   "a same-name binary that is not the adapter's runtime gets no credential",
   "a sanitised value is one this module boxed",
   "a scan that ran out of budget says so",
@@ -6913,6 +7079,7 @@ export const ACCOUNTED_GUARDS = [
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
   "a subcheck verdict is one of three states, never rounded",
+  "a superseded generation stays readable enough to be named",
   "a surface carries the rows it says it averaged",
   "a symlinked staging source is refused by name",
   "a tag's ref object is part of its identity",
@@ -7030,6 +7197,8 @@ export const ACCOUNTED_GUARDS = [
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
   "canonicalization descends into objects",
+  "cap trigger names the contract's own cell",
+  "cap trigger rests on an explicit failure",
   "captured stderr byte authority",
   "captured stream byte authority",
   "carriage returns stripped",
@@ -7077,6 +7246,7 @@ export const ACCOUNTED_GUARDS = [
   "escaped key resolved before it is a key",
   "escaping link keeps its own bytes",
   "every asserted graph fact names a derivation",
+  "every cap trigger is preserved, not the first",
   "every directory entry is charged to the scan budget",
   "every invariant family is recorded on both sides",
   "every kind of evidence is required by name",
@@ -7096,6 +7266,7 @@ export const ACCOUNTED_GUARDS = [
   "execution plan cycle detection",
   "explicit keys are keys",
   "false completion cap",
+  "false completion needs the completion claim",
   "fingerprint compare",
   "flow-mapping uses",
   "full-SHA action reference",
@@ -7269,6 +7440,7 @@ export const ACCOUNTED_GUARDS = [
   "the card carries the delegated-artifact rows",
   "the card drops no facet",
   "the card quotes the stored identity lines",
+  "the ceilings a run earned reach the result it publishes",
   "the channel decides the source",
   "the claim is compared like the numbers are",
   "the claim stage reads the boundary",
@@ -7296,6 +7468,7 @@ export const ACCOUNTED_GUARDS = [
   "the device nodes are the policy's, not the renderer's",
   "the digest covers the rules applied outside the allowlist",
   "the digest is recomputed over the policy actually applied",
+  "the domain a ceiling is filed under is the contract's",
   "the emitter attributes an invocation to the stage AOS invoked it for",
   "the escaped descendant is proved confined",
   "the evidence a row must cite follows its level, not its label",
@@ -7308,6 +7481,7 @@ export const ACCOUNTED_GUARDS = [
   "the freeze copies no link",
   "the fresh observation's derivations are the ones checked",
   "the group sweep is recorded from the group",
+  "the headline oracle names the ceiling every surface must carry",
   "the identity aggregation is recomputed from its agents",
   "the identity record is published field by field",
   "the identity record names the agents that ran",
@@ -7386,9 +7560,11 @@ export const ACCOUNTED_GUARDS = [
   "the staged secrets reach the scrubber",
   "the store refuses an operator event type from another producer",
   "the store requires an attestation for an operator event",
+  "the stored ceiling is checked against the rows it rests on",
   "the stored record is bound, not only the event on it",
   "the table shows the decision and not the label",
   "the teardown observation reports what cleanup returned",
+  "the terminal prints the ceiling the other renderers print",
   "the total invocation bound is compared",
   "the transcript recogniser knows the configured workspaces root",
   "the transcript scan spends a bounded budget",
