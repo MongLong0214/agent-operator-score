@@ -2374,11 +2374,65 @@ export const GUARDS = [
     name: "runs are not disowned by a pull request nobody could read"
   },
   {
+    guard: "an unavailable permission check is a distinct author state",
+    reason: "a 502 must reach the record as NOT_CHECKED with its call and status; passing the failure object through makes it look like an untrusted author again",
+    file: "lib/github-state.mjs",
+    from: "      source.author_trusted = access?.answer === NOT_CHECKED ? NOT_CHECKED : access;",
+    to: "      source.author_trusted = access;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a transient write-access failure is not an untrusted author"
+  },
+  {
+    guard: "an unavailable permission check is not cached",
+    reason: "a transient failure must be asked again, or a bad minute becomes the permanent answer for every record by the same author",
+    file: "lib/github-state.mjs",
+    from: "    return { answer: NOT_CHECKED, call, status: error?.status ?? null };",
+    to: "    cache.set(login, false); return { answer: NOT_CHECKED, call, status: error?.status ?? null };",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a transient permission failure is retried before the author is judged"
+  },
+  {
+    guard: "a 404 permission denial is cached",
+    reason: "a repository's 404 is a settled no-access answer, so repeated records by that author must reuse it rather than widening the live request surface",
+    file: "lib/github-state.mjs",
+    from: "      cache.set(login, false);",
+    to: "",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a 404 permission answer is a cached denial"
+  },
+  {
+    guard: "a 404 permission response is a denial, not an unavailable answer",
+    reason: "treating every exception as unreachable would let a known non-collaborator hide in the unavailable state rather than being rejected for no write access",
+    file: "lib/github-state.mjs",
+    from: "    if (error?.status === 404) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a 404 permission answer is a cached denial"
+  },
+  {
+    guard: "a confirmed author resists an unavailable overwrite",
+    reason: "NOT_CHECKED is truthy, so truthiness would let a newer unavailable source overwrite a confirmed record; only a strictly true author may do that",
+    file: "lib/github-state.mjs",
+    from: "      if (found?.author_trusted === true && trusted !== true) {",
+    to: "      if (found?.author_trusted === true && !trusted) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an unavailable author cannot overwrite a confirmed author"
+  },
+  {
+    guard: "an unavailable author is reported as unavailable",
+    reason: "a permission request that received no answer is still fail-closed, but calling it an untrusted author reports a network failure as a fact about the author",
+    file: "lib/execution-plan.mjs",
+    from: "    if (record && record.author_trusted === NOT_CHECKED) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a transient write-access failure is not an untrusted author"
+  },
+  {
     guard: "write access asked of the repository",
     reason: "a collaborator with the read or triage role would have attested to completed work",
     file: "lib/github-state.mjs",
-    from: "    allowed = WRITE_PERMISSIONS.has(body.permission);",
-    to: "    allowed = true;",
+    from: "    const allowed = WRITE_PERMISSIONS.has(body.permission);",
+    to: "    const allowed = true;",
     test: "tests/product/execution-plan.test.mjs",
     name: "write access is asked of the repository, not inferred from an association"
   },
@@ -7076,6 +7130,8 @@ export const ACCOUNTED_GUARDS = [
   "a .NET startup hook is a pre-main hook like the rest",
   "a /proc listing is not a list of survivors",
   "a 404 is an answer and a 502 is not",
+  "a 404 permission denial is cached",
+  "a 404 permission response is a denial, not an unavailable answer",
   "a NOT_YET deletion log cites no boundary observations",
   "a NOT_YET deletion log may not list deletions",
   "a SUPERSEDED accounting is compared against the commits the collector derived",
@@ -7108,6 +7164,7 @@ export const ACCOUNTED_GUARDS = [
   "a completed log cites both boundary observation digests",
   "a configuration directory with no declared file is not a login",
   "a confirmation nobody could check is not a true one",
+  "a confirmed author resists an unavailable overwrite",
   "a contradicted model blocks the candidate outright",
   "a contradicting transcript still leaves the cohort",
   "a copy taken while the tree moved is not a snapshot",
@@ -7319,6 +7376,9 @@ export const ACCOUNTED_GUARDS = [
   "an overlap the requirement does not permit is not an adequate route",
   "an owner AOS cannot judge is not delegation the operator got wrong",
   "an unanswered checkpoint mints nothing",
+  "an unavailable author is reported as unavailable",
+  "an unavailable permission check is a distinct author state",
+  "an unavailable permission check is not cached",
   "an unexplained holder of the run's directories withholds",
   "an unidentified runtime cannot carry the lane",
   "an unknown capability source keeps no abilities",

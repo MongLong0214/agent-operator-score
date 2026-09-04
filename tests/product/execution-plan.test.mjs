@@ -625,6 +625,42 @@ test("a record from someone without write access is not an attestation", async (
   assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-untrusted-author"));
 });
 
+test("a transient write-access failure is not an untrusted author", async () => {
+  const { fetchGithubState } = await import("../../lib/github-state.mjs");
+  const completion = { schema: "aos-issue-completion.v1", issue: 628, final_sha: "a".repeat(40), pr: 1, ci_run_ids: [1], verdict: "PASS", evidence: {} };
+  const doc = { repository: "owner/repo", integration_branch: "dev", issues: [{ issue: 628 }], excluded_issues: [], epic_body_marker: "", body_marker: "" };
+  const get = async (path) => {
+    if (path.includes("/permission")) {
+      const error = new Error(`GitHub ${path} -> 502`);
+      error.status = 502;
+      throw error;
+    }
+    if (path.endsWith("/issues/628")) {
+      return { body: { number: 628, title: "legitimate record", state: "closed", labels: [], body: "```json\n" + JSON.stringify(completion) + "\n```", user: { login: "legitimate-writer" }, comments: 0 } };
+    }
+    if (/\/issues\/(579|580|581)$/u.test(path)) {
+      const error = new Error(`GitHub ${path} -> 404`);
+      error.status = 404;
+      throw error;
+    }
+    throw new Error(`unexpected ${path}`);
+  };
+
+  const snapshot = await fetchGithubState(doc, { get, verify: false });
+  const record = snapshot.issues[0].close_evidence;
+  assert.equal(record.author_trusted, NOT_CHECKED, "a 502 on the permission call was recorded as no write access");
+  assert.deepEqual(record.author_trust_unresolved, {
+    call: "/repos/owner/repo/collaborators/legitimate-writer/permission",
+    status: 502
+  });
+
+  const audit = auditCloseEvidence(doc, snapshot, { live: true });
+  const names = audit.failures.map((one) => one.check);
+  assert.deepEqual(names, ["close-evidence-author-unchecked"], `an unavailable permission lookup was reported as ${names.join(", ") || "nothing"}`);
+  assert.match(audit.failures[0].detail, /collaborators\/legitimate-writer\/permission -> 502/u, "the unavailable result lost the failed call or HTTP status");
+  assert.equal(audit.ok, false, "an author whose access was not checked must remain fail-closed");
+});
+
 test("an outsider cannot overwrite a maintainer's record, and the attempt is recorded", async () => {
   const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
   const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
@@ -642,6 +678,18 @@ test("an outsider cannot overwrite a maintainer's record, and the attempt is rec
     { body: block("HOLD"), author_trusted: true, author: "reviewer" }
   ]);
   assert.equal(corrected.verdict, "HOLD");
+});
+
+test("an unavailable author cannot overwrite a confirmed author", async () => {
+  const { parseCompletionRecord } = await import("../../lib/github-state.mjs");
+  const block = (verdict) => "```json\n" + JSON.stringify({ schema: "aos-issue-completion.v1", issue: 567, verdict }) + "\n```";
+
+  const held = parseCompletionRecord([
+    { body: block("PASS"), author_trusted: true, author: "maintainer" },
+    { body: block("HOLD"), author_trusted: NOT_CHECKED, author: "unavailable-writer", author_trust_unresolved: { call: "/permission", status: 502 } }
+  ]);
+  assert.equal(held.verdict, "PASS", "a truthy unavailable state overwrote a confirmed author");
+  assert.equal(held.contested_by, "unavailable-writer");
 });
 
 // --- the cycle diagnostic names every edge someone would have to remove ---------------------
@@ -775,9 +823,59 @@ test("write access is asked of the repository, not inferred from an association"
   // A collaborator with the read or triage role would have attested to completed work.
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("triage") }), false);
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("read") }), false);
-  // "Could not establish" is not "has it".
-  assert.equal(await hasWriteAccess("o/r", "a", { get: async () => { throw new Error("403"); } }), false);
+  // A 403 does not answer whether the person has write access. It is not a denial, and it is not
+  // a pass: callers must distinguish it from both with a strict comparison.
+  const unavailable = await hasWriteAccess("o/r", "a", {
+    get: async () => {
+      const error = new Error("403");
+      error.status = 403;
+      throw error;
+    }
+  });
+  assert.equal(unavailable.answer, NOT_CHECKED);
+  assert.equal(unavailable.status, 403);
   assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
+});
+
+test("a 404 permission answer is a cached denial", async () => {
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const cache = new Map();
+  let calls = 0;
+  const get = async () => {
+    calls += 1;
+    const error = new Error("GitHub permission lookup -> 404");
+    error.status = 404;
+    throw error;
+  };
+
+  assert.equal(await hasWriteAccess("o/r", "no-access", { get, cache }), false, "a 404 was filed as unavailable rather than denied");
+  assert.equal(await hasWriteAccess("o/r", "no-access", { get, cache }), false);
+  assert.equal(calls, 1, "a settled no-access answer was not cached");
+});
+
+test("a transient permission failure is retried before the author is judged", async () => {
+  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const cache = new Map();
+  let calls = 0;
+  const get = async () => {
+    calls += 1;
+    if (calls === 1) {
+      const error = new Error("GitHub permission lookup -> 502");
+      error.status = 502;
+      throw error;
+    }
+    return { body: { permission: "write" } };
+  };
+
+  const unavailable = await hasWriteAccess("o/r", "legitimate-writer", { get, cache });
+  assert.equal(unavailable.answer, NOT_CHECKED, "the first 502 was filed as a settled no-access answer");
+  assert.equal(unavailable.status, 502);
+  assert.match(unavailable.call, /collaborators\/legitimate-writer\/permission$/u);
+
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true, "the retry did not reach the later write answer");
+  assert.equal(calls, 2, "the first unavailable answer was cached");
+  assert.equal(await hasWriteAccess("o/r", "legitimate-writer", { get, cache }), true);
+  assert.equal(calls, 2, "the settled write answer was not cached");
 });
 
 test("comments are read until GitHub says there is no next page, and a runaway is refused", async () => {
