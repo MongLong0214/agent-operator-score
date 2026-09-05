@@ -35,12 +35,12 @@ export const GUARDS = [
   },
   {
     guard: "form binding task identity is recomputed",
-    reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the seed-specific tree it is actually grading; otherwise seed A can be paired with seed B's oracle",
+    reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the prepared form; otherwise deleted or changed task inputs are graded as though they remained intact",
     file: "lib/suite.mjs",
     from: "    taskTreeMatch = missingTaskInputs.length === 0 && taskInputTreeDigest(family, root) === expected.task_tree_digest;",
     to: "    taskTreeMatch = missingTaskInputs.length === 0 && true;",
     test: "tests/product/suite-seed.test.mjs",
-    name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+    name: "missing task inputs and tampered task inputs stay distinct binding mismatches"
   },
   {
     guard: "a task/oracle seed mix withholds rather than grading the unrelated task",
