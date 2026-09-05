@@ -174,6 +174,37 @@ test("a form binding is recomputed from task input bytes and refuses a task/orac
   }
 });
 
+test("FAM-1 keeps its fixed operator scope contract across seeded forms", async () => {
+  // Seed 2 used to ask for one seeded must-have and one seeded non-goal while the grader still
+  // required the complete product contract. This is the smallest answer that follows that brief.
+  const root = mkdtempSync(join(tmpdir(), "aos-fam1-fixed-contract-"));
+  try {
+    const prepared = prepareScenario("FAM-1", root, "2");
+    assert.match(prepared.task, /multi-agent coordination and macOS\/Linux support/);
+    assert.match(prepared.task, /Windows support and a SaaS control plane/);
+    writeFileSync(join(root, "contract.json"), `${JSON.stringify({
+      goal: "assess how a human operator uses one or more agents",
+      in_scope: ["multi-agent coordination", "macOS/Linux support"],
+      out_of_scope: ["Windows support", "a SaaS control plane"],
+      clarifications: [
+        { item: "source", type: "fact", action: "inspect the source" },
+        { item: "trade-off", type: "human_decision", action: "ask the human" }
+      ],
+      acceptance: [
+        { criterion: "one", evidence: prepared.params.acceptance_evidence },
+        { criterion: "two", evidence: prepared.params.acceptance_evidence },
+        { criterion: "three", evidence: prepared.params.acceptance_evidence }
+      ],
+      stop_condition: prepared.params.stop_condition
+    })}\n`);
+    const graded = await gradeScenario("FAM-1", root, { baseline: prepared.baseline, params: prepared.params });
+    assert.equal(graded.metrics.M01, 1, "the task's verbatim product goal must satisfy M01");
+    assert.equal(graded.metrics.M02, 1, "the task's stated complete scope must satisfy M02");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a missing or incomplete form binding withholds instead of grading", async () => {
   const root = mkdtempSync(join(tmpdir(), "aos-form-binding-incomplete-"));
   try {
