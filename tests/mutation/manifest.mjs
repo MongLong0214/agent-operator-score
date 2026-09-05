@@ -7578,7 +7578,7 @@ export const GUARDS = [
     guard: "observed_at must be a canonical, in-schema timestamp",
     reason: "observed_at claims to date an observation and had no check on it at all; a record dated at the Unix epoch passed the gate exactly like a real one, so this binds it to the canonical ISO-8601 shape this module's own new Date().toISOString() always produces and to a floor no earlier than this schema could have shipped",
     file: "lib/confinement.mjs",
-    from: "  if (!observedAtCanonical || observedAtMs < Date.parse(STRICT_CANARY_SCHEMA_FLOOR)) {",
+    from: "  if (!observedAtCanonical || record.observed_at < STRICT_CANARY_SCHEMA_FLOOR) {",
     to: "  if (false) {",
     test: "tests/product/strict-canary-evidence.test.mjs",
     name: "a record dated at the Unix epoch is rejected, not silently accepted"
