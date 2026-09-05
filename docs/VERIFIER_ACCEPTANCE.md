@@ -22,7 +22,7 @@ unsupported claims) and not its pair (accept supported ones). This table is the 
 | A2 | current, probe ran and exhibited nothing (exit 0, 0 answers) | AOS observed a clean run with no exhibition | PASS as a record; capability question WITHHELD |
 | A3 | current, probe cut off mid-trial (exit != 0, N of 8 answered) | AOS observed an incomplete trial | PASS as a record; WITHHELD; retryable |
 | A4 | current, runtime refused before spawn | AOS observed its own refusal to spawn | PASS as a record; WITHHELD; **not** retryable by probing |
-| A5 | previous probe generation (v2), internally consistent | written by a build that no longer exists | PASS, **named as superseded** — never "forged" |
+| A5 | previous probe generation (v2), internally consistent | written by a build that no longer exists | ACCEPT as a record, **named as superseded**, and report its claims **UNVERIFIABLE-by-this-build** — never "forged", and never "verified" |
 | A6 | no probe at all, `aos-known` source | the default posture | PASS; capability question WITHHELD |
 
 A2, A3 and A4 are three different facts and must stay distinguishable in the record. A4 is the one
@@ -41,6 +41,31 @@ that must not be called retryable: probing again cannot fix a runtime that will 
 | R7 | an estimate inserted into a withheld `C2.RF.01` | claims a number the cell withheld |
 | R8 | O4 / Outcome Index / Composite flipped to issued alone | claims issuance without its predicate |
 | R9 | `NO_SCORABLE_OWNER` reason deleted | removes the record of why, leaving a bare withhold |
+
+## A5 x R5 — the row this table was missing
+
+A superseded record that has been **tampered with** is indistinguishable from an honest one, because
+this build cannot recompute the bindings of a generation it no longer speaks. Round 2 found exactly
+that: with A5 accepting superseded records, a superseded probe could authorize its own persisted
+status and completion claim after editing.
+
+That is my omission, not the implementer's. The table had A5 and R5 and never said what happens where
+they meet.
+
+The answer is the discipline this release has already applied three times — **verified / contradicted
+/ not-checked** — one level up:
+
+    a superseded record is NOT-CHECKED, never VERIFIED
+
+So it is accepted as a record and named as superseded, and **none of its claims are endorsed**. It
+cannot authorize a status, a completion, or a scored capability, because nothing this build can run
+supports them. Tampering with it changes nothing, which is the point: a record that authorizes
+nothing cannot be forged into authorizing something.
+
+This is not a rejection. A superseded record is still readable, still reportable, and still says what
+it says — it simply does not carry authority into a build that cannot check it. "We cannot check
+this" and "this is a forgery" stay different sentences, and so do "we cannot check this" and "this is
+fine".
 
 ## The distinction that decides every row
 

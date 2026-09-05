@@ -138,7 +138,7 @@ test("forged probe and delegation records are rejected before they authorize con
   }
 });
 
-test("A5: an honest superseded v2 cut-off probe is accepted and named", () => {
+test("A5: a superseded v2 probe is named and not-checked, however it reports its outcome", () => {
   const { cwd, runId, boundary, recordPath, resultPath } = assessedWithProbe();
   try {
     const record = JSON.parse(readFileSync(recordPath, "utf8"));
@@ -177,9 +177,35 @@ test("A5: an honest superseded v2 cut-off probe is accepted and named", () => {
     bindCapabilityToStoredRun(record, result, historicalCapability);
     writeStoredRun(recordPath, resultPath, record, rebuildStoredResult(result, boundary));
 
-    const verified = assertAccepted(cwd, runId);
-    assert.match(verified.stdout, /PASS\tprobe-record\tcapability probe for solo uses aos-capability-probe\.v2 predates this build's/u, verified.stdout);
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.equal(verified.status, 0, verified.stdout);
+    assert.doesNotMatch(verified.stdout, /FAIL/u, verified.stdout);
+    assert.match(verified.stdout, /NOT-CHECKED\tprobe-record\tcapability probe for solo uses aos-capability-probe\.v2 predates this build's.*UNVERIFIABLE-by-this-build/u, verified.stdout);
+    for (const check of ["routing-record", "delegation-record", "recompute"]) {
+      assert.match(verified.stdout, new RegExp(`NOT-CHECKED\\t${check}\\t.*UNVERIFIABLE-by-this-build`, "u"), verified.stdout);
+    }
     assert.equal(/capability probe outcome .* does not follow|routing capability record .* does not follow/u.test(verified.stdout), false, verified.stdout);
+    const verifiedJson = run(cwd, ["verify", "--run", runId, "--json"]);
+    assert.equal(verifiedJson.status, 0, verifiedJson.stdout);
+    const notCheckedRows = JSON.parse(verifiedJson.stdout).checks
+      .filter((row) => ["routing-record", "probe-record", "delegation-record", "recompute"].includes(row.check));
+    assert.equal(notCheckedRows.length, 4, verifiedJson.stdout);
+    for (const row of notCheckedRows) assert.equal(row.resolution, "not-checked", verifiedJson.stdout);
+
+    // A v2 probe's current-looking status and completion fields are claims from an instrument this
+    // build cannot re-run. The verifier therefore returns the same answer after they are edited:
+    // neither value is a source of completion or scoring authority here.
+    const tampered = JSON.parse(readFileSync(recordPath, "utf8"));
+    tampered.capability_probes[0].status = "ANSWERED";
+    tampered.capability_probes[0].invocation.completed = true;
+    writeStoredRun(recordPath, resultPath, tampered, result);
+    const afterTamper = run(cwd, ["verify", "--run", runId]);
+    assert.equal(afterTamper.status, verified.status, afterTamper.stdout);
+    assert.deepEqual(
+      afterTamper.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
+      verified.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
+      afterTamper.stdout
+    );
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

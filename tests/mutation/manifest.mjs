@@ -7200,7 +7200,7 @@ export const GUARDS = [
     guard: "stored routing evidence is rebound during run verification",
     reason: "a stored routing subtree is evidence, not its own certificate: changing its source, basis, observable or minimum must break the digests and evidence binding that verify reads",
     file: "lib/cli.mjs",
-    from: "    const routingProblems = routingBindingProblems(record, result);",
+    from: "    const routingProblems = supersededProbeClaims === null ? routingBindingProblems(record, result) : [];",
     to: "    const routingProblems = [];",
     test: "tests/product/verify-run.test.mjs",
     name: "a forged routing record is rejected before it can certify M09"
@@ -7230,7 +7230,16 @@ export const GUARDS = [
     from: "    const generation = capabilityProbeGeneration(probe);",
     to: "    const generation = { generation: \"CURRENT\" };",
     test: "tests/product/verify-run.test.mjs",
-    name: "A5: an honest superseded v2 cut-off probe is accepted and named"
+    name: "A5: a superseded v2 probe is named and not-checked, however it reports its outcome"
+  },
+  {
+    guard: "a superseded probe claim is not endorsed",
+    reason: "a recognised older probe cannot be recomputed by this build, so treating its stored completion outcome as verified would let a tampered record obtain the authority of the current instrument",
+    file: "lib/cli.mjs",
+    from: "    const probeState = supersededProbeClaims === null ? consumerStateProblems.probe.length === 0 : CHECK_NOT_CHECKED;",
+    to: "    const probeState = consumerStateProblems.probe.length === 0;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A5: a superseded v2 probe is named and not-checked, however it reports its outcome"
   },
   {
     guard: "a spawn refusal rebinds from AOS's safe pre-spawn class",
@@ -7594,6 +7603,7 @@ export const ACCOUNTED_GUARDS = [
   "a stored result may not elevate its own claim",
   "a subcheck verdict is one of three states, never rounded",
   "a superseded generation stays readable enough to be named",
+  "a superseded probe claim is not endorsed",
   "a superseded probe generation is named before current-generation rebinding",
   "a surface carries the rows it says it averaged",
   "a symlinked staging source is refused by name",
