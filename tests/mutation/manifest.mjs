@@ -6632,12 +6632,12 @@ export const GUARDS = [
   },
   {
     guard: "a completed reliance trace is schema-valid before append",
-    reason: "an append-only journal cannot retain a completed sequence that its own v4 reader will reject, because no later write can repair the invalid record",
+    reason: "an append-only journal cannot retain a completed sequence that its own v5 reader will reject, because no later write can repair the invalid record",
     file: "lib/reliance.mjs",
     from: '  if (!checked.ok) failure("AOS_RELIANCE_EVENT_SCHEMA_INVALID", checked.errors.map((error) => `${error.path} ${error.message}`).join("; "));',
     to: "  if (false) failure(\"unreachable\");",
     test: "tests/product/reliance.test.mjs",
-    name: "append validates completed v4 events before the append-only journal records them"
+    name: "append validates completed v5 events before the append-only journal records them"
   },
   {
     guard: "a reliance append reuses its verified prefix",
@@ -7530,13 +7530,13 @@ export const GUARDS = [
     name: "reachable relay challenge and supplied response do not read terminal input"
   },
   {
-    guard: "reliance source has a new schema identity",
-    reason: "requiring source under the v3 identity makes source-less v3 records unselectable by schema id; the source-bearing projection must remain a distinct v4 generation",
-    file: "reliance-events/aos-reliance-event.v4.schema.json",
-    from: "    \"source\",",
+    guard: "reliance provenance has a new schema identity",
+    reason: "the v4 source alone did not show a reader whether a turn was direct HIGH evidence or relay-attested MEDIUM evidence; the complete authority projection must remain a distinct v5 generation",
+    file: "reliance-events/aos-reliance-event.v5.schema.json",
+    from: "    \"authority\",\n    \"provenance\",\n    \"confidence\",",
     to: "",
     test: "tests/product/reliance.test.mjs",
-    name: "reliance source is a new named schema generation"
+    name: "reliance provenance projection is a new named schema generation"
   }
 ];
 
@@ -8150,7 +8150,7 @@ export const ACCOUNTED_GUARDS = [
   "relay response-store refusal is not a contradiction",
   "relay source is observed by producer",
   "relay supplied responses never prompt a terminal",
-  "reliance source has a new schema identity",
+  "reliance provenance has a new schema identity",
   "resolver ownership",
   "restricted readiness",
   "reviewed action allowlist",
