@@ -7200,7 +7200,7 @@ export const GUARDS = [
     guard: "stored routing evidence is rebound during run verification",
     reason: "a stored routing subtree is evidence, not its own certificate: changing its source, basis, observable or minimum must break the digests and evidence binding that verify reads",
     file: "lib/cli.mjs",
-    from: "    const routingProblems = supersededProbeClaims === null ? routingBindingProblems(record, result) : [];",
+    from: "    const routingProblems = routingBindingProblems(record, result);",
     to: "    const routingProblems = [];",
     test: "tests/product/verify-run.test.mjs",
     name: "a forged routing record is rejected before it can certify M09"
@@ -7236,10 +7236,19 @@ export const GUARDS = [
     guard: "a superseded probe claim is not endorsed",
     reason: "a recognised older probe cannot be recomputed by this build, so treating its stored completion outcome as verified would let a tampered record obtain the authority of the current instrument",
     file: "lib/cli.mjs",
-    from: "    const probeState = supersededProbeClaims === null ? consumerStateProblems.probe.length === 0 : CHECK_NOT_CHECKED;",
-    to: "    const probeState = consumerStateProblems.probe.length === 0;",
+    from: "    const probeState = verificationClaimState(consumerStateProblems.probe, supersededProbeClaims !== null);",
+    to: "    const probeState = verificationClaimState(consumerStateProblems.probe);",
     test: "tests/product/verify-run.test.mjs",
     name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
+  },
+  {
+    guard: "a superseded sibling cannot mask a current contradiction",
+    reason: "a recognised older probe is not evidence against a current probe, so its not-checked state must never overwrite an independently recomputed forgery",
+    file: "lib/cli.mjs",
+    from: "  return problems.length > 0 ? false : notChecked ? CHECK_NOT_CHECKED : true;",
+    to: "  return notChecked ? CHECK_NOT_CHECKED : problems.length > 0 ? false : true;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a superseded sibling cannot hide a forged current probe"
   },
   {
     guard: "a not-checked verification is unresolved, never verified",
@@ -7615,6 +7624,7 @@ export const ACCOUNTED_GUARDS = [
   "a superseded generation stays readable enough to be named",
   "a superseded probe claim is not endorsed",
   "a superseded probe generation is named before current-generation rebinding",
+  "a superseded sibling cannot mask a current contradiction",
   "a surface carries the rows it says it averaged",
   "a symlinked staging source is refused by name",
   "a tag's ref object is part of its identity",

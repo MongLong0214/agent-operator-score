@@ -96,6 +96,31 @@ const rebuildStoredResult = (result, boundary) => {
   });
 };
 
+// This record is intentionally a sibling rather than a replacement for the current probe. The
+// verifier can name its v2 claims but cannot recompute them; the current `solo` record remains a
+// separate claim that this build must still check.
+const supersededProbeSibling = (current) => ({
+  schema_id: "aos-capability-probe.v2",
+  verifier_id: "aos-capability-probe.v2",
+  probe_id: `${current.probe_id}-v2`,
+  agent_id: "legacy",
+  status: current.status,
+  reason: current.reason,
+  started_at: current.started_at,
+  observations: current.observations,
+  exhibited: current.exhibited,
+  invocation: current.invocation === null ? null : {
+    completed: current.invocation.completed,
+    exit_code: current.invocation.exit_code,
+    signal: current.invocation.signal,
+    timed_out: current.invocation.timed_out,
+    interrupted: current.invocation.interrupted,
+    survivor: current.invocation.survivor,
+    leaked_descendants: current.invocation.leaked_descendants,
+    stdout_digest: current.invocation.stdout_digest
+  }
+});
+
 test("a forged routing record is rejected before it can certify M09", () => {
   const { cwd, runId, recordPath } = assessed();
   try {
@@ -224,6 +249,44 @@ test("A5: a superseded v2 probe stays readable but leaves the run unresolved", (
     assert.equal(contradictedReport.ok, false, contradictedJson.stdout);
     assert.equal(contradictedReport.checks.find((row) => row.check === "confinement-record").resolution, "contradicted", contradictedJson.stdout);
     assert.equal(contradictedReport.checks.find((row) => row.check === "probe-record").resolution, "not-checked", contradictedJson.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a superseded sibling leaves an honest current probe unresolved", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    record.capability_probes.unshift(supersededProbeSibling(record.capability_probes[0]));
+    writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+
+    const unresolved = run(cwd, ["verify", "--run", runId, "--json"], 4);
+    const report = JSON.parse(unresolved.stdout);
+    assert.equal(report.state, "unresolved", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "probe-record").resolution, "not-checked", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "routing-record").resolution, "verified", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "delegation-record").resolution, "verified", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "recompute").resolution, "verified", unresolved.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a superseded sibling cannot hide a forged current probe", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    record.capability_probes.unshift(supersededProbeSibling(record.capability_probes[0]));
+    record.capability_probes.find((probe) => probe.agent_id === "solo").invocation.completed = true;
+    writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+
+    const contradicted = run(cwd, ["verify", "--run", runId, "--json"], 5);
+    const report = JSON.parse(contradicted.stdout);
+    assert.equal(report.state, "contradicted", contradicted.stdout);
+    const probe = report.checks.find((row) => row.check === "probe-record");
+    assert.equal(probe.resolution, "contradicted", contradicted.stdout);
+    assert.match(probe.detail, /capability probe outcome for solo does not follow/u, contradicted.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

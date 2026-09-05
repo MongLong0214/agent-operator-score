@@ -233,6 +233,35 @@ test("--help after a subcommand prints usage and runs nothing", () => {
   }
 });
 
+test("verify exit states are documented in help and every README", () => {
+  const home = mkdtempSync(join(tmpdir(), "aos-verify-help-home-"));
+  const expected = [
+    /0\s+verified\s+every required claim was established/u,
+    /4\s+unresolved\s+nothing was refuted, and at least one required claim could not be checked/u,
+    /5\s+contradicted\s+at least one required claim was refuted by recomputation/u,
+    /Exit code 4 is new and covers a state that previously exited 0/u,
+    /!== 0/u,
+    /=== 5/u
+  ];
+  try {
+    const help = aosIn(home, home, ["verify", "--help"]);
+    assert.equal(help.status, 0, help.stderr);
+    for (const phrase of expected) assert.match(help.stdout, phrase, `verify --help omits ${phrase}`);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+
+  for (const file of READMES) {
+    const text = readFileSync(join(root, file), "utf8");
+    assert.match(text, /`aos verify --run <id>`/u, `${file} does not name the command whose status it documents`);
+    for (const state of ["verified", "unresolved", "contradicted"]) {
+      assert.match(text, new RegExp(`\\|\\s*[045]\\s*\\|\\s*\`${state}\``, "u"), `${file} omits ${state}`);
+    }
+    assert.match(text, /!== 0/u, `${file} does not explain the nonzero-compatible consumer`);
+    assert.match(text, /=== 5/u, `${file} does not explain the contradicted-only consumer`);
+  }
+});
+
 // The message listed two of the three roots `findSessions` walks, so an operator whose only
 // transcripts were Grok's was told there was nothing to review -- by the command whose whole job is
 // to find their transcripts.

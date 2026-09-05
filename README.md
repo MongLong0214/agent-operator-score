@@ -440,6 +440,19 @@ npm run smoke:package    # pack and exercise the user flow elsewhere
 CI runs the test suite on Ubuntu with Node 22 and 24 and on macOS with Node 24, plus separate
 `verify:mvp`, mutation, and package-smoke jobs for Ubuntu and macOS.
 
+### `verify --run` exit codes
+
+`aos verify --run <id>` reports one machine-readable verification state:
+
+| Code | State | Meaning |
+|---:|---|---|
+| 0 | `verified` | Every required claim was established. |
+| 4 | `unresolved` | Nothing was refuted, and at least one required claim could not be checked. |
+| 5 | `contradicted` | At least one required claim was refuted by recomputation. |
+
+Exit code 4 is new and covers a state that previously exited 0. Consumers testing `!== 0` are
+unaffected; consumers testing `=== 5` must also handle the unresolved state.
+
 | Document | Purpose |
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | What has not been established and what every result is bound to |

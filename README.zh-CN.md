@@ -408,6 +408,19 @@ npm run smoke:package    # 打包到其他位置，验证真实使用流程
 CI 会在 Ubuntu 的 Node 22、24 与 macOS 的 Node 24 上运行全部测试，并单独运行 `verify:mvp`、
 变异测试，以及 Ubuntu、macOS 的包冒烟测试。
 
+### `verify --run` 退出代码
+
+`aos verify --run <id>` 会返回一种机器可读的验证状态：
+
+| 代码 | 状态 | 含义 |
+|---:|---|---|
+| 0 | `verified` | 已确立每一项必需主张。 |
+| 4 | `unresolved` | 没有主张被反驳，但至少一项必需主张无法检查。 |
+| 5 | `contradicted` | 至少一项必需主张被重新计算所反驳。 |
+
+退出代码 4 是新增代码，涵盖以前会以 0 退出的状态。检查 `!== 0` 的消费者不受影响；只检查
+`=== 5` 的消费者还必须处理 `unresolved` 状态。
+
 | 文档 | 内容 |
 |---|---|
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | 尚未确立的结论，以及每项结果受哪些条件约束 |
