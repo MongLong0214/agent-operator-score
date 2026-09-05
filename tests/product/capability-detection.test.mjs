@@ -280,7 +280,7 @@ test("a probe that got no trial is unknown, and unknown never lists an ability",
     [null, "the probe never invoked the runtime"],
     [{ timed_out: true, exit_code: null }, "the probe invocation timed out"],
     [{ interrupted: true, exit_code: null }, "the probe invocation was interrupted"],
-    [{ error: "AOS_RUNTIME_IDENTITY_UNVERIFIED", exit_code: null }, "the probe could not start the runtime"]
+    [{ aos_refusal_class: "SPAWN_REFUSED", exit_code: null }, "AOS refused to spawn the runtime before the probe started"]
   ]) {
     const probe = capabilityProbeRecord({ agent_id: "unreachable", probe_id: "probe-2", observations: none, invocation });
     assert.equal(probe.status, "INDETERMINATE", expected);
@@ -353,7 +353,7 @@ test("the probe record's schema identity moves when the record's meaning does", 
   // id stayed `aos-capability-probe.v1` -- so two records with different evidentiary meanings shared
   // one identity, and `lib/cli.mjs` persists both into `record.json`. The module states the rule it
   // was breaking: "A field moving means a new schema id."
-  assert.equal(CAPABILITY_PROBE_SCHEMA, "aos-capability-probe.v3");
+  assert.equal(CAPABILITY_PROBE_SCHEMA, "aos-capability-probe.v4");
   // Bound, not merely equal by coincidence: this module is the only thing that writes this record
   // and the only thing that decides it, so a verifier that kept its old name while the record moved
   // would claim the authority had not changed when its instrument had.
@@ -366,7 +366,7 @@ test("the probe record's schema identity moves when the record's meaning does", 
 
   // The superseded generation is kept and named, not dropped: a record from the earlier build reads
   // as a version this build has heard of, with a sentence true of that record.
-  assert.deepEqual([...CAPABILITY_PROBE_GENERATIONS], ["aos-capability-probe.v1", "aos-capability-probe.v2", "aos-capability-probe.v3"]);
+  assert.deepEqual([...CAPABILITY_PROBE_GENERATIONS], ["aos-capability-probe.v1", "aos-capability-probe.v2", "aos-capability-probe.v3", "aos-capability-probe.v4"]);
   const old = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v1" });
   assert.equal(old.generation, "SUPERSEDED");
   // The sentence has to say what is different about *that* record, so a reader knows which of the
@@ -376,6 +376,9 @@ test("the probe record's schema identity moves when the record's meaning does", 
   const prior = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v2" });
   assert.equal(prior.generation, "SUPERSEDED");
   assert.match(prior.predates, /before retryability, the AOS-observed blocker class/u);
+  const formerlyCurrent = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v3" });
+  assert.equal(formerlyCurrent.generation, "SUPERSEDED");
+  assert.match(formerlyCurrent.predates, /safe pre-spawn refusal class/u);
   assert.equal(CAPABILITY_PROBE_PREDATES[CAPABILITY_PROBE_SCHEMA], undefined, "the current generation was described as superseding itself");
 
   assert.equal(capabilityProbeGeneration(emitted).generation, "CURRENT");

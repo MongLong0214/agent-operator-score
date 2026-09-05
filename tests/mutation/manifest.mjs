@@ -7224,6 +7224,24 @@ export const GUARDS = [
     name: "a clean silent probe and a cut-off probe publish different retry signals without provider output"
   },
   {
+    guard: "a superseded probe generation is named before current-generation rebinding",
+    reason: "a v2 probe has a different verifier identity and lacks v3's disposition fields, so binding it as current turns an honest stored artifact into an accusation of forgery",
+    file: "lib/cli.mjs",
+    from: "    const generation = capabilityProbeGeneration(probe);",
+    to: "    const generation = { generation: \"CURRENT\" };",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A5: an honest superseded v2 cut-off probe is accepted and named"
+  },
+  {
+    guard: "a spawn refusal rebinds from AOS's safe pre-spawn class",
+    reason: "the throw that stopped a spawn is not persisted, so deleting AOS's own class makes an honest refusal rebound as INCOMPLETE and leaks no fact that can distinguish it",
+    file: "lib/capability-probe.mjs",
+    from: "  if (isAosSpawnRefusal(invocation)) {\n    return { retryable: false, blocker_class: \"SPAWN_REFUSED\", provider_blocker_class: \"NOT_APPLICABLE\" };\n  }",
+    to: "  if (false) {\n    return { retryable: false, blocker_class: \"SPAWN_REFUSED\", provider_blocker_class: \"NOT_APPLICABLE\" };\n  }",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A4: an honest AOS spawn refusal persists only its safe class and verifies"
+  },
+  {
     guard: "withheld routing observables carry the capability disposition",
     reason: "a probe record is evidence rather than the default consumer seam; dropping its disposition from the withheld observable makes a quickstart parse prose or rediscover the probe before it can decide whether another provider invocation is warranted",
     file: "lib/routing-oracle.mjs",
@@ -7565,6 +7583,7 @@ export const ACCOUNTED_GUARDS = [
   "a settlement nobody could check does not pass",
   "a settlement nobody could check is not a clean one",
   "a skipped real lane is not a verified one",
+  "a spawn refusal rebinds from AOS's safe pre-spawn class",
   "a started phase cannot integrate code on a blocked issue",
   "a state revision is stated, never defaulted",
   "a state that may not be deleted fixes its recommendation",
@@ -7575,6 +7594,7 @@ export const ACCOUNTED_GUARDS = [
   "a stored result may not elevate its own claim",
   "a subcheck verdict is one of three states, never rounded",
   "a superseded generation stays readable enough to be named",
+  "a superseded probe generation is named before current-generation rebinding",
   "a surface carries the rows it says it averaged",
   "a symlinked staging source is refused by name",
   "a tag's ref object is part of its identity",
