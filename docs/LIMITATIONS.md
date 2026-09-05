@@ -15,6 +15,13 @@ These limits are part of the public surface, not footnotes. They are not removed
 - The score is written to the run's report, not to the terminal. `aos review` produces no score at all.
 - No package is published to a registry. `v0.1.0` is tagged and released on GitHub; the command runs from a clone or a tarball built with `npm pack`.
 
+## Coding-agent relay boundary
+
+The relay is a module-level protocol and its negative integration check reports `BLOCKED /
+NO_RELAY_CHALLENGE` when no owner integration prepared a challenge. It does not establish that a
+shipped command reaches a relay or that a production relay exists. A real coding-agent chat smoke
+remains open with #575, whose production path is required before that smoke can exist.
+
 ## Feasibility alpha boundary
 
 No alpha participant data or study result is present in this repository. The alpha

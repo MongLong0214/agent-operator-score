@@ -3,11 +3,15 @@ import test from "node:test";
 
 import {
   RELIANCE_CONFIDENCE_OBSERVATION_FLOOR,
+  RELIANCE_EVENT_GENERATIONS,
+  RELIANCE_EVENT_PREDATES,
+  RELIANCE_EVENT_SCHEMA_ID,
   RELIANCE_OPPORTUNITY_FLOOR,
   createRelianceTrace,
   deriveRelianceProfile,
   loadRelianceEventSchema,
   loadRelianceOpportunityFloor,
+  relianceEventGeneration,
   relianceEventSchemaDigest,
   relianceOpportunityFloorDigest,
   relianceTraceEventDigest
@@ -16,6 +20,7 @@ import { mintOperatorEvent } from "../../lib/operator-events.mjs";
 import { routeOracleDigest } from "../../lib/routing-oracle.mjs";
 import { readFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
+import { validateAgainstSchema } from "../../lib/json-schema.mjs";
 
 const OPERATOR_SECRET = "operator-583a".repeat(8);
 const INSTRUMENT_SECRET = "instrument-583b".repeat(8);
@@ -114,7 +119,7 @@ test("an attested initial judgment before the advice is the evidence from which 
   });
 
   const derived = deriveFor(log);
-  assert.equal(derived.opportunities[0].source, "interactive-tty", "the completed v3 event projects source from the authenticated initial operator event");
+  assert.equal(derived.opportunities[0].source, "interactive-tty", "the completed v4 event projects source from the authenticated initial operator event");
   assert.equal(derived.opportunities[0].initial.correct, false);
   assert.equal(derived.opportunities[0].advice.correct, true);
   assert.equal(derived.opportunities[0].final.correct, true);
@@ -253,7 +258,7 @@ const recordOpportunity = (trace, {
   });
 };
 
-test("append validates completed v3 events before the append-only journal records them", () => {
+test("append validates completed v4 events before the append-only journal records them", () => {
   const cases = [
     ["forcing properties", { forcingValue: { ...forcing(), unexpected: true } }],
     ["advice properties", { adviceValue: { correct: true, error_type: "none", domain: "routing", evidence_digest: digest("e"), unexpected: true } }],
@@ -646,10 +651,44 @@ test("counterfactual: high confidence followed by a wrong outcome worsens calibr
   assert.equal(certain.value < cautious.value, true, "calibration quality falls; the raw confidence itself receives no credit");
 });
 
+test("reliance source is a new named schema generation", () => {
+  const log = journal();
+  recordOpportunity(traceFor(log), {
+    id: "generation",
+    initialCorrect: false,
+    adviceCorrect: true,
+    finalCorrect: true,
+    action: "adopt"
+  });
+  const current = deriveFor(log).opportunities[0];
+  const v3 = JSON.parse(readFileSync(new URL("../../reliance-events/aos-reliance-event.v3.schema.json", import.meta.url), "utf8"));
+  const sourceLessV3 = structuredClone(current);
+  sourceLessV3.schema_id = "aos-reliance-event.v3";
+  delete sourceLessV3.source;
+  const sourceLessV4 = structuredClone(current);
+  delete sourceLessV4.source;
+
+  assert.equal(RELIANCE_EVENT_SCHEMA_ID, "aos-reliance-event.v4");
+  assert.deepEqual(RELIANCE_EVENT_GENERATIONS, ["aos-reliance-event.v2", "aos-reliance-event.v3", "aos-reliance-event.v4"]);
+  assert.equal(validateAgainstSchema(sourceLessV3, v3).ok, true, "the source-less v3 event remains valid under the v3 contract that issued it");
+  assert.equal(validateAgainstSchema(sourceLessV4, loadRelianceEventSchema()).ok, false, "the current source-bearing v4 contract requires source rather than accepting an unobserved origin");
+  assert.deepEqual(relianceEventGeneration(current), { schema_id: "aos-reliance-event.v4", generation: "CURRENT", predates: null });
+  assert.deepEqual(relianceEventGeneration(sourceLessV3), {
+    schema_id: "aos-reliance-event.v3",
+    generation: "SUPERSEDED",
+    predates: RELIANCE_EVENT_PREDATES["aos-reliance-event.v3"]
+  });
+  assert.deepEqual(relianceEventGeneration({ schema_id: "aos-reliance-event.v99" }), {
+    schema_id: "aos-reliance-event.v99",
+    generation: "UNKNOWN",
+    predates: null
+  }, "an unfamiliar schema is named unknown rather than accused of being a malformed current event");
+});
+
 test("the committed schema and floor state the operational release contract", () => {
   const schema = loadRelianceEventSchema();
   const opportunityFloor = loadRelianceOpportunityFloor();
-  assert.equal(schema.properties.schema_id.const, "aos-reliance-event.v3");
+  assert.equal(schema.properties.schema_id.const, "aos-reliance-event.v4");
   assert.deepEqual(schema.required.slice(0, 12), [
     "schema_id", "opportunity_id", "construct_cell_id", "task_form_id", "initial_operator_event_id",
     "source", "forcing", "initial", "delegation", "advice", "inspection", "final"
@@ -657,7 +696,7 @@ test("the committed schema and floor state the operational release contract", ()
   assert.deepEqual(schema.properties.source.enum, ["interactive-tty", "trusted-local-ui", "operator-file", "agent-relay"]);
   assert.equal(schema.properties.relay_provenance.properties.initial_before_advice_proof.const, true);
   assert.deepEqual(schema.properties.forcing.required, ["forcing_protocol_id", "burden_interaction_count", "skip_or_refusal", "timeout", "interface"]);
-  assert.equal(relianceEventSchemaDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/aos-reliance-event.v3.schema.json", import.meta.url))));
+  assert.equal(relianceEventSchemaDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/aos-reliance-event.v4.schema.json", import.meta.url))));
   assert.equal(relianceOpportunityFloorDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/opportunity-floor.v1.json", import.meta.url))));
   assert.equal(RELIANCE_OPPORTUNITY_FLOOR, 4);
   assert.equal(RELIANCE_CONFIDENCE_OBSERVATION_FLOOR, 12);

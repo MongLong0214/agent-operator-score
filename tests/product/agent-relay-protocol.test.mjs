@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -116,7 +116,8 @@ test("the relay commits an initial user judgment before it reveals advice", () =
     instrument_secret: INSTRUMENT_SECRET
   });
 
-  const initial = protocol.prepare(opportunity());
+  protocol.prepare(opportunity());
+  const initial = protocol.next();
   assert.equal(initial.phase, "INITIAL_JUDGMENT");
   assert.equal(Object.hasOwn(initial, "advice"), false, "the initial challenge must not carry advice in another field");
   assert.equal(Object.hasOwn(state().opportunity, "advice"), false, "checkpoint state cannot carry the answer material before Phase A commits");
@@ -358,6 +359,34 @@ test("the relay records its receipt time rather than the counterparty's claimed 
   assert.equal(unavailable.status, "PARTIALLY_NOT_OBSERVED", "a missing trace with relay state is not reported as a violated ordering claim");
 });
 
+test("response-store I/O leaves an otherwise observed relay ordering claim partially not observed", () => {
+  const sessionId = "relay-response-store-unavailable";
+  const { checkpoint } = memoryCheckpoint(sessionId);
+  const trace = memoryTrace(sessionId);
+  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  protocol.prepare(opportunity());
+  const initial = protocol.next();
+  protocol.respond(response(initial));
+  const unavailable = createAgentRelayProtocol({
+    session_id: sessionId,
+    checkpoint: {
+      ...checkpoint,
+      readResponse: () => { throw new Error("EIO response store unavailable"); }
+    },
+    trace,
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET
+  }).verify();
+
+  assert.deepEqual(unavailable, {
+    relay_protocol_digest: protocol.protocol_digest,
+    initial_before_advice_proof: null,
+    status: "PARTIALLY_NOT_OBSERVED",
+    reason: "EIO response store unavailable",
+    trace_kinds: ["initial", "advice_reveal", "oracle"]
+  }, "a response store refusal prevents verification; it does not observe contradictory evidence");
+});
+
 test("relay response bytes require a restricted input file and stay restricted when retained for verification", () => {
     const root = mkdtempSync(join(tmpdir(), "aos-relay-response-"));
   try {
@@ -403,6 +432,23 @@ test("the shipped binary honestly reports that no lifecycle producer prepared a 
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("reachable relay challenge and supplied response do not read terminal input", () => {
+  const relaySource = readFileSync(new URL("../../lib/relay.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(relaySource, /\bprocess\.(?:stdin|stdout|stderr)\b|node:readline|from\s+["']readline(?:\/promises)?["']/u,
+    "the protocol has no terminal channel to prompt on; it accepts only the supplied response bytes");
+
+  const sessionId = "relay-no-terminal-input";
+  const { checkpoint } = memoryCheckpoint(sessionId);
+  const trace = memoryTrace(sessionId);
+  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  protocol.prepare(opportunity());
+  const initial = protocol.next();
+  const postAdvice = protocol.respond(response(initial));
+  assert.equal(postAdvice.phase, "POST_ADVICE_DECISION", "the reachable initial challenge advances solely from supplied response bytes");
+  const waiting = protocol.respond(response(postAdvice, { inspected: true, final_action: "adopt" }));
+  assert.equal(waiting.status, "RUNNING", "the reachable post-advice response also advances without terminal input");
 });
 
 const statMode = (path) => {
