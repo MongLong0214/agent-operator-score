@@ -15,7 +15,7 @@ const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1)
 // names and branch labels deliberately stay out: when `subject` moves, its controlled source set
 // moves as one grader input. The pair search below finds two real seeds whose vectors differ at
 // exactly one listed input, then sends one identical artifact through both real grade paths.
-const DECISION_INPUTS = Object.freeze({
+const IMPLEMENTED_DECISION_INPUTS = Object.freeze({
   "FAM-1": Object.freeze([["acceptance-evidence", "acceptance_evidence", ["M04"]]]),
   "FAM-2": Object.freeze([
     ["authoritative-port", "port", ["M05"]],
@@ -188,11 +188,11 @@ test("declared decision inputs vary across the seed space", () => {
   assert.equal(spread((p) => p["FAM-6"].canary), 200, "canary did not vary");
 });
 
-test("each counted axis changes real graded metrics", async () => {
+test("each implemented-and-counted axis changes real graded metrics", async () => {
   // This is intentionally not a branch-label assertion. Every axis gets a bound form whose
   // artifact satisfies its seeded value, then the same bound form is graded with only that
   // artifact value made wrong. This makes deleting any individual comparison observable.
-  for (const [family, inputs] of Object.entries(DECISION_INPUTS)) {
+  for (const [family, inputs] of Object.entries(IMPLEMENTED_DECISION_INPUTS)) {
     for (const [axis, , metricIds] of inputs) {
       const correct = await gradeDecisionArtifact(family, axis);
       const incorrect = await gradeDecisionArtifact(family, axis, true);
@@ -268,15 +268,15 @@ test("the manifest accounts for every declared family axis before counting it", 
   assert.equal(report.unimplemented_decision_axis_count, expectedDeclaredTotal - 13);
 });
 
-test("the 20-seed report counts actual decision axes, not label strings", () => {
+test("the 20-seed report counts implemented decision axes separately from declared axes", () => {
   const report = formVariationReport();
   assert.equal(report.sample_size, 20);
   assert.equal(report.status, "PASS", "the declared decision report must be internally consistent");
-  const expectedAxisCounts = { "FAM-1": 1, "FAM-2": 4, "FAM-3": 1, "FAM-4": 5, "FAM-5": 0, "FAM-6": 2 };
+  const expectedImplementedAxisCounts = { "FAM-1": 1, "FAM-2": 4, "FAM-3": 1, "FAM-4": 5, "FAM-5": 0, "FAM-6": 2 };
   for (const [family, row] of Object.entries(report.family_reports)) {
     assert.equal(row.status, "PASS", family);
     assert.ok(row.unique_task_form_count > 1, `${family} only changes a manifest field`);
-    assert.equal(row.decision_axis_count, expectedAxisCounts[family], `${family} axis count is not an actual small count`);
+    assert.equal(row.implemented_decision_axis_count, expectedImplementedAxisCounts[family], `${family} implemented-axis count is not an actual small count`);
     assert.equal(row.decision_status, family === "FAM-5" ? "DESCRIPTIVE_ONLY" : "DECISION_BOUND");
     if (family === "FAM-5") {
       assert.equal(row.unique_oracle_branch_label_count, 1);
@@ -287,6 +287,8 @@ test("the 20-seed report counts actual decision axes, not label strings", () => 
     }
     assert.equal(row.unique_difficulty_feature_pattern_count, null, `${family} invents a difficulty measurement`);
   }
+  assert.equal(report.implemented_decision_axis_count, 13);
+  assert.equal(report.declared_decision_axis_count, 33);
 });
 
 test("the variation report detects cosmetic task changes when declared branches stay the same", () => {

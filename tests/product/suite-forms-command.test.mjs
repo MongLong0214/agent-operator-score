@@ -17,10 +17,10 @@ test("the shipped forms command produces the 20-seed variation report", () => {
       assert.equal(row.status, "PASS", family);
       if (family === "FAM-5") {
         assert.equal(row.decision_status, "DESCRIPTIVE_ONLY");
-        assert.equal(row.decision_axis_count, 0);
+        assert.equal(row.implemented_decision_axis_count, 0);
       } else {
         assert.equal(row.decision_status, "DECISION_BOUND");
-        assert.ok(row.decision_axis_count > 0, `${family} declares no scoring axis`);
+        assert.ok(row.implemented_decision_axis_count > 0, `${family} implements no scoring axis`);
       }
     }
   } finally {
