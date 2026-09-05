@@ -13,10 +13,14 @@ import { addAgent, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
 
 // A result is checkable when the number can be derived again from what the file itself holds. A
 // hand-edited score, or one produced by a scorer that has since changed, stops matching.
-const assessed = () => {
+const assessed = ({ adapter = null } = {}) => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-"));
-  run(cwd, ["init"]);
-  addAgent(cwd, "solo");
+  // `init` discovers whatever happens to be installed on this host. The A6 fixture is about the
+  // default AOS-known posture for a shipped adapter, so construct that registration rather than
+  // letting discovery decide which capability-source row this test exercises.
+  if (adapter === null) run(cwd, ["init"]);
+  else initBare(cwd);
+  addAgent(cwd, "solo", undefined, adapter === null ? [] : ["--adapter", adapter]);
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
   const runId = newestRunId(cwd);
@@ -252,7 +256,7 @@ test("A3: a current cut-off probe is accepted with its retryable withheld dispos
 });
 
 test("A6: an unprobed aos-known record is accepted with its withheld capability question", () => {
-  const { cwd, runId, recordPath } = assessed();
+  const { cwd, runId, recordPath } = assessed({ adapter: "codex-cli.v1" });
   try {
     const record = JSON.parse(readFileSync(recordPath, "utf8"));
     assert.equal(record.capability_probes, null);
