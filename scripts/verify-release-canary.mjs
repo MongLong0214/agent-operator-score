@@ -35,8 +35,8 @@ if (!existsSync(path)) {
   process.stderr.write(`AOS_RELEASE_CANARY_ABSENT: no strict canary evidence at ${path}\n`);
   process.stderr.write(
     "this release gate withholds issuance without a recorded OBSERVED canary; run " +
-    "`npm run verify:real-runtime-strict` on an authenticated darwin host with the installed Codex " +
-    "runtime, then commit the fixture it writes, before releasing.\n"
+    "`npm run verify:real-runtime-strict:update-fixture` on an authenticated darwin host with the " +
+    "installed Codex runtime, then commit the fixture it writes, before releasing.\n"
   );
   process.exit(1);
 }

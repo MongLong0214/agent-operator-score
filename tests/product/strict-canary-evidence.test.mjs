@@ -371,3 +371,16 @@ test("the release-canary gate is a job in CI, not only a command in the document
   assert.match(ci, /release-canary:/);
   assert.match(ci, /npm run verify:release-canary/);
 });
+
+// A remaining nit, fixed rather than only recorded: nothing in `npm test` read the actual committed
+// record. Only `verify-release-canary.mjs` did, and that script is not part of the suite -- so a
+// committed canary that stopped being accepted (a headline field edited out of step with its
+// embedded evidence, an embedded record that regressed out of `issuanceGate`, a runtime_version
+// that lost its `detected` source) would sit undetected until someone ran the script by hand or the
+// `release-canary` CI job happened to run on a push to `main`.
+test("the committed strict canary fixture is itself accepted by the release gate", () => {
+  const committed = JSON.parse(readFileSync(join(fixtureDir, "strict-canary.json"), "utf8"));
+  const decision = releaseCanaryGate(committed);
+  assert.deepEqual(decision.reasons, [], `fixtures/confinement/strict-canary.json is not accepted: ${decision.reasons.join(",")}`);
+  assert.equal(decision.accepted, true);
+});

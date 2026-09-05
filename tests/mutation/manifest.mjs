@@ -7566,6 +7566,24 @@ export const GUARDS = [
     name: "a record carrying a forged sandbox_profile_digest is rejected"
   },
   {
+    guard: "a forged headline escape_attempt_result is rejected by the release gate",
+    reason: "round 1 mutated only the headline escape_attempt_result -- deleted it, replaced it with {}, replaced it with a record claiming the sandboxed process escaped and left a survivor -- while the embedded confinement_record.boundary_canary.out_of_band still said the descendant was confined, and the gate accepted every version because nothing read the headline copy",
+    file: "lib/confinement.mjs",
+    from: "  if (!sameJsonShape(record.escape_attempt_result, embedded?.boundary_canary?.out_of_band ?? null)) {",
+    to: "  if (false) {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "deleting escape_attempt_result is rejected, not silently accepted"
+  },
+  {
+    guard: "observed_at must be a canonical, in-schema timestamp",
+    reason: "observed_at claims to date an observation and had no check on it at all; a record dated at the Unix epoch passed the gate exactly like a real one, so this binds it to the canonical ISO-8601 shape this module's own new Date().toISOString() always produces and to a floor no earlier than this schema could have shipped",
+    file: "lib/confinement.mjs",
+    from: "  if (!observedAtCanonical || observedAtMs < Date.parse(STRICT_CANARY_SCHEMA_FLOOR)) {",
+    to: "  if (false) {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "a record dated at the Unix epoch is rejected, not silently accepted"
+  },
+  {
     guard: "a strict canary cannot authorize itself; the embedded record must pass issuanceGate",
     reason: "\"it exists, so it is true\" is the defect class #639 names; reusing issuanceGate's own authenticity floor over the embedded confinement record is what keeps an internally-consistent but never-official record from becoming release evidence",
     file: "lib/confinement.mjs",
@@ -7833,6 +7851,7 @@ export const ACCOUNTED_GUARDS = [
   "a family with no known naming rules is not exact",
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
+  "a forged headline escape_attempt_result is rejected by the release gate",
   "a forged headline profile digest is rejected by the release gate",
   "a forged structural set is revalidated like the rest",
   "a form list naming an undeclared cell is refused before it is dereferenced",
@@ -8187,6 +8206,7 @@ export const ACCOUNTED_GUARDS = [
   "observation channel size bound",
   "observation line size bound",
   "observation schema",
+  "observed_at must be a canonical, in-schema timestamp",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
   "one claim's stated value is not another's",

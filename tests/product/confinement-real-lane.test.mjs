@@ -51,10 +51,27 @@ const CANARY_EVIDENCE_PATH = join(
   dirname(fileURLToPath(import.meta.url)), "..", "..", "fixtures", "confinement", "strict-canary.json"
 );
 
+// #639 nit: this used to write straight to the committed fixture on every
+// `AOS_REAL_STRICT_REQUIRED=1` run. A rate-limited re-run built a legitimate `PROVIDER_REFUSED`
+// record and that write silently replaced a good `OBSERVED` record with it, flipping
+// `verify:release-canary` to block -- losing release evidence was the default behaviour of running
+// a verification. The default target is now this local, gitignored path beside the fixture;
+// updating the committed record needs the explicit, obvious
+// `AOS_STRICT_CANARY_UPDATE_FIXTURE=1` (`npm run verify:real-runtime-strict:update-fixture`).
+const CANARY_EVIDENCE_LOCAL_PATH = join(dirname(CANARY_EVIDENCE_PATH), "strict-canary.local.json");
+
 const writeStrictCanaryEvidence = (record) => {
   if (process.env.AOS_REAL_STRICT_REQUIRED !== "1") return;
-  mkdirSync(dirname(CANARY_EVIDENCE_PATH), { recursive: true });
-  writeFileSync(CANARY_EVIDENCE_PATH, `${JSON.stringify(record, null, 2)}\n`);
+  const updatingCommittedFixture = process.env.AOS_STRICT_CANARY_UPDATE_FIXTURE === "1";
+  const target = updatingCommittedFixture ? CANARY_EVIDENCE_PATH : CANARY_EVIDENCE_LOCAL_PATH;
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, `${JSON.stringify(record, null, 2)}\n`);
+  if (!updatingCommittedFixture) {
+    process.stdout.write(
+      `AOS_STRICT_CANARY_NOT_COMMITTED: wrote ${target}; the committed fixture at ${CANARY_EVIDENCE_PATH} was left untouched. ` +
+      "Set AOS_STRICT_CANARY_UPDATE_FIXTURE=1 (or run `npm run verify:real-runtime-strict:update-fixture`) to update it deliberately.\n"
+    );
+  }
 };
 
 // The runtime's own answer to `--version`, run against the exact resolved path the lane is about

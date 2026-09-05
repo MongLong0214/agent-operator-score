@@ -159,6 +159,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+  # #639's release gate, given the invocation site it shipped without. `scripts/verify-release-canary.mjs`
+  # reads the committed `aos-strict-canary.v1` record and decides whether this head may cite it as
+  # proof the STRICT lane ran, authenticated, on a real runtime -- and a gate nothing calls withholds
+  # nothing. It is a check of the committed file, not a re-observation: it needs no Seatbelt and no
+  # authenticated Codex to run, unlike `verify:real-runtime-strict`, which is what actually produces
+  # an OBSERVED record and can only do that on a darwin host with both.
+  #
+  # Not a required PR check, for the same reason `execution-plan-live` is not one, stated in this
+  # script's own header comment: an ordinary PR does not update the canary, so requiring this on
+  # every PR would either rubber-stamp whatever is already committed or -- if it tried to
+  # re-observe -- see nothing but `NOT_OBSERVED` on a CI runner, which is indistinguishable from a
+  # check that was never wired up. This is the deliberate, separate step: on `main` and on demand,
+  # exactly like `execution-plan-live`, so a release cut from `main` has a visible answer to "is the
+  # committed canary still accepted" rather than no answer at all.
+  release-canary:
+    needs: action-pins
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    name: release-canary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:release-canary
+
   # The review rounds, kept. Ten pull requests went through an adversarial gate and the blocking
   # findings clustered into input and idiom classes -- a digest over decoded text, a plain-object
   # map fed an attacker-chosen key, a regex without unicode mode, Date.parse as a validator, an
