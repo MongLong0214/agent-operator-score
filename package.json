@@ -72,6 +72,7 @@
     "docs/",
     "governance/",
     "schemas/",
+    "reliance-events/",
     "scripts/",
     "fixtures/execution-plan/",
     "fixtures/confinement/",
