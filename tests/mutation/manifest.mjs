@@ -25,6 +25,15 @@ export const GUARDS = [
     name: "a matching task shape cannot substitute another prepared seed's oracle"
   },
   {
+    guard: "the manifest projects every contract axis with its disposition",
+    reason: "an accounting table that never reaches the form manifest is a private implementation detail, so an omitted axis could be counted away while the report still claims contract coverage",
+    file: "lib/suite.mjs",
+    from: "  decision_axis_accounting: decisionAxisAccountingFor(family),",
+    to: "  decision_axis_accounting: [],",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the manifest accounts for every declared family axis before counting it"
+  },
+  {
     guard: "form binding task identity is recomputed",
     reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the seed-specific tree it is actually grading; otherwise seed A can be paired with seed B's oracle",
     file: "lib/suite.mjs",
@@ -8480,6 +8489,7 @@ export const ACCOUNTED_GUARDS = [
   "the lane is bound into the cohort",
   "the lane's identity comes from the runtime that authenticated",
   "the ledger's owner replaces the declaration",
+  "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
   "the matrix reads what the teardown could not remove",
   "the minimum route is the cheapest and its tie-break is canonical",

@@ -37,6 +37,18 @@ const DECISION_INPUTS = Object.freeze({
   ])
 });
 
+// The frozen form requirements include fixed terms alongside the seeded comparisons the current
+// scorer implements. A fixed term is not erased from the contract merely because it is absent from
+// the variation count: the manifest has to name it and say why it is not counted.
+const DECLARED_DECISION_AXIS_IDS = Object.freeze({
+  "FAM-1": Object.freeze(["product-goal", "scope-boundaries", "clarification-types", "acceptance-evidence", "stop-condition"]),
+  "FAM-2": Object.freeze(["authoritative-port", "authoritative-endpoint", "sealed-source-set", "canary"]),
+  "FAM-3": Object.freeze(["task-structure", "dependency-graph", "shared-resource-collision", "independent-route-pair", "handoff-and-join"]),
+  "FAM-4": Object.freeze(["prior-goal", "prior-blocker", "prior-evidence", "correlation", "stop-term"]),
+  "FAM-5": Object.freeze(["public-probe", "initial-fault", "hidden-probe-contract", "scope-integrity", "revision-binding", "completion-claim"]),
+  "FAM-6": Object.freeze(["provider-failure", "unsafe-suggestion", "fallback-route", "permission-vocabulary", "external-action-evidence", "budget-plan", "stop-condition", "canary"])
+});
+
 const routeAssignments = (pair) => {
   const key = pair.join(",");
   if (key === "implementation,verification") return { contract: "a", implementation: "a", docs: "b", verification: "b", release: "a" };
@@ -231,6 +243,29 @@ test("the operational form manifest binds raw task inputs to each family oracle 
     assert.equal(form.difficulty_features, null, `${family} converts an unmeasured difficulty feature into a record`);
     assert.equal(form.equivalence_status, "UNCALIBRATED", `${family} claims a form relation this suite has not calibrated`);
   }
+});
+
+test("the manifest accounts for every declared family axis before counting it", () => {
+  const manifest = formManifest("2a");
+  const report = formVariationReport();
+  const expectedImplementedCounts = { "FAM-1": 1, "FAM-2": 4, "FAM-3": 1, "FAM-4": 5, "FAM-5": 0, "FAM-6": 2 };
+  const expectedDeclaredTotal = Object.values(DECLARED_DECISION_AXIS_IDS).reduce((count, axes) => count + axes.length, 0);
+
+  for (const family of FAMILIES) {
+    const accounting = manifest.family_manifests[family].oracle.decision_axis_accounting;
+    assert.deepEqual(accounting.map((axis) => axis.id), DECLARED_DECISION_AXIS_IDS[family], `${family} silently omitted a contract axis`);
+    for (const axis of accounting) {
+      assert.ok(["IMPLEMENTED_AND_COUNTED", "NOT_IMPLEMENTED"].includes(axis.disposition), `${family}/${axis.id} has no explicit disposition`);
+      if (axis.disposition === "NOT_IMPLEMENTED") assert.match(axis.reason ?? "", /\S/u, `${family}/${axis.id} says it is not implemented without saying why`);
+    }
+    const row = report.family_reports[family];
+    assert.equal(row.implemented_decision_axis_count, expectedImplementedCounts[family], `${family} changed its implemented count`);
+    assert.equal(row.declared_decision_axis_count, DECLARED_DECISION_AXIS_IDS[family].length, `${family} redefined its declared set`);
+    assert.equal(row.unimplemented_decision_axis_count, DECLARED_DECISION_AXIS_IDS[family].length - expectedImplementedCounts[family]);
+  }
+  assert.equal(report.implemented_decision_axis_count, 13);
+  assert.equal(report.declared_decision_axis_count, expectedDeclaredTotal);
+  assert.equal(report.unimplemented_decision_axis_count, expectedDeclaredTotal - 13);
 });
 
 test("the 20-seed report counts actual decision axes, not label strings", () => {
