@@ -166,12 +166,14 @@ node bin/aos.mjs assess --checkpoints   # オペレーターが参加するス�
 起動できない場合や、異なる課題が作業開始前に同じ形で失敗する場合、AOS は壊れた設定を
 オペレーターの低得点にせず、実行を止めます。
 
-`assess --probe-capabilities` は登録されたエージェントごとに AOS が用意した隔離ワークスペースを
+高度/手動の調査では、`assess --probe-capabilities` は登録されたエージェントごとに AOS が用意した隔離ワークスペースを
 与え、実際に何をしたかを読み取ります。既知のアダプターで登録されたエージェントなら、その
 アダプターが備える能力をすべて持っていると仮定する代わりです。`capability-matches-task` が
 失敗しうるのはこの観測があるからです -- アダプターの既定値より狭いエージェントが見つかれば、
 その不足を記録し名指しします。`aos agent probe <id>` は採点対象の実行とは関係なく、一つの
 エージェントに同じ確認をその場で行います。
+
+高度/手動 CLI の形式は `aos assess --probe-capabilities` です。
 
 ```bash
 node bin/aos.mjs agent probe alpha           # alpha が実際に何をしたか観測する
@@ -179,7 +181,14 @@ node bin/aos.mjs assess --probe-capabilities # アダプター表ではなく観
 ```
 
 既定では無効です。観測は登録されたエージェントごとに実際の provider 呼び出しを一回消費するため
-です。フラグを渡さなければ、これまでどおり AOS 自身のアダプター表から能力記録を取得します。
+です。フラグなしでは、AOS は既知のアダプター表を引き続き `aos-known` として記録しますが、この
+出所ではランタイム能力の問いに答えられません。したがって `capability-matches-task` と
+`simplest-adequate-route` は保留となり、C2.RF.01 は必要な三つの opportunity に届かないため、O4、
+outcome index、composite も保留になります。ランタイム能力は観測されていないため routing outcome と
+composite は保留であり、それに答えるのは capability 観測です。現在は高度/手動の
+`aos assess --probe-capabilities` がその観測を実行し、登録済みエージェントごとに実際の provider 呼び出しを
+一回消費します。コーディングエージェントまたは quickstart が自動で実行するようにするのは #575 の担当です。
+この CLI はランタイムを観測して `detected` の証拠を生成します。
 
 ## 採点表に並ぶ六つの問い
 
@@ -431,6 +440,19 @@ npm run smoke:package    # 別の場所に梱包し、利用者の流れを確�
 
 CI は Ubuntu の Node 22・24 と macOS の Node 24 で全テストを実行します。`verify:mvp`、
 mutation、Ubuntu・macOS のパッケージスモークも別ジョブで確認します。
+
+### `verify --run` の終了コード
+
+`aos verify --run <id>` は、機械可読な検証状態を一つ返します。
+
+| コード | 状態 | 意味 |
+|---:|---|---|
+| 0 | `verified` | 必要なすべての主張が確立されました。 |
+| 4 | `unresolved` | 反証された主張はありませんが、必要な主張の少なくとも一つを確認できませんでした。 |
+| 5 | `contradicted` | 必要な主張の少なくとも一つが再計算によって反証されました。 |
+
+終了コード 4 は新しく、以前は 0 で終了していた状態を表します。`!== 0` を検査する利用者は
+影響を受けません。`=== 5` だけを検査する利用者は、`unresolved` 状態も処理する必要があります。
 
 | 文書 | 内容 |
 |---|---|

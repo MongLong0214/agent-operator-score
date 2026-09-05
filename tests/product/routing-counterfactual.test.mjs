@@ -30,7 +30,7 @@ const REQUIREMENT = () => requirementsFromWork(WORK).requirements;
 // and has its own test; these fixtures are about ownership, so they show the work arriving.
 const handoffsInto = (taskId) => REQUIREMENT().find((entry) => entry.task_id === taskId).required_handoffs;
 
-const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] });
+const known = (id) => capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "detected", evidence_ids: ["verifier:aos-capability-probe.v1"] });
 const CAPABILITIES = () => new Map([["strong", known("strong")], ["other", known("other")]]);
 
 const PLAN = (routes) => ({
@@ -103,7 +103,7 @@ test("M09 carries no subcheck whose expression is true of every input", () => {
   // for is now not an owner that matched.
   assert.equal(sub(m09({ routes: { ...MINIMAL, docs: "someone-else" } }), "capability-matches-task"), null);
   // And a known shortfall is a fail rather than a silence.
-  const narrow = new Map([...CAPABILITIES(), ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "aos-known" })]]);
+  const narrow = new Map([...CAPABILITIES(), ["narrow", capabilityRecord({ agent_id: "narrow", capabilities: ["code-read", "artifact-write"], source: "detected" })]]);
   assert.equal(sub(m09({ routes: { ...MINIMAL, verification: "narrow" }, capabilities: narrow }), "capability-matches-task"), false);
 
   const repeat = { ...ledger[0], invocation_id: "invocation-repeat" };
@@ -162,8 +162,8 @@ test("the same plan text with a different actual route is judged by the actual r
   assert.equal(sub(followed, "simplest-adequate-route"), true);
   assert.equal(sub(diverged, "simplest-adequate-route"), false);
   // The plan is the same object in both, so nothing about the artifact explains the difference.
-  assert.equal(followed.verifier_id, "aos-route-oracle.v1");
-  assert.equal(diverged.verifier_id, "aos-route-oracle.v1");
+  assert.equal(followed.verifier_id, "aos-route-oracle.v2");
+  assert.equal(diverged.verifier_id, "aos-route-oracle.v2");
   assert.notEqual(followed.value, diverged.value);
 });
 
@@ -265,7 +265,7 @@ test("no seeded requirement leaves every routing question unanswered rather than
   assert.equal(nothing.state, NOT_OBSERVED);
   assert.equal(nothing.value, null);
   // And the row says so rather than claiming the oracle decided it.
-  assert.match(nothing.reason, /^not observed by aos-route-oracle\.v1: /u);
+  assert.match(nothing.reason, /^not observed by aos-route-oracle\.v2: /u);
 
   // The consequence, which is why the value matters: an unanswered row must not enter the coverage
   // count, and must not drag its dimension toward zero. Asserted as "D3 is what it would be if M09

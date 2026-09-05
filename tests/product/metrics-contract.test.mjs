@@ -69,7 +69,7 @@ test("a metric that answered none of its four questions is not observed, not a z
   // rather than at the one call site that reaches it today.
   const none = observationOf({
     metric_id: "M09",
-    verifier_id: "aos-route-oracle.v1",
+    verifier_id: "aos-route-oracle.v2",
     subchecks: METRICS.M09.subchecks.map((id) => ({ id, pass: null })),
     evidence_ids: ["route-oracle-1"],
     reason: "the oracle answered none of its four questions"
@@ -81,7 +81,7 @@ test("a metric that answered none of its four questions is not observed, not a z
   // what evidence, and which questions it could not answer are all worth more than an empty array,
   // and `opportunitiesOf` builds one opportunity per declared subcheck either way.
   assert.deepEqual(none.subchecks.map((entry) => entry.pass), [null, null, null, null]);
-  assert.equal(none.verifier_id, "aos-route-oracle.v1");
+  assert.equal(none.verifier_id, "aos-route-oracle.v2");
   assert.deepEqual(validateObservations([none]).filter((entry) => entry.metric_id === "M09"), []);
 
   // It leaves the dimension and the coverage count alone, which is the whole point: a row nobody
@@ -92,7 +92,7 @@ test("a metric that answered none of its four questions is not observed, not a z
   // One answered subcheck is a different thing entirely, and still scores.
   const one = observationOf({
     metric_id: "M09",
-    verifier_id: "aos-route-oracle.v1",
+    verifier_id: "aos-route-oracle.v2",
     subchecks: METRICS.M09.subchecks.map((id, index) => ({ id, pass: index === 0 ? false : null })),
     reason: "one answer"
   });

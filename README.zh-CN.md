@@ -155,10 +155,12 @@ node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分�
 `doctor` 会检查可执行文件和已知凭据路径，但不会调用模型。如果 Agent 根本没有启动，或者不同
 任务在工作开始前以完全相同的方式失败，AOS 会停止，而不会把错误配置算成操作者低分。
 
-`assess --probe-capabilities` 会给每个已注册的 Agent 一个 AOS 准备好的隔离工作区，并读回它
+在高级/手动调查中，`assess --probe-capabilities` 会给每个已注册的 Agent 一个 AOS 准备好的隔离工作区，并读回它
 实际做了什么，而不是假定用已知适配器注册的 Agent 就具备该适配器自带的全部能力。正是这个观测
 让 `capability-matches-task` 有可能失败：一旦发现某个 Agent 比适配器默认值更窄，就会记录并
 指明这个缺口。`aos agent probe <id>` 可以脱离打分流程，单独对一个 Agent 做同样的检查：
+
+高级/手动 CLI 的形式是 `aos assess --probe-capabilities`：
 
 ```bash
 node bin/aos.mjs agent probe alpha           # 观测 alpha 实际做了什么
@@ -166,7 +168,12 @@ node bin/aos.mjs assess --probe-capabilities # 用观测结果而非适配器表
 ```
 
 默认关闭，因为每探测一个已注册的 Agent 都会消耗一次真实的 provider 调用。不加这个参数时，
-能力记录仍然和以前一样来自 AOS 自己的适配器表。
+AOS 仍将已知适配器表记录为 `aos-known`，但这个来源不能回答运行时能力问题。因此
+`capability-matches-task` 和 `simplest-adequate-route` 会被保留；C2.RF.01 无法达到所需的三个
+opportunity，于是 O4、outcome index 和 composite 也会被保留。运行时 capability 尚未观测到，因此
+routing outcome 和 composite 会被保留；能回答它的是 capability 观测。目前高级/手动的
+`aos assess --probe-capabilities` 会运行该观测，并为每个已注册的 Agent 消耗一次真实的 provider 调用。
+让编码 Agent 或 quickstart 自动运行它是 #575 的工作。该 CLI 会观测运行时并生成 `detected` 证据。
 
 ## 评分卡上的六个问题
 
@@ -400,6 +407,19 @@ npm run smoke:package    # 打包到其他位置，验证真实使用流程
 
 CI 会在 Ubuntu 的 Node 22、24 与 macOS 的 Node 24 上运行全部测试，并单独运行 `verify:mvp`、
 变异测试，以及 Ubuntu、macOS 的包冒烟测试。
+
+### `verify --run` 退出代码
+
+`aos verify --run <id>` 会返回一种机器可读的验证状态：
+
+| 代码 | 状态 | 含义 |
+|---:|---|---|
+| 0 | `verified` | 已确立每一项必需主张。 |
+| 4 | `unresolved` | 没有主张被反驳，但至少一项必需主张无法检查。 |
+| 5 | `contradicted` | 至少一项必需主张被重新计算所反驳。 |
+
+退出代码 4 是新增代码，涵盖以前会以 0 退出的状态。检查 `!== 0` 的消费者不受影响；只检查
+`=== 5` 的消费者还必须处理 `unresolved` 状态。
 
 | 文档 | 内容 |
 |---|---|

@@ -7,14 +7,20 @@ import { join } from "node:path";
 import { canonicalJson } from "../../lib/core.mjs";
 import { contractFileDigests, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
-import { addAgent, makePlan, newestRunId, run } from "./helpers.mjs";
+import { probeAgentCapabilities, detectedCapabilityRecord } from "../../lib/capability-probe.mjs";
+import { capabilityDigestOf, delegationOracle, routeOracleDigest, routeOracleEvidenceId } from "../../lib/routing-oracle.mjs";
+import { addAgent, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
 
 // A result is checkable when the number can be derived again from what the file itself holds. A
 // hand-edited score, or one produced by a scorer that has since changed, stops matching.
-const assessed = () => {
+const assessed = ({ adapter = null } = {}) => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-"));
-  run(cwd, ["init"]);
-  addAgent(cwd, "solo");
+  // `init` discovers whatever happens to be installed on this host. The A6 fixture is about the
+  // default AOS-known posture for a shipped adapter, so construct that registration rather than
+  // letting discovery decide which capability-source row this test exercises.
+  if (adapter === null) run(cwd, ["init"]);
+  else initBare(cwd);
+  addAgent(cwd, "solo", undefined, adapter === null ? [] : ["--adapter", adapter]);
   const plan = makePlan(cwd, { default: "solo" });
   run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
   const runId = newestRunId(cwd);
@@ -24,8 +30,354 @@ const assessed = () => {
   // input the CLI did -- a result rebuilt under a different boundary is a different result, which
   // is the property the check exists to enforce.
   const boundary = JSON.parse(readFileSync(recordPath, "utf8")).isolation.official_issuance;
-  return { cwd, runId, boundary, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
+  return { cwd, runId, boundary, recordPath, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
 };
+
+const assessedWithProbe = (profile = "probe-cut-off") => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-probe-"));
+  initBare(cwd);
+  addAgent(cwd, "solo");
+  const plan = makePlan(cwd, { default: "solo" });
+  // The cut-off fixture has three observed answers but an incomplete invocation. Rewriting its
+  // stored completion bit would turn it into a detected capability record unless verification
+  // derives the consumer-facing state from the probe evidence again.
+  run(cwd, ["assess", "--plan", plan, "--seed", "5", "--probe-capabilities"], 3, { FAKE_AGENT_PROFILE: profile });
+  const runId = newestRunId(cwd);
+  const runDirectory = join(cwd, ".aos", "runs", runId);
+  const recordPath = join(runDirectory, "record.json");
+  const boundary = JSON.parse(readFileSync(recordPath, "utf8")).isolation.official_issuance;
+  return { cwd, runId, boundary, recordPath, resultPath: join(runDirectory, "result.json") };
+};
+
+// The verifier reads the M09 evidence id and the delegation reference from the working record, so
+// an honest probe fixture updates those two dependent projections too. This is deliberately not a
+// forged capability record: the digest and route reference are recomputed from the older probe's
+// own verifier identity.
+const bindCapabilityToStoredRun = (record, result, capability) => {
+  const agentId = capability.agent_id;
+  record.routing_oracle.capabilities = record.routing_oracle.capabilities
+    .map((entry) => (entry.agent_id === agentId ? capability : entry));
+  record.routing_oracle.actual_route_events = record.routing_oracle.actual_route_events
+    .map((entry) => (entry.agent_id === agentId
+      ? { ...entry, capability_digest: capability.capability_digest }
+      : entry));
+  record.routing_oracle.route_oracle_digest = routeOracleDigest(record.routing_oracle);
+  record.delegation_oracle = delegationOracle(record.routing_oracle);
+  const m09 = result.observations.find((entry) => entry.metric_id === "M09");
+  m09.evidence_ids = m09.evidence_ids
+    .filter((id) => !id.startsWith("route-oracle:"))
+    .concat(routeOracleEvidenceId(record.routing_oracle.route_oracle_digest));
+};
+
+const writeStoredRun = (recordPath, resultPath, record, result) => {
+  writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+  writeFileSync(resultPath, `${canonicalJson(result)}\n`);
+};
+
+const assertAccepted = (cwd, runId) => {
+  const verified = run(cwd, ["verify", "--run", runId]);
+  assert.match(verified.stdout, /PASS\tprobe-record/u, verified.stdout);
+  assert.doesNotMatch(verified.stdout, /FAIL/u, verified.stdout);
+  return verified;
+};
+
+const rebuildStoredResult = (result, boundary) => {
+  const contract = shippedEcdContract();
+  const { contract_digest: _contract, profile_digest: _profile, ...facets } = result.facet_identity;
+  return buildResult({
+    evaluation: evaluate(result.observations, { facets, profile_digest: result.profile_digest, forms_completed: result.run.forms_completed, boundary }, contract),
+    contract,
+    observations: result.observations,
+    run: result.run,
+    caps: result.system_outcome_profile.caps,
+    model_identity: result.model_identity,
+    uncertainty: result.uncertainty,
+    generalizability_status: result.generalizability_status
+  });
+};
+
+// This record is intentionally a sibling rather than a replacement for the current probe. The
+// verifier can name its v2 claims but cannot recompute them; the current `solo` record remains a
+// separate claim that this build must still check.
+const supersededProbeSibling = (current) => ({
+  schema_id: "aos-capability-probe.v2",
+  verifier_id: "aos-capability-probe.v2",
+  probe_id: `${current.probe_id}-v2`,
+  agent_id: "legacy",
+  status: current.status,
+  reason: current.reason,
+  started_at: current.started_at,
+  observations: current.observations,
+  exhibited: current.exhibited,
+  invocation: current.invocation === null ? null : {
+    completed: current.invocation.completed,
+    exit_code: current.invocation.exit_code,
+    signal: current.invocation.signal,
+    timed_out: current.invocation.timed_out,
+    interrupted: current.invocation.interrupted,
+    survivor: current.invocation.survivor,
+    leaked_descendants: current.invocation.leaked_descendants,
+    stdout_digest: current.invocation.stdout_digest
+  }
+});
+
+test("a forged routing record is rejected before it can certify M09", () => {
+  const { cwd, runId, recordPath } = assessed();
+  try {
+    const original = readFileSync(recordPath, "utf8");
+    const forgeries = [
+      ["capability source", (record) => { record.routing_oracle.capabilities[0].source = "detected"; }],
+      ["observable basis", (record) => { record.routing_oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").basis = ["measured"]; }],
+      ["observable pass", (record) => { record.routing_oracle.observables.find((entry) => entry.observable_id === "capability-matches-task").pass = true; }],
+      ["minimum route", (record) => { record.routing_oracle.minimum.status = "SOLVED"; }]
+    ];
+    for (const [name, forge] of forgeries) {
+      const record = JSON.parse(original);
+      forge(record);
+      writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+      const verified = run(cwd, ["verify", "--run", runId], 5);
+      assert.match(verified.stdout, /FAIL\trouting-record/, `${name}: ${verified.stdout}`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("forged probe and delegation records are rejected before they authorize consumer state", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const original = readFileSync(recordPath, "utf8");
+    const forgeries = [
+      ["probe completion", "probe-record", (record) => { record.capability_probes[0].invocation.completed = true; }],
+      ["delegation state", "delegation-record", (record) => { record.delegation_oracle.expected_value_class = "MINIMAL"; }]
+    ];
+    for (const [name, check, forge] of forgeries) {
+      const record = JSON.parse(original);
+      forge(record);
+      writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+      const verified = run(cwd, ["verify", "--run", runId], 5);
+      assert.equal(verified.stdout.includes(`FAIL\t${check}`), true, `${name}: ${verified.stdout}`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A5: a superseded v2 probe stays readable but leaves the run unresolved", () => {
+  const { cwd, runId, boundary, recordPath, resultPath } = assessedWithProbe();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    const result = JSON.parse(readFileSync(resultPath, "utf8"));
+    const current = record.capability_probes[0];
+    // This is the persisted v2 shape from the round-1 cut-off module: its completed invocation
+    // and workspace observations are intact, while later retry/blocker conclusions and fields do
+    // not yet exist. The v2 capability record was bound to the v2 verifier identity, not this
+    // build's.
+    const older = {
+      schema_id: "aos-capability-probe.v2",
+      verifier_id: "aos-capability-probe.v2",
+      probe_id: current.probe_id,
+      agent_id: current.agent_id,
+      status: current.status,
+      reason: current.reason,
+      started_at: current.started_at,
+      observations: current.observations,
+      exhibited: current.exhibited,
+      invocation: current.invocation === null ? null : {
+        completed: current.invocation.completed,
+        exit_code: current.invocation.exit_code,
+        signal: current.invocation.signal,
+        timed_out: current.invocation.timed_out,
+        interrupted: current.invocation.interrupted,
+        survivor: current.invocation.survivor,
+        leaked_descendants: current.invocation.leaked_descendants,
+        stdout_digest: current.invocation.stdout_digest
+      }
+    };
+    record.capability_probes[0] = older;
+    const historicalCapability = record.routing_oracle.capabilities[0];
+    historicalCapability.evidence_ids = historicalCapability.evidence_ids
+      .map((id) => (id.startsWith("verifier:") ? "verifier:aos-capability-probe.v2" : id));
+    historicalCapability.capability_digest = capabilityDigestOf(historicalCapability);
+    bindCapabilityToStoredRun(record, result, historicalCapability);
+    writeStoredRun(recordPath, resultPath, record, rebuildStoredResult(result, boundary));
+
+    const unresolved = run(cwd, ["verify", "--run", runId], 4);
+    assert.notEqual(unresolved.status, 0, unresolved.stdout);
+    assert.notEqual(unresolved.status, 5, unresolved.stdout);
+    assert.doesNotMatch(unresolved.stdout, /FAIL/u, unresolved.stdout);
+    assert.match(unresolved.stdout, /NOT-CHECKED\tprobe-record\tcapability probe for solo uses aos-capability-probe\.v2 predates this build's.*UNVERIFIABLE-by-this-build/u, unresolved.stdout);
+    for (const check of ["routing-record", "delegation-record", "recompute"]) {
+      assert.match(unresolved.stdout, new RegExp(`NOT-CHECKED\\t${check}\\t.*UNVERIFIABLE-by-this-build`, "u"), unresolved.stdout);
+    }
+    assert.equal(/capability probe outcome .* does not follow|routing capability record .* does not follow/u.test(unresolved.stdout), false, unresolved.stdout);
+    const unresolvedJson = run(cwd, ["verify", "--run", runId, "--json"], 4);
+    assert.equal(unresolvedJson.status, unresolved.status, unresolvedJson.stdout);
+    const unresolvedReport = JSON.parse(unresolvedJson.stdout);
+    assert.equal(unresolvedReport.state, "unresolved", unresolvedJson.stdout);
+    assert.equal(unresolvedReport.ok, false, unresolvedJson.stdout);
+    const notCheckedRows = unresolvedReport.checks
+      .filter((row) => ["routing-record", "probe-record", "delegation-record", "recompute"].includes(row.check));
+    assert.equal(notCheckedRows.length, 4, unresolvedJson.stdout);
+    for (const row of notCheckedRows) assert.equal(row.resolution, "not-checked", unresolvedJson.stdout);
+
+    // A v2 probe's current-looking status and completion fields are claims from an instrument this
+    // build cannot re-run. The verifier therefore returns the same answer after they are edited:
+    // neither value is a source of completion or scoring authority here.
+    const tampered = JSON.parse(readFileSync(recordPath, "utf8"));
+    tampered.capability_probes[0].status = "ANSWERED";
+    tampered.capability_probes[0].invocation.completed = true;
+    writeStoredRun(recordPath, resultPath, tampered, result);
+    const afterTamper = run(cwd, ["verify", "--run", runId], 4);
+    assert.equal(afterTamper.status, unresolved.status, afterTamper.stdout);
+    assert.deepEqual(
+      afterTamper.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
+      unresolved.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
+      afterTamper.stdout
+    );
+
+    // A contradicted claim is stronger evidence than a superseded probe's absence of evidence.
+    // This record still carries the same not-checked claims, but its confinement summary now
+    // disagrees with the independently recomputed one, so the aggregate has to report a
+    // contradiction rather than merely unresolved.
+    const contradictory = JSON.parse(readFileSync(recordPath, "utf8"));
+    contradictory.isolation.official_issuance.official = !contradictory.isolation.official_issuance.official;
+    writeStoredRun(recordPath, resultPath, contradictory, result);
+    const contradictedJson = run(cwd, ["verify", "--run", runId, "--json"], 5);
+    const contradictedReport = JSON.parse(contradictedJson.stdout);
+    assert.equal(contradictedReport.state, "contradicted", contradictedJson.stdout);
+    assert.equal(contradictedReport.ok, false, contradictedJson.stdout);
+    assert.equal(contradictedReport.checks.find((row) => row.check === "confinement-record").resolution, "contradicted", contradictedJson.stdout);
+    assert.equal(contradictedReport.checks.find((row) => row.check === "probe-record").resolution, "not-checked", contradictedJson.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a superseded sibling leaves an honest current probe unresolved", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    record.capability_probes.unshift(supersededProbeSibling(record.capability_probes[0]));
+    writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+
+    const unresolved = run(cwd, ["verify", "--run", runId, "--json"], 4);
+    const report = JSON.parse(unresolved.stdout);
+    assert.equal(report.state, "unresolved", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "probe-record").resolution, "not-checked", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "routing-record").resolution, "verified", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "delegation-record").resolution, "verified", unresolved.stdout);
+    assert.equal(report.checks.find((row) => row.check === "recompute").resolution, "verified", unresolved.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a superseded sibling cannot hide a forged current probe", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    record.capability_probes.unshift(supersededProbeSibling(record.capability_probes[0]));
+    record.capability_probes.find((probe) => probe.agent_id === "solo").invocation.completed = true;
+    writeFileSync(recordPath, `${canonicalJson(record)}\n`);
+
+    const contradicted = run(cwd, ["verify", "--run", runId, "--json"], 5);
+    const report = JSON.parse(contradicted.stdout);
+    assert.equal(report.state, "contradicted", contradicted.stdout);
+    const probe = report.checks.find((row) => row.check === "probe-record");
+    assert.equal(probe.resolution, "contradicted", contradicted.stdout);
+    assert.match(probe.detail, /capability probe outcome for solo does not follow/u, contradicted.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A4: an honest AOS spawn refusal persists only its safe class and verifies", async () => {
+  const { cwd, runId, boundary, recordPath, resultPath } = assessedWithProbe();
+  try {
+    const { probe, record: capability } = await probeAgentCapabilities(
+      { id: "solo" },
+      {
+        now: () => "2026-09-05T00:00:00.000Z",
+        run: async () => { throw new Error("provider stderr body /private/aos-probe/transcript"); }
+      }
+    );
+    // The refusal is AOS's pre-spawn observation. Its persisted form must classify that fact
+    // without retaining the throw's text, an absolute path, or a provider transcript.
+    assert.equal(probe.invocation.aos_refusal_class, "SPAWN_REFUSED");
+    assert.equal(probe.blocker_class, "SPAWN_REFUSED");
+    assert.equal(probe.retryable, false);
+    assert.doesNotMatch(canonicalJson(probe), /provider stderr body|\/private\/aos-probe|transcript/u);
+
+    const stored = JSON.parse(readFileSync(recordPath, "utf8"));
+    const result = JSON.parse(readFileSync(resultPath, "utf8"));
+    stored.capability_probes[0] = probe;
+    bindCapabilityToStoredRun(stored, result, capability);
+    writeStoredRun(recordPath, resultPath, stored, rebuildStoredResult(result, boundary));
+
+    assertAccepted(cwd, runId);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A1: a current completed probe with scored capabilities is accepted", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe("competent");
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(record.capability_probes[0].status, "ANSWERED");
+    assert.equal(record.routing_oracle.capabilities[0].source, "detected");
+    assertAccepted(cwd, runId);
+    const acceptedJson = run(cwd, ["verify", "--run", runId, "--json"]);
+    const acceptedReport = JSON.parse(acceptedJson.stdout);
+    assert.equal(acceptedReport.state, "verified", acceptedJson.stdout);
+    assert.equal(acceptedReport.ok, true, acceptedJson.stdout);
+    assert.equal(acceptedReport.checks.every((row) => row.resolution === "verified"), true, acceptedJson.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A2: a current clean silent probe is accepted with its withheld disposition", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe("probe-silent");
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    const probe = record.capability_probes[0];
+    assert.deepEqual(
+      { completed: probe.invocation.completed, observed: probe.observed_challenge_count, retryable: probe.retryable, blocker: probe.blocker_class },
+      { completed: true, observed: 0, retryable: false, blocker: "NO_ENGAGEMENT" }
+    );
+    assertAccepted(cwd, runId);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A3: a current cut-off probe is accepted with its retryable withheld disposition", () => {
+  const { cwd, runId, recordPath } = assessedWithProbe();
+  try {
+    const probe = JSON.parse(readFileSync(recordPath, "utf8")).capability_probes[0];
+    assert.deepEqual(
+      { completed: probe.invocation.completed, observed: probe.observed_challenge_count, retryable: probe.retryable, blocker: probe.blocker_class },
+      { completed: false, observed: 3, retryable: true, blocker: "NON_ZERO_EXIT" }
+    );
+    assertAccepted(cwd, runId);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("A6: an unprobed aos-known record is accepted with its withheld capability question", () => {
+  const { cwd, runId, recordPath } = assessed({ adapter: "codex-cli.v1" });
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(record.capability_probes, null);
+    assert.equal(record.routing_oracle.capabilities[0].source, "aos-known");
+    assertAccepted(cwd, runId);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
 
 test("a result names the contract files it was built from, and verify checks them against this build's", () => {
   // The digest a result cited was over the contract's canonical form, which is stable against key

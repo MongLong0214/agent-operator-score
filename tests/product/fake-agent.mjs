@@ -156,6 +156,13 @@ if (family === "FAM-1") {
     rejected_sources: docs.filter((doc) => doc.name !== authoritative.name).map((doc) => doc.name)
   });
 } else if (family === "FAM-3") {
+  if (profile === "no-artifact") {
+    // The runtime still ran, but produced none of the FAM-3 deliverable. The capability probe is a
+    // separate invocation and remains fully observable, so this profile isolates observed missing
+    // artifact evidence from unobserved runtime capability.
+    process.stdout.write("ran and wrote no FAM-3 artifact\n");
+    process.exit(0);
+  }
   // Carry the evidence forward: this branch's own line if it has one, and every candidate's line if
   // this is the join. A join that skipped a branch cannot produce a line it never opened.
   // A lazy variant, used by one test to prove the unconsumed path is reachable end to end: it

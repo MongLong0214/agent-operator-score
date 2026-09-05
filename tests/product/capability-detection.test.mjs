@@ -24,6 +24,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { canonicalJson } from "../../lib/core.mjs";
 import {
   CAPABILITY_PROBE_VERIFIER,
   CLAIM_AGREES_WORD,
@@ -42,12 +43,15 @@ import {
   probeTokens,
   seedProbeWorkspace
 } from "../../lib/capability-probe.mjs";
-import { loadEcdContract } from "../../lib/ecd-contract.mjs";
+import { evaluate, loadEcdContract, sealEcdContract } from "../../lib/ecd-contract.mjs";
 import { ADAPTERS } from "../../lib/profile.mjs";
+import { renderProfileTerminal } from "../../lib/profile-report.mjs";
+import { buildResult } from "../../lib/result-schema.mjs";
 import {
   ACTUAL_ROUTE_EVENT_SCHEMA,
   CAPABILITY_VOCABULARY,
   capabilityDigestOf,
+  capabilityRecord,
   capabilityRecordsFor,
   requirementsFromRoute,
   routingObservables,
@@ -55,6 +59,7 @@ import {
 } from "../../lib/routing-oracle.mjs";
 import { spawnSync } from "node:child_process";
 
+import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 import { cli, fakeAgent, initBare, makePlan, newestRecord, newestResult, run as runCli } from "./helpers.mjs";
 
 function workspace(t) {
@@ -71,7 +76,7 @@ function workspace(t) {
  * route names, and every required artefact and handoff is carried. So a verdict that moves between
  * two calls of this moved because the capability records did.
  */
-function m09Of(route, capabilities) {
+function routingFor(route, capabilities) {
   const { requirements } = requirementsFromRoute({ form_id: "FAM-3", route, required_artifacts: ["artifact:plan.json"] });
   const stages = route.split(">").map((group) => group.split("|"));
   const ownerOf = new Map();
@@ -98,19 +103,24 @@ function m09Of(route, capabilities) {
     operator_decision_event_id: null,
     operator_opportunity_id: null
   }));
-  const oracle = routingObservables({
+  return routingObservables({
     requirements,
     requirement_problems: [],
     capabilities,
     actual_route_events: events,
     work_requirement: workRequirementAtPlanApproval({ form_id: "FAM-3", frozen_at: "2026-09-01T09:00:00Z" })
   });
-  return oracle.oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
 }
 
-test("no adapter-derived capability record can fail capability-matches-task, whatever the route", () => {
-  // The reproduction this issue exists for, run rather than argued. Every route shape the oracle
-  // accepts, crossed with every assignment of a shipped adapter -- or none -- to every owner in it.
+const m09Of = (route, capabilities) =>
+  routingFor(route, capabilities).oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
+
+test("adapter-derived capability records withhold capability-matches-task, whatever the route", () => {
+  // Every route shape the oracle accepts, crossed with every assignment of a shipped adapter -- or
+  // none -- to every owner in it. This was the RED baseline for #558's last condition: before the
+  // provenance boundary, all 484 cases were either true or null and none could be false, because
+  // the requirement and every scorable adapter record came from AOS's vocabulary. `aos-known` must
+  // now be null instead: it says what AOS knows of an adapter, not what this runtime has exhibited.
   const adapters = [...Object.keys(ADAPTERS), null];
   const shapes = ["a", "a>b", "a>b>c", "a|b", "a|b>c", "a>b|c", "a>b>c>d"];
   const seen = new Map();
@@ -127,7 +137,8 @@ test("no adapter-derived capability record can fail capability-matches-task, wha
   }
   assert.equal(cases, 484);
   assert.equal(seen.get(false) ?? 0, 0, "an adapter-derived record failed the subcheck, so the premise of #625 has changed");
-  assert.equal(seen.get(true) > 0 && seen.get(null) > 0, true, "the sweep did not exercise both answers the producer can give");
+  assert.equal(seen.get(true) ?? 0, 0, "an adapter-derived record answered the runtime capability question");
+  assert.equal(seen.get(null), cases, "an adapter-derived record did not withhold the runtime capability question");
 });
 
 test("the probe table covers the whole capability vocabulary exactly once", () => {
@@ -184,12 +195,8 @@ test("the reported-not-gating mitigation's restatement of capability-registry-is
   // #627 round 2's G-07, the fourth site: three restatements of `PROBE_CHALLENGES` were bound above
   // and in "the probe table covers the whole capability vocabulary exactly once"; this is the one
   // the reviewer found still unbound. `reported-not-gating`'s mitigation prose describes
-  // `capability-registry-is-coarse`'s status in a sentence of its own -- "now partially mitigated
-  // rather than open ... not controlled" -- and nothing checked that sentence against the field it
-  // describes. A future round that discharges `capability-registry-is-coarse` to CONTROLLED (the
-  // release-posture decision this contract's own prose says is still pending) without updating
-  // `reported-not-gating` would leave a contract whose one rival says CONTROLLED and whose other
-  // rival's prose still says "not controlled" about it, with no test failing.
+  // `capability-registry-is-coarse`'s status in a sentence of its own. The default-path change
+  // below moves that rival to CONTROLLED, so this test keeps the two contract entries in lockstep.
   const contract = loadEcdContract();
   const cell = contract.cells.cells.find((one) => one.cell_id === "C2.RF.01");
   const capabilityRegistryIsCoarse = cell.rival_explanations.find((one) => one.id === "capability-registry-is-coarse");
@@ -273,7 +280,7 @@ test("a probe that got no trial is unknown, and unknown never lists an ability",
     [null, "the probe never invoked the runtime"],
     [{ timed_out: true, exit_code: null }, "the probe invocation timed out"],
     [{ interrupted: true, exit_code: null }, "the probe invocation was interrupted"],
-    [{ error: "AOS_RUNTIME_IDENTITY_UNVERIFIED", exit_code: null }, "the probe could not start the runtime"]
+    [{ aos_refusal_class: "SPAWN_REFUSED", exit_code: null }, "AOS refused to spawn the runtime before the probe started"]
   ]) {
     const probe = capabilityProbeRecord({ agent_id: "unreachable", probe_id: "probe-2", observations: none, invocation });
     assert.equal(probe.status, "INDETERMINATE", expected);
@@ -346,7 +353,7 @@ test("the probe record's schema identity moves when the record's meaning does", 
   // id stayed `aos-capability-probe.v1` -- so two records with different evidentiary meanings shared
   // one identity, and `lib/cli.mjs` persists both into `record.json`. The module states the rule it
   // was breaking: "A field moving means a new schema id."
-  assert.equal(CAPABILITY_PROBE_SCHEMA, "aos-capability-probe.v2");
+  assert.equal(CAPABILITY_PROBE_SCHEMA, "aos-capability-probe.v4");
   // Bound, not merely equal by coincidence: this module is the only thing that writes this record
   // and the only thing that decides it, so a verifier that kept its old name while the record moved
   // would claim the authority had not changed when its instrument had.
@@ -359,13 +366,19 @@ test("the probe record's schema identity moves when the record's meaning does", 
 
   // The superseded generation is kept and named, not dropped: a record from the earlier build reads
   // as a version this build has heard of, with a sentence true of that record.
-  assert.deepEqual([...CAPABILITY_PROBE_GENERATIONS], ["aos-capability-probe.v1", "aos-capability-probe.v2"]);
+  assert.deepEqual([...CAPABILITY_PROBE_GENERATIONS], ["aos-capability-probe.v1", "aos-capability-probe.v2", "aos-capability-probe.v3", "aos-capability-probe.v4"]);
   const old = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v1" });
   assert.equal(old.generation, "SUPERSEDED");
   // The sentence has to say what is different about *that* record, so a reader knows which of the
   // two things they are holding.
   assert.match(old.predates, /before the withholding control read whether the trial completed/u);
   assert.match(old.predates, /constant, so that word does not witness a comparison/u);
+  const prior = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v2" });
+  assert.equal(prior.generation, "SUPERSEDED");
+  assert.match(prior.predates, /before retryability, the AOS-observed blocker class/u);
+  const formerlyCurrent = capabilityProbeGeneration({ schema_id: "aos-capability-probe.v3" });
+  assert.equal(formerlyCurrent.generation, "SUPERSEDED");
+  assert.match(formerlyCurrent.predates, /safe pre-spawn refusal class/u);
   assert.equal(CAPABILITY_PROBE_PREDATES[CAPABILITY_PROBE_SCHEMA], undefined, "the current generation was described as superseding itself");
 
   assert.equal(capabilityProbeGeneration(emitted).generation, "CURRENT");
@@ -375,6 +388,15 @@ test("the probe record's schema identity moves when the record's meaning does", 
     assert.equal(capabilityProbeGeneration(unknown).generation, "UNKNOWN");
     assert.equal(capabilityProbeGeneration(unknown).predates, null);
   }
+});
+
+test("C2.RF.01 requires all of its declared opportunities", () => {
+  const contract = JSON.parse(JSON.stringify(loadEcdContract()));
+  const routingFitness = contract.cells.cells.find((cell) => cell.cell_id === "C2.RF.01");
+  assert.equal(routingFitness.minimum_opportunities, 3);
+  assert.equal(routingFitness.subcheck_ids.length, 3);
+  routingFitness.minimum_opportunities = 1;
+  assert.throws(() => sealEcdContract(contract), /minimum-basis-mismatch/u);
 });
 
 test("no answer that skips claims.json is accepted, for any wrong set and any fixed strategy", () => {
@@ -573,6 +595,23 @@ const assess = (cwd, extra, env) => {
 };
 const subOf = (result, id) => result.observations.find((entry) => entry.metric_id === "M09").subchecks.find((entry) => entry.id === id).pass;
 const capabilityOf = (record) => record.routing_oracle.observables.find((entry) => entry.observable_id === "capability-matches-task");
+const routingResultFor = (capability, minimality) => {
+  const contract = contractWithAPopulatedIndex();
+  const observations = observationsWith({
+    M09: {
+      "capability-matches-task": capability,
+      "simplest-adequate-route": minimality,
+      "no-redundant-invocation": true,
+      "invocation-budget-respected": true
+    }
+  });
+  return buildResult({
+    contract,
+    evaluation: evaluate(observations, identified, contract),
+    observations,
+    run: { run_id: "run-capability-transition" }
+  });
+};
 
 test("a runtime observed unable to write the deliverable fails capability-matches-task, naming what it lacked", async (t) => {
   const cwd = workspace(t);
@@ -678,6 +717,60 @@ test("a trial cut off part way through withholds the question and never scores w
   assert.deepEqual(probe.exhibited, [], "a cut-off trial published the abilities it happened to reach");
 });
 
+test("a clean silent probe and a cut-off probe publish different retry signals without provider output", async (t) => {
+  const cwd = workspace(t);
+  initBare(cwd);
+  addProbedAgent(cwd, "alpha");
+
+  const { record: silentRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-silent" });
+  const { record: cutOffRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-cut-off" });
+  const silent = silentRecord.capability_probes.find((entry) => entry.agent_id === "alpha");
+  const cutOff = cutOffRecord.capability_probes.find((entry) => entry.agent_id === "alpha");
+
+  assert.equal(silent.status, "INDETERMINATE");
+  assert.equal(cutOff.status, "INDETERMINATE");
+  assert.deepEqual(
+    { retryable: silent.retryable, blocker_class: silent.blocker_class, provider_blocker_class: silent.provider_blocker_class },
+    { retryable: false, blocker_class: "NO_ENGAGEMENT", provider_blocker_class: "NOT_APPLICABLE" }
+  );
+  assert.deepEqual(
+    { retryable: cutOff.retryable, blocker_class: cutOff.blocker_class, provider_blocker_class: cutOff.provider_blocker_class },
+    { retryable: true, blocker_class: "NON_ZERO_EXIT", provider_blocker_class: "UNDETERMINED" }
+  );
+  assert.equal(cutOff.invocation.exit_code, 1);
+  assert.equal(cutOff.observations.filter((row) => row.observed).length, 3);
+  assert.deepEqual(
+    { observed: cutOff.observed_challenge_count, total: cutOff.challenge_count },
+    { observed: 3, total: 8 }
+  );
+
+  // The probe record is evidence, not the consumer seam. A quickstart deciding whether it may
+  // spend another provider invocation reads the withheld routing observable, so the two facts
+  // above must reach it without parsing `reason` or rediscovering the probe by agent id.
+  for (const [label, record, expected] of [
+    ["silent", silentRecord, { retryable: false, blocker_class: "NO_ENGAGEMENT", provider_blocker_class: "NOT_APPLICABLE" }],
+    ["cut-off", cutOffRecord, { retryable: true, blocker_class: "NON_ZERO_EXIT", provider_blocker_class: "UNDETERMINED" }]
+  ]) {
+    const withheld = record.routing_oracle.observables
+      .filter((entry) => ["capability-matches-task", "simplest-adequate-route"].includes(entry.observable_id));
+    assert.equal(withheld.length, 2, `${label} probe did not withhold both capability-dependent observables`);
+    for (const observable of withheld) {
+      assert.equal(observable.pass, null, `${label} ${observable.observable_id}`);
+      assert.equal(observable.reason_code, "AOS_ROUTING_CAPABILITY_PROBE_INDETERMINATE", `${label} ${observable.observable_id}`);
+      assert.equal(observable.required_action, expected.retryable ? "RETRY_CAPABILITY_PROBE" : "INVESTIGATE_CAPABILITY_PROBE", `${label} ${observable.observable_id}`);
+      assert.deepEqual(
+        {
+          retryable: observable.retryable,
+          blocker_class: observable.blocker_class,
+          provider_blocker_class: observable.provider_blocker_class
+        },
+        expected,
+        `${label} ${observable.observable_id}`
+      );
+    }
+  }
+});
+
 test("every way a trial can fail to complete withholds alike", () => {
   // The class, not the four field names. `runProcess` answers "did this run to completion" in one
   // field, and reading that rather than re-deriving it is what makes a termination mode added to
@@ -708,19 +801,217 @@ test("every way a trial can fail to complete withholds alike", () => {
   }
 });
 
-test("a run that did not probe is scored from the adapter table exactly as before", async (t) => {
+test("a run that did not probe withholds routing fitness from the adapter table", async (t) => {
   const cwd = workspace(t);
   initBare(cwd);
   addProbedAgent(cwd, "alpha");
 
-  // The compatibility half. Without the flag nothing is probed, so the record is the one #558
-  // produced and no capability probe appears on the run at all -- null rather than an empty list,
-  // because "no probe was run" and "the probes observed nothing" are different facts.
+  // Without the flag nothing is probed, so this remains honest evidence of what AOS knows about
+  // the adapter -- not evidence of what this runtime can do. The source must stay visible beside
+  // the withheld answer: a probe that could not answer is `unknown`, while this is an unmeasured
+  // runtime under a known adapter.
   const { record, result } = assess(cwd, [], { FAKE_AGENT_PROFILE: "probe-confined" });
   assert.equal(record.capability_probes, null);
   const alpha = record.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha");
   assert.equal(alpha.source, "aos-known");
-  assert.equal(subOf(result, "capability-matches-task"), true);
+  const capability = capabilityOf(record);
+  assert.equal(capability.pass, null);
+  assert.equal(subOf(result, "capability-matches-task"), null);
+  // An adapter record is an unmeasured runtime, not an owner AOS knows nothing about. The distinction
+  // travels through the constraint failure #583 consumes and reaches the report that tells the
+  // operator how to obtain an answer.
+  const adapterFailure = record.routing_oracle.constraint_failures.find((entry) => entry.constraint === "capability");
+  assert.equal(adapterFailure.basis, "unmeasured-owner");
+  assert.match(adapterFailure.detail, /aos-known adapter record but no observed runtime capability evidence/u);
+  const minimality = record.routing_oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route");
+  const expectedWithholds = [
+    {
+      observable_id: "capability-matches-task",
+      pass: null,
+      basis: ["unmeasured-owner"],
+      reason: "AOS holds aos-known adapter records for alpha, but did not observe those runtimes; run aos assess --probe-capabilities to answer this question",
+      reason_code: "AOS_ROUTING_CAPABILITY_NOT_OBSERVED",
+      required_action: "OBSERVE_CAPABILITIES",
+      retryable: true,
+      blocker_class: "NOT_OBSERVED",
+      provider_blocker_class: "NOT_APPLICABLE"
+    },
+    {
+      observable_id: "simplest-adequate-route",
+      pass: null,
+      basis: ["unmeasured-owner"],
+      reason: "the cheapest adequate route could not be computed for this run: NO_SCORABLE_OWNER",
+      reason_code: "AOS_ROUTING_CAPABILITY_NOT_OBSERVED",
+      required_action: "OBSERVE_CAPABILITIES",
+      retryable: true,
+      blocker_class: "NOT_OBSERVED",
+      provider_blocker_class: "NOT_APPLICABLE"
+    }
+  ];
+  assert.deepEqual(
+    [capability, minimality].map(({
+      observable_id, pass, basis, reason, reason_code, required_action, retryable, blocker_class, provider_blocker_class
+    }) => ({ observable_id, pass, basis, reason, reason_code, required_action, retryable, blocker_class, provider_blocker_class })),
+    expectedWithholds
+  );
+
+  // Same registered runtime, route, plan and seed; only the capability-observation request changes.
+  // This is the counterfactual the consumer contract needs: an adapter table remains visible but
+  // cannot score, while a complete detected record from that exact runtime can answer both rows.
+  const { record: detectedRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "competent" });
+  const detectedCapability = capabilityOf(detectedRecord);
+  const detectedMinimality = detectedRecord.routing_oracle.observables.find((entry) => entry.observable_id === "simplest-adequate-route");
+  assert.equal(detectedRecord.routing_oracle.capabilities.find((entry) => entry.agent_id === "alpha").source, "detected");
+  assert.deepEqual(
+    [capability.pass, minimality.pass, detectedCapability.pass, detectedMinimality.pass],
+    [null, null, true, true],
+    "the only differing input was whether the runtime was observed"
+  );
+
+  // The oracle owns the wording; terminal, Markdown and HTML must relay the complete notice rather
+  // than each picking one observable to summarize.
+  const notice = expectedWithholds.map(({ observable_id, reason }) => `${observable_id} withholds: ${reason}`).join("; ");
+  for (const [surface, rendered] of [
+    ["terminal", renderProfileTerminal(result).join("\n")],
+    ["Markdown", runCli(cwd, ["report", "--run", record.run_id]).stdout],
+    ["HTML", runCli(cwd, ["report", "--run", record.run_id, "--format", "html"]).stdout]
+  ]) {
+    assert.equal(rendered.includes(`Routing capability evidence: ${notice}`), true, `${surface} omitted a causal subcheck or its reason`);
+  }
+
+  const { record: unknownRecord } = assess(cwd, ["--probe-capabilities"], { FAKE_AGENT_PROFILE: "probe-silent" });
+  const unknownCapability = capabilityOf(unknownRecord);
+  const unknownFailure = unknownRecord.routing_oracle.constraint_failures.find((entry) => entry.constraint === "capability");
+  assert.equal(unknownFailure.basis, "unknown-owner");
+  assert.match(unknownCapability.reason, /AOS holds no capability record it may score for alpha/u);
+  assert.notEqual(capability.reason, unknownCapability.reason, "an aos-known record was described as an unknown owner");
+  assert.notEqual(adapterFailure.basis, unknownFailure.basis, "the delegation oracle received one basis for different evidence states");
+
+  // C2.RF.01 owns the capability, minimality and no-redundancy subchecks. One answered ledger
+  // question cannot turn the two absent runtime-capability answers into a cell estimate; the
+  // required cell therefore withholds O4 and prevents an outcome index or composite issuance.
+  const routingFitness = result.cells.find((entry) => entry.cell_id === "C2.RF.01");
+  assert.equal(routingFitness.status, "INSUFFICIENT_OPPORTUNITIES");
+  assert.equal(routingFitness.estimate, null);
+  const o4 = result.system_outcome_profile.domains.O4;
+  assert.equal(o4.status, "WITHHELD");
+  assert.deepEqual(o4.withheld_for, [{ cell_id: "C2.RF.01", status: "INSUFFICIENT_OPPORTUNITIES" }]);
+  assert.equal(result.system_outcome_profile.index, null);
+  assert.equal(result.aos_composite.issued, false);
+
+  // This is the causal transition, rather than merely the default run's end state. With every
+  // other cell issued, only the two capability answers move C2.RF.01, then O4, the outcome index
+  // and the secondary composite.
+  const issued = routingResultFor(true, true);
+  const withheld = routingResultFor(null, null);
+  assert.equal(issued.cells.find((cell) => cell.cell_id === "C2.RF.01").status, "ISSUED");
+  assert.equal(withheld.cells.find((cell) => cell.cell_id === "C2.RF.01").status, "INSUFFICIENT_OPPORTUNITIES");
+  assert.equal(issued.system_outcome_profile.domains.O4.status, "ISSUED");
+  assert.equal(withheld.system_outcome_profile.domains.O4.status, "WITHHELD");
+  assert.notEqual(issued.system_outcome_profile.index, null);
+  assert.equal(withheld.system_outcome_profile.index, null);
+  assert.equal(issued.aos_composite.issued, true);
+  assert.equal(withheld.aos_composite.issued, false);
+});
+
+test("withholding O4 for unobserved capability leaves the Process Profile byte-identical", () => {
+  const issued = routingResultFor(true, true);
+  const withheld = routingResultFor(null, null);
+  assert.equal(issued.system_outcome_profile.domains.O4.status, "ISSUED");
+  assert.equal(withheld.system_outcome_profile.domains.O4.status, "WITHHELD");
+  assert.equal(canonicalJson(withheld.operator_process_profile), canonicalJson(issued.operator_process_profile));
+});
+
+test("the routing notice names both causal subchecks and their reasons for every non-scorable source", () => {
+  const sourceCases = [
+    {
+      source: "aos-known",
+      basis: "unmeasured-owner",
+      capabilityReason: "AOS holds aos-known adapter records for alpha, beta, but did not observe those runtimes; run aos assess --probe-capabilities to answer this question"
+    },
+    {
+      source: "declared",
+      basis: "declared-owner",
+      capabilityReason: "AOS holds only declared capability records for alpha, beta; an owner's declaration cannot answer a runtime capability question"
+    },
+    {
+      source: "unknown",
+      basis: "unknown-owner",
+      capabilityReason: "AOS holds no capability record it may score for alpha, beta; an owner it knows nothing about is not an owner that matched"
+    }
+  ];
+  for (const { source, basis, capabilityReason } of sourceCases) {
+    const capabilities = new Map(["alpha", "beta"].map((agent_id) => [agent_id, capabilityRecord({
+      agent_id,
+      capabilities: CAPABILITY_VOCABULARY,
+      source,
+      evidence_ids: source === "aos-known" ? ["adapter:codex-cli.v1"] : []
+    })]));
+    const routing = routingFor("alpha>beta", capabilities);
+    const expectedWithholds = [
+      { observable_id: "capability-matches-task", pass: null, basis: [basis], reason: capabilityReason },
+      {
+        observable_id: "simplest-adequate-route",
+        pass: null,
+        basis: [basis],
+        reason: "the cheapest adequate route could not be computed for this run: NO_SCORABLE_OWNER"
+      }
+    ];
+    const actualWithholds = routing.oracle.observables
+      .filter(({ observable_id }) => ["capability-matches-task", "simplest-adequate-route"].includes(observable_id))
+      .map(({ observable_id, pass, basis: observedBasis, reason }) => ({ observable_id, pass, basis: observedBasis, reason }));
+    assert.deepEqual(actualWithholds, expectedWithholds, source);
+    assert.equal(routing.reason.split("; routing capability evidence: ")[1],
+      expectedWithholds.map(({ observable_id, reason }) => `${observable_id} withholds: ${reason}`).join("; "), source);
+  }
+});
+
+test("a missing admitted owner does not become a probe recommendation because another owner is aos-known", () => {
+  const { requirements, problems } = requirementsFromRoute({
+    form_id: "FAM-3",
+    route: "alpha>beta",
+    required_artifacts: ["artifact:plan.json"]
+  });
+  const stageOne = requirements.find((entry) => entry.task_id === "FAM-3/stage-1");
+
+  for (const source of ["aos-known", "detected"]) {
+    const capabilities = new Map(["alpha", "beta"].map((agent_id) => [agent_id, capabilityRecord({
+      agent_id,
+      capabilities: CAPABILITY_VOCABULARY,
+      source,
+      evidence_ids: source === "detected" ? ["verifier:aos-capability-probe.v1"] : ["adapter:codex-cli.v1"]
+    })]));
+    const routing = routingObservables({
+      requirements,
+      requirement_problems: problems,
+      capabilities,
+      actual_route_events: [{
+        schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
+        task_id: stageOne.task_id,
+        agent_id: "alpha",
+        route_id: "alpha>beta",
+        invocation_id: `only-stage-one-${source}`,
+        purpose_id: stageOne.task_id,
+        started_at: "2026-09-01T10:00:00Z",
+        completed_at: "2026-09-01T10:01:00Z",
+        artifact_ids: [],
+        handoff_ids: [],
+        capability_digest: capabilityDigestOf(capabilities.get("alpha")),
+        operator_decision_event_id: null,
+        operator_opportunity_id: null
+      }],
+      work_requirement: workRequirementAtPlanApproval({ form_id: "FAM-3", frozen_at: "2026-09-01T09:00:00Z" })
+    });
+    const byId = new Map(routing.oracle.observables.map((entry) => [entry.observable_id, entry]));
+    const capability = byId.get("capability-matches-task");
+    const minimality = byId.get("simplest-adequate-route");
+    assert.equal(capability.pass, null, source);
+    assert.equal(minimality.pass, null, source);
+    assert.deepEqual(capability.basis, ["unassigned-owner"], source);
+    assert.equal(minimality.basis, undefined, source);
+    assert.match(capability.reason, /no admitted route event attributes an owner to FAM-3\/stage-2/u, source);
+    assert.doesNotMatch(routing.reason, /routing capability evidence|probe-capabilities|aos-known adapter/u, source);
+  }
 });
 
 test("a fixture runtime that does not compare loses the verification word and keeps the other seven", async (t) => {

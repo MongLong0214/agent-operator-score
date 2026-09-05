@@ -79,15 +79,14 @@ test("one agent can complete a controlled assessment", () => {
     assert.equal(result.observations.length, 20);
     // Everything it could observe, it observed well: no more than the monitoring metrics missing.
     //
-    // Thirteen, and the two that left this floor are named because a bare number cannot say whether
+    // Twelve, and the three that left this floor are named because a bare number cannot say whether
     // it fell for a reason. On the base of both branches it was fifteen. #557 took M19 out: safety
     // is answered from the boundary's own record now, and an unattended lane measures no boundary,
     // so the metric is NOT_OBSERVED rather than a full mark earned by reading the agent's own
-    // `response.json`. #558 took M09 down to 0.5: routing is answered by the oracle from the
-    // requirement AOS seeds and the invocation ledger, and two of its four questions used to be
-    // expressions that could not fail. Each branch measured fourteen on its own and each was right;
-    // the sum of two honest withholdings is thirteen, not a regression in either.
-    assert.equal(result.observations.filter((entry) => entry.value === 1).length >= 13, true);
+    // `response.json`. #558 makes M09 a partial row by withholding its two capability-dependent
+    // questions until the operator asks for a probe. Each absence is evidence AOS did not collect,
+    // not a regression it should cover with a default.
+    assert.equal(result.observations.filter((entry) => entry.value === 1).length >= 12, true);
     assert.deepEqual(record.agent_portfolio.used, ["solo"]);
     assert.ok(result.run.operator_plan_digest);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
@@ -103,12 +102,10 @@ test("six vendor-neutral aliases produce the same numbers as one, with no agent-
   const ids = ["codex", "claude", "gemini", "grok", "hermes", "buzz"];
   // Registered under an adapter AOS ships a capability record for, on both sides.
   //
-  // Not to make anything pass: what varies here is the alias, and the adapter is what AOS knows
-  // about the runtime behind it. Since #558 made `C2.RF.01` required, a run whose runtime AOS holds
-  // no capability record for withholds that cell and with it outcome domain O4 -- which is the
-  // intended posture, because an owner AOS knows nothing about is not an operator who routed badly.
-  // Registering these as a runtime AOS ships leaves more of the instrument issuing on both sides,
-  // and so leaves this comparison with more to compare rather than less.
+  // Not to make anything pass: what varies here is the alias. The adapter table remains visible as
+  // `aos-known`, but #558 deliberately does not let that table answer a runtime capability question.
+  // Both paths therefore withhold C2.RF.01 and O4 alike; O2 remains an independently issued value
+  // for this no-agent-count comparison.
   const known = ["--adapter", "codex-cli.v1"];
   try {
     run(solo, ["init"]);
@@ -147,25 +144,24 @@ test("six vendor-neutral aliases produce the same numbers as one, with no agent-
     assert.deepEqual(many.system_outcome_profile.coverage, one.system_outcome_profile.coverage);
     // What is withheld is withheld for the same reason in both, and what was issued is a number --
     // so "identical" here is not two blanks compared with each other. An unattended run withholds
-    // the process index, and with it the outcome index and the composite; three of the four outcome
-    // domains are issued at 100 and are what the comparison actually rests on.
+    // the process index, and with it the outcome index and the composite; O2 is independently
+    // issued at 100 and is what the comparison actually rests on.
     assert.deepEqual(many.aos_composite.withheld_for, one.aos_composite.withheld_for);
     assert.deepEqual(many.system_outcome_profile.withheld_for, one.system_outcome_profile.withheld_for);
     const issuedDomains = (result) => Object.entries(result.system_outcome_profile.domains)
       .filter(([, row]) => row.status === "ISSUED")
       .map(([id, row]) => [id, row.value]);
-    // Two, not three, since #557 moved `C6.PB.01` into O3: safety is not established on a lane with
-    // no measured boundary, so the safety domain withholds along with the process index rather than
-    // issuing over the cells that happen to be answerable.
-    assert.equal(issuedDomains(one).length >= 2, true, "the runs issued nothing, so nothing was compared");
+    // One, since #557 moved `C6.PB.01` into O3 and #558 makes the default adapter table insufficient
+    // for C2.RF.01: O3 and O4 withhold rather than issuing over cells AOS did not measure.
+    assert.equal(issuedDomains(one).length >= 1, true, "the runs issued nothing, so nothing was compared");
     assert.deepEqual(issuedDomains(many), issuedDomains(one));
     for (const field of ["agent_count", "invocation_count", "agents_used"]) {
       assert.equal(JSON.stringify(many.observations).includes(field), false, `${field} reached the observations`);
     }
-    // Thirteen for the reason given at the single-agent case above: M19 withholds on a lane with no
-    // measured boundary (#557) and M09 answers two of four from the oracle (#558), and this run is
-    // as unattended as that one.
-    assert.equal(many.observations.filter((entry) => entry.value === 1).length >= 13, true);
+    // Twelve for the reason given at the single-agent case above: M19 withholds on a lane with no
+    // measured boundary (#557) and M09 withholds its two runtime-capability questions without a
+    // probe (#558), and this run is as unattended as that one.
+    assert.equal(many.observations.filter((entry) => entry.value === 1).length >= 12, true);
   } finally {
     for (const dir of [solo, six]) rmSync(dir, { recursive: true, force: true });
   }

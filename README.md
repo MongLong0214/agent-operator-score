@@ -164,11 +164,13 @@ is not a scoring input.
 never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
 a broken setup into a low operator score.
 
-`assess --probe-capabilities` gives each registered agent a bounded, seeded workspace and reads back
+For an advanced/manual investigation, `assess --probe-capabilities` gives each registered agent a bounded, seeded workspace and reads back
 what it actually did, instead of assuming every agent registered under a known adapter can do
 everything that adapter ships with. This is what lets `capability-matches-task` fail: a run that
 finds an agent narrower than its adapter's default records the shortfall and names it. `aos agent
 probe <id>` runs the same check on one agent by itself, outside a scored run:
+
+The advanced/manual CLI form is `aos assess --probe-capabilities`:
 
 ```bash
 node bin/aos.mjs agent probe alpha           # what alpha was actually observed to do
@@ -176,7 +178,14 @@ node bin/aos.mjs assess --probe-capabilities # score this run from what was obse
 ```
 
 Off by default, because probing spends one real provider invocation per registered agent. Without
-the flag, capability records still come from AOS's own adapter table, exactly as before.
+the flag, AOS still records a known adapter's table as `aos-known`, but that source cannot answer a
+runtime-capability question. `capability-matches-task` and `simplest-adequate-route` therefore
+withhold; C2.RF.01 cannot reach its three required opportunities, so O4, the outcome index, and the
+composite withhold too. The runtime's capabilities were not observed; the routing outcome and
+composite are withheld, and capability observation is what would answer them. Today, the
+advanced/manual `aos assess --probe-capabilities` invocation runs that observation and consumes one
+real provider invocation per registered agent. Making a coding agent or quickstart run it
+automatically is #575. The CLI observes the runtime and produces `detected` evidence.
 
 ## The six things measured
 
@@ -430,6 +439,19 @@ npm run smoke:package    # pack and exercise the user flow elsewhere
 
 CI runs the test suite on Ubuntu with Node 22 and 24 and on macOS with Node 24, plus separate
 `verify:mvp`, mutation, and package-smoke jobs for Ubuntu and macOS.
+
+### `verify --run` exit codes
+
+`aos verify --run <id>` reports one machine-readable verification state:
+
+| Code | State | Meaning |
+|---:|---|---|
+| 0 | `verified` | Every required claim was established. |
+| 4 | `unresolved` | Nothing was refuted, and at least one required claim could not be checked. |
+| 5 | `contradicted` | At least one required claim was refuted by recomputation. |
+
+Exit code 4 is new and covers a state that previously exited 0. Consumers testing `!== 0` are
+unaffected; consumers testing `=== 5` must also handle the unresolved state.
 
 | Document | Purpose |
 |---|---|

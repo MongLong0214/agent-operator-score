@@ -312,6 +312,15 @@ export const GUARDS = [
     name: "a route label that is not an identifier assigns nobody"
   },
   {
+    guard: "aos-known is not a scorable runtime capability source",
+    reason: "the adapter table supplies every capability word AOS may require, so admitting it to the runtime capability question makes capability-matches-task structurally true on the default path; keeping its source visible while withholding is what stops AOS from grading its own table",
+    file: "lib/routing-oracle.mjs",
+    from: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\"]);",
+    to: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"aos-known\", \"detected\"]);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a run that did not probe withholds routing fitness from the adapter table"
+  },
+  {
     guard: "routing capability rests on a source AOS may score",
     reason: "without it an owner AOS holds no scorable record for is judged as one that lacks every capability, so \"we do not know what this agent can do\" is reported as \"the operator routed the work wrongly\" -- the withholding one line up depends on this branch naming the case",
     file: "lib/routing-oracle.mjs",
@@ -324,10 +333,19 @@ export const GUARDS = [
     guard: "routing minimality withholds on an owner AOS cannot judge",
     reason: "not knowing what an agent can do is not the operator routing badly, and failing there reports a silence as a fault",
     file: "lib/routing-oracle.mjs",
-    from: "  const undecided = failures.filter((entry) =>\n    entry.basis === \"unknown-owner\" ||\n    (entry.constraint === \"handoff\" && entry.basis === \"missing-evidence\") ||\n    entry.basis === \"unresolved-overlap\");",
+    from: "  const undecided = failures.filter((entry) =>\n    NONSCORABLE_OWNER_BASES.has(entry.basis) ||\n    (entry.constraint === \"handoff\" && entry.basis === \"missing-evidence\") ||\n    entry.basis === \"unresolved-overlap\");",
     to: "  const undecided = [];",
     test: "tests/product/routing-counterfactual.test.mjs",
     name: "an actual route whose owner AOS knows nothing about is not observed"
+  },
+  {
+    guard: "routing minimality retains the causal source when no owner is scorable",
+    reason: "NO_SCORABLE_OWNER can return before minimality evaluates the actual route, but the actual route's non-scorable capability failures are still why it cannot compare costs; dropping their basis lets the published notice under-name the withheld subchecks",
+    file: "lib/routing-oracle.mjs",
+    from: "  const nonScorableBases = sortedUnique((failures ?? [])\n    .filter((entry) => NONSCORABLE_OWNER_BASES.has(entry.basis))\n    .map((entry) => entry.basis));",
+    to: "  const nonScorableBases = [];",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the routing notice names both causal subchecks and their reasons for every non-scorable source"
   },
   {
     guard: "the cost floor is the work AOS asked for, not the route under measurement",
@@ -7177,6 +7195,159 @@ export const GUARDS = [
     to: "    answered: (text, tokens) => text.trim().length > 0 || tokens === null",
     test: "tests/product/capability-detection.test.mjs",
     name: "the execution challenge is answered by a digest of thirty-two bytes and by nothing else"
+  },
+  {
+    guard: "stored routing evidence is rebound during run verification",
+    reason: "a stored routing subtree is evidence, not its own certificate: changing its source, basis, observable or minimum must break the digests and evidence binding that verify reads",
+    file: "lib/cli.mjs",
+    from: "    const routingProblems = routingBindingProblems(record, result);",
+    to: "    const routingProblems = [];",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a forged routing record is rejected before it can certify M09"
+  },
+  {
+    guard: "stored probe and delegation evidence is rebound during run verification",
+    reason: "probe completion and delegation class are derived consumer state: letting either stored output certify itself would let a cut-off runtime become detected or a withheld route become minimal without its evidence changing",
+    file: "lib/cli.mjs",
+    from: "    const consumerStateProblems = consumerStateBindingProblems(record);",
+    to: "    const consumerStateProblems = { probe: [], delegation: [] };",
+    test: "tests/product/verify-run.test.mjs",
+    name: "forged probe and delegation records are rejected before they authorize consumer state"
+  },
+  {
+    guard: "a cut-off probe remains retryable and provider-undetermined",
+    reason: "AOS observes a non-zero exit and an incomplete challenge set, but never provider stderr; treating that as permanent or naming a provider cause would both invent evidence",
+    file: "lib/capability-probe.mjs",
+    from: "    return { retryable: true, blocker_class: \"NON_ZERO_EXIT\", provider_blocker_class: \"UNDETERMINED\" };",
+    to: "    return { retryable: false, blocker_class: \"NON_ZERO_EXIT\", provider_blocker_class: \"UNDETERMINED\" };",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a clean silent probe and a cut-off probe publish different retry signals without provider output"
+  },
+  {
+    guard: "a superseded probe generation is named before current-generation rebinding",
+    reason: "a v2 probe has a different verifier identity and lacks v3's disposition fields, so binding it as current turns an honest stored artifact into an accusation of forgery",
+    file: "lib/cli.mjs",
+    from: "    const generation = capabilityProbeGeneration(probe);",
+    to: "    const generation = { generation: \"CURRENT\" };",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
+  },
+  {
+    guard: "a superseded probe claim is not endorsed",
+    reason: "a recognised older probe cannot be recomputed by this build, so treating its stored completion outcome as verified would let a tampered record obtain the authority of the current instrument",
+    file: "lib/cli.mjs",
+    from: "    const probeState = verificationClaimState(consumerStateProblems.probe, supersededProbeClaims !== null);",
+    to: "    const probeState = verificationClaimState(consumerStateProblems.probe);",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
+  },
+  {
+    guard: "a superseded sibling cannot mask a current contradiction",
+    reason: "a recognised older probe is not evidence against a current probe, so its not-checked state must never overwrite an independently recomputed forgery",
+    file: "lib/cli.mjs",
+    from: "  return problems.length > 0 ? false : notChecked ? CHECK_NOT_CHECKED : true;",
+    to: "  return notChecked ? CHECK_NOT_CHECKED : problems.length > 0 ? false : true;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a superseded sibling cannot hide a forged current probe"
+  },
+  {
+    guard: "a not-checked verification is unresolved, never verified",
+    reason: "a superseded probe is readable but this build cannot establish its claims, so folding its NOT-CHECKED rows into exit 0 or top-level ok would endorse a record the verifier cannot vouch for",
+    file: "lib/cli.mjs",
+    from: "  if (checks.some((row) => row.resolution === CHECK_NOT_CHECKED)) return VERIFICATION_UNRESOLVED;",
+    to: "  if (false) return VERIFICATION_UNRESOLVED;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
+  },
+  {
+    guard: "a spawn refusal rebinds from AOS's safe pre-spawn class",
+    reason: "the throw that stopped a spawn is not persisted, so deleting AOS's own class makes an honest refusal rebound as INCOMPLETE and leaks no fact that can distinguish it",
+    file: "lib/capability-probe.mjs",
+    from: "  if (isAosSpawnRefusal(invocation)) {\n    return { retryable: false, blocker_class: \"SPAWN_REFUSED\", provider_blocker_class: \"NOT_APPLICABLE\" };\n  }",
+    to: "  if (false) {\n    return { retryable: false, blocker_class: \"SPAWN_REFUSED\", provider_blocker_class: \"NOT_APPLICABLE\" };\n  }",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A4: an honest AOS spawn refusal persists only its safe class and verifies"
+  },
+  {
+    guard: "withheld routing observables carry the capability disposition",
+    reason: "a probe record is evidence rather than the default consumer seam; dropping its disposition from the withheld observable makes a quickstart parse prose or rediscover the probe before it can decide whether another provider invocation is warranted",
+    file: "lib/routing-oracle.mjs",
+    from: "      ...capabilityWithholdingDisposition(unscorable, probesByAgent)",
+    to: "      ...capabilityWithholdingDisposition([], probesByAgent)",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a run that did not probe withholds routing fitness from the adapter table"
+  },
+  {
+    guard: "a declared capability source is not scorable",
+    reason: "an owner's declaration is provenance, not runtime evidence, so adding it to the candidate set would turn a self-report into a routing verdict",
+    file: "lib/routing-oracle.mjs",
+    from: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\"]);",
+    to: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\", \"declared\"]);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the routing notice names both causal subchecks and their reasons for every non-scorable source"
+  },
+  {
+    guard: "an unknown capability source is not scorable",
+    reason: "unknown says AOS has no observation to score; admitting it would make absence a route capability",
+    file: "lib/routing-oracle.mjs",
+    from: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\"]);",
+    to: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\", \"unknown\"]);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the routing notice names both causal subchecks and their reasons for every non-scorable source"
+  },
+  {
+    guard: "a detected capability source remains scorable",
+    reason: "the bounded probe is the only runtime observation this release may score; removing it makes an observed capability unable to answer the route question",
+    file: "lib/routing-oracle.mjs",
+    from: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([\"detected\"]);",
+    to: "export const SCORABLE_CAPABILITY_SOURCES = Object.freeze([]);",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "the same runtime observed able to write the deliverable passes, and the verdict moved with the probe"
+  },
+  {
+    guard: "missing capability does not become a pass",
+    reason: "a shortfall in observed capability is a failed requirement, but a missing observation is withheld above this branch; changing the shortfall verdict to true would publish the inverse finding",
+    file: "lib/routing-oracle.mjs",
+    from: "  return verdict(short.length === 0,",
+    to: "  return verdict(true,",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a runtime observed unable to write the deliverable fails capability-matches-task, naming what it lacked"
+  },
+  {
+    guard: "C2.RF.01 requires all declared opportunities",
+    reason: "the routing-fitness cell cannot issue from the ledger alone when both runtime-capability subchecks withhold; lowering its declared minimum makes the default no-probe run look complete",
+    file: "lib/ecd-contract.mjs",
+    from: "    if (cell.minimum_opportunities_basis === \"DECLARED_COVERAGE\" && cell.minimum_opportunities !== cell.subcheck_ids.length) {",
+    to: "    if (false) {",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "C2.RF.01 requires all of its declared opportunities"
+  },
+  {
+    guard: "O4 withholds with C2.RF.01",
+    reason: "C2.RF.01 is an O4 required cell, so ignoring its withheld status lets O4 publish an index over a route question AOS did not observe",
+    file: "lib/result-schema.mjs",
+    from: "  const withheld = cells.filter((cell) => cell.status !== \"ISSUED\").map((cell) => ({ cell_id: cell.cell_id, status: cell.status }));",
+    to: "  const withheld = cells.filter((cell) => cell.status !== \"ISSUED\" && cell.cell_id !== \"C2.RF.01\").map((cell) => ({ cell_id: cell.cell_id, status: cell.status }));",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a run that did not probe withholds routing fitness from the adapter table"
+  },
+  {
+    guard: "the unmeasured owner basis remains distinct",
+    reason: "an adapter table AOS knows and a runtime AOS knows nothing about are different causes, and collapsing them makes a consumer ask the wrong recovery question",
+    file: "lib/routing-oracle.mjs",
+    from: "  \"aos-known\": \"unmeasured-owner\",",
+    to: "  \"aos-known\": \"unknown-owner\",",
+    test: "tests/product/capability-detection.test.mjs",
+    name: "a run that did not probe withholds routing fitness from the adapter table"
+  },
+  {
+    guard: "the routing capability notice is projected for every renderer",
+    reason: "a causal routing notice outside the projection can disappear from one renderer while every other surface agrees, leaving the shared card without the reason for the withhold",
+    file: "lib/profile-report.mjs",
+    from: "    `System outcome: ${view.outcome.index}${withheld(view.outcome.withheld_summary)}${view.outcome.cap ? ` — ${view.outcome.cap}` : \"\"} · ${view.outcome.label}`,\n    ...(view.outcome.routing_capability_notice === null ? [] : [`Routing capability evidence: ${view.outcome.routing_capability_notice}`]),",
+    to: "    `System outcome: ${view.outcome.index}${withheld(view.outcome.withheld_summary)}${view.outcome.cap ? ` — ${view.outcome.cap}` : \"\"} · ${view.outcome.label}`,",
+    test: "tests/product/projection-consistency.test.mjs",
+    name: "the routing capability notice is projected for every renderer"
   }
 ];
 
@@ -7231,6 +7402,7 @@ export const ACCOUNTED_GUARDS = [
   "ACL walk",
   "AOS home withheld from the agent",
   "AOS_HOME is denied before the workspace is allowed",
+  "C2.RF.01 requires all declared opportunities",
   "ECD PROFILE_BOUND names the profile it claims",
   "ECD a bound profile identity is compared",
   "ECD a cell names only forms that administer its subchecks",
@@ -7276,6 +7448,7 @@ export const ACCOUNTED_GUARDS = [
   "EVIDENCE_ONLY names where the evidence goes",
   "EVIDENCE_ONLY records whether the migration happened",
   "MERGED holds no commit that reaches neither line",
+  "O4 withholds with C2.RF.01",
   "PATH carries no relative entry",
   "SUPERSEDED accounts for every commit on no other line",
   "SUPERSEDED requires the thing that superseded it",
@@ -7329,6 +7502,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential is what it is filed under, at any length",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cut-off probe remains retryable and provider-undetermined",
   "a cut-off trial is not a measurement",
   "a cycle answers with the provenance its runs resolved",
   "a cycle locks the executable as it is, not as it was registered",
@@ -7338,6 +7512,7 @@ export const ACCOUNTED_GUARDS = [
   "a date-shaped substring is not a snapshot on its own",
   "a decision binds to the construct it is evidence about",
   "a decision names the dimension it belongs to",
+  "a declared capability source is not scorable",
   "a declared route is published as digests",
   "a declared schedule never certifies collision safety",
   "a deletion names the commit the audit judged",
@@ -7347,6 +7522,7 @@ export const ACCOUNTED_GUARDS = [
   "a denied confirmation outranks an unread one",
   "a deny the kernel refused, not a file that was not there",
   "a derivation cites a receipt the observation carries",
+  "a detected capability source remains scorable",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
   "a discovery stage cannot skip the one before it",
@@ -7384,6 +7560,7 @@ export const ACCOUNTED_GUARDS = [
   "a namespace deny needs a plant behind it",
   "a new profile is filed beside the old one, never over it",
   "a new run is never scored by the old scorer",
+  "a not-checked verification is unresolved, never verified",
   "a one-segment absolute path is a path",
   "a partly attributed ledger is not the cost basis",
   "a phase's predecessors must be in the plan",
@@ -7434,6 +7611,7 @@ export const ACCOUNTED_GUARDS = [
   "a settlement nobody could check does not pass",
   "a settlement nobody could check is not a clean one",
   "a skipped real lane is not a verified one",
+  "a spawn refusal rebinds from AOS's safe pre-spawn class",
   "a started phase cannot integrate code on a blocked issue",
   "a state revision is stated, never defaulted",
   "a state that may not be deleted fixes its recommendation",
@@ -7444,6 +7622,9 @@ export const ACCOUNTED_GUARDS = [
   "a stored result may not elevate its own claim",
   "a subcheck verdict is one of three states, never rounded",
   "a superseded generation stays readable enough to be named",
+  "a superseded probe claim is not endorsed",
+  "a superseded probe generation is named before current-generation rebinding",
+  "a superseded sibling cannot mask a current contradiction",
   "a surface carries the rows it says it averaged",
   "a symlinked staging source is refused by name",
   "a tag's ref object is part of its identity",
@@ -7543,6 +7724,7 @@ export const ACCOUNTED_GUARDS = [
   "an unavailable permission check is not cached",
   "an unexplained holder of the run's directories withholds",
   "an unidentified runtime cannot carry the lane",
+  "an unknown capability source is not scorable",
   "an unknown capability source keeps no abilities",
   "an unknown isolation lane is refused, not defaulted",
   "an unknown model withholds the aggregate by its own name",
@@ -7561,6 +7743,7 @@ export const ACCOUNTED_GUARDS = [
   "an untrusted reason travels without the path it names",
   "an unverified executable gets no credential lookup",
   "an unverified executable withholds the aggregate",
+  "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
   "binary handling",
@@ -7671,6 +7854,7 @@ export const ACCOUNTED_GUARDS = [
   "malformed-row reporting",
   "merge keys bring their keys with them",
   "missing authors fail closed after permission resolution",
+  "missing capability does not become a pass",
   "missing invariance evidence withholds",
   "missing observation is NOT_OBSERVED, not a failed metric",
   "missing-result refusal",
@@ -7762,6 +7946,7 @@ export const ACCOUNTED_GUARDS = [
   "reviewed action allowlist",
   "route cost counts the handoffs a split buys",
   "routing capability rests on a source AOS may score",
+  "routing minimality retains the causal source when no owner is scorable",
   "routing minimality withholds on an owner AOS cannot judge",
   "rulesets are compared by content, not by cardinality",
   "run scratch is created inside the cleanup-protected region",
@@ -7782,6 +7967,8 @@ export const ACCOUNTED_GUARDS = [
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
   "started statuses need finished predecessors",
+  "stored probe and delegation evidence is rebound during run verification",
+  "stored routing evidence is rebound during run verification",
   "subject nonce non-disclosure",
   "subject runner executed from memory",
   "supply-chain digest covers the .npmrc",
@@ -7927,6 +8114,7 @@ export const ACCOUNTED_GUARDS = [
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
   "the reveal is read from the journal, not from this object",
+  "the routing capability notice is projected for every renderer",
   "the routing evidence id is one a published result keeps",
   "the rows a result must carry come from its contract",
   "the run key is one key for one run",
@@ -7960,6 +8148,7 @@ export const ACCOUNTED_GUARDS = [
   "the tree scan reads the integration line",
   "the tree scan receipt names the commit it scanned",
   "the two head transports are cross-checked",
+  "the unmeasured owner basis remains distinct",
   "the verified executable must be the adapter's runtime",
   "the weakest run decides the cycle",
   "the whole gate decision has to agree, not its headline",
@@ -7991,6 +8180,7 @@ export const ACCOUNTED_GUARDS = [
   "what was withheld outright is recorded as such",
   "withheld is never a number, and issued is never a reason",
   "withheld precision is absent",
+  "withheld routing observables carry the capability disposition",
   "workflow permission drift",
   "workspace containment",
   "workspace snapshot map is null-prototype",

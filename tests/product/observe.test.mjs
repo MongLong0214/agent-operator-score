@@ -42,7 +42,7 @@ const routingInput = () => ({
   // requirement list handed in beside it. This fixture's graph is its own work.
   work_requirement: { work_graph: WORK, problems: [] },
   capabilities: new Map(["r1", "r2"].map((id) =>
-    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "aos-known", evidence_ids: ["adapter:claude-code.v1"] })])),
+    [id, capabilityRecord({ agent_id: id, capabilities: [...CAPABILITY_VOCABULARY], source: "detected", evidence_ids: ["verifier:aos-capability-probe.v1"] })])),
   actual_route_events: Object.keys(ROUTED).sort().map((taskId, index) => ({
     schema_id: ACTUAL_ROUTE_EVENT_SCHEMA,
     task_id: taskId,

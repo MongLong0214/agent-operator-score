@@ -11,10 +11,144 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { RUNTIMES } from "../../lib/session.mjs";
+import { SCORABLE_CAPABILITY_SOURCES } from "../../lib/routing-oracle.mjs";
+import { fakeAgent, initBare, makePlan, newestRecord } from "./helpers.mjs";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const root = process.env.AOS_README_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "aos.mjs");
 const READMES = ["README.md", "README.ko.md", "README.ja.md", "README.zh-CN.md"];
+
+// The default posture changed from an adapter-table answer to an honest withhold. These tokens are
+// code identifiers rather than a translation's wording, so the four public pages stay bound to the
+// same source policy even while each explains it naturally in its own language.
+const CAPABILITY_POSTURE = Object.freeze({
+  "README.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u],
+  "README.ko.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u],
+  "README.ja.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u],
+  "README.zh-CN.md": [/`aos-known`/u, /`capability-matches-task`/u, /`simplest-adequate-route`/u, /C2\.RF\.01/u, /O4/u, /`aos assess --probe-capabilities`/u, /`detected`/u]
+});
+
+// #575 owns automatic quickstart orchestration. These patterns name the particular unshipped
+// promise that must never return; the behaviour below is checked from a persisted run instead of
+// treating translated prose as evidence that a command did or did not execute.
+const UN_SHIPPED_AUTOMATION = Object.freeze({
+  "README.md": /the coding agent or quickstart detects this withheld state and runs the capability observation automatically/u,
+  "README.ko.md": /코딩 에이전트나 quickstart가 이 보류 상태를 감지하고 capability 관측을 자동으로 실행합니다/u,
+  "README.ja.md": /コーディングエージェントまたは quickstart がこの保留状態を検出し、capability 観測を自動で実行します/u,
+  "README.zh-CN.md": /编码 Agent 或 quickstart 会检测到这一保留状态并自动运行 capability 观测/u
+});
+
+// The normal quickstart is zero-config. A provider-backed probe is a real, billable recovery
+// action, so the primary recovery explanation may name the current CLI but cannot make the
+// operator type it to recover. Advanced/manual documentation may do that; the default-recovery
+// block cannot. Keep the previously shipped wording here as the negative control: if it returns,
+// this test must fail for the same reason a reader would be sent to a terminal.
+const PRIMARY_RECOVERY = Object.freeze({
+  "README.md": {
+    starts: "Off by default",
+    advanced: /advanced\/manual/u,
+    previous: "Run `aos assess --probe-capabilities` when you need those answers: it observes the runtime and produces `detected` evidence."
+  },
+  "README.ko.md": {
+    starts: "기본값은 꺼짐",
+    advanced: /고급\/수동/u,
+    previous: "그 답이 필요하면 `aos assess --probe-capabilities`를 실행하세요. 런타임을 관측해 `detected` 증거를 만듭니다."
+  },
+  "README.ja.md": {
+    starts: "既定では無効",
+    advanced: /高度\/手動/u,
+    previous: "その答えが必要な場合は `aos assess --probe-capabilities` を実行してください。ランタイムを観測して `detected` の証拠を生成します。"
+  },
+  "README.zh-CN.md": {
+    starts: "默认关闭",
+    advanced: /高级\/手动/u,
+    previous: "需要这些答案时，请运行 `aos assess --probe-capabilities`：它会观测运行时并生成 `detected` 证据。"
+  }
+});
+
+const primaryRecoveryRequiresOperatorCli = (text, { starts, advanced }) => {
+  const start = text.indexOf(starts);
+  const end = start === -1 ? -1 : text.indexOf("\n## ", start);
+  const recovery = start === -1 ? "" : text.slice(start, end === -1 ? undefined : end).replace(/\s+/gu, " ");
+  const command = "`aos assess --probe-capabilities`";
+  let at = recovery.indexOf(command);
+  while (at !== -1) {
+    // A sentence's qualifier can sit on the prior wrapped line, so inspect its local context
+    // rather than a whole section that also contains an unrelated advanced/manual example.
+    const context = recovery.slice(Math.max(0, at - 120), at + command.length + 80);
+    if (!advanced.test(context)) return true;
+    at = recovery.indexOf(command, at + command.length);
+  }
+  return false;
+};
+
+test("the capability-probe section in every README describes the shipped default posture", () => {
+  assert.deepEqual(SCORABLE_CAPABILITY_SOURCES, ["detected"], "the README posture is written for a different scorable-source policy");
+  for (const [file, phrases] of Object.entries(CAPABILITY_POSTURE)) {
+    const text = readFileSync(join(root, file), "utf8");
+    for (const phrase of phrases) assert.match(text, phrase, `${file} omits a consequence of the default capability posture`);
+  }
+});
+
+test("the documented capability recovery is a deferred orchestration concern with a machine-readable current action", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-readme-capability-recovery-"));
+  const home = join(cwd, ".aos");
+  try {
+    initBare(cwd);
+    const added = aosIn(cwd, home, [
+      "agent", "add", "alpha", "--command", process.execPath, "--arg", fakeAgent, "--adapter", "codex-cli.v1",
+      "--allow-env", "FAKE_AGENT_PROFILE"
+    ]);
+    assert.equal(added.status, 0, added.stderr);
+    const run = aosIn(cwd, home, ["assess", "--plan", makePlan(cwd, { default: "alpha" }), "--seed", "1"]);
+    assert.equal(run.status, 3, run.stderr);
+
+    // This is the current binary behaviour. No probe ran, and the two consumers that withhold
+    // carry a stable reason, required action and disposition. A future #575 implementation may
+    // change this test deliberately when it actually starts the observation.
+    const record = newestRecord(cwd);
+    assert.equal(record.capability_probes, null, "a default assess silently ran a provider-backed capability probe");
+    const withheld = record.routing_oracle.observables
+      .filter((entry) => ["capability-matches-task", "simplest-adequate-route"].includes(entry.observable_id));
+    assert.equal(withheld.length, 2);
+    for (const observable of withheld) {
+      assert.equal(observable.pass, null, observable.observable_id);
+      assert.equal(observable.reason_code, "AOS_ROUTING_CAPABILITY_NOT_OBSERVED", observable.observable_id);
+      assert.equal(observable.required_action, "OBSERVE_CAPABILITIES", observable.observable_id);
+      assert.deepEqual(
+        {
+          retryable: observable.retryable,
+          blocker_class: observable.blocker_class,
+          provider_blocker_class: observable.provider_blocker_class
+        },
+        { retryable: true, blocker_class: "NOT_OBSERVED", provider_blocker_class: "NOT_APPLICABLE" },
+        observable.observable_id
+      );
+    }
+
+    for (const [file, promise] of Object.entries(UN_SHIPPED_AUTOMATION)) {
+      const text = readFileSync(join(root, file), "utf8");
+      assert.doesNotMatch(text.replace(/\s+/gu, " "), promise, `${file} promises #575 behaviour that this binary does not ship`);
+      assert.match(text, /#575/u, `${file} does not name the owner of automatic quickstart orchestration`);
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("the primary zero-config recovery documentation never requires an operator recovery CLI", () => {
+  for (const [file, rule] of Object.entries(PRIMARY_RECOVERY)) {
+    const text = readFileSync(join(root, file), "utf8");
+    assert.equal(primaryRecoveryRequiresOperatorCli(text, rule), false,
+      `${file} makes primary zero-config recovery depend on an operator typing a provider-backed CLI command`);
+
+    // A scratch copy with the exact prior wording must be classified as a failure. This prevents a
+    // future test rewrite from merely requiring the current prose while losing item 14's property.
+    const scratch = text.replace(rule.starts, `${rule.starts}. ${rule.previous}`);
+    assert.equal(primaryRecoveryRequiresOperatorCli(scratch, rule), true,
+      `${file} no longer detects the prior primary recovery command in a scratch copy`);
+  }
+});
 
 // What each README has to say about a cycle's aggregate, in its own language: that a cycle of
 // profile runs has none, that the median belongs to the legacy scorer, and never the flat promise
@@ -96,6 +230,35 @@ test("--help after a subcommand prints usage and runs nothing", () => {
     assert.doesNotMatch(aosIn(cwd, home, ["review", "--list"]).stdout, /^Agent Operator Score /);
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("verify exit states are documented in help and every README", () => {
+  const home = mkdtempSync(join(tmpdir(), "aos-verify-help-home-"));
+  const expected = [
+    /0\s+verified\s+every required claim was established/u,
+    /4\s+unresolved\s+nothing was refuted, and at least one required claim could not be checked/u,
+    /5\s+contradicted\s+at least one required claim was refuted by recomputation/u,
+    /Exit code 4 is new and covers a state that previously exited 0/u,
+    /!== 0/u,
+    /=== 5/u
+  ];
+  try {
+    const help = aosIn(home, home, ["verify", "--help"]);
+    assert.equal(help.status, 0, help.stderr);
+    for (const phrase of expected) assert.match(help.stdout, phrase, `verify --help omits ${phrase}`);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+
+  for (const file of READMES) {
+    const text = readFileSync(join(root, file), "utf8");
+    assert.match(text, /`aos verify --run <id>`/u, `${file} does not name the command whose status it documents`);
+    for (const state of ["verified", "unresolved", "contradicted"]) {
+      assert.match(text, new RegExp(`\\|\\s*[045]\\s*\\|\\s*\`${state}\``, "u"), `${file} omits ${state}`);
+    }
+    assert.match(text, /!== 0/u, `${file} does not explain the nonzero-compatible consumer`);
+    assert.match(text, /=== 5/u, `${file} does not explain the contradicted-only consumer`);
   }
 });
 
