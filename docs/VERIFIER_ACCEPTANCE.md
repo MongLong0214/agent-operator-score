@@ -67,6 +67,33 @@ it says — it simply does not carry authority into a build that cannot check it
 this" and "this is a forgery" stay different sentences, and so do "we cannot check this" and "this is
 fine".
 
+## The aggregate — the second cell this table was missing
+
+Naming a per-claim answer is not enough if the run-level answer collapses it. Round 2 found that a
+superseded artifact still authorizes itself to any consumer reading the verifier's **exit status** or
+**top-level `ok`**, because those did not carry the third state.
+
+This is the same trap #624 hit one level down: `NOT_CHECKED` is a truthy string, and an `every(...)`
+over the claims read it as confirmed. Here it is the aggregation rather than the reduction, and the
+consequence is worse, because exit status is what a script reads.
+
+    state: verified       ok / exit 0    every claim VERIFIED
+    state: contradicted   not ok / exit 5 any claim CONTRADICTED
+    state: unresolved     not ok / exit 4 any claim NOT-CHECKED and none contradicted
+
+The third state must be distinguishable from both, at the exit status and in the payload. It is not
+success: nothing was established. It is not failure: nothing was refuted. A verifier that answers
+this question with two values will always report one of those two lies. In particular, a run whose
+probe record is from a superseded generation returns `state: "unresolved"`, `ok: false`, and exit 4.
+
+**NOT-CHECKED must never aggregate as verification success.** That single sentence is the rule; the
+rest of this section is why.
+
+Consequence to state plainly rather than bury: a run whose probe record is from a superseded
+generation does not verify. That is correct and it is the price of A5 — the record is still readable
+and still named, and this build simply cannot vouch for it. Reporting that honestly is the whole
+point of accepting it as a record in the first place.
+
 ## The distinction that decides every row
 
     recomputable binding disagrees with the claim  -> REJECT

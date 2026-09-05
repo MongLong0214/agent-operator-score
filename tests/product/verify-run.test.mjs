@@ -138,7 +138,7 @@ test("forged probe and delegation records are rejected before they authorize con
   }
 });
 
-test("A5: a superseded v2 probe is named and not-checked, however it reports its outcome", () => {
+test("A5: a superseded v2 probe stays readable but leaves the run unresolved", () => {
   const { cwd, runId, boundary, recordPath, resultPath } = assessedWithProbe();
   try {
     const record = JSON.parse(readFileSync(recordPath, "utf8"));
@@ -177,20 +177,24 @@ test("A5: a superseded v2 probe is named and not-checked, however it reports its
     bindCapabilityToStoredRun(record, result, historicalCapability);
     writeStoredRun(recordPath, resultPath, record, rebuildStoredResult(result, boundary));
 
-    const verified = run(cwd, ["verify", "--run", runId]);
-    assert.equal(verified.status, 0, verified.stdout);
-    assert.doesNotMatch(verified.stdout, /FAIL/u, verified.stdout);
-    assert.match(verified.stdout, /NOT-CHECKED\tprobe-record\tcapability probe for solo uses aos-capability-probe\.v2 predates this build's.*UNVERIFIABLE-by-this-build/u, verified.stdout);
+    const unresolved = run(cwd, ["verify", "--run", runId], 4);
+    assert.notEqual(unresolved.status, 0, unresolved.stdout);
+    assert.notEqual(unresolved.status, 5, unresolved.stdout);
+    assert.doesNotMatch(unresolved.stdout, /FAIL/u, unresolved.stdout);
+    assert.match(unresolved.stdout, /NOT-CHECKED\tprobe-record\tcapability probe for solo uses aos-capability-probe\.v2 predates this build's.*UNVERIFIABLE-by-this-build/u, unresolved.stdout);
     for (const check of ["routing-record", "delegation-record", "recompute"]) {
-      assert.match(verified.stdout, new RegExp(`NOT-CHECKED\\t${check}\\t.*UNVERIFIABLE-by-this-build`, "u"), verified.stdout);
+      assert.match(unresolved.stdout, new RegExp(`NOT-CHECKED\\t${check}\\t.*UNVERIFIABLE-by-this-build`, "u"), unresolved.stdout);
     }
-    assert.equal(/capability probe outcome .* does not follow|routing capability record .* does not follow/u.test(verified.stdout), false, verified.stdout);
-    const verifiedJson = run(cwd, ["verify", "--run", runId, "--json"]);
-    assert.equal(verifiedJson.status, 0, verifiedJson.stdout);
-    const notCheckedRows = JSON.parse(verifiedJson.stdout).checks
+    assert.equal(/capability probe outcome .* does not follow|routing capability record .* does not follow/u.test(unresolved.stdout), false, unresolved.stdout);
+    const unresolvedJson = run(cwd, ["verify", "--run", runId, "--json"], 4);
+    assert.equal(unresolvedJson.status, unresolved.status, unresolvedJson.stdout);
+    const unresolvedReport = JSON.parse(unresolvedJson.stdout);
+    assert.equal(unresolvedReport.state, "unresolved", unresolvedJson.stdout);
+    assert.equal(unresolvedReport.ok, false, unresolvedJson.stdout);
+    const notCheckedRows = unresolvedReport.checks
       .filter((row) => ["routing-record", "probe-record", "delegation-record", "recompute"].includes(row.check));
-    assert.equal(notCheckedRows.length, 4, verifiedJson.stdout);
-    for (const row of notCheckedRows) assert.equal(row.resolution, "not-checked", verifiedJson.stdout);
+    assert.equal(notCheckedRows.length, 4, unresolvedJson.stdout);
+    for (const row of notCheckedRows) assert.equal(row.resolution, "not-checked", unresolvedJson.stdout);
 
     // A v2 probe's current-looking status and completion fields are claims from an instrument this
     // build cannot re-run. The verifier therefore returns the same answer after they are edited:
@@ -199,13 +203,27 @@ test("A5: a superseded v2 probe is named and not-checked, however it reports its
     tampered.capability_probes[0].status = "ANSWERED";
     tampered.capability_probes[0].invocation.completed = true;
     writeStoredRun(recordPath, resultPath, tampered, result);
-    const afterTamper = run(cwd, ["verify", "--run", runId]);
-    assert.equal(afterTamper.status, verified.status, afterTamper.stdout);
+    const afterTamper = run(cwd, ["verify", "--run", runId], 4);
+    assert.equal(afterTamper.status, unresolved.status, afterTamper.stdout);
     assert.deepEqual(
       afterTamper.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
-      verified.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
+      unresolved.stdout.split("\n").filter((line) => line.startsWith("NOT-CHECKED\t")),
       afterTamper.stdout
     );
+
+    // A contradicted claim is stronger evidence than a superseded probe's absence of evidence.
+    // This record still carries the same not-checked claims, but its confinement summary now
+    // disagrees with the independently recomputed one, so the aggregate has to report a
+    // contradiction rather than merely unresolved.
+    const contradictory = JSON.parse(readFileSync(recordPath, "utf8"));
+    contradictory.isolation.official_issuance.official = !contradictory.isolation.official_issuance.official;
+    writeStoredRun(recordPath, resultPath, contradictory, result);
+    const contradictedJson = run(cwd, ["verify", "--run", runId, "--json"], 5);
+    const contradictedReport = JSON.parse(contradictedJson.stdout);
+    assert.equal(contradictedReport.state, "contradicted", contradictedJson.stdout);
+    assert.equal(contradictedReport.ok, false, contradictedJson.stdout);
+    assert.equal(contradictedReport.checks.find((row) => row.check === "confinement-record").resolution, "contradicted", contradictedJson.stdout);
+    assert.equal(contradictedReport.checks.find((row) => row.check === "probe-record").resolution, "not-checked", contradictedJson.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -247,6 +265,11 @@ test("A1: a current completed probe with scored capabilities is accepted", () =>
     assert.equal(record.capability_probes[0].status, "ANSWERED");
     assert.equal(record.routing_oracle.capabilities[0].source, "detected");
     assertAccepted(cwd, runId);
+    const acceptedJson = run(cwd, ["verify", "--run", runId, "--json"]);
+    const acceptedReport = JSON.parse(acceptedJson.stdout);
+    assert.equal(acceptedReport.state, "verified", acceptedJson.stdout);
+    assert.equal(acceptedReport.ok, true, acceptedJson.stdout);
+    assert.equal(acceptedReport.checks.every((row) => row.resolution === "verified"), true, acceptedJson.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

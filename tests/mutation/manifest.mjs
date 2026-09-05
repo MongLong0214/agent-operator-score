@@ -7230,7 +7230,7 @@ export const GUARDS = [
     from: "    const generation = capabilityProbeGeneration(probe);",
     to: "    const generation = { generation: \"CURRENT\" };",
     test: "tests/product/verify-run.test.mjs",
-    name: "A5: a superseded v2 probe is named and not-checked, however it reports its outcome"
+    name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
   },
   {
     guard: "a superseded probe claim is not endorsed",
@@ -7239,7 +7239,16 @@ export const GUARDS = [
     from: "    const probeState = supersededProbeClaims === null ? consumerStateProblems.probe.length === 0 : CHECK_NOT_CHECKED;",
     to: "    const probeState = consumerStateProblems.probe.length === 0;",
     test: "tests/product/verify-run.test.mjs",
-    name: "A5: a superseded v2 probe is named and not-checked, however it reports its outcome"
+    name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
+  },
+  {
+    guard: "a not-checked verification is unresolved, never verified",
+    reason: "a superseded probe is readable but this build cannot establish its claims, so folding its NOT-CHECKED rows into exit 0 or top-level ok would endorse a record the verifier cannot vouch for",
+    file: "lib/cli.mjs",
+    from: "  if (checks.some((row) => row.resolution === CHECK_NOT_CHECKED)) return VERIFICATION_UNRESOLVED;",
+    to: "  if (false) return VERIFICATION_UNRESOLVED;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
   },
   {
     guard: "a spawn refusal rebinds from AOS's safe pre-spawn class",
@@ -7542,6 +7551,7 @@ export const ACCOUNTED_GUARDS = [
   "a namespace deny needs a plant behind it",
   "a new profile is filed beside the old one, never over it",
   "a new run is never scored by the old scorer",
+  "a not-checked verification is unresolved, never verified",
   "a one-segment absolute path is a path",
   "a partly attributed ledger is not the cost basis",
   "a phase's predecessors must be in the plan",
