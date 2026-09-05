@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-04T03:36:58.104Z",
+  "captured_at": "2026-09-05T05:03:03.750Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -47,7 +47,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#553",
@@ -102,7 +104,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#554",
@@ -153,7 +157,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#555",
@@ -257,7 +263,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#556",
@@ -345,7 +353,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#557",
@@ -359,61 +369,81 @@
     {
       "number": 558,
       "title": "[P0][measurement] M09를 actual route·capability·deterministic minimal-route oracle로 교체한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
       "close_evidence": {
         "schema": "aos-issue-completion.v1",
         "issue": 558,
-        "final_sha": "0616cfa47353c201c790bda0e3a802387e6e321c",
-        "pr": 614,
+        "final_sha": "be3bd636cfac092e84c8b9f976b80960a35d3bf8",
+        "pr": 630,
         "ci_run_ids": [
-          33808839048,
-          33806251945,
-          33734868245
+          33945541822
         ],
         "verdict": "PASS_WITH_KNOWN_RESIDUE",
         "evidence": {
-          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
-          "round1": "27 items at 50c90e38 -- 24 PASS, 4 FAIL (2 defects, each carried as one obligation and one class), 1 NOTED, 0 UNVERIFIED; enumeration COMPLETE, verification COMPLETE, verdict BLOCK",
-          "round1_inventory_sha256": "3f740601b5682c01ef42175bf07b2f8499a7ab8231e9db57bd719e946438aa58",
-          "round2": "seal and ancestry 50c90e38 -> c0b88efc verified before judging; both obligations CLOSED, NOTED closed, three NITs closed, no remediation regression, no round-1 escape; verdict PASS",
-          "defect1_absence_scored_as_zero": "a row answering none of its four questions was published FAIL/0 and averaged into D3; fixed in observationOf where subchecks become a state, not at the single call path that reached it -- round 2 constructed all-null rows for M01, M17 and M20 and all three withhold",
-          "defect2_route_breadth": "requirementsFromRoute derives the requirement from the route under measurement, so alpha>beta 3/3, alpha>beta>gamma 5/5, alpha>beta>gamma>delta 7/7 all report MINIMAL; the contract claimed CONTROLLED and now states PARTIALLY_MITIGATED with the unmitigated half and its closing condition named",
-          "guard_verified_by_hand": "the from string appears verbatim exactly once at lib/routing-oracle.mjs; applying the to makes the new production-path witness fail (expected 3, actual 2) -- checked directly rather than inferred from the mutation run",
-          "tests": "1339 pass / 0 fail / 1 skip under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
-          "mutation": "574/574 guards load-bearing, npm run test:mutation unqualified on darwin, one linux-only deferral (raw filename bytes)",
-          "ci": "green on all eleven checks at c0b88efc and again at 5911ffd (run 33808839048) after syncing onto dev",
-          "merge": "git merge-tree exits 0 with zero conflicts; merged as 0616cfa4"
+          "route_oracle_digest": "The route oracle's floor is derived, not believed. routeOracle recomputes the floor from work_requirement.work_graph -- the field the digest covers -- through requirementsFromWork, and work_requirement.requirements is read on no path (round 2 confirmed by accessor trap: zero reads in routeOracle, routingObservables and observeRun). A forged record with a declared list and no graph yields NO_WORK_REQUIREMENT/NOT_OBSERVED; the round-1 forgery that swapped the list on an honest record is inert -- the floor stays 1 and route_oracle_digest is byte-identical to the honest record's. workRequirementDigest is an unkeyed SHA-256 over the graph's canonical JSON, so it attests bytes rather than origin; that is safe only because package.json declares no main and no exports, making lib/routing-oracle.mjs deep-import-only, and a test asserts those entry points remain absent.",
+          "counterfactual": "Route breadth is priced on the production path, measured through the binary at five breadths: alpha 1/1 MINIMAL over 0; alpha>beta 3/1 over 2; alpha>beta>gamma 5/1 over 4; alpha>beta>gamma>delta 7/1 over 6; alpha|beta>gamma 5/1 over 4. Before #622 every one of those reported MINIMAL with over_delegation_reference 0, because requirementsFromRoute derived the requirement from the route under measurement. The contracted closing condition -- an attested route.assign at plan approval -- would not have closed it: round 1 built that counterfactual and got 1/1, 3/3, 5/5, 7/7, 5/5, because requirementsFromRoute forbids each stage from sharing an owner with the previous one, so the cheapest assignment must buy the same handoffs the actual route bought. Capability counterfactuals: a complete detected record answering the requirement passes; a narrow detected record fails naming the missing capability and the task (FAM-3/stage-1 went to alpha, which lacks artifact-write); nine incomplete-trial shapes all withhold as unknown with no adapter fallback.",
+          "mutation": "788/788 guards load-bearing, npm run test:mutation unqualified on darwin at the merge head, zero SURVIVED / WRONG-TEST / NO-TAP / NO-MATCH. The decision this issue turns on has its own guard: from is the SCORABLE_CAPABILITY_SOURCES literal, matching exactly once in lib/routing-oracle.mjs, and applying the to that re-adds aos-known flips the real binary's default run to capability-matches-task=true and kills three tests. Round 1 hand-applied it rather than reading the runner.",
+          "capability_source_policy": "SCORABLE_CAPABILITY_SOURCES = [detected]. detected scores a runtime capability question; aos-known is recorded as adapter knowledge and may not score; declared is provenance only; unknown is NOT_OBSERVED. No implicit alias -- every source comparison in lib/ was enumerated, and minimumRoute's owners escape hatch has one production caller which passes the filtered set.",
+          "default_no_probe": "capability-matches-task null (basis unmeasured-owner); simplest-adequate-route null (reason NO_SCORABLE_OWNER); C2.RF.01 ISSUED -> INSUFFICIENT_OPPORTUNITIES at 1 of 3 answered; O4 ISSUED -> WITHHELD; Outcome Index 100 -> null; composite withheld_for grows to [operator_process, system_outcome]. Measured base-vs-head on one fixture: nothing else moves -- process index, reliance profile, all six delegated-artifact constructs, O1/O2/O3 and the coverage counts are unchanged.",
+          "contract": "ECD_CONTRACT_VERSION 1.4.0 across all five artifacts; verify --run returns 0 verified / 4 unresolved / 5 contradicted, documented in verify --help and all four READMEs.",
+          "review_protocol": "sol-simplify-review-v1 over the owner directive's full G1-G15 scope. Implementer, round-1 reviewer and round-2 reviewer were three different executors. Twelve remediation passes; round 2 closed every round-1 item.",
+          "tests": "1663 tests, 0 fail under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "post_merge_ci": "run 33945541822 on dev at be3bd636 -- every job success across test ubuntu 22/24, test macOS 24, verify-mvp, package-smoke x2, mutation, execution-plan, defect-classes, action-pins, security-gates on both legs and measurement-gates"
         },
         "known_residue": [
           {
-            "id": "N-01",
-            "statement": "the remediation commit message and a manifest comment say the old witness was load-bearing nowhere; round 2 applied the mutation and it did kill the mutant. What the old witness lacked was a production-path demonstration, which was round 1s actual finding -- the re-pointing stands, the sentence overstates it",
-            "impact": "prose only; the guard and its witness are correct"
+            "id": "R-633",
+            "statement": "routed disposition fields are copied without being cross-checked against the matched probe; claims from a failed probe are accepted without its record; a README test name outruns its body",
+            "impact": "filed as #633. The round-2 reviewer judged each against whether it can undo the withholding and answered no to all three -- they falsify the explanation and the retry advice, not the decision"
           },
           {
-            "id": "N-02",
-            "statement": "C2.IB.01 count-not-cost says route cost reaches one place; it also reaches minimalityObservable, which is credit-bearing",
-            "impact": "as a comparison against its own minimum rather than a spend figure, so the cells operative claims stand"
+            "id": "R-631",
+            "statement": "ECD_CONTRACT_VERSION moving with contract bytes is stated as a rule in lib/ecd-contract.mjs and enforced by nothing",
+            "impact": "disclosed and unenforced, owned by live issue #631; acceptance recorded on PR #630. Not a claim the rule holds"
           },
           {
-            "id": "N-03",
-            "statement": "the first posting of this record carried an empty ci_run_ids array, because the run lookup was made with an abbreviated SHA and returned nothing; this posting supersedes it",
-            "impact": "record hygiene; the runs named here are the real successful runs"
+            "id": "R-632",
+            "statement": "the three-state-to-boolean collapse that produced this PRs last two defects has appeared three times in this codebase",
+            "impact": "filed as #632 as its own architectural change; not carried inside this issue"
+          },
+          {
+            "id": "R-probe",
+            "statement": "a runtime that exits 0 after answering only some challenges leaves not-observed and not-capable incompletely separated",
+            "impact": "observation rows and reached counts are preserved; this is the probes own bounded residual and is not the aos-known authority defect this issue closed"
+          },
+          {
+            "id": "R-evidence",
+            "statement": "P-14 platform/locale portability and P-19 historical count and CI claims rest on evidence neither reviewer round independently obtained",
+            "impact": "carried unconverted rather than restated more strongly"
           }
         ],
         "author": "MongLong0214",
         "author_trusted": true
       },
-      "close_evidence_checked": null,
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#558",
         "#576",
@@ -424,7 +454,18 @@
         "#582",
         "#559",
         "#583",
-        "#614"
+        "#614",
+        "#622",
+        "#612",
+        "#561",
+        "#630",
+        "#556",
+        "#618",
+        "#627",
+        "#633",
+        "#631",
+        "#632",
+        "#625"
       ]
     },
     {
@@ -512,7 +553,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#559",
@@ -602,7 +645,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#560",
@@ -688,7 +733,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#561",
@@ -839,7 +886,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#565",
@@ -914,7 +963,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#566",
@@ -964,7 +1015,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#567",
@@ -1059,7 +1112,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#570",
@@ -1250,7 +1305,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#574",
@@ -1435,7 +1492,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#582"
@@ -1450,7 +1509,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1558,7 +1617,9 @@
         "pr_produced_the_commit": true,
         "ci_runs_succeeded": true,
         "ci_runs_ran_on_this_work": true,
-        "verified": true
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
       },
       "closing_references": [
         "#588",
