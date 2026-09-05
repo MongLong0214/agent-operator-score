@@ -19,8 +19,8 @@ export const GUARDS = [
     guard: "form binding task identity is recomputed",
     reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the seed-specific tree it is actually grading; otherwise seed A can be paired with seed B's oracle",
     file: "lib/suite.mjs",
-    from: '    task_tree_digest: taskTreeDigest ?? taskTreeDigestFor(family, values),',
-    to: '    task_tree_digest: digestValue({ family }),',
+    from: "    taskTreeMatch = missingTaskInputs.length === 0 && taskInputTreeDigest(family, root) === expected.task_tree_digest;",
+    to: "    taskTreeMatch = missingTaskInputs.length === 0 && true;",
     test: "tests/product/suite-seed.test.mjs",
     name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
   },
@@ -28,10 +28,28 @@ export const GUARDS = [
     guard: "a task/oracle seed mix withholds rather than grading the unrelated task",
     reason: "a mismatch is not an incorrect answer: scoring it as zero converts a missing task/oracle relation into a false performance finding instead of letting the observation layer report NOT_OBSERVED",
     file: "lib/suite.mjs",
-    from: '  if (binding.status !== "MISMATCH") return { ...result, details };',
+    from: '  if (binding.status === "BOUND") return { ...result, details };',
     to: "  if (true) return { ...result, details };",
     test: "tests/product/suite-seed.test.mjs",
     name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+  },
+  {
+    guard: "missing seeded terms do not become empty text matches",
+    reason: "a public grader with no seeded expectation must not turn undefined into an empty substring and award a metric for a question it was never given",
+    file: "lib/suite.mjs",
+    from: '  if (!Array.isArray(terms) || terms.some((term) => typeof term !== "string" || term.trim().length === 0)) return false;',
+    to: "  if (false) return false;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
+  },
+  {
+    guard: "missing route pair does not borrow a fixed form",
+    reason: "a form without seeded routing context has no independent pair to compare, so silently borrowing one fixed pair turns an unasked routing question into a pass",
+    file: "lib/suite.mjs",
+    from: '    const pair = Array.isArray(p.independent_pair) && p.independent_pair.length === 2 && p.independent_pair.every((id) => typeof id === "string" && id.length > 0)\n      ? p.independent_pair\n      : null;',
+    to: '    const pair = ["implementation", "verification"];',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
   },
   {
     guard: "FAM-5 selected oracle branch is the form's",
@@ -8097,6 +8115,8 @@ export const ACCOUNTED_GUARDS = [
   "missing capability does not become a pass",
   "missing invariance evidence withholds",
   "missing observation is NOT_OBSERVED, not a failed metric",
+  "missing route pair does not borrow a fixed form",
+  "missing seeded terms do not become empty text matches",
   "missing-result refusal",
   "naming something to preserve refuses the deletion recommendation",
   "no credential is looked up before the identity stage",
