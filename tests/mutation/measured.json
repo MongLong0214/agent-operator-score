@@ -451,15 +451,6 @@
         "at": "2026-09-05T17:31:23.690Z"
       }
     },
-    "FAM-5 selected oracle branch is the form's": {
-      "platform": "darwin",
-      "fingerprint": "sha256:d1f9ae6598537f53a74c736059ebb456bd1c67d23b44aad924b24a0e4b42d2e3",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-05T17:31:23.675Z"
-      }
-    },
     "MERGED holds no commit that reaches neither line": {
       "platform": "darwin",
       "fingerprint": "sha256:3b47e8a3bf1f0ead3c4faf60c87a659f2db1285938bd8cdc26807dc9badd6755",

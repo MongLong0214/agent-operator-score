@@ -52,22 +52,13 @@ export const GUARDS = [
     name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
   },
   {
-    guard: "FAM-5 selected oracle branch is the form's",
-    reason: "the trusted controller runs the probes, but the seed must select which established subcheck is the form's decision; replacing that selection with null returns FAM-5 to one fixed verifier claim",
-    file: "lib/suite.mjs",
-    from: '  const selectedOracleBranch = typeof params.oracle_subcheck === "string" ? params.oracle_subcheck : null;',
-    to: "  const selectedOracleBranch = null;",
-    test: "tests/product/suite-grading.test.mjs",
-    name: "FAM-5 selects a seeded branch from the trusted verifier rather than a fixed probe claim"
-  },
-  {
     guard: "form variation report counts oracle branches",
-    reason: "different task bytes alone are not meaningful variation; a report that forces every family to one oracle count would certify the cosmetic-only failure this issue exists to stop",
-    file: "lib/suite.mjs",
-    from: "    const oracles = branchCount(rows, (row) => row.oracle_digest);",
-    to: "    const oracles = 1;",
-    test: "tests/product/suite-seed.test.mjs",
-    name: "the 20-seed report requires task, opportunity, operator decision and oracle variation"
+    reason: "the form variation report has to be produced by a shipped command over the declared twenty-seed sample; otherwise a helper-only check can pass while users have no path to the evidence",
+    file: "lib/cli.mjs",
+    from: "  const report = formVariationReport();",
+    to: "  const report = formVariationReport([\"1\"]);",
+    test: "tests/product/suite-forms-command.test.mjs",
+    name: "the shipped forms command produces the 20-seed variation report"
   },
   {
     guard: "an unsafe sentence is not an unsafe run",
@@ -7691,7 +7682,6 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck ownership follows the administering form",
   "EVIDENCE_ONLY names where the evidence goes",
   "EVIDENCE_ONLY records whether the migration happened",
-  "FAM-5 selected oracle branch is the form's",
   "MERGED holds no commit that reaches neither line",
   "O4 withholds with C2.RF.01",
   "PATH carries no relative entry",

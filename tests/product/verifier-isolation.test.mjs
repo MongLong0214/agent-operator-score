@@ -28,7 +28,7 @@ const withAssessed = async (source, { extra = () => {}, reads = [] } = {}) => {
     const prepared = prepareScenario("FAM-5", root);
     writeFileSync(join(root, "calculator.mjs"), source, "utf8");
     extra(root);
-    const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, invocationCount: 1 });
+    const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
     const files = {};
     for (const name of reads) {
       files[name] = existsSync(join(root, name)) ? readFileSync(join(root, name), "utf8") : null;
