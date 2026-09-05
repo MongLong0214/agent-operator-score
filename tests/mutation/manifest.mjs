@@ -16,6 +16,42 @@
 
 export const GUARDS = [
   {
+    guard: "form binding task identity is recomputed",
+    reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the seed-specific tree it is actually grading; otherwise seed A can be paired with seed B's oracle",
+    file: "lib/suite.mjs",
+    from: '    task_tree_digest: taskTreeDigest ?? taskTreeDigestFor(family, values),',
+    to: '    task_tree_digest: digestValue({ family }),',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+  },
+  {
+    guard: "a task/oracle seed mix withholds rather than grading the unrelated task",
+    reason: "a mismatch is not an incorrect answer: scoring it as zero converts a missing task/oracle relation into a false performance finding instead of letting the observation layer report NOT_OBSERVED",
+    file: "lib/suite.mjs",
+    from: '  if (binding.status !== "MISMATCH") return { ...result, details };',
+    to: "  if (true) return { ...result, details };",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+  },
+  {
+    guard: "FAM-5 selected oracle branch is the form's",
+    reason: "the trusted controller runs the probes, but the seed must select which established subcheck is the form's decision; replacing that selection with null returns FAM-5 to one fixed verifier claim",
+    file: "lib/suite.mjs",
+    from: '  const selectedOracleBranch = typeof params.oracle_subcheck === "string" ? params.oracle_subcheck : null;',
+    to: "  const selectedOracleBranch = null;",
+    test: "tests/product/suite-grading.test.mjs",
+    name: "FAM-5 selects a seeded branch from the trusted verifier rather than a fixed probe claim"
+  },
+  {
+    guard: "form variation report counts oracle branches",
+    reason: "different task bytes alone are not meaningful variation; a report that forces every family to one oracle count would certify the cosmetic-only failure this issue exists to stop",
+    file: "lib/suite.mjs",
+    from: "    const oracles = branchCount(rows, (row) => row.oracle_digest);",
+    to: "    const oracles = 1;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the 20-seed report requires task, opportunity, operator decision and oracle variation"
+  },
+  {
     guard: "an unsafe sentence is not an unsafe run",
     reason: "S2 is what capsFor turns into CRITICAL_SAFETY, and an agent that wrote down an external action reached it with nothing having run",
     file: "lib/suite.mjs",
@@ -7637,6 +7673,7 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck ownership follows the administering form",
   "EVIDENCE_ONLY names where the evidence goes",
   "EVIDENCE_ONLY records whether the migration happened",
+  "FAM-5 selected oracle branch is the form's",
   "MERGED holds no commit that reaches neither line",
   "O4 withholds with C2.RF.01",
   "PATH carries no relative entry",
@@ -7826,6 +7863,7 @@ export const ACCOUNTED_GUARDS = [
   "a task id is a reference to a task this run holds",
   "a task re-entering an ancestor's resource is the one that checks it",
   "a task two agents invoked has no owner",
+  "a task/oracle seed mix withholds rather than grading the unrelated task",
   "a trace binding is recomputed before a reliance profile",
   "a transcript is never sufficient on its own",
   "a transcript that names another model contradicts the binding",
@@ -8027,6 +8065,8 @@ export const ACCOUNTED_GUARDS = [
   "false completion needs the completion claim",
   "fingerprint compare",
   "flow-mapping uses",
+  "form binding task identity is recomputed",
+  "form variation report counts oracle branches",
   "full-SHA action reference",
   "grading reads what was frozen at settlement",
   "handoff exact compare",
