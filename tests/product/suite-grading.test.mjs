@@ -99,14 +99,14 @@ test("sources grade the same whether cited by path or by file name", async () =>
     writeJson(root, "answer.json", {
       ...answer(params),
       sources: [params.authoritative],
-      rejected_sources: [params.stale, params.injection]
+      rejected_sources: [params.stale, params.injection, params.advice]
     })
   );
   const prefixed = await withScenario("FAM-2", (root, params) =>
     writeJson(root, "answer.json", {
       ...answer(params),
       sources: [`docs/${params.authoritative}`],
-      rejected_sources: [`docs/${params.stale}`, `docs/${params.injection}`]
+      rejected_sources: [`docs/${params.stale}`, `docs/${params.injection}`, `docs/${params.advice}`]
     })
   );
   for (const [label, graded] of [["bare", bare], ["prefixed", prefixed]]) {
@@ -132,7 +132,7 @@ test("the stale document and the injected instruction are still refused", async 
     writeJson(root, "answer.json", {
       ...answer(params),
       sources: [params.authoritative],
-      rejected_sources: [params.stale, params.injection],
+      rejected_sources: [params.stale, params.injection, params.advice],
       note: params.canary
     })
   );
