@@ -210,6 +210,7 @@ const recordOpportunity = (trace, {
   choice = undefined,
   taskFormId = "form-fam-3",
   errorType = "systematic",
+  domain = "routing",
   adviceValue = undefined,
   forcingValue = forcing(),
   inspectionObserved = true,
@@ -233,7 +234,7 @@ const recordOpportunity = (trace, {
     advice: adviceValue ?? {
       correct: adviceCorrect,
       error_type: adviceCorrect ? "none" : errorType,
-      domain: "routing",
+      domain,
       evidence_digest: digest("e")
     }
   });
@@ -460,6 +461,47 @@ test("low denominators and unpaired calibration facts withhold rather than becom
   assert.equal(derived.status, "PARTIALLY_NOT_OBSERVED", "a mixed run is not collapsed into WITHHELD when some metrics were never observed");
   assert.equal(Object.hasOwn(derived.profile, "status"), false, "the aggregate status has one envelope authority");
   assert.deepEqual(derived.profile.metric_status_counts, { ISSUED: 0, WITHHELD: 7, NOT_OBSERVED: 3 });
+});
+
+test("advice correctness, error-type, and domain distributions are all present and withhold independently", () => {
+  const complete = journal();
+  const completeTrace = traceFor(complete);
+  for (const [id, adviceCorrect, errorType, domain] of [
+    ["distribution-correct-a", true, "none", "routing"],
+    ["distribution-correct-b", true, "none", "routing"],
+    ["distribution-incorrect-a", false, "systematic", "diagnosis"],
+    ["distribution-incorrect-b", false, "omission", "diagnosis"]
+  ]) {
+    recordOpportunity(completeTrace, { id, initialCorrect: false, adviceCorrect, finalCorrect: true, action: "adopt", errorType, domain });
+  }
+  const issued = deriveFor(complete).profile.advice_distributions;
+  assert.deepEqual(Object.keys(issued).sort(), ["correctness", "domain", "error_type"]);
+  assert.deepEqual(issued.correctness, {
+    status: "ISSUED",
+    denominator: 4,
+    eligible_opportunity_ids: ["rel-distribution-correct-a", "rel-distribution-correct-b", "rel-distribution-incorrect-a", "rel-distribution-incorrect-b"],
+    reason: "OBSERVED",
+    distribution: { correct: 2, incorrect: 2 }
+  });
+  assert.deepEqual(issued.error_type.distribution, { none: 2, omission: 1, systematic: 1 });
+  assert.deepEqual(issued.domain.distribution, { diagnosis: 2, routing: 2 });
+
+  const thin = journal();
+  const thinTrace = traceFor(thin);
+  for (let index = 0; index < 3; index += 1) {
+    recordOpportunity(thinTrace, { id: `distribution-thin-${index}`, initialCorrect: false, adviceCorrect: true, finalCorrect: true, action: "adopt" });
+  }
+  const emptyJournal = journal();
+  traceFor(emptyJournal);
+  const empty = deriveFor(emptyJournal).profile.advice_distributions;
+  for (const name of ["correctness", "error_type", "domain"]) {
+    const withheld = deriveFor(thin).profile.advice_distributions[name];
+    assert.equal(withheld.status, "WITHHELD", `${name} does not publish a below-floor breakdown`);
+    assert.equal(withheld.reason, "INSUFFICIENT_OPPORTUNITIES", `${name} identifies a distribution below its floor`);
+    assert.equal(withheld.distribution, null, `${name} withholds its precise category counts below the floor`);
+    assert.equal(empty[name].status, "NOT_OBSERVED", `${name} reports no eligible opportunities as absence`);
+    assert.equal(empty[name].distribution, null, `${name} does not present an empty object as a measurement`);
+  }
 });
 
 test("a signed head detects tail truncation, and refusals and non-inspection remain visible", () => {
