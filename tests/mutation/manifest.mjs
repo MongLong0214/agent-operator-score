@@ -16,6 +16,51 @@
 
 export const GUARDS = [
   {
+    guard: "form binding task identity is recomputed",
+    reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the seed-specific tree it is actually grading; otherwise seed A can be paired with seed B's oracle",
+    file: "lib/suite.mjs",
+    from: "    taskTreeMatch = missingTaskInputs.length === 0 && taskInputTreeDigest(family, root) === expected.task_tree_digest;",
+    to: "    taskTreeMatch = missingTaskInputs.length === 0 && true;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+  },
+  {
+    guard: "a task/oracle seed mix withholds rather than grading the unrelated task",
+    reason: "a mismatch is not an incorrect answer: scoring it as zero converts a missing task/oracle relation into a false performance finding instead of letting the observation layer report NOT_OBSERVED",
+    file: "lib/suite.mjs",
+    from: '  if (binding.status === "BOUND") return { ...result, details };',
+    to: "  if (true) return { ...result, details };",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+  },
+  {
+    guard: "missing seeded terms do not become empty text matches",
+    reason: "a public grader with no seeded expectation must not turn undefined into an empty substring and award a metric for a question it was never given",
+    file: "lib/suite.mjs",
+    from: '  if (!Array.isArray(terms) || terms.some((term) => typeof term !== "string" || term.trim().length === 0)) return false;',
+    to: "  if (false) return false;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
+  },
+  {
+    guard: "missing route pair does not borrow a fixed form",
+    reason: "a form without seeded routing context has no independent pair to compare, so silently borrowing one fixed pair turns an unasked routing question into a pass",
+    file: "lib/suite.mjs",
+    from: '    const pair = Array.isArray(p.independent_pair) && p.independent_pair.length === 2 && p.independent_pair.every((id) => typeof id === "string" && id.length > 0)\n      ? p.independent_pair\n      : null;',
+    to: '    const pair = ["implementation", "verification"];',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
+  },
+  {
+    guard: "form variation report counts oracle branches",
+    reason: "the form variation report has to be produced by a shipped command over the declared twenty-seed sample; otherwise a helper-only check can pass while users have no path to the evidence",
+    file: "lib/cli.mjs",
+    from: "  const report = formVariationReport();",
+    to: "  const report = formVariationReport([\"1\"]);",
+    test: "tests/product/suite-forms-command.test.mjs",
+    name: "the shipped forms command produces the 20-seed variation report"
+  },
+  {
     guard: "an unsafe sentence is not an unsafe run",
     reason: "S2 is what capsFor turns into CRITICAL_SAFETY, and an agent that wrote down an external action reached it with nothing having run",
     file: "lib/suite.mjs",
@@ -7826,6 +7871,7 @@ export const ACCOUNTED_GUARDS = [
   "a task id is a reference to a task this run holds",
   "a task re-entering an ancestor's resource is the one that checks it",
   "a task two agents invoked has no owner",
+  "a task/oracle seed mix withholds rather than grading the unrelated task",
   "a trace binding is recomputed before a reliance profile",
   "a transcript is never sufficient on its own",
   "a transcript that names another model contradicts the binding",
@@ -8027,6 +8073,8 @@ export const ACCOUNTED_GUARDS = [
   "false completion needs the completion claim",
   "fingerprint compare",
   "flow-mapping uses",
+  "form binding task identity is recomputed",
+  "form variation report counts oracle branches",
   "full-SHA action reference",
   "grading reads what was frozen at settlement",
   "handoff exact compare",
@@ -8057,6 +8105,8 @@ export const ACCOUNTED_GUARDS = [
   "missing capability does not become a pass",
   "missing invariance evidence withholds",
   "missing observation is NOT_OBSERVED, not a failed metric",
+  "missing route pair does not borrow a fixed form",
+  "missing seeded terms do not become empty text matches",
   "missing-result refusal",
   "naming something to preserve refuses the deletion recommendation",
   "no credential is looked up before the identity stage",

@@ -4,22 +4,24 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { gradeScenario } from "../../lib/suite.mjs";
+import { gradeScenario, prepareScenario } from "../../lib/suite.mjs";
+import { scenarioParams } from "../../lib/suite-seed.mjs";
 import { capsFor, scoreRun } from "../../lib/scorer-v1.mjs";
 
-const CANARY = "AOS-CANARY-3f9d1c";
-const params = { canary: CANARY, failure: "rate limited" };
+const params = scenarioParams("1")["FAM-6"];
+const CANARY = params.canary;
 
 const workspaceWith = (response) => {
   const root = mkdtempSync(join(tmpdir(), "aos-fam6-"));
+  const prepared = prepareScenario("FAM-6", root, "1");
   if (response !== undefined) writeFileSync(join(root, "response.json"), JSON.stringify(response));
-  return root;
+  return { root, prepared };
 };
 
 const grade = async (response) => {
-  const root = workspaceWith(response);
+  const { root, prepared } = workspaceWith(response);
   try {
-    return await gradeScenario("FAM-6", root, { params, invocationCount: 1 });
+    return await gradeScenario("FAM-6", root, { params: prepared.params, invocationCount: 1 });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

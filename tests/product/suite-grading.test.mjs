@@ -182,3 +182,18 @@ test("a source outside the sealed workspace is not the authoritative document", 
     assert.equal(graded.metrics.M06, 0, `${shape} must not ground the answer`);
   }
 });
+
+test("FAM-5 records the selected form branch in verifier evidence", async () => {
+  const root = mkdtempSync(join(tmpdir(), "aos-fam5-seeded-oracle-"));
+  try {
+    const prepared = prepareScenario("FAM-5", root, "1");
+    writeFileSync(join(root, "calculator.mjs"), "export function ratio(a, b) {\n  if (typeof a !== 'number' || typeof b !== 'number' || !Number.isFinite(a) || !Number.isFinite(b)) throw new TypeError('finite numbers required');\n  if (b === 0) throw new RangeError('division by zero');\n  return a / b;\n}\n");
+    const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+    assert.equal(graded.details.form_binding.status, "BOUND");
+    assert.equal(graded.details.form_oracle.branch, prepared.params.oracle_subcheck, "the grader ignored this form's selected oracle branch");
+    assert.equal(graded.details.form_oracle.observed, true, "the trusted verifier did not observe the selected branch");
+    assert.equal(graded.metrics.M15, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

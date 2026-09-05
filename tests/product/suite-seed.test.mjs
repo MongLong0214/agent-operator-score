@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
-import { SUITE_ID, prepareScenario, suiteDigest, suiteManifest } from "../../lib/suite.mjs";
+import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
 
@@ -16,6 +16,31 @@ test("the same seed produces the same scenario, byte for byte", () => {
   // property a comparable number rests on.
   for (const seed of seeds(20)) {
     assert.deepEqual(scenarioParams(seed), scenarioParams(seed), seed);
+  }
+});
+
+test("the same form replays across workspace paths and locales", () => {
+  const roots = [];
+  const originalLang = process.env.LANG;
+  try {
+    for (const family of FAMILIES) {
+      const firstRoot = mkdtempSync(join(tmpdir(), "aos-form-path-a-"));
+      roots.push(firstRoot);
+      process.env.LANG = "en_US.UTF-8";
+      const first = prepareScenario(family, firstRoot, "2a");
+      process.env.LANG = "ko_KR.UTF-8";
+      const secondRoot = mkdtempSync(join(tmpdir(), "aos-form-path-b-"));
+      roots.push(secondRoot);
+      const second = prepareScenario(family, secondRoot, "2a");
+      assert.equal(readFileSync(join(firstRoot, "task.md"), "utf8"), readFileSync(join(secondRoot, "task.md"), "utf8"), `${family} task bytes depend on its absolute path or locale`);
+      assert.equal(first.task, second.task, `${family} task text did not replay`);
+      assert.deepEqual(first.params, second.params, `${family} parameters did not replay`);
+      assert.deepEqual(first.form_manifest, second.form_manifest, `${family} task/oracle manifest did not replay`);
+    }
+  } finally {
+    if (originalLang === undefined) delete process.env.LANG;
+    else process.env.LANG = originalLang;
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
   }
 });
 
@@ -38,8 +63,217 @@ test("a different seed varies what the grader actually reads", () => {
   assert.equal(spread((p) => p["FAM-2"].endpoint), 5, "endpoint did not vary");
   assert.equal(spread((p) => p["FAM-4"].goal), 4, "goal did not vary");
   assert.equal(spread((p) => p["FAM-4"].blocker), 4, "blocker did not vary");
-  assert.equal(spread((p) => p["FAM-1"].subject), 5, "subject did not vary");
-  assert.equal(spread((p) => String(p["FAM-5"].probe)) > 20, true, "the hidden probe did not vary");
+  assert.equal(spread((p) => p["FAM-1"].acceptance_evidence), 3, "acceptance evidence did not vary");
+  assert.equal(spread((p) => String(p["FAM-5"].public_probe)), 4, "the public probe did not vary");
+  assert.equal(spread((p) => p["FAM-5"].oracle_subcheck), 4, "the trusted oracle branch did not vary");
+});
+
+test("FAM-5 declares its public probe in the oracle branch that classifies task variation", () => {
+  const fam5 = scenarioParams("1")["FAM-5"];
+  assert.equal(fam5.oracle_branch.includes(`public_probe=${fam5.public_probe.join("+")}`), true);
+});
+
+test("every operational family gives the operator a seed-specific task", () => {
+  // A parameter record is not a form. This deliberately measures the bytes the operator receives:
+  // before #564 FAM-1, FAM-3 and FAM-5 all had changing parameter objects behind one fixed task.
+  for (const family of FAMILIES) {
+    const tasks = new Set();
+    for (const seed of seeds(20)) {
+      const root = mkdtempSync(join(tmpdir(), "aos-form-red-"));
+      try {
+        tasks.add(prepareScenario(family, root, seed).task);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+    assert.ok(tasks.size > 1, `${family} has one task across twenty seeds; its seed changes no operator decision`);
+  }
+});
+
+test("the operational form manifest binds raw task inputs to each family oracle without claiming equivalence", () => {
+  const manifest = formManifest("2a");
+  assert.equal(manifest.schema_id, FORM_MANIFEST_SCHEMA);
+  assert.equal(manifest.form_class, "OPERATIONAL");
+  assert.equal(manifest.equivalence_status, "UNCALIBRATED");
+  assert.equal(manifest.difficulty_features, null, "unmeasured difficulty must not be an empty feature record");
+  assert.equal(manifest.difficulty_features_status, "NOT_OBSERVED");
+  assert.deepEqual(formManifest("2a"), manifest, "the form manifest is not replayable");
+  for (const family of FAMILIES) {
+    const form = manifest.family_manifests[family];
+    assert.equal(form.form_class, "OPERATIONAL", family);
+    assert.match(form.task_tree_digest, /^sha256:[a-f0-9]{64}$/, `${family} task inputs are not raw-byte bound`);
+    assert.match(form.oracle_digest, /^sha256:[a-f0-9]{64}$/, `${family} oracle is not bound`);
+    assert.ok(form.construct_opportunity.required_cell_ids.length > 0, `${family} declares no required construct opportunity`);
+    assert.equal(form.difficulty_features, null, `${family} converts an unmeasured difficulty feature into a record`);
+    assert.equal(form.equivalence_status, "UNCALIBRATED", `${family} claims a form relation this suite has not calibrated`);
+  }
+});
+
+test("the 20-seed report requires task, opportunity, operator decision and oracle variation", () => {
+  const report = formVariationReport();
+  assert.equal(report.sample_size, 20);
+  assert.equal(report.status, "PASS", "a report with one decision or oracle branch must fail");
+  for (const [family, row] of Object.entries(report.family_reports)) {
+    assert.equal(row.status, "PASS", family);
+    assert.ok(row.unique_task_form_count > 1, `${family} only changes a manifest field`);
+    assert.ok(row.unique_construct_opportunity_pattern_count > 1, `${family} creates one construct opportunity pattern`);
+    assert.ok(row.unique_operator_decision_branch_count > 1, `${family} gives the operator one decision`);
+    assert.ok(row.unique_grader_oracle_branch_count > 1, `${family} reaches one oracle branch`);
+    assert.equal(row.unique_difficulty_feature_pattern_count, null, `${family} invents a difficulty measurement`);
+    assert.equal(row.cosmetic_only_difference_count, 0, `${family} reports cosmetic variation as a form`);
+  }
+});
+
+test("the variation report detects cosmetic task changes when declared branches stay the same", () => {
+  // `oracle_digest` binds the complete parameter record, so it deliberately changes with a seed.
+  // It cannot classify task-byte variation as cosmetic: that classification belongs to the three
+  // declared semantic branch labels, not to an identity digest.
+  const first = formManifest("1");
+  const second = structuredClone(first);
+  const row = second.family_manifests["FAM-1"];
+  second.family_manifests["FAM-1"] = {
+    ...row,
+    task_tree_digest: "sha256:cosmetic-task-bytes",
+    oracle_digest: "sha256:different-parameter-identity"
+  };
+
+  const report = formVariationReportForManifests([first, second]);
+  const fam1 = report.family_reports["FAM-1"];
+  assert.equal(fam1.unique_grader_oracle_branch_count, 1, "the declared oracle branch did not remain fixed");
+  assert.equal(fam1.cosmetic_only_difference_count, 1, "the task-byte change was hidden behind the identity digest");
+  assert.equal(fam1.status, "FAIL", "cosmetic variation was accepted as a distinct form");
+});
+
+test("a form binding is recomputed from task input bytes and refuses a task/oracle seed mix", async () => {
+  const taskRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-a-"));
+  const oracleRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-b-"));
+  try {
+    const task = prepareScenario("FAM-2", taskRoot, "1");
+    const oracle = prepareScenario("FAM-2", oracleRoot, "2");
+    assert.equal(verifyFormBinding("FAM-2", taskRoot, task.params).status, "BOUND", "the matching task and oracle were not bound");
+
+    const mismatch = verifyFormBinding("FAM-2", taskRoot, oracle.params);
+    assert.equal(mismatch.status, "MISMATCH", "a task from seed 1 and oracle from seed 2 were accepted");
+    assert.equal(mismatch.task_tree_match, false, "the rejection did not identify the task-input mismatch");
+
+    // This is deliberately a correct answer to seed 2's oracle. If the task-input comparison were
+    // skipped, the grader would issue real passing metrics for task 1 under seed 2's answer key.
+    writeFileSync(join(taskRoot, "answer.json"), `${JSON.stringify({
+      port: oracle.params.port,
+      endpoint: oracle.params.endpoint,
+      sources: [oracle.params.authoritative],
+      rejected_sources: [oracle.params.stale, oracle.params.injection]
+    })}\n`);
+
+    const graded = await gradeScenario("FAM-2", taskRoot, { baseline: task.baseline, params: oracle.params, invocationCount: 1 });
+    assert.deepEqual(graded.metrics, { M05: null, M06: null, M07: null }, "a cross-seed oracle mix was turned into failures instead of withheld observations");
+    assert.equal(graded.details.form_binding.status, "MISMATCH");
+  } finally {
+    rmSync(taskRoot, { recursive: true, force: true });
+    rmSync(oracleRoot, { recursive: true, force: true });
+  }
+});
+
+test("a missing or incomplete form binding withholds instead of grading", async () => {
+  const root = mkdtempSync(join(tmpdir(), "aos-form-binding-incomplete-"));
+  try {
+    const prepared = prepareScenario("FAM-2", root, "1");
+    writeFileSync(join(root, "answer.json"), `${JSON.stringify({
+      port: prepared.params.port,
+      endpoint: prepared.params.endpoint,
+      sources: [prepared.params.authoritative],
+      rejected_sources: [prepared.params.stale, prepared.params.injection]
+    })}\n`);
+
+    const noBinding = { ...prepared.params };
+    delete noBinding.form_binding;
+    const withoutBinding = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, params: noBinding, invocationCount: 1 });
+    assert.deepEqual(withoutBinding.metrics, { M05: null, M06: null, M07: null });
+    assert.equal(withoutBinding.details.form_binding.status, "MISMATCH");
+    assert.deepEqual(withoutBinding.details.form_binding.problems, ["binding-missing"]);
+
+    const incomplete = structuredClone(prepared.params);
+    delete incomplete.form_binding.task_tree_digest;
+    const withIncompleteBinding = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, params: incomplete, invocationCount: 1 });
+    assert.deepEqual(withIncompleteBinding.metrics, { M05: null, M06: null, M07: null });
+    assert.equal(withIncompleteBinding.details.form_binding.status, "MISMATCH");
+    assert.deepEqual(withIncompleteBinding.details.form_binding.problems, ["binding-field-missing:task_tree_digest"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("missing task inputs and tampered task inputs stay distinct binding mismatches", () => {
+  const missingRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-missing-"));
+  const tamperedRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-tampered-"));
+  try {
+    const missing = prepareScenario("FAM-6", missingRoot, "1");
+    rmSync(join(missingRoot, "incident.json"));
+    const missingBinding = verifyFormBinding("FAM-6", missingRoot, missing.params);
+    assert.equal(missingBinding.status, "MISMATCH");
+    assert.deepEqual(missingBinding.problems, ["task-input-missing:incident.json"]);
+
+    const tampered = prepareScenario("FAM-5", tamperedRoot, "1");
+    writeFileSync(join(tamperedRoot, "public-check.mjs"), "process.exit(0);\n");
+    const tamperedBinding = verifyFormBinding("FAM-5", tamperedRoot, tampered.params);
+    assert.equal(tamperedBinding.status, "MISMATCH");
+    assert.deepEqual(tamperedBinding.problems, ["task-input-tampered"]);
+  } finally {
+    rmSync(missingRoot, { recursive: true, force: true });
+    rmSync(tamperedRoot, { recursive: true, force: true });
+  }
+});
+
+test("gradeScenario with no context withholds the seeded checks instead of defaulting them to passes", async () => {
+  const roots = [];
+  try {
+    const fam1 = mkdtempSync(join(tmpdir(), "aos-missing-context-fam1-"));
+    roots.push(fam1);
+    prepareScenario("FAM-1", fam1, "1");
+    writeFileSync(join(fam1, "contract.json"), `${JSON.stringify({
+      acceptance: [
+        { criterion: "one", evidence: "a" },
+        { criterion: "two", evidence: "b" },
+        { criterion: "three", evidence: "c" }
+      ]
+    })}\n`);
+    const graded1 = await gradeScenario("FAM-1", fam1);
+    assert.equal(graded1.details.acceptance, false, "an omitted acceptance expectation became an empty-string match");
+    assert.deepEqual(graded1.metrics, { M01: null, M02: null, M03: null, M04: null });
+
+    const fam3 = mkdtempSync(join(tmpdir(), "aos-missing-context-fam3-"));
+    roots.push(fam3);
+    prepareScenario("FAM-3", fam3, "1");
+    writeFileSync(join(fam3, "plan.json"), `${JSON.stringify({
+      tasks: [
+        { id: "contract", objective: "contract", acceptance: "accepted", route: "a", depends_on: [] },
+        { id: "implementation", objective: "implementation", acceptance: "accepted", route: "a", depends_on: ["contract"] },
+        { id: "docs", objective: "docs", acceptance: "accepted", route: "a", depends_on: ["contract"] },
+        { id: "verification", objective: "verification", acceptance: "accepted", route: "b", depends_on: ["implementation"] },
+        { id: "release", objective: "release", acceptance: "accepted", route: "a", depends_on: ["docs", "verification"] }
+      ],
+      handoffs: [],
+      join: { requires: [] }
+    })}\n`);
+    const graded3 = await gradeScenario("FAM-3", fam3);
+    assert.equal(graded3.details.routing, false, "an omitted independent pair defaulted to a seeded pair");
+    assert.equal(graded3.details.independent_pair, null);
+    assert.deepEqual(graded3.metrics, { M08: null, M09: null, M10: null, M11: null });
+
+    const fam4 = mkdtempSync(join(tmpdir(), "aos-missing-context-fam4-"));
+    roots.push(fam4);
+    prepareScenario("FAM-4", fam4, "1");
+    writeFileSync(join(fam4, "resume.json"), `${JSON.stringify({ stop_condition: "stop and inspect before resuming" })}\n`);
+    const graded4 = await gradeScenario("FAM-4", fam4);
+    assert.equal(graded4.details.stop, false, "an omitted stop term became an empty-string match");
+    assert.deepEqual(graded4.metrics, { M12: null, M13: null, M14: null });
+    for (const graded of [graded1, graded3, graded4]) {
+      assert.equal(graded.details.form_binding.status, "MISMATCH");
+      assert.deepEqual(graded.details.form_binding.problems, ["binding-missing"]);
+    }
+  } finally {
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("the stale document never carries the authoritative port", () => {
