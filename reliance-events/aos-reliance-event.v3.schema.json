@@ -9,6 +9,7 @@
     "construct_cell_id",
     "task_form_id",
     "initial_operator_event_id",
+    "source",
     "forcing",
     "initial",
     "delegation",
@@ -24,6 +25,16 @@
     "construct_cell_id": { "type": "string", "pattern": "^C3\\.[A-Z]{2}\\.[0-9]{2}$" },
     "task_form_id": { "type": "string", "minLength": 1, "maxLength": 128 },
     "initial_operator_event_id": { "type": "string", "pattern": "^operator-[A-Za-z0-9._-]+$" },
+    "source": { "enum": ["interactive-tty", "trusted-local-ui", "operator-file", "agent-relay"] },
+    "relay_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relay_protocol_digest", "initial_before_advice_proof"],
+      "properties": {
+        "relay_protocol_digest": { "$ref": "#/$defs/digest" },
+        "initial_before_advice_proof": { "const": true }
+      }
+    },
     "forcing": {
       "type": "object",
       "additionalProperties": false,

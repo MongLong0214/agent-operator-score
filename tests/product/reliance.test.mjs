@@ -114,6 +114,7 @@ test("an attested initial judgment before the advice is the evidence from which 
   });
 
   const derived = deriveFor(log);
+  assert.equal(derived.opportunities[0].source, "interactive-tty", "the completed v3 event projects source from the authenticated initial operator event");
   assert.equal(derived.opportunities[0].initial.correct, false);
   assert.equal(derived.opportunities[0].advice.correct, true);
   assert.equal(derived.opportunities[0].final.correct, true);
@@ -651,8 +652,10 @@ test("the committed schema and floor state the operational release contract", ()
   assert.equal(schema.properties.schema_id.const, "aos-reliance-event.v3");
   assert.deepEqual(schema.required.slice(0, 12), [
     "schema_id", "opportunity_id", "construct_cell_id", "task_form_id", "initial_operator_event_id",
-    "forcing", "initial", "delegation", "advice", "inspection", "final", "verified_outcome_evidence_ids"
+    "source", "forcing", "initial", "delegation", "advice", "inspection", "final"
   ]);
+  assert.deepEqual(schema.properties.source.enum, ["interactive-tty", "trusted-local-ui", "operator-file", "agent-relay"]);
+  assert.equal(schema.properties.relay_provenance.properties.initial_before_advice_proof.const, true);
   assert.deepEqual(schema.properties.forcing.required, ["forcing_protocol_id", "burden_interaction_count", "skip_or_refusal", "timeout", "interface"]);
   assert.equal(relianceEventSchemaDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/aos-reliance-event.v3.schema.json", import.meta.url))));
   assert.equal(relianceOpportunityFloorDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/opportunity-floor.v1.json", import.meta.url))));

@@ -7458,6 +7458,15 @@ export const GUARDS = [
     name: "the relay commits an initial user judgment before it reveals advice"
   },
   {
+    guard: "relay advice remains sealed in checkpoint state",
+    reason: "a filesystem-readable checkpoint that holds the advice summary or oracle answer key makes apparent event order indistinguishable from a judgment made after the answer was available",
+    file: "lib/relay.mjs",
+    from: "        opportunity: publicOpportunity(prepared),",
+    to: "        opportunity: prepared,",
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "the relay commits an initial user judgment before it reveals advice"
+  },
+  {
     guard: "relay autonomous answer refusal",
     reason: "an agent response is not an operator turn merely because it carries a relay-shaped envelope, so autonomous submission must stop before any trace event is minted",
     file: "lib/relay.mjs",
@@ -7477,12 +7486,12 @@ export const GUARDS = [
   },
   {
     guard: "relay response evidence is recomputed",
-    reason: "a response digest left only in checkpoint state is a claim the mutable state makes about itself; verification must compare it with the retained restricted bytes",
+    reason: "response bytes and their checkpoint digest can be swapped together; verification must compare the recomputed value digest with the instrument-authenticated trace rather than let mutable state authorize itself",
     file: "lib/relay.mjs",
-    from: '        const proof = kinds[0] === "initial" && kinds[1] === "advice_reveal" && responseEvidenceIntact;',
-    to: '        const proof = kinds[0] === "initial" && kinds[1] === "advice_reveal" && true;',
+    from: '        if (verifiedPhases.has(phase) || !sameValue(parsed.value_digest, traceValue)) throw new Error("AOS_RELAY_RESPONSE_TRACE_BINDING");',
+    to: '        if (false) throw new Error("AOS_RELAY_RESPONSE_TRACE_BINDING");',
     test: "tests/product/agent-relay-protocol.test.mjs",
-    name: "verification re-derives a response digest from restricted evidence instead of trusting persisted state"
+    name: "verification binds retained response values to the instrument-authenticated trace, not to checkpoint state"
   },
   {
     guard: "relay response receipt precedes trace commit",
@@ -8105,6 +8114,7 @@ export const ACCOUNTED_GUARDS = [
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
+  "relay advice remains sealed in checkpoint state",
   "relay advice stays hidden before initial commit",
   "relay autonomous answer refusal",
   "relay initial response cannot bundle a final decision",

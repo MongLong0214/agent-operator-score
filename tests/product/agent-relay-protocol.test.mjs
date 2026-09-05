@@ -1,16 +1,17 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { createFileRelayCheckpoint, createRelayCheckpoint, readRestrictedRelayResponseFile } from "../../lib/checkpoint.mjs";
-import { runCli } from "../../lib/cli.mjs";
+import { sha256Bytes } from "../../lib/digest.mjs";
 import { mintOperatorEvent } from "../../lib/operator-events.mjs";
 import { createAgentRelayProtocol } from "../../lib/relay.mjs";
 import { createRelianceTrace } from "../../lib/reliance.mjs";
 import { routeOracleDigest } from "../../lib/routing-oracle.mjs";
-import { createRun, instrumentRunKey, operatorRunKey, relianceJournal, runPaths } from "../../lib/store.mjs";
+import { createRun } from "../../lib/store.mjs";
 
 const DIGEST = `sha256:${"a".repeat(64)}`;
 const RELAY_DIGEST = `sha256:${"b".repeat(64)}`;
@@ -111,12 +112,16 @@ test("the relay commits an initial user judgment before it reveals advice", () =
     session_id: sessionId,
     checkpoint,
     trace,
-    operator_secret: OPERATOR_SECRET
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET
   });
 
   const initial = protocol.prepare(opportunity());
   assert.equal(initial.phase, "INITIAL_JUDGMENT");
   assert.equal(Object.hasOwn(initial, "advice"), false, "the initial challenge must not carry advice in another field");
+  assert.equal(Object.hasOwn(state().opportunity, "advice"), false, "checkpoint state cannot carry the answer material before Phase A commits");
+  assert.equal(JSON.stringify(state()).includes(opportunity().advice.summary), false, "the advice summary is not plaintext before the initial response");
+  assert.equal(JSON.stringify(state()).includes('"correct":true'), false, "the oracle answer key is not plaintext before the initial response");
   assert.equal(protocol.next().challenge_digest, initial.challenge_digest, "rerunning next returns the same durable initial challenge");
 
   const postAdvice = protocol.respond(response(initial));
@@ -138,7 +143,7 @@ test("a post-advice decision records inspection and final evidence, while outcom
   const sessionId = "relay-final";
   const { checkpoint } = memoryCheckpoint(sessionId);
   const trace = memoryTrace(sessionId);
-  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET });
+  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
   protocol.prepare(opportunity());
   const initial = protocol.next();
   const postAdvice = protocol.respond(response(initial));
@@ -160,13 +165,17 @@ test("a post-advice decision records inspection and final evidence, while outcom
   });
   assert.equal(complete.status, "COMPLETE");
   assert.deepEqual(trace.entries().map((entry) => entry.kind), ["initial", "advice_reveal", "oracle", "inspection", "final", "outcome"]);
+  assert.deepEqual(trace.entries()[5].payload.relay_provenance, {
+    relay_protocol_digest: protocol.protocol_digest,
+    initial_before_advice_proof: true
+  }, "the completed trace consumes verification before a reliance projection can read the relay provenance");
 });
 
 test("the relay refuses an autonomous, bundled, stale, or post-advice initial response without creating operator evidence", () => {
   const sessionId = "relay-refusals";
   const { checkpoint } = memoryCheckpoint(sessionId);
   const trace = memoryTrace(sessionId);
-  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET });
+  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
   protocol.prepare(opportunity());
   const initial = protocol.next();
 
@@ -184,19 +193,26 @@ test("the relay refuses an autonomous, bundled, stale, or post-advice initial re
     "absence of an inspection decision stays absent rather than defaulting false");
 });
 
-test("verification re-derives a response digest from restricted evidence instead of trusting persisted state", () => {
+test("verification binds retained response values to the instrument-authenticated trace, not to checkpoint state", () => {
   const sessionId = "relay-recompute";
   const { checkpoint, responses } = memoryCheckpoint(sessionId);
   const trace = memoryTrace(sessionId);
-  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET });
+  const protocol = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
   protocol.prepare(opportunity());
   const initial = protocol.next();
   protocol.respond(response(initial));
-  responses.set(initial.challenge_id, Buffer.from("{}", "utf8"));
+  const swapped = response(initial, { operator_text: "a different initial answer" });
+  responses.set(initial.challenge_id, swapped);
+  const altered = checkpoint.read();
+  checkpoint.write({
+    ...altered,
+    response_digests: { ...altered.response_digests, [initial.challenge_id]: sha256Bytes(swapped) }
+  });
   const verification = protocol.verify();
   assert.equal(verification.initial_before_advice_proof, false,
-    "the relay record must not authorize itself after its response evidence was edited or truncated");
+    "editing both response bytes and checkpoint digest cannot replace the trace's instrument-authenticated initial value");
   assert.equal(verification.status, "CONTRADICTED");
+  assert.match(verification.reason, /AOS_RELAY_RESPONSE_TRACE_BINDING/);
 });
 
 test("a relay declaration without the relay's observed source is refused before it can become reliance evidence", () => {
@@ -258,16 +274,88 @@ test("a crash after accepting a response resumes its one initial commit instead 
       return trace.revealAdvice(payload);
     }
   };
-  const first = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace: interrupted, operator_secret: OPERATOR_SECRET });
+  const first = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace: interrupted, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
   first.prepare(opportunity());
   const initial = first.next();
   assert.throws(() => first.respond(response(initial)), /simulated crash/);
   assert.deepEqual(trace.entries().map((entry) => entry.kind), ["initial"], "the accepted user response committed one initial event before the crash");
 
-  const resumed = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET });
+  const resumed = createAgentRelayProtocol({ session_id: sessionId, checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
   const postAdvice = resumed.next();
   assert.equal(postAdvice.phase, "POST_ADVICE_DECISION", "resume advances the durable record rather than re-asking the initial question");
   assert.deepEqual(trace.entries().map((entry) => entry.kind), ["initial", "advice_reveal", "oracle"], "resume appended only the missing observed suffix");
+});
+
+test("respond resumes a durable receipt even after expiry, while an edited expiry cannot revive a challenge", () => {
+  const sessionId = "relay-receipt-before-expiry";
+  const { checkpoint } = memoryCheckpoint(sessionId);
+  const trace = memoryTrace(sessionId);
+  let failReveal = true;
+  const interrupted = {
+    ...trace,
+    revealAdvice(payload) {
+      if (failReveal) {
+        failReveal = false;
+        throw new Error("simulated crash after receipt and initial commit");
+      }
+      return trace.revealAdvice(payload);
+    }
+  };
+  const first = createAgentRelayProtocol({
+    session_id: sessionId,
+    checkpoint,
+    trace: interrupted,
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET,
+    now: () => new Date("2026-09-05T12:00:00Z")
+  });
+  first.prepare(opportunity());
+  const initial = first.next();
+  assert.throws(() => first.respond(response(initial)), /simulated crash/);
+
+  const resumed = createAgentRelayProtocol({
+    session_id: sessionId,
+    checkpoint,
+    trace,
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET,
+    now: () => new Date("2026-09-05T12:30:00.001Z")
+  });
+  const postAdvice = resumed.respond(response(initial));
+  assert.equal(postAdvice.phase, "POST_ADVICE_DECISION", "the received Phase A turn survives expiry while its trace suffix resumes");
+  assert.deepEqual(trace.entries().map((entry) => entry.kind), ["initial", "advice_reveal", "oracle"]);
+
+  const edited = checkpoint.read();
+  checkpoint.write({ ...edited, expires_at: "2099-01-01T00:00:00Z" });
+  assert.throws(() => resumed.next(), /AOS_RELAY_EXPIRY_BINDING/, "changing only checkpoint expiry cannot revive a challenge");
+});
+
+test("the relay records its receipt time rather than the counterparty's claimed submitted_at, and names unavailable verification", () => {
+  const sessionId = "relay-receipt-time";
+  const { checkpoint } = memoryCheckpoint(sessionId);
+  const trace = memoryTrace(sessionId);
+  const protocol = createAgentRelayProtocol({
+    session_id: sessionId,
+    checkpoint,
+    trace,
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET,
+    now: () => new Date("2026-09-05T12:34:56Z")
+  });
+  protocol.prepare(opportunity());
+  const initial = protocol.next();
+  protocol.respond(response(initial, { relay: { ...JSON.parse(response(initial).toString("utf8")).relay, submitted_at: "1999-01-01T00:00:00Z" } }));
+  assert.equal(trace.entries()[0].payload.operator_event.relay_attestation.attested_at, "2026-09-05T12:34:56.000Z");
+
+  const unavailable = createAgentRelayProtocol({
+    session_id: sessionId,
+    checkpoint,
+    trace: null,
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET
+  }).verify();
+  assert.equal(unavailable.initial_before_advice_proof, null);
+  assert.equal(unavailable.status, "PARTIALLY_NOT_OBSERVED", "a missing trace with relay state is not reported as a violated ordering claim");
 });
 
 test("relay response bytes require a restricted input file and stay restricted when retained for verification", () => {
@@ -296,52 +384,22 @@ test("relay response bytes require a restricted input file and stay restricted w
   }
 });
 
-test("the shipped relay command reaches the producer through next and a restricted response file", async () => {
+test("the shipped binary honestly reports that no lifecycle producer prepared a relay challenge", () => {
   const root = mkdtempSync(join(tmpdir(), "aos-relay-cli-"));
   const sessionId = "relay-cli";
   try {
     createRun(root, { run_id: sessionId, mode: "TEST" });
-    const paths = runPaths(root, sessionId);
-    const checkpoint = createFileRelayCheckpoint({
-      session_id: sessionId,
-      state_file: join(paths.root, "agent-relay", "checkpoint.json"),
-      response_dir: join(paths.root, "agent-relay", "responses")
+    const run = spawnSync(process.execPath, ["bin/aos.mjs", "relay", "next", "--session", sessionId, "--json", "--data-dir", root], {
+      cwd: new URL("../..", import.meta.url),
+      encoding: "utf8"
     });
-    const trace = createRelianceTrace({
-      run_id: sessionId,
-      operator_secret: operatorRunKey(root, sessionId),
-      instrument_secret: instrumentRunKey(root, sessionId),
-      journal: relianceJournal(root, sessionId)
-    });
-    createAgentRelayProtocol({
+    assert.equal(run.status, 0, run.stderr);
+    assert.deepEqual(JSON.parse(run.stdout), {
+      schema_id: "aos-agent-relay.v2",
       session_id: sessionId,
-      checkpoint,
-      trace,
-      operator_secret: operatorRunKey(root, sessionId)
-    }).prepare(opportunity());
-
-    const invoke = async (argv) => {
-      let stdout = "";
-      let stderr = "";
-      const code = await runCli([...argv, "--data-dir", root], {
-        cwd: root,
-        stdout: { write: (value) => { stdout += value; } },
-        stderr: { write: (value) => { stderr += value; } }
-      });
-      assert.equal(code, 0, stderr);
-      return JSON.parse(stdout);
-    };
-    const initial = await invoke(["relay", "next", "--session", sessionId, "--json"]);
-    assert.equal(initial.phase, "INITIAL_JUDGMENT", "the public command reaches the relay producer, not a test-only wrapper");
-
-    const submittedDir = join(root, "submitted");
-    mkdirSync(submittedDir, { mode: 0o700 });
-    const submitted = join(submittedDir, "response.json");
-    writeFileSync(submitted, response(initial), { mode: 0o600 });
-    const postAdvice = await invoke(["relay", "respond", "--session", sessionId, "--response-file", submitted, "--json"]);
-    assert.equal(postAdvice.phase, "POST_ADVICE_DECISION");
-    assert.deepEqual(trace.entries().map((entry) => entry.kind), ["initial", "advice_reveal", "oracle"],
-      "the public command committed initial evidence before returning the advice reveal");
+      status: "BLOCKED",
+      reason: "NO_RELAY_CHALLENGE"
+    }, "the real binary does not pretend the test harness produced a live relay challenge");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
