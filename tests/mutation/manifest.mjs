@@ -28,19 +28,19 @@ export const GUARDS = [
     guard: "a task/oracle seed mix withholds rather than grading the unrelated task",
     reason: "a mismatch is not an incorrect answer: scoring it as zero converts a missing task/oracle relation into a false performance finding instead of letting the observation layer report NOT_OBSERVED",
     file: "lib/suite.mjs",
-    from: '  if (binding.status === "BOUND") return { ...result, details };',
+    from: '  if (binding.status === "BOUND" || preserveMeasuredResult) return { ...result, details };',
     to: "  if (true) return { ...result, details };",
     test: "tests/product/suite-seed.test.mjs",
     name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
   },
   {
-    guard: "observed task-input tampering reaches reported metrics",
-    reason: "a changed input observed against the setup baseline is integrity evidence, while an absent input only withholds; flattening both to null metrics erases the observed alteration from the result",
+    guard: "baseline-proven task-input changes retain measured results",
+    reason: "a setup snapshot can prove that the task input changed after preparation, but it cannot turn the response's measured result into either a fabricated zero or an unmeasured null; the integrity status reports the divergence separately",
     file: "lib/suite.mjs",
-    from: '  const reportingStatus = verifiedBinding.status === "BOUND" ? "BOUND" : baselineTaskInputChanged ? "TAMPERED" : "UNAVAILABLE";',
-    to: '  const reportingStatus = verifiedBinding.status === "BOUND" ? "BOUND" : "UNAVAILABLE";',
+    from: "  const preserveMeasuredResult = taskInputIntegrityStatus !== null;",
+    to: "  const preserveMeasuredResult = false;",
     test: "tests/product/suite-seed.test.mjs",
-    name: "observed task-input tampering is reported differently from unavailable input"
+    name: "a prepared task-input deletion and tampering retain a measured FAM-6 result with distinct integrity statuses"
   },
   {
     guard: "missing seeded terms do not become empty text matches",
@@ -8134,6 +8134,7 @@ export const ACCOUNTED_GUARDS = [
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
+  "baseline-proven task-input changes retain measured results",
   "binary handling",
   "block scalar measured from its key",
   "both blocking issues are named while the log is blocked",
