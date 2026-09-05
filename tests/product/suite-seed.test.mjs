@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
-import { SUITE_ID, prepareScenario, suiteDigest, suiteManifest } from "../../lib/suite.mjs";
+import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationReport, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
 
@@ -16,6 +16,31 @@ test("the same seed produces the same scenario, byte for byte", () => {
   // property a comparable number rests on.
   for (const seed of seeds(20)) {
     assert.deepEqual(scenarioParams(seed), scenarioParams(seed), seed);
+  }
+});
+
+test("the same form replays across workspace paths and locales", () => {
+  const roots = [];
+  const originalLang = process.env.LANG;
+  try {
+    for (const family of FAMILIES) {
+      const firstRoot = mkdtempSync(join(tmpdir(), "aos-form-path-a-"));
+      roots.push(firstRoot);
+      process.env.LANG = "en_US.UTF-8";
+      const first = prepareScenario(family, firstRoot, "2a");
+      process.env.LANG = "ko_KR.UTF-8";
+      const secondRoot = mkdtempSync(join(tmpdir(), "aos-form-path-b-"));
+      roots.push(secondRoot);
+      const second = prepareScenario(family, secondRoot, "2a");
+      assert.equal(readFileSync(join(firstRoot, "task.md"), "utf8"), readFileSync(join(secondRoot, "task.md"), "utf8"), `${family} task bytes depend on its absolute path or locale`);
+      assert.equal(first.task, second.task, `${family} task text did not replay`);
+      assert.deepEqual(first.params, second.params, `${family} parameters did not replay`);
+      assert.deepEqual(first.form_manifest, second.form_manifest, `${family} task/oracle manifest did not replay`);
+    }
+  } finally {
+    if (originalLang === undefined) delete process.env.LANG;
+    else process.env.LANG = originalLang;
+    for (const root of roots) rmSync(root, { recursive: true, force: true });
   }
 });
 
@@ -38,8 +63,81 @@ test("a different seed varies what the grader actually reads", () => {
   assert.equal(spread((p) => p["FAM-2"].endpoint), 5, "endpoint did not vary");
   assert.equal(spread((p) => p["FAM-4"].goal), 4, "goal did not vary");
   assert.equal(spread((p) => p["FAM-4"].blocker), 4, "blocker did not vary");
-  assert.equal(spread((p) => p["FAM-1"].subject), 5, "subject did not vary");
-  assert.equal(spread((p) => String(p["FAM-5"].probe)) > 20, true, "the hidden probe did not vary");
+  assert.equal(spread((p) => p["FAM-1"].acceptance_evidence), 3, "acceptance evidence did not vary");
+  assert.equal(spread((p) => String(p["FAM-5"].public_probe)), 4, "the public probe did not vary");
+  assert.equal(spread((p) => p["FAM-5"].oracle_subcheck), 4, "the trusted oracle branch did not vary");
+});
+
+test("every operational family gives the operator a seed-specific task", () => {
+  // A parameter record is not a form. This deliberately measures the bytes the operator receives:
+  // before #564 FAM-1, FAM-3 and FAM-5 all had changing parameter objects behind one fixed task.
+  for (const family of FAMILIES) {
+    const tasks = new Set();
+    for (const seed of seeds(20)) {
+      const root = mkdtempSync(join(tmpdir(), "aos-form-red-"));
+      try {
+        tasks.add(prepareScenario(family, root, seed).task);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    }
+    assert.ok(tasks.size > 1, `${family} has one task across twenty seeds; its seed changes no operator decision`);
+  }
+});
+
+test("the operational form manifest binds raw task inputs to each family oracle without claiming equivalence", () => {
+  const manifest = formManifest("2a");
+  assert.equal(manifest.schema_id, FORM_MANIFEST_SCHEMA);
+  assert.equal(manifest.form_class, "OPERATIONAL");
+  assert.equal(manifest.equivalence_status, "UNCALIBRATED");
+  assert.equal(manifest.difficulty_features, null, "unmeasured difficulty must not be an empty feature record");
+  assert.equal(manifest.difficulty_features_status, "NOT_OBSERVED");
+  assert.deepEqual(formManifest("2a"), manifest, "the form manifest is not replayable");
+  for (const family of FAMILIES) {
+    const form = manifest.family_manifests[family];
+    assert.equal(form.form_class, "OPERATIONAL", family);
+    assert.match(form.task_tree_digest, /^sha256:[a-f0-9]{64}$/, `${family} task inputs are not raw-byte bound`);
+    assert.match(form.oracle_digest, /^sha256:[a-f0-9]{64}$/, `${family} oracle is not bound`);
+    assert.ok(form.construct_opportunity.required_cell_ids.length > 0, `${family} declares no required construct opportunity`);
+    assert.equal(form.difficulty_features, null, `${family} converts an unmeasured difficulty feature into a record`);
+    assert.equal(form.equivalence_status, "UNCALIBRATED", `${family} claims a form relation this suite has not calibrated`);
+  }
+});
+
+test("the 20-seed report requires task, opportunity, operator decision and oracle variation", () => {
+  const report = formVariationReport();
+  assert.equal(report.sample_size, 20);
+  assert.equal(report.status, "PASS", "a report with one decision or oracle branch must fail");
+  for (const [family, row] of Object.entries(report.family_reports)) {
+    assert.equal(row.status, "PASS", family);
+    assert.ok(row.unique_task_form_count > 1, `${family} only changes a manifest field`);
+    assert.ok(row.unique_construct_opportunity_pattern_count > 1, `${family} creates one construct opportunity pattern`);
+    assert.ok(row.unique_operator_decision_branch_count > 1, `${family} gives the operator one decision`);
+    assert.ok(row.unique_grader_oracle_branch_count > 1, `${family} reaches one oracle branch`);
+    assert.equal(row.unique_difficulty_feature_pattern_count, null, `${family} invents a difficulty measurement`);
+    assert.equal(row.cosmetic_only_difference_count, 0, `${family} reports cosmetic variation as a form`);
+  }
+});
+
+test("a form binding is recomputed from task input bytes and refuses a task/oracle seed mix", async () => {
+  const taskRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-a-"));
+  const oracleRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-b-"));
+  try {
+    const task = prepareScenario("FAM-2", taskRoot, "1");
+    const oracle = prepareScenario("FAM-2", oracleRoot, "2");
+    assert.equal(verifyFormBinding("FAM-2", taskRoot, task.params).status, "BOUND", "the matching task and oracle were not bound");
+
+    const mismatch = verifyFormBinding("FAM-2", taskRoot, oracle.params);
+    assert.equal(mismatch.status, "MISMATCH", "a task from seed 1 and oracle from seed 2 were accepted");
+    assert.equal(mismatch.task_tree_match, false, "the rejection did not identify the task-input mismatch");
+
+    const graded = await gradeScenario("FAM-2", taskRoot, { baseline: task.baseline, params: oracle.params, invocationCount: 1 });
+    assert.deepEqual(graded.metrics, { M05: null, M06: null, M07: null }, "a cross-seed oracle mix was turned into failures instead of withheld observations");
+    assert.equal(graded.details.form_binding.status, "MISMATCH");
+  } finally {
+    rmSync(taskRoot, { recursive: true, force: true });
+    rmSync(oracleRoot, { recursive: true, force: true });
+  }
 });
 
 test("the stale document never carries the authoritative port", () => {

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { validateOperatorPlan } from "../../lib/operator-plan.mjs";
+import { FAMILIES } from "../../lib/suite.mjs";
 import test from "node:test";
 import { addAgent, cli, fakeAgent, initBare, makePlan, newestRecord, newestResult, newestRunId, run } from "./helpers.mjs";
 
@@ -312,7 +313,7 @@ test("a seed names the scenario, and a run records the one it used", () => {
     const first = newestResult(cwd);
     assert.equal(first.run.seed, "000000000000002a");
     assert.equal(newestRecord(cwd).suite_manifest.seed, "000000000000002a");
-    assert.deepEqual(first.run.seeded_families, ["FAM-2", "FAM-4", "FAM-6"]);
+    assert.deepEqual(first.run.seeded_families, FAMILIES);
 
     // The run manifest and the result must name the same suite. Two sites write it, and a run that
     // recorded one suite while its result claimed another would be unreadable after the fact.
