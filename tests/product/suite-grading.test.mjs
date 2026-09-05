@@ -191,6 +191,10 @@ test("FAM-5 uses the whole hidden verdict and keeps seed setup descriptive", asy
     const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
     assert.equal(graded.details.form_binding.status, "BOUND");
     assert.equal(Object.hasOwn(graded.details, "form_oracle"), false, "a selected hidden subcheck is not an oracle decision");
+    assert.deepEqual(graded.details.seeded_task_setup, {
+      public_probe: prepared.params.public_probe,
+      fault: prepared.params.fault
+    }, "the grader must bind its descriptive setup to the seed without turning it into an oracle branch");
     assert.deepEqual(prepared.params.decision_axes, []);
     assert.equal(graded.metrics.M15, 1);
   } finally {
