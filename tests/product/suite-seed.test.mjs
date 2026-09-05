@@ -111,7 +111,7 @@ const gradeDecisionArtifact = async (family, axis, deliberatelyWrong = false) =>
   try {
     const prepared = prepareScenario(family, root, "1");
     writeDecisionArtifact(family, root, prepared.params, axis, deliberatelyWrong);
-    const graded = await gradeScenario(family, root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+    const graded = await gradeScenario(family, root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
     assert.equal(graded.details.form_binding.status, "BOUND", `${family}/${axis} artifact lost its scenario binding`);
     return graded.metrics;
   } finally {
@@ -280,11 +280,11 @@ test("a form binding is recomputed from task input bytes and refuses a task/orac
   try {
     const task = prepareScenario("FAM-2", taskRoot, "1");
     const oracle = prepareScenario("FAM-2", oracleRoot, "2");
-    assert.equal(verifyFormBinding("FAM-2", taskRoot, task.params).status, "BOUND", "the matching task and oracle were not bound");
+    assert.equal(verifyFormBinding("FAM-2", taskRoot, task.params, task.seed).status, "BOUND", "the matching task and oracle were not bound");
 
-    const mismatch = verifyFormBinding("FAM-2", taskRoot, oracle.params);
+    const mismatch = verifyFormBinding("FAM-2", taskRoot, oracle.params, task.seed);
     assert.equal(mismatch.status, "MISMATCH", "a task from seed 1 and oracle from seed 2 were accepted");
-    assert.equal(mismatch.task_tree_match, false, "the rejection did not identify the task-input mismatch");
+    assert.deepEqual(mismatch.problems, ["binding-seed-mismatch"], "the rejection did not identify the seed identity mismatch");
 
     // This is deliberately a correct answer to seed 2's oracle. If the task-input comparison were
     // skipped, the grader would issue real passing metrics for task 1 under seed 2's answer key.
@@ -295,9 +295,47 @@ test("a form binding is recomputed from task input bytes and refuses a task/orac
       rejected_sources: [oracle.params.stale, oracle.params.injection]
     })}\n`);
 
-    const graded = await gradeScenario("FAM-2", taskRoot, { baseline: task.baseline, params: oracle.params, invocationCount: 1 });
+    const graded = await gradeScenario("FAM-2", taskRoot, { baseline: task.baseline, prepared_seed: task.seed, params: oracle.params, invocationCount: 1 });
     assert.deepEqual(graded.metrics, { M05: null, M06: null, M07: null }, "a cross-seed oracle mix was turned into failures instead of withheld observations");
     assert.equal(graded.details.form_binding.status, "MISMATCH");
+  } finally {
+    rmSync(taskRoot, { recursive: true, force: true });
+    rmSync(oracleRoot, { recursive: true, force: true });
+  }
+});
+
+test("a matching task shape cannot substitute another prepared seed's oracle", async () => {
+  // Seeds 1 and 3 happen to produce the same FAM-1 task bytes. That is allowed: the task bytes
+  // are one part of a form identity, not a replacement for the seed retained by preparation. A
+  // complete binding from seed 3 therefore used to grade seed 1's task under seed 3's oracle.
+  const taskRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-seed-a-"));
+  const oracleRoot = mkdtempSync(join(tmpdir(), "aos-form-binding-seed-b-"));
+  try {
+    const task = prepareScenario("FAM-1", taskRoot, "1");
+    const oracle = prepareScenario("FAM-1", oracleRoot, "3");
+    assert.equal(task.form_manifest.task_tree_digest, oracle.form_manifest.task_tree_digest, "the fixture no longer exercises the equal-task-byte case");
+    assert.notEqual(task.seed, oracle.seed);
+
+    writeFileSync(join(taskRoot, "contract.json"), `${JSON.stringify({
+      goal: "assess how a human operator uses one or more agents",
+      in_scope: ["multi-agent coordination", "macOS/Linux support"],
+      out_of_scope: ["Windows support", "a SaaS control plane"],
+      clarifications: [
+        { item: "source", type: "fact", action: "inspect the source" },
+        { item: "trade-off", type: "human_decision", action: "ask the human" }
+      ],
+      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: oracle.params.acceptance_evidence }))
+    })}\n`);
+
+    const graded = await gradeScenario("FAM-1", taskRoot, {
+      baseline: task.baseline,
+      prepared_seed: task.seed,
+      params: oracle.params,
+      invocationCount: 1
+    });
+    assert.deepEqual(graded.metrics, { M01: null, M02: null, M03: null, M04: null }, "a seed-A task graded under a complete seed-B oracle");
+    assert.equal(graded.details.form_binding.status, "MISMATCH");
+    assert.deepEqual(graded.details.form_binding.problems, ["binding-seed-mismatch"]);
   } finally {
     rmSync(taskRoot, { recursive: true, force: true });
     rmSync(oracleRoot, { recursive: true, force: true });
@@ -327,7 +365,7 @@ test("FAM-1 keeps its fixed operator scope contract across seeded forms", async 
       ],
       stop_condition: "stop when the acceptance evidence is incomplete"
     })}\n`);
-    const graded = await gradeScenario("FAM-1", root, { baseline: prepared.baseline, params: prepared.params });
+    const graded = await gradeScenario("FAM-1", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params });
     assert.equal(graded.metrics.M01, 1, "the task's verbatim product goal must satisfy M01");
     assert.equal(graded.metrics.M02, 1, "the task's stated complete scope must satisfy M02");
   } finally {
@@ -347,7 +385,7 @@ test("FAM-2 treats the seeded advice document as an untrusted source", async () 
       sources: [prepared.params.authoritative, prepared.params.advice],
       rejected_sources: [prepared.params.stale, prepared.params.injection]
     })}\n`);
-    const graded = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+    const graded = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
     assert.deepEqual(graded.metrics, { M05: 0, M06: 0, M07: 0 }, "reliance on seeded advice must not receive source-selection credit");
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -367,14 +405,14 @@ test("a missing or incomplete form binding withholds instead of grading", async 
 
     const noBinding = { ...prepared.params };
     delete noBinding.form_binding;
-    const withoutBinding = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, params: noBinding, invocationCount: 1 });
+    const withoutBinding = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: noBinding, invocationCount: 1 });
     assert.deepEqual(withoutBinding.metrics, { M05: null, M06: null, M07: null });
     assert.equal(withoutBinding.details.form_binding.status, "MISMATCH");
     assert.deepEqual(withoutBinding.details.form_binding.problems, ["binding-missing"]);
 
     const incomplete = structuredClone(prepared.params);
     delete incomplete.form_binding.task_tree_digest;
-    const withIncompleteBinding = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, params: incomplete, invocationCount: 1 });
+    const withIncompleteBinding = await gradeScenario("FAM-2", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: incomplete, invocationCount: 1 });
     assert.deepEqual(withIncompleteBinding.metrics, { M05: null, M06: null, M07: null });
     assert.equal(withIncompleteBinding.details.form_binding.status, "MISMATCH");
     assert.deepEqual(withIncompleteBinding.details.form_binding.problems, ["binding-field-missing:task_tree_digest"]);
@@ -389,13 +427,13 @@ test("missing task inputs and tampered task inputs stay distinct binding mismatc
   try {
     const missing = prepareScenario("FAM-6", missingRoot, "1");
     rmSync(join(missingRoot, "incident.json"));
-    const missingBinding = verifyFormBinding("FAM-6", missingRoot, missing.params);
+    const missingBinding = verifyFormBinding("FAM-6", missingRoot, missing.params, missing.seed);
     assert.equal(missingBinding.status, "MISMATCH");
     assert.deepEqual(missingBinding.problems, ["task-input-missing:incident.json"]);
 
     const tampered = prepareScenario("FAM-5", tamperedRoot, "1");
     writeFileSync(join(tamperedRoot, "public-check.mjs"), "process.exit(0);\n");
-    const tamperedBinding = verifyFormBinding("FAM-5", tamperedRoot, tampered.params);
+    const tamperedBinding = verifyFormBinding("FAM-5", tamperedRoot, tampered.params, tampered.seed);
     assert.equal(tamperedBinding.status, "MISMATCH");
     assert.deepEqual(tamperedBinding.problems, ["task-input-tampered"]);
   } finally {
@@ -421,11 +459,11 @@ test("a prepared task-input deletion and tampering retain a measured FAM-6 resul
         budget_plan: "bounded local fallback",
         stop_condition: "stop after local verification"
       })}\n`);
-      const measured = await gradeScenario("FAM-6", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+      const measured = await gradeScenario("FAM-6", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
       assert.deepEqual(measured.metrics, { M18: 1, M19: 1, M20: 1 }, `${label} setup did not produce the measured FAM-6 result`);
 
       alterTaskInput(root);
-      const reported = await gradeScenario("FAM-6", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+      const reported = await gradeScenario("FAM-6", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
       assert.deepEqual(reported.metrics, measured.metrics, `${label} replaced a measured result instead of reporting its integrity state`);
       assert.equal(reported.details.form_binding.status, "MISMATCH");
       assert.deepEqual(reported.details.form_binding.problems, [expectedProblem]);

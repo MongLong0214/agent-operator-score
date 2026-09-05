@@ -42,7 +42,7 @@ const gradeFam6For = async (response) => {
   try {
     const prepared = prepareScenario("FAM-6", root, "1");
     writeFileSync(join(root, "response.json"), JSON.stringify(response), "utf8");
-    return await gradeScenario("FAM-6", root, { params: prepared.params, invocationCount: 1 });
+    return await gradeScenario("FAM-6", root, { prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

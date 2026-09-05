@@ -16,6 +16,15 @@
 
 export const GUARDS = [
   {
+    guard: "the prepared seed, not a supplied binding, selects the oracle",
+    reason: "task bytes can coincide for different seeds, so a complete binding's seed is still an untrusted claim; grading must compare it with the seed preparation retained before accepting its oracle",
+    file: "lib/suite.mjs",
+    from: '  if (binding.seed !== trustedSeed) return mismatch("the supplied form binding seed differs from the prepared scenario", ["binding-seed-mismatch"]);',
+    to: '  if (false) return mismatch("the supplied form binding seed differs from the prepared scenario", ["binding-seed-mismatch"]);',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a matching task shape cannot substitute another prepared seed's oracle"
+  },
+  {
     guard: "form binding task identity is recomputed",
     reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the seed-specific tree it is actually grading; otherwise seed A can be paired with seed B's oracle",
     file: "lib/suite.mjs",
@@ -4473,8 +4482,8 @@ export const GUARDS = [
     guard: "grading reads what was frozen at settlement",
     reason: "a survivor no scan can see is granted this run's own workspace by the boundary that holds it, and grading read the live tree afterwards -- so it could write an artifact between the last invocation and the grader and change the measurement",
     file: "lib/cli.mjs",
-    from: "      const graded = await gradeScenario(family, settled.path, { baseline: prepared.baseline, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
-    to: "      const graded = await gradeScenario(family, workspace, { baseline: prepared.baseline, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
+    from: "      const graded = await gradeScenario(family, settled.path, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
+    to: "      const graded = await gradeScenario(family, workspace, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
     test: "tests/product/official-issuance.test.mjs",
     name: "an_assessment_records_what_each_family_was_graded_from"
   },
@@ -8487,6 +8496,7 @@ export const ACCOUNTED_GUARDS = [
   "the post-deletion observation is taken promptly",
   "the pre-deletion observation is fresh",
   "the pre-deletion observation predates the deletion",
+  "the prepared seed, not a supplied binding, selects the oracle",
   "the printed shape is named",
   "the private tmpfs is declared before it is mounted",
   "the probe verifier is bound to the record it decides",

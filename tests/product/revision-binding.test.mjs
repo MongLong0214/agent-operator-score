@@ -25,6 +25,7 @@ const withFam5 = async (act) => {
     act(root, prepared);
     const graded = await gradeScenario("FAM-5", root, {
       baseline: prepared.baseline,
+      prepared_seed: prepared.seed,
       params: prepared.params,
       invocationCount: 1
     });

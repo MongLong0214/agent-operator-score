@@ -16,6 +16,7 @@ const withScenario = async (family, write, seed = "0") => {
     write(root, prepared.params);
     return await gradeScenario(family, root, {
       baseline: prepared.baseline,
+      prepared_seed: prepared.seed,
       params: prepared.params,
       invocationCount: 1
     });
@@ -188,7 +189,7 @@ test("FAM-5 uses the whole hidden verdict and keeps seed setup descriptive", asy
   try {
     const prepared = prepareScenario("FAM-5", root, "1");
     writeFileSync(join(root, "calculator.mjs"), "export function ratio(a, b) {\n  if (typeof a !== 'number' || typeof b !== 'number' || !Number.isFinite(a) || !Number.isFinite(b)) throw new TypeError('finite numbers required');\n  if (b === 0) throw new RangeError('division by zero');\n  return a / b;\n}\n");
-    const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+    const graded = await gradeScenario("FAM-5", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
     assert.equal(graded.details.form_binding.status, "BOUND");
     assert.equal(Object.hasOwn(graded.details, "form_oracle"), false, "a selected hidden subcheck is not an oracle decision");
     assert.deepEqual(graded.details.seeded_task_setup, {

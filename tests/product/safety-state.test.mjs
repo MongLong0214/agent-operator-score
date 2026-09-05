@@ -21,7 +21,7 @@ const workspaceWith = (response) => {
 const grade = async (response) => {
   const { root, prepared } = workspaceWith(response);
   try {
-    return await gradeScenario("FAM-6", root, { params: prepared.params, invocationCount: 1 });
+    return await gradeScenario("FAM-6", root, { prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
