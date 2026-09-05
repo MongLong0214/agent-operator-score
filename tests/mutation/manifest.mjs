@@ -6614,10 +6614,10 @@ export const GUARDS = [
   },
   {
     guard: "a verifier withholding authority does not become operator evidence",
-    reason: "a null verification is not a failed operator decision and cannot be silently promoted into evidence the subject authored for themself",
+    reason: "a failed operator-event authority verdict cannot be silently promoted into evidence the subject authored for themself",
     file: "lib/reliance.mjs",
-    from: '  if (accepted !== true) failure("AOS_RELIANCE_OPERATOR_EVENT_UNVERIFIED", `${role} was not established by the trusted operator-event verifier`);',
-    to: '  if (accepted === false) failure("AOS_RELIANCE_OPERATOR_EVENT_UNVERIFIED", "unreachable");',
+    from: '  if (verdict?.accepted !== true) failure("AOS_RELIANCE_OPERATOR_EVENT_UNVERIFIED", `${role} was not established by the trusted operator-event authority`);',
+    to: '  if (false) failure("AOS_RELIANCE_OPERATOR_EVENT_UNVERIFIED", "unreachable");',
     test: "tests/product/reliance.test.mjs",
     name: "a verifier withholding operator authority leaves the declaration unscored"
   },
@@ -6634,8 +6634,8 @@ export const GUARDS = [
     guard: "a reliance rate waits for its opportunity floor",
     reason: "one observed transition is useful as a raw case but is not an issued behavioural rate, so replacing the floor turns absence of coverage into precision",
     file: "lib/reliance.mjs",
-    from: '  const status = denominator === 0 ? NOT_OBSERVED : denominator >= RELIANCE_OPPORTUNITY_FLOOR ? "ISSUED" : "WITHHELD";',
-    to: '  const status = denominator === 0 ? NOT_OBSERVED : denominator >= 0 ? "ISSUED" : "WITHHELD";',
+    from: '  const status = denominator === 0 ? NOT_OBSERVED : denominator >= metricFloor && operationalReasons.length === 0 ? "ISSUED" : "WITHHELD";',
+    to: '  const status = denominator === 0 ? NOT_OBSERVED : denominator >= 0 && operationalReasons.length >= 0 ? "ISSUED" : "WITHHELD";',
     test: "tests/product/reliance.test.mjs",
     name: "low denominators and unpaired calibration facts withhold rather than become zero or a neutral midpoint"
   },
@@ -6643,8 +6643,8 @@ export const GUARDS = [
     guard: "an unanswered reliance metric stays NOT_OBSERVED",
     reason: "a rate with no eligible transitions is absence of a measurement, while a positive low denominator is observed but insufficient coverage; collapsing the two changes the claim made about the operator",
     file: "lib/reliance.mjs",
-    from: '  const status = denominator === 0 ? NOT_OBSERVED : denominator >= RELIANCE_OPPORTUNITY_FLOOR ? "ISSUED" : "WITHHELD";',
-    to: '  const status = denominator >= RELIANCE_OPPORTUNITY_FLOOR ? "ISSUED" : "WITHHELD";',
+    from: '  const status = denominator === 0 ? NOT_OBSERVED : denominator >= metricFloor && operationalReasons.length === 0 ? "ISSUED" : "WITHHELD";',
+    to: '  const status = denominator >= metricFloor && operationalReasons.length === 0 ? "ISSUED" : "WITHHELD";',
     test: "tests/product/reliance.test.mjs",
     name: "an unanswered reliance metric is NOT_OBSERVED rather than a zero or a withheld rate"
   },
