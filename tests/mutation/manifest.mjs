@@ -34,6 +34,15 @@ export const GUARDS = [
     name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
   },
   {
+    guard: "observed task-input tampering reaches reported metrics",
+    reason: "a changed input observed against the setup baseline is integrity evidence, while an absent input only withholds; flattening both to null metrics erases the observed alteration from the result",
+    file: "lib/suite.mjs",
+    from: '  const reportingStatus = verifiedBinding.status === "BOUND" ? "BOUND" : baselineTaskInputChanged ? "TAMPERED" : "UNAVAILABLE";',
+    to: '  const reportingStatus = verifiedBinding.status === "BOUND" ? "BOUND" : "UNAVAILABLE";',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "observed task-input tampering is reported differently from unavailable input"
+  },
+  {
     guard: "missing seeded terms do not become empty text matches",
     reason: "a public grader with no seeded expectation must not turn undefined into an empty substring and award a metric for a question it was never given",
     file: "lib/suite.mjs",
@@ -8256,6 +8265,7 @@ export const ACCOUNTED_GUARDS = [
   "observation channel size bound",
   "observation line size bound",
   "observation schema",
+  "observed task-input tampering reaches reported metrics",
   "observed_at must be a canonical, in-schema timestamp",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",

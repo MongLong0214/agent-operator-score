@@ -274,6 +274,28 @@ test("missing task inputs and tampered task inputs stay distinct binding mismatc
   }
 });
 
+test("observed task-input tampering is reported differently from unavailable input", async () => {
+  const missingRoot = mkdtempSync(join(tmpdir(), "aos-form-report-missing-"));
+  const tamperedRoot = mkdtempSync(join(tmpdir(), "aos-form-report-tampered-"));
+  try {
+    const missing = prepareScenario("FAM-5", missingRoot, "1");
+    rmSync(join(missingRoot, "public-check.mjs"));
+    const unavailable = await gradeScenario("FAM-5", missingRoot, { baseline: missing.baseline, params: missing.params, invocationCount: 1 });
+
+    const tampered = prepareScenario("FAM-5", tamperedRoot, "1");
+    writeFileSync(join(tamperedRoot, "public-check.mjs"), "process.exit(0);\n");
+    const observedTampering = await gradeScenario("FAM-5", tamperedRoot, { baseline: tampered.baseline, params: tampered.params, invocationCount: 1 });
+
+    assert.deepEqual(unavailable.metrics, { M15: null, M16: null, M17: null }, "a missing task input is unavailable evidence");
+    assert.deepEqual(observedTampering.metrics, { M15: 0, M16: 0, M17: 0 }, "positive task-input tampering must reach the reported metrics");
+    assert.equal(unavailable.details.form_binding.reporting_status, "UNAVAILABLE");
+    assert.equal(observedTampering.details.form_binding.reporting_status, "TAMPERED");
+  } finally {
+    rmSync(missingRoot, { recursive: true, force: true });
+    rmSync(tamperedRoot, { recursive: true, force: true });
+  }
+});
+
 test("gradeScenario with no context withholds the seeded checks instead of defaulting them to passes", async () => {
   const roots = [];
   try {
