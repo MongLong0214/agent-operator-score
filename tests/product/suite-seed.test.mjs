@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -479,7 +479,7 @@ test("missing task inputs and tampered task inputs stay distinct binding mismatc
   }
 });
 
-test("a prepared task-input deletion and tampering retain a measured FAM-6 result with distinct integrity statuses", async () => {
+test("a prepared task-input deletion and tampering preserve the observation without issuing its metrics", async () => {
   const cases = [
     ["deletion", (root) => rmSync(join(root, "incident.json")), "REMOVED", "task-input-missing:incident.json"],
     ["tampering", (root) => writeFileSync(join(root, "incident.json"), '{"failure":"altered after the response"}\n'), "TAMPERED", "task-input-tampered"]
@@ -501,14 +501,42 @@ test("a prepared task-input deletion and tampering retain a measured FAM-6 resul
 
       alterTaskInput(root);
       const reported = await gradeScenario("FAM-6", root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
-      assert.deepEqual(reported.metrics, measured.metrics, `${label} replaced a measured result instead of reporting its integrity state`);
+      assert.deepEqual(reported.metrics, { M18: null, M19: null, M20: null }, `${label} issued metrics for a form whose binding no longer holds`);
       assert.equal(reported.details.form_binding.status, "MISMATCH");
       assert.deepEqual(reported.details.form_binding.problems, [expectedProblem]);
       assert.equal(reported.details.form_binding.reporting_status, expectedStatus);
-      assert.equal(reported.details.form_binding.measured_result_retained, true);
+      assert.deepEqual(reported.details.observed_result?.metrics, measured.metrics, `${label} erased what the instrument observed`);
+      assert.equal(reported.details.observed_result?.task_input_integrity_status, expectedStatus);
+      assert.deepEqual(reported.details.observed_result?.changed_task_input_paths, ["incident.json"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  }
+});
+
+test("a seed-2 task replacement under seed-1's oracle withholds FAM-1 metrics but retains tampering observation", async () => {
+  const seed1Root = mkdtempSync(join(tmpdir(), "aos-form-binding-seed-1-"));
+  const seed2Root = mkdtempSync(join(tmpdir(), "aos-form-binding-seed-2-"));
+  try {
+    const seed1 = prepareScenario("FAM-1", seed1Root, "1");
+    prepareScenario("FAM-1", seed2Root, "2");
+    for (const input of ["task.md", "request.txt"]) cpSync(join(seed2Root, input), join(seed1Root, input), { recursive: true });
+    writeDecisionArtifact("FAM-1", seed1Root, seed1.params, "acceptance-evidence-type");
+
+    const reported = await gradeScenario("FAM-1", seed1Root, {
+      baseline: seed1.baseline,
+      prepared_seed: seed1.seed,
+      params: seed1.params,
+      invocationCount: 1
+    });
+    assert.deepEqual(reported.metrics, { M01: null, M02: null, M03: null, M04: null }, "a cross-seed task forgery issued metrics");
+    assert.equal(reported.details.form_binding.status, "MISMATCH");
+    assert.equal(reported.details.form_binding.reporting_status, "TAMPERED");
+    assert.deepEqual(reported.details.observed_result?.metrics, { M01: 1, M02: 1, M03: 1, M04: 1 });
+    assert.deepEqual(reported.details.observed_result?.changed_task_input_paths, ["request.txt", "task.md"]);
+  } finally {
+    rmSync(seed1Root, { recursive: true, force: true });
+    rmSync(seed2Root, { recursive: true, force: true });
   }
 });
 

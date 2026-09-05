@@ -43,22 +43,22 @@ export const GUARDS = [
     name: "missing task inputs and tampered task inputs stay distinct binding mismatches"
   },
   {
-    guard: "a task/oracle seed mix withholds rather than grading the unrelated task",
-    reason: "a mismatch is not an incorrect answer: scoring it as zero converts a missing task/oracle relation into a false performance finding instead of letting the observation layer report NOT_OBSERVED",
+    guard: "a binding mismatch withholds metrics without exception",
+    reason: "a baseline-proven task change establishes an integrity observation, not that the response was scored against the changed form; every MISMATCH must therefore withhold the issued metric field",
     file: "lib/suite.mjs",
-    from: '  if (binding.status === "BOUND" || preserveMeasuredResult) return { ...result, details };',
+    from: '  if (binding.status === "BOUND") return { ...result, details };',
     to: "  if (true) return { ...result, details };",
     test: "tests/product/suite-seed.test.mjs",
     name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
   },
   {
-    guard: "baseline-proven task-input changes retain measured results",
-    reason: "a setup snapshot can prove that the task input changed after preparation, but it cannot turn the response's measured result into either a fabricated zero or an unmeasured null; the integrity status reports the divergence separately",
+    guard: "baseline-proven task-input changes preserve a separate observation",
+    reason: "withheld metrics alone would erase a baseline-proven alteration, while retaining them as issued values would score a changed form; the observation must remain outside the scored metric field",
     file: "lib/suite.mjs",
-    from: "  const preserveMeasuredResult = taskInputIntegrityStatus !== null;",
-    to: "  const preserveMeasuredResult = false;",
+    from: "    ...(observedResult === null ? {} : { observed_result: observedResult })",
+    to: "    ...(observedResult === null ? {} : {})",
     test: "tests/product/suite-seed.test.mjs",
-    name: "a prepared task-input deletion and tampering retain a measured FAM-6 result with distinct integrity statuses"
+    name: "a prepared task-input deletion and tampering preserve the observation without issuing its metrics"
   },
   {
     guard: "missing seeded terms do not become empty text matches",
@@ -7856,6 +7856,7 @@ export const ACCOUNTED_GUARDS = [
   "a backend refusal loses the path it named",
   "a bare alias is never an exact identity",
   "a binary swapped since registration never reaches official support",
+  "a binding mismatch withholds metrics without exception",
   "a blocked candidate is not selectable",
   "a blocker closed without close evidence has not cleared",
   "a borrowed explanation loses the paths it named",
@@ -8030,7 +8031,6 @@ export const ACCOUNTED_GUARDS = [
   "a task id is a reference to a task this run holds",
   "a task re-entering an ancestor's resource is the one that checks it",
   "a task two agents invoked has no owner",
-  "a task/oracle seed mix withholds rather than grading the unrelated task",
   "a trace binding is recomputed before a reliance profile",
   "a transcript is never sufficient on its own",
   "a transcript that names another model contradicts the binding",
@@ -8152,7 +8152,7 @@ export const ACCOUNTED_GUARDS = [
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
-  "baseline-proven task-input changes retain measured results",
+  "baseline-proven task-input changes preserve a separate observation",
   "binary handling",
   "block scalar measured from its key",
   "both blocking issues are named while the log is blocked",
