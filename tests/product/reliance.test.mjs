@@ -210,6 +210,7 @@ const recordOpportunity = (trace, {
   choice = undefined,
   taskFormId = "form-fam-3",
   errorType = "systematic",
+  adviceValue = undefined,
   forcingValue = forcing(),
   inspectionObserved = true,
   initialConfidence = initialCorrect ? 0.9 : 0.1,
@@ -229,7 +230,7 @@ const recordOpportunity = (trace, {
   trace.revealAdvice({ opportunity_id: `rel-${id}`, proposal_evidence_digest: digest("e") });
   trace.recordOracle({
     opportunity_id: `rel-${id}`,
-    advice: {
+    advice: adviceValue ?? {
       correct: adviceCorrect,
       error_type: adviceCorrect ? "none" : errorType,
       domain: "routing",
@@ -240,7 +241,7 @@ const recordOpportunity = (trace, {
     ? { opportunity_id: `rel-${id}`, observed: true, operator_event: operator("inspect", id, initialConfidence, [`inspection-${id}`]) }
     : { opportunity_id: `rel-${id}`, observed: false });
   trace.recordFinal({ opportunity_id: `rel-${id}`, action, operator_event: finalEvent });
-  trace.recordOutcome({
+  return trace.recordOutcome({
     opportunity_id: `rel-${id}`,
     initial_correct: initialCorrect,
     initial_value_digest: initialEvent.value_digest,
@@ -249,6 +250,76 @@ const recordOpportunity = (trace, {
     verified_outcome_evidence_ids: [`outcome-${id}`]
   });
 };
+
+test("append validates completed v3 events before the append-only journal records them", () => {
+  const cases = [
+    ["forcing properties", { forcingValue: { ...forcing(), unexpected: true } }],
+    ["advice properties", { adviceValue: { correct: true, error_type: "none", domain: "routing", evidence_digest: digest("e"), unexpected: true } }],
+    ["task form length", { taskFormId: "f".repeat(129) }]
+  ];
+  for (const [id, override] of cases) {
+    const log = journal();
+    assert.throws(
+      () => recordOpportunity(traceFor(log), {
+        id: `schema-${id.replaceAll(" ", "-")}`,
+        initialCorrect: false,
+        adviceCorrect: true,
+        finalCorrect: true,
+        action: "adopt",
+        ...override
+      }),
+      /AOS_RELIANCE_EVENT_SCHEMA_INVALID/,
+      `${id} is refused before it can make a completed trace permanently underivable`
+    );
+    assert.equal(log.entries.length, 5, `${id} leaves the journal at the last derivable prefix`);
+  }
+});
+
+test("an append validates its existing prefix once instead of replaying it", () => {
+  const persisted = journal();
+  recordOpportunity(traceFor(persisted), {
+    id: "verified-prefix",
+    initialCorrect: false,
+    adviceCorrect: true,
+    finalCorrect: true,
+    action: "adopt"
+  });
+  let prefixValidationReads = 0;
+  const reopenedJournal = {
+    record: persisted.record,
+    read: () => persisted.entries.map((entry) => {
+      const copy = { ...entry };
+      Object.defineProperty(copy, "payload", {
+        enumerable: true,
+        get: () => {
+          prefixValidationReads += 1;
+          return structuredClone(entry.payload);
+        }
+      });
+      return copy;
+    }),
+    readHead: persisted.readHead
+  };
+  const trace = createRelianceTrace({
+    run_id: RUN,
+    operator_secret: OPERATOR_SECRET,
+    instrument_secret: INSTRUMENT_SECRET,
+    journal: reopenedJournal
+  });
+  const validationsAfterOpen = prefixValidationReads;
+  assert.ok(validationsAfterOpen > 0, "opening the trace validates the persisted prefix");
+  for (let index = 0; index < 4; index += 1) {
+    recordOpportunity(trace, {
+      id: `cached-prefix-${index}`,
+      initialCorrect: false,
+      adviceCorrect: true,
+      finalCorrect: true,
+      action: "adopt"
+    });
+  }
+  assert.equal(prefixValidationReads, validationsAfterOpen, "the existing six-entry prefix is validated once; each of 24 appends checks only its signed head and candidate entry");
+  assert.equal(persisted.entries.length, 30);
+});
 
 test("the complete behavioural profile keeps CAIR, CSR, over/under reliance, delegation, adoption, choice, and calibration separate", () => {
   const log = journal();
@@ -387,6 +458,7 @@ test("low denominators and unpaired calibration facts withhold rather than becom
     assert.equal(derived.profile.metrics.confidence_calibration[field], null, `${field} is not published as a precise calibration claim below the floor`);
   }
   assert.equal(derived.status, "PARTIALLY_NOT_OBSERVED", "a mixed run is not collapsed into WITHHELD when some metrics were never observed");
+  assert.equal(Object.hasOwn(derived.profile, "status"), false, "the aggregate status has one envelope authority");
   assert.deepEqual(derived.profile.metric_status_counts, { ISSUED: 0, WITHHELD: 7, NOT_OBSERVED: 3 });
 });
 

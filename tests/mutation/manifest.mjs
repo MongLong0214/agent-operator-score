@@ -6631,6 +6631,24 @@ export const GUARDS = [
     name: "a persisted trace has to retain the verifier binding that makes a reordered conclusion detectable"
   },
   {
+    guard: "a completed reliance trace is schema-valid before append",
+    reason: "an append-only journal cannot retain a completed sequence that its own v3 reader will reject, because no later write can repair the invalid record",
+    file: "lib/reliance.mjs",
+    from: '  if (!checked.ok) failure("AOS_RELIANCE_EVENT_SCHEMA_INVALID", checked.errors.map((error) => `${error.path} ${error.message}`).join("; "));',
+    to: "  if (false) failure(\"unreachable\");",
+    test: "tests/product/reliance.test.mjs",
+    name: "append validates completed v3 events before the append-only journal records them"
+  },
+  {
+    guard: "a reliance append reuses its verified prefix",
+    reason: "replaying the authenticated prefix for every append re-HMACs and revalidates every prior operator event, making journal construction quadratic in its length",
+    file: "lib/reliance.mjs",
+    from: "    const entries = appendState.entries;",
+    to: "    const entries = readVerifiedEntries({ run_id: runId, operator_secret: operatorSecret, instrument_secret: instrumentSecret, journal });",
+    test: "tests/product/reliance.test.mjs",
+    name: "an append validates its existing prefix once instead of replaying it"
+  },
+  {
     guard: "a reliance rate waits for its opportunity floor",
     reason: "one observed transition is useful as a raw case but is not an issued behavioural rate, so replacing the floor turns absence of coverage into precision",
     file: "lib/reliance.mjs",
@@ -7572,6 +7590,7 @@ export const ACCOUNTED_GUARDS = [
   "a complete cycle is not an issued cycle",
   "a completed deletion requires the observation that witnessed it",
   "a completed log cites both boundary observation digests",
+  "a completed reliance trace is schema-valid before append",
   "a configuration directory with no declared file is not a login",
   "a confirmation nobody could check is not a true one",
   "a confirmed author resists an unavailable overwrite",
@@ -7665,6 +7684,7 @@ export const ACCOUNTED_GUARDS = [
   "a redundant invocation is one that added nothing",
   "a refused file fails the check",
   "a relay id is published as a digest",
+  "a reliance append reuses its verified prefix",
   "a reliance rate waits for its opportunity floor",
   "a reliance trace is built on a journal",
   "a required artifact or handoff is checked against the ledger",
