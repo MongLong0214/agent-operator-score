@@ -68,6 +68,11 @@ test("a different seed varies what the grader actually reads", () => {
   assert.equal(spread((p) => p["FAM-5"].oracle_subcheck), 4, "the trusted oracle branch did not vary");
 });
 
+test("FAM-5 declares its public probe in the oracle branch that classifies task variation", () => {
+  const fam5 = scenarioParams("1")["FAM-5"];
+  assert.match(fam5.oracle_branch, new RegExp(`public_probe=${fam5.public_probe.join("\\+")}`));
+});
+
 test("every operational family gives the operator a seed-specific task", () => {
   // A parameter record is not a form. This deliberately measures the bytes the operator receives:
   // before #564 FAM-1, FAM-3 and FAM-5 all had changing parameter objects behind one fixed task.
