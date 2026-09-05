@@ -976,10 +976,13 @@ test("a_provider_refusal_is_not_a_failed_boundary", async () => {
   // both come from not separating "the instrument answered no" from "the instrument could not
   // answer". The refusal is named and the lane reads NOT_OBSERVED -- but only for a refusal, since
   // a runtime that fails *inside* the boundary is exactly what this lane exists to catch.
-  const source = readFileSync(join(root, "tests", "product", "confinement-real-lane.test.mjs"), "utf8");
-  const pattern = /const PROVIDER_REFUSAL = (\/[^\n]+\/[a-z]*);/u.exec(source);
-  assert.ok(pattern, "the real lane no longer names what a provider refusal looks like");
-  const refusal = new RegExp(pattern[1].slice(1, pattern[1].lastIndexOf("/")), "iu");
+  //
+  // #639 moved the pattern itself into `lib/confinement.mjs`, exported, so this reads the one
+  // definition the real lane's test and the strict-canary record it now emits both consume --
+  // rather than a second copy of it lifted out of the test file's source text, which is what this
+  // test did while the pattern was private to that file.
+  const { PROVIDER_REFUSAL } = await import("../../lib/confinement.mjs");
+  const refusal = PROVIDER_REFUSAL;
   for (const refused of [
     "ERROR: You've hit your usage limit. Visit https://example.test/usage or try again at Sep 8th.",
     "429 Too Many Requests",

@@ -4184,9 +4184,12 @@ export const GUARDS = [
   {
     guard: "a provider refusal is narrow, not any non-zero exit",
     reason: "a runtime that fails *inside* the boundary is what this lane exists to catch; widening the refusal pattern to every failure would turn a broken boundary into NOT_OBSERVED, which is the absence-as-success shape the other way round",
-    file: "tests/product/confinement-real-lane.test.mjs",
-    from: "const PROVIDER_REFUSAL = /usage limit|rate limit|rate_limit|quota exceeded|429/iu;",
-    to: "const PROVIDER_REFUSAL = /./u;",
+    // #639 moved this from a private declaration in the test file to an export in
+    // lib/confinement.mjs, so the strict-canary record and the real lane's test read one pattern
+    // rather than two that could drift; the witness moved with it.
+    file: "lib/confinement.mjs",
+    from: "export const PROVIDER_REFUSAL = /usage limit|rate limit|rate_limit|quota exceeded|429/iu;",
+    to: "export const PROVIDER_REFUSAL = /./u;",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_provider_refusal_is_not_a_failed_boundary"
   },
@@ -7537,6 +7540,111 @@ export const GUARDS = [
     to: "",
     test: "tests/product/reliance.test.mjs",
     name: "reliance provenance projection is a new named schema generation"
+  },
+  // #639: the durable `aos-strict-canary.v1` record and the release gate that reads it.
+  // `buildStrictCanaryRecord` and `releaseCanaryGate` are reached from two shipped npm scripts --
+  // `verify:real-runtime-strict` (which runs `tests/product/confinement-real-lane.test.mjs`, the
+  // only caller of the builder) and the new `verify:release-canary` (which runs
+  // `scripts/verify-release-canary.mjs`, the only caller of the gate) -- not only from the test
+  // file these guards happen to be witnessed in.
+  {
+    guard: "an OBSERVED canary reads its profile digest from the run, never from a caller",
+    reason: "sandbox_profile_digest is the one field a caller of buildStrictCanaryRecord cannot supply directly; if it stopped being read off the confinement record the run actually produced, an OBSERVED canary could carry a digest with no boundary behind it",
+    file: "lib/confinement.mjs",
+    from: "    sandbox_profile_digest: confinementRecord?.rendered_profile_digest ?? null,",
+    to: "    sandbox_profile_digest: null,",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "an OBSERVED canary built from a real confinement record is accepted by the release gate"
+  },
+  {
+    guard: "a forged headline profile digest is rejected by the release gate",
+    reason: "a record's existence proves nothing about itself; the headline sandbox_profile_digest has to equal the digest the embedded confinement record actually rendered, or a canary that never happened could be entered by hand-editing one string",
+    file: "lib/confinement.mjs",
+    from: "  if (!isDigest(record.sandbox_profile_digest) || record.sandbox_profile_digest !== embedded?.rendered_profile_digest) {",
+    to: "  if (false) {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "a record carrying a forged sandbox_profile_digest is rejected"
+  },
+  {
+    guard: "a strict canary cannot authorize itself; the embedded record must pass issuanceGate",
+    reason: "\"it exists, so it is true\" is the defect class #639 names; reusing issuanceGate's own authenticity floor over the embedded confinement record is what keeps an internally-consistent but never-official record from becoming release evidence",
+    file: "lib/confinement.mjs",
+    from: "  if (!gated.official) reasons.push(STRICT_CANARY_GATE_REASONS.CONFINEMENT_NOT_OFFICIAL);",
+    to: "",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "a record whose embedded confinement record is not itself official cannot authorize the canary by existing alone"
+  },
+  {
+    guard: "NOT_OBSERVED and PROVIDER_REFUSED never reach the release gate's OBSERVED scoring",
+    reason: "silence is not coverage: a NOT_OBSERVED or PROVIDER_REFUSED record is a legitimate, storable artifact, and it must never be scored as if it were the OBSERVED claim it explicitly is not",
+    file: "lib/confinement.mjs",
+    from: "  if (record.outcome !== \"OBSERVED\") {\n    return { accepted: false, outcome: record.outcome, reasons: [STRICT_CANARY_GATE_REASONS.NOT_OBSERVED] };\n  }",
+    to: "  if (false) {\n    return { accepted: false, outcome: record.outcome, reasons: [STRICT_CANARY_GATE_REASONS.NOT_OBSERVED] };\n  }",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "a NOT_OBSERVED record is a legitimate artifact and is never release evidence"
+  },
+  {
+    guard: "runtime_version must be measured, not merely present",
+    reason: "a version string with no source: \"detected\" beside it is exactly as trustworthy as one typed into a config; #639 requires the version be measured from the runtime that ran, and that is checked structurally rather than taken on the record's word",
+    file: "lib/confinement.mjs",
+    from: "  if (typeof record.runtime_version !== \"string\" || record.runtime_version.length === 0 || record.runtime_version_source !== \"detected\") {",
+    to: "  if (typeof record.runtime_version !== \"string\" || record.runtime_version.length === 0) {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "runtime_version is what the runtime measured, and a canary that cannot show that is not accepted"
+  },
+  {
+    guard: "an OBSERVED canary cannot be built without a runtime version actually measured",
+    reason: "the builder is the one place an OBSERVED record is assembled; without this check it could be built with runtime_version: null and only the gate downstream would ever notice, if anything still read the gate at all",
+    file: "lib/confinement.mjs",
+    from: "    if (typeof runtimeVersion !== \"string\" || runtimeVersion.length === 0) {\n      throw fail(\"AOS_STRICT_CANARY_RUNTIME_VERSION_UNMEASURED\", \"an OBSERVED canary needs a version measured from the runtime that ran\");\n    }\n",
+    to: "",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "an OBSERVED record cannot be built without a runtime version actually measured"
+  },
+  {
+    guard: "an OBSERVED canary cannot be built without a real profile digest to bind",
+    reason: "the digest an OBSERVED record carries has to come from an actual confinement record; without this check the builder would happily stamp OBSERVED on a record with sandbox_profile_digest: null, which is exactly the self-authorizing shape this issue forbids",
+    file: "lib/confinement.mjs",
+    from: "    if (!confinementRecord || typeof confinementRecord !== \"object\" || !isDigest(confinementRecord.rendered_profile_digest)) {\n      throw fail(\"AOS_STRICT_CANARY_PROFILE_DIGEST_MISSING\", \"an OBSERVED canary needs the profile digest the run actually rendered\");\n    }\n",
+    to: "",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "an OBSERVED record cannot be built without a confinement record to bind its digest to"
+  },
+  {
+    guard: "a strict canary for an unproven lane is refused however internally consistent it looks",
+    reason: "a single record cannot manufacture a lane this release has not proven; codex-cli.v1 is proven on darwin/macos-seatbelt and nothing else is, so an otherwise-authentic record for another adapter must still be refused",
+    file: "lib/confinement.mjs",
+    from: "  if (lane === null || !SUPPORTED_RELEASE_SET.has(lane.support_status)) reasons.push(STRICT_CANARY_GATE_REASONS.LANE_NOT_PROVEN);",
+    to: "",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "a record for a lane this release has not proven cannot be release evidence however internally consistent it is"
+  },
+  {
+    guard: "a strict canary with a tampered or missing schema id is refused rather than read",
+    reason: "a shape check alone would read any JSON object that happened to have the right fields; the schema id is the first thing checked so a record from an unrelated generation, or no record at all, is named invalid rather than partially trusted",
+    file: "lib/confinement.mjs",
+    from: "  if (!record || typeof record !== \"object\" || record.schema_id !== STRICT_CANARY_SCHEMA || !STRICT_CANARY_OUTCOMES.includes(record.outcome)) {",
+    to: "  if (!record || typeof record !== \"object\") {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "a record with a tampered or missing schema id is refused as invalid rather than read"
+  },
+  {
+    guard: "the release-canary script fails closed with no evidence file",
+    reason: "v0.2.0's decision (#639) is that a missing OBSERVED canary blocks release issuance; a script that fell through to an unhandled crash on an absent file would still exit non-zero by accident, which is not the same as a script that names the block on purpose",
+    file: "scripts/verify-release-canary.mjs",
+    from: "if (!existsSync(path)) {",
+    to: "if (false) {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "the release-canary script fails closed when no evidence file exists"
+  },
+  {
+    guard: "the release-canary script exits non-zero when the gate does not accept the record",
+    reason: "the script's whole job is to turn releaseCanaryGate's decision into an exit code a release process can act on; without this check every record, accepted or not, would print success and exit 0",
+    file: "scripts/verify-release-canary.mjs",
+    from: "if (!decision.accepted) {",
+    to: "if (false) {",
+    test: "tests/product/strict-canary-evidence.test.mjs",
+    name: "the release-canary script exits zero only for an accepted OBSERVED record"
   }
 ];
 
@@ -7638,6 +7746,7 @@ export const ACCOUNTED_GUARDS = [
   "EVIDENCE_ONLY names where the evidence goes",
   "EVIDENCE_ONLY records whether the migration happened",
   "MERGED holds no commit that reaches neither line",
+  "NOT_OBSERVED and PROVIDER_REFUSED never reach the release gate's OBSERVED scoring",
   "O4 withholds with C2.RF.01",
   "PATH carries no relative entry",
   "SUPERSEDED accounts for every commit on no other line",
@@ -7724,6 +7833,7 @@ export const ACCOUNTED_GUARDS = [
   "a family with no known naming rules is not exact",
   "a filesystem location is one however it is spelled",
   "a finding anywhere empties the eligible set",
+  "a forged headline profile digest is rejected by the release gate",
   "a forged structural set is revalidated like the rest",
   "a form list naming an undeclared cell is refused before it is dereferenced",
   "a generation is named for what it actually predates",
@@ -7815,6 +7925,9 @@ export const ACCOUNTED_GUARDS = [
   "a status with no digest under it is the weakest one",
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
+  "a strict canary cannot authorize itself; the embedded record must pass issuanceGate",
+  "a strict canary for an unproven lane is refused however internally consistent it looks",
+  "a strict canary with a tampered or missing schema id is refused rather than read",
   "a subcheck verdict is one of three states, never rounded",
   "a superseded generation stays readable enough to be named",
   "a superseded probe claim is not endorsed",
@@ -7865,6 +7978,9 @@ export const ACCOUNTED_GUARDS = [
   "advice is answered once",
   "agent-relay event needs its attestation",
   "allowlist-only child environment",
+  "an OBSERVED canary cannot be built without a real profile digest to bind",
+  "an OBSERVED canary cannot be built without a runtime version actually measured",
+  "an OBSERVED canary reads its profile digest from the run, never from a caller",
   "an UNTRUSTED identity is not a verified one",
   "an absent boundary is not a passing one",
   "an after-snapshot head is in flight, not merely named",
@@ -8162,6 +8278,7 @@ export const ACCOUNTED_GUARDS = [
   "run scratch is created inside the cleanup-protected region",
   "runs are not disowned by an unread pull request",
   "runtime auth is bound to the adapter that reads it",
+  "runtime_version must be measured, not merely present",
   "safety cap",
   "secret-shaped material is not a model name",
   "secret-value scan",
@@ -8313,6 +8430,8 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the post-deletion observation",
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
+  "the release-canary script exits non-zero when the gate does not accept the record",
+  "the release-canary script fails closed with no evidence file",
   "the reliance evidence survives its trace",
   "the rendered audit does not describe a command the collector retired",
   "the renderer refuses a workspace inside the store",
