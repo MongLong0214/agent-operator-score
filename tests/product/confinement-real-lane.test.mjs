@@ -9,10 +9,20 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { runProcess } from "../../lib/core.mjs";
-import { ISSUANCE_REASONS, issuanceGate, issuanceGateForRun, laneOf, realStrictLaneStatus } from "../../lib/confinement.mjs";
+import {
+  buildStrictCanaryRecord,
+  ISSUANCE_REASONS,
+  issuanceGate,
+  issuanceGateForRun,
+  laneOf,
+  PROVIDER_REFUSAL,
+  realStrictLaneStatus
+} from "../../lib/confinement.mjs";
+import { ADAPTERS } from "../../lib/profile.mjs";
 
 const NOT_OBSERVED = process.platform !== "darwin"
   ? `NOT_OBSERVED: the darwin/macos-seatbelt lane runs only on darwin; this host is ${process.platform}`
@@ -30,10 +40,33 @@ test("the_real_strict_lane_ran_here_or_this_verification_did_not_pass", () => {
   laneStatus().assertRan();
 });
 
-// What a provider refusal looks like on the way out. Deliberately narrow: a usage limit or an
-// explicit rate-limit refusal, not any non-zero exit -- a runtime that fails *inside* the boundary
-// is exactly what this lane exists to catch, and must stay a failure.
-const PROVIDER_REFUSAL = /usage limit|rate limit|rate_limit|quota exceeded|429/iu;
+// #639: the durable record of whatever this run of the codex-cli.v1 lane actually found. Written
+// only under `AOS_REAL_STRICT_REQUIRED=1` -- an ordinary `npm test` on a Linux runner or a darwin
+// box with no authenticated Codex has nothing new to say about the lane, and overwriting the
+// committed evidence with "NOT_OBSERVED: this host is linux" on every CI run would bury the one
+// occasion the record exists to keep. `PROVIDER_REFUSAL` is imported from `lib/confinement.mjs`
+// rather than defined here a second time, so this test and the record it emits cannot drift apart
+// on what a refusal looks like.
+const CANARY_EVIDENCE_PATH = join(
+  dirname(fileURLToPath(import.meta.url)), "..", "..", "fixtures", "confinement", "strict-canary.json"
+);
+
+const writeStrictCanaryEvidence = (record) => {
+  if (process.env.AOS_REAL_STRICT_REQUIRED !== "1") return;
+  mkdirSync(dirname(CANARY_EVIDENCE_PATH), { recursive: true });
+  writeFileSync(CANARY_EVIDENCE_PATH, `${JSON.stringify(record, null, 2)}\n`);
+};
+
+// The runtime's own answer to `--version`, run against the exact resolved path the lane is about
+// to invoke -- not read from a config, not typed in here, and not derived from anything Codex was
+// told on its command line. `codexOnPath()` already resolved the absolute path; probing that path
+// rather than the bare command name is what ties the measurement to the binary the run actually
+// used, on a machine where more than one could be on PATH.
+const measuredCodexVersion = (resolvedPath) => {
+  const probed = spawnSync(resolvedPath, ["--version"], { encoding: "utf8", timeout: 5000 });
+  if (probed.status !== 0) return null;
+  return ADAPTERS["codex-cli.v1"].version_of(`${probed.stdout ?? ""}${probed.stderr ?? ""}`);
+};
 
 const codexOnPath = () => {
   const found = spawnSync("/bin/sh", ["-c", "command -v codex"], { encoding: "utf8" });
@@ -246,15 +279,26 @@ test("best_effort_run_records_no_boundary_and_is_never_official", async () => {
 test("strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane", { skip: NOT_OBSERVED ?? false, timeout: 240000 }, async (t) => {
   const codex = codexOnPath();
   if (codex === null) {
+    writeStrictCanaryEvidence(buildStrictCanaryRecord({
+      outcome: "NOT_OBSERVED",
+      reason: "NOT_OBSERVED: codex is not on PATH; the codex-cli.v1 lane was not re-measured",
+      platform: process.platform, backend: "macos-seatbelt", adapter: "codex-cli.v1"
+    }));
     laneStatus("NOT_OBSERVED: codex is not on PATH; the codex-cli.v1 lane was not re-measured").assertRan();
     return t.skip("NOT_OBSERVED: codex is not on PATH; the codex-cli.v1 lane was not re-measured");
   }
   const status = spawnSync(codex, ["login", "status"], { encoding: "utf8", timeout: 60000 });
   if (status.status !== 0) {
     const why = `NOT_OBSERVED: \`codex login status\` exited ${status.status}; the lane needs an authenticated runtime`;
+    writeStrictCanaryEvidence(buildStrictCanaryRecord({
+      outcome: "NOT_OBSERVED", reason: why, platform: process.platform, backend: "macos-seatbelt", adapter: "codex-cli.v1"
+    }));
     laneStatus(why).assertRan();
     return t.skip(why);
   }
+  // Measured once, against the exact resolved path about to be invoked -- not read from the
+  // profile this run will build later, and not typed into this file as a literal.
+  const runtimeVersion = measuredCodexVersion(codex);
   const store = makeStore();
   try {
     const spec = { id: "codex", command: "codex", args: ["exec", "--skip-git-repo-check"], adapter: "codex-cli.v1", runtime_name: "codex", allowed_env_names: ["CODEX_HOME"] };
@@ -271,6 +315,14 @@ test("strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane
     // measurement happened, so an unobtainable one is a failure of what was asked for.
     if (result.exit_code !== 0 && PROVIDER_REFUSAL.test(`${result.stdout_excerpt ?? ""}${result.stderr_excerpt ?? ""}`)) {
       const why = "NOT_OBSERVED: the provider refused to serve (usage limit); the codex-cli.v1 lane was not re-measured";
+      // The boundary still ran even though the provider declined inside it -- `result.confinement`
+      // is a real record of that -- but the outcome is its own value, not folded into NOT_OBSERVED
+      // under a shared "skipped" reason string the way the suite's own skip has to be.
+      writeStrictCanaryEvidence(buildStrictCanaryRecord({
+        outcome: "PROVIDER_REFUSED", reason: why, platform: process.platform, backend: "macos-seatbelt", adapter: "codex-cli.v1",
+        runtimeVersion, runtimeVersionSource: runtimeVersion ? "detected" : "unknown",
+        confinementRecord: result.confinement ?? null
+      }));
       laneStatus(why).assertRan();
       return t.skip(why);
     }
@@ -298,6 +350,13 @@ test("strict_run_with_the_installed_codex_runtime_is_official_on_the_proven_lane
     assert.equal(decision.official, true);
     assert.equal(decision.claim_stage_ceiling, "PROFILE_BOUND");
     assert.equal(issuanceGateForRun([record]).official, true);
+    // The durable record #639 asked for: this run actually happened, on this measured runtime,
+    // bound to the profile digest this run actually rendered.
+    assert.ok(typeof runtimeVersion === "string" && runtimeVersion.length > 0, "codex --version did not parse to a measured version");
+    writeStrictCanaryEvidence(buildStrictCanaryRecord({
+      outcome: "OBSERVED", platform: process.platform, backend: "macos-seatbelt", adapter: "codex-cli.v1",
+      runtimeVersion, runtimeVersionSource: "detected", confinementRecord: record
+    }));
   } finally {
     rmSync(store.base, { recursive: true, force: true });
   }
