@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { canonicalJson } from "../../lib/core.mjs";
 import {
   RELIANCE_CONFIDENCE_OBSERVATION_FLOOR,
+  RELIANCE_EVENT_GENERATIONS,
+  RELIANCE_EVENT_PREDATES,
+  RELIANCE_EVENT_SCHEMA_ID,
   RELIANCE_OPPORTUNITY_FLOOR,
   createRelianceTrace,
   deriveRelianceProfile,
   loadRelianceEventSchema,
   loadRelianceOpportunityFloor,
+  relianceEventGeneration,
   relianceEventSchemaDigest,
   relianceOpportunityFloorDigest,
   relianceTraceEventDigest
@@ -16,6 +21,7 @@ import { mintOperatorEvent } from "../../lib/operator-events.mjs";
 import { routeOracleDigest } from "../../lib/routing-oracle.mjs";
 import { readFileSync } from "node:fs";
 import { sha256Bytes } from "../../lib/digest.mjs";
+import { validateAgainstSchema } from "../../lib/json-schema.mjs";
 
 const OPERATOR_SECRET = "operator-583a".repeat(8);
 const INSTRUMENT_SECRET = "instrument-583b".repeat(8);
@@ -35,9 +41,9 @@ const journal = () => {
   };
 };
 
-const operator = (kind, opportunity, confidence, evidence = ["evidence-1"]) => mintOperatorEvent({
+const operator = (kind, opportunity, confidence, evidence = ["evidence-1"], { source = "interactive-tty" } = {}) => mintOperatorEvent({
   run_id: RUN,
-  source: "interactive-tty",
+  source,
   decision_type: kind === "initial" ? "initial.judgment" : kind === "inspect" ? "checkpoint.observe" : "advice.response",
   construct_cell_id: "C3.RA.01",
   opportunity_id: `opp-${opportunity}`,
@@ -47,6 +53,13 @@ const operator = (kind, opportunity, confidence, evidence = ["evidence-1"]) => m
   reported_confidence: confidence,
   state_revision: kind === "initial" ? 1 : kind === "inspect" ? 2 : 3,
   ...(kind === "initial" ? { proactive_delegation: "DELEGATE" } : {}),
+  ...(source === "agent-relay" ? {
+    relay_attestation: {
+      relay_id: `relay-${opportunity}`,
+      owner_challenge_digest: digest("a"),
+      attested_at: "2026-09-05T00:00:00Z"
+    }
+  } : {}),
   created_at: "2026-09-05T00:00:00Z"
 }, { secret: OPERATOR_SECRET, now: new Date("2026-09-05T00:00:00Z") });
 
@@ -114,12 +127,50 @@ test("an attested initial judgment before the advice is the evidence from which 
   });
 
   const derived = deriveFor(log);
+  assert.equal(derived.opportunities[0].source, "interactive-tty", "the completed v4 event projects source from the authenticated initial operator event");
   assert.equal(derived.opportunities[0].initial.correct, false);
   assert.equal(derived.opportunities[0].advice.correct, true);
   assert.equal(derived.opportunities[0].final.correct, true);
   assert.deepEqual(derived.profile.metrics.cair.eligible_opportunity_ids, ["rel-cair-1"]);
   assert.deepEqual(derived.profile.metrics.cair.opportunity_ids, ["rel-cair-1"]);
   assert.equal(derived.profile.metrics.cair.status, "WITHHELD", "one eligible opportunity preserves the raw case but not a rate");
+});
+
+test("a relay-attested turn renders its MEDIUM provenance differently from a direct HIGH turn", () => {
+  const directLog = journal();
+  recordOpportunity(traceFor(directLog), {
+    id: "direct-provenance",
+    initialCorrect: false,
+    adviceCorrect: true,
+    finalCorrect: true,
+    action: "adopt"
+  });
+  const relayLog = journal();
+  recordOpportunity(traceFor(relayLog), {
+    id: "relay-provenance",
+    initialCorrect: false,
+    adviceCorrect: true,
+    finalCorrect: true,
+    action: "adopt",
+    source: "agent-relay",
+    forcingValue: { ...forcing(), interface: "agent-relay" }
+  });
+
+  const direct = deriveFor(directLog).opportunities[0];
+  const relayed = deriveFor(relayLog).opportunities[0];
+  assert.deepEqual(
+    { authority: direct.authority, provenance: direct.provenance, confidence: direct.confidence },
+    { authority: "DIRECT_LOCAL", provenance: "DIRECT", confidence: "HIGH" }
+  );
+  assert.deepEqual(
+    { authority: relayed.authority, provenance: relayed.provenance, confidence: relayed.confidence },
+    { authority: "LOCAL_OWNER_RELAY", provenance: "RELAY_ATTESTED", confidence: "MEDIUM" }
+  );
+  assert.notEqual(
+    canonicalJson({ authority: direct.authority, provenance: direct.provenance, confidence: direct.confidence }),
+    canonicalJson({ authority: relayed.authority, provenance: relayed.provenance, confidence: relayed.confidence }),
+    "a reader of the projected provenance cannot be shown a relay turn as the same HIGH evidence as a direct turn"
+  );
 });
 
 test("a non-canonical observation is refused with the reliance error vocabulary", () => {
@@ -215,10 +266,13 @@ const recordOpportunity = (trace, {
   forcingValue = forcing(),
   inspectionObserved = true,
   initialConfidence = initialCorrect ? 0.9 : 0.1,
-  finalConfidence = finalCorrect ? 0.8 : 0.9
+  finalConfidence = finalCorrect ? 0.8 : 0.9,
+  source = "interactive-tty"
 }) => {
-  const initialEvent = operator("initial", id, initialConfidence, [`initial-${id}`]);
-  const finalEvent = operator("final", id, finalConfidence, [`final-${id}`]);
+  const eventOptions = { source };
+  const observedSource = source === "agent-relay" ? { operator_event_source: source } : {};
+  const initialEvent = operator("initial", id, initialConfidence, [`initial-${id}`], eventOptions);
+  const finalEvent = operator("final", id, finalConfidence, [`final-${id}`], eventOptions);
   trace.commitInitial({
     opportunity_id: `rel-${id}`,
     operator_opportunity_id: `opp-${id}`,
@@ -226,7 +280,8 @@ const recordOpportunity = (trace, {
     operator_event: initialEvent,
     delegation: { chosen: true, oracle_expected_value: expected, route_oracle: routeOracle(id) },
     forcing: forcingValue,
-    ...(choice === undefined ? {} : { choice_independence: choice })
+    ...(choice === undefined ? {} : { choice_independence: choice }),
+    ...observedSource
   });
   trace.revealAdvice({ opportunity_id: `rel-${id}`, proposal_evidence_digest: digest("e") });
   trace.recordOracle({
@@ -239,20 +294,26 @@ const recordOpportunity = (trace, {
     }
   });
   trace.recordInspection(inspectionObserved
-    ? { opportunity_id: `rel-${id}`, observed: true, operator_event: operator("inspect", id, initialConfidence, [`inspection-${id}`]) }
+    ? { opportunity_id: `rel-${id}`, observed: true, operator_event: operator("inspect", id, initialConfidence, [`inspection-${id}`], eventOptions), ...observedSource }
     : { opportunity_id: `rel-${id}`, observed: false });
-  trace.recordFinal({ opportunity_id: `rel-${id}`, action, operator_event: finalEvent });
+  trace.recordFinal({ opportunity_id: `rel-${id}`, action, operator_event: finalEvent, ...observedSource });
   return trace.recordOutcome({
     opportunity_id: `rel-${id}`,
     initial_correct: initialCorrect,
     initial_value_digest: initialEvent.value_digest,
     final_correct: finalCorrect,
     final_value_digest: finalEvent.value_digest,
-    verified_outcome_evidence_ids: [`outcome-${id}`]
+    verified_outcome_evidence_ids: [`outcome-${id}`],
+    ...(source === "agent-relay" ? {
+      relay_provenance: {
+        relay_protocol_digest: digest("b"),
+        initial_before_advice_proof: true
+      }
+    } : {})
   });
 };
 
-test("append validates completed v3 events before the append-only journal records them", () => {
+test("append validates completed v5 events before the append-only journal records them", () => {
   const cases = [
     ["forcing properties", { forcingValue: { ...forcing(), unexpected: true } }],
     ["advice properties", { adviceValue: { correct: true, error_type: "none", domain: "routing", evidence_digest: digest("e"), unexpected: true } }],
@@ -645,16 +706,72 @@ test("counterfactual: high confidence followed by a wrong outcome worsens calibr
   assert.equal(certain.value < cautious.value, true, "calibration quality falls; the raw confidence itself receives no credit");
 });
 
+test("reliance provenance projection is a new named schema generation", () => {
+  const log = journal();
+  recordOpportunity(traceFor(log), {
+    id: "generation",
+    initialCorrect: false,
+    adviceCorrect: true,
+    finalCorrect: true,
+    action: "adopt"
+  });
+  const current = deriveFor(log).opportunities[0];
+  const v3 = JSON.parse(readFileSync(new URL("../../reliance-events/aos-reliance-event.v3.schema.json", import.meta.url), "utf8"));
+  const v4 = JSON.parse(readFileSync(new URL("../../reliance-events/aos-reliance-event.v4.schema.json", import.meta.url), "utf8"));
+  const sourceLessV3 = structuredClone(current);
+  sourceLessV3.schema_id = "aos-reliance-event.v3";
+  delete sourceLessV3.source;
+  delete sourceLessV3.authority;
+  delete sourceLessV3.provenance;
+  delete sourceLessV3.confidence;
+  const provenanceLessV4 = structuredClone(current);
+  provenanceLessV4.schema_id = "aos-reliance-event.v4";
+  delete provenanceLessV4.authority;
+  delete provenanceLessV4.provenance;
+  delete provenanceLessV4.confidence;
+  const provenanceLessV5 = structuredClone(current);
+  delete provenanceLessV5.authority;
+  delete provenanceLessV5.provenance;
+  delete provenanceLessV5.confidence;
+
+  assert.equal(RELIANCE_EVENT_SCHEMA_ID, "aos-reliance-event.v5");
+  assert.deepEqual(RELIANCE_EVENT_GENERATIONS, ["aos-reliance-event.v2", "aos-reliance-event.v3", "aos-reliance-event.v4", "aos-reliance-event.v5"]);
+  assert.equal(validateAgainstSchema(sourceLessV3, v3).ok, true, "the source-less v3 event remains valid under the v3 contract that issued it");
+  assert.equal(validateAgainstSchema(provenanceLessV4, v4).ok, true, "the source-bearing v4 event remains valid under the v4 contract that issued it");
+  assert.equal(validateAgainstSchema(provenanceLessV5, loadRelianceEventSchema()).ok, false, "the current v5 contract requires the complete authority projection rather than leaving relay MEDIUM indistinguishable from direct HIGH evidence");
+  assert.deepEqual(relianceEventGeneration(current), { schema_id: "aos-reliance-event.v5", generation: "CURRENT", predates: null });
+  assert.deepEqual(relianceEventGeneration(sourceLessV3), {
+    schema_id: "aos-reliance-event.v3",
+    generation: "SUPERSEDED",
+    predates: RELIANCE_EVENT_PREDATES["aos-reliance-event.v3"]
+  });
+  assert.deepEqual(relianceEventGeneration(provenanceLessV4), {
+    schema_id: "aos-reliance-event.v4",
+    generation: "SUPERSEDED",
+    predates: RELIANCE_EVENT_PREDATES["aos-reliance-event.v4"]
+  });
+  assert.deepEqual(relianceEventGeneration({ schema_id: "aos-reliance-event.v99" }), {
+    schema_id: "aos-reliance-event.v99",
+    generation: "UNKNOWN",
+    predates: null
+  }, "an unfamiliar schema is named unknown rather than accused of being a malformed current event");
+});
+
 test("the committed schema and floor state the operational release contract", () => {
   const schema = loadRelianceEventSchema();
   const opportunityFloor = loadRelianceOpportunityFloor();
-  assert.equal(schema.properties.schema_id.const, "aos-reliance-event.v3");
-  assert.deepEqual(schema.required.slice(0, 12), [
+  assert.equal(schema.properties.schema_id.const, "aos-reliance-event.v5");
+  assert.deepEqual(schema.required.slice(0, 15), [
     "schema_id", "opportunity_id", "construct_cell_id", "task_form_id", "initial_operator_event_id",
-    "forcing", "initial", "delegation", "advice", "inspection", "final", "verified_outcome_evidence_ids"
+    "source", "authority", "provenance", "confidence", "forcing", "initial", "delegation", "advice", "inspection", "final"
   ]);
+  assert.deepEqual(schema.properties.source.enum, ["interactive-tty", "trusted-local-ui", "operator-file", "agent-relay"]);
+  assert.deepEqual(schema.properties.authority.enum, ["DIRECT_LOCAL", "LOCAL_OWNER_RELAY", "ADVANCED_FILE"]);
+  assert.deepEqual(schema.properties.provenance.enum, ["DIRECT", "RELAY_ATTESTED", "FILE_ATTESTED"]);
+  assert.deepEqual(schema.properties.confidence.enum, ["HIGH", "MEDIUM", "LOW"]);
+  assert.equal(schema.properties.relay_provenance.properties.initial_before_advice_proof.const, true);
   assert.deepEqual(schema.properties.forcing.required, ["forcing_protocol_id", "burden_interaction_count", "skip_or_refusal", "timeout", "interface"]);
-  assert.equal(relianceEventSchemaDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/aos-reliance-event.v3.schema.json", import.meta.url))));
+  assert.equal(relianceEventSchemaDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/aos-reliance-event.v5.schema.json", import.meta.url))));
   assert.equal(relianceOpportunityFloorDigest(), sha256Bytes(readFileSync(new URL("../../reliance-events/opportunity-floor.v1.json", import.meta.url))));
   assert.equal(RELIANCE_OPPORTUNITY_FLOOR, 4);
   assert.equal(RELIANCE_CONFIDENCE_OBSERVATION_FLOOR, 12);
