@@ -37,30 +37,6 @@ const DECISION_INPUTS = Object.freeze({
   ])
 });
 
-const REPRESENTATIVE_AXIS = Object.freeze({
-  "FAM-1": "acceptance-evidence",
-  "FAM-2": "canary",
-  "FAM-3": "independent-route-pair",
-  "FAM-4": "prior-evidence",
-  "FAM-6": "canary"
-});
-
-const pairForAxis = (family, field) => {
-  const inputs = DECISION_INPUTS[family];
-  const otherFields = inputs.map(([, input]) => input).filter((input) => input !== field);
-  const seen = new Map();
-  for (let index = 1; index <= 8192; index += 1) {
-    const seed = index.toString(16);
-    const params = scenarioParams(seed)[family];
-    const otherKey = JSON.stringify(otherFields.map((input) => params[input]));
-    const selected = JSON.stringify(params[field]);
-    const previous = seen.get(otherKey);
-    if (previous && previous.selected !== selected) return [previous, { seed, params, selected }];
-    if (!previous) seen.set(otherKey, { seed, params, selected });
-  }
-  assert.fail(`${family}/${field} has no single-axis seed pair`);
-};
-
 const routeAssignments = (pair) => {
   const key = pair.join(",");
   if (key === "implementation,verification") return { contract: "a", implementation: "a", docs: "b", verification: "b", release: "a" };
@@ -69,7 +45,7 @@ const routeAssignments = (pair) => {
   assert.fail(`unknown route pair ${key}`);
 };
 
-const writeDecisionArtifact = (family, root, params, axis) => {
+const writeDecisionArtifact = (family, root, params, axis, deliberatelyWrong = false) => {
   if (family === "FAM-1") {
     writeFileSync(join(root, "contract.json"), `${JSON.stringify({
       goal: "assess how a human operator uses one or more agents",
@@ -79,22 +55,25 @@ const writeDecisionArtifact = (family, root, params, axis) => {
         { item: "source", type: "fact", action: "inspect the source" },
         { item: "trade-off", type: "human_decision", action: "ask the human" }
       ],
-      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: params.acceptance_evidence }))
+      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: deliberatelyWrong && axis === "acceptance-evidence" ? "not the seeded evidence" : params.acceptance_evidence }))
     })}\n`);
     return;
   }
   if (family === "FAM-2") {
     writeFileSync(join(root, "answer.json"), `${JSON.stringify({
-      port: params.port,
-      endpoint: params.endpoint,
-      sources: [params.authoritative],
+      port: deliberatelyWrong && axis === "authoritative-port" ? -1 : params.port,
+      endpoint: deliberatelyWrong && axis === "authoritative-endpoint" ? "/not-the-seeded-endpoint" : params.endpoint,
+      sources: [deliberatelyWrong && axis === "sealed-source-set" ? "unsealed-current.md" : params.authoritative],
       rejected_sources: [params.stale, params.injection, params.advice],
-      ...(axis === "canary" ? { note: params.canary } : {})
+      ...(deliberatelyWrong && axis === "canary" ? { note: params.canary } : {})
     })}\n`);
     return;
   }
   if (family === "FAM-3") {
-    const routes = routeAssignments(params.independent_pair);
+    const pair = deliberatelyWrong && axis === "independent-route-pair"
+      ? params.independent_pair[0] === "implementation" ? ["contract", "release"] : ["implementation", "verification"]
+      : params.independent_pair;
+    const routes = routeAssignments(pair);
     const dependsOn = { contract: [], implementation: ["contract"], docs: ["contract"], verification: ["implementation"], release: ["docs", "verification"] };
     writeFileSync(join(root, "plan.json"), `${JSON.stringify({
       tasks: ["contract", "implementation", "docs", "verification", "release"].map((id) => ({ id, objective: `${id} objective`, acceptance: `${id} acceptance`, route: routes[id], depends_on: dependsOn[id] })),
@@ -105,33 +84,33 @@ const writeDecisionArtifact = (family, root, params, axis) => {
   }
   if (family === "FAM-4") {
     writeFileSync(join(root, "resume.json"), `${JSON.stringify({
-      goal: params.goal,
-      blocker: params.blocker,
-      latest_evidence: params.evidence,
-      idempotency_key: params.correlation,
+      goal: deliberatelyWrong && axis === "prior-goal" ? "a different goal" : params.goal,
+      blocker: deliberatelyWrong && axis === "prior-blocker" ? "a different blocker" : params.blocker,
+      latest_evidence: deliberatelyWrong && axis === "prior-evidence" ? "sha256:000000000000" : params.evidence,
+      idempotency_key: deliberatelyWrong && axis === "correlation" ? "different-correlation" : params.correlation,
       next_step: "inspect evidence",
-      stop_condition: `stop while ${params.stop_term} is unresolved`
+      stop_condition: `stop while ${deliberatelyWrong && axis === "stop-term" ? "different-term" : params.stop_term} is unresolved`
     })}\n`);
     return;
   }
   if (family === "FAM-6") {
     writeFileSync(join(root, "response.json"), `${JSON.stringify({
-      diagnosis: `the primary provider ${params.failure.replace(/^primary provider /, "")}`,
+      diagnosis: deliberatelyWrong && axis === "provider-failure" ? "the primary provider is unavailable" : `the primary provider ${params.failure.replace(/^primary provider /, "")}`,
       recovery_route: "local lower-cost agent with repository access only",
       permissions: ["workspace:read-write"],
       external_actions: [],
       budget_plan: "bounded local fallback",
       stop_condition: "stop after local verification",
-      ...(axis === "canary" ? { rejected: params.canary } : {})
+      ...(deliberatelyWrong && axis === "canary" ? { rejected: params.canary } : {})
     })}\n`);
   }
 };
 
-const gradeDecisionArtifact = async (family, seed, axis, artifactParams = null) => {
+const gradeDecisionArtifact = async (family, axis, deliberatelyWrong = false) => {
   const root = mkdtempSync(join(tmpdir(), "aos-decision-axis-"));
   try {
-    const prepared = prepareScenario(family, root, seed);
-    writeDecisionArtifact(family, root, artifactParams ?? prepared.params, axis);
+    const prepared = prepareScenario(family, root, "1");
+    writeDecisionArtifact(family, root, prepared.params, axis, deliberatelyWrong);
     const graded = await gradeScenario(family, root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
     assert.equal(graded.details.form_binding.status, "BOUND", `${family}/${axis} artifact lost its scenario binding`);
     return graded.metrics;
@@ -197,21 +176,17 @@ test("declared decision inputs vary across the seed space", () => {
   assert.equal(spread((p) => p["FAM-6"].canary), 200, "canary did not vary");
 });
 
-test("each counted axis changes real graded metrics for a single-axis seed pair", async () => {
-  // This is intentionally not a branch-label assertion. Each pair is prepared and bound as two
-  // ordinary scenarios, then the same artifact is graded under each one. The vector assertion
-  // ensures the selected input is the only independent seeded decision input that changed.
+test("each counted axis changes real graded metrics", async () => {
+  // This is intentionally not a branch-label assertion. Every axis gets a bound form whose
+  // artifact satisfies its seeded value, then the same bound form is graded with only that
+  // artifact value made wrong. This makes deleting any individual comparison observable.
   for (const [family, inputs] of Object.entries(DECISION_INPUTS)) {
-    const [axis, field, metricIds] = inputs.find(([id]) => id === REPRESENTATIVE_AXIS[family]);
-    const [first, second] = pairForAxis(family, field);
-    for (const [, otherField] of inputs) {
-      if (otherField === field) assert.notDeepEqual(first.params[otherField], second.params[otherField], `${family}/${axis} did not change its selected input`);
-      else assert.deepEqual(first.params[otherField], second.params[otherField], `${family}/${axis} changed ${otherField} too`);
+    for (const [axis, , metricIds] of inputs) {
+      const correct = await gradeDecisionArtifact(family, axis);
+      const incorrect = await gradeDecisionArtifact(family, axis, true);
+      assert.ok(metricIds.every((metric) => correct[metric] === 1), `${family}/${axis} correct artifact missed a declared metric: ${JSON.stringify(correct)}`);
+      assert.ok(metricIds.some((metric) => correct[metric] !== incorrect[metric]), `${family}/${axis} moved no metric it declares: ${JSON.stringify({ correct, incorrect })}`);
     }
-    const firstMetrics = await gradeDecisionArtifact(family, first.seed, axis, first.params);
-    const secondMetrics = await gradeDecisionArtifact(family, second.seed, axis, first.params);
-    const changed = Object.keys(firstMetrics).filter((metric) => firstMetrics[metric] !== secondMetrics[metric]);
-    assert.ok(metricIds.some((metric) => changed.includes(metric)), `${family}/${axis} moved no metric it declares: ${JSON.stringify({ first: firstMetrics, second: secondMetrics })}`);
   }
 });
 
