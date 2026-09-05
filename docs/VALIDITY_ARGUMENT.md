@@ -160,4 +160,19 @@ A technically successful v0.2.0 may release at `PROFILE_BOUND` with `GENERALIZAB
 - uncertainty and limitations are visible;
 - the actual STRICT zero-context E2E is complete.
 
+The last of these is what `fixtures/confinement/strict-canary.json` (`aos-strict-canary.v1`, #639)
+and its gate exist to establish. `npm run verify:real-runtime-strict` is the measurement -- it needs
+an authenticated darwin host with Seatbelt and the installed Codex runtime, and it writes the record
+only under `AOS_STRICT_CANARY_UPDATE_FIXTURE=1` (`npm run verify:real-runtime-strict:update-fixture`),
+so an ordinary re-run cannot silently replace a good record with a rate-limited one.
+`npm run verify:release-canary` is the decision: it reads the committed record and refuses to call it
+release evidence unless the record's headline claims -- the profile digest, the escape-attempt
+result, the observation timestamp -- agree with the embedded evidence they were built from, and that
+embedded evidence itself passes `issuanceGate`. It runs as the `release-canary` job in
+`.github/workflows/ci.yml`, on `main` and on demand, for the same reason `execution-plan-live` is not
+a required PR check: an ordinary PR does not update the canary, and running this only where a release
+is actually cut is what makes it a check on the release rather than noise on every PR. Absent or
+unaccepted blocks; nothing here attests that a sandbox-exec process ran on real hardware beyond who
+was allowed to write the file (see `releaseCanaryGate`'s own doc comment in `lib/confinement.mjs`).
+
 A release must not silently promote itself to a general human-ability test.
