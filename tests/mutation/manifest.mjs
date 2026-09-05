@@ -7447,6 +7447,60 @@ export const GUARDS = [
     to: "    `System outcome: ${view.outcome.index}${withheld(view.outcome.withheld_summary)}${view.outcome.cap ? ` — ${view.outcome.cap}` : \"\"} · ${view.outcome.label}`,",
     test: "tests/product/projection-consistency.test.mjs",
     name: "the routing capability notice is projected for every renderer"
+  },
+  {
+    guard: "relay advice stays hidden before initial commit",
+    reason: "advice in the initial challenge gives the subject the very information the initial judgment is meant to precede, so a later trace order would be theatre",
+    file: "lib/relay.mjs",
+    from: '  if (phase === "POST_ADVICE_DECISION") {',
+    to: "  if (true) {",
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "the relay commits an initial user judgment before it reveals advice"
+  },
+  {
+    guard: "relay autonomous answer refusal",
+    reason: "an agent response is not an operator turn merely because it carries a relay-shaped envelope, so autonomous submission must stop before any trace event is minted",
+    file: "lib/relay.mjs",
+    from: '  assertion(relay.autonomous === false, "AOS_RELAY_AUTONOMOUS_REFUSED", "an autonomous agent response is not operator evidence");',
+    to: "  assertion(true, \"AOS_RELAY_AUTONOMOUS_REFUSED\", \"unreachable\");",
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "the relay refuses an autonomous, bundled, stale, or post-advice initial response without creating operator evidence"
+  },
+  {
+    guard: "relay initial response cannot bundle a final decision",
+    reason: "a Phase A payload that carries its post-advice action makes their temporal order unknowable, which is precisely the initial-before-advice defect this protocol is for",
+    file: "lib/relay.mjs",
+    from: '        assertion(parsed.response.inspected === undefined && parsed.response.final_action === undefined, "AOS_RELAY_RESPONSE_BUNDLED", "an initial response cannot carry post-advice inspection or final action");',
+    to: "        assertion(true, \"AOS_RELAY_RESPONSE_BUNDLED\", \"unreachable\");",
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "the relay refuses an autonomous, bundled, stale, or post-advice initial response without creating operator evidence"
+  },
+  {
+    guard: "relay response evidence is recomputed",
+    reason: "a response digest left only in checkpoint state is a claim the mutable state makes about itself; verification must compare it with the retained restricted bytes",
+    file: "lib/relay.mjs",
+    from: '        const proof = kinds[0] === "initial" && kinds[1] === "advice_reveal" && responseEvidenceIntact;',
+    to: '        const proof = kinds[0] === "initial" && kinds[1] === "advice_reveal" && true;',
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "verification re-derives a response digest from restricted evidence instead of trusting persisted state"
+  },
+  {
+    guard: "relay response receipt precedes trace commit",
+    reason: "a crash after accepting a user turn must resume the one recorded initial response, not ask again or append a new event whose order it cannot establish",
+    file: "lib/relay.mjs",
+    from: "      checkpoint.writeResponse(state.challenge_id, bytes);",
+    to: "      if (false) checkpoint.writeResponse(state.challenge_id, bytes);",
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "a crash after accepting a response resumes its one initial commit instead of asking again or appending twice"
+  },
+  {
+    guard: "relay source is observed by producer",
+    reason: "the event's own source field is an operator/agent declaration; without a producer-observed relay source it could authorize the subject's account of its own turn",
+    file: "lib/reliance.mjs",
+    from: '  if (event?.source === "agent-relay" && observedSource !== "agent-relay") {',
+    to: "  if (false) {",
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "a relay declaration without the relay's observed source is refused before it can become reliance evidence"
   }
 ];
 
@@ -8051,6 +8105,12 @@ export const ACCOUNTED_GUARDS = [
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
+  "relay advice stays hidden before initial commit",
+  "relay autonomous answer refusal",
+  "relay initial response cannot bundle a final decision",
+  "relay response evidence is recomputed",
+  "relay response receipt precedes trace commit",
+  "relay source is observed by producer",
   "resolver ownership",
   "restricted readiness",
   "reviewed action allowlist",
