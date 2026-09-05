@@ -70,7 +70,7 @@ test("a different seed varies what the grader actually reads", () => {
 
 test("FAM-5 declares its public probe in the oracle branch that classifies task variation", () => {
   const fam5 = scenarioParams("1")["FAM-5"];
-  assert.match(fam5.oracle_branch, new RegExp(`public_probe=${fam5.public_probe.join("\\+")}`));
+  assert.equal(fam5.oracle_branch.includes(`public_probe=${fam5.public_probe.join("+")}`), true);
 });
 
 test("every operational family gives the operator a seed-specific task", () => {
