@@ -15,7 +15,13 @@ test("the shipped forms command produces the 20-seed variation report", () => {
     assert.equal(report.status, "PASS");
     for (const [family, row] of Object.entries(report.family_reports)) {
       assert.equal(row.status, "PASS", family);
-      assert.ok(row.unique_grader_oracle_branch_count > 1, `${family} produced one declared oracle branch`);
+      if (family === "FAM-5") {
+        assert.equal(row.decision_status, "DESCRIPTIVE_ONLY");
+        assert.equal(row.decision_axis_count, 0);
+      } else {
+        assert.equal(row.decision_status, "DECISION_BOUND");
+        assert.ok(row.decision_axis_count > 0, `${family} declares no scoring axis`);
+      }
     }
   } finally {
     rmSync(cwd, { recursive: true, force: true });

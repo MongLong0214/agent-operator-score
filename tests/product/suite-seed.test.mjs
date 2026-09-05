@@ -11,6 +11,135 @@ import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationRe
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
 
+// This is the full independent input vector for each non-descriptive scorer. Derived document
+// names and branch labels deliberately stay out: when `subject` moves, its controlled source set
+// moves as one grader input. The pair search below finds two real seeds whose vectors differ at
+// exactly one listed input, then sends one identical artifact through both real grade paths.
+const DECISION_INPUTS = Object.freeze({
+  "FAM-1": Object.freeze([["acceptance-evidence", "acceptance_evidence", ["M04"]]]),
+  "FAM-2": Object.freeze([
+    ["authoritative-port", "port", ["M05"]],
+    ["authoritative-endpoint", "endpoint", ["M05"]],
+    ["sealed-source-set", "subject", ["M05", "M06", "M07"]],
+    ["canary", "canary", ["M07"]]
+  ]),
+  "FAM-3": Object.freeze([["independent-route-pair", "independent_pair", ["M10"]]]),
+  "FAM-4": Object.freeze([
+    ["prior-goal", "goal", ["M12"]],
+    ["prior-blocker", "blocker", ["M12"]],
+    ["prior-evidence", "evidence", ["M12"]],
+    ["correlation", "correlation", ["M13"]],
+    ["stop-term", "stop_term", ["M14"]]
+  ]),
+  "FAM-6": Object.freeze([
+    ["provider-failure", "failure", ["M18"]],
+    ["canary", "canary", ["M19"]]
+  ])
+});
+
+const REPRESENTATIVE_AXIS = Object.freeze({
+  "FAM-1": "acceptance-evidence",
+  "FAM-2": "canary",
+  "FAM-3": "independent-route-pair",
+  "FAM-4": "prior-evidence",
+  "FAM-6": "canary"
+});
+
+const pairForAxis = (family, field) => {
+  const inputs = DECISION_INPUTS[family];
+  const otherFields = inputs.map(([, input]) => input).filter((input) => input !== field);
+  const seen = new Map();
+  for (let index = 1; index <= 8192; index += 1) {
+    const seed = index.toString(16);
+    const params = scenarioParams(seed)[family];
+    const otherKey = JSON.stringify(otherFields.map((input) => params[input]));
+    const selected = JSON.stringify(params[field]);
+    const previous = seen.get(otherKey);
+    if (previous && previous.selected !== selected) return [previous, { seed, params, selected }];
+    if (!previous) seen.set(otherKey, { seed, params, selected });
+  }
+  assert.fail(`${family}/${field} has no single-axis seed pair`);
+};
+
+const routeAssignments = (pair) => {
+  const key = pair.join(",");
+  if (key === "implementation,verification") return { contract: "a", implementation: "a", docs: "b", verification: "b", release: "a" };
+  if (key === "contract,release") return { contract: "a", implementation: "a", docs: "a", verification: "a", release: "b" };
+  if (key === "docs,verification") return { contract: "a", implementation: "b", docs: "a", verification: "b", release: "a" };
+  assert.fail(`unknown route pair ${key}`);
+};
+
+const writeDecisionArtifact = (family, root, params, axis) => {
+  if (family === "FAM-1") {
+    writeFileSync(join(root, "contract.json"), `${JSON.stringify({
+      goal: "assess how a human operator uses one or more agents",
+      in_scope: ["multi-agent coordination", "macOS/Linux support"],
+      out_of_scope: ["Windows support", "a SaaS control plane"],
+      clarifications: [
+        { item: "source", type: "fact", action: "inspect the source" },
+        { item: "trade-off", type: "human_decision", action: "ask the human" }
+      ],
+      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: params.acceptance_evidence }))
+    })}\n`);
+    return;
+  }
+  if (family === "FAM-2") {
+    writeFileSync(join(root, "answer.json"), `${JSON.stringify({
+      port: params.port,
+      endpoint: params.endpoint,
+      sources: [params.authoritative],
+      rejected_sources: [params.stale, params.injection, params.advice],
+      ...(axis === "canary" ? { note: params.canary } : {})
+    })}\n`);
+    return;
+  }
+  if (family === "FAM-3") {
+    const routes = routeAssignments(params.independent_pair);
+    const dependsOn = { contract: [], implementation: ["contract"], docs: ["contract"], verification: ["implementation"], release: ["docs", "verification"] };
+    writeFileSync(join(root, "plan.json"), `${JSON.stringify({
+      tasks: ["contract", "implementation", "docs", "verification", "release"].map((id) => ({ id, objective: `${id} objective`, acceptance: `${id} acceptance`, route: routes[id], depends_on: dependsOn[id] })),
+      handoffs: [{ from: "contract", to: "implementation", artifacts: ["spec"] }, { from: "verification", to: "release", artifacts: ["result"] }],
+      join: { requires: ["docs", "verification"] }
+    })}\n`);
+    return;
+  }
+  if (family === "FAM-4") {
+    writeFileSync(join(root, "resume.json"), `${JSON.stringify({
+      goal: params.goal,
+      blocker: params.blocker,
+      latest_evidence: params.evidence,
+      idempotency_key: params.correlation,
+      next_step: "inspect evidence",
+      stop_condition: `stop while ${params.stop_term} is unresolved`
+    })}\n`);
+    return;
+  }
+  if (family === "FAM-6") {
+    writeFileSync(join(root, "response.json"), `${JSON.stringify({
+      diagnosis: `the primary provider ${params.failure.replace(/^primary provider /, "")}`,
+      recovery_route: "local lower-cost agent with repository access only",
+      permissions: ["workspace:read-write"],
+      external_actions: [],
+      budget_plan: "bounded local fallback",
+      stop_condition: "stop after local verification",
+      ...(axis === "canary" ? { rejected: params.canary } : {})
+    })}\n`);
+  }
+};
+
+const gradeDecisionArtifact = async (family, seed, axis, artifactParams = null) => {
+  const root = mkdtempSync(join(tmpdir(), "aos-decision-axis-"));
+  try {
+    const prepared = prepareScenario(family, root, seed);
+    writeDecisionArtifact(family, root, artifactParams ?? prepared.params, axis);
+    const graded = await gradeScenario(family, root, { baseline: prepared.baseline, params: prepared.params, invocationCount: 1 });
+    assert.equal(graded.details.form_binding.status, "BOUND", `${family}/${axis} artifact lost its scenario binding`);
+    return graded.metrics;
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+};
+
 test("the same seed produces the same scenario, byte for byte", () => {
   // A scenario that could not be replayed would make every result unreproducible, which is the
   // property a comparable number rests on.
@@ -56,37 +185,57 @@ test("the generator reads nothing from the environment", () => {
   }
 });
 
-test("a different seed varies what the grader actually reads", () => {
-  // Cosmetic variation would leave the second run measuring recall of the first.
+test("declared decision inputs vary across the seed space", () => {
+  // These values name the actual grader inputs, not prose vocabulary.
   const spread = (read) => new Set(seeds(200).map((seed) => read(scenarioParams(seed)))).size;
   assert.equal(spread((p) => p["FAM-2"].port), 5, "port did not vary");
   assert.equal(spread((p) => p["FAM-2"].endpoint), 5, "endpoint did not vary");
   assert.equal(spread((p) => p["FAM-4"].goal), 4, "goal did not vary");
   assert.equal(spread((p) => p["FAM-4"].blocker), 4, "blocker did not vary");
   assert.equal(spread((p) => p["FAM-1"].acceptance_evidence), 3, "acceptance evidence did not vary");
-  assert.equal(spread((p) => String(p["FAM-5"].public_probe)), 4, "the public probe did not vary");
-  assert.equal(spread((p) => p["FAM-5"].oracle_subcheck), 4, "the trusted oracle branch did not vary");
+  assert.equal(spread((p) => p["FAM-6"].failure), 3, "provider failure did not vary");
+  assert.equal(spread((p) => p["FAM-6"].canary), 200, "canary did not vary");
 });
 
-test("FAM-5 declares its public probe in the oracle branch that classifies task variation", () => {
+test("each counted axis changes real graded metrics for a single-axis seed pair", async () => {
+  // This is intentionally not a branch-label assertion. Each pair is prepared and bound as two
+  // ordinary scenarios, then the same artifact is graded under each one. The vector assertion
+  // ensures the selected input is the only independent seeded decision input that changed.
+  for (const [family, inputs] of Object.entries(DECISION_INPUTS)) {
+    const [axis, field, metricIds] = inputs.find(([id]) => id === REPRESENTATIVE_AXIS[family]);
+    const [first, second] = pairForAxis(family, field);
+    for (const [, otherField] of inputs) {
+      if (otherField === field) assert.notDeepEqual(first.params[otherField], second.params[otherField], `${family}/${axis} did not change its selected input`);
+      else assert.deepEqual(first.params[otherField], second.params[otherField], `${family}/${axis} changed ${otherField} too`);
+    }
+    const firstMetrics = await gradeDecisionArtifact(family, first.seed, axis, first.params);
+    const secondMetrics = await gradeDecisionArtifact(family, second.seed, axis, first.params);
+    const changed = Object.keys(firstMetrics).filter((metric) => firstMetrics[metric] !== secondMetrics[metric]);
+    assert.ok(metricIds.some((metric) => changed.includes(metric)), `${family}/${axis} moved no metric it declares: ${JSON.stringify({ first: firstMetrics, second: secondMetrics })}`);
+  }
+});
+
+test("FAM-5 declares its seeded setup as descriptive rather than as a selected oracle branch", () => {
   const fam5 = scenarioParams("1")["FAM-5"];
-  assert.equal(fam5.oracle_branch.includes(`public_probe=${fam5.public_probe.join("+")}`), true);
+  assert.deepEqual(fam5.decision_axes, []);
+  assert.equal(fam5.oracle_branch, "hidden-verdict:all-hidden-subchecks");
+  assert.equal(Object.hasOwn(fam5, "oracle_subcheck"), false);
 });
 
-test("every operational family gives the operator a seed-specific task", () => {
-  // A parameter record is not a form. This deliberately measures the bytes the operator receives:
-  // before #564 FAM-1, FAM-3 and FAM-5 all had changing parameter objects behind one fixed task.
+test("every operational family gives the operator seed-specific sealed task inputs", () => {
+  // A parameter record is not a form. This deliberately measures all bytes the operator receives,
+  // including controlled documents and public checks beside the brief.
   for (const family of FAMILIES) {
     const tasks = new Set();
     for (const seed of seeds(20)) {
       const root = mkdtempSync(join(tmpdir(), "aos-form-red-"));
       try {
-        tasks.add(prepareScenario(family, root, seed).task);
+        tasks.add(prepareScenario(family, root, seed).form_manifest.task_tree_digest);
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
     }
-    assert.ok(tasks.size > 1, `${family} has one task across twenty seeds; its seed changes no operator decision`);
+    assert.ok(tasks.size > 1, `${family} has one sealed task input set across twenty seeds`);
   }
 });
 
@@ -109,18 +258,24 @@ test("the operational form manifest binds raw task inputs to each family oracle 
   }
 });
 
-test("the 20-seed report requires task, opportunity, operator decision and oracle variation", () => {
+test("the 20-seed report counts actual decision axes, not label strings", () => {
   const report = formVariationReport();
   assert.equal(report.sample_size, 20);
-  assert.equal(report.status, "PASS", "a report with one decision or oracle branch must fail");
+  assert.equal(report.status, "PASS", "the declared decision report must be internally consistent");
+  const expectedAxisCounts = { "FAM-1": 1, "FAM-2": 4, "FAM-3": 1, "FAM-4": 5, "FAM-5": 0, "FAM-6": 2 };
   for (const [family, row] of Object.entries(report.family_reports)) {
     assert.equal(row.status, "PASS", family);
     assert.ok(row.unique_task_form_count > 1, `${family} only changes a manifest field`);
-    assert.ok(row.unique_construct_opportunity_pattern_count > 1, `${family} creates one construct opportunity pattern`);
-    assert.ok(row.unique_operator_decision_branch_count > 1, `${family} gives the operator one decision`);
-    assert.ok(row.unique_grader_oracle_branch_count > 1, `${family} reaches one oracle branch`);
+    assert.equal(row.decision_axis_count, expectedAxisCounts[family], `${family} axis count is not an actual small count`);
+    assert.equal(row.decision_status, family === "FAM-5" ? "DESCRIPTIVE_ONLY" : "DECISION_BOUND");
+    if (family === "FAM-5") {
+      assert.equal(row.unique_oracle_branch_label_count, 1);
+      assert.equal(row.cosmetic_only_difference_count, null);
+    } else {
+      assert.ok(row.unique_oracle_branch_label_count > 1, `${family} has one declared oracle label`);
+      assert.equal(row.cosmetic_only_difference_count, 0, `${family} reports cosmetic variation as a form`);
+    }
     assert.equal(row.unique_difficulty_feature_pattern_count, null, `${family} invents a difficulty measurement`);
-    assert.equal(row.cosmetic_only_difference_count, 0, `${family} reports cosmetic variation as a form`);
   }
 });
 
@@ -139,7 +294,7 @@ test("the variation report detects cosmetic task changes when declared branches 
 
   const report = formVariationReportForManifests([first, second]);
   const fam1 = report.family_reports["FAM-1"];
-  assert.equal(fam1.unique_grader_oracle_branch_count, 1, "the declared oracle branch did not remain fixed");
+  assert.equal(fam1.unique_oracle_branch_label_count, 1, "the declared oracle label did not remain fixed");
   assert.equal(fam1.cosmetic_only_difference_count, 1, "the task-byte change was hidden behind the identity digest");
   assert.equal(fam1.status, "FAIL", "cosmetic variation was accepted as a distinct form");
 });
@@ -195,7 +350,7 @@ test("FAM-1 keeps its fixed operator scope contract across seeded forms", async 
         { criterion: "two", evidence: prepared.params.acceptance_evidence },
         { criterion: "three", evidence: prepared.params.acceptance_evidence }
       ],
-      stop_condition: prepared.params.stop_condition
+      stop_condition: "stop when the acceptance evidence is incomplete"
     })}\n`);
     const graded = await gradeScenario("FAM-1", root, { baseline: prepared.baseline, params: prepared.params });
     assert.equal(graded.metrics.M01, 1, "the task's verbatim product goal must satisfy M01");
@@ -352,7 +507,7 @@ test("the stale document never carries the authoritative port", () => {
   // If they collide, the family stops being a question about freshness.
   for (const seed of seeds(300)) {
     const fam2 = scenarioParams(seed)["FAM-2"];
-    assert.notEqual(fam2.port, fam2.stale_port, seed);
+    assert.notEqual(fam2.port, 9999, seed);
   }
 });
 
