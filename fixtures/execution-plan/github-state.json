@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-05T05:03:03.750Z",
+  "captured_at": "2026-09-05T10:53:43.945Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -822,7 +822,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1342,7 +1342,7 @@
         "area:ux",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1503,24 +1503,80 @@
     {
       "number": 583,
       "title": "[P0][measurement] 사전 독립판단·위임·채택을 분리한 appropriate-reliance trace를 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 583,
+        "final_sha": "d9e195d76323cbf84c518db3b31e560154bfb9a6",
+        "pr": 635,
+        "ci_run_ids": [
+          33959938387
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "reliance_event_schema_digest": "sha256:23a8884181dd61772471f4fdf8ec4da8be48b851f3514245d5b5704356bdb6f8 was the v2 digest verified byte-exact by round 1; the remediation moved the schema to v3 and the digest with it, and round 2 re-verified the pair against reliance-events/aos-reliance-event.v3.schema.json. The nine-step sequence is enforced by an HMAC-bound append-only journal with replay verification: a bundled post-advice payload, a second initial after the reveal, an unverified operator declaration, an edited or reordered record, and a truncated record are each refused, and round 1 reproduced all of them.",
+          "opportunity_floor": "sha256:c46b1da56a77815808387d65a3ee1c025b93f739b14819d9134565c6b4f328a2, verified byte-exact by round 1 against reliance-events/opportunity-floor.v1.json. RELIANCE_OPPORTUNITY_FLOOR 4 and RELIANCE_CONFIDENCE_OBSERVATION_FLOOR 12. Empty eligibility is NOT_OBSERVED; observed-but-under-floor is WITHHELD; a mixed run is PARTIALLY_NOT_OBSERVED rather than collapsed, because NOT_OBSERVED and WITHHELD are different facts. A calibration below the floor now publishes null rather than a precise brier_score, which round 1 caught it doing from two observations.",
+          "mutation": "799/799 guards load-bearing, npm run test:mutation unqualified on darwin at the merged head. Round 1 hand-applied all nine reliance guards: from occurs exactly once, each kills its named witness for the reason the guard names, and all nine ledger fingerprints recompute. The guards are load-bearing over lib/reliance.mjs; they are not production-bearing, because no shipped path yet populates a metric-bearing sequence -- see the residue.",
+          "structural_defect_closed": "Round 1 found one defect rather than sixteen: the journal attested the order of six slots and the facts the metrics read were not in the slots whose order it attested. initial.correct came from the sixth event, so whether the initial judgment was right was written after the advice was visible -- two traces with byte-identical initial, reveal, oracle, inspection and final payloads flipped the CAIR denominator 1 to 0 on a post-advice field. The operator event's opportunity_id was never matched to the payload's, so one event served as the pre-advice commitment for two opportunities. The revealed advice digest was never compared to the graded oracle digest. All three are closed, and the operator event's value_digest is now read.",
+          "metric_separation": "proactive delegation and deliberative adoption are disjoint and never summed; over and under are never netted; the same-acceptance-rate-different-advice-correctness counterfactual separates them. CAIR, CSR, overreliance, underreliance, switch gain and harm, delegation regret, choice independence and confidence calibration each carry their own numerator and denominator. Reliance is never weighted into any index -- result-schema.mjs states that C3 is already in the process index and a reliance term would count it twice.",
+          "distributions": "correctness, error-type and domain distributions are all computed and reported at profile level, each withholding independently, with a test asserting all three are present so a later change cannot drop one and stay green.",
+          "review_protocol": "sol-simplify-review-v1. Round 1 BLOCK on 16 blockers; round 2 PASS with no remediation regressions and no protocol escapes. Implementer, round-1 reviewer and round-2 reviewer were three different executors.",
+          "tests": "1684 tests, 0 fail under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "post_merge_ci": "run 33959938387 on dev at d9e195d7 -- 13 jobs success, execution-plan-live skipped by its own trigger"
+        },
+        "known_residue": [
+          {
+            "id": "R-576",
+            "statement": "no production path populates a reliance sequence: assess initializes the journal and stores an empty profile, and none of the six recording calls is reached from shipped code",
+            "impact": "owned by #576, whose title is the agent-relay protocol preserving the actual user turn and initial-before-advice. The two issues hold the two halves of one property -- #576 produces the order, #583 judges it -- and #576 depends on #583, which is the correct order. assess carries a comment naming #576 as the producer so an empty profile is not mistaken for a measurement. This issues eight completion conditions are all properties of lib/reliance.mjs and are met; none of them requires the producer."
+          },
+          {
+            "id": "R-guards",
+            "statement": "the nine mutation guards are load-bearing over lib/reliance.mjs but not production-bearing",
+            "impact": "they become production-bearing when #576 lands. Stated rather than left for a reader to infer from the guard count."
+          },
+          {
+            "id": "R-632",
+            "statement": "the mixed NOT_OBSERVED / WITHHELD collapse found here was the fourth appearance of the three-state-into-one class in this codebase",
+            "impact": "closed here by naming the mixed state PARTIALLY_NOT_OBSERVED rather than letting one value win; recorded against #632, which should follow that shape when it unifies the representation"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#582",
         "#559",
         "#560",
         "#558",
-        "#583"
+        "#583",
+        "#635",
+        "#576",
+        "#632"
       ]
     },
     {

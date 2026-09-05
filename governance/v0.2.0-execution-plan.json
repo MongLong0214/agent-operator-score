@@ -564,7 +564,7 @@
     {
       "issue": 564,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 4,
       "blocked_by": [
         553,
@@ -1056,7 +1056,7 @@
     {
       "issue": 576,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 3,
       "blocked_by": [
         559,
@@ -1244,7 +1244,7 @@
     {
       "issue": 583,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 3,
       "blocked_by": [
         558,
