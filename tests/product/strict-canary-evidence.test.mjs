@@ -125,6 +125,86 @@ test("forging the embedded record's digest instead of the headline field is caug
   assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.PROFILE_DIGEST_MISMATCH), decision.reasons.join(","));
 });
 
+// #639 round-1 blocker: `escape_attempt_result` is the headline copy of
+// `confinement_record.boundary_canary.out_of_band`, and nothing previously checked the copy still
+// agreed with the original -- unlike `sandbox_profile_digest`, which is cross-checked against the
+// embedded record's own `rendered_profile_digest` two tests up. These three mutations are the exact
+// ones round 1 ran by hand against the real committed fixture: deleting the field, replacing it with
+// `{}`, and replacing it with a record that says the sandboxed process escaped and left a survivor.
+// All three left the embedded evidence untouched and all three were accepted before this fix.
+test("deleting escape_attempt_result is rejected, not silently accepted", () => {
+  const record = observedRecord();
+  const forged = { ...record };
+  delete forged.escape_attempt_result;
+  const decision = releaseCanaryGate(forged);
+  assert.equal(decision.accepted, false);
+  assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.ESCAPE_ATTEMPT_RESULT_MISMATCH), decision.reasons.join(","));
+});
+
+test("an empty escape_attempt_result is rejected, not silently accepted", () => {
+  const record = observedRecord();
+  const forged = { ...record, escape_attempt_result: {} };
+  const decision = releaseCanaryGate(forged);
+  assert.equal(decision.accepted, false);
+  assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.ESCAPE_ATTEMPT_RESULT_MISMATCH), decision.reasons.join(","));
+});
+
+test("a headline escape_attempt_result that contradicts its own embedded confinement evidence is rejected", () => {
+  const record = observedRecord();
+  // The embedded `confinement_record.boundary_canary.out_of_band` still says `escapee_confined:
+  // true` with no survivors -- only the headline field is edited to say the descendant escaped.
+  const forged = { ...record, escape_attempt_result: { descendant: { escapee_confined: false, survivors: [999] } } };
+  assert.notDeepEqual(forged.escape_attempt_result, forged.confinement_record.boundary_canary.out_of_band);
+  const decision = releaseCanaryGate(forged);
+  assert.equal(decision.accepted, false);
+  assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.ESCAPE_ATTEMPT_RESULT_MISMATCH), decision.reasons.join(","));
+});
+
+test("forging the embedded out_of_band instead of the headline field is caught the same way", () => {
+  const record = observedRecord();
+  const brokenOutOfBand = { ...record.confinement_record.boundary_canary.out_of_band, descendant: { ...record.confinement_record.boundary_canary.out_of_band.descendant, escapee_confined: false, survivors: [999] } };
+  const forged = {
+    ...record,
+    confinement_record: { ...record.confinement_record, boundary_canary: { ...record.confinement_record.boundary_canary, out_of_band: brokenOutOfBand } }
+  };
+  const decision = releaseCanaryGate(forged);
+  assert.equal(decision.accepted, false);
+  // Caught twice over: the headline no longer matches the (now-broken) embedded value, and the
+  // embedded confinement record itself is no longer official because `authenticityProblems` refuses
+  // an unconfined descendant.
+  assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.ESCAPE_ATTEMPT_RESULT_MISMATCH), decision.reasons.join(","));
+  assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.CONFINEMENT_NOT_OFFICIAL), decision.reasons.join(","));
+});
+
+// #639 round-1 blocker: `observed_at` was completely free-form -- an OBSERVED record dated
+// 1970-01-01 passed this gate exactly like a real one. There is no second, independently-measured
+// timestamp elsewhere in the record to cross-check it against the way the profile digest is
+// cross-checked, so what this binds it to instead: a canonical ISO-8601 string (the exact shape
+// `new Date().toISOString()` produces, which is the only way this module ever builds one), dated no
+// earlier than the schema this record claims to be an instance of could possibly have shipped.
+test("a record dated at the Unix epoch is rejected, not silently accepted", () => {
+  const record = observedRecord({ observedAt: "1970-01-01T00:00:00.000Z" });
+  const decision = releaseCanaryGate(record);
+  assert.equal(decision.accepted, false);
+  assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.OBSERVED_AT_INVALID), decision.reasons.join(","));
+});
+
+test("a non-canonical or unparseable observed_at is rejected", () => {
+  for (const bad of ["not a date", "", "2026-09-06", 1757116800000, null, undefined]) {
+    const record = { ...observedRecord(), observed_at: bad };
+    const decision = releaseCanaryGate(record);
+    assert.equal(decision.accepted, false, `observed_at=${JSON.stringify(bad)} was accepted`);
+    assert.ok(decision.reasons.includes(STRICT_CANARY_GATE_REASONS.OBSERVED_AT_INVALID), decision.reasons.join(","));
+  }
+});
+
+test("a canonical observed_at at or after the schema floor is accepted", () => {
+  const record = observedRecord({ observedAt: "2026-09-06T00:00:00.000Z" });
+  const decision = releaseCanaryGate(record);
+  assert.deepEqual(decision.reasons, []);
+  assert.equal(decision.accepted, true);
+});
+
 test("a record whose embedded confinement record is not itself official cannot authorize the canary by existing alone", () => {
   const record = observedRecord();
   const brokenCanary = { ...record.confinement_record.boundary_canary, cells: { ...record.confinement_record.boundary_canary.cells, outside_read: { expected: "denied", observed: "allowed", errno: null } } };
@@ -279,4 +359,15 @@ test("the release-canary script exits zero only for an accepted OBSERVED record"
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// #639 round-1 blocker: this gate withheld nothing, because nothing called it. `grep -rn
+// "verify:release-canary" .github/ docs/ governance/` found only `package.json` and this file's own
+// comments -- a gate that is supposed to withhold release issuance was never run by any release
+// procedure. Mirrors `"the live audit is a job in CI, not only a command in the documentation"` in
+// `tests/product/execution-plan.test.mjs`, which is the analogue this issue named.
+test("the release-canary gate is a job in CI, not only a command in the documentation", () => {
+  const ci = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.match(ci, /release-canary:/);
+  assert.match(ci, /npm run verify:release-canary/);
 });
