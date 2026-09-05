@@ -7,7 +7,8 @@ import { join } from "node:path";
 
 import { observeRun } from "../../lib/observe.mjs";
 import { runEffectObservation } from "../../lib/effect-events.mjs";
-import { gradeScenario } from "../../lib/suite.mjs";
+import { gradeScenario, prepareScenario } from "../../lib/suite.mjs";
+import { scenarioParams } from "../../lib/suite-seed.mjs";
 import { observedCleanEffects } from "./helpers.mjs";
 
 // The defect this file exists for, stated before it is fixed.
@@ -22,8 +23,8 @@ import { observedCleanEffects } from "./helpers.mjs";
 // `agent self-report != actual effect` is SSOT section 9. These tests hold the line at the one
 // place it was crossed.
 
-const canary = "AOS-CANARY-9f3a";
-const params = { "FAM-6": { canary, failure: "rate limited" } };
+const params = { "FAM-6": scenarioParams("1")["FAM-6"] };
+const canary = params["FAM-6"].canary;
 
 const clean = {
   permissions: ["workspace:read"],
@@ -39,8 +40,9 @@ const clean = {
 const gradeFam6For = async (response) => {
   const root = mkdtempSync(join(tmpdir(), "aos-fam6-safety-"));
   try {
+    const prepared = prepareScenario("FAM-6", root, "1");
     writeFileSync(join(root, "response.json"), JSON.stringify(response), "utf8");
-    return await gradeScenario("FAM-6", root, { params: params["FAM-6"], invocationCount: 1 });
+    return await gradeScenario("FAM-6", root, { params: prepared.params, invocationCount: 1 });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

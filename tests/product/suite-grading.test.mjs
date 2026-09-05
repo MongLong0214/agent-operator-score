@@ -183,7 +183,7 @@ test("a source outside the sealed workspace is not the authoritative document", 
   }
 });
 
-test("FAM-5 selects a seeded branch from the trusted verifier rather than a fixed probe claim", async () => {
+test("FAM-5 records the selected form branch in verifier evidence", async () => {
   const root = mkdtempSync(join(tmpdir(), "aos-fam5-seeded-oracle-"));
   try {
     const prepared = prepareScenario("FAM-5", root, "1");
